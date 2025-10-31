@@ -266,8 +266,8 @@ const TeacherProfile: React.FC = () => {
               </h3>
               <div className="bg-gray-50 rounded-lg p-4">
                 <div className="grid grid-cols-7 gap-2">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
-                    const isWorkingDay = (currentTeacher.schedule?.days || []).includes(day);
+                  {(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const).map(day => {
+                    const isWorkingDay = (currentTeacher.schedule?.days || []).includes(day as any);
                     return (
                       <div key={day} className={`text-center p-3 rounded-lg ${
                         isWorkingDay 

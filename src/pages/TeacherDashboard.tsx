@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
 
 const TeacherDashboard: React.FC = () => {
-  const { students, teachers, getStudentsByTeacher, updateStudent } = useData();
+  const { teachers, getStudentsByTeacher, updateStudent } = useData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);

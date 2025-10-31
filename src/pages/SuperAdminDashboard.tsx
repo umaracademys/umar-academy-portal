@@ -33,7 +33,7 @@ import AdminRecitationReview from '../components/AdminRecitationReview';
 import { useData } from '../contexts/DataContext';
 
 const SuperAdminDashboard: React.FC = () => {
-  const { students, teachers, admins, loading, error, adminNotifications, recitationReviews, refreshNotifications, markNotificationAsRead } = useData();
+  const { students, teachers, admins, loading, error, adminNotifications, recitationReviews, refreshNotifications } = useData();
   
   // Debug logging
   console.log('🔍 SuperAdminDashboard - Data state:', { 
@@ -448,7 +448,7 @@ const SuperAdminDashboard: React.FC = () => {
       setShowStudentProfile(true);
     };
 
-    const handleDeleteStudent = (studentId: string) => {
+    const handleDeleteStudent = (_studentId: string) => {
       if (window.confirm('Are you sure you want to delete this student?')) {
         // In a real app, this would delete the student
         alert('Student deleted successfully');
@@ -545,7 +545,7 @@ const SuperAdminDashboard: React.FC = () => {
       setShowTeacherProfile(true);
     };
 
-    const handleDeleteTeacher = (teacherId: string) => {
+    const handleDeleteTeacher = (_teacherId: string) => {
       if (window.confirm('Are you sure you want to delete this teacher?')) {
         // In a real app, this would delete the teacher
         alert('Teacher deleted successfully');

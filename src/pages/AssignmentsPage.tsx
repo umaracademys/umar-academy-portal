@@ -10,7 +10,7 @@ import BulkAssignmentCreator from '../components/BulkAssignmentCreator';
 import CSVAssignmentImporter from '../components/CSVAssignmentImporter';
 
 const AssignmentsPage: React.FC = () => {
-  const { assignments, students, addAssignment, updateAssignment, addAssignmentSubmission } = useData();
+  const { assignments, addAssignment, updateAssignment, addAssignmentSubmission } = useData();
   const { user } = useAuth();
   
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -33,10 +33,10 @@ const AssignmentsPage: React.FC = () => {
     setPrograms(mockPrograms);
   }, []);
 
-  // Check if user can create assignments (Super Admin controls this)
+  // Check if user can create assignments (Super Admin, Admin, and Teachers can create)
   const canCreateAssignments = user?.role === 'superadmin' || 
-    (user?.role === 'admin' && user?.permissions?.includes('create_assignments')) ||
-    (user?.role === 'teacher' && user?.permissions?.includes('create_assignments'));
+    user?.role === 'admin' ||
+    user?.role === 'teacher';
 
   const filteredAssignments = assignments.filter(assignment => {
     const programMatch = !filterProgram || assignment.program === filterProgram;
@@ -44,24 +44,7 @@ const AssignmentsPage: React.FC = () => {
     return programMatch && typeMatch;
   });
 
-  const handleCreateAssignment = async (assignmentData: any) => {
-    try {
-      await addAssignment(assignmentData);
-      setShowCreateForm(false);
-    } catch (error) {
-      console.error('Error creating assignment:', error);
-    }
-  };
-
-  const handleUpdateAssignment = async (assignmentData: any) => {
-    try {
-      await updateAssignment(assignmentData.id, assignmentData);
-      setShowCreateForm(false);
-      setSelectedAssignment(null);
-    } catch (error) {
-      console.error('Error updating assignment:', error);
-    }
-  };
+  // Handlers are now handled directly in SimpleAssignmentForm component
 
   const handleSubmitAssignment = async (submission: any) => {
     try {
