@@ -45,7 +45,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       // Fetch all users from backend (this will include newly created users)
-      const response = await fetch('http://localhost:3001/api/users');
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${API_BASE}/users`);
       if (!response.ok) {
         throw new Error('Failed to fetch users');
       }
