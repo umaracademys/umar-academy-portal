@@ -9,7 +9,7 @@ import BulkAssignmentCreator from '../components/BulkAssignmentCreator';
 import CSVAssignmentImporter from '../components/CSVAssignmentImporter';
 
 const AssignmentsPage: React.FC = () => {
-  const { assignments, addAssignment, updateAssignment, addAssignmentSubmission } = useData();
+  const { assignments, addAssignmentSubmission } = useData();
   const { user } = useAuth();
   
   const [showCreateForm, setShowCreateForm] = useState(false);

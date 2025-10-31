@@ -269,7 +269,7 @@ const AssignmentCardsPage: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => {
-                          setSelectedAssignment(assignment);
+                          // Assignment detail view can be added here
                           // Handle submission logic here
                         }}
                         className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
@@ -279,7 +279,7 @@ const AssignmentCardsPage: React.FC = () => {
                       {canCreateAssignments && (
                         <button
                           onClick={() => {
-                            setSelectedAssignment(assignment);
+                            // Assignment detail view can be added here
                             setShowCreateForm(true);
                           }}
                           className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
@@ -300,11 +300,11 @@ const AssignmentCardsPage: React.FC = () => {
           <SimpleAssignmentForm
             onClose={() => {
               setShowCreateForm(false);
-              setSelectedAssignment(null);
+              // Close form
             }}
             onSuccess={() => {
               setShowCreateForm(false);
-              setSelectedAssignment(null);
+              // Close form
             }}
           />
         )}

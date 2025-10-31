@@ -181,54 +181,44 @@ const StudentProfile: React.FC = () => {
         </div>
 
         {/* Parent Information */}
-        {currentStudent.parentInfo && (
+        {currentStudent.parentName && (
           <div className="mt-6">
             <Card title="👨‍👩‍👧‍👦 Parent Information">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-600">Parent Name</p>
-                  <p className="font-medium text-gray-900">{currentStudent.parentInfo.name}</p>
+                  <p className="font-medium text-gray-900">{currentStudent.parentName}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-600">Contact Number</p>
-                  <p className="font-medium text-gray-900">{currentStudent.parentInfo.contact}</p>
+                  <p className="font-medium text-gray-900">{currentStudent.contact || 'N/A'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-600">Relationship</p>
-                  <p className="font-medium text-gray-900">{currentStudent.parentInfo.relationship}</p>
+                  <p className="text-xs text-gray-600">Email</p>
+                  <p className="font-medium text-gray-900">{currentStudent.email || 'N/A'}</p>
                 </div>
               </div>
             </Card>
           </div>
         )}
 
-        {/* Address Information */}
-        {currentStudent.address && (
+        {/* Contact Information */}
+        {(currentStudent.email || currentStudent.contact) && (
           <div className="mt-6">
-            <Card title="🏠 Address Information">
-              <div className="space-y-2">
-                <div>
-                  <p className="text-xs text-gray-600">Street Address</p>
-                  <p className="font-medium text-gray-900">{currentStudent.address.street}</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card title="📧 Contact Information">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {currentStudent.email && (
                   <div>
-                    <p className="text-xs text-gray-600">City</p>
-                    <p className="font-medium text-gray-900">{currentStudent.address.city}</p>
+                    <p className="text-xs text-gray-600">Email</p>
+                    <p className="font-medium text-gray-900">{currentStudent.email}</p>
                   </div>
+                )}
+                {currentStudent.contact && (
                   <div>
-                    <p className="text-xs text-gray-600">State</p>
-                    <p className="font-medium text-gray-900">{currentStudent.address.state}</p>
+                    <p className="text-xs text-gray-600">Contact</p>
+                    <p className="font-medium text-gray-900">{currentStudent.contact}</p>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-600">ZIP Code</p>
-                    <p className="font-medium text-gray-900">{currentStudent.address.zipCode}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Country</p>
-                    <p className="font-medium text-gray-900">{currentStudent.address.country}</p>
-                  </div>
-                </div>
+                )}
               </div>
             </Card>
           </div>
@@ -247,7 +237,7 @@ const StudentProfile: React.FC = () => {
                         <p className="text-sm text-gray-600">{sibling.program}</p>
                       </div>
                       <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
-                        {sibling.status}
+                        Active
                       </span>
                     </div>
                   </div>
@@ -264,22 +254,21 @@ const StudentProfile: React.FC = () => {
               <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
                 <p className="text-sm text-gray-600">Total Assignments</p>
                 <p className="text-2xl font-bold text-primary-600">
-                  {currentStudent.assignments?.length || 0}
+                  0
                 </p>
                 <p className="text-xs text-gray-500">this semester</p>
               </div>
               <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
                 <p className="text-sm text-gray-600">Completed</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {currentStudent.assignments?.filter(a => a.status === 'completed').length || 0}
+                  0
                 </p>
                 <p className="text-xs text-gray-500">assignments</p>
               </div>
               <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
-                <p className="text-sm text-gray-600">Average Grade</p>
+                <p className="text-sm text-gray-600">Program</p>
                 <p className="text-2xl font-bold text-primary-600">
-                  {currentStudent.assignments?.length > 0 ? 
-                    Math.round(currentStudent.assignments.reduce((sum, a) => sum + (a.grade || 0), 0) / currentStudent.assignments.length) : 0}%
+                  {currentStudent.program || 'N/A'}
                 </p>
                 <p className="text-xs text-gray-500">overall</p>
               </div>

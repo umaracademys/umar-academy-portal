@@ -1,9 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import StudentDashboard from './pages/StudentDashboard';
-import StudentDashboardDebug from './pages/StudentDashboardDebug';
-import StudentTest from './pages/StudentTest';
-import StudentTestPage from './pages/StudentTestPage';
 import StudentProfile from './pages/StudentProfile';
 import StudentAssignments from './pages/StudentAssignments';
 import StudentCourses from './pages/StudentCourses';

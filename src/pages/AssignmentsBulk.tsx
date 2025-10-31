@@ -129,8 +129,7 @@ const AssignmentsBulk: React.FC = () => {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Program</label>
               <select
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-transparent focus:ring-2 transition"
-                className="focus:ring-green-600"
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-transparent focus:ring-2 focus:ring-green-600 transition"
                 value={program}
                 onChange={(e) => setProgram(e.target.value)}
               >
@@ -278,8 +277,7 @@ const AssignmentsBulk: React.FC = () => {
                         <label className="block text-xs font-semibold text-gray-700 mb-1">Sabq</label>
                         <input
                           type="text"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 transition"
-                          className="focus:ring-green-600"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-600 transition"
                           value={form.sabq}
                           onChange={(e) => updateField(student.id, 'sabq', e.target.value)}
                           disabled={isCompleted}
@@ -487,7 +485,8 @@ const AssignmentsBulk: React.FC = () => {
                           )}
                         </td>
                       </tr>
-                    })}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
