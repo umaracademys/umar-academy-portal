@@ -1,0 +1,37 @@
+services:
+  # Backend API Service
+  - type: web
+    name: umar-academy-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false  # Set this in Render dashboard
+      - key: FRONTEND_URL
+        value: https://umar-academy-portal.onrender.com  # Update after frontend deployment
+    healthCheckPath: /api/health
+
+  # Frontend Service
+  - type: web
+    name: umar-academy-frontend
+    env: static
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://umar-academy-backend.onrender.com/api  # Update with your backend URL
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: SAMEORIGIN
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+
