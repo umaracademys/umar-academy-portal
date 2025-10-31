@@ -241,7 +241,7 @@ const StudentDashboard: React.FC = () => {
                       <div className="space-y-2 text-sm">
                         <p><span className="font-medium">Email:</span> {currentStudent.email}</p>
                         <p><span className="font-medium">Phone:</span> {currentStudent.contact || 'Not provided'}</p>
-                        <p><span className="font-medium">Address:</span> {currentStudent.address || 'Not provided'}</p>
+                        <p><span className="font-medium">Address:</span> {(currentStudent as any).address || 'Not provided'}</p>
                       </div>
                     </div>
                   </div>
@@ -376,11 +376,11 @@ const StudentDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {assignment.attachments && assignment.attachments.length > 0 && (
+                    {(assignment as any).attachments && (assignment as any).attachments.length > 0 && (
                       <div className="mb-3 bg-white p-3 rounded">
                         <p className="text-xs text-gray-600 mb-2">Attachments:</p>
                         <div className="flex flex-wrap gap-2">
-                          {assignment.attachments.map((file, index) => (
+                          {(assignment as any).attachments.map((file, index) => (
                             <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                               📎 {file.name}
                             </span>
@@ -393,7 +393,7 @@ const StudentDashboard: React.FC = () => {
                       {assignment.status === 'pending' && (
                         <button
                           onClick={() => {
-                            setSelectedAssignment(assignment);
+                            setSelectedAssignment(assignment as any);
                             setShowSubmissionForm(true);
                           }}
                           className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"

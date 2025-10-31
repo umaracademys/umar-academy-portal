@@ -52,7 +52,7 @@ const StudentProfile: React.FC = () => {
             />
             <div>
               <h2 className="text-2xl font-bold">{currentStudent.fullName}</h2>
-              <p className="text-primary-100">{currentStudent.program} • {currentStudent.level}</p>
+              <p className="text-primary-100">{currentStudent.program} • {(currentStudent as any).level}</p>
               <p className="text-primary-200 text-sm mt-1">
                 Student ID: {currentStudent.id} • {currentStudent.status === 'active' ? '✓ Active' : '✗ Inactive'}
               </p>
@@ -86,7 +86,7 @@ const StudentProfile: React.FC = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-600">Level</p>
-                <p className="font-medium text-gray-900">{currentStudent.level}</p>
+                <p className="font-medium text-gray-900">{(currentStudent as any).level}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-600">Assigned Teacher</p>
@@ -151,7 +151,7 @@ const StudentProfile: React.FC = () => {
             <div className="mb-4 p-3 bg-cream-100 border border-gold-300 rounded-lg">
               <p className="text-sm text-primary-800">
                 💵 <strong>Monthly Tuition:</strong> ${currentStudent.tuitionFee} • 
-                <strong> Payment Status:</strong> {currentStudent.paymentStatus}
+                <strong> Payment Status:</strong> {(currentStudent as any).paymentStatus}
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -163,11 +163,11 @@ const StudentProfile: React.FC = () => {
               <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
                 <p className="text-sm text-gray-600">Payment Status</p>
                 <p className={`text-2xl font-bold ${
-                  currentStudent.paymentStatus === 'current' ? 'text-green-600' :
-                  currentStudent.paymentStatus === 'pending' ? 'text-yellow-600' :
+                    (currentStudent as any).paymentStatus === 'current' ? 'text-green-600' :
+                    (currentStudent as any).paymentStatus === 'pending' ? 'text-yellow-600' :
                   'text-red-600'
                 }`}>
-                  {currentStudent.paymentStatus}
+                  {(currentStudent as any).paymentStatus}
                 </p>
                 <p className="text-xs text-gray-500">current status</p>
               </div>

@@ -24,14 +24,14 @@ const StudentHeader: React.FC = () => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <p className="text-sm font-medium text-gray-900">
-                {user?.fullName}
+                {user?.name}
               </p>
               <p className="text-xs text-gray-500">Student</p>
             </div>
             
             <div className="flex items-center space-x-2">
               <img
-                src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.fullName}&background=2E4D32&color=fff`}
+                src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.name}&background=2E4D32&color=fff`}
                 alt="Profile"
                 className="h-8 w-8 rounded-full"
               />

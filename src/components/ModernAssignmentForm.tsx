@@ -27,11 +27,11 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
     program: assignment?.program || '',
     assignedTo: assignment?.assignedTo || [],
     dueDate: assignment?.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : '',
-    homeworkText: assignment?.homeworkText || '',
-    homeworkLink: assignment?.homeworkLink || '',
-    assignedTeacher: assignment?.assignedTeacher || '',
-    readingLink: assignment?.readingLink || '',
-    comments: assignment?.comments || ''
+    homeworkText: (assignment as any)?.homeworkComments || '',
+    homeworkLink: (assignment as any)?.homeworkLink || '',
+    assignedTeacher: '',
+    readingLink: '',
+    comments: ''
   });
 
   const [programs, setPrograms] = useState<Program[]>([]);

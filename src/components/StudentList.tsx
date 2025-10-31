@@ -169,7 +169,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
     sampleStudents.forEach(student => {
       if (!students.find(s => s.id === student.id)) {
-        addStudent(student);
+        addStudent(student as any);
       }
     });
   };

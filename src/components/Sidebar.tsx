@@ -76,9 +76,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
                     <span className="text-xl">{item.icon}</span>
                     {!isCollapsed && <span className="font-semibold">{item.label}</span>}
                   </div>
-                  {!isCollapsed && item.badge && (
+                  {!isCollapsed && (item as any).badge && (
                     <span className="text-white text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#E7AA39' }}>
-                      {item.badge}
+                      {(item as any).badge}
                     </span>
                   )}
                 </Link>
@@ -99,9 +99,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
                     <span className="text-xl">{item.icon}</span>
                     {!isCollapsed && <span className="font-semibold">{item.label}</span>}
                   </div>
-                  {!isCollapsed && item.badge && (
+                  {!isCollapsed && (item as any).badge && (
                     <span className="text-white text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#E7AA39' }}>
-                      {item.badge}
+                      {(item as any).badge}
                     </span>
                   )}
                 </button>

@@ -14,7 +14,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
   const selectedTeacher = teachers.find(t => t.id === selectedUser);
   const selectedAdmin = admins.find(a => a.id === selectedUser);
 
-  const handleTeacherPermissionChange = (permission: keyof typeof selectedTeacher.permissions, value: boolean) => {
+  const handleTeacherPermissionChange = (permission: any, value: boolean) => {
     if (selectedTeacher) {
       updateTeacher(selectedTeacher.id, {
         permissions: {
@@ -25,7 +25,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     }
   };
 
-  const handleAdminPermissionChange = (permission: keyof typeof selectedAdmin.permissions, value: boolean) => {
+  const handleAdminPermissionChange = (permission: any, value: boolean) => {
     if (selectedAdmin) {
       updateAdmin(selectedAdmin.id, {
         permissions: {
@@ -95,24 +95,24 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           </div>
 
           {/* Teacher Permissions */}
-          {selectedType === 'teacher' && selectedTeacher && (
+          {selectedType === 'teacher' && selectedTeacher! && (
             <div className="bg-cream-100 p-6 rounded-lg border border-gold-300">
               <div className="flex items-center space-x-3 mb-4">
                 <img
-                  src={selectedTeacher.avatar}
-                  alt={selectedTeacher.fullName}
+                  src={selectedTeacher!.avatar}
+                  alt={selectedTeacher!.fullName}
                   className="h-12 w-12 rounded-full"
                 />
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{selectedTeacher.fullName}</h3>
-                  <p className="text-sm text-gray-600">{selectedTeacher.department} • {selectedTeacher.email}</p>
-                  <p className="text-xs text-gray-500">Assigned Students: {selectedTeacher.assignedStudents.length}</p>
+                  <h3 className="text-lg font-bold text-gray-900">{selectedTeacher!.fullName}</h3>
+                  <p className="text-sm text-gray-600">{selectedTeacher!.department} • {selectedTeacher!.email}</p>
+                  <p className="text-xs text-gray-500">Assigned Students: {selectedTeacher!.assignedStudents.length}</p>
                 </div>
               </div>
 
               <h4 className="font-semibold text-gray-900 mb-3">Manage Teacher Permissions</h4>
               <div className="space-y-3">
-                {Object.entries(selectedTeacher.permissions).map(([key, value]) => (
+                {Object.entries((selectedTeacher?.permissions || {})).map(([key, value]) => (
                   <label key={key} className="flex items-center justify-between p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">
@@ -132,7 +132,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       <input
                         type="checkbox"
                         checked={value}
-                        onChange={(e) => handleTeacherPermissionChange(key as keyof typeof selectedTeacher.permissions, e.target.checked)}
+                        onChange={(e) => handleTeacherPermissionChange(key as any, e.target.checked)}
                         className="w-5 h-5 text-primary-600 focus:ring-primary-500 rounded"
                       />
                     </div>
@@ -143,24 +143,24 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           )}
 
           {/* Admin Permissions */}
-          {selectedType === 'admin' && selectedAdmin && (
+          {selectedType === 'admin' && selectedAdmin! && (
             <div className="bg-gold-50 p-6 rounded-lg border border-gold-300">
               <div className="flex items-center space-x-3 mb-4">
                 <img
-                  src={selectedAdmin.avatar}
-                  alt={selectedAdmin.fullName}
+                  src={selectedAdmin!.avatar}
+                  alt={selectedAdmin!.fullName}
                   className="h-12 w-12 rounded-full"
                 />
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">{selectedAdmin.fullName}</h3>
-                  <p className="text-sm text-gray-600">{selectedAdmin.email}</p>
-                  <p className="text-xs text-gray-500">Departments: {selectedAdmin.assignedDepartments.join(', ')}</p>
+                  <h3 className="text-lg font-bold text-gray-900">{selectedAdmin!.fullName}</h3>
+                  <p className="text-sm text-gray-600">{selectedAdmin!.email}</p>
+                  <p className="text-xs text-gray-500">Departments: {selectedAdmin!.assignedDepartments.join(', ')}</p>
                 </div>
               </div>
 
               <h4 className="font-semibold text-gray-900 mb-3">Manage Admin Permissions</h4>
               <div className="space-y-3">
-                {Object.entries(selectedAdmin.permissions).map(([key, value]) => (
+                {Object.entries((selectedAdmin?.permissions || {})).map(([key, value]) => (
                   <label key={key} className="flex items-center justify-between p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50">
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">
@@ -178,7 +178,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       <input
                         type="checkbox"
                         checked={value}
-                        onChange={(e) => handleAdminPermissionChange(key as keyof typeof selectedAdmin.permissions, e.target.checked)}
+                        onChange={(e) => handleAdminPermissionChange(key as any, e.target.checked)}
                         className="w-5 h-5 text-gold-600 focus:ring-gold-500 rounded"
                       />
                     </div>

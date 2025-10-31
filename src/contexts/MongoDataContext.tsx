@@ -179,7 +179,7 @@ export const MongoDataProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Helper functions
   const getStudentsByTeacher = (teacherId: string) => {
-    return students.filter(student => student.teacherId === teacherId);
+    return students.filter(student => (student as any).assignedTeacher === teacherId || (student as any).teacherId === teacherId);
   };
 
   const getTeacherById = (id: string) => {

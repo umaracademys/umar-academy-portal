@@ -327,7 +327,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                     <td className="px-4 py-4 text-sm">
                       <div>
                         <p className="text-gray-900">{teacher.email || 'No email'}</p>
-                        <p className="text-gray-500">{teacher.contact || 'No contact'}</p>
+                        <p className="text-gray-500">{teacher.phoneNumber || 'No contact'}</p>
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm">{teacher.department || 'General'}</td>

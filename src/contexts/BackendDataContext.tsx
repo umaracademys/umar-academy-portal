@@ -233,10 +233,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: student.name,
+          name: student.fullName,
           email: student.email,
           role: 'student',
-          password: student.password || 'password123',
+          password: 'password123', // Default password for students
           avatar: student.avatar
         }),
       });
@@ -256,8 +256,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         body: JSON.stringify({
           studentId: student.id,
           userId: newUser._id,
-          level: student.level || 'beginner',
-          paymentStatus: student.paymentStatus || 'pending',
+          level: 'beginner', // Default level
+          paymentStatus: 'pending', // Default payment status
           enrollmentDate: new Date()
         }),
       });
@@ -341,10 +341,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: teacher.fullName || teacher.name,
+          name: teacher.fullName,
           email: teacher.email,
           role: 'teacher',
-          password: teacher.password || 'password123',
+          password: 'password123', // Default password for teachers
           avatar: teacher.avatar
         }),
       });
@@ -364,9 +364,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         body: JSON.stringify({
           teacherId: teacher.id,
           userId: newUser._id,
-          specialization: teacher.specialization || 'General',
-          experience: teacher.experience || 0,
-          salary: teacher.salary || 0
+          specialization: 'General', // Default specialization
+          experience: 0, // Default experience
+          salary: 0 // Default salary
         }),
       });
 
@@ -450,10 +450,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: admin.name,
+          name: admin.fullName,
           email: admin.email,
-          role: admin.role || 'admin',
-          password: admin.password || 'password123',
+          role: 'admin', // Default role
+          password: 'password123', // Default password for admins
           avatar: admin.avatar
         }),
       });
@@ -534,7 +534,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     
     // Find the teacher to get their name
     const teacher = teachers.find(t => t.id === teacherId);
-    const teacherName = teacher?.fullName || teacher?.name;
+    const teacherName = teacher?.fullName || '';
     console.log('🔍 Teacher found:', teacher, 'teacherName:', teacherName);
     
     const filteredStudents = students.filter(student => {

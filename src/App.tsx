@@ -7,7 +7,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherProfile from './pages/TeacherProfile';
-import StudentDashboard from './pages/StudentDashboard';
+// import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
 import AssignmentsPage from './pages/AssignmentsPage';
 import AssignmentCardsPage from './pages/AssignmentCardsPage';
 import StudentAssignments from './pages/StudentAssignments';
