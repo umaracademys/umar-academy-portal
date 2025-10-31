@@ -14,18 +14,6 @@ interface AssignmentForm {
   comment: string;
 }
 
-interface Assignment {
-  studentId: string;
-  program: string;
-  date: string;
-  sabq: string;
-  sabqi: string;
-  manzil: string;
-  homework: string;
-  comment: string;
-  completed: boolean;
-}
-
 const AssignmentsBulk: React.FC = () => {
   const { students } = useData();
   
@@ -142,7 +130,7 @@ const AssignmentsBulk: React.FC = () => {
               <label className="block text-sm font-semibold text-gray-700 mb-2">Program</label>
               <select
                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:border-transparent focus:ring-2 transition"
-                style={{ focusRingColor: '#2E4D32' }}
+                className="focus:ring-green-600"
                 value={program}
                 onChange={(e) => setProgram(e.target.value)}
               >
@@ -291,7 +279,7 @@ const AssignmentsBulk: React.FC = () => {
                         <input
                           type="text"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 transition"
-                          style={{ focusRingColor: '#2E4D32' }}
+                          className="focus:ring-green-600"
                           value={form.sabq}
                           onChange={(e) => updateField(student.id, 'sabq', e.target.value)}
                           disabled={isCompleted}
@@ -405,6 +393,7 @@ const AssignmentsBulk: React.FC = () => {
                   {filtered.map((student, index) => {
                     const form = forms[student.id] || { sabq: '', sabqi: '', manzil: '', homework: '', comment: '' };
                     const isCompleted = completed.has(student.id);
+                    const hasContent = !!(form.sabq || form.sabqi || form.manzil || form.homework || form.comment);
 
                     return (
                       <tr 
@@ -498,8 +487,7 @@ const AssignmentsBulk: React.FC = () => {
                           )}
                         </td>
                       </tr>
-                    );
-                  })}
+                    })}
                 </tbody>
               </table>
             </div>

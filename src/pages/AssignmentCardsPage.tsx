@@ -2,15 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, Program } from '../types/assignment';
-import ModernAssignmentForm from '../components/ModernAssignmentForm';
 import SimpleAssignmentForm from '../components/SimpleAssignmentForm';
 
 const AssignmentCardsPage: React.FC = () => {
-  const { assignments, students, addAssignment, updateAssignment } = useData();
+  const { assignments } = useData();
   const { user } = useAuth();
   
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [filterProgram, setFilterProgram] = useState<string>('');
   const [programs, setPrograms] = useState<Program[]>([]);
 
@@ -26,8 +24,8 @@ const AssignmentCardsPage: React.FC = () => {
 
   // Check if user can create assignments
   const canCreateAssignments = user?.role === 'superadmin' || 
-    (user?.role === 'admin' && user?.permissions?.includes('create_assignments')) ||
-    (user?.role === 'teacher' && user?.permissions?.includes('create_assignments'));
+    user?.role === 'admin' ||
+    user?.role === 'teacher';
 
   const filteredAssignments = assignments.filter(assignment => {
     const programMatch = !filterProgram || assignment.program === filterProgram;
@@ -162,7 +160,7 @@ const AssignmentCardsPage: React.FC = () => {
             {filteredAssignments.map((assignment) => {
               const status = getAssignmentStatus(assignment);
               const program = programs.find(p => p.id === assignment.program);
-              const icon = getAssignmentStatus(assignment);
+              // const icon = getAssignmentStatus(assignment); // Status displayed elsewhere
               const typeColor = getTypeColor(assignment.type, assignment.classworkType);
               const typeLabel = getTypeLabel(assignment.type, assignment.classworkType);
               const typeIcon = getTypeIcon(assignment.type, assignment.classworkType);

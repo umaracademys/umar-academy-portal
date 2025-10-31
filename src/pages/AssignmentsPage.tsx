@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, Program } from '../types/assignment';
-import AssignmentForm from '../components/AssignmentForm';
 import SimpleAssignmentForm from '../components/SimpleAssignmentForm';
 import AssignmentReports from '../components/AssignmentReports';
 import AssignmentSubmissionForm from '../components/AssignmentSubmission';
