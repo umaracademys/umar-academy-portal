@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .user-info { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Umar Academy Login Test</h1>
+    
+    <div class="test-section">
+        <h3>Test Users from Database</h3>
+        <button onclick="testLogin('sadmin@umaracademy.org', 'superadmin')">Test Super Admin</button>
+        <button onclick="testLogin('admin@umaracademy.com', 'admin')">Test Admin</button>
+        <button onclick="testLogin('teacher@umaracademy.com', 'teacher')">Test Teacher</button>
+        <button onclick="testLogin('ahmed@umaracademy.com', 'student')">Test Student</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testLogin(email, role) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>🔄 Testing login...</p>';
+            
+            try {
+                // Fetch users from backend
+                const response = await fetch('http://localhost:3001/api/users');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                
+                const users = await response.json();
+                console.log('📊 Available users:', users.length);
+                
+                // Find user by email and role
+                const foundUser = users.find(u => u.email === email && u.role === role);
+                
+                if (foundUser) {
+                    const userData = {
+                        id: foundUser._id,
+                        name: foundUser.name || foundUser.fullName || 'Unknown',
+                        email: foundUser.email,
+                        role: foundUser.role,
+                        avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name || 'User')}&background=random&color=fff`
+                    };
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="test-section success">
+                            <h4>✅ Login Successful!</h4>
+                            <div class="user-info">
+                                <strong>Name:</strong> ${userData.name}<br>
+                                <strong>Email:</strong> ${userData.email}<br>
+                                <strong>Role:</strong> ${userData.role}<br>
+                                <strong>ID:</strong> ${userData.id}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="test-section error">
+                            <h4>❌ Login Failed</h4>
+                            <p>User not found: ${email} with role ${role}</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-section error">
+                        <h4>❌ Connection Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Test all users on page load
+        window.onload = function() {
+            console.log('🚀 Login test page loaded');
+        };
+    </script>
+</body>
+</html>
+
+

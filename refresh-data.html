@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refresh Data</title>
+</head>
+<body>
+    <h1>🔄 Force Refresh Frontend Data</h1>
+    <button onclick="refreshData()">🔄 Refresh Data</button>
+    <div id="status"></div>
+
+    <script>
+        async function refreshData() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = '🔄 Refreshing data...';
+            
+            try {
+                // Clear localStorage
+                localStorage.removeItem('umar_academy_users');
+                localStorage.removeItem('umar_academy_students');
+                localStorage.removeItem('umar_academy_teachers');
+                localStorage.removeItem('umar_academy_admins');
+                
+                // Fetch fresh data from API
+                const response = await fetch('http://localhost:3001/api/users');
+                const users = await response.json();
+                
+                // Save to localStorage
+                localStorage.setItem('umar_academy_users', JSON.stringify(users));
+                
+                statusDiv.innerHTML = '✅ Data refreshed! Check your app now.';
+                
+                // Redirect to main app
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:5173';
+                }, 2000);
+                
+            } catch (error) {
+                statusDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+
+
+

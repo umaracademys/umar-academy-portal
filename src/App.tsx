@@ -1,0 +1,150 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { DataProvider } from './contexts/DataContext';
+import Login from './pages/Login';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
+import TeacherProfile from './pages/TeacherProfile';
+import StudentDashboard from './pages/StudentDashboard';
+import AssignmentsPage from './pages/AssignmentsPage';
+import AssignmentCardsPage from './pages/AssignmentCardsPage';
+import StudentAssignments from './pages/StudentAssignments';
+import StudentRouter from './modules/student/StudentRouter';
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+};
+
+const DashboardRouter: React.FC = () => {
+  const { user } = useAuth();
+
+  console.log('🔍 DashboardRouter - user:', user);
+
+  if (!user) {
+    console.log('🔍 DashboardRouter - No user, redirecting to login');
+    return <Navigate to="/login" />;
+  }
+
+  console.log('🔍 DashboardRouter - User role:', user.role);
+
+  switch (user.role) {
+    case 'superadmin':
+      console.log('🔍 DashboardRouter - Rendering SuperAdminDashboard');
+      return <SuperAdminDashboard />;
+    case 'admin':
+      console.log('🔍 DashboardRouter - Rendering AdminDashboard');
+      return <AdminDashboard />;
+    case 'teacher':
+      console.log('🔍 DashboardRouter - Rendering TeacherDashboard');
+      return <TeacherDashboard />;
+    case 'student':
+      console.log('🔍 DashboardRouter - Redirecting student to /student/dashboard');
+      return <Navigate to="/student/dashboard" replace />;
+    default:
+      console.log('🔍 DashboardRouter - Unknown role, redirecting to login');
+      return <Navigate to="/login" />;
+  }
+};
+
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route 
+        path="/login" 
+        element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} 
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardRouter />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <TeacherProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assignments"
+        element={
+          <ProtectedRoute>
+            <AssignmentsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assignment-cards"
+        element={
+          <ProtectedRoute>
+            <AssignmentCardsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-assignments"
+        element={
+          <ProtectedRoute>
+            <StudentAssignments />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/*"
+        element={
+          <ProtectedRoute>
+            <StudentRouter />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="*" element={<Navigate to="/dashboard" />} />
+    </Routes>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <DataProvider>
+          <AppContent />
+        </DataProvider>
+      </AuthProvider>
+    </Router>
+  );
+}
+
+export default App;

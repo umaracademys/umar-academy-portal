@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test New User Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .user-info { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; }
+        select { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test New User Login</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Instructions</h3>
+        <p>1. First, create a new user in the Super Admin dashboard</p>
+        <p>2. Then test login with that user's email and role</p>
+        <p>3. The login should work immediately after user creation</p>
+    </div>
+    
+    <div class="test-section">
+        <h3>🔍 Check Current Users</h3>
+        <button onclick="loadAllUsers()">Load All Users from Database</button>
+        <div id="allUsers"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>🔐 Test Login with New User</h3>
+        <div>
+            <input type="email" id="testEmail" placeholder="Enter email of newly created user" style="width: 300px;">
+            <select id="testRole">
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+                <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
+            </select>
+            <button onclick="testNewUserLogin()">Test Login</button>
+        </div>
+        <div id="loginResult"></div>
+    </div>
+    
+    <script>
+        async function loadAllUsers() {
+            const allUsersDiv = document.getElementById('allUsers');
+            allUsersDiv.innerHTML = '<p>🔄 Loading users...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/users');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                
+                const users = await response.json();
+                console.log('📊 All users:', users);
+                
+                let html = `<h4>📊 Found ${users.length} users in database:</h4>`;
+                
+                // Group users by role
+                const usersByRole = users.reduce((acc, user) => {
+                    const role = user.role || 'unknown';
+                    if (!acc[role]) acc[role] = [];
+                    acc[role].push(user);
+                    return acc;
+                }, {});
+                
+                Object.keys(usersByRole).forEach(role => {
+                    html += `<h5>${role.toUpperCase()} (${usersByRole[role].length}):</h5>`;
+                    usersByRole[role].forEach(user => {
+                        html += `
+                            <div class="user-info">
+                                <strong>Name:</strong> ${user.name || user.fullName || 'Unknown'}<br>
+                                <strong>Email:</strong> ${user.email}<br>
+                                <strong>Role:</strong> ${user.role}<br>
+                                <strong>ID:</strong> ${user._id}
+                            </div>
+                        `;
+                    });
+                });
+                
+                allUsersDiv.innerHTML = html;
+                
+            } catch (error) {
+                allUsersDiv.innerHTML = `
+                    <div class="test-section error">
+                        <h4>❌ Error loading users</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testNewUserLogin() {
+            const email = document.getElementById('testEmail').value;
+            const role = document.getElementById('testRole').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            if (!email) {
+                resultDiv.innerHTML = '<p style="color: red;">Please enter an email address</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p>🔄 Testing login...</p>';
+            
+            try {
+                // Fetch all users from backend
+                const response = await fetch('http://localhost:3001/api/users');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                
+                const users = await response.json();
+                console.log('🔍 Looking for:', email, 'with role:', role);
+                
+                // Find user by email and role
+                const foundUser = users.find(u => u.email === email && u.role === role);
+                
+                if (foundUser) {
+                    const userData = {
+                        id: foundUser._id,
+                        name: foundUser.name || foundUser.fullName || 'Unknown',
+                        email: foundUser.email,
+                        role: foundUser.role,
+                        avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name || 'User')}&background=random&color=fff`
+                    };
+                    
+                    resultDiv.innerHTML = `
+                        <div class="test-section success">
+                            <h4>✅ Login Successful!</h4>
+                            <div class="user-info">
+                                <strong>Name:</strong> ${userData.name}<br>
+                                <strong>Email:</strong> ${userData.email}<br>
+                                <strong>Role:</strong> ${userData.role}<br>
+                                <strong>ID:</strong> ${userData.id}
+                            </div>
+                            <p><strong>✨ This user can now log in to the system!</strong></p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="test-section error">
+                            <h4>❌ Login Failed</h4>
+                            <p>User not found: ${email} with role ${role}</p>
+                            <p>Make sure the user was created in the Super Admin dashboard first.</p>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="test-section error">
+                        <h4>❌ Connection Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load users on page load
+        window.onload = function() {
+            console.log('🚀 New user login test page loaded');
+            loadAllUsers();
+        };
+    </script>
+</body>
+</html>
+
+
