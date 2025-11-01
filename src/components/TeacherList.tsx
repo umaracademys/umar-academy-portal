@@ -24,9 +24,9 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Get unique values for filters
-  const uniqueSpecializations = Array.from(new Set(teachers.map(t => t.department)));
-  const uniqueStatuses = Array.from(new Set(teachers.map(t => t.status || 'active')));
-  const uniqueLocations = Array.from(new Set(teachers.map(t => t.location)));
+  const uniqueSpecializations = Array.from(new Set(teachers.map(t => t.department))) as string[];
+  const uniqueStatuses = Array.from(new Set(teachers.map(t => t.status || 'active'))) as string[];
+  const uniqueLocations = Array.from(new Set(teachers.map(t => t.location))) as string[];
 
   // Filter and sort teachers
   const filteredTeachers = useMemo(() => {
@@ -187,7 +187,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
-              {uniqueStatuses.map((status: string) => (
+              {uniqueStatuses.map(status => (
                 <option key={status} value={status}>{status.replace('-', ' ')}</option>
               ))}
             </select>
