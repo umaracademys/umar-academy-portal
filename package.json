@@ -6,12 +6,14 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "start": "node frontend-server.js",
     "seed": "tsx src/scripts/seedData.ts",
     "test-db": "tsx src/scripts/testConnection.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.2",
+    "express": "^4.18.2",
     "mongoose": "^8.19.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
