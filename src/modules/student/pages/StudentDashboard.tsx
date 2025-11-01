@@ -62,9 +62,12 @@ const StudentDashboard: React.FC = () => {
           status = 'overdue';
         }
 
+        // Ensure we always have _id - it's critical for API calls
+        const assignmentId = assignment._id || assignment.id;
+        
         return {
-          id: assignment._id || assignment.id,
-          _id: assignment._id, // Keep original MongoDB _id for API calls
+          id: assignmentId,
+          _id: assignmentId, // Always preserve MongoDB _id for API calls
           title: assignment.title || `${assignment.classworkType || assignment.type} Assignment`,
           description: assignment.description || '',
           course: assignment.program || 'General',
@@ -77,7 +80,9 @@ const StudentDashboard: React.FC = () => {
           studentId: currentStudent.id,
           homeworkComments: assignment.homeworkComments,
           homeworkLink: assignment.homeworkLink,
-          createdAt: assignment.createdAt
+          createdAt: assignment.createdAt,
+          // Store reference to original for debugging
+          originalAssignment: assignment
         };
       })
       .sort((a: any, b: any) => {
@@ -136,32 +141,27 @@ const StudentDashboard: React.FC = () => {
         }))
       };
 
-      // Use the assignment ID - backend uses MongoDB _id format
-      // Try to find the assignment in backendAssignments to get the real _id
-      const backendAssignment = backendAssignments.find((a: any) => 
-        (a._id === selectedAssignment.id) || 
-        (a._id === (selectedAssignment as any)._id) ||
-        (a.id === selectedAssignment.id)
-      );
+      // Get the assignment ID - use _id first (MongoDB format), then fallback to id
+      const assignmentId = (selectedAssignment as any)._id || selectedAssignment.id;
       
-      const assignmentId = backendAssignment?._id || 
-                          backendAssignment?.id || 
-                          (selectedAssignment as any)._id || 
-                          selectedAssignment.id;
-      
-      console.log('🔍 Backend Assignment found:', backendAssignment);
       console.log('🔍 Final Assignment ID:', assignmentId);
+      console.log('🔍 Selected Assignment Full Object:', selectedAssignment);
       
-      if (!assignmentId) {
-        console.error('❌ Assignment ID not found!', {
+      if (!assignmentId || assignmentId === 'undefined' || assignmentId === undefined) {
+        console.error('❌ Assignment ID is invalid!', {
           selectedAssignment,
-          backendAssignment,
-          backendAssignments: backendAssignments.length
+          _id: (selectedAssignment as any)._id,
+          id: selectedAssignment.id,
+          allBackendAssignments: backendAssignments.map((a: any) => ({
+            _id: a._id,
+            id: a.id,
+            title: a.title
+          }))
         });
-        throw new Error('Assignment ID not found. Please refresh the page and try again.');
+        throw new Error('Assignment ID is missing. Please refresh the page and try again.');
       }
       
-      console.log('✅ Submitting assignment:', { assignmentId, submission });
+      console.log('✅ Submitting assignment with ID:', assignmentId);
       
       await addAssignmentSubmission(assignmentId, submission);
       
@@ -450,24 +450,29 @@ const StudentDashboard: React.FC = () => {
                       {assignment.status === 'pending' && (
                         <button
                           onClick={() => {
-                            // Find the original backend assignment to preserve _id
-                            const backendAssignment = backendAssignments.find((a: any) => 
-                              a._id === assignment.id || a._id === (assignment as any)._id
-                            );
+                            // Store the assignment with guaranteed _id
+                            // The id field should already be the _id from backend
+                            const assignmentWithId = {
+                              ...assignment,
+                              id: (assignment as any)._id || assignment.id,
+                              _id: (assignment as any)._id || assignment.id
+                            };
                             
-                            const assignmentToSelect = backendAssignment || assignment;
                             console.log('🎯 Selecting assignment:', {
-                              assignment,
-                              backendAssignment,
-                              id: assignment.id,
-                              _id: assignmentToSelect._id || (assignment as any)._id
+                              originalAssignment: assignment,
+                              assignmentWithId,
+                              id: assignmentWithId.id,
+                              _id: assignmentWithId._id
                             });
                             
-                            setSelectedAssignment({
-                              ...assignment,
-                              id: assignmentToSelect._id || assignmentToSelect.id || assignment.id,
-                              _id: assignmentToSelect._id || (assignment as any)._id
-                            } as any);
+                            // Validate we have an ID before setting
+                            if (!assignmentWithId.id && !assignmentWithId._id) {
+                              console.error('❌ No ID found in assignment!', assignment);
+                              alert('Error: Assignment ID not found. Please refresh the page.');
+                              return;
+                            }
+                            
+                            setSelectedAssignment(assignmentWithId as any);
                             setShowSubmissionForm(true);
                           }}
                           className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
