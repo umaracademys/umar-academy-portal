@@ -1,0 +1,294 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useBackendData } from '../contexts/BackendDataContext';
+import { AssignmentTicket, TicketStatus, WorkflowStep } from '../types';
+
+interface TeacherTicketsProps {
+  onClose?: () => void;
+}
+
+const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
+  const { user } = useAuth();
+  const { tickets, students, updateTicket } = useBackendData();
+  
+  const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
+  const [formData, setFormData] = useState({
+    progressNotes: '',
+    audioLink: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get tickets assigned to current teacher
+  const myTickets = tickets.filter(t => 
+    t.assignedTeacherId === user?.id && 
+    (t.status === 'assigned' || t.status === 'in_progress' || t.status === 'needs_revision')
+  );
+
+  // Get completed tickets (for reference)
+  const completedTickets = tickets.filter(t => 
+    t.assignedTeacherId === user?.id && 
+    t.status === 'pending_review'
+  );
+
+  useEffect(() => {
+    if (selectedTicket) {
+      setFormData({
+        progressNotes: selectedTicket.progressNotes || '',
+        audioLink: selectedTicket.audioLink || ''
+      });
+    }
+  }, [selectedTicket]);
+
+  const handleStartTicket = async (ticket: AssignmentTicket) => {
+    try {
+      const ticketId = ticket.id || (ticket as any)._id;
+      if (!ticketId) {
+        console.error('Ticket ID is missing:', ticket);
+        alert('Invalid ticket - missing ID');
+        return;
+      }
+      await updateTicket(ticketId, {
+        status: 'in_progress'
+      });
+      setSelectedTicket(ticket);
+    } catch (error) {
+      console.error('Error starting ticket:', error);
+      alert('Failed to start ticket');
+    }
+  };
+
+  const handleSubmitTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedTicket) return;
+    
+    if (!formData.progressNotes.trim()) {
+      alert('Please enter progress notes');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      if (!ticketId) {
+        console.error('Ticket ID is missing:', selectedTicket);
+        alert('Invalid ticket - missing ID');
+        setIsSubmitting(false);
+        return;
+      }
+      await updateTicket(ticketId, {
+        status: 'pending_review',
+        progressNotes: formData.progressNotes,
+        audioLink: formData.audioLink || undefined,
+        completedBy: user?.id,
+        completedAt: new Date()
+      });
+      
+      alert('Ticket submitted successfully! Admin will review it.');
+      setSelectedTicket(null);
+      setFormData({ progressNotes: '', audioLink: '' });
+    } catch (error) {
+      console.error('Error submitting ticket:', error);
+      alert('Failed to submit ticket');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getStatusColor = (status: TicketStatus) => {
+    switch (status) {
+      case 'assigned': return 'bg-blue-100 text-blue-700';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-700';
+      case 'pending_review': return 'bg-purple-100 text-purple-700';
+      case 'needs_revision': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStepLabel = (step: WorkflowStep) => {
+    switch (step) {
+      case 'sabq': return '📖 Sabq';
+      case 'sabqi': return '📚 Sabqi';
+      case 'manzil': return '📿 Manzil';
+      case 'finalize': return '✅ Finalize';
+      default: return step;
+    }
+  };
+
+  const getStudentName = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    return student?.fullName || studentId;
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg p-6 max-w-6xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">🎫 My Tickets</h2>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
+      {selectedTicket ? (
+        <div className="space-y-4">
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-lg mb-2">Ticket Details</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Student:</span> {getStudentName(selectedTicket.studentId)}
+              </div>
+              <div>
+                <span className="font-medium">Step:</span> {getStepLabel(selectedTicket.workflowStep)}
+              </div>
+              <div>
+                <span className="font-medium">Program:</span> {selectedTicket.program}
+              </div>
+              <div>
+                <span className="font-medium">Status:</span>
+                <span className={`ml-2 px-2 py-1 rounded text-xs ${getStatusColor(selectedTicket.status)}`}>
+                  {selectedTicket.status}
+                </span>
+              </div>
+            </div>
+            {selectedTicket.revisionNotes && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-sm font-medium text-red-800">Revision Notes:</p>
+                <p className="text-sm text-red-700">{selectedTicket.revisionNotes}</p>
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmitTicket} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Progress Notes <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={formData.progressNotes}
+                onChange={(e) => setFormData(prev => ({ ...prev, progressNotes: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows={6}
+                placeholder="Enter progress notes, observations, corrections needed, etc..."
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Audio Link (Optional)
+              </label>
+              <input
+                type="url"
+                value={formData.audioLink}
+                onChange={(e) => setFormData(prev => ({ ...prev, audioLink: e.target.value }))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Submitting...' : 'Submit for Review'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTicket(null);
+                  setFormData({ progressNotes: '', audioLink: '' });
+                }}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {myTickets.length === 0 && completedTickets.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg">No tickets assigned to you yet.</p>
+              <p className="text-sm mt-2">Tickets will appear here when admin assigns them.</p>
+            </div>
+          ) : (
+            <>
+              {myTickets.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Active Tickets</h3>
+                  <div className="space-y-3">
+                    {myTickets.map(ticket => (
+                      <div
+                        key={ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                                {ticket.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <p className="font-medium text-gray-900">{getStudentName(ticket.studentId)}</p>
+                            <p className="text-sm text-gray-600">{ticket.program}</p>
+                            {ticket.progressNotes && (
+                              <p className="text-sm text-gray-500 mt-2 line-clamp-2">{ticket.progressNotes}</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleStartTicket(ticket)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                          >
+                            {ticket.status === 'assigned' ? 'Start' : 'Continue'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {completedTickets.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Pending Review</h3>
+                  <div className="space-y-3">
+                    {completedTickets.map(ticket => (
+                      <div
+                        key={ticket.id || (ticket as any)._id || `completed-ticket-${ticket.studentId}-${ticket.workflowStep}`}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                                Awaiting Admin Review
+                              </span>
+                            </div>
+                            <p className="font-medium text-gray-900">{getStudentName(ticket.studentId)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TeacherTickets;
+

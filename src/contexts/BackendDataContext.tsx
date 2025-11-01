@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Student, Teacher, Admin, RecitationReview, AdminNotification } from '../types';
+import { Student, Teacher, Admin, RecitationReview, AdminNotification, AssignmentTicket } from '../types';
 
 interface BackendDataContextType {
   students: Student[];
@@ -36,6 +36,12 @@ interface BackendDataContextType {
   markNotificationAsRead: (notificationId: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
+  // Ticket-based workflow
+  tickets: AssignmentTicket[];
+  addTicket: (ticket: AssignmentTicket) => Promise<void>;
+  updateTicket: (id: string, ticket: Partial<AssignmentTicket>) => Promise<void>;
+  assignTicketToNextTeacher: (ticketId: string, teacherId: string, teacherName: string) => Promise<AssignmentTicket>;
+  finalizeTicket: (ticketId: string, data: { finalReport: string; homework: string; homeworkLink?: string; reviewedBy: string }) => Promise<any>;
 }
 
 const BackendDataContext = createContext<BackendDataContextType | undefined>(undefined);
@@ -58,6 +64,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [assignments, setAssignments] = useState<any[]>([]);
   const [recitationReviews, setRecitationReviews] = useState<RecitationReview[]>([]);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [tickets, setTickets] = useState<AssignmentTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,6 +122,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const notificationsData = await notificationsResponse.json();
         console.log('🔔 Admin notifications loaded:', notificationsData.length);
         setAdminNotifications(notificationsData);
+      }
+
+      // Load tickets
+      const ticketsResponse = await fetch(`${API_BASE}/tickets`);
+      if (ticketsResponse.ok) {
+        const ticketsData = await ticketsResponse.json();
+        console.log('🎫 Tickets loaded:', ticketsData.length);
+        // Map MongoDB _id to id for frontend compatibility
+        const mappedTickets = ticketsData.map((ticket: any) => ({
+          ...ticket,
+          id: ticket._id || ticket.id,
+          createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+          updatedAt: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(),
+          reviewedAt: ticket.reviewedAt ? new Date(ticket.reviewedAt) : undefined,
+          completedAt: ticket.completedAt ? new Date(ticket.completedAt) : undefined
+        }));
+        setTickets(mappedTickets);
       }
 
       // Separate users by role and map to expected format
@@ -775,6 +799,129 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Ticket Functions
+  const addTicket = async (ticket: AssignmentTicket) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticket)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create ticket');
+      }
+      
+      const newTicket = await response.json();
+      // Map MongoDB _id to id for consistency
+      const mappedTicket = {
+        ...newTicket,
+        id: newTicket._id || newTicket.id,
+        createdAt: newTicket.createdAt ? new Date(newTicket.createdAt) : new Date(),
+        updatedAt: newTicket.updatedAt ? new Date(newTicket.updatedAt) : new Date()
+      };
+      setTickets(prev => [...prev, mappedTicket]);
+      await refreshData();
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      throw error;
+    }
+  };
+
+  const updateTicket = async (id: string, ticket: Partial<AssignmentTicket>) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticket)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update ticket');
+      }
+      
+      const updatedTicket = await response.json();
+      // Map MongoDB _id to id for consistency
+      const mappedTicket = {
+        ...updatedTicket,
+        id: updatedTicket._id || updatedTicket.id,
+        createdAt: updatedTicket.createdAt ? new Date(updatedTicket.createdAt) : new Date(),
+        updatedAt: updatedTicket.updatedAt ? new Date(updatedTicket.updatedAt) : new Date(),
+        reviewedAt: updatedTicket.reviewedAt ? new Date(updatedTicket.reviewedAt) : undefined,
+        completedAt: updatedTicket.completedAt ? new Date(updatedTicket.completedAt) : undefined
+      };
+      setTickets(prev => prev.map(t => 
+        (t.id === id || t.id === updatedTicket._id || (t as any)._id === updatedTicket._id) ? mappedTicket : t
+      ));
+      
+      await refreshNotifications();
+      await refreshData();
+      
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      throw error;
+    }
+  };
+
+  const assignTicketToNextTeacher = async (ticketId: string, teacherId: string, teacherName: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}/assign-next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignedTeacherId: teacherId, assignedTeacherName: teacherName })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to assign ticket to next teacher');
+      }
+      
+      const newTicket = await response.json();
+      // Map MongoDB _id to id for consistency
+      const mappedTicket = {
+        ...newTicket,
+        id: newTicket._id || newTicket.id,
+        createdAt: newTicket.createdAt ? new Date(newTicket.createdAt) : new Date(),
+        updatedAt: newTicket.updatedAt ? new Date(newTicket.updatedAt) : new Date()
+      };
+      setTickets(prev => [...prev, mappedTicket]);
+      await refreshData();
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error assigning ticket to next teacher:', error);
+      throw error;
+    }
+  };
+
+  const finalizeTicket = async (ticketId: string, data: { finalReport: string; homework: string; homeworkLink?: string; reviewedBy: string }) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to finalize ticket');
+      }
+      
+      const result = await response.json();
+      
+      // Update ticket and add assignment
+      setTickets(prev => prev.map(t => 
+        t.id === ticketId || t.id === result.ticket._id ? result.ticket : t
+      ));
+      setAssignments(prev => [...prev, result.assignment]);
+      
+      await refreshData();
+      return result;
+    } catch (error) {
+      console.error('Error finalizing ticket:', error);
+      throw error;
+    }
+  };
+
   const value: BackendDataContextType = {
     students,
     teachers,
@@ -806,7 +953,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     adminNotifications,
     markNotificationAsRead,
     markAllNotificationsAsRead,
-    refreshNotifications
+    refreshNotifications,
+    tickets,
+    addTicket,
+    updateTicket,
+    assignTicketToNextTeacher,
+    finalizeTicket
   };
 
   return (

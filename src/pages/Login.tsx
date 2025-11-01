@@ -13,12 +13,23 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    console.log('🔐 Login attempt:', { email, role });
+    
+    if (!email || !password) {
+      setLoginError('Please enter email and password');
+      return;
+    }
+    
     try {
+      console.log('🔄 Calling login function...');
       const success = await login(email, password, role);
+      console.log('📊 Login result:', success);
+      
       if (!success) {
         setLoginError(error || 'Invalid credentials. Please try again.');
       }
     } catch (err) {
+      console.error('❌ Login error caught:', err);
       setLoginError('Login failed. Please try again.');
     }
   };
@@ -121,10 +132,23 @@ const Login: React.FC = () => {
               {/* Sign In Button */}
               <button
                 type="submit"
-                className="w-full text-white py-3.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+                className="w-full text-white py-3.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: '#2E4D32' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#253d28'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
+                onMouseEnter={(e) => {
+                  if (!e.currentTarget.disabled) {
+                    e.currentTarget.style.backgroundColor = '#253d28';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2E4D32';
+                }}
+                onClick={(e) => {
+                  console.log('🖱️ Button clicked');
+                  // Ensure form submission
+                  if (e.currentTarget.form) {
+                    console.log('📝 Form found, triggering submit');
+                  }
+                }}
               >
                 Sign In
               </button>

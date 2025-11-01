@@ -9,7 +9,13 @@ export interface Assignment {
   assignedTo: string[]; // Array of student IDs
   dueDate: Date;
   createdAt: Date;
-  status: 'draft' | 'published' | 'completed';
+  status: 'draft' | 'published' | 'completed' | 'pending_homework';
+  fromRecitationReviewId?: string; // Link to recitation review if converted from review
+  fromTicketId?: string; // Link to ticket if created from ticket workflow
+  listenerName?: string; // Teacher/listener name who reviewed the recitation
+  listenerId?: string; // Teacher/listener ID
+  homeworkComments?: string; // Homework instructions
+  homeworkLink?: string; // Homework link
   attachments?: {
     type: 'text' | 'link';
     content: string;

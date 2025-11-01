@@ -5,6 +5,7 @@ import StatCard from '../components/StatCard';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
 import TeacherRecitationReview from '../components/TeacherRecitationReview';
+import TeacherTickets from '../components/TeacherTickets';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
@@ -16,14 +17,16 @@ const TeacherDashboard: React.FC = () => {
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
+  const [showTickets, setShowTickets] = useState(false);
 
   // Get current teacher info
   const currentTeacher = teachers.find(t => t.email === user?.email) || teachers[0];
-  console.log('🔍 TeacherDashboard - currentTeacher:', currentTeacher);
-  console.log('🔍 TeacherDashboard - user email:', user?.email);
-  console.log('🔍 TeacherDashboard - all teachers:', teachers);
+  // Debug logs (commented out - uncomment for debugging)
+  // console.log('🔍 TeacherDashboard - currentTeacher:', currentTeacher);
+  // console.log('🔍 TeacherDashboard - user email:', user?.email);
+  // console.log('🔍 TeacherDashboard - all teachers:', teachers);
   const assignedStudents = getStudentsByTeacher(currentTeacher?.id || '');
-  console.log('🔍 TeacherDashboard - assignedStudents:', assignedStudents);
+  // console.log('🔍 TeacherDashboard - assignedStudents:', assignedStudents);
 
   // Get teacher permissions
   const permissions = currentTeacher?.permissions || {
@@ -102,6 +105,12 @@ const TeacherDashboard: React.FC = () => {
               className="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
             >
               📖 Submit Recitation Review
+            </button>
+            <button
+              onClick={() => setShowTickets(true)}
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+            >
+              🎫 My Tickets
             </button>
             <Link
               to="/assignments"
@@ -477,6 +486,16 @@ const TeacherDashboard: React.FC = () => {
             setShowRecitationReview(false);
           }}
         />
+      )}
+
+      {showTickets && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="w-full max-w-6xl">
+            <TeacherTickets
+              onClose={() => setShowTickets(false)}
+            />
+          </div>
+        </div>
       )}
       
       <DebugPanel />

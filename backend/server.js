@@ -205,6 +205,9 @@ const assignmentSchema = new mongoose.Schema({
   status: { type: String, enum: ['draft', 'pending_homework', 'published', 'completed'], default: 'published' },
   // Recitation review link
   fromRecitationReviewId: { type: String }, // Link to recitation review if converted from review
+  fromTicketId: { type: String }, // Link to ticket if created from ticket workflow
+  listenerName: { type: String }, // Teacher/listener name who reviewed the recitation
+  listenerId: { type: String }, // Teacher/listener ID
   // Homework fields (for assignments created from recitation reviews)
   homeworkLink: { type: String }, // Link for homework
   homeworkComments: { type: String }, // Comments for homework
@@ -256,6 +259,32 @@ const recitationReviewSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const RecitationReview = mongoose.model('RecitationReview', recitationReviewSchema);
+
+// Assignment Ticket Schema (Ticket-Based Workflow)
+const assignmentTicketSchema = new mongoose.Schema({
+  studentId: { type: String, required: true },
+  studentName: { type: String, required: true },
+  workflowStep: { type: String, enum: ['sabq', 'sabqi', 'manzil', 'finalize'], required: true },
+  assignedTeacherId: { type: String, required: true },
+  assignedTeacherName: { type: String, required: true },
+  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed'], default: 'assigned' },
+  progressNotes: { type: String },
+  audioLink: { type: String },
+  previousTicketId: { type: String }, // Links to previous step
+  nextTicketId: { type: String }, // Links to next step
+  reviewedBy: { type: String }, // Admin ID
+  reviewedAt: { type: Date },
+  completedBy: { type: String }, // Teacher ID
+  completedAt: { type: Date },
+  revisionNotes: { type: String },
+  finalReport: { type: String },
+  homework: { type: String },
+  homeworkLink: { type: String },
+  assignmentId: { type: String }, // Final assignment ID
+  program: { type: String, required: true }
+}, { timestamps: true });
+
+const AssignmentTicket = mongoose.model('AssignmentTicket', assignmentTicketSchema);
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
@@ -447,6 +476,202 @@ app.put('/api/admin-notifications/read-all', async (req, res) => {
   try {
     await AdminNotification.updateMany({}, { read: true });
     res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Assignment Ticket Routes (Ticket-Based Workflow)
+// Get all tickets
+app.get('/api/tickets', async (req, res) => {
+  try {
+    const { teacherId, status, studentId } = req.query;
+    let query = {};
+    if (teacherId) query.assignedTeacherId = teacherId;
+    if (status) query.status = status;
+    if (studentId) query.studentId = studentId;
+    
+    const tickets = await AssignmentTicket.find(query).sort({ createdAt: -1 });
+    res.json(tickets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single ticket
+app.get('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await AssignmentTicket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create ticket (Admin assigns to teacher)
+app.post('/api/tickets', async (req, res) => {
+  try {
+    const ticket = new AssignmentTicket(req.body);
+    await ticket.save();
+    res.status(201).json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update ticket (Teacher updates progress or Admin reviews)
+app.put('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await AssignmentTicket.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    // Create notification if status changed to pending_review
+    if (req.body.status === 'pending_review') {
+      const notification = new AdminNotification({
+        type: 'recitation_review_pending',
+        title: 'Ticket Pending Review',
+        message: `${ticket.assignedTeacherName} submitted ${ticket.workflowStep} ticket for ${ticket.studentName}`,
+        studentId: ticket.studentId,
+        priority: 'high'
+      });
+      await notification.save();
+    }
+    
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Assign ticket to next teacher (Admin creates next step in chain)
+app.post('/api/tickets/:id/assign-next', async (req, res) => {
+  try {
+    const currentTicket = await AssignmentTicket.findById(req.params.id);
+    if (!currentTicket) {
+      return res.status(404).json({ error: 'Current ticket not found' });
+    }
+    
+    if (currentTicket.status !== 'approved') {
+      return res.status(400).json({ error: 'Current ticket must be approved before assigning next step' });
+    }
+    
+    // Determine next workflow step
+    const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
+    const nextStep = workflowFlow[currentTicket.workflowStep];
+    
+    if (!nextStep) {
+      return res.status(400).json({ error: 'No next step available' });
+    }
+    
+    // Create next ticket
+    const nextTicket = new AssignmentTicket({
+      studentId: currentTicket.studentId,
+      studentName: currentTicket.studentName,
+      workflowStep: nextStep,
+      assignedTeacherId: req.body.assignedTeacherId,
+      assignedTeacherName: req.body.assignedTeacherName,
+      status: 'assigned',
+      previousTicketId: currentTicket._id.toString(),
+      program: currentTicket.program
+    });
+    
+    await nextTicket.save();
+    
+    // Update current ticket with next ticket reference
+    currentTicket.nextTicketId = nextTicket._id.toString();
+    await currentTicket.save();
+    
+    res.status(201).json(nextTicket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Finalize ticket (Admin adds homework and creates assignment)
+app.post('/api/tickets/:id/finalize', async (req, res) => {
+  try {
+    const ticket = await AssignmentTicket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    if (ticket.workflowStep !== 'finalize') {
+      return res.status(400).json({ error: 'Only finalize step tickets can be finalized' });
+    }
+    
+    // Update ticket with final report and homework
+    ticket.status = 'finalized';
+    ticket.finalReport = req.body.finalReport;
+    ticket.homework = req.body.homework;
+    ticket.homeworkLink = req.body.homeworkLink;
+    ticket.reviewedBy = req.body.reviewedBy;
+    ticket.reviewedAt = new Date();
+    await ticket.save();
+    
+    // Get ticket chain to find all listeners (teachers)
+    const ticketChain = [];
+    let currentTicket = ticket;
+    while (currentTicket) {
+      ticketChain.unshift({
+        step: currentTicket.workflowStep,
+        teacherName: currentTicket.assignedTeacherName,
+        teacherId: currentTicket.assignedTeacherId,
+        progressNotes: currentTicket.progressNotes
+      });
+      
+      if (currentTicket.previousTicketId) {
+        currentTicket = await AssignmentTicket.findById(currentTicket.previousTicketId);
+      } else {
+        currentTicket = null;
+      }
+    }
+    
+    // Build description with listener information
+    const listenersInfo = ticketChain
+      .map(t => `👂 ${t.step.charAt(0).toUpperCase() + t.step.slice(1)} Listener: ${t.teacherName}`)
+      .join('\n');
+    
+    const fullDescription = `${ticket.finalReport || ''}\n\n${listenersInfo}`;
+    
+    // Get main listener (the one who did the final step or sabq)
+    const mainListener = ticketChain.find(t => t.step === 'sabq') || ticketChain[ticketChain.length - 1];
+    
+    // Create assignment from ticket
+    const assignment = new Assignment({
+      title: `${ticket.workflowStep} - ${ticket.studentName}`,
+      description: fullDescription,
+      type: 'classwork',
+      classworkType: ticket.workflowStep === 'sabq' ? 'sabq' : ticket.workflowStep === 'sabqi' ? 'sabqi' : 'manzil',
+      program: ticket.program,
+      assignedBy: req.body.reviewedBy,
+      assignedTo: [ticket.studentId],
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      status: 'published',
+      homeworkComments: ticket.homework,
+      homeworkLink: ticket.homeworkLink,
+      fromTicketId: ticket._id.toString(),
+      listenerName: mainListener?.teacherName || ticket.assignedTeacherName,
+      listenerId: mainListener?.teacherId || ticket.assignedTeacherId
+    });
+    
+    await assignment.save();
+    
+    // Link assignment to ticket
+    ticket.assignmentId = assignment._id.toString();
+    ticket.status = 'completed';
+    await ticket.save();
+    
+    res.json({ ticket, assignment });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

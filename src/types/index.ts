@@ -204,6 +204,8 @@ export interface AssignmentReport {
 
 // Recitation Review System Types
 export type RecitationType = 'sabq' | 'sabqi' | 'manzil';
+export type TicketStatus = 'assigned' | 'in_progress' | 'pending_review' | 'approved' | 'needs_revision' | 'finalized' | 'completed';
+export type WorkflowStep = 'sabq' | 'sabqi' | 'manzil' | 'finalize';
 
 export interface RecitationReview {
   id: string;
@@ -219,6 +221,33 @@ export interface RecitationReview {
   reviewedBy?: string; // Admin/Super Admin ID who reviewed
   reviewedAt?: Date;
   convertedToAssignmentId?: string; // Assignment ID if converted
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Ticket-Based Workflow System
+export interface AssignmentTicket {
+  id: string;
+  studentId: string;
+  studentName: string;
+  workflowStep: WorkflowStep; // Current step in chain
+  assignedTeacherId: string;
+  assignedTeacherName: string;
+  status: TicketStatus;
+  progressNotes?: string; // Teacher's progress notes
+  audioLink?: string; // Audio link from teacher
+  previousTicketId?: string; // Links to previous step
+  nextTicketId?: string; // Links to next step
+  reviewedBy?: string; // Admin ID who reviewed
+  reviewedAt?: Date;
+  completedBy?: string; // Teacher ID who completed
+  completedAt?: Date;
+  revisionNotes?: string; // If needs revision
+  finalReport?: string; // Admin's final report
+  homework?: string; // Homework instructions
+  homeworkLink?: string; // Homework link
+  assignmentId?: string; // Final assignment ID
+  program: string;
   createdAt: Date;
   updatedAt: Date;
 }

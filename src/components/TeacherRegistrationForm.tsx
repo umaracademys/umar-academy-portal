@@ -4,20 +4,22 @@ import { useData } from '../contexts/DataContext';
 
 interface TeacherRegistrationFormProps {
   onClose: () => void;
+  teacher?: any;
+  isEdit?: boolean;
 }
 
-const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClose }) => {
-  const { addTeacher } = useData();
+const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClose, teacher, isEdit = false }) => {
+  const { addTeacher, updateTeacher } = useData();
   const [currentTab, setCurrentTab] = useState(0);
   
-  // Personal Information
+  // Personal Information - initialize with teacher data if editing
   const [personalInfo, setPersonalInfo] = useState({
-    fullName: '',
-    email: '',
-    phoneNumber: '',
-    emergencyContact: '',
-    department: '',
-    location: 'Local' as TeacherLocation,
+    fullName: teacher?.fullName || '',
+    email: teacher?.email || '',
+    phoneNumber: teacher?.phoneNumber || '',
+    emergencyContact: teacher?.emergencyContact || '',
+    department: teacher?.department || '',
+    location: (teacher?.location || 'Local') as TeacherLocation,
   });
 
   // Employment & Scheduling
@@ -112,11 +114,26 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     }
   };
 
+  // Initialize form with teacher data when in edit mode
+  React.useEffect(() => {
+    if (isEdit && teacher) {
+      setPersonalInfo({
+        fullName: teacher.fullName || '',
+        email: teacher.email || '',
+        phoneNumber: teacher.phoneNumber || '',
+        emergencyContact: teacher.emergencyContact || '',
+        department: teacher.department || '',
+        location: teacher.location || 'Local',
+      });
+      // Add more initialization for other fields if needed
+    }
+  }, [isEdit, teacher]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const newTeacher: Teacher = {
-      id: `TCH${Date.now()}`,
+      id: isEdit && teacher?.id ? teacher.id : `TCH${Date.now()}`,
       fullName: personalInfo.fullName,
       email: personalInfo.email,
       phoneNumber: personalInfo.phoneNumber,
@@ -144,10 +161,16 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       },
       hireDate: new Date().toISOString().split('T')[0],
       status: 'active',
-      avatar: `https://ui-avatars.com/api/?name=${personalInfo.fullName.replace(' ', '+')}&background=10b981&color=fff`,
+      avatar: teacher?.avatar || `https://ui-avatars.com/api/?name=${personalInfo.fullName.replace(' ', '+')}&background=10b981&color=fff`,
     };
 
-    addTeacher(newTeacher);
+    if (isEdit && teacher?.id) {
+      updateTeacher(teacher.id, newTeacher);
+      alert('Teacher updated successfully!');
+    } else {
+      addTeacher(newTeacher);
+      alert('Teacher registered successfully!');
+    }
     onClose();
   };
 
@@ -162,7 +185,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col">
         <div className="bg-gradient-to-r from-green-600 to-green-800 text-white p-6">
-          <h2 className="text-2xl font-bold">👨‍🏫 Register New Teacher</h2>
+          <h2 className="text-2xl font-bold">{isEdit ? '✏️ Edit Teacher' : '👨‍🏫 Register New Teacher'}</h2>
           <p className="text-green-100 text-sm mt-1">Complete teacher profile with payroll and scheduling</p>
         </div>
 

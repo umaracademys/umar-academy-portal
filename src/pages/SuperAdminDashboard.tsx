@@ -30,19 +30,22 @@ import TeacherAnalytics from '../components/TeacherAnalytics';
 import TeacherBulkOperations from '../components/TeacherBulkOperations';
 import DebugPanel from '../components/DebugPanel';
 import AdminRecitationReview from '../components/AdminRecitationReview';
+import AdminTicketManagement from '../components/AdminTicketManagement';
+import AssignTicketForm from '../components/AssignTicketForm';
 import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 
 const SuperAdminDashboard: React.FC = () => {
   const { students, teachers, admins, loading, error, adminNotifications, recitationReviews, refreshNotifications } = useData();
   
-  // Debug logging
-  console.log('🔍 SuperAdminDashboard - Data state:', { 
-    students: students.length, 
-    teachers: teachers.length, 
-    admins: admins.length, 
-    loading, 
-    error 
-  });
+  // Debug logging (commented out - uncomment for debugging)
+  // console.log('🔍 SuperAdminDashboard - Data state:', { 
+  //   students: students.length, 
+  //   teachers: teachers.length, 
+  //   admins: admins.length, 
+  //   loading, 
+  //   error 
+  // });
   const [activeSection, setActiveSection] = useState('overview');
   const [showStudentForm, setShowStudentForm] = useState(false);
   const [showTeacherForm, setShowTeacherForm] = useState(false);
@@ -73,6 +76,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherAnalytics, setShowTeacherAnalytics] = useState(false);
   const [showTeacherBulkOperations, setShowTeacherBulkOperations] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
+  const [showTicketManagement, setShowTicketManagement] = useState(false);
+  const [showAssignTicket, setShowAssignTicket] = useState(false);
 
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
@@ -122,6 +127,18 @@ const SuperAdminDashboard: React.FC = () => {
                   {pendingReviewsCount}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setShowTicketManagement(true)}
+              className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-all shadow-md"
+            >
+              🎫 Manage Tickets
+            </button>
+            <button
+              onClick={() => setShowAssignTicket(true)}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md"
+            >
+              ➕ Assign New Ticket
             </button>
             <Link
               to="/assignments"
@@ -541,8 +558,10 @@ const SuperAdminDashboard: React.FC = () => {
     };
 
     const handleEditTeacher = (teacher: any) => {
+      console.log('🔍 Edit teacher clicked:', teacher);
       setSelectedTeacher(teacher);
-      setShowTeacherProfile(true);
+      setShowTeacherProfile(false);
+      setShowTeacherForm(true);
     };
 
     const handleDeleteTeacher = (_teacherId: string) => {
@@ -575,9 +594,16 @@ const SuperAdminDashboard: React.FC = () => {
               <div className="text-4xl mb-2">🔐</div>
               <h3 className="font-bold text-gray-900 mb-2">Credentials</h3>
               <p className="text-sm text-gray-600 mb-3">Manage teacher access</p>
-              <button 
-                onClick={() => setShowTeacherCredentials(true)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              <button
+                onClick={() => {
+                  // If no teacher selected, select first teacher or show message
+                  if (!selectedTeacher && teachers.length > 0) {
+                    setSelectedTeacher(teachers[0]);
+                  }
+                  setShowTeacherCredentials(true);
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!selectedTeacher && teachers.length === 0}
               >
                 Manage Access
               </button>
@@ -727,7 +753,16 @@ const SuperAdminDashboard: React.FC = () => {
           isEdit={!!selectedStudent}
         />
       )}
-      {showTeacherForm && <TeacherRegistrationForm onClose={() => setShowTeacherForm(false)} />}
+      {showTeacherForm && (
+        <TeacherRegistrationForm 
+          onClose={() => {
+            setShowTeacherForm(false);
+            setSelectedTeacher(null);
+          }}
+          teacher={selectedTeacher}
+          isEdit={!!selectedTeacher}
+        />
+      )}
       {showAdminForm && <AdminRegistrationForm onClose={() => setShowAdminForm(false)} />}
       {showPermissionManager && <PermissionManager onClose={() => setShowPermissionManager(false)} />}
       {showDataManager && <DataManager onClose={() => setShowDataManager(false)} />}
@@ -741,9 +776,10 @@ const SuperAdminDashboard: React.FC = () => {
             setSelectedTeacher(null);
           }}
           onEdit={(teacher) => {
+            console.log('🔍 Edit Profile button clicked for teacher:', teacher);
             setShowTeacherProfile(false);
             setSelectedTeacher(teacher);
-            setShowTeacherProfile(true);
+            setShowTeacherForm(true);
           }}
           onAssignments={() => {
             setShowTeacherProfile(false);
@@ -938,6 +974,26 @@ const SuperAdminDashboard: React.FC = () => {
           onClose={() => setShowRecitationReview(false)}
           onSuccess={() => {
             setShowRecitationReview(false);
+            refreshNotifications();
+          }}
+        />
+      )}
+
+      {/* Ticket Management Modal */}
+      {showTicketManagement && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <AdminTicketManagement
+            onClose={() => setShowTicketManagement(false)}
+          />
+        </div>
+      )}
+
+      {/* Assign Ticket Modal */}
+      {showAssignTicket && (
+        <AssignTicketForm
+          onClose={() => setShowAssignTicket(false)}
+          onSuccess={() => {
+            setShowAssignTicket(false);
             refreshNotifications();
           }}
         />

@@ -2,9 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
+import { Assignment } from '../types/assignment';
 
 interface Assignment {
   date: string;
@@ -19,6 +21,7 @@ interface Assignment {
 const StudentAssignments: React.FC = () => {
   const { user } = useAuth();
   const { students } = useData();
+  const { assignments: backendAssignments } = useBackendData();
   
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
@@ -26,7 +29,51 @@ const StudentAssignments: React.FC = () => {
   });
   const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
 
-  // Mock assignments (in real app, this would fetch from API)
+  const currentStudent = students.find(s => s.email === user?.email);
+
+  // Get student's assignments from backend
+  const studentAssignments = useMemo(() => {
+    if (!currentStudent?.id) return [];
+    
+    return backendAssignments
+      .filter((assignment: any) => {
+        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
+        return assignedTo.includes(currentStudent.id) || assignedTo.includes(currentStudent.id.toString());
+      })
+      .map((assignment: any) => {
+        // Parse description to extract sabq/sabqi/manzil info
+        const description = assignment.description || '';
+        const lines = description.split('\n');
+        const listenersInfo = lines.filter((line: string) => line.includes('Listener:'));
+        
+        // Extract classwork type based on assignment type
+        const classworkType = assignment.classworkType || '';
+        const sabqLine = lines.find((line: string) => line.toLowerCase().includes('sabq') || classworkType === 'sabq') || '';
+        const sabqiLine = lines.find((line: string) => line.toLowerCase().includes('sabqi') || classworkType === 'sabqi') || '';
+        const manzilLine = lines.find((line: string) => line.toLowerCase().includes('manzil') || classworkType === 'manzil') || '';
+        
+        // Extract report (everything before listener info)
+        const reportLines = lines.filter((line: string) => !line.includes('Listener:'));
+        const report = reportLines.join('\n').trim() || description;
+        
+        return {
+          ...assignment,
+          id: assignment._id || assignment.id,
+          date: assignment.createdAt ? new Date(assignment.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+          sabq: classworkType === 'sabq' ? (sabqLine || description.split('\n')[0] || '') : '',
+          sabqi: classworkType === 'sabqi' ? (sabqiLine || description.split('\n')[0] || '') : '',
+          manzil: classworkType === 'manzil' ? (manzilLine || description.split('\n')[0] || '') : '',
+          homework: assignment.homeworkComments || '',
+          homeworkLink: assignment.homeworkLink || '',
+          comment: report,
+          teacherName: assignment.listenerName || 'Teacher',
+          listenerName: assignment.listenerName || assignment.assignedTeacherName || 'Teacher',
+          listenersInfo: listenersInfo.join('\n')
+        };
+      });
+  }, [backendAssignments, currentStudent]);
+
+  // Mock assignments (fallback if no backend assignments)
   const mockAssignments: Assignment[] = [
     {
       date: new Date().toISOString().slice(0, 10),
@@ -57,15 +104,15 @@ const StudentAssignments: React.FC = () => {
     }
   ];
 
-  // Filter assignments based on view mode
+  // Filter assignments based on view mode - use backend assignments if available
   const displayedAssignments = useMemo(() => {
+    const assignmentsToShow = studentAssignments.length > 0 ? studentAssignments : mockAssignments;
+    
     if (viewMode === 'current') {
-      return mockAssignments.filter(a => a.date === selectedDate);
+      return assignmentsToShow.filter((a: any) => a.date === selectedDate);
     }
-    return mockAssignments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [viewMode, selectedDate, mockAssignments]);
-
-  const currentStudent = students.find(s => s.email === user?.email);
+    return assignmentsToShow.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [viewMode, selectedDate, studentAssignments, mockAssignments]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -164,7 +211,15 @@ const StudentAssignments: React.FC = () => {
                         </span>
                       </div>
                       <h2 className="text-2xl font-bold text-gray-900">Daily Assignment</h2>
-                      <p className="text-sm text-gray-600 mt-1">Assigned by: <span className="font-semibold">{assignment.teacherName}</span></p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        👂 Listener: <span className="font-semibold">{(assignment as any).listenerName || assignment.teacherName}</span>
+                        {assignment.teacherName && (assignment as any).listenerName !== assignment.teacherName && (
+                          <span className="ml-2">| Assigned by: <span className="font-semibold">{assignment.teacherName}</span></span>
+                        )}
+                      </p>
+                      {(assignment as any).fromTicketId && (
+                        <p className="text-xs text-gray-500 mt-1">📋 Created from ticket workflow</p>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: '#E7AA39' }}>
@@ -193,23 +248,48 @@ const StudentAssignments: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Listeners Info */}
+                {(assignment as any).listenersInfo && (
+                  <div className="p-6 border-b border-gray-100 bg-blue-50">
+                    <h3 className="text-lg font-bold mb-3" style={{ color: '#2E4D32' }}>👂 Listeners</h3>
+                    <div className="rounded-lg p-4 border-2 border-blue-200 bg-white">
+                      <p className="text-gray-900 whitespace-pre-wrap">{(assignment as any).listenersInfo}</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Homework Section */}
                 {assignment.homework && (
                   <div className="p-6 border-b border-gray-100">
                     <h3 className="text-lg font-bold mb-3" style={{ color: '#E7AA39' }}>📝 Homework</h3>
                     <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-200">
                       <p className="text-gray-900 whitespace-pre-wrap">{assignment.homework}</p>
+                      {(assignment as any).homeworkLink && (
+                        <div className="mt-3">
+                          <a
+                            href={(assignment as any).homeworkLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline font-medium"
+                          >
+                            📎 Homework Link →
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Teacher Comment */}
+                {/* Teacher Comment / Report */}
                 {assignment.comment && (
                   <div className="p-6" style={{ backgroundColor: '#fefdfb' }}>
-                    <h3 className="text-lg font-bold mb-3" style={{ color: '#2E4D32' }}>💬 Teacher's Comment</h3>
+                    <h3 className="text-lg font-bold mb-3" style={{ color: '#2E4D32' }}>📝 Report & Feedback</h3>
                     <div className="rounded-lg p-4 border-l-4" style={{ backgroundColor: '#f0fdf4', borderLeftColor: '#2E4D32' }}>
-                      <p className="text-gray-900 italic whitespace-pre-wrap">"{assignment.comment}"</p>
-                      <p className="text-sm text-gray-600 mt-2">— {assignment.teacherName}</p>
+                      <p className="text-gray-900 whitespace-pre-wrap">{assignment.comment}</p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        — {(assignment as any).listenerName || assignment.teacherName}
+                        {(assignment as any).listenerName && <span className="text-xs text-gray-500"> (Listener)</span>}
+                      </p>
                     </div>
                   </div>
                 )}
