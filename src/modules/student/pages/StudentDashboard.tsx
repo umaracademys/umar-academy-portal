@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../../components/Header';
 import StatCard from '../../../components/StatCard';
 import Card from '../../../components/Card';
 import DebugPanel from '../../../components/DebugPanel';
 import { useData } from '../../../contexts/DataContext';
+import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Assignment } from '../../../types/index';
 
@@ -15,6 +16,7 @@ const StudentDashboard: React.FC = () => {
   console.log('🔍 StudentDashboard - Component is starting to render');
   
   const { students, getStudentByEmail, updateStudent } = useData();
+  const { assignments: backendAssignments } = useBackendData();
   const { user } = useAuth();
   
   console.log('🔍 StudentDashboard - Hooks called successfully');
@@ -26,6 +28,7 @@ const StudentDashboard: React.FC = () => {
   console.log('StudentDashboard - students:', students);
   console.log('StudentDashboard - user email:', user?.email);
   console.log('StudentDashboard - students length:', students.length);
+  console.log('StudentDashboard - backendAssignments:', backendAssignments.length);
 
   // Get current student info
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
@@ -33,69 +36,71 @@ const StudentDashboard: React.FC = () => {
   console.log('StudentDashboard - currentStudent:', currentStudent);
   console.log('StudentDashboard - getStudentByEmail result:', getStudentByEmail(user?.email || ''));
 
-  // Mock data for assignments and payments
-  const mockAssignments = [
-    {
-      id: '1',
-      title: 'Surah Al-Fatiha Memorization',
-      description: 'Memorize Surah Al-Fatiha with proper Tajweed',
-      course: 'Quran Recitation',
-      instructor: 'Ustadh Ahmad',
-      dueDate: '2024-02-15',
-      status: 'pending',
-      grade: null,
-      maxPoints: 100,
-      type: 'homework',
-      studentId: currentStudent?.id || '1'
-    },
-    {
-      id: '2',
-      title: 'Tajweed Rules Quiz',
-      description: 'Complete the quiz on basic Tajweed rules',
-      course: 'Tajweed Basics',
-      instructor: 'Ustadh Muhammad',
-      dueDate: '2024-02-10',
-      status: 'completed',
-      grade: 92,
-      maxPoints: 100,
-      type: 'quiz',
-      studentId: currentStudent?.id || '1'
-    }
-  ];
+  // Get student's assignments from backend
+  const studentAssignments = useMemo(() => {
+    if (!currentStudent?.id) return [];
+    
+    return backendAssignments
+      .filter((assignment: any) => {
+        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
+        return assignedTo.includes(currentStudent.id) || assignedTo.includes(currentStudent.id.toString());
+      })
+      .map((assignment: any) => {
+        // Map backend assignment to dashboard format
+        const dueDate = assignment.dueDate ? new Date(assignment.dueDate) : new Date();
+        const isOverdue = dueDate < new Date() && assignment.status !== 'completed';
+        
+        // Check if student has submitted
+        const submission = assignment.submissions?.find((s: any) => 
+          s.studentId === currentStudent.id || s.studentId === currentStudent.id.toString()
+        );
+        
+        let status = assignment.status || 'pending';
+        if (submission) {
+          status = submission.status === 'graded' ? 'completed' : submission.status || 'submitted';
+        } else if (isOverdue) {
+          status = 'overdue';
+        }
 
-  const mockPayments = [
-    {
-      id: '1',
-      studentId: currentStudent?.id || '1',
-      amount: 150,
-      date: '2024-01-15',
-      status: 'completed'
-    },
-    {
-      id: '2',
-      studentId: currentStudent?.id || '1',
-      amount: 150,
-      date: '2024-02-15',
-      status: 'completed'
-    }
-  ];
+        return {
+          id: assignment._id || assignment.id,
+          title: assignment.title || `${assignment.classworkType || assignment.type} Assignment`,
+          description: assignment.description || '',
+          course: assignment.program || 'General',
+          instructor: assignment.listenerName || assignment.assignedBy?.name || 'Teacher',
+          dueDate: dueDate.toISOString().split('T')[0],
+          status: status,
+          grade: submission?.grade || null,
+          maxPoints: 100,
+          type: assignment.type === 'homework' ? 'homework' : assignment.classworkType || 'classwork',
+          studentId: currentStudent.id,
+          homeworkComments: assignment.homeworkComments,
+          homeworkLink: assignment.homeworkLink,
+          createdAt: assignment.createdAt
+        };
+      })
+      .sort((a: any, b: any) => {
+        // Sort by due date, with overdue first
+        const dateA = new Date(a.dueDate);
+        const dateB = new Date(b.dueDate);
+        return dateA.getTime() - dateB.getTime();
+      });
+  }, [backendAssignments, currentStudent]);
 
-  // Get student's assignments
-  const studentAssignments = mockAssignments.filter(a => a.studentId === currentStudent?.id);
-  const completedAssignments = studentAssignments.filter(a => a.status === 'completed');
-  const pendingAssignments = studentAssignments.filter(a => a.status === 'pending');
-  const overdueAssignments = studentAssignments.filter(a => a.status === 'overdue');
-
-  // Get student's payments
-  const studentPayments = mockPayments.filter(p => p.studentId === currentStudent?.id);
-  const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
-  const lastPayment = studentPayments[studentPayments.length - 1];
+  const completedAssignments = studentAssignments.filter((a: any) => a.status === 'completed' || a.status === 'graded');
+  const pendingAssignments = studentAssignments.filter((a: any) => a.status === 'pending' || a.status === 'submitted');
+  const overdueAssignments = studentAssignments.filter((a: any) => a.status === 'overdue');
 
   // Calculate average grade
-  const gradedAssignments = studentAssignments.filter(a => a.grade !== null);
+  const gradedAssignments = studentAssignments.filter((a: any) => a.grade !== null && a.grade !== undefined);
   const averageGrade = gradedAssignments.length > 0 
-    ? Math.round(gradedAssignments.reduce((sum, a) => sum + (a.grade || 0), 0) / gradedAssignments.length)
+    ? Math.round(gradedAssignments.reduce((sum: number, a: any) => sum + (a.grade || 0), 0) / gradedAssignments.length)
     : 0;
+
+  // Payment data - keeping minimal for now as it's not in backend yet
+  const studentPayments: any[] = [];
+  const totalPaid = 0;
+  const lastPayment = null;
 
   const [submissionData, setSubmissionData] = useState({
     content: '',
@@ -432,7 +437,7 @@ const StudentDashboard: React.FC = () => {
                   Current
                 </p>
                 <p className="text-xs text-gray-500">
-                  {lastPayment ? `Last: ${new Date(lastPayment.date).toLocaleDateString()}` : 'No payments yet'}
+                  No payments yet
                 </p>
               </div>
             </div>
