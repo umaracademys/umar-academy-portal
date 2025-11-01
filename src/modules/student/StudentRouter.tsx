@@ -10,13 +10,14 @@ const StudentRouter: React.FC = () => {
   
   return (
     <Routes>
-      <Route path="/student/dashboard" element={<StudentDashboard />} />
-      <Route path="/student/profile" element={<StudentProfile />} />
-      <Route path="/student/assignments" element={<StudentAssignments />} />
-      <Route path="/student/courses" element={<StudentCourses />} />
-      <Route path="/student/progress" element={<div>Student Progress Page - Coming Soon</div>} />
-      <Route path="/student/payments" element={<div>Student Payments Page - Coming Soon</div>} />
-      <Route path="/student/messages" element={<div>Student Messages Page - Coming Soon</div>} />
+      <Route path="dashboard" element={<StudentDashboard />} />
+      <Route path="profile" element={<StudentProfile />} />
+      <Route path="assignments" element={<StudentAssignments />} />
+      <Route path="courses" element={<StudentCourses />} />
+      <Route path="progress" element={<div>Student Progress Page - Coming Soon</div>} />
+      <Route path="payments" element={<div>Student Payments Page - Coming Soon</div>} />
+      <Route path="messages" element={<div>Student Messages Page - Coming Soon</div>} />
+      <Route path="" element={<StudentDashboard />} />
     </Routes>
   );
 };
