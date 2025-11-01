@@ -110,7 +110,7 @@ const StudentDashboard: React.FC = () => {
 
   const handleSubmitAssignment = async () => {
     if (!selectedAssignment || !currentStudent) {
-      console.error('Missing assignment or student');
+      console.error('Missing assignment or student', { selectedAssignment, currentStudent });
       return;
     }
 
@@ -118,6 +118,11 @@ const StudentDashboard: React.FC = () => {
       alert('Please enter submission content');
       return;
     }
+
+    // Debug: Check what we have
+    console.log('🔍 Selected Assignment:', selectedAssignment);
+    console.log('🔍 Assignment ID:', (selectedAssignment as any).id);
+    console.log('🔍 Assignment _id:', (selectedAssignment as any)._id);
 
     try {
       // Format submission data for backend
@@ -132,13 +137,31 @@ const StudentDashboard: React.FC = () => {
       };
 
       // Use the assignment ID - backend uses MongoDB _id format
-      const assignmentId = (selectedAssignment as any)._id || selectedAssignment.id;
+      // Try to find the assignment in backendAssignments to get the real _id
+      const backendAssignment = backendAssignments.find((a: any) => 
+        (a._id === selectedAssignment.id) || 
+        (a._id === (selectedAssignment as any)._id) ||
+        (a.id === selectedAssignment.id)
+      );
+      
+      const assignmentId = backendAssignment?._id || 
+                          backendAssignment?.id || 
+                          (selectedAssignment as any)._id || 
+                          selectedAssignment.id;
+      
+      console.log('🔍 Backend Assignment found:', backendAssignment);
+      console.log('🔍 Final Assignment ID:', assignmentId);
       
       if (!assignmentId) {
+        console.error('❌ Assignment ID not found!', {
+          selectedAssignment,
+          backendAssignment,
+          backendAssignments: backendAssignments.length
+        });
         throw new Error('Assignment ID not found. Please refresh the page and try again.');
       }
       
-      console.log('Submitting assignment:', { assignmentId, submission, selectedAssignment });
+      console.log('✅ Submitting assignment:', { assignmentId, submission });
       
       await addAssignmentSubmission(assignmentId, submission);
       
@@ -427,7 +450,24 @@ const StudentDashboard: React.FC = () => {
                       {assignment.status === 'pending' && (
                         <button
                           onClick={() => {
-                            setSelectedAssignment(assignment as any);
+                            // Find the original backend assignment to preserve _id
+                            const backendAssignment = backendAssignments.find((a: any) => 
+                              a._id === assignment.id || a._id === (assignment as any)._id
+                            );
+                            
+                            const assignmentToSelect = backendAssignment || assignment;
+                            console.log('🎯 Selecting assignment:', {
+                              assignment,
+                              backendAssignment,
+                              id: assignment.id,
+                              _id: assignmentToSelect._id || (assignment as any)._id
+                            });
+                            
+                            setSelectedAssignment({
+                              ...assignment,
+                              id: assignmentToSelect._id || assignmentToSelect.id || assignment.id,
+                              _id: assignmentToSelect._id || (assignment as any)._id
+                            } as any);
                             setShowSubmissionForm(true);
                           }}
                           className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
