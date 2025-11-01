@@ -187,7 +187,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
               <option value="all">All Status</option>
-              {uniqueStatuses.map(status => (
+              {uniqueStatuses.map((status: string) => (
                 <option key={status} value={status}>{status.replace('-', ' ')}</option>
               ))}
             </select>

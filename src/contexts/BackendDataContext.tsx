@@ -55,7 +55,7 @@ export const useBackendData = () => {
 };
 
 // API base URL - uses environment variable in production, localhost in development
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [students, setStudents] = useState<Student[]>([]);

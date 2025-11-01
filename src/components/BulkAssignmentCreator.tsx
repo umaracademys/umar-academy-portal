@@ -207,7 +207,7 @@ const BulkAssignmentCreator: React.FC<BulkAssignmentCreatorProps> = ({ onClose, 
                   multiple
                   value={selectedStudents}
                   onChange={(e) => {
-                    const values = Array.from(e.target.selectedOptions, option => option.value);
+                    const values = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
                     setSelectedStudents(values);
                     applyToAll('assignedTo', values);
                   }}
@@ -367,7 +367,7 @@ const BulkAssignmentCreator: React.FC<BulkAssignmentCreatorProps> = ({ onClose, 
                           multiple
                           value={assignment.assignedTo}
                           onChange={(e) => {
-                            const values = Array.from(e.target.selectedOptions, option => option.value);
+                            const values = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
                             updateRow(assignment.id, 'assignedTo', values);
                           }}
                           className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
