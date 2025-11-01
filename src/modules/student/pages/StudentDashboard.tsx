@@ -16,7 +16,7 @@ const StudentDashboard: React.FC = () => {
   console.log('🔍 StudentDashboard - Component is starting to render');
   
   const { students, getStudentByEmail, updateStudent } = useData();
-  const { assignments: backendAssignments } = useBackendData();
+  const { assignments: backendAssignments, addAssignmentSubmission } = useBackendData();
   const { user } = useAuth();
   
   console.log('🔍 StudentDashboard - Hooks called successfully');
@@ -64,6 +64,7 @@ const StudentDashboard: React.FC = () => {
 
         return {
           id: assignment._id || assignment.id,
+          _id: assignment._id, // Keep original MongoDB _id for API calls
           title: assignment.title || `${assignment.classworkType || assignment.type} Assignment`,
           description: assignment.description || '',
           course: assignment.program || 'General',
@@ -107,25 +108,53 @@ const StudentDashboard: React.FC = () => {
     attachments: [] as string[],
   });
 
-  const handleSubmitAssignment = () => {
-    if (selectedAssignment && currentStudent) {
-      const updatedAssignment = {
-        ...selectedAssignment,
-        status: 'submitted' as const,
-        submittedAt: new Date().toISOString(),
-        submission: {
-          content: submissionData.content,
-          attachments: submissionData.attachments,
-          submittedBy: currentStudent.id,
-        }
+  const handleSubmitAssignment = async () => {
+    if (!selectedAssignment || !currentStudent) {
+      console.error('Missing assignment or student');
+      return;
+    }
+
+    if (!submissionData.content.trim()) {
+      alert('Please enter submission content');
+      return;
+    }
+
+    try {
+      // Format submission data for backend
+      const submission = {
+        studentId: currentStudent.id.toString(),
+        content: submissionData.content,
+        attachments: submissionData.attachments.map((url: string) => ({
+          type: 'link',
+          content: url,
+          title: 'Attachment'
+        }))
       };
+
+      // Use the assignment ID - backend uses MongoDB _id format
+      const assignmentId = (selectedAssignment as any)._id || selectedAssignment.id;
       
-      // Update assignment in the system
-      // Note: This would need to be implemented in the backend
-      console.log('Assignment submitted:', updatedAssignment);
+      if (!assignmentId) {
+        throw new Error('Assignment ID not found. Please refresh the page and try again.');
+      }
       
+      console.log('Submitting assignment:', { assignmentId, submission, selectedAssignment });
+      
+      await addAssignmentSubmission(assignmentId, submission);
+      
+      // Success - close form and reset
       setShowSubmissionForm(false);
       setSubmissionData({ content: '', attachments: [] });
+      setSelectedAssignment(null);
+      
+      // Show success message
+      alert('Assignment submitted successfully!');
+      
+      // Refresh the page to show updated assignment status
+      window.location.reload();
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+      alert(`Failed to submit assignment: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
