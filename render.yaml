@@ -22,7 +22,7 @@ services:
     name: umar-academy-frontend
     env: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: NODE_ENV=development npm install && npm run build
     startCommand: npm start
     envVars:
       - key: VITE_API_BASE_URL
