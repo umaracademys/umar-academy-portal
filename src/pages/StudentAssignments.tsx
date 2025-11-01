@@ -6,9 +6,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
-import { Assignment } from '../types/assignment';
-
-interface Assignment {
+interface StudentAssignmentView {
   date: string;
   sabq: string;
   sabqi: string;
@@ -74,7 +72,7 @@ const StudentAssignments: React.FC = () => {
   }, [backendAssignments, currentStudent]);
 
   // Mock assignments (fallback if no backend assignments)
-  const mockAssignments: Assignment[] = [
+  const mockAssignments: StudentAssignmentView[] = [
     {
       date: new Date().toISOString().slice(0, 10),
       sabq: 'Surah Al-Baqarah: 1-5',
