@@ -6,7 +6,15 @@ const fs = require('fs');
 
 // Use axios for making HTTP requests
 const axios = require('axios');
-const Database = require('better-sqlite3');
+
+// Try to load better-sqlite3, but make it optional (may fail on some platforms)
+let Database = null;
+try {
+  Database = require('better-sqlite3');
+} catch (error) {
+  console.warn('⚠️  better-sqlite3 not available:', error.message);
+  console.warn('   SQLite database features will be disabled');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -759,38 +767,53 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
 });
 
 // Local SQLite Database for Quran pages
-const quranDbPath = path.join(__dirname, 'qpc-hafs-15-lines.db');
 let quranDb = null;
-
-try {
-  quranDb = new Database(quranDbPath, { readonly: true });
-  console.log('✅ Connected to local Quran database (qpc-hafs-15-lines.db)');
-} catch (error) {
-  console.warn('⚠️ Could not connect to local Quran database:', error.message);
-  console.log('   Continuing with Quran Foundation API only...');
-}
-
-// Local SQLite Database for Quran text (Nastaleeq)
-const nastaleeqDbPath = path.join(__dirname, 'qpc-nastaleeq.db');
 let nastaleeqDb = null;
-
-try {
-  nastaleeqDb = new Database(nastaleeqDbPath, { readonly: true });
-  console.log('✅ Connected to local Quran text database (qpc-nastaleeq.db)');
-} catch (error) {
-  console.warn('⚠️ Could not connect to local Quran text database:', error.message);
-  console.log('   Continuing with Quran Foundation API only...');
-}
-
-// Local SQLite Database for Quran text (QPC V4)
-const qpcV4DbPath = path.join(__dirname, 'qpc-v4.db');
 let qpcV4Db = null;
 
-try {
-  qpcV4Db = new Database(qpcV4DbPath, { readonly: true });
-  console.log('✅ Connected to local Quran text database (qpc-v4.db)');
-} catch (error) {
-  console.warn('⚠️ Could not connect to local Quran text database (qpc-v4.db):', error.message);
+if (Database) {
+  try {
+    const quranDbPath = path.join(__dirname, 'qpc-hafs-15-lines.db');
+    if (fs.existsSync(quranDbPath)) {
+      quranDb = new Database(quranDbPath, { readonly: true });
+      console.log('✅ Connected to local Quran database (qpc-hafs-15-lines.db)');
+    } else {
+      console.warn('⚠️  Quran database file not found:', quranDbPath);
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not connect to local Quran database:', error.message);
+    console.log('   Continuing with Quran Foundation API only...');
+  }
+
+  // Local SQLite Database for Quran text (Nastaleeq)
+  try {
+    const nastaleeqDbPath = path.join(__dirname, 'qpc-nastaleeq.db');
+    if (fs.existsSync(nastaleeqDbPath)) {
+      nastaleeqDb = new Database(nastaleeqDbPath, { readonly: true });
+      console.log('✅ Connected to local Quran text database (qpc-nastaleeq.db)');
+    } else {
+      console.warn('⚠️  Nastaleeq database file not found:', nastaleeqDbPath);
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not connect to local Quran text database:', error.message);
+    console.log('   Continuing with Quran Foundation API only...');
+  }
+
+  // Local SQLite Database for Quran text (QPC V4)
+  try {
+    const qpcV4DbPath = path.join(__dirname, 'qpc-v4.db');
+    if (fs.existsSync(qpcV4DbPath)) {
+      qpcV4Db = new Database(qpcV4DbPath, { readonly: true });
+      console.log('✅ Connected to local Quran text database (qpc-v4.db)');
+    } else {
+      console.warn('⚠️  QPC V4 database file not found:', qpcV4DbPath);
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not connect to local Quran text database (qpc-v4.db):', error.message);
+  }
+} else {
+  console.warn('⚠️  SQLite support disabled - better-sqlite3 not available');
+  console.warn('   All database operations will use MongoDB and external APIs');
 }
 
 // Quran Foundation API Proxy (to bypass CORS)
@@ -1327,13 +1350,19 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
     const textDb = version === 'v4' ? qpcV4Db : nastaleeqDb;
     
     if (!quranDb) {
-      console.error(`❌ Quran DB not available`);
-      return res.status(500).json({ error: `Quran database (qpc-hafs-15-lines.db) not available` });
+      console.error(`❌ Quran DB not available - SQLite support disabled or database file missing`);
+      return res.status(503).json({ 
+        error: `Quran database not available. Please use external API endpoints or ensure SQLite database files are present.`,
+        available: false
+      });
     }
     
     if (!textDb) {
       console.error(`❌ Text DB not available for version: ${version}`);
-      return res.status(500).json({ error: `Text database (${version === 'v4' ? 'qpc-v4.db' : 'qpc-nastaleeq.db'}) not available` });
+      return res.status(503).json({ 
+        error: `Text database (${version === 'v4' ? 'qpc-v4.db' : 'qpc-nastaleeq.db'}) not available`,
+        available: false
+      });
     }
     
     console.log(`✅ Databases loaded: quranDb=${!!quranDb}, textDb=${!!textDb}`);
