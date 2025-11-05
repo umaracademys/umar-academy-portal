@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { MushafMistake } from '../types/mushaf';
-import wordsJson from "../data/words/word_by_word.json";
 import { fetchPageLines, getQuranChapters, Chapter } from "../services/quranApi";
 
 export interface AyahPosition {
@@ -214,17 +213,61 @@ export const WordByWordPage: React.FC<{
   mistakes = [],
 }) => {
   const [layout, setLayout] = useState<LayoutPage | null>(null);
-  // Convert wordsJson to Word array format
-  const [words] = useState<Word[]>(
-    Object.values(wordsJson).map((entry: any) => ({
-      word_index: entry.id,
-      surah: parseInt(entry.surah),
-      ayah: parseInt(entry.ayah),
-      text: entry.text
-    }))
-  );
-  
+  const [words, setWords] = useState<Word[]>([]);
   const [background, setBackground] = useState<string>("");
+
+  // Load words data on mount
+  useEffect(() => {
+    const loadWords = async () => {
+      try {
+        // Try to load words from local file (dynamic import)
+        try {
+          const wordsModule = await import('../data/words/word_by_word.json');
+          const wordsData = wordsModule.default || wordsModule;
+          
+          // Convert to array format if needed
+          if (Array.isArray(wordsData)) {
+            setWords(wordsData as Word[]);
+          } else {
+            // Convert object format to array
+            const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
+              word_index: entry.id || entry.word_index,
+              surah: parseInt(entry.surah),
+              ayah: parseInt(entry.ayah),
+              text: entry.text
+            }));
+            setWords(wordsArray);
+          }
+          console.log('✅ Loaded words from local file');
+        } catch (e) {
+          console.warn('Words file not found, trying fallback');
+          // Fallback: try public folder
+          const wordsRes = await fetch('/data/words/word_by_word.json');
+          if (wordsRes.ok) {
+            const wordsData = await wordsRes.json();
+            if (Array.isArray(wordsData)) {
+              setWords(wordsData);
+            } else {
+              const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
+                word_index: entry.id || entry.word_index,
+                surah: parseInt(entry.surah),
+                ayah: parseInt(entry.ayah),
+                text: entry.text
+              }));
+              setWords(wordsArray);
+            }
+            console.log('✅ Loaded words from public folder');
+          } else {
+            console.error('Words data not available');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading words:', error);
+      }
+    };
+    
+    loadWords();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
