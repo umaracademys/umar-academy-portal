@@ -1735,8 +1735,10 @@ app.get('/api/health', (req, res) => {
 });
 
 // Start server regardless of MongoDB connection status
-app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on port ${PORT}`);
+// Bind to 0.0.0.0 for deployment platforms (Render, Heroku, etc.)
+const HOST = process.env.HOST || '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Backend server running on ${HOST}:${PORT}`);
   console.log(`📊 MongoDB URI: ${MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`); // Hide credentials in logs
   console.log(`✅ Server is ready to accept connections`);
 });
