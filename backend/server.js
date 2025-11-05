@@ -1451,17 +1451,23 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
         surahId = 3;
       } else {
         // For pages beyond 77, we need to query the pages table
-        const allPages = quranDb.prepare(`
-          SELECT DISTINCT page_number, surah_number 
-          FROM pages 
-          WHERE page_number <= ? AND surah_number IS NOT NULL AND surah_number != ''
-          ORDER BY page_number DESC
-          LIMIT 1
-        `).get(pageNumber);
-        
-        if (allPages && allPages.surah_number) {
-          surahId = parseInt(allPages.surah_number);
-          console.log(`⚠️ Using estimated surah ${surahId} from pages table for page ${pageNumber}`);
+        if (quranDb) {
+          try {
+            const allPages = quranDb.prepare(`
+              SELECT DISTINCT page_number, surah_number 
+              FROM pages 
+              WHERE page_number <= ? AND surah_number IS NOT NULL AND surah_number != ''
+              ORDER BY page_number DESC
+              LIMIT 1
+            `).get(pageNumber);
+            
+            if (allPages && allPages.surah_number) {
+              surahId = parseInt(allPages.surah_number);
+              console.log(`⚠️ Using estimated surah ${surahId} from pages table for page ${pageNumber}`);
+            }
+          } catch (error) {
+            console.warn(`⚠️ Could not query pages table: ${error.message}`);
+          }
         }
       }
     }
