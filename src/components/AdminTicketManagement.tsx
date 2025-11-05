@@ -313,10 +313,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     {/* Quick navigation to pages with mistakes */}
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs font-semibold text-purple-900">Jump to pages:</span>
-                      {Array.from(new Set(selectedTicket.mushafMarkings.map((m: any) => m.page)))
+                      {Array.from(new Set((selectedTicket.mushafMarkings || []).map((m: any) => m.page)))
                         .sort((a: number, b: number) => a - b)
                         .map((page: number) => {
-                          const mistakesOnPage = selectedTicket.mushafMarkings.filter((m: any) => m.page === page).length;
+                          const mistakesOnPage = (selectedTicket.mushafMarkings || []).filter((m: any) => m.page === page).length;
                           return (
                             <button
                               key={page}
@@ -357,10 +357,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 {/* Quick navigation buttons */}
                 <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
                   <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages with mistakes:</span>
-                  {Array.from(new Set(selectedTicket.mushafMarkings.map((m: any) => m.page)))
+                  {Array.from(new Set((selectedTicket.mushafMarkings || []).map((m: any) => m.page)))
                     .sort((a: number, b: number) => a - b)
                     .map((page: number) => {
-                      const mistakesOnPage = selectedTicket.mushafMarkings.filter((m: any) => m.page === page).length;
+                      const mistakesOnPage = (selectedTicket.mushafMarkings || []).filter((m: any) => m.page === page).length;
                       return (
                         <button
                           key={page}

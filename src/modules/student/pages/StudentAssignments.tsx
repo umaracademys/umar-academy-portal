@@ -27,10 +27,10 @@ const StudentAssignments: React.FC = () => {
     return backendAssignments
       .filter((assignment: any) => {
         const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
-        const studentId = currentStudent.id || currentStudent._id;
+        const studentId = currentStudent.id || (currentStudent as any)._id;
         return assignedTo.includes(studentId) || 
                assignedTo.includes(studentId?.toString()) ||
-               assignedTo.includes(currentStudent._id);
+               assignedTo.includes((currentStudent as any)._id);
       })
       .map((assignment: any) => {
         const id = assignment._id || assignment.id;
@@ -310,8 +310,8 @@ const StudentAssignments: React.FC = () => {
                           {showMushafForAssignment !== assignment.id && (
                             <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-purple-200">
                               <span className="text-xs font-semibold text-purple-900">Jump to pages:</span>
-                              {Array.from(new Set(assignment.mushafMarkings.map((m: MushafMistake) => m.page)))
-                                .sort((a, b) => a - b)
+                              {(Array.from(new Set(assignment.mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
+                                .sort((a: number, b: number) => a - b)
                                 .map((page: number) => {
                                   const mistakesOnPage = assignment.mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
                                   return (

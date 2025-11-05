@@ -1,6 +1,6 @@
 import initSqlJs, { Database } from 'sql.js';
 
-let SQL: typeof initSqlJs.SqlJsStatic | null = null;
+let SQL: Awaited<ReturnType<typeof initSqlJs>> | null = null;
 let db: Database | null = null;
 
 // Initialize SQL.js and create database
@@ -19,6 +19,9 @@ export async function initMistakesDatabase(): Promise<Database> {
   }
 
   if (!db) {
+    if (!SQL) {
+      throw new Error('SQL.js not initialized');
+    }
     db = new SQL.Database(); // in-memory DB
     
     // Create mistakes table
@@ -40,6 +43,9 @@ export async function initMistakesDatabase(): Promise<Database> {
     console.log('✅ Mistakes database initialized');
   }
 
+  if (!db) {
+    throw new Error('Failed to initialize database');
+  }
   return db;
 }
 
@@ -123,13 +129,29 @@ export async function deleteMistake(id: number): Promise<void> {
 // Export database to ArrayBuffer (for saving)
 export async function exportDatabase(): Promise<ArrayBuffer> {
   const database = await initMistakesDatabase();
-  return database.export();
+  if (!database) {
+    throw new Error('Database not initialized');
+  }
+  const exported = database.export();
+  // Convert to ArrayBuffer if needed
+  if (exported.buffer instanceof ArrayBuffer) {
+    return exported.buffer.slice(exported.byteOffset, exported.byteOffset + exported.byteLength);
+  } else {
+    // SharedArrayBuffer - create a new ArrayBuffer copy
+    const newBuffer = new ArrayBuffer(exported.byteLength);
+    const view = new Uint8Array(newBuffer);
+    view.set(new Uint8Array(exported.buffer, exported.byteOffset, exported.byteLength));
+    return newBuffer;
+  }
 }
 
 // Import database from ArrayBuffer (for loading)
 export async function importDatabase(data: ArrayBuffer): Promise<void> {
   if (!SQL) {
     SQL = await initSqlJs();
+  }
+  if (!SQL) {
+    throw new Error('SQL.js not initialized');
   }
   db = new SQL.Database(new Uint8Array(data));
 }

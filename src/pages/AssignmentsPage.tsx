@@ -53,7 +53,7 @@ const AssignmentsPage: React.FC = () => {
       }
       
       // Use _id if available, otherwise use id
-      const assignmentId = selectedAssignment._id || selectedAssignment.id;
+      const assignmentId = (selectedAssignment as any)._id || selectedAssignment.id;
       
       if (!assignmentId) {
         console.error('Assignment ID is missing:', selectedAssignment);

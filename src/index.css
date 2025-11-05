@@ -1,9 +1,9 @@
+/* Import Amiri font from Google Fonts for Mushaf text */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Scheherazade+New:wght@400;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import Amiri font from Google Fonts for Mushaf text */
-@import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Scheherazade+New:wght@400;700&display=swap');
 
 /* QPC V2 Font for Surah Names */
 @font-face {

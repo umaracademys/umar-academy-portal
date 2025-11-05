@@ -130,15 +130,8 @@ const InteractiveMushaf: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Try to load layout from local file
+        // Try to load layout from public folder
         try {
-          const layoutModule = await import('../data/layouts/qpc-v4-tajweed-15-lines/page_1.json');
-          const layoutData = layoutModule.default || layoutModule;
-          setPage(layoutData as LayoutPage);
-          console.log('✅ Loaded layout from local file');
-        } catch (e) {
-          console.warn('Layout file not found, trying fallback');
-          // Fallback: try public folder
           const layoutRes = await fetch('/data/layouts/page_1.json');
           if (layoutRes.ok) {
             const layoutData = await layoutRes.json();
@@ -146,6 +139,8 @@ const InteractiveMushaf: React.FC = () => {
           } else {
             throw new Error('Layout not available');
           }
+        } catch (e) {
+          console.warn('Layout file not found:', e);
         }
 
         // Try to load words from local file
