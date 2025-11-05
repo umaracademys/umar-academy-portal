@@ -1,3 +1,7 @@
+// Import Mushaf types
+export { MushafMistake, MistakeType, MushafPage, MushafSession } from './mushaf';
+import type { MushafMistake } from './mushaf';
+
 export type UserRole = 'superadmin' | 'admin' | 'teacher' | 'student';
 export type ProgramType = 'Full Time HQ' | 'Part Time HQ' | 'After School Reading';
 export type ScheduleDay = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
@@ -247,10 +251,12 @@ export interface AssignmentTicket {
   homework?: string; // Homework instructions
   homeworkLink?: string; // Homework link
   assignmentId?: string; // Final assignment ID
+  mushafMarkings?: MushafMistake[]; // Mushaf mistake markings from teacher
   program: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 export interface AdminNotification {
   id: string;

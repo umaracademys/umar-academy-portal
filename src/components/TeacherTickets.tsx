@@ -1,7 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
-import { AssignmentTicket, TicketStatus, WorkflowStep } from '../types';
+import { AssignmentTicket, TicketStatus, WorkflowStep, MushafMistake } from '../types';
+import InteractiveMushaf from './InteractiveMushaf';
+import { getQuranChapters, Chapter } from '../services/quranApi';
+
+// Helper function to calculate Juz from page number
+const getJuzFromPage = (page: number): number => {
+  // Simplified Juz calculation - each Juz is approximately 20 pages
+  // Juz 1: pages 1-2
+  // Juz 2: pages 2-5
+  // Juz 3: pages 5-8
+  // ... (more accurate mapping would require exact page boundaries)
+  if (page <= 2) return 1;
+  if (page <= 5) return 2;
+  if (page <= 8) return 3;
+  if (page <= 11) return 4;
+  if (page <= 14) return 5;
+  if (page <= 17) return 6;
+  if (page <= 20) return 7;
+  if (page <= 23) return 8;
+  if (page <= 26) return 9;
+  if (page <= 29) return 10;
+  if (page <= 32) return 11;
+  if (page <= 35) return 12;
+  if (page <= 38) return 13;
+  if (page <= 41) return 14;
+  if (page <= 44) return 15;
+  if (page <= 47) return 16;
+  if (page <= 50) return 17;
+  if (page <= 53) return 18;
+  if (page <= 56) return 19;
+  if (page <= 59) return 20;
+  if (page <= 62) return 21;
+  if (page <= 65) return 22;
+  if (page <= 68) return 23;
+  if (page <= 71) return 24;
+  if (page <= 74) return 25;
+  if (page <= 77) return 26;
+  if (page <= 80) return 27;
+  if (page <= 83) return 28;
+  if (page <= 86) return 29;
+  return 30; // pages 86-604
+};
 
 interface TeacherTicketsProps {
   onClose?: () => void;
@@ -17,18 +58,45 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     audioLink: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMushaf, setShowMushaf] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [mushafMarkings, setMushafMarkings] = useState<MushafMistake[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
 
   // Get tickets assigned to current teacher
-  const myTickets = tickets.filter(t => 
+  // Filter out finalized/completed tickets - they should not appear in the list
+  const activeTickets = tickets.filter(t => 
+    t.status !== 'finalized' && t.status !== 'completed'
+  );
+
+  const myTickets = activeTickets.filter(t => 
     t.assignedTeacherId === user?.id && 
     (t.status === 'assigned' || t.status === 'in_progress' || t.status === 'needs_revision')
   );
 
   // Get completed tickets (for reference)
-  const completedTickets = tickets.filter(t => 
+  const completedTickets = activeTickets.filter(t => 
     t.assignedTeacherId === user?.id && 
     t.status === 'pending_review'
   );
+
+  // Load chapters on mount
+  useEffect(() => {
+    const loadChapters = async () => {
+      const loadedChapters = await getQuranChapters();
+      if (loadedChapters.length > 0) {
+        setChapters(loadedChapters);
+      }
+    };
+    loadChapters();
+  }, []);
+
+  // Get current surah from page number
+  const getCurrentSurah = (page: number): Chapter | null => {
+    return chapters.find(ch => 
+      page >= ch.pages[0] && page <= ch.pages[1]
+    ) || null;
+  };
 
   useEffect(() => {
     if (selectedTicket) {
@@ -36,6 +104,20 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         progressNotes: selectedTicket.progressNotes || '',
         audioLink: selectedTicket.audioLink || ''
       });
+      // Load existing Mushaf markings
+      if (selectedTicket.mushafMarkings) {
+        setMushafMarkings(selectedTicket.mushafMarkings);
+      } else {
+        setMushafMarkings([]);
+      }
+      setCurrentPage(1);
+      // Auto-show Mushaf if ticket status is in_progress
+      if (selectedTicket.status === 'in_progress') {
+        setShowMushaf(true);
+        console.log('✅ Auto-showing Mushaf for in_progress ticket');
+      }
+    } else {
+      setShowMushaf(false);
     }
   }, [selectedTicket]);
 
@@ -50,11 +132,27 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       await updateTicket(ticketId, {
         status: 'in_progress'
       });
-      setSelectedTicket(ticket);
+      // Update ticket with new status
+      const updatedTicket = { ...ticket, status: 'in_progress' as TicketStatus };
+      setSelectedTicket(updatedTicket);
+      // Use setTimeout to ensure state updates are applied
+      setTimeout(() => {
+        setShowMushaf(true);
+        console.log('✅ Ticket started, Mushaf state set to true');
+      }, 100);
     } catch (error) {
       console.error('Error starting ticket:', error);
       alert('Failed to start ticket');
     }
+  };
+
+  const handleMistakeMark = (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => {
+    const newMistake: MushafMistake = {
+      ...mistake,
+      id: `mistake-${Date.now()}-${Math.random()}`,
+      timestamp: new Date()
+    };
+    setMushafMarkings(prev => [...prev, newMistake]);
   };
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
@@ -80,6 +178,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         status: 'pending_review',
         progressNotes: formData.progressNotes,
         audioLink: formData.audioLink || undefined,
+        mushafMarkings: mushafMarkings, // Include Mushaf markings
         completedBy: user?.id,
         completedAt: new Date()
       });
@@ -136,8 +235,118 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
       {selectedTicket ? (
         <div className="space-y-4">
+          {/* Step 1: Navigation Bar - Fixed/Sticky at top */}
+          <nav className="fixed md:sticky top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-40 shadow-sm">
+            <div className="w-full md:max-w-6xl md:mx-auto px-2 md:px-4 md:py-3">
+              <div className="flex items-center justify-between gap-1 md:gap-4 h-12 md:h-auto">
+                {/* Left side - Back Button */}
+                <div className="flex-shrink-0 w-[100px] md:w-[150px] lg:w-auto">
+                  <button
+                    onClick={() => {
+                      setSelectedTicket(null);
+                      setFormData({ progressNotes: '', audioLink: '' });
+                      setShowMushaf(false);
+                      setCurrentPage(1);
+                    }}
+                    className="p-1 lg:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                    title="Back to tickets"
+                  >
+                    <svg className="w-5 h-5 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Center - Page Navigation */}
+                <div className="flex-1 flex items-center justify-center gap-3 lg:gap-6">
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    {/* Previous Page Button */}
+                    {currentPage > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className="lg:hidden p-0.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                          title="Previous page"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className="hidden lg:flex items-center justify-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+                          title="Previous page"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
+                          </svg>
+                          Previous
+                        </button>
+                      </>
+                    )}
+
+                    {/* Page Number */}
+                    <div className="text-center">
+                      <div className="text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        Page {currentPage}
+                      </div>
+                    </div>
+
+                    {/* Next Page Button */}
+                    {currentPage < 604 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
+                          className="lg:hidden p-0.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                          title="Next page"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
+                          className="hidden lg:flex items-center justify-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+                          title="Next page"
+                        >
+                          Next
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 ml-1">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right side - Student info & metadata */}
+                <div className="flex-shrink-0 w-[100px] md:w-[150px] lg:w-auto">
+                  <div className="text-right text-[10px] lg:text-xs leading-tight text-gray-600 dark:text-gray-400">
+                    <div className="font-medium truncate">{getStudentName(selectedTicket.studentId)}</div>
+                    <div className="hidden lg:block text-gray-500 dark:text-gray-500 mt-0.5">
+                      <span className="text-teal-600 dark:text-teal-400">Juz {getJuzFromPage(currentPage)}</span>
+                      <span className="mx-1">•</span>
+                      <span>{getCurrentSurah(currentPage)?.name_simple || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </nav>
+
+          {/* Add padding-top to compensate for fixed nav */}
+          <div className="pt-16 md:pt-4">
+          {/* Ticket Details - Collapsible Header */}
           <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-lg mb-2">Ticket Details</h3>
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-semibold text-lg">Ticket Details</h3>
+              <button
+                onClick={() => setShowMushaf(!showMushaf)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold"
+              >
+                {showMushaf ? '📖 Hide Mushaf' : '📖 Show Mushaf'}
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium">Student:</span> {getStudentName(selectedTicket.studentId)}
@@ -159,6 +368,39 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
                 <p className="text-sm font-medium text-red-800">Revision Notes:</p>
                 <p className="text-sm text-red-700">{selectedTicket.revisionNotes}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Mushaf View - Always available, toggleable */}
+          <div className={`bg-white rounded-lg shadow-lg p-6 mb-6 ${showMushaf ? '' : 'hidden'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">📖 Interactive Mushaf - Mark Mistakes</h3>
+              <button
+                onClick={() => setShowMushaf(false)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              >
+                Close Mushaf
+              </button>
+            </div>
+            <div className="bg-blue-50 p-3 rounded-lg mb-4">
+              <p className="text-sm text-blue-800">
+                💡 <strong>Instructions:</strong> Navigate to the page number the student recited from. Click on any word in the Mushaf to mark a mistake. 
+                Select the mistake type from the popup menu.
+              </p>
+            </div>
+            <InteractiveMushaf
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
+              mistakes={mushafMarkings}
+              onMistakeMark={handleMistakeMark}
+              mode="marking"
+            />
+            {mushafMarkings.length > 0 && (
+              <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-800">
+                  ✅ <strong>{mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}</strong> marked
+                </p>
               </div>
             )}
           </div>
@@ -211,6 +453,8 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               </button>
             </div>
           </form>
+          </div>
+          {/* End padding-top div */}
         </div>
       ) : (
         <div className="space-y-4">
@@ -244,12 +488,12 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                               <p className="text-sm text-gray-500 mt-2 line-clamp-2">{ticket.progressNotes}</p>
                             )}
                           </div>
-                          <button
-                            onClick={() => handleStartTicket(ticket)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-                          >
-                            {ticket.status === 'assigned' ? 'Start' : 'Continue'}
-                          </button>
+              <button
+                onClick={() => handleStartTicket(ticket)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              >
+                {ticket.status === 'assigned' ? '📖 Start with Mushaf' : '📖 Continue with Mushaf'}
+              </button>
                         </div>
                       </div>
                     ))}

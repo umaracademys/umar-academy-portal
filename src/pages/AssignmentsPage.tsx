@@ -47,7 +47,20 @@ const AssignmentsPage: React.FC = () => {
 
   const handleSubmitAssignment = async (submission: any) => {
     try {
-      await addAssignmentSubmission(selectedAssignment!.id, submission);
+      if (!selectedAssignment) {
+        console.error('No assignment selected');
+        return;
+      }
+      
+      // Use _id if available, otherwise use id
+      const assignmentId = selectedAssignment._id || selectedAssignment.id;
+      
+      if (!assignmentId) {
+        console.error('Assignment ID is missing:', selectedAssignment);
+        return;
+      }
+      
+      await addAssignmentSubmission(assignmentId, submission);
       setShowSubmissionForm(false);
       setSelectedAssignment(null);
     } catch (error) {

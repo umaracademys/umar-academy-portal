@@ -22,4 +22,12 @@ export default defineConfig({
     }
   ],
   publicDir: 'public',
+  optimizeDeps: {
+    exclude: ['sql.js']
+  },
+  resolve: {
+    alias: {
+      'sql.js': 'sql.js/dist/sql-wasm.js'
+    }
+  }
 })

@@ -16,6 +16,7 @@ export interface Assignment {
   listenerId?: string; // Teacher/listener ID
   homeworkComments?: string; // Homework instructions
   homeworkLink?: string; // Homework link
+  mushafMarkings?: any[]; // Mushaf mistake markings from ticket workflow
   attachments?: {
     type: 'text' | 'link';
     content: string;

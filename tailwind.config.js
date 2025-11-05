@@ -20,6 +20,10 @@ export default {
           900: '#0c4a6e',
         },
       },
+      fontFamily: {
+        arabic: ['Amiri', '"Arabic Typesetting"', '"Traditional Arabic"', 'serif'],
+        surahNames: ['QPC V2 Font', 'Surah Names', 'Amiri', '"Arabic Typesetting"', '"Traditional Arabic"', 'serif'],
+      },
     },
   },
   plugins: [],

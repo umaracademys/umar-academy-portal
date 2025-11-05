@@ -6,6 +6,8 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
+import InteractiveMushaf from '../components/InteractiveMushaf';
+
 interface StudentAssignmentView {
   date: string;
   sabq: string;
@@ -26,6 +28,8 @@ const StudentAssignments: React.FC = () => {
     return now.toISOString().slice(0, 10);
   });
   const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
+  const [showMushafForAssignment, setShowMushafForAssignment] = useState<string | null>(null);
+  const [mushafPage, setMushafPage] = useState(1);
 
   const currentStudent = students.find(s => s.email === user?.email);
 
@@ -66,7 +70,9 @@ const StudentAssignments: React.FC = () => {
           comment: report,
           teacherName: assignment.listenerName || 'Teacher',
           listenerName: assignment.listenerName || assignment.assignedTeacherName || 'Teacher',
-          listenersInfo: listenersInfo.join('\n')
+          listenersInfo: listenersInfo.join('\n'),
+          // Only show mushafMarkings for assignments created from finalized tickets
+          mushafMarkings: assignment.fromTicketId && assignment.mushafMarkings ? assignment.mushafMarkings : []
         };
       });
   }, [backendAssignments, currentStudent]);
@@ -253,6 +259,77 @@ const StudentAssignments: React.FC = () => {
                     <div className="rounded-lg p-4 border-2 border-blue-200 bg-white">
                       <p className="text-gray-900 whitespace-pre-wrap">{(assignment as any).listenersInfo}</p>
                     </div>
+                  </div>
+                )}
+
+                {/* Mushaf Markings */}
+                {(assignment as any).mushafMarkings && (assignment as any).mushafMarkings.length > 0 && (
+                  <div className="p-6 border-b border-gray-100">
+                    <div className="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-500">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-bold text-gray-900">📖 Mushaf Mistake Markings</h3>
+                        <button
+                          onClick={() => {
+                            if (showMushafForAssignment === assignment.id) {
+                              setShowMushafForAssignment(null);
+                            } else {
+                              setShowMushafForAssignment(assignment.id);
+                              const firstMistake = (assignment as any).mushafMarkings[0];
+                              if (firstMistake?.page) {
+                                setMushafPage(firstMistake.page);
+                              }
+                            }
+                          }}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-semibold"
+                        >
+                          {showMushafForAssignment === assignment.id ? 'Hide' : 'View'} Mushaf
+                        </button>
+                      </div>
+                      <p className="text-sm text-purple-800 mb-3">
+                        Your teacher marked <strong>{(assignment as any).mushafMarkings.length} mistake{((assignment as any).mushafMarkings.length !== 1) ? 's' : ''}</strong> in your recitation.
+                      </p>
+                      
+                      {/* Mistake Summary */}
+                      <div className="bg-white p-3 rounded space-y-2">
+                        {(assignment as any).mushafMarkings.map((mistake: any, idx: number) => {
+                          const types: any = {
+                            madd: { label: 'Madd (Elongation)', color: 'bg-red-500' },
+                            holding: { label: 'Holding', color: 'bg-orange-500' },
+                            memory: { label: 'Memory', color: 'bg-yellow-500' },
+                            ikhfa: { label: 'Ikhfa', color: 'bg-blue-500' },
+                            tech: { label: 'Technical', color: 'bg-purple-500' },
+                            other: { label: 'Other', color: 'bg-gray-500' }
+                          };
+                          const mistakeInfo = types[mistake.type] || { label: mistake.type, color: 'bg-gray-500' };
+                          return (
+                            <div key={idx} className="flex items-center gap-2 text-sm">
+                              <span className={`px-2 py-1 rounded text-white text-xs font-medium ${mistakeInfo.color}`}>
+                                {mistakeInfo.label}
+                              </span>
+                              <span className="text-gray-700">
+                                Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                {mistake.note && ` - ${mistake.note}`}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Mushaf Display for Student */}
+                    {showMushafForAssignment === assignment.id && (
+                      <div className="mt-4 bg-white p-4 rounded-lg border-2 border-purple-200">
+                        <h4 className="text-lg font-bold text-gray-900 mb-4">📖 View Your Mistakes in the Mushaf</h4>
+                        <InteractiveMushaf
+                          currentPage={mushafPage}
+                          onPageChange={setMushafPage}
+                          mistakes={(assignment as any).mushafMarkings || []}
+                          onMistakeMark={() => {}} // Read-only for students
+                          readOnly={true}
+                          mode="viewing"
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 

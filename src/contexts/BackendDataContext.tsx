@@ -105,7 +105,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (assignmentsResponse.ok) {
         const assignmentsData = await assignmentsResponse.json();
         console.log('📝 Assignments loaded from backend:', assignmentsData.length);
-        setAssignments(assignmentsData);
+        // Map MongoDB _id to id for frontend compatibility
+        const mappedAssignments = assignmentsData.map((assignment: any) => ({
+          ...assignment,
+          id: assignment._id || assignment.id,
+          dueDate: assignment.dueDate ? new Date(assignment.dueDate) : new Date(),
+          createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
+        }));
+        setAssignments(mappedAssignments);
       }
 
       // Load recitation reviews
@@ -562,9 +570,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     console.log('🔍 Teacher found:', teacher, 'teacherName:', teacherName);
     
     const filteredStudents = students.filter(student => {
-      console.log('🔍 Checking student:', student.fullName, 'assignedTeacher:', student.assignedTeacher, 'teacherId:', teacherId, 'teacherName:', teacherName);
-      // Check both teacher ID and teacher name
-      return student.assignedTeacher === teacherId || student.assignedTeacher === teacherName;
+      const studentTeacherId = (student as any).teacherId || student.assignedTeacher;
+      const studentTeacherName = (student as any).teacherName || student.assignedTeacher;
+      
+      console.log('🔍 Checking student:', student.fullName, 
+        'assignedTeacher:', student.assignedTeacher, 
+        'teacherId:', studentTeacherId, 
+        'teacherName:', studentTeacherName,
+        'match:', studentTeacherId === teacherId || 
+                 studentTeacherName === teacherName || 
+                 student.assignedTeacher === teacherId || 
+                 student.assignedTeacher === teacherName);
+      
+      // Check multiple fields: teacherId, teacherName, assignedTeacher
+      return studentTeacherId === teacherId || 
+             studentTeacherName === teacherName || 
+             student.assignedTeacher === teacherId || 
+             student.assignedTeacher === teacherName;
     });
     console.log('🔍 Filtered students for teacher:', filteredStudents);
     return filteredStudents;
@@ -596,7 +618,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       const newAssignment = await response.json();
-      setAssignments(prev => [...prev, newAssignment]);
+      // Map _id to id for consistency
+      const mappedAssignment = {
+        ...newAssignment,
+        id: newAssignment._id || newAssignment.id
+      };
+      setAssignments(prev => [...prev, mappedAssignment]);
     } catch (error) {
       console.error('Error adding assignment:', error);
       throw error;
@@ -615,7 +642,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error('Failed to update assignment');
       }
       
-      setAssignments(prev => prev.map(a => a.id === id ? { ...a, ...assignment } : a));
+      setAssignments(prev => prev.map(a => {
+        const aId = a._id || a.id;
+        return aId === id ? { ...a, ...assignment } : a;
+      }));
     } catch (error) {
       console.error('Error updating assignment:', error);
       throw error;
@@ -632,7 +662,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error('Failed to delete assignment');
       }
       
-      setAssignments(prev => prev.filter(a => a.id !== id));
+      setAssignments(prev => prev.filter(a => {
+        const aId = a._id || a.id;
+        return aId !== id;
+      }));
     } catch (error) {
       console.error('Error deleting assignment:', error);
       throw error;
@@ -641,6 +674,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const addAssignmentSubmission = async (assignmentId: string, submission: any) => {
     try {
+      if (!assignmentId) {
+        throw new Error('Assignment ID is required');
+      }
+      
       const response = await fetch(`${API_BASE}/assignments/${assignmentId}/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -648,15 +685,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Submission error response:', errorText);
         throw new Error('Failed to submit assignment');
       }
       
+      const savedSubmission = await response.json();
+      
       // Update the assignment with the new submission
-      setAssignments(prev => prev.map(a => 
-        a.id === assignmentId 
-          ? { ...a, submissions: [...(a.submissions || []), submission] }
-          : a
-      ));
+      setAssignments(prev => prev.map(a => {
+        const aId = a._id || a.id;
+        return aId === assignmentId 
+          ? { ...a, submissions: [...(a.submissions || []), savedSubmission] }
+          : a;
+      }));
     } catch (error) {
       console.error('Error submitting assignment:', error);
       throw error;

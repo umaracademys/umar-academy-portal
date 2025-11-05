@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher } from '../types';
+import InteractiveMushaf from './InteractiveMushaf';
 
 interface AdminTicketManagementProps {
   onClose?: () => void;
@@ -21,9 +22,16 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   });
   const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
   const [revisionNotes, setRevisionNotes] = useState('');
+  const [showMushaf, setShowMushaf] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  const pendingTickets = tickets.filter(t => t.status === 'pending_review');
-  const allTickets = tickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // Filter out finalized/completed tickets - they should not appear in the list
+  const activeTickets = tickets.filter(t => 
+    t.status !== 'finalized' && t.status !== 'completed'
+  );
+  
+  const pendingTickets = activeTickets.filter(t => t.status === 'pending_review');
+  const allTickets = activeTickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const handleReview = async (ticket: AssignmentTicket, action: 'approve' | 'reject') => {
     try {
@@ -105,11 +113,42 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     }
 
     try {
-      await assignTicketToNextTeacher(ticket.id, teacher.id, teacher.fullName);
-      alert('Ticket assigned to next teacher successfully!');
-      setSelectedTicket(null);
-      setSelectedNextTeacher('');
+      // Determine what the next step will be
+      const nextStep = ticket.workflowStep === 'sabq' ? 'sabqi' : 
+                       ticket.workflowStep === 'sabqi' ? 'manzil' : 
+                       ticket.workflowStep === 'manzil' ? 'finalize' : null;
+      
+      const newTicket = await assignTicketToNextTeacher(ticket.id, teacher.id, teacher.fullName);
+      
+      // Refresh tickets to get the updated list
       await refreshData();
+      
+      // If next step is finalize, automatically open finalize page without asking
+      if (nextStep === 'finalize') {
+        // The backend returns the newly created ticket
+        if (newTicket) {
+          // Map the ticket format
+          const mappedTicket = {
+            ...newTicket,
+            id: (newTicket as any)._id || newTicket.id,
+            createdAt: (newTicket as any).createdAt ? new Date((newTicket as any).createdAt) : new Date(),
+            updatedAt: (newTicket as any).updatedAt ? new Date((newTicket as any).updatedAt) : new Date()
+          } as AssignmentTicket;
+          
+          setSelectedTicket(mappedTicket);
+          setReviewAction('finalize');
+          setSelectedNextTeacher('');
+          // Automatically open finalize form - no alert needed
+        } else {
+          alert('Ticket assigned to next teacher successfully!');
+          setSelectedTicket(null);
+          setSelectedNextTeacher('');
+        }
+      } else {
+        alert('Ticket assigned to next teacher successfully!');
+        setSelectedTicket(null);
+        setSelectedNextTeacher('');
+      }
     } catch (error) {
       console.error('Error assigning ticket:', error);
       alert('Failed to assign ticket');
@@ -243,6 +282,109 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 >
                   {selectedTicket.audioLink}
                 </a>
+              </div>
+            )}
+
+            {/* Mushaf Markings Display */}
+            {selectedTicket.mushafMarkings && selectedTicket.mushafMarkings.length > 0 && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold">Mushaf Mistake Markings:</h4>
+                  <button
+                    onClick={() => {
+                      setShowMushaf(!showMushaf);
+                      if (!showMushaf) {
+                        // Set to first page with mistakes
+                        const firstMistakePage = selectedTicket.mushafMarkings?.[0]?.page || 1;
+                        setCurrentPage(firstMistakePage);
+                      }
+                    }}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                  >
+                    {showMushaf ? 'Hide' : 'View'} Mushaf ({selectedTicket.mushafMarkings.length} mistakes)
+                  </button>
+                </div>
+                {!showMushaf && (
+                  <div className="bg-purple-50 p-4 rounded-lg">
+                    <p className="text-sm text-purple-800 mb-3">
+                      Teacher marked <strong>{selectedTicket.mushafMarkings.length} mistake{selectedTicket.mushafMarkings.length !== 1 ? 's' : ''}</strong> in the Mushaf.
+                      Click "View Mushaf" to see them highlighted on the Quran pages.
+                    </p>
+                    {/* Quick navigation to pages with mistakes */}
+                    <div className="flex flex-wrap gap-2">
+                      <span className="text-xs font-semibold text-purple-900">Jump to pages:</span>
+                      {Array.from(new Set(selectedTicket.mushafMarkings.map((m: any) => m.page)))
+                        .sort((a: number, b: number) => a - b)
+                        .map((page: number) => {
+                          const mistakesOnPage = selectedTicket.mushafMarkings.filter((m: any) => m.page === page).length;
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => {
+                                setCurrentPage(page);
+                                setShowMushaf(true);
+                              }}
+                              className="px-3 py-1 bg-purple-200 text-purple-800 rounded-md hover:bg-purple-300 text-xs font-medium"
+                            >
+                              Page {page} ({mistakesOnPage})
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mushaf View for Admin */}
+            {showMushaf && selectedTicket.mushafMarkings && selectedTicket.mushafMarkings.length > 0 && (
+              <div className="mb-6 bg-white p-4 rounded-lg border-2 border-purple-200">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h4 className="text-lg font-bold text-gray-900">📖 Mushaf with Teacher's Markings</h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Page {currentPage} • {selectedTicket.mushafMarkings.filter((m: any) => m.page === currentPage).length} mistake{selectedTicket.mushafMarkings.filter((m: any) => m.page === currentPage).length !== 1 ? 's' : ''} on this page
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowMushaf(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 text-sm"
+                  >
+                    Close
+                  </button>
+                </div>
+                
+                {/* Quick navigation buttons */}
+                <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
+                  <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages with mistakes:</span>
+                  {Array.from(new Set(selectedTicket.mushafMarkings.map((m: any) => m.page)))
+                    .sort((a: number, b: number) => a - b)
+                    .map((page: number) => {
+                      const mistakesOnPage = selectedTicket.mushafMarkings.filter((m: any) => m.page === page).length;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                            currentPage === page
+                              ? 'bg-purple-600 text-white'
+                              : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                          }`}
+                        >
+                          Page {page} ({mistakesOnPage})
+                        </button>
+                      );
+                    })}
+                </div>
+                
+                <InteractiveMushaf
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                  mistakes={selectedTicket.mushafMarkings || []}
+                  onMistakeMark={() => {}} // Read-only for admin
+                  readOnly={true}
+                  mode="viewing"
+                />
               </div>
             )}
 
