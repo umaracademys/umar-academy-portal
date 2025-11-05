@@ -370,8 +370,8 @@ const StudentAssignments: React.FC = () => {
                               {/* Quick navigation buttons */}
                               <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
                                 <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages with mistakes:</span>
-                                {Array.from(new Set(assignment.mushafMarkings.map((m: MushafMistake) => m.page)))
-                                  .sort((a, b) => a - b)
+                                {(Array.from(new Set(assignment.mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
+                                  .sort((a: number, b: number) => a - b)
                                   .map((page: number) => {
                                     const mistakesOnPage = assignment.mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
                                     return (

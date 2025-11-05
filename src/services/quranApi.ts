@@ -155,7 +155,7 @@ export async function fetchSurahPages(surahId: number, version: 'nastaleeq' | 'v
     const endPage = surah.pages[1];
     
     // Fetch all pages in parallel
-    const pagePromises = [];
+    const pagePromises: Promise<{ pageNum: number; result: any }>[] = [];
     for (let pageNum = startPage; pageNum <= endPage; pageNum++) {
       pagePromises.push(
         fetchPageLines(pageNum, version)

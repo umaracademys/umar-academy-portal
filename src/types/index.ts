@@ -1,5 +1,5 @@
 // Import Mushaf types
-export { MushafMistake, MistakeType, MushafPage, MushafSession } from './mushaf';
+export type { MushafMistake, MistakeType, MushafPage, MushafSession } from './mushaf';
 import type { MushafMistake } from './mushaf';
 
 export type UserRole = 'superadmin' | 'admin' | 'teacher' | 'student';
