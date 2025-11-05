@@ -1,6 +1,12 @@
 // Quran Foundation API Service
 // Note: API calls are proxied through our backend to avoid CORS issues
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+// Handle both cases: VITE_API_BASE_URL might include /api or not
+const getApiBase = () => {
+  const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+  // If base already ends with /api, use it as-is; otherwise add /api
+  return base.endsWith('/api') ? base : `${base}/api`;
+};
+const API_BASE = getApiBase();
 
 /**
  * Fetch Quran page data via our backend proxy
@@ -9,7 +15,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
  */
 export async function fetchQuranPage(pageNumber: number): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE}/api/quran/pages/${pageNumber}`, {
+    const response = await fetch(`${API_BASE}/quran/pages/${pageNumber}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -38,7 +44,7 @@ export async function fetchQuranPage(pageNumber: number): Promise<any> {
  */
 export async function fetchPageVerses(pageNumber: number): Promise<any[]> {
   try {
-    const response = await fetch(`${API_BASE}/api/quran/pages/${pageNumber}/verses`, {
+    const response = await fetch(`${API_BASE}/quran/pages/${pageNumber}/verses`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -104,8 +110,7 @@ export async function getMushafPageImage(pageNumber: number): Promise<string | n
  */
 export async function getQuranChapters(): Promise<Chapter[]> {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const response = await fetch(`${API_BASE}/api/quran/chapters`, {
+    const response = await fetch(`${API_BASE}/quran/chapters`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -186,8 +191,7 @@ export async function fetchSurahPages(surahId: number, version: 'nastaleeq' | 'v
  */
 export async function fetchPageLines(pageNumber: number, version: 'nastaleeq' | 'v4' = 'nastaleeq'): Promise<any> {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const url = `${API_BASE}/api/quran/pages/${pageNumber}/lines?version=${version}`;
+    const url = `${API_BASE}/quran/pages/${pageNumber}/lines?version=${version}`;
     console.log(`🌐 Fetching page lines from: ${url}`);
     
     const response = await fetch(url, {
@@ -230,8 +234,7 @@ export async function fetchPageLines(pageNumber: number, version: 'nastaleeq' | 
  */
 export async function fetchPageLinesImlaei(pageNumber: number): Promise<any> {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const url = `${API_BASE}/api/quran/pages/${pageNumber}/imlaei`;
+    const url = `${API_BASE}/quran/pages/${pageNumber}/imlaei`;
     console.log(`🌐 Fetching Imlaei page lines from: ${url}`);
     
     const response = await fetch(url, {
@@ -274,8 +277,7 @@ export async function fetchPageLinesImlaei(pageNumber: number): Promise<any> {
  */
 export async function fetchVersesBySurah(surahId: number, version: 'nastaleeq' | 'v4' = 'nastaleeq'): Promise<any[]> {
   try {
-    const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    const response = await fetch(`${API_BASE}/api/quran/surahs/${surahId}/verses?version=${version}`, {
+    const response = await fetch(`${API_BASE}/quran/surahs/${surahId}/verses?version=${version}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
