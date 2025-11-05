@@ -60,14 +60,16 @@ app.use(express.json({ limit: '10mb' }));
 // Serve uploaded audio files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Connect to MongoDB
+// Connect to MongoDB (don't exit on failure - allow graceful degradation)
 mongoose.connect(MONGODB_URI)
 .then(() => {
   console.log(`📊 Connected to MongoDB`);
 })
 .catch((error) => {
   console.error('❌ MongoDB connection error:', error);
-  process.exit(1);
+  console.error('⚠️  Server will continue to run, but database operations may fail');
+  // Don't exit - allow server to start even if DB is unavailable
+  // This prevents infinite restart loops on deployment platforms
 });
 
 // User Schema
@@ -1732,7 +1734,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend is running' });
 });
 
+// Start server regardless of MongoDB connection status
 app.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`);
   console.log(`📊 MongoDB URI: ${MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`); // Hide credentials in logs
+  console.log(`✅ Server is ready to accept connections`);
+});
+
+// Handle uncaught exceptions and unhandled rejections to prevent crashes
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Don't exit - log and continue
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit - log and continue
 });
