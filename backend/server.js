@@ -17,6 +17,38 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || '*', // Allow all origins in development
   credentials: true
 }));
+
+// Audio upload route - must be before json middleware to handle binary data
+app.post('/api/mistakes/audio', (req, res) => {
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    try {
+      const buffer = Buffer.concat(chunks);
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const uniqueFilename = `mistake-${timestamp}-${Math.random().toString(36).substring(7)}.webm`;
+      const filePath = path.join(uploadsDir, uniqueFilename);
+      
+      // Save file
+      fs.writeFileSync(filePath, buffer);
+      
+      // Return URL
+      const audioUrl = `/uploads/mistakes/${uniqueFilename}`;
+      console.log(`✅ Audio uploaded: ${audioUrl}`);
+      res.json({ audioUrl, filename: uniqueFilename });
+    } catch (error) {
+      console.error('Error in audio upload endpoint:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  req.on('error', (error) => {
+    console.error('Error reading request:', error);
+    res.status(500).json({ error: error.message });
+  });
+});
+
 app.use(express.json({ limit: '10mb' }));
 
 // Create uploads directory if it doesn't exist
@@ -1692,28 +1724,6 @@ app.get('/api/quran/pages/:pageNumber/verses', async (req, res) => {
     res.status(error.response?.status || 500).json({ 
       error: error.response?.data?.message || error.message 
     });
-  }
-});
-
-// Audio upload endpoint for mistake recordings
-// Note: This uses a simple buffer approach. For production, consider using multer
-app.post('/api/mistakes/audio', express.raw({ type: 'application/octet-stream', limit: '10mb' }), (req, res) => {
-  try {
-    // Generate unique filename
-    const timestamp = Date.now();
-    const uniqueFilename = `mistake-${timestamp}-${Math.random().toString(36).substring(7)}.webm`;
-    const filePath = path.join(uploadsDir, uniqueFilename);
-    
-    // Save file
-    fs.writeFileSync(filePath, req.body);
-    
-    // Return URL
-    const audioUrl = `/uploads/mistakes/${uniqueFilename}`;
-    console.log(`✅ Audio uploaded: ${audioUrl}`);
-    res.json({ audioUrl, filename: uniqueFilename });
-  } catch (error) {
-    console.error('Error in audio upload endpoint:', error);
-    res.status(500).json({ error: error.message });
   }
 });
 
