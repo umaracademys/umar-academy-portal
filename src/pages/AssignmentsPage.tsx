@@ -71,7 +71,7 @@ const AssignmentsPage: React.FC = () => {
   // Get student name from student ID
   const getStudentName = (studentId: string): string => {
     const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
-    return student?.name || student?.fullName || 'Unknown Student';
+    return student?.fullName || 'Unknown Student';
   };
 
   // Get mistake type label

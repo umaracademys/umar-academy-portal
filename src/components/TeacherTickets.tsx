@@ -75,7 +75,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     const ticketTeacherId = ticket.assignedTeacherId || (ticket as any).assignedTeacherId;
     const ticketTeacherName = ticket.assignedTeacherName || (ticket as any).assignedTeacherName;
     const userId = user?.id || (user as any)?._id;
-    const userName = user?.name || user?.fullName || '';
+    const userName = user?.name || '';
     
     // Compare as strings to handle ObjectId vs string differences
     const idMatch = ticketTeacherId?.toString() === userId?.toString() ||
@@ -130,7 +130,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   // Debug logging
   console.log('🎫 Teacher Tickets Debug:', {
     userId: user?.id,
-    userName: user?.name || user?.fullName,
+    userName: user?.name,
     userEmail: user?.email,
     userRole: user?.role,
     totalTickets: tickets.length,
