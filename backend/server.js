@@ -18,6 +18,12 @@ app.use(cors({
   credentials: true
 }));
 
+// Create uploads directory if it doesn't exist (must be before route that uses it)
+const uploadsDir = path.join(__dirname, 'uploads', 'mistakes');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Audio upload route - must be before json middleware to handle binary data
 app.post('/api/mistakes/audio', (req, res) => {
   const chunks = [];
@@ -50,12 +56,6 @@ app.post('/api/mistakes/audio', (req, res) => {
 });
 
 app.use(express.json({ limit: '10mb' }));
-
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads', 'mistakes');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // Serve uploaded audio files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
