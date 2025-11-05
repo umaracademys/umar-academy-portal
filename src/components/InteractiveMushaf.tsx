@@ -220,14 +220,12 @@ export const WordByWordPage: React.FC<{
   useEffect(() => {
     const loadWords = async () => {
       try {
-        // Try to load words from local file (dynamic import)
-        try {
-          const wordsModule = await import('../data/words/word_by_word.json');
-          const wordsData = wordsModule.default || wordsModule;
-          
-          // Convert to array format if needed
+        // Load words from public folder (works in both dev and production)
+        const wordsRes = await fetch('/data/words/word_by_word.json');
+        if (wordsRes.ok) {
+          const wordsData = await wordsRes.json();
           if (Array.isArray(wordsData)) {
-            setWords(wordsData as Word[]);
+            setWords(wordsData);
           } else {
             // Convert object format to array
             const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
@@ -238,28 +236,9 @@ export const WordByWordPage: React.FC<{
             }));
             setWords(wordsArray);
           }
-          console.log('✅ Loaded words from local file');
-        } catch (e) {
-          console.warn('Words file not found, trying fallback');
-          // Fallback: try public folder
-          const wordsRes = await fetch('/data/words/word_by_word.json');
-          if (wordsRes.ok) {
-            const wordsData = await wordsRes.json();
-            if (Array.isArray(wordsData)) {
-              setWords(wordsData);
-            } else {
-              const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
-                word_index: entry.id || entry.word_index,
-                surah: parseInt(entry.surah),
-                ayah: parseInt(entry.ayah),
-                text: entry.text
-              }));
-              setWords(wordsArray);
-            }
-            console.log('✅ Loaded words from public folder');
-          } else {
-            console.error('Words data not available');
-          }
+          console.log('✅ Loaded words from public folder');
+        } else {
+          console.error('Words data not available');
         }
       } catch (error) {
         console.error('Error loading words:', error);
