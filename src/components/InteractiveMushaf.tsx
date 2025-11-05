@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { MushafMistake } from '../types/mushaf';
 import { fetchPageLines, getQuranChapters, Chapter } from "../services/quranApi";
+import { uploadMistakeAudio } from "../services/audioService";
 
 export interface AyahPosition {
   surah: number;
@@ -19,16 +20,25 @@ export interface Word {
 export interface Line {
   page_number: number;
   line_number: number;
-  first_word_id: number;
-  last_word_id: number;
+  first_word_id: number | null;
+  last_word_id: number | null;
   is_centered: boolean;
   line_type: "ayah" | "surah_name" | "basmallah";
   surah_number?: number;
+  mushaf_id?: number; // Optional: for multi-mushaf support
 }
 
 export interface LayoutPage {
   page_number: number;
   lines: Line[];
+  mushaf_id?: number; // Optional: for multi-mushaf support
+  metadata?: {
+    mushaf_name?: string;
+    code?: string;
+    pages_count?: number;
+    lines_per_page?: number;
+    font_name?: string;
+  };
 }
 
 interface MushafLayout {
@@ -50,7 +60,7 @@ interface InteractiveMushafProps {
 interface MistakeModalProps {
   word: Word | null;
   onClose: () => void;
-  onSave: (word: Word, type: string, note?: string) => void;
+  onSave: (word: Word, type: string, note?: string, audioBlob?: Blob) => void;
 }
 
 interface Mistake {
@@ -64,11 +74,11 @@ interface Mistake {
 
 const mistakeTypes = [
   "Memory Mistake",
-  "Tajweed Mistake",
+  "Mad (Elongation) Mistake",
+  "Ikhfa Mistake",
   "Ghunna Mistake",
-  "Mad Mistake",
-  "Pronunciation Mistake",
-  "Fluency Mistake",
+  "Holding/Fluency Mistake",
+  "Other Mistake",
 ];
 
 export const MistakeModal: React.FC<MistakeModalProps> = ({
@@ -78,12 +88,101 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
 }) => {
   const [selectedType, setSelectedType] = useState("");
   const [note, setNote] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Cleanup audio URL on unmount
+  useEffect(() => {
+    return () => {
+      if (audioUrl) {
+        URL.revokeObjectURL(audioUrl);
+      }
+    };
+  }, [audioUrl]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimer) {
+        clearInterval(recordingTimer);
+      }
+    };
+  }, [recordingTimer]);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
+      
+      const chunks: BlobPart[] = [];
+      
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      };
+      
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start timer
+      const timer = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      setRecordingTimer(timer);
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && isRecording) {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      if (recordingTimer) {
+        clearInterval(recordingTimer);
+        setRecordingTimer(null);
+      }
+    }
+  };
+
+  const deleteRecording = () => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl);
+    }
+    setAudioUrl(null);
+    setAudioBlob(null);
+    setRecordingTime(0);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   if (!word) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-96 p-6 space-y-4">
+      <div className="bg-white rounded-xl shadow-lg w-96 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-gray-800">
           Mark Mistake – Surah {word.surah}, Ayah {word.ayah}
         </h2>
@@ -115,10 +214,67 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
             onChange={(e) => setNote(e.target.value)}
             className="w-full border border-gray-300 rounded-md p-2"
             placeholder="Add comment..."
+            rows={3}
           />
         </div>
 
-        <div className="flex justify-end gap-2">
+        {/* Audio Recording Section */}
+        <div className="border-t border-gray-200 pt-4">
+          <label className="block text-sm font-medium text-gray-600 mb-2">
+            Audio Recording (Optional):
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            Record how to read this correctly for the student
+          </p>
+          
+          {!audioUrl ? (
+            <div className="flex items-center gap-2">
+              {!isRecording ? (
+                <button
+                  onClick={startRecording}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+                  </svg>
+                  Record Audio
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={stopRecording}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                  >
+                    <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
+                    Stop ({formatTime(recordingTime)})
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <audio controls src={audioUrl} className="w-full">
+                Your browser does not support the audio element.
+              </audio>
+              <div className="flex gap-2">
+                <button
+                  onClick={deleteRecording}
+                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                >
+                  Delete Recording
+                </button>
+                <button
+                  onClick={startRecording}
+                  className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                >
+                  Record Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
           <button
             onClick={onClose}
             className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300"
@@ -127,10 +283,13 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
           </button>
           <button
             onClick={() => {
-              if (selectedType) onSave(word, selectedType, note);
-              onClose();
+              if (selectedType) {
+                onSave(word, selectedType, note, audioBlob || undefined);
+                onClose();
+              }
             }}
-            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600"
+            disabled={!selectedType}
+            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Save
           </button>
@@ -207,14 +366,34 @@ export const WordByWordPage: React.FC<{
   pageNumber: number;
   onWordClick?: (word: Word) => void;
   mistakes?: MushafMistake[];
+  readOnly?: boolean;
+  onMistakesWithWords?: (mistakesWithWords: Array<MushafMistake & { wordText?: string }>) => void;
 }> = ({
   pageNumber,
   onWordClick,
   mistakes = [],
+  readOnly = false,
+  onMistakesWithWords,
 }) => {
   const [layout, setLayout] = useState<LayoutPage | null>(null);
   const [words, setWords] = useState<Word[]>([]);
   const [background, setBackground] = useState<string>("");
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+
+  // Load chapters/surahs on mount
+  useEffect(() => {
+    const loadChapters = async () => {
+      try {
+        const loadedChapters = await getQuranChapters();
+        if (loadedChapters.length > 0) {
+          setChapters(loadedChapters);
+        }
+      } catch (error) {
+        console.error("Error loading chapters:", error);
+      }
+    };
+    loadChapters();
+  }, []);
 
   // Load words data on mount
   useEffect(() => {
@@ -265,8 +444,9 @@ export const WordByWordPage: React.FC<{
           lines: pageData.lines.map((line: any) => ({
             page_number: pageData.pageNumber || pageNumber,
             line_number: line.line_number,
-            first_word_id: line.first_word_id || 0,
-            last_word_id: line.last_word_id || 0,
+            // Handle null/empty string for surah_name and basmallah lines
+            first_word_id: (line.first_word_id && line.first_word_id !== '') ? parseInt(line.first_word_id) : null,
+            last_word_id: (line.last_word_id && line.last_word_id !== '') ? parseInt(line.last_word_id) : null,
             is_centered: line.is_centered === true || line.is_centered === 1,
             line_type: line.line_type || 'ayah',
             surah_number: line.surah_number || pageData.surahId
@@ -289,15 +469,66 @@ export const WordByWordPage: React.FC<{
     }
   }, [pageNumber, words.length]);
 
+  // Collect mistakes with their word text for the parent component
+  useEffect(() => {
+    if (words.length > 0 && mistakes.length > 0 && onMistakesWithWords) {
+      const mistakesWithWordText = mistakes
+        .filter(m => m.page === pageNumber)
+        .map(m => {
+          // Find the word text for this mistake
+          const word = words.find(
+            w => w.surah === m.surah && 
+                 w.ayah === m.ayah && 
+                 (m.wordIndex === undefined || m.wordIndex === null || w.word_index === m.wordIndex)
+          );
+          return {
+            ...m,
+            wordText: word ? word.text : undefined
+          };
+        });
+      onMistakesWithWords(mistakesWithWordText);
+    }
+  }, [words, mistakes, pageNumber, onMistakesWithWords]);
+
   // Function to get mistake for a word
   const getWordMistake = (word: Word): MushafMistake | undefined => {
-    return mistakes.find(
+    // First try to find exact match with wordIndex
+    const exactMatch = mistakes.find(
       (m) =>
         m.page === pageNumber &&
         m.surah === word.surah &&
         m.ayah === word.ayah &&
-        (m.wordIndex === word.word_index || !m.wordIndex)
+        m.wordIndex === word.word_index &&
+        m.wordIndex !== undefined &&
+        m.wordIndex !== null
     );
+    
+    if (exactMatch) {
+      return exactMatch;
+    }
+    
+    // If no exact match, check for mistakes without wordIndex (whole ayah mistakes)
+    // Only return if there's no wordIndex mistake for this ayah
+    const hasWordIndexMistake = mistakes.some(
+      (m) =>
+        m.page === pageNumber &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex !== undefined &&
+        m.wordIndex !== null
+    );
+    
+    if (!hasWordIndexMistake) {
+      return mistakes.find(
+        (m) =>
+          m.page === pageNumber &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          (m.wordIndex === undefined || m.wordIndex === null)
+      );
+    }
+    
+    return undefined;
   };
 
   // Function to get CSS class for mistake highlighting (Mushaf-style colors)
@@ -371,14 +602,36 @@ export const WordByWordPage: React.FC<{
             }}
           >
             {layout.lines.map((line) => {
-              if (line.line_type !== "ayah") return null;
+              if (line.line_type !== "ayah") {
+                // Handle surah_name and basmallah lines
+                if (line.line_type === "surah_name") {
+                  const surah = chapters.find(c => c.id === line.surah_number);
+                  return (
+                    <div key={line.line_number} className="text-center font-bold text-xl my-4">
+                      {surah ? surah.name_arabic : `Surah ${line.surah_number}`}
+                    </div>
+                  );
+                } else if (line.line_type === "basmallah") {
+                  return (
+                    <div key={line.line_number} className="text-center text-2xl my-4">
+                      ﷽
+                    </div>
+                  );
+                }
+                return null;
+              }
+
+              // Skip if no word IDs (shouldn't happen for ayah lines, but safety check)
+              if (!line.first_word_id || !line.last_word_id) {
+                return null;
+              }
 
               // Get words for this line and sort by word_index to ensure correct order
               const lineWords = words
                 .filter(
                   (w) =>
-                    w.word_index >= line.first_word_id &&
-                    w.word_index <= line.last_word_id
+                    w.word_index >= line.first_word_id! &&
+                    w.word_index <= line.last_word_id!
                 )
                 .sort((a, b) => a.word_index - b.word_index);
 
@@ -442,7 +695,7 @@ export const WordByWordPage: React.FC<{
                         
                         <span
                           onClick={() => onWordClick?.(w)}
-                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass}`}
+                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group`}
                           style={{
                             padding: '2px 3px',
                             display: 'inline',
@@ -456,11 +709,43 @@ export const WordByWordPage: React.FC<{
                           dir="rtl"
                           title={
                             mistake
-                              ? `Surah ${w.surah}, Ayah ${w.ayah} - ${mistake.type} mistake${mistake.note ? `: ${mistake.note}` : ""}`
+                              ? `Surah ${w.surah}, Ayah ${w.ayah} - ${mistake.type} mistake${mistake.note ? `: ${mistake.note}` : ""}${mistake.audioUrl ? ' (Click to hear audio)' : ''}`
                               : `Surah ${w.surah}, Ayah ${w.ayah}`
                           }
                         >
                           {displayText}{'\u2009'}
+                          {mistake && mistake.audioUrl && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
+                              <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+                              </svg>
+                            </span>
+                          )}
+                          {/* Mistake Details Popup */}
+                          {mistake && readOnly && (
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                              <div className="text-xs">
+                                <div className="font-semibold text-gray-900 mb-1">
+                                  {mistake.type === 'memory' ? 'Memory Mistake' :
+                                   mistake.type === 'madd' ? 'Mad (Elongation) Mistake' :
+                                   mistake.type === 'holding' ? 'Holding/Fluency Mistake' :
+                                   mistake.type === 'ikhfa' ? 'Ikhfa Mistake' :
+                                   mistake.type === 'tech' ? 'Ghunna Mistake' : 'Other Mistake'}
+                                </div>
+                                {mistake.note && (
+                                  <div className="text-gray-600 mb-2">{mistake.note}</div>
+                                )}
+                                {mistake.audioUrl && (
+                                  <div className="mt-2">
+                                    <div className="text-xs text-gray-500 mb-1">Audio correction:</div>
+                                    <audio controls src={mistake.audioUrl} className="w-full h-8">
+                                      Your browser does not support the audio element.
+                                    </audio>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </span>
                       </React.Fragment>
                     );
@@ -513,30 +798,32 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   }, []);
 
   // Convert existing mistakes to local format for display
+  // This will be updated when WordByWordPage provides mistakes with word text
+  const [mistakesWithWords, setMistakesWithWords] = useState<Array<MushafMistake & { wordText?: string }>>([]);
+  
   useEffect(() => {
-    // Note: We'll need to fetch word text from the WordByWordPage component
-    // For now, we'll use a placeholder
-    const convertedMistakes: Mistake[] = mistakes
+    // Update localMistakes from mistakesWithWords (which has word text)
+    const convertedMistakes: Mistake[] = mistakesWithWords
       .filter(m => m.page === currentPage)
       .map(m => ({
         word_index: m.wordIndex || 0,
         surah: m.surah,
         ayah: m.ayah,
-        text: `Word ${m.wordIndex || 'N/A'}`,
+        text: m.wordText || `Word ${m.wordIndex || 'N/A'}`,
         type: getMistakeTypeLabel(m.type),
         note: m.note
       }));
     setLocalMistakes(convertedMistakes);
-  }, [mistakes, currentPage]);
+  }, [mistakesWithWords, currentPage]);
 
   const getMistakeTypeLabel = (type: string): string => {
     const typeMap: Record<string, string> = {
       "memory": "Memory Mistake",
-      "madd": "Tajweed Mistake",
-      "ikhfa": "Pronunciation Mistake",
-      "holding": "Fluency Mistake",
+      "madd": "Mad (Elongation) Mistake",
+      "ikhfa": "Ikhfa Mistake",
+      "holding": "Holding/Fluency Mistake",
       "tech": "Ghunna Mistake",
-      "other": "Mad Mistake",
+      "other": "Other Mistake",
     };
     return typeMap[type] || type;
   };
@@ -547,18 +834,31 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     }
   };
 
-  const handleSaveMistake = (word: Word, type: string, note?: string) => {
+  const handleSaveMistake = async (word: Word, type: string, note?: string, audioBlob?: Blob) => {
     // Map the mistake type string to the MistakeType enum
     const typeMap: Record<string, 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other'> = {
       "Memory Mistake": "memory",
-      "Tajweed Mistake": "madd",
-      "Ghunna Mistake": "ikhfa",
-      "Mad Mistake": "madd",
-      "Pronunciation Mistake": "ikhfa",
-      "Fluency Mistake": "holding",
+      "Mad (Elongation) Mistake": "madd",
+      "Ikhfa Mistake": "ikhfa",
+      "Ghunna Mistake": "tech",
+      "Holding/Fluency Mistake": "holding",
+      "Other Mistake": "other",
     };
 
     const mistakeType = typeMap[type] || 'other';
+
+    let audioUrl: string | undefined;
+    
+    // Upload audio if provided
+    if (audioBlob) {
+      try {
+        audioUrl = await uploadMistakeAudio(audioBlob);
+        console.log('✅ Audio uploaded successfully:', audioUrl);
+      } catch (error) {
+        console.error('❌ Failed to upload audio:', error);
+        alert('Failed to upload audio recording. The mistake will be saved without audio.');
+      }
+    }
 
     const newMistake: Omit<MushafMistake, 'id' | 'timestamp'> = {
       type: mistakeType,
@@ -567,7 +867,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       ayah: word.ayah,
       wordIndex: word.word_index,
       position: { x: 50, y: 50 }, // Default position for word-based mistakes
-      note: note || ''
+      note: note || '',
+      audioUrl: audioUrl
     };
     
     onMistakeMark(newMistake);
@@ -856,6 +1157,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           pageNumber={currentPage} 
           onWordClick={handleWordClick}
           mistakes={mistakes}
+          readOnly={readOnly}
+          onMistakesWithWords={setMistakesWithWords}
         />
 
         <MistakeModal

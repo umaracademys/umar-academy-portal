@@ -338,11 +338,11 @@ const StudentAssignments: React.FC = () => {
                                 if (count === 0) return null;
                                 return (
                                   <span key={type} className="px-2 py-1 bg-white rounded text-xs font-medium text-gray-700">
-                                    {type === 'madd' ? 'Tajweed' : 
-                                     type === 'holding' ? 'Hesitation' :
+                                    {type === 'madd' ? 'Mad (Elongation)' : 
+                                     type === 'holding' ? 'Holding/Fluency' :
                                      type === 'memory' ? 'Memory' :
-                                     type === 'ikhfa' ? 'Pronunciation' :
-                                     type === 'tech' ? 'Technical' : 'Other'}: {count}
+                                     type === 'ikhfa' ? 'Ikhfa' :
+                                     type === 'tech' ? 'Ghunna' : 'Other'}: {count}
                                   </span>
                                 );
                               })}

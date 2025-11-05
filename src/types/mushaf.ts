@@ -13,6 +13,7 @@ export interface MushafMistake {
     y: number;
   };
   note?: string; // Additional notes about the mistake
+  audioUrl?: string; // URL to audio recording explaining how to read correctly
   timestamp: Date;
 }
 
