@@ -41,7 +41,13 @@ interface BackendDataContextType {
   addTicket: (ticket: AssignmentTicket) => Promise<void>;
   updateTicket: (id: string, ticket: Partial<AssignmentTicket>) => Promise<void>;
   assignTicketToNextTeacher: (ticketId: string, teacherId: string, teacherName: string) => Promise<AssignmentTicket>;
+  approveTicket: (ticketId: string, reviewedBy: string) => Promise<any>;
+  assignTicketToNext: (ticketId: string, teacherId: string, teacherName: string) => Promise<any>;
+  approveAndAdvanceTicket: (ticketId: string, reviewedBy: string, nextTeacherId?: string, nextTeacherName?: string) => Promise<any>;
   finalizeTicket: (ticketId: string, data: { finalReport: string; homework: string; homeworkLink?: string; reviewedBy: string }) => Promise<any>;
+  // Personal Mushaf
+  getStudentPersonalMushaf: (studentId: string) => Promise<any>;
+  getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
 }
 
 const BackendDataContext = createContext<BackendDataContextType | undefined>(undefined);
@@ -85,19 +91,28 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const users = await usersResponse.json();
       console.log('👥 Users loaded from backend:', users.length);
 
-      // Load teachers from backend
-      const teachersResponse = await fetch(`${API_BASE}/teachers`);
-      if (teachersResponse.ok) {
-        const teachersData = await teachersResponse.json();
-        console.log('👨‍🏫 Teachers loaded from backend:', teachersData.length);
-        
-        // Merge teacher data with user data
-        teachersData.forEach((teacher: any) => {
-          const user = users.find((u: any) => u._id === teacher.userId);
-          if (user) {
-            user.teacherProfile = teacher;
-          }
-        });
+      // Load actual teacher records from /api/teachers endpoint
+      let teacherRecords: any[] = [];
+      try {
+        const teachersResponse = await fetch(`${API_BASE}/teachers`);
+        if (teachersResponse.ok) {
+          teacherRecords = await teachersResponse.json();
+          console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
+          
+          // Merge teacher data with user data
+          teacherRecords.forEach((teacher: any) => {
+            const user = users.find((u: any) => 
+              u._id === teacher.userId?._id || 
+              u._id === teacher.userId ||
+              (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
+            );
+            if (user) {
+              user.teacherProfile = teacher;
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not load teacher records:', err);
       }
 
       // Load assignments from backend
@@ -149,38 +164,68 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setTickets(mappedTickets);
       }
 
+      // Load actual student records from /api/students endpoint
+      let studentRecords: any[] = [];
+      try {
+        const studentsResponse = await fetch(`${API_BASE}/students`);
+        if (studentsResponse.ok) {
+          studentRecords = await studentsResponse.json();
+          console.log('📚 Student records loaded from /api/students:', studentRecords.length);
+        }
+      } catch (err) {
+        console.warn('⚠️ Could not load student records:', err);
+      }
+
       // Separate users by role and map to expected format
       const studentsData = users
         .filter((user: any) => user.role === 'student')
-        .map((user: any) => ({
-          id: user._id,
-          fullName: user.name || user.fullName || 'Unknown',
-          email: user.email,
-          phone: user.phone || '',
-          address: user.address || '',
-          dateOfBirth: user.dateOfBirth || new Date().toISOString(),
-          enrollmentDate: user.enrollmentDate || new Date().toISOString(),
-          level: user.level || 'beginner',
-          status: user.status || 'active',
-          assignedTeacher: user.assignedTeacher || '',
-          paymentStatus: user.paymentStatus || 'pending',
-          avatar: user.avatar || '',
-          courses: user.courses || [],
-          assignments: user.assignments || [],
-          payments: user.payments || [],
-          progress: user.progress || { completed: 0, total: 0, percentage: 0 },
-          attendance: user.attendance || { present: 0, absent: 0, total: 0 },
-          grades: user.grades || [],
-          notes: user.notes || []
-        }));
+        .map((user: any) => {
+          // Find matching student record to get actual data
+          const studentRecord = studentRecords.find((sr: any) => 
+            sr.userId?._id === user._id || 
+            sr.userId?._id?.toString() === user._id?.toString() ||
+            (sr.userId && typeof sr.userId === 'object' && sr.userId._id === user._id)
+          );
+          
+          return {
+            id: user._id,
+            fullName: user.name || user.fullName || studentRecord?.fullName || 'Unknown',
+            email: user.email,
+            phone: user.phone || '',
+            address: user.address || '',
+            dateOfBirth: user.dateOfBirth || new Date().toISOString(),
+            enrollmentDate: user.enrollmentDate || studentRecord?.enrolledDate || new Date().toISOString(),
+            level: user.level || studentRecord?.level || 'beginner',
+            status: user.status || studentRecord?.status || 'active',
+            assignedTeacher: user.assignedTeacher || studentRecord?.assignedTeacher || '',
+            paymentStatus: user.paymentStatus || studentRecord?.paymentStatus || 'pending',
+            avatar: user.avatar || studentRecord?.avatar || '',
+            courses: user.courses || [],
+            assignments: user.assignments || [],
+            payments: user.payments || [],
+            progress: user.progress || { completed: 0, total: 0, percentage: 0 },
+            attendance: user.attendance || { present: 0, absent: 0, total: 0 },
+            grades: user.grades || [],
+            notes: user.notes || []
+          };
+        });
 
       const teachersData = users
         .filter((user: any) => user.role === 'teacher')
         .map((user: any) => {
-          const teacherProfile = user.teacherProfile || {};
+          // Find matching teacher record to get actual data
+          const teacherRecord = teacherRecords.find((tr: any) => 
+            tr.userId?._id === user._id || 
+            tr.userId?._id?.toString() === user._id?.toString() ||
+            (tr.userId && typeof tr.userId === 'object' && tr.userId._id === user._id) ||
+            tr._id === user._id ||
+            tr._id?.toString() === user._id?.toString()
+          );
+          
+          const teacherProfile = user.teacherProfile || teacherRecord || {};
           return {
             id: user._id,
-            fullName: user.name || user.fullName || teacherProfile.fullName || 'Unknown',
+            fullName: user.name || user.fullName || teacherProfile.fullName || teacherRecord?.fullName || 'Unknown',
             email: user.email,
             phone: user.phone || teacherProfile.contact || '',
             contact: user.contact || user.phone || teacherProfile.contact || '',
@@ -196,7 +241,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             location: user.location || teacherProfile.location || 'Unknown',
             courses: user.courses || teacherProfile.courses || [],
             students: user.students || [],
-            assignedStudents: user.assignedStudents || teacherProfile.assignedStudents || [],
+            assignedStudents: teacherRecord?.assignedStudents || teacherProfile.assignedStudents || user.assignedStudents || [],
             performance: user.performance || teacherProfile.performance || { rating: 0, reviews: [] },
             attendance: user.attendance || { present: 0, absent: 0, total: 0 },
             assignments: user.assignments || [],
@@ -562,33 +607,57 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Helper functions
   const getStudentsByTeacher = (teacherId: string) => {
     console.log('🔍 getStudentsByTeacher called with teacherId:', teacherId);
-    console.log('🔍 All students:', students);
     
-    // Find the teacher to get their name
-    const teacher = teachers.find(t => t.id === teacherId);
-    const teacherName = teacher?.fullName || '';
-    console.log('🔍 Teacher found:', teacher, 'teacherName:', teacherName);
+    // Find the teacher to get their assignedStudents array
+    const teacher = teachers.find(t => t.id === teacherId || (t as any)._id === teacherId);
+    if (!teacher) {
+      console.log('🔍 Teacher not found for ID:', teacherId);
+      return [];
+    }
     
+    const teacherName = teacher.fullName?.trim() || '';
+    const assignedStudentIds = (teacher as any).assignedStudents || [];
+    
+    console.log('🔍 Teacher found:', teacherName, 'assignedStudents:', assignedStudentIds);
+    
+    // Filter students by checking multiple criteria
     const filteredStudents = students.filter(student => {
-      const studentTeacherId = (student as any).teacherId || student.assignedTeacher;
-      const studentTeacherName = (student as any).teacherName || student.assignedTeacher;
+      const studentId = student.id || (student as any)._id;
+      const userId = (student as any).userId?._id || (student as any).userId?.toString();
+      const assignedTeacher = (student.assignedTeacher || (student as any).assignedTeacher || '').trim();
       
-      console.log('🔍 Checking student:', student.fullName, 
-        'assignedTeacher:', student.assignedTeacher, 
-        'teacherId:', studentTeacherId, 
-        'teacherName:', studentTeacherName,
-        'match:', studentTeacherId === teacherId || 
-                 studentTeacherName === teacherName || 
-                 student.assignedTeacher === teacherId || 
-                 student.assignedTeacher === teacherName);
+      // Check 1: If student ID or user ID is in teacher's assignedStudents array
+      const isAssignedById = assignedStudentIds.some((assignedId: string) => {
+        const assignedIdStr = assignedId?.toString();
+        return assignedIdStr === studentId?.toString() || 
+               assignedIdStr === userId?.toString() ||
+               assignedIdStr === (student as any)._id?.toString();
+      });
       
-      // Check multiple fields: teacherId, teacherName, assignedTeacher
-      return studentTeacherId === teacherId || 
-             studentTeacherName === teacherName || 
-             student.assignedTeacher === teacherId || 
-             student.assignedTeacher === teacherName;
+      // Check 2: If student's assignedTeacher field matches teacher's name (handle trailing spaces)
+      const hasAssignedTeacher = assignedTeacher === teacherName || 
+                                 assignedTeacher === teacher.fullName?.trim() ||
+                                 assignedTeacher === teacherId ||
+                                 (teacherName && assignedTeacher.toLowerCase() === teacherName.toLowerCase());
+      
+      // Check 3: If student's assignedTeacher field matches teacher ID (if stored as ID)
+      const hasAssignedTeacherId = assignedTeacher === teacherId ||
+                                   (student as any).assignedTeacherId === teacherId;
+      
+      const matches = isAssignedById || hasAssignedTeacher || hasAssignedTeacherId;
+      
+      if (matches) {
+        console.log('✅ Student matched:', student.fullName || (student as any).fullName, 
+          '- assignedTeacher:', assignedTeacher, 
+          '- teacherName:', teacherName,
+          '- isAssignedById:', isAssignedById,
+          '- hasAssignedTeacher:', hasAssignedTeacher);
+      }
+      
+      return matches;
     });
-    console.log('🔍 Filtered students for teacher:', filteredStudents);
+    
+    console.log('🔍 Filtered students for teacher:', filteredStudents.length, filteredStudents.map(s => s.fullName || (s as any).fullName));
     return filteredStudents;
   };
 
@@ -936,6 +1005,76 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const approveTicket = async (ticketId: string, reviewedBy: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewedBy })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to approve ticket');
+      }
+      
+      const result = await response.json();
+      await refreshData();
+      return result;
+    } catch (error) {
+      console.error('Error approving ticket:', error);
+      throw error;
+    }
+  };
+
+  const assignTicketToNext = async (ticketId: string, teacherId: string, teacherName: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}/assign-next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          assignedTeacherId: teacherId,
+          assignedTeacherName: teacherName
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to assign ticket to next teacher');
+      }
+      
+      const result = await response.json();
+      await refreshData();
+      return result;
+    } catch (error) {
+      console.error('Error assigning ticket to next teacher:', error);
+      throw error;
+    }
+  };
+
+  const approveAndAdvanceTicket = async (ticketId: string, reviewedBy: string, nextTeacherId?: string, nextTeacherName?: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}/approve-and-advance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reviewedBy,
+          nextTeacherId,
+          nextTeacherName
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to approve and advance ticket');
+      }
+      
+      const result = await response.json();
+      await refreshData();
+      return result;
+    } catch (error) {
+      console.error('Error approving and advancing ticket:', error);
+      throw error;
+    }
+  };
+
   const finalizeTicket = async (ticketId: string, data: { finalReport: string; homework: string; homeworkLink?: string; reviewedBy: string }) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/finalize`, {
@@ -961,6 +1100,40 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     } catch (error) {
       console.error('Error finalizing ticket:', error);
       throw error;
+    }
+  };
+
+  // Get student's personal Mushaf (all historical mistakes)
+  const getStudentPersonalMushaf = async (studentId: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/students/${studentId}/personal-mushaf`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch personal Mushaf');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching personal Mushaf:', error);
+      return { studentId, studentName: '', mistakes: [] };
+    }
+  };
+
+  // Get student's personal Mushaf mistakes filtered by page/surah/ayah
+  const getStudentPersonalMushafFiltered = async (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.page) params.append('page', filters.page.toString());
+      if (filters?.surah) params.append('surah', filters.surah.toString());
+      if (filters?.ayah) params.append('ayah', filters.ayah.toString());
+      
+      const url = `${API_BASE}/students/${studentId}/personal-mushaf/filter${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error('Failed to fetch filtered personal Mushaf');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching filtered personal Mushaf:', error);
+      return { mistakes: [] };
     }
   };
 
@@ -1000,7 +1173,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     addTicket,
     updateTicket,
     assignTicketToNextTeacher,
-    finalizeTicket
+    approveTicket,
+    assignTicketToNext,
+    approveAndAdvanceTicket,
+    finalizeTicket,
+    getStudentPersonalMushaf,
+    getStudentPersonalMushafFiltered
   };
 
   return (

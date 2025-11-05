@@ -9,12 +9,12 @@ interface AdminTicketManagementProps {
 }
 
 const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }) => {
-  const { tickets, students, teachers, updateTicket, assignTicketToNextTeacher, finalizeTicket, refreshData } = useBackendData();
+  const { tickets, students, teachers, updateTicket, approveTicket, assignTicketToNext, finalizeTicket, refreshData } = useBackendData();
   const { user } = useAuth();
   
-  const [view, setView] = useState<'pending' | 'all' | 'create'>('pending');
+  const [view, setView] = useState<'pending' | 'all'>('pending');
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'assign-next' | 'finalize'>('approve');
+  const [action, setAction] = useState<'approve' | 'assign-next' | 'finalize' | 'reject'>('approve');
   const [finalizeData, setFinalizeData] = useState({
     finalReport: '',
     homework: '',
@@ -33,144 +33,98 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const pendingTickets = activeTickets.filter(t => t.status === 'pending_review');
   const allTickets = activeTickets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const handleReview = async (ticket: AssignmentTicket, action: 'approve' | 'reject') => {
+  const handleApprove = async () => {
+    if (!selectedTicket) return;
+    
     try {
-      if (action === 'approve') {
-        const ticketId = ticket.id || (ticket as any)._id;
-        await updateTicket(ticketId, {
-          status: 'approved',
-          reviewedBy: user?.id,
-          reviewedAt: new Date()
-        });
-        
-        // Show reminder to assign to next teacher if not finalize step
-        if (ticket.workflowStep !== 'finalize') {
-          const nextStep = ticket.workflowStep === 'sabq' ? 'Sabqi' : ticket.workflowStep === 'sabqi' ? 'Manzil' : 'Finalize';
-          const shouldAssign = window.confirm(
-            `✅ Ticket approved successfully!\n\n` +
-            `📋 Next Step: ${nextStep}\n\n` +
-            `Would you like to assign this to the next teacher now?`
-          );
-          
-          if (shouldAssign) {
-            setReviewAction('assign-next');
-            setSelectedTicket(ticket);
-            return; // Don't close, show assign next form
-          }
-        } else {
-          // If it's finalize step, remind to write homework and finalize
-          const shouldFinalize = window.confirm(
-            `✅ Ticket approved successfully!\n\n` +
-            `📝 This is the finalize step.\n\n` +
-            `Please:\n` +
-            `1. Listen to the sabq recitation\n` +
-            `2. Write the final report\n` +
-            `3. Add homework instructions\n` +
-            `4. Submit to create assignment for student\n\n` +
-            `Would you like to write the homework and finalize now?`
-          );
-          
-          if (shouldFinalize) {
-            setReviewAction('finalize');
-            setSelectedTicket(ticket);
-            return; // Don't close, show finalize form
-          } else {
-            alert('✅ Ticket approved! Remember to finalize it with homework when ready.');
-          }
-        }
-      } else {
-        if (!revisionNotes.trim()) {
-          alert('Please provide revision notes');
-          return;
-        }
-        await updateTicket(ticket.id, {
-          status: 'needs_revision',
-          revisionNotes: revisionNotes,
-          reviewedBy: user?.id,
-          reviewedAt: new Date()
-        });
-        alert('Ticket sent back for revision');
-      }
+      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      await approveTicket(ticketId, user?.id || '');
+      alert('✅ Ticket approved successfully!');
       setSelectedTicket(null);
-      setRevisionNotes('');
+      setAction('approve');
       await refreshData();
     } catch (error) {
-      console.error('Error reviewing ticket:', error);
-      alert('Failed to update ticket');
+      console.error('Error approving ticket:', error);
+      alert('Failed to approve ticket');
     }
   };
 
-  const handleAssignNext = async (ticket: AssignmentTicket) => {
+  const handleAssignToNext = async () => {
+    if (!selectedTicket) return;
+    
     if (!selectedNextTeacher) {
-      alert('Please select a teacher');
+      alert('Please select a teacher for the next step');
       return;
     }
-
+    
     const teacher = teachers.find(t => t.id === selectedNextTeacher);
     if (!teacher) {
       alert('Teacher not found');
       return;
     }
-
+    
     try {
-      // Determine what the next step will be
-      const nextStep = ticket.workflowStep === 'sabq' ? 'sabqi' : 
-                       ticket.workflowStep === 'sabqi' ? 'manzil' : 
-                       ticket.workflowStep === 'manzil' ? 'finalize' : null;
-      
-      const newTicket = await assignTicketToNextTeacher(ticket.id, teacher.id, teacher.fullName);
-      
-      // Refresh tickets to get the updated list
+      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
+      alert(`✅ Next step activated and assigned to ${teacher.fullName}`);
+      setSelectedTicket(null);
+      setSelectedNextTeacher('');
+      setAction('approve');
       await refreshData();
-      
-      // If next step is finalize, automatically open finalize page without asking
-      if (nextStep === 'finalize') {
-        // The backend returns the newly created ticket
-        if (newTicket) {
-          // Map the ticket format
-          const mappedTicket = {
-            ...newTicket,
-            id: (newTicket as any)._id || newTicket.id,
-            createdAt: (newTicket as any).createdAt ? new Date((newTicket as any).createdAt) : new Date(),
-            updatedAt: (newTicket as any).updatedAt ? new Date((newTicket as any).updatedAt) : new Date()
-          } as AssignmentTicket;
-          
-          setSelectedTicket(mappedTicket);
-          setReviewAction('finalize');
-          setSelectedNextTeacher('');
-          // Automatically open finalize form - no alert needed
-        } else {
-          alert('Ticket assigned to next teacher successfully!');
-          setSelectedTicket(null);
-          setSelectedNextTeacher('');
-        }
-      } else {
-        alert('Ticket assigned to next teacher successfully!');
-        setSelectedTicket(null);
-        setSelectedNextTeacher('');
-      }
     } catch (error) {
-      console.error('Error assigning ticket:', error);
+      console.error('Error assigning to next teacher:', error);
       alert('Failed to assign ticket');
     }
   };
 
-  const handleFinalize = async (ticket: AssignmentTicket) => {
+  const handleReject = async () => {
+    if (!selectedTicket) return;
+    
+    if (!revisionNotes.trim()) {
+      alert('Please provide revision notes');
+      return;
+    }
+    
+    try {
+      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      await updateTicket(ticketId, {
+        status: 'needs_revision',
+        revisionNotes: revisionNotes,
+        reviewedBy: user?.id,
+        reviewedAt: new Date()
+      });
+      alert('✅ Ticket sent back for revision');
+      setSelectedTicket(null);
+      setRevisionNotes('');
+      setAction('assign-next');
+      await refreshData();
+    } catch (error) {
+      console.error('Error rejecting ticket:', error);
+      alert('Failed to reject ticket');
+    }
+  };
+
+
+  const handleFinalize = async () => {
+    if (!selectedTicket) return;
+    
     if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
       alert('Please fill in final report and homework');
       return;
     }
 
     try {
-      await finalizeTicket(ticket.id, {
+      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      await finalizeTicket(ticketId, {
         finalReport: finalizeData.finalReport,
         homework: finalizeData.homework,
         homeworkLink: finalizeData.homeworkLink,
         reviewedBy: user?.id || ''
       });
-      alert('Ticket finalized! Assignment created and visible to student.');
+      alert('✅ Ticket finalized! Assignment created and visible to student.');
       setSelectedTicket(null);
       setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+      setAction('assign-next');
       await refreshData();
     } catch (error) {
       console.error('Error finalizing ticket:', error);
@@ -388,88 +342,120 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               </div>
             )}
 
-            <div className="flex gap-3 mb-4">
-              <button
-                onClick={() => setReviewAction('approve')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  reviewAction === 'approve' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Approve
-              </button>
-              <button
-                onClick={() => setReviewAction('reject')}
-                className={`px-4 py-2 rounded-lg font-medium ${
-                  reviewAction === 'reject' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
-              >
-                Request Revision
-              </button>
-              {canAssignNext(selectedTicket) && (
+            {/* Action Selection */}
+            <div className="mb-6">
+              <h4 className="font-semibold text-gray-900 mb-3">What would you like to do?</h4>
+              <div className="flex gap-3 mb-4 flex-wrap">
+                {selectedTicket.status === 'pending_review' && (
+                  <button
+                    onClick={() => setAction('approve')}
+                    className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                      action === 'approve'
+                        ? 'bg-green-600 text-white shadow-lg'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    ✅ Approve
+                  </button>
+                )}
+                {selectedTicket.status === 'approved' && selectedTicket.workflowStep !== 'finalize' && (
+                  <button
+                    onClick={() => {
+                      setAction('assign-next');
+                      setSelectedNextTeacher('');
+                    }}
+                    className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                      action === 'assign-next'
+                        ? 'bg-blue-600 text-white shadow-lg'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    ➡️ Assign to Next Teacher
+                  </button>
+                )}
+                {selectedTicket.status === 'approved' && selectedTicket.workflowStep === 'finalize' && (
+                  <button
+                    onClick={() => {
+                      setAction('finalize');
+                      setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                    }}
+                    className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                      action === 'finalize'
+                        ? 'bg-purple-600 text-white shadow-lg'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    ✅ Finalize & Add Homework
+                  </button>
+                )}
                 <button
-                  onClick={() => setReviewAction('assign-next')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    reviewAction === 'assign-next' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+                  onClick={() => {
+                    setAction('reject');
+                    setRevisionNotes('');
+                  }}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    action === 'reject'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
                 >
-                  Assign to Next Teacher
+                  ↩️ Request Revision
                 </button>
-              )}
-              {canFinalize(selectedTicket) && (
-                <button
-                  onClick={() => setReviewAction('finalize')}
-                  className={`px-4 py-2 rounded-lg font-medium ${
-                    reviewAction === 'finalize' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Finalize
-                </button>
-              )}
+              </div>
             </div>
 
-            {reviewAction === 'reject' && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Revision Notes
-                </label>
-                <textarea
-                  value={revisionNotes}
-                  onChange={(e) => setRevisionNotes(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  rows={4}
-                  placeholder="Explain what needs to be revised..."
-                />
+            {/* Approve Action */}
+            {action === 'approve' && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm text-gray-700 mb-4">
+                  Approve this ticket. You can assign it to the next teacher later.
+                </p>
+                <button
+                  onClick={handleApprove}
+                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+                >
+                  ✅ Approve Ticket
+                </button>
               </div>
             )}
 
-            {reviewAction === 'assign-next' && (
-              <div className="mb-4">
+            {/* Assign to Next Teacher Form */}
+            {action === 'assign-next' && selectedTicket.workflowStep !== 'finalize' && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Next Teacher
+                  Select Teacher for Next Step
                 </label>
                 <select
                   value={selectedNextTeacher}
                   onChange={(e) => setSelectedNextTeacher(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3"
                 >
-                  <option value="">Select teacher...</option>
+                  <option value="">Choose a teacher...</option>
                   {teachers.map(teacher => (
                     <option key={teacher.id} value={teacher.id}>
                       {teacher.fullName}
                     </option>
                   ))}
                 </select>
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-600">
                   Next step: {
-                    selectedTicket.workflowStep === 'sabq' ? 'Sabqi' :
-                    selectedTicket.workflowStep === 'sabqi' ? 'Manzil' :
-                    'Finalize'
+                    selectedTicket.workflowStep === 'sabq' ? '📚 Sabqi' :
+                    selectedTicket.workflowStep === 'sabqi' ? '📿 Manzil' :
+                    '✅ Finalize'
                   }
                 </p>
+                <button
+                  onClick={handleAssignToNext}
+                  disabled={!selectedNextTeacher}
+                  className="mt-4 w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ➡️ Assign to Next Teacher
+                </button>
               </div>
             )}
 
-            {reviewAction === 'finalize' && (
+            {/* Finalize Form */}
+            {action === 'finalize' && (
               <div className="space-y-4 mb-4">
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
                   <h4 className="font-semibold text-blue-900 mb-2">📋 Finalization Steps:</h4>
@@ -524,52 +510,55 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               </div>
             )}
 
-            <div className="flex gap-3">
-              {reviewAction === 'approve' && (
+            {/* Revision Notes Form */}
+            {action === 'reject' && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Revision Notes <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={revisionNotes}
+                  onChange={(e) => setRevisionNotes(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3"
+                  rows={4}
+                  placeholder="Explain what needs to be revised..."
+                />
                 <button
-                  onClick={() => handleReview(selectedTicket, 'approve')}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-                >
-                  Approve Ticket
-                </button>
-              )}
-              {reviewAction === 'reject' && (
-                <button
-                  onClick={() => handleReview(selectedTicket, 'reject')}
+                  onClick={handleReject}
                   disabled={!revisionNotes.trim()}
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50"
+                  className="w-full px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Request Revision
+                  ↩️ Send for Revision
                 </button>
-              )}
-              {reviewAction === 'assign-next' && (
+              </div>
+            )}
+
+            {/* Finalize Form Submit Button */}
+            {action === 'finalize' && (
+              <div className="mb-6">
                 <button
-                  onClick={() => handleAssignNext(selectedTicket)}
-                  disabled={!selectedNextTeacher}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+                  onClick={handleFinalize}
+                  className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
                 >
-                  Assign to Next Teacher
+                  ✅ Finalize & Create Assignment
                 </button>
-              )}
-              {reviewAction === 'finalize' && (
-                <button
-                  onClick={() => handleFinalize(selectedTicket)}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
-                >
-                  Finalize & Create Assignment
-                </button>
-              )}
+              </div>
+            )}
+
+            {/* Back Button */}
+            <div className="flex gap-3">
               <button
                 onClick={() => {
                   setSelectedTicket(null);
-                  setReviewAction('approve');
+                  setAction('assign-next');
                   setRevisionNotes('');
                   setSelectedNextTeacher('');
                   setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                  setShowMushaf(false);
                 }}
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
               >
-                Cancel
+                ← Back to Tickets
               </button>
             </div>
           </div>

@@ -49,12 +49,14 @@ interface MushafLayout {
 interface InteractiveMushafProps {
   currentPage: number;
   onPageChange: (page: number) => void;
-  mistakes: MushafMistake[];
+  mistakes: MushafMistake[]; // Current mistakes (from current ticket/recitation)
+  historicalMistakes?: MushafMistake[]; // Historical mistakes from student's personal Mushaf
   onMistakeMark: (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => void;
   readOnly?: boolean;
   mode?: 'marking' | 'viewing';
   studentName?: string;
   onBack?: () => void;
+  showHistorical?: boolean; // Toggle to show/hide historical mistakes
 }
 
 interface MistakeModalProps {
@@ -365,13 +367,17 @@ export const MushafPage: React.FC<{
 export const WordByWordPage: React.FC<{
   pageNumber: number;
   onWordClick?: (word: Word) => void;
-  mistakes?: MushafMistake[];
+  mistakes?: MushafMistake[]; // Current mistakes
+  historicalMistakes?: MushafMistake[]; // Historical mistakes from student's personal Mushaf
+  showHistorical?: boolean; // Toggle to show/hide historical mistakes
   readOnly?: boolean;
   onMistakesWithWords?: (mistakesWithWords: Array<MushafMistake & { wordText?: string }>) => void;
 }> = ({
   pageNumber,
   onWordClick,
   mistakes = [],
+  historicalMistakes = [],
+  showHistorical = true,
   readOnly = false,
   onMistakesWithWords,
 }) => {
@@ -490,9 +496,9 @@ export const WordByWordPage: React.FC<{
     }
   }, [words, mistakes, pageNumber, onMistakesWithWords]);
 
-  // Function to get mistake for a word
-  const getWordMistake = (word: Word): MushafMistake | undefined => {
-    // First try to find exact match with wordIndex
+  // Function to get mistake for a word (prioritize current mistakes over historical)
+  const getWordMistake = (word: Word): { mistake: MushafMistake | undefined; isHistorical: boolean } => {
+    // First try to find exact match with wordIndex in current mistakes
     const exactMatch = mistakes.find(
       (m) =>
         m.page === pageNumber &&
@@ -504,7 +510,7 @@ export const WordByWordPage: React.FC<{
     );
     
     if (exactMatch) {
-      return exactMatch;
+      return { mistake: exactMatch, isHistorical: false };
     }
     
     // If no exact match, check for mistakes without wordIndex (whole ayah mistakes)
@@ -519,25 +525,88 @@ export const WordByWordPage: React.FC<{
     );
     
     if (!hasWordIndexMistake) {
-      return mistakes.find(
+      const ayahMatch = mistakes.find(
         (m) =>
           m.page === pageNumber &&
           m.surah === word.surah &&
           m.ayah === word.ayah &&
           (m.wordIndex === undefined || m.wordIndex === null)
       );
+      if (ayahMatch) {
+        return { mistake: ayahMatch, isHistorical: false };
+      }
     }
     
-    return undefined;
+    // If no current mistake and showHistorical is true, check historical mistakes
+    if (showHistorical && historicalMistakes.length > 0) {
+      const historicalExactMatch = historicalMistakes.find(
+        (m) =>
+          m.page === pageNumber &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          m.wordIndex === word.word_index &&
+          m.wordIndex !== undefined &&
+          m.wordIndex !== null
+      );
+      
+      if (historicalExactMatch) {
+        return { mistake: historicalExactMatch, isHistorical: true };
+      }
+      
+      // Check for historical ayah-level mistakes
+      const hasHistoricalWordIndex = historicalMistakes.some(
+        (m) =>
+          m.page === pageNumber &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          m.wordIndex !== undefined &&
+          m.wordIndex !== null
+      );
+      
+      if (!hasHistoricalWordIndex) {
+        const historicalAyahMatch = historicalMistakes.find(
+          (m) =>
+            m.page === pageNumber &&
+            m.surah === word.surah &&
+            m.ayah === word.ayah &&
+            (m.wordIndex === undefined || m.wordIndex === null)
+        );
+        if (historicalAyahMatch) {
+          return { mistake: historicalAyahMatch, isHistorical: true };
+        }
+      }
+    }
+    
+    return { mistake: undefined, isHistorical: false };
   };
 
   // Function to get CSS class for mistake highlighting (Mushaf-style colors)
-  const getMistakeClass = (mistake: MushafMistake | undefined): string => {
+  const getMistakeClass = (mistake: MushafMistake | undefined, isHistorical: boolean = false): string => {
     if (!mistake) {
       return "hover:bg-yellow-100 hover:shadow-sm";
     }
 
-    // Different colors for different mistake types - visible on cream background
+    // Historical mistakes use lighter, more transparent colors with dashed borders
+    if (isHistorical) {
+      switch (mistake.type) {
+        case "memory":
+          return "bg-yellow-100/50 hover:bg-yellow-200/50 border-b-2 border-dashed border-yellow-400 shadow-sm opacity-75";
+        case "madd":
+          return "bg-red-100/50 hover:bg-red-200/50 border-b-2 border-dashed border-red-400 shadow-sm opacity-75";
+        case "ikhfa":
+          return "bg-blue-100/50 hover:bg-blue-200/50 border-b-2 border-dashed border-blue-400 shadow-sm opacity-75";
+        case "holding":
+          return "bg-orange-100/50 hover:bg-orange-200/50 border-b-2 border-dashed border-orange-400 shadow-sm opacity-75";
+        case "tech":
+          return "bg-purple-100/50 hover:bg-purple-200/50 border-b-2 border-dashed border-purple-400 shadow-sm opacity-75";
+        case "other":
+          return "bg-gray-200/50 hover:bg-gray-300/50 border-b-2 border-dashed border-gray-400 shadow-sm opacity-75";
+        default:
+          return "bg-pink-100/50 hover:bg-pink-200/50 border-b-2 border-dashed border-pink-400 shadow-sm opacity-75";
+      }
+    }
+
+    // Current mistakes use solid, vibrant colors
     switch (mistake.type) {
       case "memory":
         return "bg-yellow-200 hover:bg-yellow-300 border-b-2 border-yellow-600 shadow-sm";
@@ -659,8 +728,8 @@ export const WordByWordPage: React.FC<{
                   }}
                 >
                   {lineWords.map((w, idx) => {
-                    const mistake = getWordMistake(w);
-                    const mistakeClass = getMistakeClass(mistake);
+                    const { mistake, isHistorical } = getWordMistake(w);
+                    const mistakeClass = getMistakeClass(mistake, isHistorical);
                     
                     // Show ayah number when it changes (at start of new ayah)
                     const showAyahNumber = w.ayah !== currentAyah;
@@ -709,7 +778,7 @@ export const WordByWordPage: React.FC<{
                           dir="rtl"
                           title={
                             mistake
-                              ? `Surah ${w.surah}, Ayah ${w.ayah} - ${mistake.type} mistake${mistake.note ? `: ${mistake.note}` : ""}${mistake.audioUrl ? ' (Click to hear audio)' : ''}`
+                              ? `${isHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${mistake.type} mistake${mistake.note ? `: ${mistake.note}` : ""}${mistake.audioUrl ? ' (Click to hear audio)' : ''}`
                               : `Surah ${w.surah}, Ayah ${w.ayah}`
                           }
                         >
@@ -725,6 +794,11 @@ export const WordByWordPage: React.FC<{
                           {mistake && readOnly && (
                             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                               <div className="text-xs">
+                                {isHistorical && (
+                                  <div className="text-blue-600 font-semibold mb-1 text-[10px]">
+                                    📜 Historical Mistake
+                                  </div>
+                                )}
                                 <div className="font-semibold text-gray-900 mb-1">
                                   {mistake.type === 'memory' ? 'Memory Mistake' :
                                    mistake.type === 'madd' ? 'Mad (Elongation) Mistake' :
@@ -769,11 +843,13 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   currentPage,
   onPageChange,
   mistakes,
+  historicalMistakes = [],
   onMistakeMark,
   readOnly = false,
   mode = 'marking',
   studentName,
-  onBack
+  onBack,
+  showHistorical: showHistoricalProp = true
 }) => {
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [localMistakes, setLocalMistakes] = useState<Mistake[]>([]);
@@ -781,6 +857,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [isIndexMinimized, setIsIndexMinimized] = useState(false);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showHistorical, setShowHistorical] = useState(showHistoricalProp);
 
   // Load chapters/surahs on mount
   useEffect(() => {
@@ -1027,13 +1104,29 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               </button>
             </div>
 
-            {/* Surah Index Toggle Button (for mobile/smaller screens to show/hide sidebar) */}
-            <button
-              onClick={() => setShowSurahIndex(!showSurahIndex)}
-              className="px-2 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              📖 {showSurahIndex ? 'Hide' : 'Show'} Index
-            </button>
+              <div className="flex gap-2">
+                {/* Historical Mistakes Toggle */}
+                {historicalMistakes.length > 0 && (
+                  <button
+                    onClick={() => setShowHistorical(!showHistorical)}
+                    className={`px-2 py-1 text-xs rounded-lg transition-colors ${
+                      showHistorical 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                    }`}
+                    title={showHistorical ? 'Hide historical mistakes' : 'Show historical mistakes'}
+                  >
+                    📜 {showHistorical ? 'Hide' : 'Show'} Historical ({historicalMistakes.length})
+                  </button>
+                )}
+                {/* Surah Index Toggle Button */}
+                <button
+                  onClick={() => setShowSurahIndex(!showSurahIndex)}
+                  className="px-2 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  📖 {showSurahIndex ? 'Hide' : 'Show'} Index
+                </button>
+              </div>
           </div>
 
           {/* Student Info Right */}
@@ -1157,6 +1250,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           pageNumber={currentPage} 
           onWordClick={handleWordClick}
           mistakes={mistakes}
+          historicalMistakes={historicalMistakes}
+          showHistorical={showHistorical}
           readOnly={readOnly}
           onMistakesWithWords={setMistakesWithWords}
         />

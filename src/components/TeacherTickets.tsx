@@ -50,7 +50,7 @@ interface TeacherTicketsProps {
 
 const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const { user } = useAuth();
-  const { tickets, students, updateTicket } = useBackendData();
+  const { tickets, students, updateTicket, getStudentPersonalMushafFiltered } = useBackendData();
   
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [formData, setFormData] = useState({
@@ -61,6 +61,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const [showMushaf, setShowMushaf] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [mushafMarkings, setMushafMarkings] = useState<MushafMistake[]>([]);
+  const [historicalMistakes, setHistoricalMistakes] = useState<MushafMistake[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
 
   // Get tickets assigned to current teacher
@@ -69,16 +70,82 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     t.status !== 'finalized' && t.status !== 'completed'
   );
 
-  const myTickets = activeTickets.filter(t => 
-    t.assignedTeacherId === user?.id && 
-    (t.status === 'assigned' || t.status === 'in_progress' || t.status === 'needs_revision')
-  );
+  // Helper to check if ticket is assigned to current teacher (handle both ID formats)
+  const isTicketAssignedToTeacher = (ticket: AssignmentTicket) => {
+    const ticketTeacherId = ticket.assignedTeacherId || (ticket as any).assignedTeacherId;
+    const ticketTeacherName = ticket.assignedTeacherName || (ticket as any).assignedTeacherName;
+    const userId = user?.id || (user as any)?._id;
+    const userName = user?.name || user?.fullName || '';
+    
+    // Compare as strings to handle ObjectId vs string differences
+    const idMatch = ticketTeacherId?.toString() === userId?.toString() ||
+                    ticketTeacherId === userId;
+    
+    // Also check by name (in case ID doesn't match but name does)
+    const nameMatch = ticketTeacherName?.trim() === userName?.trim() ||
+                     (ticketTeacherName && userName && 
+                      ticketTeacherName.trim().toLowerCase() === userName.trim().toLowerCase());
+    
+    return idMatch || nameMatch;
+  };
+
+  const myTickets = activeTickets.filter(t => {
+    const isAssigned = isTicketAssignedToTeacher(t);
+    // Include "pending" status tickets that are assigned to this teacher (from auto-create chain)
+    // Note: "pending" tickets are created by auto-create chain but not yet activated
+    const validStatus = t.status === 'assigned' || 
+                       t.status === 'in_progress' || 
+                       t.status === 'needs_revision' ||
+                       (t.status === 'pending' && isAssigned); // Include pending if assigned to this teacher
+    
+    if (isAssigned) {
+      if (!validStatus) {
+        console.log('🔍 Ticket found but wrong status:', {
+          id: t.id || (t as any)._id,
+          workflowStep: t.workflowStep,
+          status: t.status,
+          assignedTeacherId: t.assignedTeacherId,
+          assignedTeacherName: t.assignedTeacherName,
+          userId: user?.id,
+          userName: user?.name
+        });
+      } else {
+        console.log('✅ Ticket visible to teacher:', {
+          id: t.id || (t as any)._id,
+          workflowStep: t.workflowStep,
+          status: t.status,
+          student: t.studentName
+        });
+      }
+    }
+    
+    return isAssigned && validStatus;
+  });
 
   // Get completed tickets (for reference)
   const completedTickets = activeTickets.filter(t => 
-    t.assignedTeacherId === user?.id && 
-    t.status === 'pending_review'
+    isTicketAssignedToTeacher(t) && t.status === 'pending_review'
   );
+  
+  // Debug logging
+  console.log('🎫 Teacher Tickets Debug:', {
+    userId: user?.id,
+    userName: user?.name || user?.fullName,
+    userEmail: user?.email,
+    userRole: user?.role,
+    totalTickets: tickets.length,
+    activeTickets: activeTickets.length,
+    myTickets: myTickets.length,
+    completedTickets: completedTickets.length,
+    allTicketTeacherIds: activeTickets.map(t => ({
+      id: t.id || (t as any)._id,
+      workflowStep: t.workflowStep,
+      assignedTeacherId: t.assignedTeacherId,
+      assignedTeacherName: t.assignedTeacherName,
+      status: t.status,
+      isAssigned: isTicketAssignedToTeacher(t)
+    }))
+  });
 
   // Load chapters on mount
   useEffect(() => {
@@ -111,6 +178,30 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         setMushafMarkings([]);
       }
       setCurrentPage(1);
+      
+      // Load student's historical mistakes from personal Mushaf
+      const loadHistoricalMistakes = async () => {
+        try {
+          const personalMushaf = await getStudentPersonalMushafFiltered(selectedTicket.studentId);
+          if (personalMushaf && personalMushaf.mistakes) {
+            // Filter out mistakes from the current ticket (exclude current ticket's mistakes)
+            const currentTicketId = selectedTicket.id || (selectedTicket as any)._id;
+            const historical = personalMushaf.mistakes.filter((m: any) => 
+              m.ticketId !== currentTicketId
+            );
+            setHistoricalMistakes(historical);
+            console.log(`✅ Loaded ${historical.length} historical mistakes for student ${selectedTicket.studentId}`);
+          } else {
+            setHistoricalMistakes([]);
+          }
+        } catch (error) {
+          console.error('Error loading historical mistakes:', error);
+          setHistoricalMistakes([]);
+        }
+      };
+      
+      loadHistoricalMistakes();
+      
       // Auto-show Mushaf if ticket status is in_progress
       if (selectedTicket.status === 'in_progress') {
         setShowMushaf(true);
@@ -118,8 +209,9 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       }
     } else {
       setShowMushaf(false);
+      setHistoricalMistakes([]);
     }
-  }, [selectedTicket]);
+  }, [selectedTicket, getStudentPersonalMushafFiltered]);
 
   const handleStartTicket = async (ticket: AssignmentTicket) => {
     try {
@@ -384,17 +476,26 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               </button>
             </div>
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
-              <p className="text-sm text-blue-800">
+              <p className="text-sm text-blue-800 mb-2">
                 💡 <strong>Instructions:</strong> Navigate to the page number the student recited from. Click on any word in the Mushaf to mark a mistake. 
                 Select the mistake type from the popup menu.
               </p>
+              {historicalMistakes.length > 0 && (
+                <p className="text-sm text-blue-700 mt-2">
+                  📜 <strong>Historical Mistakes:</strong> Previously marked mistakes from this student are shown with dashed borders and lighter colors. 
+                  This helps you see recurring mistakes and track progress over time.
+                </p>
+              )}
             </div>
             <InteractiveMushaf
               currentPage={currentPage}
               onPageChange={setCurrentPage}
               mistakes={mushafMarkings}
+              historicalMistakes={historicalMistakes}
               onMistakeMark={handleMistakeMark}
               mode="marking"
+              studentName={selectedTicket.studentName}
+              showHistorical={true}
             />
             {mushafMarkings.length > 0 && (
               <div className="mt-4 p-4 bg-green-50 rounded-lg">
@@ -460,8 +561,21 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         <div className="space-y-4">
           {myTickets.length === 0 && completedTickets.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <p className="text-lg">No tickets assigned to you yet.</p>
-              <p className="text-sm mt-2">Tickets will appear here when admin assigns them.</p>
+              <div className="mb-4">
+                <p className="text-lg font-semibold">No active tickets assigned to you.</p>
+                <p className="text-sm mt-2 text-gray-600">
+                  Tickets with status "assigned", "in_progress", or "needs_revision" will appear here.
+                </p>
+                {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length > 0 && (
+                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ You have {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length} ticket(s) assigned to you, 
+                      but they have status "{activeTickets.find(t => isTicketAssignedToTeacher(t))?.status}" 
+                      which is not currently active. Please contact admin if you need to work on these tickets.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <>

@@ -76,16 +76,16 @@ const StudentAssignments: React.FC = () => {
           // Only show mushafMarkings for assignments created from finalized tickets
           mushafMarkings: assignment.fromTicketId && assignment.mushafMarkings 
             ? (assignment.mushafMarkings || []).map((m: any) => ({
-                id: m.id || m._id || '',
-                type: m.type,
-                page: m.page,
-                surah: m.surah,
-                ayah: m.ayah,
-                wordIndex: m.wordIndex,
-                position: m.position || { x: 50, y: 50 },
-                note: m.note || '',
-                timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
-              } as MushafMistake))
+            id: m.id || m._id || '',
+            type: m.type,
+            page: m.page,
+            surah: m.surah,
+            ayah: m.ayah,
+            wordIndex: m.wordIndex,
+            position: m.position || { x: 50, y: 50 },
+            note: m.note || '',
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+          } as MushafMistake))
             : []
         };
       })

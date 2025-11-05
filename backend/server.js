@@ -80,6 +80,9 @@ mongoose.connect(MONGODB_URI)
   // This prevents infinite restart loops on deployment platforms
 });
 
+// Import Quran schemas
+const { QuranPage, QuranWord, QuranChapter } = require('./quranSchemas');
+
 // User Schema
 const userSchema = new mongoose.Schema({
   name: String,
@@ -340,7 +343,7 @@ const assignmentTicketSchema = new mongoose.Schema({
   workflowStep: { type: String, enum: ['sabq', 'sabqi', 'manzil', 'finalize'], required: true },
   assignedTeacherId: { type: String, required: true },
   assignedTeacherName: { type: String, required: true },
-  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed'], default: 'assigned' },
+  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed', 'pending'], default: 'assigned' },
   progressNotes: { type: String },
   audioLink: { type: String },
   previousTicketId: { type: String }, // Links to previous step
@@ -373,6 +376,34 @@ const assignmentTicketSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const AssignmentTicket = mongoose.model('AssignmentTicket', assignmentTicketSchema);
+
+// Student Personal Mushaf Schema - tracks all mistakes across all recitations
+const studentPersonalMushafSchema = new mongoose.Schema({
+  studentId: { type: String, required: true, index: true },
+  studentName: { type: String, required: true },
+  mistakes: [{
+    id: String,
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'], required: true },
+    page: { type: Number, required: true },
+    surah: { type: Number, required: true },
+    ayah: { type: Number, required: true },
+    wordIndex: Number,
+    position: {
+      x: Number,
+      y: Number
+    },
+    note: String,
+    audioUrl: String,
+    ticketId: String, // Reference to the ticket where this mistake was marked
+    workflowStep: String, // sabq, sabqi, manzil
+    markedBy: String, // Teacher ID who marked it
+    markedByName: String, // Teacher name
+    timestamp: { type: Date, required: true },
+    createdAt: { type: Date, default: Date.now } // When it was added to personal Mushaf
+  }]
+}, { timestamps: true });
+
+const StudentPersonalMushaf = mongoose.model('StudentPersonalMushaf', studentPersonalMushafSchema);
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
@@ -586,62 +617,75 @@ app.get('/api/tickets', async (req, res) => {
   }
 });
 
-// Get single ticket
-app.get('/api/tickets/:id', async (req, res) => {
+// IMPORTANT: Specific routes must come BEFORE generic :id route
+// Approve ticket (just approve, don't advance)
+app.post('/api/tickets/:id/approve', async (req, res) => {
   try {
     const ticket = await AssignmentTicket.findById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
-    res.json(ticket);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create ticket (Admin assigns to teacher)
-app.post('/api/tickets', async (req, res) => {
-  try {
-    const ticket = new AssignmentTicket(req.body);
+    
+    ticket.status = 'approved';
+    ticket.reviewedBy = req.body.reviewedBy;
+    ticket.reviewedAt = new Date();
     await ticket.save();
-    res.status(201).json(ticket);
+    
+    res.json({ 
+      ticket: ticket,
+      message: 'Ticket approved successfully.'
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update ticket (Teacher updates progress or Admin reviews)
-app.put('/api/tickets/:id', async (req, res) => {
+// Approve and advance ticket (Combines approve + assign next in one action - kept for backward compatibility)
+app.post('/api/tickets/:id/approve-and-advance', async (req, res) => {
   try {
-    const ticket = await AssignmentTicket.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body, updatedAt: new Date() },
-      { new: true }
-    );
-    
-    if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+    const currentTicket = await AssignmentTicket.findById(req.params.id);
+    if (!currentTicket) {
+      return res.status(404).json({ error: 'Current ticket not found' });
     }
     
-    // Create notification if status changed to pending_review
-    if (req.body.status === 'pending_review') {
-      const notification = new AdminNotification({
-        type: 'recitation_review_pending',
-        title: 'Ticket Pending Review',
-        message: `${ticket.assignedTeacherName} submitted ${ticket.workflowStep} ticket for ${ticket.studentName}`,
-        studentId: ticket.studentId,
-        priority: 'high'
-      });
-      await notification.save();
+    // Update current ticket to approved
+    currentTicket.status = 'approved';
+    currentTicket.reviewedBy = req.body.reviewedBy;
+    currentTicket.reviewedAt = new Date();
+    await currentTicket.save();
+    
+    // If not finalize step, activate and assign next ticket
+    if (currentTicket.workflowStep !== 'finalize') {
+      const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
+      const nextStep = workflowFlow[currentTicket.workflowStep];
+      
+      if (nextStep && currentTicket.nextTicketId) {
+        // Find and activate next ticket
+        const nextTicket = await AssignmentTicket.findById(currentTicket.nextTicketId);
+        if (nextTicket) {
+          // Assign teacher if provided, otherwise keep as admin (for finalize)
+          if (req.body.nextTeacherId && req.body.nextTeacherName) {
+            nextTicket.assignedTeacherId = req.body.nextTeacherId;
+            nextTicket.assignedTeacherName = req.body.nextTeacherName;
+          }
+          nextTicket.status = 'assigned';
+          await nextTicket.save();
+        }
+      }
     }
     
-    res.json(ticket);
+    res.json({ 
+      ticket: currentTicket,
+      message: currentTicket.workflowStep === 'finalize' 
+        ? 'Ticket approved. Ready to add homework.'
+        : 'Ticket approved. Next step activated.'
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Assign ticket to next teacher (Admin creates next step in chain)
+// Assign ticket to next teacher (can be done separately after approval)
 app.post('/api/tickets/:id/assign-next', async (req, res) => {
   try {
     const currentTicket = await AssignmentTicket.findById(req.params.id);
@@ -649,37 +693,58 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
       return res.status(404).json({ error: 'Current ticket not found' });
     }
     
-    if (currentTicket.status !== 'approved') {
-      return res.status(400).json({ error: 'Current ticket must be approved before assigning next step' });
+    // If not finalize step, activate and assign next ticket
+    if (currentTicket.workflowStep === 'finalize') {
+      return res.status(400).json({ error: 'Cannot assign next step for finalize ticket. Use finalize endpoint instead.' });
     }
     
-    // Determine next workflow step
     const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
     const nextStep = workflowFlow[currentTicket.workflowStep];
     
-    if (!nextStep) {
-      return res.status(400).json({ error: 'No next step available' });
+    if (!req.body.assignedTeacherId || !req.body.assignedTeacherName) {
+      return res.status(400).json({ error: 'Teacher ID and name are required' });
     }
     
-    // Create next ticket
-    const nextTicket = new AssignmentTicket({
-      studentId: currentTicket.studentId,
-      studentName: currentTicket.studentName,
-      workflowStep: nextStep,
-      assignedTeacherId: req.body.assignedTeacherId,
-      assignedTeacherName: req.body.assignedTeacherName,
-      status: 'assigned',
-      previousTicketId: currentTicket._id.toString(),
-      program: currentTicket.program
+    if (!nextStep) {
+      return res.status(400).json({ error: 'No next step available for this ticket' });
+    }
+    
+    let nextTicket = null;
+    
+    // If nextTicketId exists, find and activate it
+    if (currentTicket.nextTicketId) {
+      nextTicket = await AssignmentTicket.findById(currentTicket.nextTicketId);
+    }
+    
+    // If next ticket doesn't exist, create it
+    if (!nextTicket) {
+      nextTicket = new AssignmentTicket({
+        studentId: currentTicket.studentId,
+        studentName: currentTicket.studentName,
+        workflowStep: nextStep,
+        assignedTeacherId: req.body.assignedTeacherId,
+        assignedTeacherName: req.body.assignedTeacherName,
+        status: 'assigned',
+        previousTicketId: currentTicket._id.toString(),
+        program: currentTicket.program
+      });
+      await nextTicket.save();
+      
+      // Update current ticket with next ticket reference
+      currentTicket.nextTicketId = nextTicket._id.toString();
+      await currentTicket.save();
+    } else {
+      // Assign teacher to existing next ticket
+      nextTicket.assignedTeacherId = req.body.assignedTeacherId;
+      nextTicket.assignedTeacherName = req.body.assignedTeacherName;
+      nextTicket.status = 'assigned';
+      await nextTicket.save();
+    }
+    
+    res.json({ 
+      ticket: nextTicket,
+      message: `Next step (${nextStep}) activated and assigned to ${nextTicket.assignedTeacherName}`
     });
-    
-    await nextTicket.save();
-    
-    // Update current ticket with next ticket reference
-    currentTicket.nextTicketId = nextTicket._id.toString();
-    await currentTicket.save();
-    
-    res.status(201).json(nextTicket);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -690,20 +755,63 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
   try {
     const ticket = await AssignmentTicket.findById(req.params.id);
     if (!ticket) {
-      return res.status(404).json({ error: 'Ticket not found' });
+      console.error(`❌ Ticket not found: ${req.params.id}`);
+      return res.status(404).json({ error: `Ticket not found: ${req.params.id}` });
     }
     
+    // Only finalize step tickets can be finalized
     if (ticket.workflowStep !== 'finalize') {
       return res.status(400).json({ error: 'Only finalize step tickets can be finalized' });
     }
     
+    // Check if assignment already exists for this ticket (by fromTicketId)
+    const existingAssignmentByTicketId = await Assignment.findOne({ fromTicketId: ticket._id.toString() });
+    if (existingAssignmentByTicketId) {
+      // Update ticket and assignment
+      ticket.finalReport = req.body.finalReport;
+      ticket.homework = req.body.homework;
+      ticket.homeworkLink = req.body.homeworkLink || '';
+      ticket.reviewedBy = req.body.reviewedBy;
+      ticket.reviewedAt = new Date();
+      ticket.status = 'finalized';
+      if (!ticket.assignmentId) {
+        ticket.assignmentId = existingAssignmentByTicketId._id.toString();
+      }
+      await ticket.save();
+      
+      // Update existing assignment
+      existingAssignmentByTicketId.description = req.body.finalReport || '';
+      existingAssignmentByTicketId.homeworkComments = req.body.homework || '';
+      existingAssignmentByTicketId.homeworkLink = req.body.homeworkLink || '';
+      await existingAssignmentByTicketId.save();
+      
+      return res.json({
+        ticket: ticket,
+        assignment: existingAssignmentByTicketId,
+        message: 'Ticket finalized and assignment updated successfully'
+      });
+    }
+    
+    // Check if ticket is already finalized with assignmentId
+    if (ticket.status === 'finalized' && ticket.assignmentId) {
+      // Return existing assignment
+      const existingAssignment = await Assignment.findById(ticket.assignmentId);
+      if (existingAssignment) {
+        return res.json({
+          ticket: ticket,
+          assignment: existingAssignment,
+          message: 'Ticket already finalized'
+        });
+      }
+    }
+    
     // Update ticket with final report and homework
-    ticket.status = 'finalized';
     ticket.finalReport = req.body.finalReport;
     ticket.homework = req.body.homework;
-    ticket.homeworkLink = req.body.homeworkLink;
+    ticket.homeworkLink = req.body.homeworkLink || '';
     ticket.reviewedBy = req.body.reviewedBy;
     ticket.reviewedAt = new Date();
+    ticket.status = 'finalized';
     await ticket.save();
     
     // Get ticket chain to find all listeners (teachers)
@@ -726,42 +834,483 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
     
     // Build description with listener information
     const listenersInfo = ticketChain
+      .filter(t => t.teacherName) // Only include tickets with assigned teachers
       .map(t => `👂 ${t.step.charAt(0).toUpperCase() + t.step.slice(1)} Listener: ${t.teacherName}`)
       .join('\n');
     
-    const fullDescription = `${ticket.finalReport || ''}\n\n${listenersInfo}`;
+    const fullDescription = listenersInfo 
+      ? `${ticket.finalReport || ''}\n\n${listenersInfo}`
+      : ticket.finalReport || '';
     
-    // Get main listener (the one who did the final step or sabq)
-    const mainListener = ticketChain.find(t => t.step === 'sabq') || ticketChain[ticketChain.length - 1];
+    // Get main listener (the one who did sabq or the first in chain)
+    const mainListener = ticketChain.find(t => t.step === 'sabq') || ticketChain[0];
     
-    // Create assignment from ticket
-    const assignment = new Assignment({
-      title: `${ticket.workflowStep} - ${ticket.studentName}`,
-      description: fullDescription,
-      type: 'classwork',
-      classworkType: ticket.workflowStep === 'sabq' ? 'sabq' : ticket.workflowStep === 'sabqi' ? 'sabqi' : 'manzil',
-      program: ticket.program,
-      assignedBy: req.body.reviewedBy,
-      assignedTo: [ticket.studentId],
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      status: 'published',
-      homeworkComments: ticket.homework,
-      homeworkLink: ticket.homeworkLink,
-      fromTicketId: ticket._id.toString(),
-      listenerName: mainListener?.teacherName || ticket.assignedTeacherName,
-      listenerId: mainListener?.teacherId || ticket.assignedTeacherId,
-      mushafMarkings: ticket.mushafMarkings || [] // Include Mushaf markings in assignment
-    });
+    // Map workflowStep to valid classworkType (finalize -> sabq, sabqi, or manzil based on previous step)
+    let classworkType = ticket.workflowStep;
+    if (classworkType === 'finalize') {
+      // For finalize, use the previous step's workflow step if available
+      if (ticket.previousTicketId) {
+        const previousTicket = await AssignmentTicket.findById(ticket.previousTicketId);
+        if (previousTicket) {
+          classworkType = previousTicket.workflowStep;
+        } else {
+          classworkType = 'sabq'; // Default fallback
+        }
+      } else {
+        classworkType = 'sabq'; // Default fallback
+      }
+    }
     
-    await assignment.save();
+    // Get assignedBy - use reviewedBy if it's a valid ObjectId, otherwise use a default admin ID
+    let assignedBy = req.body.reviewedBy || ticket.assignedTeacherId;
+    // If assignedBy is not a valid ObjectId, try to find an admin user
+    if (!assignedBy || !mongoose.Types.ObjectId.isValid(assignedBy)) {
+      const adminUser = await User.findOne({ role: 'admin' });
+      if (adminUser) {
+        assignedBy = adminUser._id;
+      } else {
+        // Fallback to superadmin if no admin found
+        const superAdmin = await User.findOne({ role: 'superadmin' });
+        assignedBy = superAdmin ? superAdmin._id : new mongoose.Types.ObjectId();
+      }
+    }
     
-    // Link assignment to ticket
+    // Create new assignment
+    let assignment;
+    try {
+      assignment = new Assignment({
+        title: `${classworkType} - ${ticket.studentName}`,
+        description: fullDescription,
+        type: 'classwork',
+        classworkType: classworkType,
+        program: ticket.program,
+        assignedTo: [ticket.studentId],
+        assignedBy: assignedBy,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        status: 'published',
+        homeworkComments: ticket.homework,
+        homeworkLink: ticket.homeworkLink,
+        listenerName: mainListener?.teacherName || ticket.assignedTeacherName || 'Teacher',
+        listenerId: mainListener?.teacherId || ticket.assignedTeacherId,
+        fromTicketId: ticket._id.toString(), // Link to ticket
+        mushafMarkings: ticket.mushafMarkings || [] // Copy mistake markings
+      });
+      
+      await assignment.save();
+    } catch (saveError) {
+      // If duplicate key error, try to find and update existing assignment
+      if (saveError.code === 11000) {
+        console.error(`⚠️ Duplicate key error for ticket ${ticket._id}:`, saveError.message);
+        // Try to find assignment by fromTicketId (most reliable)
+        const existingAssignment = await Assignment.findOne({ fromTicketId: ticket._id.toString() });
+        if (existingAssignment) {
+          assignment = existingAssignment;
+          // Update existing assignment
+          assignment.title = `${classworkType} - ${ticket.studentName}`;
+          assignment.description = ticket.finalReport || '';
+          assignment.homeworkComments = ticket.homework;
+          assignment.homeworkLink = ticket.homeworkLink;
+          await assignment.save();
+          console.log(`✅ Updated existing assignment ${assignment._id} for ticket ${ticket._id}`);
+        } else {
+          // The duplicate key error is likely due to a unique index on assignmentId field
+          // Try to find any assignment that might be related to this ticket
+          // Search by student and classwork type as well
+          let searchClassworkType = classworkType;
+          const conflictingAssignment = await Assignment.findOne({ 
+            $or: [
+              { fromTicketId: ticket._id.toString() },
+              { 
+                'assignedTo': ticket.studentId,
+                classworkType: searchClassworkType,
+                program: ticket.program
+              }
+            ]
+          }).sort({ createdAt: -1 }); // Get most recent
+          
+          if (conflictingAssignment) {
+            assignment = conflictingAssignment;
+            // Update existing assignment
+            assignment.title = `${classworkType} - ${ticket.studentName}`;
+            assignment.description = ticket.finalReport || '';
+            assignment.homeworkComments = ticket.homework;
+            assignment.homeworkLink = ticket.homeworkLink;
+            assignment.fromTicketId = ticket._id.toString(); // Ensure this is set
+            await assignment.save();
+            console.log(`✅ Updated conflicting assignment ${assignment._id} for ticket ${ticket._id}`);
+          } else {
+            // If still not found, this is a database index issue
+            // Return a more helpful error message
+            console.error(`❌ Could not find existing assignment for ticket ${ticket._id}. Duplicate key error: ${saveError.message}`);
+            return res.status(500).json({ 
+              error: 'Failed to create assignment. A duplicate assignment may already exist. Please contact support.',
+              details: saveError.message
+            });
+          }
+        }
+      } else {
+        throw saveError;
+      }
+    }
+    
+    // Update ticket with assignment ID
     ticket.assignmentId = assignment._id.toString();
-    ticket.status = 'completed';
     await ticket.save();
     
-    res.json({ ticket, assignment });
+    res.json({
+      ticket: ticket,
+      assignment: assignment,
+      message: 'Ticket finalized and assignment created successfully'
+    });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single ticket (must come AFTER specific routes)
+app.get('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await AssignmentTicket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create ticket (Admin assigns to teacher) - Auto-creates full workflow chain
+app.post('/api/tickets', async (req, res) => {
+  try {
+    const { autoCreateChain, ...ticketData } = req.body;
+    
+    // If creating sabq ticket and autoCreateChain is true, create the full chain
+    if (autoCreateChain && ticketData.workflowStep === 'sabq') {
+      const sabqTicket = new AssignmentTicket({
+        ...ticketData,
+        workflowStep: 'sabq',
+        status: 'assigned'
+      });
+      await sabqTicket.save();
+      
+      // Create subsequent tickets in chain (but don't assign teachers yet - assign when previous is approved)
+      const sabqiTicket = new AssignmentTicket({
+        studentId: ticketData.studentId,
+        studentName: ticketData.studentName,
+        workflowStep: 'sabqi',
+        assignedTeacherId: '', // Will be assigned when sabq is approved
+        assignedTeacherName: 'TBD',
+        status: 'pending', // New status - waiting for previous step
+        previousTicketId: sabqTicket._id.toString(),
+        program: ticketData.program
+      });
+      await sabqiTicket.save();
+      sabqTicket.nextTicketId = sabqiTicket._id.toString();
+      
+      const manzilTicket = new AssignmentTicket({
+        studentId: ticketData.studentId,
+        studentName: ticketData.studentName,
+        workflowStep: 'manzil',
+        assignedTeacherId: '',
+        assignedTeacherName: 'TBD',
+        status: 'pending',
+        previousTicketId: sabqiTicket._id.toString(),
+        program: ticketData.program
+      });
+      await manzilTicket.save();
+      sabqiTicket.nextTicketId = manzilTicket._id.toString();
+      
+      const finalizeTicket = new AssignmentTicket({
+        studentId: ticketData.studentId,
+        studentName: ticketData.studentName,
+        workflowStep: 'finalize',
+        assignedTeacherId: '', // Admin will handle this
+        assignedTeacherName: 'Admin',
+        status: 'pending',
+        previousTicketId: manzilTicket._id.toString(),
+        program: ticketData.program
+      });
+      await finalizeTicket.save();
+      manzilTicket.nextTicketId = finalizeTicket._id.toString();
+      
+      await sabqTicket.save();
+      await sabqiTicket.save();
+      await manzilTicket.save();
+      
+      return res.status(201).json({
+        sabq: sabqTicket,
+        chainCreated: true,
+        message: 'Full workflow chain created successfully'
+      });
+    } else {
+      // Regular single ticket creation
+      const ticket = new AssignmentTicket(ticketData);
+      await ticket.save();
+      res.status(201).json(ticket);
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update ticket (Teacher updates progress or Admin reviews)
+app.put('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await AssignmentTicket.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    // If mushafMarkings are provided, save them to student's personal Mushaf
+    if (req.body.mushafMarkings && Array.isArray(req.body.mushafMarkings) && req.body.mushafMarkings.length > 0) {
+      try {
+        // Find or create student's personal Mushaf
+        let personalMushaf = await StudentPersonalMushaf.findOne({ studentId: ticket.studentId });
+        
+        if (!personalMushaf) {
+          personalMushaf = new StudentPersonalMushaf({
+            studentId: ticket.studentId,
+            studentName: ticket.studentName,
+            mistakes: []
+          });
+        }
+        
+        // Add new mistakes to personal Mushaf (avoid duplicates)
+        const existingMistakeIds = new Set(personalMushaf.mistakes.map((m) => m.id));
+        
+        req.body.mushafMarkings.forEach((mistake) => {
+          // Only add if not already present (based on id or location)
+          const isDuplicate = existingMistakeIds.has(mistake.id) || 
+            personalMushaf.mistakes.some((existing) => 
+              existing.page === mistake.page &&
+              existing.surah === mistake.surah &&
+              existing.ayah === mistake.ayah &&
+              existing.wordIndex === mistake.wordIndex &&
+              existing.type === mistake.type
+            );
+          
+          if (!isDuplicate) {
+            personalMushaf.mistakes.push({
+              ...mistake,
+              ticketId: ticket._id.toString(),
+              workflowStep: ticket.workflowStep,
+              markedBy: ticket.assignedTeacherId,
+              markedByName: ticket.assignedTeacherName,
+              timestamp: mistake.timestamp || new Date(),
+              createdAt: new Date()
+            });
+          }
+        });
+        
+        await personalMushaf.save();
+        console.log(`✅ Saved ${req.body.mushafMarkings.length} mistakes to personal Mushaf for student ${ticket.studentId}`);
+      } catch (mushafError) {
+        console.error('⚠️ Error saving to personal Mushaf:', mushafError);
+        // Don't fail the request if personal Mushaf save fails
+      }
+    }
+    
+    // Create notification if status changed to pending_review
+    if (req.body.status === 'pending_review') {
+      const notification = new AdminNotification({
+        type: 'recitation_review_pending',
+        title: 'Ticket Pending Review',
+        message: `${ticket.assignedTeacherName} submitted ${ticket.workflowStep} ticket for ${ticket.studentName}`,
+        studentId: ticket.studentId,
+        priority: 'high'
+      });
+      await notification.save();
+    }
+    
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve ticket (just approve, don't advance)
+app.post('/api/tickets/:id/approve', async (req, res) => {
+  try {
+    const ticket = await AssignmentTicket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    ticket.status = 'approved';
+    ticket.reviewedBy = req.body.reviewedBy;
+    ticket.reviewedAt = new Date();
+    await ticket.save();
+    
+    res.json({ 
+      ticket: ticket,
+      message: 'Ticket approved successfully.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Approve and advance ticket (Combines approve + assign next in one action - kept for backward compatibility)
+app.post('/api/tickets/:id/approve-and-advance', async (req, res) => {
+  try {
+    const currentTicket = await AssignmentTicket.findById(req.params.id);
+    if (!currentTicket) {
+      return res.status(404).json({ error: 'Current ticket not found' });
+    }
+    
+    // Update current ticket to approved
+    currentTicket.status = 'approved';
+    currentTicket.reviewedBy = req.body.reviewedBy;
+    currentTicket.reviewedAt = new Date();
+    await currentTicket.save();
+    
+    // If not finalize step, activate and assign next ticket
+    if (currentTicket.workflowStep !== 'finalize') {
+      const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
+      const nextStep = workflowFlow[currentTicket.workflowStep];
+      
+      if (nextStep && currentTicket.nextTicketId) {
+        // Find and activate next ticket
+        const nextTicket = await AssignmentTicket.findById(currentTicket.nextTicketId);
+        if (nextTicket) {
+          // Assign teacher if provided, otherwise keep as admin (for finalize)
+          if (req.body.nextTeacherId && req.body.nextTeacherName) {
+            nextTicket.assignedTeacherId = req.body.nextTeacherId;
+            nextTicket.assignedTeacherName = req.body.nextTeacherName;
+          }
+          nextTicket.status = 'assigned';
+          await nextTicket.save();
+        }
+      }
+    }
+    
+    res.json({ 
+      ticket: currentTicket,
+      message: currentTicket.workflowStep === 'finalize' 
+        ? 'Ticket approved. Ready to add homework.'
+        : 'Ticket approved. Next step activated.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Assign ticket to next teacher (can be done separately after approval)
+app.post('/api/tickets/:id/assign-next', async (req, res) => {
+  try {
+    const currentTicket = await AssignmentTicket.findById(req.params.id);
+    if (!currentTicket) {
+      return res.status(404).json({ error: 'Current ticket not found' });
+    }
+    
+    // If not finalize step, activate and assign next ticket
+    if (currentTicket.workflowStep === 'finalize') {
+      return res.status(400).json({ error: 'Cannot assign next step for finalize ticket. Use finalize endpoint instead.' });
+    }
+    
+    const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
+    const nextStep = workflowFlow[currentTicket.workflowStep];
+    
+    if (!req.body.assignedTeacherId || !req.body.assignedTeacherName) {
+      return res.status(400).json({ error: 'Teacher ID and name are required' });
+    }
+    
+    if (!nextStep) {
+      return res.status(400).json({ error: 'No next step available for this ticket' });
+    }
+    
+    let nextTicket = null;
+    
+    // If nextTicketId exists, find and activate it
+    if (currentTicket.nextTicketId) {
+      nextTicket = await AssignmentTicket.findById(currentTicket.nextTicketId);
+    }
+    
+    // If next ticket doesn't exist, create it
+    if (!nextTicket) {
+      nextTicket = new AssignmentTicket({
+        studentId: currentTicket.studentId,
+        studentName: currentTicket.studentName,
+        workflowStep: nextStep,
+        assignedTeacherId: req.body.assignedTeacherId,
+        assignedTeacherName: req.body.assignedTeacherName,
+        status: 'assigned',
+        previousTicketId: currentTicket._id.toString(),
+        program: currentTicket.program
+      });
+      await nextTicket.save();
+      
+      // Update current ticket with next ticket reference
+      currentTicket.nextTicketId = nextTicket._id.toString();
+      await currentTicket.save();
+    } else {
+      // Assign teacher to existing next ticket
+      nextTicket.assignedTeacherId = req.body.assignedTeacherId;
+      nextTicket.assignedTeacherName = req.body.assignedTeacherName;
+      nextTicket.status = 'assigned';
+      await nextTicket.save();
+    }
+    
+    res.json({ 
+      ticket: nextTicket,
+      message: `Next step (${nextStep}) activated and assigned to ${nextTicket.assignedTeacherName}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// Get student's personal Mushaf (all historical mistakes)
+app.get('/api/students/:studentId/personal-mushaf', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const personalMushaf = await StudentPersonalMushaf.findOne({ studentId });
+    
+    if (!personalMushaf) {
+      return res.json({ studentId, studentName: '', mistakes: [] });
+    }
+    
+    res.json(personalMushaf);
+  } catch (error) {
+    console.error('Error fetching personal Mushaf:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get student's personal Mushaf mistakes for a specific page/surah/ayah
+app.get('/api/students/:studentId/personal-mushaf/filter', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { page, surah, ayah } = req.query;
+    
+    const personalMushaf = await StudentPersonalMushaf.findOne({ studentId });
+    
+    if (!personalMushaf) {
+      return res.json({ mistakes: [] });
+    }
+    
+    let filteredMistakes = personalMushaf.mistakes;
+    
+    if (page) {
+      filteredMistakes = filteredMistakes.filter((m) => m.page === parseInt(page));
+    }
+    if (surah) {
+      filteredMistakes = filteredMistakes.filter((m) => m.surah === parseInt(surah));
+    }
+    if (ayah) {
+      filteredMistakes = filteredMistakes.filter((m) => m.ayah === parseInt(ayah));
+    }
+    
+    res.json({ mistakes: filteredMistakes });
+  } catch (error) {
+    console.error('Error filtering personal Mushaf:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -899,121 +1448,125 @@ async function makeQuranApiRequest(endpoint) {
   }
 }
 
-// Get page info from local database
-function getPageInfoFromDb(pageNumber) {
-  if (!quranDb) return null;
-  
+// Get page info from MongoDB
+async function getPageInfoFromDb(pageNumber) {
   try {
-    const lines = quranDb.prepare(`
-      SELECT DISTINCT surah_number 
-      FROM pages 
-      WHERE page_number = ? AND surah_number != ''
-    `).all(pageNumber);
+    const pageLines = await QuranPage.find({ page_number: pageNumber })
+      .sort({ line_number: 1 })
+      .lean();
     
-    const surahs = lines.map(l => parseInt(l.surah_number)).filter(s => !isNaN(s));
-    const pageLines = quranDb.prepare(`
-      SELECT * FROM pages 
-      WHERE page_number = ? 
-      ORDER BY line_number
-    `).all(pageNumber);
+    if (!pageLines || pageLines.length === 0) {
+      return null;
+    }
+    
+    const surahs = [...new Set(pageLines
+      .map(l => l.surah_number)
+      .filter(s => s !== null && s !== undefined)
+      .map(s => parseInt(s))
+      .filter(s => !isNaN(s))
+    )];
     
     return {
       pageNumber,
-      surahs: [...new Set(surahs)], // Unique surahs
+      surahs: surahs,
       lines: pageLines.length,
       lineData: pageLines
     };
   } catch (error) {
-    console.error(`Error getting page info from DB for page ${pageNumber}:`, error.message);
+    console.error(`Error getting page info from MongoDB for page ${pageNumber}:`, error.message);
     return null;
   }
 }
 
-// Get surah info from local database
-function getSurahInfoFromDb(surahId) {
-  if (!quranDb) return null;
-  
+// Get surah info from MongoDB
+async function getSurahInfoFromDb(surahId) {
   try {
-    const pages = quranDb.prepare(`
-      SELECT DISTINCT page_number 
-      FROM pages 
-      WHERE surah_number = ?
-      ORDER BY page_number
-    `).all(surahId);
+    const pageNumbers = await QuranPage.distinct('page_number', { surah_number: surahId });
     
-    const pageNumbers = pages.map(p => p.page_number);
+    if (!pageNumbers || pageNumbers.length === 0) {
+      return null;
+    }
+    
+    const sortedPages = pageNumbers.sort((a, b) => a - b);
     return {
       surahId,
-      pages: pageNumbers,
-      firstPage: pageNumbers[0] || null,
-      lastPage: pageNumbers[pageNumbers.length - 1] || null
+      pages: sortedPages,
+      firstPage: sortedPages[0] || null,
+      lastPage: sortedPages[sortedPages.length - 1] || null
     };
   } catch (error) {
-    console.error(`Error getting surah info from DB for surah ${surahId}:`, error.message);
+    console.error(`Error getting surah info from MongoDB for surah ${surahId}:`, error.message);
     return null;
   }
 }
 
-// Get all surahs from local database
-function getAllSurahsFromDb() {
-  if (!quranDb) return [];
-  
+// Get all surahs from MongoDB
+async function getAllSurahsFromDb() {
   try {
-    const surahs = quranDb.prepare(`
-      SELECT DISTINCT surah_number 
-      FROM pages 
-      WHERE surah_number != '' AND surah_number IS NOT NULL
-      ORDER BY CAST(surah_number AS INTEGER)
-    `).all();
+    const surahs = await QuranPage.distinct('surah_number', {
+      surah_number: { $ne: null, $exists: true }
+    });
     
-    return surahs.map(s => parseInt(s.surah_number)).filter(s => !isNaN(s) && s > 0);
+    return surahs
+      .map(s => parseInt(s))
+      .filter(s => !isNaN(s) && s > 0)
+      .sort((a, b) => a - b);
   } catch (error) {
-    console.error('Error getting surahs from DB:', error.message);
+    console.error('Error getting all surahs from MongoDB:', error.message);
     return [];
   }
 }
 
-// Get verses from Quran text database (with version selection)
-function getVersesFromQuranDb(surahId, pageNumber = null, version = 'nastaleeq') {
-  // Select database based on version
-  const db = version === 'v4' ? qpcV4Db : nastaleeqDb;
-  if (!db) return null;
-  
+// Get verses from MongoDB (with version selection)
+async function getVersesFromQuranDb(surahId, pageNumber = null, version = 'nastaleeq') {
   try {
-    let query;
-    let params;
+    let query = { version };
     
     if (surahId) {
-      // Get all verses for a surah
-      query = `
-        SELECT surah, ayah, GROUP_CONCAT(text, ' ') as text_uthmani
-        FROM words
-        WHERE surah = ?
-        GROUP BY surah, ayah
-        ORDER BY CAST(ayah AS INTEGER)
-      `;
-      params = [surahId];
+      query.surah = surahId;
     } else if (pageNumber) {
-      // Get verses for a page (we need to map page to surah/ayah from the pages DB)
-      // For now, return null - we'll need the pages DB to map pages to surahs
-      return null;
+      query.page_number = pageNumber;
     } else {
       return null;
     }
     
-    const verses = db.prepare(query).all(...params);
+    const words = await QuranWord.find(query)
+      .sort({ surah: 1, ayah: 1, word: 1 })
+      .lean();
     
-    return verses.map((v, idx) => ({
+    if (!words || words.length === 0) {
+      return null;
+    }
+    
+    // Group words by ayah
+    const versesMap = new Map();
+    
+    words.forEach(word => {
+      const key = `${word.surah}:${word.ayah}`;
+      if (!versesMap.has(key)) {
+        versesMap.set(key, {
+          surah: word.surah,
+          ayah: word.ayah,
+          words: []
+        });
+      }
+      versesMap.get(key).words.push(word.text);
+    });
+    
+    // Convert to verse format
+    const verses = Array.from(versesMap.values()).map((verse, idx) => ({
       id: idx + 1,
-      chapter_id: v.surah,
-      verse_number: v.ayah,
-      verse_key: `${v.surah}:${v.ayah}`,
-      text_uthmani: v.text_uthmani,
-      text_simple: v.text_uthmani, // Using same text for simplicity
-      text: v.text_uthmani
+      chapter_id: verse.surah,
+      verse_number: verse.ayah,
+      verse_key: `${verse.surah}:${verse.ayah}`,
+      text_uthmani: verse.words.join(' '),
+      text_simple: verse.words.join(' '),
+      text: verse.words.join(' ')
     }));
+    
+    return verses;
   } catch (error) {
-    console.error(`Error getting verses from Quran DB (${version}):`, error.message);
+    console.error(`Error getting verses from MongoDB (${version}):`, error.message);
     return null;
   }
 }
@@ -1023,62 +1576,84 @@ function getVersesFromNastaleeqDb(surahId, pageNumber = null) {
   return getVersesFromQuranDb(surahId, pageNumber, 'nastaleeq');
 }
 
-// Get verses for a page using both databases
-function getPageVersesFromLocalDb(pageNumber, version = 'nastaleeq') {
-  const textDb = version === 'v4' ? qpcV4Db : nastaleeqDb;
-  if (!quranDb || !textDb) return null;
-  
+// Get verses for a page using MongoDB
+async function getPageVersesFromLocalDb(pageNumber, version = 'nastaleeq') {
   try {
-    // Get surahs on this page from pages DB
-    const pageInfo = getPageInfoFromDb(pageNumber);
+    // Get surahs on this page from MongoDB
+    const pageInfo = await getPageInfoFromDb(pageNumber);
     if (!pageInfo || pageInfo.surahs.length === 0) return null;
     
-    // For now, get all verses from the first surah on the page
-    // In a full implementation, we'd need to map page lines to specific ayahs
-    // But since page 1 typically starts from the beginning of the surah,
-    // we can approximate by getting the first N verses
-    const mainSurah = pageInfo.surahs[0];
-    const surahVerses = getVersesFromQuranDb(mainSurah, null, version);
+    // Get words for this page directly from MongoDB
+    const words = await QuranWord.find({ 
+      page_number: pageNumber,
+      version: version 
+    })
+      .sort({ surah: 1, ayah: 1, word: 1 })
+      .lean();
     
-    if (!surahVerses || surahVerses.length === 0) return null;
+    if (!words || words.length === 0) {
+      // Fallback: get verses from the first surah on the page
+      const mainSurah = pageInfo.surahs[0];
+      return await getVersesFromQuranDb(mainSurah, null, version);
+    }
     
-    // For page 1, typically shows first 7 verses of Al-Fatihah
-    // For other pages, we'd need more sophisticated mapping
-    // For now, return first 10 verses as an approximation
-    // TODO: Implement proper page-to-ayah mapping
-    const pageVerses = surahVerses.slice(0, 15); // Approximate verses per page
+    // Group words by ayah
+    const versesMap = new Map();
+    words.forEach(word => {
+      const key = `${word.surah}:${word.ayah}`;
+      if (!versesMap.has(key)) {
+        versesMap.set(key, {
+          surah: word.surah,
+          ayah: word.ayah,
+          words: []
+        });
+      }
+      versesMap.get(key).words.push(word.text);
+    });
     
-    return pageVerses;
+    // Convert to verse format
+    const verses = Array.from(versesMap.values()).map((verse, idx) => ({
+      id: idx + 1,
+      chapter_id: verse.surah,
+      verse_number: verse.ayah,
+      verse_key: `${verse.surah}:${verse.ayah}`,
+      text_uthmani: verse.words.join(' '),
+      text_simple: verse.words.join(' '),
+      text: verse.words.join(' ')
+    }));
+    
+    return verses;
   } catch (error) {
-    console.error(`Error getting page verses from local DB:`, error.message);
+    console.error(`Error getting page verses from MongoDB:`, error.message);
     return null;
   }
 }
 
-// Proxy endpoint to get Quran chapters (try local DB first, fallback to API)
+// Proxy endpoint to get Quran chapters (try MongoDB first, fallback to API)
 app.get('/api/quran/chapters', async (req, res) => {
-  // Try local database first
-  if (quranDb) {
-    try {
-      const surahIds = getAllSurahsFromDb();
-      if (surahIds.length > 0) {
-        // Build chapters array from database
-        const chapters = surahIds.map(id => {
-          const surahInfo = getSurahInfoFromDb(id);
-          return {
-            id,
-            name_simple: `Surah ${id}`, // We'll need to add names later or use API
-            name_arabic: '',
-            name_complex: '',
-            pages: surahInfo ? [surahInfo.firstPage, surahInfo.lastPage] : [1, 1],
-            verses_count: 0, // Not in this DB
-            revelation_place: 'unknown',
-            translated_name: {
-              language_name: 'english',
-              name: `Chapter ${id}`
-            }
-          };
-        });
+  // Try MongoDB first
+  try {
+    const surahIds = await getAllSurahsFromDb();
+    if (surahIds.length > 0) {
+      // Build chapters array from database
+      const chaptersPromises = surahIds.map(async (id) => {
+        const surahInfo = await getSurahInfoFromDb(id);
+        return {
+          id,
+          name_simple: `Surah ${id}`, // We'll need to add names later or use API
+          name_arabic: '',
+          name_complex: '',
+          pages: surahInfo ? [surahInfo.firstPage, surahInfo.lastPage] : [1, 1],
+          verses_count: 0, // Not in this DB
+          revelation_place: 'unknown',
+          translated_name: {
+            language_name: 'english',
+            name: `Chapter ${id}`
+          }
+        };
+      });
+      
+      const chapters = await Promise.all(chaptersPromises);
         
         // If we have chapters from DB, try to enrich with API data for names
         try {
@@ -1114,7 +1689,6 @@ app.get('/api/quran/chapters', async (req, res) => {
       console.error('Error getting chapters from local DB:', dbError.message);
       // Fall through to API
     }
-  }
   
   // Fallback to API
   try {
@@ -1321,66 +1895,42 @@ app.get('/api/quran/surahs/:surahId/verses', async (req, res) => {
   }
 });
 
-// Proxy endpoint to get page info (from local DB)
+// Proxy endpoint to get page info (from MongoDB)
 app.get('/api/quran/pages/:pageNumber/info', async (req, res) => {
   try {
     const pageNumber = parseInt(req.params.pageNumber);
-    const pageInfo = getPageInfoFromDb(pageNumber);
+    const pageInfo = await getPageInfoFromDb(pageNumber);
     
     if (pageInfo) {
       return res.json(pageInfo);
     }
     
-    res.status(404).json({ error: `Page ${pageNumber} not found in local database` });
+    res.status(404).json({ error: `Page ${pageNumber} not found in database` });
   } catch (error) {
     console.error(`Error getting page info for page ${req.params.pageNumber}:`, error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get page lines with text (15-line format)
+// Get page lines with text (15-line format) - using MongoDB
 app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
   try {
     const pageNumber = parseInt(req.params.pageNumber);
-    const version = req.query.version || 'nastaleeq'; // 'nastaleeq' or 'v4'
+    const version = req.query.version || 'v4'; // 'nastaleeq' or 'v4'
     
-    console.log(`📖 Fetching page ${pageNumber} lines (version: ${version})`);
+    console.log(`📖 Fetching page ${pageNumber} lines (version: ${version}) from MongoDB`);
     
-    // Select database based on version
-    const textDb = version === 'v4' ? qpcV4Db : nastaleeqDb;
-    
-    if (!quranDb) {
-      console.error(`❌ Quran DB not available - SQLite support disabled or database file missing`);
-      return res.status(503).json({ 
-        error: `Quran database not available. Please use external API endpoints or ensure SQLite database files are present.`,
-        available: false
-      });
-    }
-    
-    if (!textDb) {
-      console.error(`❌ Text DB not available for version: ${version}`);
-      return res.status(503).json({ 
-        error: `Text database (${version === 'v4' ? 'qpc-v4.db' : 'qpc-nastaleeq.db'}) not available`,
-        available: false
-      });
-    }
-    
-    console.log(`✅ Databases loaded: quranDb=${!!quranDb}, textDb=${!!textDb}`);
-    
-    // Get page lines from pages DB
-    // Note: Some lines appear twice, so we'll deduplicate by line_number and line_type
-    const allPageLines = quranDb.prepare(`
-      SELECT * FROM pages 
-      WHERE page_number = ? 
-      ORDER BY line_number
-    `).all(pageNumber);
+    // Get page lines from MongoDB
+    const allPageLines = await QuranPage.find({ page_number: pageNumber })
+      .sort({ line_number: 1 })
+      .lean();
     
     if (allPageLines.length === 0) {
-      console.error(`❌ Page ${pageNumber} not found in database`);
+      console.error(`❌ Page ${pageNumber} not found in MongoDB`);
       return res.status(404).json({ error: `Page ${pageNumber} not found in database` });
     }
     
-    console.log(`✅ Found ${allPageLines.length} lines for page ${pageNumber}`);
+    console.log(`✅ Found ${allPageLines.length} lines for page ${pageNumber} in MongoDB`);
     
     // Deduplicate lines - keep only unique combinations of line_number and line_type
     const seenLines = new Set();
@@ -1406,9 +1956,9 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
       console.log(`✅ Found surah ${surahId} from line data (line ${surahLine.line_number})`);
     }
     
-    // Method 2: Try to get from page info (pages table)
+    // Method 2: Try to get from page info (MongoDB)
     if (!surahId) {
-      const pageInfo = getPageInfoFromDb(pageNumber);
+      const pageInfo = await getPageInfoFromDb(pageNumber);
       if (pageInfo && pageInfo.surahs && pageInfo.surahs.length > 0) {
         surahId = pageInfo.surahs[0]; // Use first surah found on this page
         console.log(`⚠️ No surah in line data for page ${pageNumber}, using page info: surah ${surahId}`);
@@ -1421,14 +1971,14 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
       const ayahLine = pageLines.find(l => l.line_type === 'ayah' && l.first_word_id);
       if (ayahLine && ayahLine.first_word_id) {
         try {
-          // Query words table to find surah from the first word ID on this page
-          const firstWord = textDb.prepare(`
-            SELECT surah FROM words 
-            WHERE id = ?
-          `).get(ayahLine.first_word_id);
+          // Query MongoDB to find surah from the first word ID on this page
+          const firstWord = await QuranWord.findOne({ 
+            word_id: ayahLine.first_word_id,
+            version: version
+          }).lean();
           
           if (firstWord && firstWord.surah) {
-            surahId = parseInt(firstWord.surah);
+            surahId = firstWord.surah;
             console.log(`✅ Found surah ${surahId} from word ID ${ayahLine.first_word_id} on page ${pageNumber}`);
           }
         } catch (e) {
@@ -1450,24 +2000,21 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
       } else if (pageNumber <= 77) {
         surahId = 3;
       } else {
-        // For pages beyond 77, we need to query the pages table
-        if (quranDb) {
-          try {
-            const allPages = quranDb.prepare(`
-              SELECT DISTINCT page_number, surah_number 
-              FROM pages 
-              WHERE page_number <= ? AND surah_number IS NOT NULL AND surah_number != ''
-              ORDER BY page_number DESC
-              LIMIT 1
-            `).get(pageNumber);
-            
-            if (allPages && allPages.surah_number) {
-              surahId = parseInt(allPages.surah_number);
-              console.log(`⚠️ Using estimated surah ${surahId} from pages table for page ${pageNumber}`);
-            }
-          } catch (error) {
-            console.warn(`⚠️ Could not query pages table: ${error.message}`);
+        // For pages beyond 77, query MongoDB
+        try {
+          const allPages = await QuranPage.findOne({
+            page_number: { $lte: pageNumber },
+            surah_number: { $ne: null, $exists: true }
+          })
+            .sort({ page_number: -1 })
+            .lean();
+          
+          if (allPages && allPages.surah_number) {
+            surahId = parseInt(allPages.surah_number);
+            console.log(`⚠️ Using estimated surah ${surahId} from MongoDB for page ${pageNumber}`);
           }
+        } catch (error) {
+          console.warn(`⚠️ Could not query MongoDB: ${error.message}`);
         }
       }
     }
@@ -1486,13 +2033,13 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
     
     console.log(`✅ Found surah ${surahId} for page ${pageNumber}`);
     
-    // Get all words for this surah from selected database
-    // Note: The words table has columns: id, location, surah, ayah, word, text
-    const allWords = textDb.prepare(`
-      SELECT * FROM words 
-      WHERE surah = ? 
-      ORDER BY CAST(ayah AS INTEGER), CAST(word AS INTEGER)
-    `).all(surahId);
+    // Get all words for this surah from MongoDB
+    const allWords = await QuranWord.find({ 
+      surah: surahId,
+      version: version
+    })
+      .sort({ ayah: 1, word: 1 })
+      .lean();
     
     // Build lines with text
     const linesWithText = pageLines.map((line, idx) => {
@@ -1500,22 +2047,20 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
         return {
           line_number: line.line_number,
           line_type: 'surah_name',
-          is_centered: line.is_centered === 1,
+          is_centered: line.is_centered === true || line.is_centered === 1,
           surah_number: parseInt(line.surah_number),
           text: '',
           words: []
         };
       } else if (line.line_type === 'ayah') {
         // Get words for this line based on word IDs
-        // Word IDs in pages DB are 1-based sequential across the entire surah
+        // Word IDs are sequential across the entire surah
         const firstWordId = parseInt(line.first_word_id) || 0;
         const lastWordId = parseInt(line.last_word_id) || 0;
         
-        // Get words by sequential index (1-based)
-        // Note: allWords is already ordered by ayah and word
-        const lineWords = allWords.filter((w, idx) => {
-          const wordIndex = idx + 1; // 1-based index
-          return wordIndex >= firstWordId && wordIndex <= lastWordId;
+        // Get words by word_id (sequential index)
+        const lineWords = allWords.filter((w) => {
+          return w.word_id >= firstWordId && w.word_id <= lastWordId;
         });
         
         const text = lineWords.map(w => w.text).join(' ');
@@ -1523,13 +2068,13 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
         return {
           line_number: line.line_number,
           line_type: 'ayah',
-          is_centered: line.is_centered === 1,
+          is_centered: line.is_centered === true || line.is_centered === 1,
           surah_number: surahId,
           first_word_id: firstWordId,
           last_word_id: lastWordId,
           text: text,
           words: lineWords.map(w => ({
-            id: w.id,
+            id: w.word_id,
             text: w.text,
             surah: w.surah,
             ayah: w.ayah,
@@ -1540,7 +2085,7 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
         return {
           line_number: line.line_number,
           line_type: line.line_type,
-          is_centered: line.is_centered === 1,
+          is_centered: line.is_centered === true || line.is_centered === 1,
           text: '',
           words: []
         };
@@ -1646,15 +2191,15 @@ app.get('/api/quran/pages/:pageNumber/verses', async (req, res) => {
     const pageNumber = parseInt(req.params.pageNumber);
     const version = req.query.version || 'nastaleeq'; // 'nastaleeq' or 'v4'
     
-    // Try local database first
-    const localVerses = getPageVersesFromLocalDb(pageNumber, version);
+    // Try MongoDB first
+    const localVerses = await getPageVersesFromLocalDb(pageNumber, version);
     if (localVerses && localVerses.length > 0) {
       console.log(`✅ Quran verses for page ${pageNumber} from local DB (${version}, ${localVerses.length} verses)`);
       return res.json({ verses: localVerses, pagination: null, version });
     }
     
-    // Try to get surah info from local DB to help with API calls
-    const pageInfo = getPageInfoFromDb(pageNumber);
+    // Try to get surah info from MongoDB to help with API calls
+    const pageInfo = await getPageInfoFromDb(pageNumber);
     
     // Get verses for this page - try with text parameters first
     // Note: /verses/by_page/ seems more reliable than /pages/.../verses
