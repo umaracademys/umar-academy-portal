@@ -884,7 +884,17 @@ export const WordByWordPage: React.FC<{
                                 {mistake.audioUrl && (
                                   <div className="mt-2">
                                     <div className="text-xs text-gray-500 mb-1">Audio correction:</div>
-                                    <audio controls src={mistake.audioUrl} className="w-full h-8">
+                                    <audio 
+                                      controls 
+                                      src={
+                                        mistake.audioUrl.startsWith('http') 
+                                          ? mistake.audioUrl 
+                                          : `${typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE 
+                                              ? (window as any).MUSHAF_API_BASE.replace('/api', '') 
+                                              : import.meta.env?.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${mistake.audioUrl}`
+                                      } 
+                                      className="w-full h-8"
+                                    >
                                       Your browser does not support the audio element.
                                     </audio>
                                   </div>
