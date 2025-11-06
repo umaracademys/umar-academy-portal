@@ -346,73 +346,27 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
       {selectedTicket ? (
         <div className="space-y-6">
-          {/* Professional Navigation Bar */}
-          <nav className="bg-white rounded-xl shadow-sm border border-gray-200 sticky top-4 z-40">
-            <div className="px-4 py-3">
-              <div className="flex items-center justify-between gap-4">
-                {/* Back Button */}
-                <button
-                  onClick={() => {
-                    setSelectedTicket(null);
-                    setFormData({ progressNotes: '', audioLink: '' });
-                    setShowMushaf(false);
-                    setCurrentPage(1);
-                  }}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  <span className="hidden sm:inline">Back to Tickets</span>
-                </button>
-
-                {/* Page Navigation */}
-                <div className="flex-1 flex items-center justify-center gap-4">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage <= 1}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title="Previous page"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </button>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="text-center">
-                      <div className="text-sm font-semibold text-gray-900">Page {currentPage}</div>
-                      <div className="text-xs text-gray-500">
-                        {getCurrentSurah(currentPage)?.name_simple || 'N/A'} • Juz {getJuzFromPage(currentPage)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
-                    disabled={currentPage >= 604}
-                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title="Next page"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Student Info */}
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-gray-900">{getStudentName(selectedTicket.studentId)}</div>
-                  <div className="text-xs text-gray-500">{selectedTicket.program}</div>
-                </div>
-              </div>
-            </div>
-          </nav>
           {/* Ticket Information Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
+                  {/* Back Button */}
+                  <button
+                    onClick={() => {
+                      setSelectedTicket(null);
+                      setFormData({ progressNotes: '', audioLink: '' });
+                      setShowMushaf(false);
+                      setCurrentPage(1);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white rounded-lg transition-colors"
+                    title="Back to Tickets"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span className="hidden sm:inline">Back</span>
+                  </button>
                   <div>
                     <h2 className="text-lg font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h2>
                     <div className="flex items-center gap-3 mt-1">
@@ -495,15 +449,49 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
           {/* Mushaf View - Professional Layout */}
           {showMushaf && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              {/* Mushaf Header */}
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
-                <div className="flex items-center justify-between">
-                  <div>
+              {/* Mushaf Header with Integrated Page Navigation */}
+              <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-bold text-white">Interactive Mushaf</h3>
                     <p className="text-sm text-blue-100 mt-1">
                       Mark mistakes while listening to the student's recitation
                     </p>
                   </div>
+                  
+                  {/* Page Navigation - Integrated in Header */}
+                  <div className="flex items-center gap-3 bg-white/10 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20">
+                    <button
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      disabled={currentPage <= 1}
+                      className="p-1.5 text-white hover:bg-white/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Previous page"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    
+                    <div className="text-center min-w-[100px]">
+                      <div className="text-sm font-semibold text-white">Page {currentPage}</div>
+                      <div className="text-xs text-blue-100">
+                        {getCurrentSurah(currentPage)?.name_simple || 'N/A'} • Juz {getJuzFromPage(currentPage)}
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
+                      disabled={currentPage >= 604}
+                      className="p-1.5 text-white hover:bg-white/20 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Next page"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Mistake Counter */}
                   {mushafMarkings.length > 0 && (
                     <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/30">
                       <div className="flex items-center gap-2">
