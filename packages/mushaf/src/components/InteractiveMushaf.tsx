@@ -383,6 +383,7 @@ export const WordByWordPage: React.FC<{
 }) => {
   const [layout, setLayout] = useState<LayoutPage | null>(null);
   const [words, setWords] = useState<Word[]>([]);
+  const [wordsFromApi, setWordsFromApi] = useState<Word[]>([]); // Words from API response as fallback
   const [background, setBackground] = useState<string>("");
   const [chapters, setChapters] = useState<Chapter[]>([]);
 
@@ -451,14 +452,41 @@ export const WordByWordPage: React.FC<{
   }, []);
 
   useEffect(() => {
+    // Reset layout and API words when page changes
+    setLayout(null);
+    setWordsFromApi([]);
+    
     const fetchData = async () => {
       try {
         // Fetch page layout from backend API (uses local database)
+        // Don't wait for words - fetch layout independently
         const pageData = await fetchPageLines(pageNumber, 'v4');
         
         if (!pageData || !pageData.lines) {
           console.error(`No layout data found for page ${pageNumber}`);
+          // Set layout to empty to show error state
+          setLayout(null);
           return;
+        }
+
+        // Extract words from API response if available (fallback if word_by_word.json not loaded)
+        const apiWords: Word[] = [];
+        pageData.lines.forEach((line: any) => {
+          if (line.words && Array.isArray(line.words)) {
+            line.words.forEach((wordData: any) => {
+              apiWords.push({
+                word_index: wordData.id || wordData.word_index || 0,
+                surah: parseInt(wordData.surah) || 0,
+                ayah: parseInt(wordData.ayah) || 0,
+                text: wordData.text || ''
+              });
+            });
+          }
+        });
+        
+        if (apiWords.length > 0) {
+          setWordsFromApi(apiWords);
+          console.log(`✅ Extracted ${apiWords.length} words from API response`);
         }
 
         // Map backend response to LayoutPage format
@@ -484,22 +512,23 @@ export const WordByWordPage: React.FC<{
         setBackground("");
       } catch (err) {
         console.error("Error fetching layout:", err);
+        setLayout(null);
       }
     };
 
-    if (words.length > 0) {
-      fetchData();
-    }
-  }, [pageNumber, words.length]);
+    // Fetch layout immediately, don't wait for words
+    fetchData();
+  }, [pageNumber]);
 
   // Collect mistakes with their word text for the parent component
   useEffect(() => {
-    if (words.length > 0 && mistakes.length > 0 && onMistakesWithWords) {
+    const availableWords = words.length > 0 ? words : wordsFromApi;
+    if (availableWords.length > 0 && mistakes.length > 0 && onMistakesWithWords) {
       const mistakesWithWordText = mistakes
         .filter(m => m.page === pageNumber)
         .map(m => {
           // Find the word text for this mistake
-          const word = words.find(
+          const word = availableWords.find(
             w => w.surah === m.surah && 
                  w.ayah === m.ayah && 
                  (m.wordIndex === undefined || m.wordIndex === null || w.word_index === m.wordIndex)
@@ -511,7 +540,7 @@ export const WordByWordPage: React.FC<{
         });
       onMistakesWithWords(mistakesWithWordText);
     }
-  }, [words, mistakes, pageNumber, onMistakesWithWords]);
+  }, [words, wordsFromApi, mistakes, pageNumber, onMistakesWithWords]);
 
   // Function to get mistake for a word (prioritize current mistakes over historical)
   const getWordMistake = (word: Word): { mistake: MushafMistake | undefined; isHistorical: boolean } => {
@@ -642,8 +671,25 @@ export const WordByWordPage: React.FC<{
     }
   };
 
-  if (!layout || words.length === 0)
-    return <div className="text-center p-6">Loading Mushaf Page...</div>;
+  // Show loading state only if layout is not loaded yet
+  if (!layout) {
+    return (
+      <div className="text-center p-6">
+        <div className="animate-pulse">
+          <div className="text-lg text-gray-600 mb-2">Loading Mushaf Page {pageNumber}...</div>
+          <div className="text-sm text-gray-500">Fetching page layout from server</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Use words from API as fallback if word file not loaded
+  const availableWords = words.length > 0 ? words : wordsFromApi;
+  
+  // Show warning if neither words file nor API words are available
+  if (words.length === 0 && wordsFromApi.length === 0) {
+    console.warn('⚠️ Words data not loaded yet - page may not display correctly');
+  }
 
   return (
     <div className="relative w-full flex flex-col items-center">
@@ -712,8 +758,9 @@ export const WordByWordPage: React.FC<{
                 return null;
               }
 
-              // Get words for this line and sort by word_index to ensure correct order
-              const lineWords = words
+              // Get words for this line - use words from file if available, otherwise use API words
+              const availableWords = words.length > 0 ? words : wordsFromApi;
+              const lineWords = availableWords
                 .filter(
                   (w) =>
                     w.word_index >= line.first_word_id! &&
