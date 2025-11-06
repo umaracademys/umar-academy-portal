@@ -106,13 +106,13 @@ const AssignmentsPage: React.FC = () => {
                 <h1 className="text-4xl font-bold mb-2">📝 Finalized Assignments</h1>
                 <p className="text-purple-100 text-lg">View assignments created from approved ticket workflow</p>
               </div>
-              {canCreateAssignments && (
-                <button
-                  onClick={() => setShowCreateForm(true)}
+                {canCreateAssignments && (
+                    <button
+                      onClick={() => setShowCreateForm(true)}
                   className="px-8 py-4 bg-white text-purple-600 rounded-xl hover:bg-purple-50 font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center"
-                >
-                  <span className="mr-2">✨</span>
-                  Create New Assignment
+                    >
+                      <span className="mr-2">✨</span>
+                      Create New Assignment
                 </button>
               )}
             </div>
@@ -306,16 +306,16 @@ const AssignmentsPage: React.FC = () => {
                     >
                       Finalize & Create Assignment
                     </button>
-                    <button
+                <button
                       onClick={() => {
                         setSelectedTicket(null);
                         setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
                       }}
                       className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
-                    >
+                >
                       Cancel
-                    </button>
-                  </div>
+                </button>
+              </div>
                 </div>
               )}
             </div>
@@ -389,9 +389,9 @@ const AssignmentsPage: React.FC = () => {
                   <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="space-y-4">
                       {/* Header */}
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
                             <h3 className="text-xl font-bold text-gray-900">{studentName}</h3>
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
                               {workflowStep}
@@ -399,20 +399,20 @@ const AssignmentsPage: React.FC = () => {
                             {assignment.listenerName && (
                               <span className="text-sm text-gray-600">
                                 👂 Listener: {assignment.listenerName}
-                              </span>
+                          </span>
                             )}
-                          </div>
-                          
+                        </div>
+                        
                           <div className="flex items-center space-x-6 text-sm text-gray-500 mb-3">
                             <span>📚 {programs.find(p => p.id === assignment.program)?.name || 'Unknown Program'}</span>
-                            <span>📅 {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'}</span>
+                          <span>📅 {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'}</span>
                             {assignment.createdAt && (
                               <span>🕒 Created: {new Date(assignment.createdAt).toLocaleDateString()}</span>
                             )}
                           </div>
                         </div>
                       </div>
-
+                      
                       {/* Description/Report */}
                       {assignment.description && (
                         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
@@ -428,8 +428,8 @@ const AssignmentsPage: React.FC = () => {
                             <h4 className="font-semibold text-gray-900">
                               📖 Mushaf Mistake Markings ({mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''})
                             </h4>
-                            <button
-                              onClick={() => {
+                        <button
+                          onClick={() => {
                                 if (showMushafForAssignment === assignment.id) {
                                   setShowMushafForAssignment(null);
                                 } else {
@@ -439,11 +439,11 @@ const AssignmentsPage: React.FC = () => {
                                     setMushafPage(firstMistake.page);
                                   }
                                 }
-                              }}
+                          }}
                               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-                            >
+                        >
                               {showMushafForAssignment === assignment.id ? '📖 Hide Mushaf' : '📖 View Mushaf'}
-                            </button>
+                        </button>
                           </div>
 
                           {/* Quick navigation to pages with mistakes */}
@@ -455,9 +455,9 @@ const AssignmentsPage: React.FC = () => {
                                 .map((page: number) => {
                                   const mistakesOnPage = mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
                                   return (
-                                    <button
+                          <button
                                       key={page}
-                                      onClick={() => {
+                            onClick={() => {
                                         setShowMushafForAssignment(assignment.id);
                                         setMushafPage(page);
                                       }}
@@ -506,7 +506,7 @@ const AssignmentsPage: React.FC = () => {
                                           }`}
                                         >
                                           Page {page} ({mistakesOnPage})
-                                        </button>
+                          </button>
                                       );
                                     })}
                                 </div>
@@ -541,8 +541,8 @@ const AssignmentsPage: React.FC = () => {
                                 📎 Homework Link →
                               </a>
                             </div>
-                          )}
-                        </div>
+                        )}
+                      </div>
                       )}
                     </div>
                   </div>

@@ -63,7 +63,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       if (result.chainCreated) {
         alert(`✅ Full workflow chain created!\n\n📖 Sabq → 📚 Sabqi → 📿 Manzil → ✅ Finalize\n\nThe Sabq ticket is assigned to ${teacher.fullName}. Subsequent steps will be activated as each step is approved.`);
       } else {
-        alert('Ticket assigned successfully!');
+      alert('Ticket assigned successfully!');
       }
       
       onSuccess();

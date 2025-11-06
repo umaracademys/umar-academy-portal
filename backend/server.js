@@ -719,20 +719,20 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
     // If next ticket doesn't exist, create it
     if (!nextTicket) {
       nextTicket = new AssignmentTicket({
-        studentId: currentTicket.studentId,
-        studentName: currentTicket.studentName,
-        workflowStep: nextStep,
-        assignedTeacherId: req.body.assignedTeacherId,
-        assignedTeacherName: req.body.assignedTeacherName,
-        status: 'assigned',
-        previousTicketId: currentTicket._id.toString(),
-        program: currentTicket.program
-      });
-      await nextTicket.save();
-      
-      // Update current ticket with next ticket reference
-      currentTicket.nextTicketId = nextTicket._id.toString();
-      await currentTicket.save();
+      studentId: currentTicket.studentId,
+      studentName: currentTicket.studentName,
+      workflowStep: nextStep,
+      assignedTeacherId: req.body.assignedTeacherId,
+      assignedTeacherName: req.body.assignedTeacherName,
+      status: 'assigned',
+      previousTicketId: currentTicket._id.toString(),
+      program: currentTicket.program
+    });
+    await nextTicket.save();
+    
+    // Update current ticket with next ticket reference
+    currentTicket.nextTicketId = nextTicket._id.toString();
+    await currentTicket.save();
     } else {
       // Assign teacher to existing next ticket
       nextTicket.assignedTeacherId = req.body.assignedTeacherId;
@@ -773,7 +773,7 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
       ticket.homeworkLink = req.body.homeworkLink || '';
       ticket.reviewedBy = req.body.reviewedBy;
       ticket.reviewedAt = new Date();
-      ticket.status = 'finalized';
+    ticket.status = 'finalized';
       if (!ticket.assignmentId) {
         ticket.assignmentId = existingAssignmentByTicketId._id.toString();
       }
@@ -880,23 +880,23 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
     try {
       assignment = new Assignment({
         title: `${classworkType} - ${ticket.studentName}`,
-        description: fullDescription,
-        type: 'classwork',
+      description: fullDescription,
+      type: 'classwork',
         classworkType: classworkType,
-        program: ticket.program,
-        assignedTo: [ticket.studentId],
+      program: ticket.program,
+      assignedTo: [ticket.studentId],
         assignedBy: assignedBy,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        status: 'published',
-        homeworkComments: ticket.homework,
-        homeworkLink: ticket.homeworkLink,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+      status: 'published',
+      homeworkComments: ticket.homework,
+      homeworkLink: ticket.homeworkLink,
         listenerName: mainListener?.teacherName || ticket.assignedTeacherName || 'Teacher',
-        listenerId: mainListener?.teacherId || ticket.assignedTeacherId,
+      listenerId: mainListener?.teacherId || ticket.assignedTeacherId,
         fromTicketId: ticket._id.toString(), // Link to ticket
         mushafMarkings: ticket.mushafMarkings || [] // Copy mistake markings
-      });
-      
-      await assignment.save();
+    });
+    
+    await assignment.save();
     } catch (saveError) {
       // If duplicate key error, try to find and update existing assignment
       if (saveError.code === 11000) {
@@ -1321,44 +1321,44 @@ let nastaleeqDb = null;
 let qpcV4Db = null;
 
 if (Database) {
-  try {
+try {
     const quranDbPath = path.join(__dirname, 'qpc-hafs-15-lines.db');
     if (fs.existsSync(quranDbPath)) {
-      quranDb = new Database(quranDbPath, { readonly: true });
-      console.log('✅ Connected to local Quran database (qpc-hafs-15-lines.db)');
+  quranDb = new Database(quranDbPath, { readonly: true });
+  console.log('✅ Connected to local Quran database (qpc-hafs-15-lines.db)');
     } else {
       console.warn('⚠️  Quran database file not found:', quranDbPath);
     }
-  } catch (error) {
-    console.warn('⚠️ Could not connect to local Quran database:', error.message);
-    console.log('   Continuing with Quran Foundation API only...');
-  }
+} catch (error) {
+  console.warn('⚠️ Could not connect to local Quran database:', error.message);
+  console.log('   Continuing with Quran Foundation API only...');
+}
 
-  // Local SQLite Database for Quran text (Nastaleeq)
-  try {
+// Local SQLite Database for Quran text (Nastaleeq)
+try {
     const nastaleeqDbPath = path.join(__dirname, 'qpc-nastaleeq.db');
     if (fs.existsSync(nastaleeqDbPath)) {
-      nastaleeqDb = new Database(nastaleeqDbPath, { readonly: true });
-      console.log('✅ Connected to local Quran text database (qpc-nastaleeq.db)');
+  nastaleeqDb = new Database(nastaleeqDbPath, { readonly: true });
+  console.log('✅ Connected to local Quran text database (qpc-nastaleeq.db)');
     } else {
       console.warn('⚠️  Nastaleeq database file not found:', nastaleeqDbPath);
     }
-  } catch (error) {
-    console.warn('⚠️ Could not connect to local Quran text database:', error.message);
-    console.log('   Continuing with Quran Foundation API only...');
-  }
+} catch (error) {
+  console.warn('⚠️ Could not connect to local Quran text database:', error.message);
+  console.log('   Continuing with Quran Foundation API only...');
+}
 
-  // Local SQLite Database for Quran text (QPC V4)
-  try {
+// Local SQLite Database for Quran text (QPC V4)
+try {
     const qpcV4DbPath = path.join(__dirname, 'qpc-v4.db');
     if (fs.existsSync(qpcV4DbPath)) {
-      qpcV4Db = new Database(qpcV4DbPath, { readonly: true });
-      console.log('✅ Connected to local Quran text database (qpc-v4.db)');
+  qpcV4Db = new Database(qpcV4DbPath, { readonly: true });
+  console.log('✅ Connected to local Quran text database (qpc-v4.db)');
     } else {
       console.warn('⚠️  QPC V4 database file not found:', qpcV4DbPath);
     }
-  } catch (error) {
-    console.warn('⚠️ Could not connect to local Quran text database (qpc-v4.db):', error.message);
+} catch (error) {
+  console.warn('⚠️ Could not connect to local Quran text database (qpc-v4.db):', error.message);
   }
 } else {
   console.warn('⚠️  SQLite support disabled - better-sqlite3 not available');
@@ -1593,7 +1593,7 @@ async function getPageVersesFromLocalDb(pageNumber, version = 'nastaleeq') {
     
     if (!words || words.length === 0) {
       // Fallback: get verses from the first surah on the page
-      const mainSurah = pageInfo.surahs[0];
+    const mainSurah = pageInfo.surahs[0];
       return await getVersesFromQuranDb(mainSurah, null, version);
     }
     
@@ -1632,26 +1632,26 @@ async function getPageVersesFromLocalDb(pageNumber, version = 'nastaleeq') {
 // Proxy endpoint to get Quran chapters (try MongoDB first, fallback to API)
 app.get('/api/quran/chapters', async (req, res) => {
   // Try MongoDB first
-  try {
+    try {
     const surahIds = await getAllSurahsFromDb();
-    if (surahIds.length > 0) {
-      // Build chapters array from database
+      if (surahIds.length > 0) {
+        // Build chapters array from database
       const chaptersPromises = surahIds.map(async (id) => {
         const surahInfo = await getSurahInfoFromDb(id);
-        return {
-          id,
-          name_simple: `Surah ${id}`, // We'll need to add names later or use API
-          name_arabic: '',
-          name_complex: '',
-          pages: surahInfo ? [surahInfo.firstPage, surahInfo.lastPage] : [1, 1],
-          verses_count: 0, // Not in this DB
-          revelation_place: 'unknown',
-          translated_name: {
-            language_name: 'english',
-            name: `Chapter ${id}`
-          }
-        };
-      });
+          return {
+            id,
+            name_simple: `Surah ${id}`, // We'll need to add names later or use API
+            name_arabic: '',
+            name_complex: '',
+            pages: surahInfo ? [surahInfo.firstPage, surahInfo.lastPage] : [1, 1],
+            verses_count: 0, // Not in this DB
+            revelation_place: 'unknown',
+            translated_name: {
+              language_name: 'english',
+              name: `Chapter ${id}`
+            }
+          };
+        });
       
       const chapters = await Promise.all(chaptersPromises);
         
@@ -1688,7 +1688,7 @@ app.get('/api/quran/chapters', async (req, res) => {
     } catch (dbError) {
       console.error('Error getting chapters from local DB:', dbError.message);
       // Fall through to API
-    }
+  }
   
   // Fallback to API
   try {
@@ -2008,9 +2008,9 @@ app.get('/api/quran/pages/:pageNumber/lines', async (req, res) => {
           })
             .sort({ page_number: -1 })
             .lean();
-          
-          if (allPages && allPages.surah_number) {
-            surahId = parseInt(allPages.surah_number);
+        
+        if (allPages && allPages.surah_number) {
+          surahId = parseInt(allPages.surah_number);
             console.log(`⚠️ Using estimated surah ${surahId} from MongoDB for page ${pageNumber}`);
           }
         } catch (error) {

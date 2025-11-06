@@ -35,7 +35,7 @@ export default defineConfig({
           const distRedirectsPath = join(__dirname, 'dist/_redirects')
           if (existsSync(redirectsPath)) {
             copyFileSync(redirectsPath, distRedirectsPath)
-            console.log('✅ _redirects file copied to dist')
+          console.log('✅ _redirects file copied to dist')
           } else {
             console.warn('⚠️ _redirects file not found, skipping copy')
           }

@@ -94,22 +94,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Load actual teacher records from /api/teachers endpoint
       let teacherRecords: any[] = [];
       try {
-        const teachersResponse = await fetch(`${API_BASE}/teachers`);
-        if (teachersResponse.ok) {
+      const teachersResponse = await fetch(`${API_BASE}/teachers`);
+      if (teachersResponse.ok) {
           teacherRecords = await teachersResponse.json();
           console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
-          
-          // Merge teacher data with user data
+        
+        // Merge teacher data with user data
           teacherRecords.forEach((teacher: any) => {
             const user = users.find((u: any) => 
               u._id === teacher.userId?._id || 
               u._id === teacher.userId ||
               (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
             );
-            if (user) {
-              user.teacherProfile = teacher;
-            }
-          });
+          if (user) {
+            user.teacherProfile = teacher;
+          }
+        });
         }
       } catch (err) {
         console.warn('⚠️ Could not load teacher records:', err);
@@ -188,25 +188,25 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           );
           
           return {
-            id: user._id,
+          id: user._id,
             fullName: user.name || user.fullName || studentRecord?.fullName || 'Unknown',
-            email: user.email,
-            phone: user.phone || '',
-            address: user.address || '',
-            dateOfBirth: user.dateOfBirth || new Date().toISOString(),
+          email: user.email,
+          phone: user.phone || '',
+          address: user.address || '',
+          dateOfBirth: user.dateOfBirth || new Date().toISOString(),
             enrollmentDate: user.enrollmentDate || studentRecord?.enrolledDate || new Date().toISOString(),
             level: user.level || studentRecord?.level || 'beginner',
             status: user.status || studentRecord?.status || 'active',
             assignedTeacher: user.assignedTeacher || studentRecord?.assignedTeacher || '',
             paymentStatus: user.paymentStatus || studentRecord?.paymentStatus || 'pending',
             avatar: user.avatar || studentRecord?.avatar || '',
-            courses: user.courses || [],
-            assignments: user.assignments || [],
-            payments: user.payments || [],
-            progress: user.progress || { completed: 0, total: 0, percentage: 0 },
-            attendance: user.attendance || { present: 0, absent: 0, total: 0 },
-            grades: user.grades || [],
-            notes: user.notes || []
+          courses: user.courses || [],
+          assignments: user.assignments || [],
+          payments: user.payments || [],
+          progress: user.progress || { completed: 0, total: 0, percentage: 0 },
+          attendance: user.attendance || { present: 0, absent: 0, total: 0 },
+          grades: user.grades || [],
+          notes: user.notes || []
           };
         });
 

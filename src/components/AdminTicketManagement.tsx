@@ -56,13 +56,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       alert('Please select a teacher for the next step');
       return;
     }
-    
+
     const teacher = teachers.find(t => t.id === selectedNextTeacher);
     if (!teacher) {
       alert('Teacher not found');
       return;
     }
-    
+
     try {
       const ticketId = selectedTicket.id || (selectedTicket as any)._id;
       await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
@@ -359,7 +359,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   </button>
                 )}
                 {selectedTicket.status === 'approved' && selectedTicket.workflowStep !== 'finalize' && (
-                  <button
+              <button
                     onClick={() => {
                       setAction('assign-next');
                       setSelectedNextTeacher('');
@@ -368,13 +368,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       action === 'assign-next'
                         ? 'bg-blue-600 text-white shadow-lg'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
+                }`}
+              >
                     ➡️ Assign to Next Teacher
-                  </button>
+              </button>
                 )}
                 {selectedTicket.status === 'approved' && selectedTicket.workflowStep === 'finalize' && (
-                  <button
+              <button
                     onClick={() => {
                       setAction('finalize');
                       setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
@@ -383,10 +383,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       action === 'finalize'
                         ? 'bg-purple-600 text-white shadow-lg'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
+                }`}
+              >
                     ✅ Finalize & Add Homework
-                  </button>
+              </button>
                 )}
                 <button
                   onClick={() => {
@@ -531,7 +531,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   ↩️ Send for Revision
                 </button>
               </div>
-            )}
+              )}
 
             {/* Finalize Form Submit Button */}
             {action === 'finalize' && (
