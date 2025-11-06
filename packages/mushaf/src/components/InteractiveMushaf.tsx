@@ -934,7 +934,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 }) => {
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [localMistakes, setLocalMistakes] = useState<Mistake[]>([]);
-  const [showSurahIndex, setShowSurahIndex] = useState(true);
+  const [showSurahIndex, setShowSurahIndex] = useState(false); // Hidden by default, user can toggle
   const [isIndexMinimized, setIsIndexMinimized] = useState(false);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1051,7 +1051,10 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const navigateToSurah = (surah: Chapter) => {
     if (surah.pages && surah.pages[0]) {
       onPageChange(surah.pages[0]);
-      setShowSurahIndex(false);
+      // Only close on mobile, keep open on desktop for quick navigation
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        setShowSurahIndex(false);
+      }
       setSearchTerm("");
     }
   };
@@ -1126,9 +1129,15 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               ({historicalMistakes.length})
             </button>
           )}
-          {/* Surah Index Toggle Button */}
+          {/* Surah Index Toggle Button - Always visible */}
           <button
-            onClick={() => setShowSurahIndex(!showSurahIndex)}
+            onClick={() => {
+              setShowSurahIndex(!showSurahIndex);
+              // Auto-expand when opening on mobile
+              if (!showSurahIndex && window.innerWidth < 1024) {
+                setIsIndexMinimized(false);
+              }
+            }}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm ${
               showSurahIndex 
                 ? 'bg-green-600 text-white hover:bg-green-700' 
@@ -1137,6 +1146,11 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             title={showSurahIndex ? 'Hide surah index' : 'Show surah index'}
           >
             <span className="hidden sm:inline">Surah </span>Index
+            {showSurahIndex && chapters.length > 0 && (
+              <span className="ml-1 text-[10px] opacity-75">
+                ({chapters.length})
+              </span>
+            )}
           </button>
         </div>
         
@@ -1158,23 +1172,31 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
       <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full">
-        {/* Surah Index Sidebar - Professional Design - Hidden on mobile, shown on tablet+ */}
+        {/* Surah Index Sidebar - Professional Design - Modal on mobile, sidebar on desktop */}
         {showSurahIndex && (
-          <div className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
-            isIndexMinimized ? 'w-12' : 'w-full sm:w-64 lg:w-72'
-          } flex-shrink-0 ${
-            // Sticky on large screens, fixed on mobile
-            'lg:sticky lg:top-4 h-fit max-h-[calc(100vh-100px)]'
-          }`}>
+          <>
+            {/* Mobile Overlay */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              onClick={() => setShowSurahIndex(false)}
+            />
+            {/* Index Container - Modal on mobile, Sidebar on desktop */}
+            <div className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+              isIndexMinimized ? 'w-12' : 'w-[calc(100%-2rem)] sm:w-64 lg:w-72'
+            } flex-shrink-0 ${
+              // Fixed modal on mobile, sticky sidebar on desktop
+              'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-20 sm:top-24 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 h-fit max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-120px)] lg:max-h-[calc(100vh-100px)]'
+            }`}>
             <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
               <div className="flex items-center justify-between mb-2">
                 {!isIndexMinimized && (
                   <h3 className="text-sm font-bold text-gray-900">Surah Index</h3>
                 )}
                 <div className="flex items-center gap-1 ml-auto">
+                  {/* Minimize button - Only show on desktop */}
                   <button
                     onClick={() => setIsIndexMinimized(!isIndexMinimized)}
-                    className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
+                    className="hidden lg:block text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
                     title={isIndexMinimized ? "Expand" : "Minimize"}
                   >
                     {isIndexMinimized ? (
@@ -1187,17 +1209,16 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                       </svg>
                     )}
                   </button>
-                  {!isIndexMinimized && (
-                    <button
-                      onClick={() => setShowSurahIndex(false)}
-                      className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
-                      title="Close"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  )}
+                  {/* Close button - Always visible */}
+                  <button
+                    onClick={() => setShowSurahIndex(false)}
+                    className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
+                    title="Close"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               {!isIndexMinimized && (
@@ -1211,42 +1232,49 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               )}
             </div>
             {!isIndexMinimized && (
-              <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
-                {filteredChapters.map((surah) => (
-                  <button
-                    key={surah.id}
-                    onClick={() => navigateToSurah(surah)}
-                    className={`w-full text-right p-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                      currentSurah?.id === surah.id
-                        ? 'bg-green-50 border-l-4 border-l-green-600'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-gray-600">
-                            {surah.id}.
-                          </span>
-                          <span className={`text-xs font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`}>
-                            {surah.name_simple}
-                          </span>
-                        </div>
-                        {surah.translated_name?.name && (
-                          <div className="text-[10px] text-gray-500 mt-0.5">
-                            {surah.translated_name.name}
+              <div className="overflow-y-auto max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-250px)]">
+                {filteredChapters.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-gray-500">
+                    No surahs found
+                  </div>
+                ) : (
+                  filteredChapters.map((surah) => (
+                    <button
+                      key={surah.id}
+                      onClick={() => navigateToSurah(surah)}
+                      className={`w-full text-right p-2 sm:p-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                        currentSurah?.id === surah.id
+                          ? 'bg-green-50 border-l-4 border-l-green-600'
+                          : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-gray-600">
+                              {surah.id}.
+                            </span>
+                            <span className={`text-xs font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`}>
+                              {surah.name_simple}
+                            </span>
                           </div>
-                        )}
+                          {surah.translated_name?.name && (
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              {surah.translated_name.name}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-gray-400 ml-2">
+                          Pg {surah.pages[0]}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-400 ml-2">
-                        Pg {surah.pages[0]}
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))
+                )}
               </div>
             )}
-          </div>
+            </div>
+          </>
         )}
         
         {/* Mushaf Content - Responsive container */}
