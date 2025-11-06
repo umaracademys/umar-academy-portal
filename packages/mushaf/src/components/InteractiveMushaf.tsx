@@ -709,14 +709,15 @@ export const WordByWordPage: React.FC<{
           className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-3 sm:p-4 md:p-6 lg:p-8 bg-gradient-to-br from-amber-50 to-yellow-50 mx-auto"
           style={{
             backgroundColor: '#fef9e7',
-            fontFamily: '"Amiri", "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
+            fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
             minHeight: 'auto',
             direction: 'rtl',
             textAlign: 'right',
             maxWidth: '100%',
             width: '100%',
             boxSizing: 'border-box',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            fontFeatureSettings: '"liga" 1, "kern" 1'
           }}
         >
           {/* Page number indicator */}
@@ -730,10 +731,10 @@ export const WordByWordPage: React.FC<{
           <div 
             className="mushaf-arabic-text space-y-1 sm:space-y-2 overflow-x-auto"
             style={{
-              fontSize: 'clamp(0.875rem, 2vw, 1.5rem)',
-              lineHeight: '1.8',
-              letterSpacing: '0.02em',
-              wordSpacing: '0.1em',
+              fontSize: 'clamp(1.1rem, 2.2vw, 1.65rem)',
+              lineHeight: '1.95',
+              letterSpacing: '0.03em',
+              wordSpacing: '0.12em',
               direction: 'rtl',
               textAlign: 'right',
               fontFamily: 'inherit',
@@ -793,14 +794,11 @@ export const WordByWordPage: React.FC<{
               return (
                 <div
                   key={line.line_number}
-                  className={`mb-1 break-words`}
+                  className={`mb-1`}
                   style={{
                     direction: 'rtl',
                     textAlign: line.is_centered ? 'center' : 'justify',
-                    textAlignLast: line.is_centered ? 'center' : 'justify',
-                    maxWidth: '100%',
-                    overflowWrap: 'break-word',
-                    wordBreak: 'keep-all'
+                    textAlignLast: line.is_centered ? 'center' : 'justify'
                   }}
                 >
                   {lineWords.map((w, idx) => {
@@ -840,7 +838,7 @@ export const WordByWordPage: React.FC<{
                         
                         <span
                           onClick={() => onWordClick?.(w)}
-                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group inline-block`}
+                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group`}
                           style={{
                             padding: '2px 3px',
                             display: 'inline',
@@ -849,10 +847,7 @@ export const WordByWordPage: React.FC<{
                             lineHeight: 'inherit',
                             borderRadius: '3px',
                             direction: 'rtl',
-                            unicodeBidi: 'embed',
-                            maxWidth: '100%',
-                            overflowWrap: 'break-word',
-                            wordBreak: 'keep-all'
+                            unicodeBidi: 'embed'
                           }}
                           dir="rtl"
                           title={
