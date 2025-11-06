@@ -320,14 +320,14 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl 2xl:max-w-[90rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 sm:py-6">
         {/* Professional Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 sm:mb-6">
+          <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Ticket Management</h1>
-                <p className="text-sm text-gray-500 mt-1">Review and manage student recitation tickets</p>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Ticket Management</h1>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Review and manage student recitation tickets</p>
               </div>
               {onClose && (
                 <button
@@ -345,10 +345,10 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         </div>
 
       {selectedTicket ? (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Ticket Information Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
                   {/* Back Button */}
@@ -368,11 +368,11 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                     <span className="hidden sm:inline">Back</span>
                   </button>
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h2>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-sm text-gray-600">{getStepLabel(selectedTicket.workflowStep)}</span>
+                    <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h2>
+                    <div className="flex items-center gap-2 sm:gap-3 mt-1">
+                      <span className="text-xs sm:text-sm text-gray-600">{getStepLabel(selectedTicket.workflowStep)}</span>
                       <span className="text-gray-300">•</span>
-                      <span className="text-sm text-gray-600">{selectedTicket.program}</span>
+                      <span className="text-xs sm:text-sm text-gray-600">{selectedTicket.program}</span>
                     </div>
                   </div>
                 </div>
@@ -497,9 +497,9 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Mushaf Container - Compact and Contained */}
-              <div className="p-4 bg-white overflow-x-hidden">
-                <div className="max-h-[70vh] overflow-y-auto">
+              {/* Mushaf Container - Compact and Contained - Responsive for mobile and large screens */}
+              <div className="p-3 sm:p-4 lg:p-6 xl:p-8 bg-white overflow-x-hidden">
+                <div className="max-h-[60vh] sm:max-h-[65vh] lg:max-h-[70vh] xl:max-h-[75vh] 2xl:max-h-[80vh] overflow-y-auto">
                   <InteractiveMushaf
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
@@ -664,7 +664,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               {myTickets.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Tickets</h3>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {myTickets.map(ticket => (
                       <div
                         key={ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`}
@@ -707,7 +707,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               {completedTickets.length > 0 && (
                 <div className="mt-8">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Review</h3>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {completedTickets.map(ticket => (
                       <div
                         key={ticket.id || (ticket as any)._id || `completed-ticket-${ticket.studentId}-${ticket.workflowStep}`}

@@ -703,10 +703,10 @@ export const WordByWordPage: React.FC<{
       )}
 
       {/* Mushaf-style Arabic text container - Responsive with proper constraints */}
-      <div className="w-full max-w-full mx-auto px-2 sm:px-4 md:px-6">
+      <div className="w-full max-w-full mx-auto px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
         {/* Mushaf page container with traditional styling - Responsive padding and max-width */}
         <div 
-          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-3 sm:p-4 md:p-6 lg:p-8 bg-gradient-to-br from-amber-50 to-yellow-50 mx-auto"
+          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12 bg-gradient-to-br from-amber-50 to-yellow-50 mx-auto"
           style={{
             backgroundColor: '#fef9e7',
             fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
@@ -727,11 +727,11 @@ export const WordByWordPage: React.FC<{
             </span>
           </div>
 
-          {/* Arabic text content - Responsive font sizing */}
+          {/* Arabic text content - Responsive font sizing for mobile to large screens */}
           <div 
             className="mushaf-arabic-text space-y-1 sm:space-y-2"
             style={{
-              fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)',
+              fontSize: 'clamp(1rem, 1.5vw + 0.5rem, 2rem)',
               lineHeight: '2',
               letterSpacing: '0.03em',
               wordSpacing: '0.15em',
