@@ -556,9 +556,9 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Mushaf Container */}
-              <div className="p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100">
-                <div className="w-full max-w-full mx-auto">
+              {/* Mushaf Container - Responsive with overflow handling */}
+              <div className="p-2 sm:p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100 overflow-x-hidden">
+                <div className="w-full max-w-full mx-auto overflow-x-hidden">
                   <InteractiveMushaf
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}

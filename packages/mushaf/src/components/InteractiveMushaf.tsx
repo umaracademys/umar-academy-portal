@@ -692,7 +692,7 @@ export const WordByWordPage: React.FC<{
   }
 
   return (
-    <div className="relative w-full flex flex-col items-center">
+    <div className="relative w-full flex flex-col items-center overflow-hidden">
       {/* Optional background image */}
       {background && (
         <img
@@ -702,52 +702,59 @@ export const WordByWordPage: React.FC<{
         />
       )}
 
-      {/* Mushaf-style Arabic text container */}
-      <div className="w-full max-w-5xl mx-auto">
-        {/* Mushaf page container with traditional styling */}
+      {/* Mushaf-style Arabic text container - Responsive with proper constraints */}
+      <div className="w-full max-w-full mx-auto px-2 sm:px-4 md:px-6">
+        {/* Mushaf page container with traditional styling - Responsive padding and max-width */}
         <div 
-          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-6 md:p-8 bg-gradient-to-br from-amber-50 to-yellow-50"
+          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-3 sm:p-4 md:p-6 lg:p-8 bg-gradient-to-br from-amber-50 to-yellow-50 mx-auto"
           style={{
             backgroundColor: '#fef9e7',
             fontFamily: '"Amiri", "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
             minHeight: 'auto',
             direction: 'rtl',
-            textAlign: 'right'
+            textAlign: 'right',
+            maxWidth: '100%',
+            width: '100%',
+            boxSizing: 'border-box',
+            overflow: 'hidden'
           }}
         >
           {/* Page number indicator */}
-          <div className="text-center mb-4 pb-3 border-b border-amber-200">
-            <span className="inline-block px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
+          <div className="text-center mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-amber-200">
+            <span className="inline-block px-2 sm:px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
               Page {pageNumber}
             </span>
           </div>
 
-          {/* Arabic text content */}
+          {/* Arabic text content - Responsive font sizing */}
           <div 
-            className="mushaf-arabic-text space-y-2"
+            className="mushaf-arabic-text space-y-1 sm:space-y-2 overflow-x-auto"
             style={{
-              fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)',
-              lineHeight: '2',
-              letterSpacing: '0.03em',
-              wordSpacing: '0.15em',
+              fontSize: 'clamp(0.875rem, 2vw, 1.5rem)',
+              lineHeight: '1.8',
+              letterSpacing: '0.02em',
+              wordSpacing: '0.1em',
               direction: 'rtl',
               textAlign: 'right',
-              fontFamily: 'inherit'
+              fontFamily: 'inherit',
+              maxWidth: '100%',
+              overflowWrap: 'break-word',
+              wordBreak: 'keep-all'
             }}
           >
             {layout.lines.map((line) => {
               if (line.line_type !== "ayah") {
-                // Handle surah_name and basmallah lines
+                // Handle surah_name and basmallah lines - Responsive sizing
                 if (line.line_type === "surah_name") {
                   const surah = chapters.find(c => c.id === line.surah_number);
                   return (
-                    <div key={line.line_number} className="text-center font-bold text-xl my-4">
+                    <div key={line.line_number} className="text-center font-bold text-lg sm:text-xl md:text-2xl my-3 sm:my-4">
                       {surah ? surah.name_arabic : `Surah ${line.surah_number}`}
                     </div>
                   );
                 } else if (line.line_type === "basmallah") {
                   return (
-                    <div key={line.line_number} className="text-center text-2xl my-4">
+                    <div key={line.line_number} className="text-center text-xl sm:text-2xl md:text-3xl my-3 sm:my-4">
                       ﷽
                     </div>
                   );
@@ -786,11 +793,14 @@ export const WordByWordPage: React.FC<{
               return (
                 <div
                   key={line.line_number}
-                  className={`mb-1`}
+                  className={`mb-1 break-words`}
                   style={{
                     direction: 'rtl',
                     textAlign: line.is_centered ? 'center' : 'justify',
-                    textAlignLast: line.is_centered ? 'center' : 'justify'
+                    textAlignLast: line.is_centered ? 'center' : 'justify',
+                    maxWidth: '100%',
+                    overflowWrap: 'break-word',
+                    wordBreak: 'keep-all'
                   }}
                 >
                   {lineWords.map((w, idx) => {
@@ -808,12 +818,12 @@ export const WordByWordPage: React.FC<{
                     
                     return (
                       <React.Fragment key={w.word_index}>
-                        {/* Ayah number marker - show at start of each ayah */}
+                        {/* Ayah number marker - show at start of each ayah - Responsive */}
                         {showAyahNumber && w.ayah > 0 && (
                           <span 
-                            className="inline-block mx-1 my-0.5 text-green-700 font-bold"
+                            className="inline-block mx-0.5 sm:mx-1 my-0.5 text-green-700 font-bold"
                             style={{
-                              fontSize: '0.75em',
+                              fontSize: 'clamp(0.65em, 1.5vw, 0.75em)',
                               fontFamily: 'serif',
                               verticalAlign: 'middle',
                               direction: 'ltr',
@@ -822,7 +832,7 @@ export const WordByWordPage: React.FC<{
                             title={`Ayah ${w.ayah}`}
                             dir="ltr"
                           >
-                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-50 border border-green-600 text-green-800 text-xs">
+                            <span className="inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-green-50 border border-green-600 text-green-800 text-[10px] sm:text-xs">
                               {w.ayah}
                             </span>
                           </span>
@@ -830,7 +840,7 @@ export const WordByWordPage: React.FC<{
                         
                         <span
                           onClick={() => onWordClick?.(w)}
-                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group`}
+                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group inline-block`}
                           style={{
                             padding: '2px 3px',
                             display: 'inline',
@@ -839,7 +849,10 @@ export const WordByWordPage: React.FC<{
                             lineHeight: 'inherit',
                             borderRadius: '3px',
                             direction: 'rtl',
-                            unicodeBidi: 'embed'
+                            unicodeBidi: 'embed',
+                            maxWidth: '100%',
+                            overflowWrap: 'break-word',
+                            wordBreak: 'keep-all'
                           }}
                           dir="rtl"
                           title={
@@ -895,9 +908,11 @@ export const WordByWordPage: React.FC<{
             })}
           </div>
 
-          {/* Page footer decoration */}
-          <div className="mt-4 text-center text-gray-400 text-xs font-serif">
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          {/* Page footer decoration - Responsive */}
+          <div className="mt-3 sm:mt-4 text-center text-gray-400 text-xs font-serif overflow-x-hidden">
+            <div className="whitespace-nowrap overflow-x-auto">
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            </div>
           </div>
         </div>
       </div>
@@ -1092,9 +1107,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const currentJuz = getJuzFromPage(currentPage);
 
   return (
-    <div className="relative">
-      {/* Compact Controls Bar - Only show controls, no duplicate navigation */}
-      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+    <div className="relative w-full overflow-x-hidden">
+      {/* Compact Controls Bar - Only show controls, no duplicate navigation - Mobile responsive */}
+      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
         <div className="flex items-center gap-2">
           {/* Historical Mistakes Toggle */}
           {historicalMistakes.length > 0 && (
@@ -1142,11 +1157,11 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
 
-      <div className="relative flex gap-4">
-        {/* Surah Index Sidebar - Professional Design */}
+      <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full">
+        {/* Surah Index Sidebar - Professional Design - Hidden on mobile, shown on tablet+ */}
         {showSurahIndex && (
           <div className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
-            isIndexMinimized ? 'w-12' : 'w-72'
+            isIndexMinimized ? 'w-12' : 'w-full sm:w-64 lg:w-72'
           } flex-shrink-0 ${
             // Sticky on large screens, fixed on mobile
             'lg:sticky lg:top-4 h-fit max-h-[calc(100vh-100px)]'
@@ -1234,8 +1249,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           </div>
         )}
         
-        {/* Mushaf Content */}
-        <div className="flex-1 min-w-0">
+        {/* Mushaf Content - Responsive container */}
+        <div className="flex-1 min-w-0 w-full overflow-hidden">
 
         <WordByWordPage 
           pageNumber={currentPage} 
