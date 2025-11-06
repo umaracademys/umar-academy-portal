@@ -708,16 +708,15 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               <p className="text-sm text-gray-500">
                 Tickets with status "assigned", "in_progress", or "needs_revision" will appear here.
               </p>
-                {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length > 0 && (
-                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ You have {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length} ticket(s) assigned to you, 
-                      but they have status "{activeTickets.find(t => isTicketAssignedToTeacher(t))?.status}" 
-                      which is not currently active. Please contact admin if you need to work on these tickets.
-                    </p>
-                  </div>
-                )}
-              </div>
+              {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length > 0 && (
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ You have {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length} ticket(s) assigned to you, 
+                    but they have status "{activeTickets.find(t => isTicketAssignedToTeacher(t))?.status}" 
+                    which is not currently active. Please contact admin if you need to work on these tickets.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <>
