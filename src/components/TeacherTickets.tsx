@@ -319,7 +319,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-6xl mx-auto">
+    <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">🎫 My Tickets</h2>
         {onClose && (
@@ -435,132 +435,232 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
           {/* Add padding-top to compensate for fixed nav */}
           <div className="pt-16 md:pt-4">
-          {/* Ticket Details - Collapsible Header */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-lg">Ticket Details</h3>
-              <button
-                onClick={() => setShowMushaf(!showMushaf)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold"
-              >
-                {showMushaf ? '📖 Hide Mushaf' : '📖 Show Mushaf'}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Student:</span> {getStudentName(selectedTicket.studentId)}
+          {/* Ticket Details - Compact Header */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-4 border border-blue-200">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex-1 min-w-[200px]">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                  <div>
+                    <span className="text-xs text-gray-600 font-medium">Student:</span>
+                    <div className="font-semibold text-gray-900">{getStudentName(selectedTicket.studentId)}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-600 font-medium">Step:</span>
+                    <div className="font-semibold text-gray-900">{getStepLabel(selectedTicket.workflowStep)}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-600 font-medium">Program:</span>
+                    <div className="font-semibold text-gray-900">{selectedTicket.program}</div>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-600 font-medium">Status:</span>
+                    <div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
+                        {selectedTicket.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <span className="font-medium">Step:</span> {getStepLabel(selectedTicket.workflowStep)}
-              </div>
-              <div>
-                <span className="font-medium">Program:</span> {selectedTicket.program}
-              </div>
-              <div>
-                <span className="font-medium">Status:</span>
-                <span className={`ml-2 px-2 py-1 rounded text-xs ${getStatusColor(selectedTicket.status)}`}>
-                  {selectedTicket.status}
-                </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowMushaf(!showMushaf)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    showMushaf 
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' 
+                      : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  {showMushaf ? '📖 Hide Mushaf' : '📖 Show Mushaf'}
+                </button>
               </div>
             </div>
             {selectedTicket.revisionNotes && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                <p className="text-sm font-medium text-red-800">Revision Notes:</p>
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-xs font-medium text-red-800 mb-1">⚠️ Revision Notes:</p>
                 <p className="text-sm text-red-700">{selectedTicket.revisionNotes}</p>
               </div>
             )}
-          </div>
-
-          {/* Mushaf View - Always available, toggleable */}
-          <div className={`bg-white rounded-lg shadow-lg p-6 mb-6 ${showMushaf ? '' : 'hidden'}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">📖 Interactive Mushaf - Mark Mistakes</h3>
-              <button
-                onClick={() => setShowMushaf(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Close Mushaf
-              </button>
-            </div>
-            <div className="bg-blue-50 p-3 rounded-lg mb-4">
-              <p className="text-sm text-blue-800 mb-2">
-                💡 <strong>Instructions:</strong> Navigate to the page number the student recited from. Click on any word in the Mushaf to mark a mistake. 
-                Select the mistake type from the popup menu.
-              </p>
-              {historicalMistakes.length > 0 && (
-                <p className="text-sm text-blue-700 mt-2">
-                  📜 <strong>Historical Mistakes:</strong> Previously marked mistakes from this student are shown with dashed borders and lighter colors. 
-                  This helps you see recurring mistakes and track progress over time.
-                </p>
-              )}
-            </div>
-            <InteractiveMushaf
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              mistakes={mushafMarkings}
-              historicalMistakes={historicalMistakes}
-              onMistakeMark={handleMistakeMark}
-              mode="marking"
-              studentName={selectedTicket.studentName}
-              showHistorical={true}
-            />
-            {mushafMarkings.length > 0 && (
-              <div className="mt-4 p-4 bg-green-50 rounded-lg">
-                <p className="text-sm text-green-800">
-                  ✅ <strong>{mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}</strong> marked
-                </p>
+            {selectedTicket.audioLink && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
+                <p className="text-xs font-medium text-green-800 mb-2">🔊 Audio Recording:</p>
+                <a
+                  href={selectedTicket.audioLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-green-700 hover:text-green-900 underline break-all"
+                >
+                  {selectedTicket.audioLink}
+                </a>
               </div>
             )}
           </div>
 
-          <form onSubmit={handleSubmitTicket} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Progress Notes <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={formData.progressNotes}
-                onChange={(e) => setFormData(prev => ({ ...prev, progressNotes: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                rows={6}
-                placeholder="Enter progress notes, observations, corrections needed, etc..."
-                required
-              />
-            </div>
+          {/* Mushaf View - Full width when shown, properly scaled */}
+          {showMushaf && (
+            <div className="bg-white rounded-lg shadow-xl border-2 border-blue-200 mb-6 overflow-hidden">
+              {/* Mushaf Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-bold">📖 Interactive Mushaf - Mark Mistakes</h3>
+                    <p className="text-sm text-blue-100 mt-1">
+                      Click on words to mark mistakes while listening to the student's recitation
+                    </p>
+                  </div>
+                  {mushafMarkings.length > 0 && (
+                    <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
+                      <p className="text-sm font-semibold">
+                        ✅ {mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''} marked
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Audio Link (Optional)
-              </label>
-              <input
-                type="url"
-                value={formData.audioLink}
-                onChange={(e) => setFormData(prev => ({ ...prev, audioLink: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="https://..."
-              />
-            </div>
+              {/* Instructions Banner */}
+              <div className="bg-blue-50 border-b border-blue-200 p-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">💡</span>
+                  <div className="flex-1 text-sm text-blue-800">
+                    <p className="font-medium mb-1">Instructions:</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li>Navigate to the page number the student recited from using the navigation bar above</li>
+                      <li>Click on any word in the Mushaf to mark a mistake</li>
+                      <li>Select the mistake type from the popup menu</li>
+                      <li>Use the Surah Index on the left to quickly jump to different surahs</li>
+                    </ul>
+                    {historicalMistakes.length > 0 && (
+                      <p className="mt-2 text-xs text-blue-700">
+                        📜 <strong>Historical Mistakes:</strong> Previously marked mistakes are shown with dashed borders to help track recurring issues.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Submitting...' : 'Submit for Review'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedTicket(null);
-                  setFormData({ progressNotes: '', audioLink: '' });
-                }}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
-              >
-                Cancel
-              </button>
+              {/* Mushaf Container - Full width with proper scaling */}
+              <div className="p-2 md:p-4 lg:p-6 bg-gray-50 min-h-[600px]">
+                <div className="w-full max-w-full mx-auto">
+                  <InteractiveMushaf
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                    mistakes={mushafMarkings}
+                    historicalMistakes={historicalMistakes}
+                    onMistakeMark={handleMistakeMark}
+                    mode="marking"
+                    studentName={selectedTicket.studentName}
+                    showHistorical={true}
+                  />
+                </div>
+              </div>
+
+              {/* Mistake Summary Footer */}
+              {mushafMarkings.length > 0 && (
+                <div className="bg-green-50 border-t border-green-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-green-800">
+                      <strong>{mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}</strong> marked for this recitation
+                    </p>
+                    <button
+                      onClick={() => {
+                        if (confirm('Are you sure you want to clear all marked mistakes?')) {
+                          setMushafMarkings([]);
+                        }
+                      }}
+                      className="text-xs text-red-600 hover:text-red-800 font-medium"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          </form>
+          )}
+
+          {/* Submission Form - Collapsible when Mushaf is shown */}
+          <div className={`bg-white rounded-lg shadow-lg border-2 border-gray-200 transition-all ${showMushaf ? 'mt-6' : ''}`}>
+            <form onSubmit={handleSubmitTicket} className="p-6 space-y-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-gray-900">📝 Review & Submit</h3>
+                {mushafMarkings.length > 0 && (
+                  <div className="text-sm text-gray-600">
+                    <span className="font-semibold text-green-600">{mushafMarkings.length}</span> mistake{mushafMarkings.length !== 1 ? 's' : ''} marked
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Progress Notes <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-500 ml-2">(Required - Include observations, corrections, praise, etc.)</span>
+                </label>
+                <textarea
+                  value={formData.progressNotes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, progressNotes: e.target.value }))}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                  rows={6}
+                  placeholder="Enter detailed progress notes...&#10;&#10;Example:&#10;- Student recited pages 1-2 well&#10;- Needs improvement on elongation (madd) rules&#10;- Good memory retention&#10;- Practice tajweed rules for page 3..."
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 Tip: Mention specific pages, ayahs, or mistakes marked in the Mushaf above
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Audio Link (Optional)
+                  <span className="text-xs text-gray-500 ml-2">(If you have a different audio link than the one above)</span>
+                </label>
+                <input
+                  type="url"
+                  value={formData.audioLink}
+                  onChange={(e) => setFormData(prev => ({ ...prev, audioLink: e.target.value }))}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all"
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Submitting...
+                    </span>
+                  ) : (
+                    '✅ Submit for Review'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (mushafMarkings.length > 0 || formData.progressNotes.trim()) {
+                      if (confirm('Are you sure you want to cancel? Your progress notes and marked mistakes will be lost.')) {
+                        setSelectedTicket(null);
+                        setFormData({ progressNotes: '', audioLink: '' });
+                        setMushafMarkings([]);
+                      }
+                    } else {
+                      setSelectedTicket(null);
+                      setFormData({ progressNotes: '', audioLink: '' });
+                    }
+                  }}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
           </div>
           {/* End padding-top div */}
         </div>
