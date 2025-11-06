@@ -498,17 +498,19 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               </div>
 
               {/* Mushaf Container - Compact and Contained */}
-              <div className="p-4 bg-white overflow-x-hidden max-h-[70vh] overflow-y-auto">
-                <InteractiveMushaf
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                  mistakes={mushafMarkings}
-                  historicalMistakes={historicalMistakes}
-                  onMistakeMark={handleMistakeMark}
-                  mode="marking"
-                  studentName={selectedTicket.studentName}
-                  showHistorical={true}
-                />
+              <div className="p-4 bg-white overflow-x-hidden">
+                <div className="max-h-[70vh] overflow-y-auto">
+                  <InteractiveMushaf
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                    mistakes={mushafMarkings}
+                    historicalMistakes={historicalMistakes}
+                    onMistakeMark={handleMistakeMark}
+                    mode="marking"
+                    studentName={selectedTicket.studentName}
+                    showHistorical={true}
+                  />
+                </div>
               </div>
 
               {/* Mistake Summary - Compact Footer */}

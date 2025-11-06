@@ -729,18 +729,16 @@ export const WordByWordPage: React.FC<{
 
           {/* Arabic text content - Responsive font sizing */}
           <div 
-            className="mushaf-arabic-text space-y-1 sm:space-y-2 overflow-x-auto"
+            className="mushaf-arabic-text space-y-1 sm:space-y-2"
             style={{
-              fontSize: 'clamp(1.1rem, 2.2vw, 1.65rem)',
-              lineHeight: '1.95',
+              fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)',
+              lineHeight: '2',
               letterSpacing: '0.03em',
-              wordSpacing: '0.12em',
+              wordSpacing: '0.15em',
               direction: 'rtl',
               textAlign: 'right',
               fontFamily: 'inherit',
-              maxWidth: '100%',
-              overflowWrap: 'break-word',
-              wordBreak: 'keep-all'
+              maxWidth: '100%'
             }}
           >
             {layout.lines.map((line) => {
