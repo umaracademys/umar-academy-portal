@@ -35,12 +35,29 @@ export default defineConfig({
           const distRedirectsPath = join(__dirname, 'dist/_redirects')
           if (existsSync(redirectsPath)) {
             copyFileSync(redirectsPath, distRedirectsPath)
-          console.log('✅ _redirects file copied to dist')
+            console.log('✅ _redirects file copied to dist')
           } else {
             console.warn('⚠️ _redirects file not found, skipping copy')
           }
+          
+          // Ensure word_by_word.json is in dist/data/words/ after build
+          const publicWordsPath = join(__dirname, 'public/data/words/word_by_word.json')
+          const distWordsDir = join(__dirname, 'dist/data/words')
+          const distWordsPath = join(distWordsDir, 'word_by_word.json')
+          
+          if (existsSync(publicWordsPath)) {
+            // Create directory if it doesn't exist
+            if (!existsSync(distWordsDir)) {
+              mkdirSync(distWordsDir, { recursive: true })
+            }
+            // Copy file to dist folder after build
+            copyFileSync(publicWordsPath, distWordsPath)
+            console.log('✅ word_by_word.json copied to dist/data/words/')
+          } else {
+            console.warn('⚠️ word_by_word.json not found in public folder')
+          }
         } catch (error) {
-          console.warn('⚠️ Could not copy _redirects file:', error)
+          console.warn('⚠️ Could not copy files to dist:', error)
         }
       }
     }

@@ -93,10 +93,17 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     const isAssigned = isTicketAssignedToTeacher(t);
     // Include "pending" status tickets that are assigned to this teacher (from auto-create chain)
     // Note: "pending" tickets are created by auto-create chain but not yet activated
+    // Teachers should see tickets that they can work on:
+    // - assigned: Ticket assigned to them
+    // - in_progress: They're currently working on it
+    // - needs_revision: They need to revise it
+    // - pending: Auto-created tickets waiting for activation (only if assigned)
+    // - approved: Show approved tickets assigned to teacher (for visibility)
     const validStatus = t.status === 'assigned' || 
                        t.status === 'in_progress' || 
                        t.status === 'needs_revision' ||
-                       (t.status === 'pending' && isAssigned); // Include pending if assigned to this teacher
+                       t.status === 'approved' || // Show approved tickets assigned to this teacher
+                       t.status === 'pending'; // Include pending tickets (filtered by isAssigned below)
     
     if (isAssigned) {
       if (!validStatus) {

@@ -408,25 +408,42 @@ export const WordByWordPage: React.FC<{
         // Load words from public folder (works in both dev and production)
         const wordsRes = await fetch('/data/words/word_by_word.json');
         if (wordsRes.ok) {
-          const wordsData = await wordsRes.json();
-          if (Array.isArray(wordsData)) {
-            setWords(wordsData);
+          // Check if response is actually JSON (not HTML error page)
+          const contentType = wordsRes.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const wordsData = await wordsRes.json();
+              if (Array.isArray(wordsData)) {
+                setWords(wordsData);
+              } else {
+                // Convert object format to array
+                const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
+                  word_index: entry.id || entry.word_index,
+                  surah: parseInt(entry.surah),
+                  ayah: parseInt(entry.ayah),
+                  text: entry.text
+                }));
+                setWords(wordsArray);
+              }
+              console.log('✅ Loaded words from public folder');
+            } catch (jsonError) {
+              // If JSON parsing fails, try to get text to see what we got
+              const text = await wordsRes.clone().text();
+              console.warn('⚠️ Failed to parse JSON response. Response preview:', text.substring(0, 200));
+              console.error('JSON parse error:', jsonError);
+            }
           } else {
-            // Convert object format to array
-            const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
-              word_index: entry.id || entry.word_index,
-              surah: parseInt(entry.surah),
-              ayah: parseInt(entry.ayah),
-              text: entry.text
-            }));
-            setWords(wordsArray);
+            // Not JSON, get text to see what we got
+            const text = await wordsRes.text();
+            console.warn('⚠️ Response is not JSON, likely HTML error page. Content-Type:', contentType);
+            console.warn('Response preview:', text.substring(0, 200));
           }
-          console.log('✅ Loaded words from public folder');
         } else {
-          console.error('Words data not available');
+          console.warn(`⚠️ Words data not available (status: ${wordsRes.status})`);
         }
       } catch (error) {
         console.error('Error loading words:', error);
+        // Don't throw - allow component to continue without words data
       }
     };
     

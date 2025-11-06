@@ -40,7 +40,9 @@ build
 *.sqlite3
 
 # MongoDB data (if running locally)
+# But allow public/data/ for static assets
 data/
+!public/data/
 
 # OS files
 Thumbs.db
