@@ -2,9 +2,12 @@
   "name": "umar-academy-portal",
   "version": "1.0.0",
   "type": "module",
+  "private": true,
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:mushaf": "pnpm --filter @umar-academy/mushaf build",
+    "build:all": "pnpm -r build",
     "preview": "vite preview",
     "start": "node frontend-server.js",
     "seed": "tsx src/scripts/seedData.ts",
@@ -12,6 +15,7 @@
     "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts"
   },
   "dependencies": {
+    "@umar-academy/mushaf": "workspace:*",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.2",
     "express": "^4.18.2",

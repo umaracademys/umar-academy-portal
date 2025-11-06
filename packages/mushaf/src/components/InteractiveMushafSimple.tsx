@@ -143,28 +143,8 @@ const InteractiveMushaf: React.FC = () => {
           console.warn('Layout file not found:', e);
         }
 
-        // Try to load words from local file
+        // Try to load words from public folder
         try {
-          const wordsModule = await import('../data/words/word_by_word.json');
-          const wordsData = wordsModule.default || wordsModule;
-          
-          // Convert to array format if needed
-          if (Array.isArray(wordsData)) {
-            setWords(wordsData as Word[]);
-          } else {
-            // Convert object format to array
-            const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
-              word_index: entry.id || entry.word_index,
-              surah: parseInt(entry.surah),
-              ayah: parseInt(entry.ayah),
-              text: entry.text
-            }));
-            setWords(wordsArray);
-          }
-          console.log('✅ Loaded words from local file');
-        } catch (e) {
-          console.warn('Words file not found, trying fallback');
-          // Fallback: try public folder
           const wordsRes = await fetch('/data/words/word_by_word.json');
           if (wordsRes.ok) {
             const wordsData = await wordsRes.json();
@@ -179,9 +159,12 @@ const InteractiveMushaf: React.FC = () => {
               }));
               setWords(wordsArray);
             }
+            console.log('✅ Loaded words from public folder');
           } else {
-            throw new Error('Words not available');
+            console.warn('⚠️ Words data not available (status:', wordsRes.status, ')');
           }
+        } catch (error) {
+          console.error('Error loading words:', error);
         }
       } catch (error) {
         console.error('Error loading data:', error);

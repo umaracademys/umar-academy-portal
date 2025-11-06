@@ -1,6 +1,6 @@
-// Import Mushaf types
-export type { MushafMistake, MistakeType, MushafPage, MushafSession } from './mushaf';
-import type { MushafMistake } from './mushaf';
+// Import Mushaf types - re-export from package for backward compatibility
+export type { MushafMistake, MistakeType, MushafPage as MushafPageType, MushafSession } from '@umar-academy/mushaf';
+import type { MushafMistake } from '@umar-academy/mushaf';
 
 export type UserRole = 'superadmin' | 'admin' | 'teacher' | 'student';
 export type ProgramType = 'Full Time HQ' | 'Part Time HQ' | 'After School Reading';

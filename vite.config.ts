@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { copyFileSync, existsSync, mkdirSync } from 'fs'
-import { join, dirname } from 'path'
+import { join, dirname, resolve } from 'path'
 
 export default defineConfig({
   plugins: [
@@ -68,7 +68,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      'sql.js': 'sql.js/dist/sql-wasm.js'
+      'sql.js': 'sql.js/dist/sql-wasm.js',
+      '@umar-academy/mushaf': resolve(__dirname, './packages/mushaf/src')
     }
   }
 })

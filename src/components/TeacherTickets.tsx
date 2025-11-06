@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, MushafMistake } from '../types';
-import InteractiveMushaf from './InteractiveMushaf';
-import { getQuranChapters, Chapter } from '../services/quranApi';
+import { InteractiveMushaf } from '@umar-academy/mushaf';
+import { getQuranChapters, Chapter } from '@umar-academy/mushaf';
 
 // Helper function to calculate Juz from page number
 const getJuzFromPage = (page: number): number => {

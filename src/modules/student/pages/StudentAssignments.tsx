@@ -4,8 +4,8 @@ import StudentSidebar from '../components/StudentSidebar';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
-import InteractiveMushaf from '../../../components/InteractiveMushaf';
-import { MushafMistake } from '../../../types/mushaf';
+import { InteractiveMushaf } from '@umar-academy/mushaf';
+import { MushafMistake } from '@umar-academy/mushaf';
 
 const StudentAssignments: React.FC = () => {
   const { user } = useAuth();

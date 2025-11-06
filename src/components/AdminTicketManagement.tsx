@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher } from '../types';
-import InteractiveMushaf from './InteractiveMushaf';
+import { InteractiveMushaf } from '@umar-academy/mushaf';
 
 interface AdminTicketManagementProps {
   onClose?: () => void;

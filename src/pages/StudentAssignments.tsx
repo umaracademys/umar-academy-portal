@@ -6,7 +6,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
-import InteractiveMushaf from '../components/InteractiveMushaf';
+import { InteractiveMushaf } from '@umar-academy/mushaf';
 
 interface StudentAssignmentView {
   date: string;
