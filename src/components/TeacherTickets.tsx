@@ -319,228 +319,245 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">🎫 My Tickets</h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Professional Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Ticket Management</h1>
+                <p className="text-sm text-gray-500 mt-1">Review and manage student recitation tickets</p>
+              </div>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
 
       {selectedTicket ? (
-        <div className="space-y-4">
-          {/* Step 1: Navigation Bar - Fixed/Sticky at top */}
-          <nav className="fixed md:sticky top-0 left-0 right-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-40 shadow-sm">
-            <div className="w-full md:max-w-6xl md:mx-auto px-2 md:px-4 md:py-3">
-              <div className="flex items-center justify-between gap-1 md:gap-4 h-12 md:h-auto">
-                {/* Left side - Back Button */}
-                <div className="flex-shrink-0 w-[100px] md:w-[150px] lg:w-auto">
+        <div className="space-y-6">
+          {/* Professional Navigation Bar */}
+          <nav className="bg-white rounded-xl shadow-sm border border-gray-200 sticky top-4 z-40">
+            <div className="px-4 py-3">
+              <div className="flex items-center justify-between gap-4">
+                {/* Back Button */}
+                <button
+                  onClick={() => {
+                    setSelectedTicket(null);
+                    setFormData({ progressNotes: '', audioLink: '' });
+                    setShowMushaf(false);
+                    setCurrentPage(1);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  <span className="hidden sm:inline">Back to Tickets</span>
+                </button>
+
+                {/* Page Navigation */}
+                <div className="flex-1 flex items-center justify-center gap-4">
                   <button
-                    onClick={() => {
-                      setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '' });
-                      setShowMushaf(false);
-                      setCurrentPage(1);
-                    }}
-                    className="p-1 lg:p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                    title="Back to tickets"
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage <= 1}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Previous page"
                   >
-                    <svg className="w-5 h-5 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-gray-900">Page {currentPage}</div>
+                      <div className="text-xs text-gray-500">
+                        {getCurrentSurah(currentPage)?.name_simple || 'N/A'} • Juz {getJuzFromPage(currentPage)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
+                    disabled={currentPage >= 604}
+                    className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    title="Next page"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
                 </div>
 
-                {/* Center - Page Navigation */}
-                <div className="flex-1 flex items-center justify-center gap-3 lg:gap-6">
-                  <div className="flex items-center gap-2 lg:gap-3">
-                    {/* Previous Page Button */}
-                    {currentPage > 1 && (
-                      <>
-                        <button
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                          className="lg:hidden p-0.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                          title="Previous page"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                          className="hidden lg:flex items-center justify-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
-                          title="Previous page"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
-                          </svg>
-                          Previous
-                        </button>
-                      </>
-                    )}
-
-                    {/* Page Number */}
-                    <div className="text-center">
-                      <div className="text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        Page {currentPage}
-                      </div>
-                    </div>
-
-                    {/* Next Page Button */}
-                    {currentPage < 604 && (
-                      <>
-                        <button
-                          onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
-                          className="lg:hidden p-0.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                          title="Next page"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
-                          className="hidden lg:flex items-center justify-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
-                          title="Next page"
-                        >
-                          Next
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 ml-1">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
-                          </svg>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right side - Student info & metadata */}
-                <div className="flex-shrink-0 w-[100px] md:w-[150px] lg:w-auto">
-                  <div className="text-right text-[10px] lg:text-xs leading-tight text-gray-600 dark:text-gray-400">
-                    <div className="font-medium truncate">{getStudentName(selectedTicket.studentId)}</div>
-                    <div className="hidden lg:block text-gray-500 dark:text-gray-500 mt-0.5">
-                      <span className="text-teal-600 dark:text-teal-400">Juz {getJuzFromPage(currentPage)}</span>
-                      <span className="mx-1">•</span>
-                      <span>{getCurrentSurah(currentPage)?.name_simple || 'N/A'}</span>
-                    </div>
-                  </div>
+                {/* Student Info */}
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-gray-900">{getStudentName(selectedTicket.studentId)}</div>
+                  <div className="text-xs text-gray-500">{selectedTicket.program}</div>
                 </div>
               </div>
             </div>
           </nav>
-
-          {/* Add padding-top to compensate for fixed nav */}
-          <div className="pt-16 md:pt-4">
-          {/* Ticket Details - Compact Header */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg mb-4 border border-blue-200">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex-1 min-w-[200px]">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          {/* Ticket Information Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
                   <div>
-                    <span className="text-xs text-gray-600 font-medium">Student:</span>
-                    <div className="font-semibold text-gray-900">{getStudentName(selectedTicket.studentId)}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-600 font-medium">Step:</span>
-                    <div className="font-semibold text-gray-900">{getStepLabel(selectedTicket.workflowStep)}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-600 font-medium">Program:</span>
-                    <div className="font-semibold text-gray-900">{selectedTicket.program}</div>
-                  </div>
-                  <div>
-                    <span className="text-xs text-gray-600 font-medium">Status:</span>
-                    <div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(selectedTicket.status)}`}>
-                        {selectedTicket.status.replace('_', ' ')}
-                      </span>
+                    <h2 className="text-lg font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h2>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-sm text-gray-600">{getStepLabel(selectedTicket.workflowStep)}</span>
+                      <span className="text-gray-300">•</span>
+                      <span className="text-sm text-gray-600">{selectedTicket.program}</span>
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowMushaf(!showMushaf)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    showMushaf 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md' 
-                      : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
-                  }`}
-                >
-                  {showMushaf ? '📖 Hide Mushaf' : '📖 Show Mushaf'}
-                </button>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedTicket.status)}`}>
+                    {selectedTicket.status.replace('_', ' ')}
+                  </span>
+                  <button
+                    onClick={() => setShowMushaf(!showMushaf)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${
+                      showMushaf 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
+                    {showMushaf ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Hide Mushaf
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        Show Mushaf
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
-            {selectedTicket.revisionNotes && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
-                <p className="text-xs font-medium text-red-800 mb-1">⚠️ Revision Notes:</p>
-                <p className="text-sm text-red-700">{selectedTicket.revisionNotes}</p>
-              </div>
-            )}
-            {selectedTicket.audioLink && (
-              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded">
-                <p className="text-xs font-medium text-green-800 mb-2">🔊 Audio Recording:</p>
-                <a
-                  href={selectedTicket.audioLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-green-700 hover:text-green-900 underline break-all"
-                >
-                  {selectedTicket.audioLink}
-                </a>
+            
+            {(selectedTicket.revisionNotes || selectedTicket.audioLink) && (
+              <div className="px-6 py-4 space-y-3">
+                {selectedTicket.revisionNotes && (
+                  <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-red-900 mb-1">Revision Notes</p>
+                      <p className="text-sm text-red-700">{selectedTicket.revisionNotes}</p>
+                    </div>
+                  </div>
+                )}
+                {selectedTicket.audioLink && (
+                  <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-green-900 mb-1">Audio Recording</p>
+                      <a
+                        href={selectedTicket.audioLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-green-700 hover:text-green-900 underline break-all inline-flex items-center gap-1"
+                      >
+                        {selectedTicket.audioLink}
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Mushaf View - Full width when shown, properly scaled */}
+          {/* Mushaf View - Professional Layout */}
           {showMushaf && (
-            <div className="bg-white rounded-lg shadow-xl border-2 border-blue-200 mb-6 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               {/* Mushaf Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4">
-                <div className="flex justify-between items-center">
+              <div className="px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold">📖 Interactive Mushaf - Mark Mistakes</h3>
+                    <h3 className="text-lg font-bold text-white">Interactive Mushaf</h3>
                     <p className="text-sm text-blue-100 mt-1">
-                      Click on words to mark mistakes while listening to the student's recitation
+                      Mark mistakes while listening to the student's recitation
                     </p>
                   </div>
                   {mushafMarkings.length > 0 && (
-                    <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                      <p className="text-sm font-semibold">
-                        ✅ {mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''} marked
-                      </p>
+                    <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/30">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm font-semibold text-white">
+                          {mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''} marked
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Instructions Banner */}
-              <div className="bg-blue-50 border-b border-blue-200 p-3">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">💡</span>
-                  <div className="flex-1 text-sm text-blue-800">
-                    <p className="font-medium mb-1">Instructions:</p>
-                    <ul className="list-disc list-inside space-y-1 text-xs">
-                      <li>Navigate to the page number the student recited from using the navigation bar above</li>
-                      <li>Click on any word in the Mushaf to mark a mistake</li>
-                      <li>Select the mistake type from the popup menu</li>
-                      <li>Use the Surah Index on the left to quickly jump to different surahs</li>
+              {/* Instructions */}
+              <div className="px-6 py-4 bg-blue-50 border-b border-blue-100">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">How to mark mistakes:</p>
+                    <ul className="text-xs text-blue-800 space-y-1">
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 mt-0.5">•</span>
+                        <span>Navigate to the page using the navigation bar above</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 mt-0.5">•</span>
+                        <span>Click on any word in the Mushaf to mark a mistake</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 mt-0.5">•</span>
+                        <span>Select the mistake type from the popup menu</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-blue-600 mt-0.5">•</span>
+                        <span>Use the Surah Index sidebar to quickly jump to different surahs</span>
+                      </li>
                     </ul>
                     {historicalMistakes.length > 0 && (
-                      <p className="mt-2 text-xs text-blue-700">
-                        📜 <strong>Historical Mistakes:</strong> Previously marked mistakes are shown with dashed borders to help track recurring issues.
-                      </p>
+                      <div className="mt-3 pt-3 border-t border-blue-200">
+                        <p className="text-xs text-blue-700">
+                          <strong>Historical Mistakes:</strong> Previously marked mistakes are shown with dashed borders to help track recurring issues.
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* Mushaf Container - Full width with proper scaling */}
-              <div className="p-2 md:p-4 lg:p-6 bg-gray-50 min-h-[600px]">
+              {/* Mushaf Container */}
+              <div className="p-4 lg:p-6 bg-gradient-to-br from-gray-50 to-gray-100">
                 <div className="w-full max-w-full mx-auto">
                   <InteractiveMushaf
                     currentPage={currentPage}
@@ -555,20 +572,25 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                 </div>
               </div>
 
-              {/* Mistake Summary Footer */}
+              {/* Mistake Summary */}
               {mushafMarkings.length > 0 && (
-                <div className="bg-green-50 border-t border-green-200 p-4">
+                <div className="px-6 py-4 bg-green-50 border-t border-green-200">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-green-800">
-                      <strong>{mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}</strong> marked for this recitation
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm font-semibold text-green-900">
+                        {mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''} marked for this recitation
+                      </p>
+                    </div>
                     <button
                       onClick={() => {
                         if (confirm('Are you sure you want to clear all marked mistakes?')) {
                           setMushafMarkings([]);
                         }
                       }}
-                      className="text-xs text-red-600 hover:text-red-800 font-medium"
+                      className="text-sm text-red-600 hover:text-red-800 font-medium px-3 py-1 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       Clear All
                     </button>
@@ -578,66 +600,79 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
             </div>
           )}
 
-          {/* Submission Form - Collapsible when Mushaf is shown */}
-          <div className={`bg-white rounded-lg shadow-lg border-2 border-gray-200 transition-all ${showMushaf ? 'mt-6' : ''}`}>
-            <form onSubmit={handleSubmitTicket} className="p-6 space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900">📝 Review & Submit</h3>
+          {/* Submission Form */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Review & Submit</h3>
                 {mushafMarkings.length > 0 && (
-                  <div className="text-sm text-gray-600">
-                    <span className="font-semibold text-green-600">{mushafMarkings.length}</span> mistake{mushafMarkings.length !== 1 ? 's' : ''} marked
+                  <div className="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="text-sm font-semibold text-green-700">{mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}</span>
                   </div>
                 )}
               </div>
+            </div>
+            <form onSubmit={handleSubmitTicket} className="p-6 space-y-5">
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Progress Notes <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-500 ml-2">(Required - Include observations, corrections, praise, etc.)</span>
                 </label>
+                <p className="text-xs text-gray-500 mb-3">Include observations, corrections, praise, and specific feedback</p>
                 <textarea
                   value={formData.progressNotes}
                   onChange={(e) => setFormData(prev => ({ ...prev, progressNotes: e.target.value }))}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y transition-colors"
                   rows={6}
                   placeholder="Enter detailed progress notes...&#10;&#10;Example:&#10;- Student recited pages 1-2 well&#10;- Needs improvement on elongation (madd) rules&#10;- Good memory retention&#10;- Practice tajweed rules for page 3..."
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  💡 Tip: Mention specific pages, ayahs, or mistakes marked in the Mushaf above
+                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Tip: Mention specific pages, ayahs, or mistakes marked in the Mushaf
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Audio Link (Optional)
-                  <span className="text-xs text-gray-500 ml-2">(If you have a different audio link than the one above)</span>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">
+                  Audio Link <span className="text-gray-400 text-xs font-normal">(Optional)</span>
                 </label>
+                <p className="text-xs text-gray-500 mb-3">If you have a different audio link than the one above</p>
                 <input
                   type="url"
                   value={formData.audioLink}
                   onChange={(e) => setFormData(prev => ({ ...prev, audioLink: e.target.value }))}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="https://..."
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? (
-                    <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <>
+                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
                       Submitting...
-                    </span>
+                    </>
                   ) : (
-                    '✅ Submit for Review'
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Submit for Review
+                    </>
                   )}
                 </button>
                 <button
@@ -654,25 +689,25 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                       setFormData({ progressNotes: '', audioLink: '' });
                     }
                   }}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                  className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors"
                 >
                   Cancel
                 </button>
               </div>
             </form>
           </div>
-          </div>
-          {/* End padding-top div */}
         </div>
       ) : (
         <div className="space-y-4">
           {myTickets.length === 0 && completedTickets.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <div className="mb-4">
-                <p className="text-lg font-semibold">No active tickets assigned to you.</p>
-                <p className="text-sm mt-2 text-gray-600">
-                  Tickets with status "assigned", "in_progress", or "needs_revision" will appear here.
-                </p>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="text-lg font-semibold text-gray-900 mb-2">No active tickets</p>
+              <p className="text-sm text-gray-500">
+                Tickets with status "assigned", "in_progress", or "needs_revision" will appear here.
+              </p>
                 {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length > 0 && (
                   <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
@@ -688,33 +723,40 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
             <>
               {myTickets.length > 0 && (
                 <div>
-                  <h3 className="text-lg font-semibold mb-3">Active Tickets</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Tickets</h3>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {myTickets.map(ticket => (
                       <div
                         key={ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                                {ticket.status.replace('_', ' ')}
-                              </span>
+                        <div className="p-5">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                                  {ticket.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-gray-900 mb-1">{getStudentName(ticket.studentId)}</h4>
+                              <p className="text-sm text-gray-600">{ticket.program}</p>
                             </div>
-                            <p className="font-medium text-gray-900">{getStudentName(ticket.studentId)}</p>
-                            <p className="text-sm text-gray-600">{ticket.program}</p>
-                            {ticket.progressNotes && (
-                              <p className="text-sm text-gray-500 mt-2 line-clamp-2">{ticket.progressNotes}</p>
-                            )}
                           </div>
-              <button
-                onClick={() => handleStartTicket(ticket)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
-              >
-                {ticket.status === 'assigned' ? '📖 Start with Mushaf' : '📖 Continue with Mushaf'}
-              </button>
+                          {ticket.progressNotes && (
+                            <p className="text-sm text-gray-500 mt-3 line-clamp-2 border-t border-gray-100 pt-3">{ticket.progressNotes}</p>
+                          )}
+                        </div>
+                        <div className="px-5 pb-5">
+                          <button
+                            onClick={() => handleStartTicket(ticket)}
+                            className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            {ticket.status === 'assigned' ? 'Start Review' : 'Continue Review'}
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -723,25 +765,21 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               )}
 
               {completedTickets.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Pending Review</h3>
-                  <div className="space-y-3">
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Review</h3>
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {completedTickets.map(ticket => (
                       <div
                         key={ticket.id || (ticket as any)._id || `completed-ticket-${ticket.studentId}-${ticket.workflowStep}`}
-                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                        className="bg-gray-50 rounded-xl border border-gray-200 p-5"
                       >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                                Awaiting Admin Review
-                              </span>
-                            </div>
-                            <p className="font-medium text-gray-900">{getStudentName(ticket.studentId)}</p>
-                          </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                            Awaiting Review
+                          </span>
                         </div>
+                        <p className="font-semibold text-gray-900">{getStudentName(ticket.studentId)}</p>
                       </div>
                     ))}
                   </div>
@@ -751,6 +789,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };

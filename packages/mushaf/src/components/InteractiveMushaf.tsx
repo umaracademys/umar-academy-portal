@@ -706,7 +706,7 @@ export const WordByWordPage: React.FC<{
       <div className="w-full max-w-5xl mx-auto">
         {/* Mushaf page container with traditional styling */}
         <div 
-          className="mushaf-arabic-text rounded-lg shadow-xl border-2 border-amber-200 p-4 md:p-6"
+          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-6 md:p-8 bg-gradient-to-br from-amber-50 to-yellow-50"
           style={{
             backgroundColor: '#fef9e7',
             fontFamily: '"Amiri", "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
@@ -716,8 +716,10 @@ export const WordByWordPage: React.FC<{
           }}
         >
           {/* Page number indicator */}
-          <div className="text-center mb-2 text-gray-600 text-xs font-serif">
-            Page {pageNumber}
+          <div className="text-center mb-4 pb-3 border-b border-amber-200">
+            <span className="inline-block px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
+              Page {pageNumber}
+            </span>
           </div>
 
           {/* Arabic text content */}
@@ -1090,153 +1092,74 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const currentJuz = getJuzFromPage(currentPage);
 
   return (
-    <div className="min-h-screen bg-gray-100 relative">
-      {/* Navigation Header */}
-      <div className="w-full md:max-w-6xl md:mx-auto px-2 md:px-4 md:py-3 bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="flex items-center justify-between gap-1 md:gap-4 h-12 md:h-auto">
-          {/* Back Button */}
-          <div className="flex-shrink-0 w-[100px] md:w-[150px] lg:w-auto">
-            {onBack ? (
-              <button 
-                onClick={onBack}
-                className="p-1 lg:p-2 text-gray-600 hover:text-gray-900 transition-colors" 
-                title="Back"
-              >
-                <svg className="w-5 h-5 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                </svg>
-              </button>
-            ) : (
-              <div></div>
-            )}
-          </div>
-
-          {/* Page Navigation Center */}
-          <div className="flex-1 flex items-center justify-center gap-3 lg:gap-6">
-            <div className="flex items-center gap-2 lg:gap-3">
-              {/* Previous Button - Mobile */}
-              <button 
-                className="lg:hidden p-0.5 text-gray-600 hover:text-gray-900 transition-colors" 
-                title="Previous page"
-                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-              </button>
-              
-              {/* Previous Button - Desktop */}
-              <button 
-                className="hidden lg:flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium" 
-                title="Previous page"
-                onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 mr-1">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"></path>
-                </svg>
-                Previous
-              </button>
-
-              {/* Page Number */}
-              <div className="text-center">
-                <div className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
-                  Page {currentPage}
-                </div>
-              </div>
-
-              {/* Next Button - Mobile */}
-              <button 
-                className="lg:hidden p-0.5 text-gray-600 hover:text-gray-900 transition-colors" 
-                title="Next page"
-                onClick={() => onPageChange(currentPage + 1)}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-              </button>
-
-              {/* Next Button - Desktop */}
-              <button 
-                className="hidden lg:flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium" 
-                title="Next page"
-                onClick={() => onPageChange(currentPage + 1)}
-              >
-                Next
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-4 h-4 ml-1">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
-                </svg>
-              </button>
-            </div>
-
-              <div className="flex gap-2">
-                {/* Historical Mistakes Toggle */}
-                {historicalMistakes.length > 0 && (
-                  <button
-                    onClick={() => setShowHistorical(!showHistorical)}
-                    className={`px-2 py-1 text-xs rounded-lg transition-colors ${
-                      showHistorical 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-                    }`}
-                    title={showHistorical ? 'Hide historical mistakes' : 'Show historical mistakes'}
-                  >
-                    📜 {showHistorical ? 'Hide' : 'Show'} Historical ({historicalMistakes.length})
-                  </button>
-                )}
-                {/* Surah Index Toggle Button */}
-                <button
-                  onClick={() => setShowSurahIndex(!showSurahIndex)}
-                  className="px-2 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  📖 {showSurahIndex ? 'Hide' : 'Show'} Index
-                </button>
-              </div>
-          </div>
-
-          {/* Student Info Right */}
-          <div className="flex-shrink-0 w-[100px] md:w-[150px] lg:w-auto">
-            <div className="text-right text-[10px] lg:text-xs leading-tight text-gray-600">
-              {studentName && (
-                <div className="font-medium truncate">{studentName}</div>
-              )}
-              <div className="hidden lg:block text-gray-500 mt-0.5">
-                {currentJuz > 0 && (
-                  <>
-                    <span className="text-teal-600">Juz {currentJuz}</span>
-                    {currentSurah && (
-                      <>
-                        <span className="mx-1">•</span>
-                        <span>Surah {currentSurah.id}</span>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+    <div className="relative">
+      {/* Compact Controls Bar - Only show controls, no duplicate navigation */}
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          {/* Historical Mistakes Toggle */}
+          {historicalMistakes.length > 0 && (
+            <button
+              onClick={() => setShowHistorical(!showHistorical)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                showHistorical 
+                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+              title={showHistorical ? 'Hide historical mistakes' : 'Show historical mistakes'}
+            >
+              <span className="hidden sm:inline">Historical </span>
+              ({historicalMistakes.length})
+            </button>
+          )}
+          {/* Surah Index Toggle Button */}
+          <button
+            onClick={() => setShowSurahIndex(!showSurahIndex)}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm ${
+              showSurahIndex 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            title={showSurahIndex ? 'Hide surah index' : 'Show surah index'}
+          >
+            <span className="hidden sm:inline">Surah </span>Index
+          </button>
         </div>
+        
+        {/* Back button if provided */}
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" 
+            title="Back"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+            </svg>
+            Back
+          </button>
+        )}
       </div>
 
 
 
-      <div className="p-2 md:p-4 relative pt-4 flex justify-center gap-4">
-        {/* Surah Index Sidebar */}
+      <div className="relative flex gap-4">
+        {/* Surah Index Sidebar - Professional Design */}
         {showSurahIndex && (
-          <div className={`bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden transition-all duration-300 ${
-            isIndexMinimized ? 'w-12' : 'w-80'
-          } max-h-[calc(100vh-200px)] ${
-            // On large screens: sticky sidebar, on smaller screens: fixed overlay
-            'lg:sticky lg:top-20 fixed left-0 top-20 z-50 lg:z-auto h-[calc(100vh-80px)] lg:h-auto'
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+            isIndexMinimized ? 'w-12' : 'w-72'
+          } flex-shrink-0 ${
+            // Sticky on large screens, fixed on mobile
+            'lg:sticky lg:top-4 h-fit max-h-[calc(100vh-100px)]'
           }`}>
-            <div className="p-3 border-b border-gray-200 bg-gray-50">
+            <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
               <div className="flex items-center justify-between mb-2">
                 {!isIndexMinimized && (
-                  <h3 className="text-sm font-bold text-gray-800">Surah Index</h3>
+                  <h3 className="text-sm font-bold text-gray-900">Surah Index</h3>
                 )}
                 <div className="flex items-center gap-1 ml-auto">
                   <button
                     onClick={() => setIsIndexMinimized(!isIndexMinimized)}
-                    className="text-gray-500 hover:text-gray-700 text-lg leading-none p-1 hover:bg-gray-200 rounded"
+                    className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
                     title={isIndexMinimized ? "Expand" : "Minimize"}
                   >
                     {isIndexMinimized ? (
@@ -1252,10 +1175,12 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                   {!isIndexMinimized && (
                     <button
                       onClick={() => setShowSurahIndex(false)}
-                      className="text-gray-500 hover:text-gray-700 text-lg leading-none p-1 hover:bg-gray-200 rounded"
+                      className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
                       title="Close"
                     >
-                      ×
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   )}
                 </div>
@@ -1266,19 +1191,19 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                   placeholder="Search surah..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
                 />
               )}
             </div>
             {!isIndexMinimized && (
-              <div className="overflow-y-auto max-h-[calc(100vh-280px)]">
+              <div className="overflow-y-auto max-h-[calc(100vh-200px)]">
                 {filteredChapters.map((surah) => (
                   <button
                     key={surah.id}
                     onClick={() => navigateToSurah(surah)}
-                    className={`w-full text-right p-2 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                    className={`w-full text-right p-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
                       currentSurah?.id === surah.id
-                        ? 'bg-green-50 border-l-4 border-l-green-500'
+                        ? 'bg-green-50 border-l-4 border-l-green-600'
                         : ''
                     }`}
                   >
@@ -1288,7 +1213,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                           <span className="text-xs font-semibold text-gray-600">
                             {surah.id}.
                           </span>
-                          <span className="text-xs font-semibold text-gray-800">
+                          <span className={`text-xs font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`}>
                             {surah.name_simple}
                           </span>
                         </div>
@@ -1308,7 +1233,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             )}
           </div>
         )}
-      <div className="max-w-5xl w-full mx-auto mt-4">
+        
+        {/* Mushaf Content */}
+        <div className="flex-1 min-w-0">
 
         <WordByWordPage 
           pageNumber={currentPage} 
@@ -1327,22 +1254,34 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
         />
 
         {localMistakes.length > 0 && (
-          <div className="mt-3 bg-white p-3 rounded-lg shadow">
-            <h2 className="text-base font-semibold mb-2">Mistake Report</h2>
-            <ul className="space-y-0.5">
+          <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Mistake Report ({localMistakes.length})
+            </h3>
+            <div className="space-y-2">
               {localMistakes.map((m, i) => (
-                <li key={i} className="text-xs text-gray-700 border-b pb-0.5">
-                  <b>{m.text}</b> — {m.type}{" "}
-                  <span className="text-gray-500">
-                    (Surah {m.surah}, Ayah {m.ayah})
-                  </span>{" "}
-                  {m.note && <em>"{m.note}"</em>}
-                </li>
+                <div key={i} className="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-200">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <span className="font-semibold text-gray-900">{m.text}</span>
+                      <span className="text-gray-600"> — {m.type}</span>
+                      <span className="text-gray-500 text-[10px] ml-2">
+                        (Surah {m.surah}, Ayah {m.ayah})
+                      </span>
+                    </div>
+                  </div>
+                  {m.note && (
+                    <p className="text-gray-600 mt-1 text-[10px] italic">"{m.note}"</p>
+                  )}
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
-      </div>
+        </div>
       </div>
     </div>
   );
