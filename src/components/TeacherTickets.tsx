@@ -66,8 +66,11 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
   // Get tickets assigned to current teacher
   // Filter out finalized/completed tickets - they should not appear in the list
+  // Also filter out tickets with workflowStep === 'finalize' (admin-only step)
   const activeTickets = tickets.filter(t => 
-    t.status !== 'finalized' && t.status !== 'completed'
+    t.status !== 'finalized' && 
+    t.status !== 'completed' &&
+    t.workflowStep !== 'finalize' // Finalize step is admin-only, teachers shouldn't see it
   );
 
   // Helper to check if ticket is assigned to current teacher (handle both ID formats)
