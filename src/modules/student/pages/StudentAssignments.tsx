@@ -84,6 +84,7 @@ const StudentAssignments: React.FC = () => {
             wordIndex: m.wordIndex,
             position: m.position || { x: 50, y: 50 },
             note: m.note || '',
+            audioUrl: m.audioUrl || '', // Include audio URL for student playback
             timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
           } as MushafMistake))
             : []
@@ -331,7 +332,7 @@ const StudentAssignments: React.FC = () => {
                           )}
                           
                           {/* Mistake Summary */}
-                          <div className="mb-3">
+                          <div className="mb-3 space-y-3">
                             <div className="flex flex-wrap gap-2">
                               {['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'].map((type) => {
                                 const count = assignment.mushafMarkings.filter((m: MushafMistake) => m.type === type).length;
@@ -347,6 +348,18 @@ const StudentAssignments: React.FC = () => {
                                 );
                               })}
                             </div>
+                            
+                            {/* Audio Corrections Info */}
+                            {assignment.mushafMarkings.some((m: MushafMistake) => m.audioUrl) && (
+                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                <p className="text-xs font-semibold text-blue-900 mb-1">
+                                  🎵 Audio Corrections Available
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  Hover over highlighted words in the Mushaf view below to hear your teacher's audio corrections.
+                                </p>
+                              </div>
+                            )}
                           </div>
 
                           {/* Mushaf View */}

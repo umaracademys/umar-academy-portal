@@ -301,15 +301,39 @@ const StudentAssignments: React.FC = () => {
                             other: { label: 'Other', color: 'bg-gray-500' }
                           };
                           const mistakeInfo = types[mistake.type] || { label: mistake.type, color: 'bg-gray-500' };
+                          // Construct audio URL with API base if it's a relative path
+                          const audioUrl = mistake.audioUrl 
+                            ? (mistake.audioUrl.startsWith('http') 
+                                ? mistake.audioUrl 
+                                : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${mistake.audioUrl}`)
+                            : null;
                           return (
-                            <div key={idx} className="flex items-center gap-2 text-sm">
-                              <span className={`px-2 py-1 rounded text-white text-xs font-medium ${mistakeInfo.color}`}>
-                                {mistakeInfo.label}
-                              </span>
-                              <span className="text-gray-700">
-                                Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
-                                {mistake.note && ` - ${mistake.note}`}
-                              </span>
+                            <div key={idx} className="flex flex-col gap-2 text-sm border-b border-purple-200 pb-2 last:border-b-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-1 rounded text-white text-xs font-medium ${mistakeInfo.color}`}>
+                                  {mistakeInfo.label}
+                                </span>
+                                <span className="text-gray-700">
+                                  Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                  {mistake.note && ` - ${mistake.note}`}
+                                </span>
+                                {audioUrl && (
+                                  <span className="ml-auto text-xs text-blue-600 flex items-center gap-1">
+                                    🎵 Audio available
+                                  </span>
+                                )}
+                              </div>
+                              {audioUrl && (
+                                <div className="ml-4">
+                                  <audio 
+                                    controls 
+                                    src={audioUrl} 
+                                    className="w-full max-w-md h-8"
+                                  >
+                                    Your browser does not support the audio element.
+                                  </audio>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
