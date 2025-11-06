@@ -613,7 +613,7 @@ const AssignmentsPage: React.FC = () => {
                   {getStudentName(selectedAssignmentForAction.assignedTo[0])} - {getWorkflowStepLabel(selectedAssignmentForAction)}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Current Teacher: {selectedAssignmentForAction.teacherName || 'Not assigned'}
+                  Current Teacher: {selectedAssignmentForAction.listenerName || 'Not assigned'}
                 </p>
               </div>
 
@@ -651,7 +651,8 @@ const AssignmentsPage: React.FC = () => {
 
                     try {
                       await updateAssignment(selectedAssignmentForAction.id, {
-                        teacherName: teacher.fullName,
+                        listenerName: teacher.fullName,
+                        listenerId: teacher.id,
                         assignedBy: teacher.id
                       });
                       alert('✅ Assignment reassigned successfully!');
