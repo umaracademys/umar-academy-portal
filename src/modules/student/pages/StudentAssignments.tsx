@@ -125,13 +125,13 @@ const StudentAssignments: React.FC = () => {
     switch (status) {
       case 'completed':
       case 'submitted':
-        return 'bg-green-100 text-green-800';
+        return 'bg-[#2E4D32]/10 text-[#2E4D32]';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-[#FDF7E7] text-[#2E4D32]';
       case 'overdue':
-        return 'bg-red-100 text-red-800';
+        return 'bg-[#E7AA39] text-white';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-white text-[#2E4D32] border border-[#2E4D32]/40';
     }
   };
 
@@ -151,7 +151,7 @@ const StudentAssignments: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <StudentHeader />
       
       <div className="flex">
@@ -161,38 +161,38 @@ const StudentAssignments: React.FC = () => {
           <div className="p-6">
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Assignments</h1>
-              <p className="text-gray-600">View your assigned tasks and assignment history</p>
+              <h1 className="text-3xl font-semibold text-[#2E4D32] mb-2">My Assignments</h1>
+              <p className="text-sm text-[#2E4D32]/70">Review current tasks and your assignment history.</p>
             </div>
 
             {/* View Mode Toggle */}
             <div className="mb-6 flex gap-4 items-center">
-              <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+              <div className="flex space-x-1 rounded-lg border border-[#E7AA39]/40 bg-white p-1">
                 <button
                   onClick={() => setViewMode('assigned')}
-                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${
                     viewMode === 'assigned'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-[#2E4D32] text-white shadow-sm'
+                      : 'text-[#2E4D32] hover:bg-[#FDF7E7]'
                   }`}
                 >
-                  📋 Assigned ({assignedAssignments.length})
+                  Assigned ({assignedAssignments.length})
                 </button>
                 <button
                   onClick={() => setViewMode('history')}
-                  className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-5 py-2 rounded-md text-sm font-medium transition-colors ${
                     viewMode === 'history'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-[#2E4D32] text-white shadow-sm'
+                      : 'text-[#2E4D32] hover:bg-[#FDF7E7]'
                   }`}
                 >
-                  📚 History ({historyAssignments.length})
+                  History ({historyAssignments.length})
                 </button>
               </div>
 
               {/* Filter Tabs */}
               {viewMode === 'assigned' && (
-                <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+                <div className="flex space-x-1 rounded-lg border border-[#E7AA39]/40 bg-white p-1">
                   {[
                     { key: 'all', label: 'All' },
                     { key: 'pending', label: 'Pending' },
@@ -203,8 +203,8 @@ const StudentAssignments: React.FC = () => {
                       onClick={() => setFilter(tab.key as any)}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                         filter === tab.key
-                          ? 'bg-white text-gray-900 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                          ? 'bg-[#FDF7E7] text-[#2E4D32] shadow-sm'
+                          : 'text-[#2E4D32] hover:bg-[#FDF7E7]'
                       }`}
                     >
                       {tab.label}
@@ -216,76 +216,102 @@ const StudentAssignments: React.FC = () => {
 
             {/* Assignments List */}
             <div className="space-y-6">
-              {assignmentsToDisplay.map((assignment: any) => (
-                <div key={assignment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {assignment.title}
-                        </h3>
-                        {assignment.classworkType && (
-                          <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
-                            {assignment.classworkType.toUpperCase()}
-                          </span>
-                        )}
-                        {assignment.program && (
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
-                            {assignment.program}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                        <span>👂 Listener: <span className="font-semibold">{assignment.listenerName}</span></span>
-                        <span>📅 Due: {assignment.dueDate.toLocaleDateString()}</span>
-                        <span>📅 Created: {assignment.createdAt.toLocaleDateString()}</span>
-                      </div>
+              {assignmentsToDisplay.map((assignment: any) => {
+                const markings = assignment.mushafMarkings || [];
+                const hasAudio = markings.some((m: MushafMistake) => (m as any).audioUrl);
 
-                      {/* Report/Description */}
-                      {assignment.report && (
-                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border-l-4 border-green-500">
-                          <h4 className="text-sm font-semibold text-gray-900 mb-1">📝 Report & Feedback:</h4>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{assignment.report}</p>
-                        </div>
-                      )}
-
-                      {/* Listeners Info */}
-                      {assignment.listenersInfo && (
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
-                          <h4 className="text-sm font-semibold text-gray-900 mb-1">👂 Listeners:</h4>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{assignment.listenersInfo}</p>
-                        </div>
-                      )}
-
-                      {/* Homework */}
-                      {assignment.homework && (
-                        <div className="mb-4 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
-                          <h4 className="text-sm font-semibold text-gray-900 mb-1">📝 Homework:</h4>
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap mb-2">{assignment.homework}</p>
-                          {assignment.homeworkLink && (
-                            <a
-                              href={assignment.homeworkLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline text-sm font-medium"
-                            >
-                              📎 Homework Link →
-                            </a>
+                return (
+                  <div
+                    key={assignment.id}
+                    className="overflow-hidden rounded-2xl border border-[#E7AA39] bg-white shadow-sm transition-shadow hover:shadow-md"
+                  >
+                    <div className="flex flex-col gap-4 border-b border-[#E7AA39]/30 bg-[#FDF7E7] p-6 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <span className="inline-block rounded-full bg-[#E7AA39] px-3 py-1 text-xs font-semibold text-white">
+                          Due {assignment.dueDate.toLocaleDateString()}
+                        </span>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <h3 className="text-2xl font-semibold text-[#2E4D32]">{assignment.title}</h3>
+                          {assignment.classworkType && (
+                            <span className="rounded-full border border-[#2E4D32]/20 bg-white px-3 py-1 text-xs font-semibold text-[#2E4D32]">
+                              {assignment.classworkType.toUpperCase()}
+                            </span>
+                          )}
+                          {assignment.program && (
+                            <span className="rounded-full border border-[#2E4D32]/20 bg-white px-3 py-1 text-xs font-semibold text-[#2E4D32]">
+                              {assignment.program}
+                            </span>
                           )}
                         </div>
+                        <div className="mt-2 flex flex-wrap gap-4 text-sm text-[#2E4D32]/75">
+                          <span>Listener: <span className="font-semibold text-[#2E4D32]">{assignment.listenerName}</span></span>
+                          <span>Created {assignment.createdAt.toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-flex items-center justify-center rounded-full px-4 py-1 text-xs font-semibold ${getStatusColor(assignment.status)}`}>
+                          {getStatusText(assignment.status)}
+                        </span>
+                        {assignment.grade !== null && assignment.grade !== undefined && (
+                          <div className="mt-2 text-sm font-semibold text-[#2E4D32]">Grade: {assignment.grade}%</div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-6 p-6">
+                      {assignment.report && (
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h4 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Report & Feedback</h4>
+                            <div className="ml-4 h-px flex-1 bg-[#E7AA39]/40"></div>
+                          </div>
+                          <div className="rounded-xl border border-[#2E4D32]/15 bg-white p-4">
+                            <p className="text-sm text-[#2E4D32]/85 whitespace-pre-wrap">{assignment.report}</p>
+                          </div>
+                        </section>
                       )}
 
-                      {/* Mushaf Mistake Markings */}
-                      {assignment.mushafMarkings && assignment.mushafMarkings.length > 0 && (
-                        <div className="mb-4 p-4 bg-purple-50 rounded-lg border-l-4 border-purple-500">
-                          <div className="flex items-center justify-between mb-3">
+                      {assignment.listenersInfo && (
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h4 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Listeners</h4>
+                            <div className="ml-4 h-px flex-1 bg-[#E7AA39]/40"></div>
+                          </div>
+                          <div className="rounded-xl border border-[#2E4D32]/15 bg-white p-4">
+                            <p className="text-sm text-[#2E4D32]/85 whitespace-pre-wrap">{assignment.listenersInfo}</p>
+                          </div>
+                        </section>
+                      )}
+
+                      {assignment.homework && (
+                        <section>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h4 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Homework</h4>
+                            <div className="ml-4 h-px flex-1 bg-[#E7AA39]/40"></div>
+                          </div>
+                          <div className="rounded-xl border border-[#E7AA39]/30 bg-[#FDF7E7] p-4">
+                            <p className="text-sm text-[#2E4D32]/85 whitespace-pre-wrap mb-2">{assignment.homework}</p>
+                            {assignment.homeworkLink && (
+                              <a
+                                href={assignment.homeworkLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-semibold text-[#2E4D32] underline decoration-[#E7AA39]/60 hover:text-[#E7AA39]"
+                              >
+                                Open homework resource
+                              </a>
+                            )}
+                          </div>
+                        </section>
+                      )}
+
+                      {markings.length > 0 && (
+                        <section>
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <h4 className="text-sm font-semibold text-gray-900">
-                                📖 Mushaf Mistake Markings ({assignment.mushafMarkings.length} mistake{assignment.mushafMarkings.length !== 1 ? 's' : ''})
-                              </h4>
-                              <p className="text-xs text-gray-600 mt-1">
-                                Click "View Mushaf" to see your mistakes highlighted on the Quran pages
+                              <h4 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Mushaf Mistake Markings</h4>
+                              <p className="text-xs text-[#2E4D32]/70">
+                                {markings.length} mistake{markings.length !== 1 ? 's' : ''} recorded for this assignment.{hasAudio && ' Audio corrections are available for select mistakes.'}
                               </p>
                             </div>
                             <button
@@ -294,163 +320,127 @@ const StudentAssignments: React.FC = () => {
                                   setShowMushafForAssignment(null);
                                 } else {
                                   setShowMushafForAssignment(assignment.id);
-                                  // Set initial page from first mistake if available
-                                  const firstMistake = assignment.mushafMarkings[0];
+                                  const firstMistake = markings[0];
                                   if (firstMistake && firstMistake.page) {
                                     setMushafPage(firstMistake.page);
                                   }
                                 }
                               }}
-                              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+                              className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                                showMushafForAssignment === assignment.id
+                                  ? 'border-[#2E4D32] bg-[#2E4D32] text-white'
+                                  : 'border-[#2E4D32]/40 text-[#2E4D32] hover:border-[#2E4D32]'
+                              }`}
                             >
-                              {showMushafForAssignment === assignment.id ? '📖 Hide Mushaf' : '📖 View Mushaf'}
+                              {showMushafForAssignment === assignment.id ? 'Hide Mushaf View' : 'View in Mushaf'}
                             </button>
                           </div>
-                          
-                          {/* Quick navigation to pages with mistakes */}
-                          {showMushafForAssignment !== assignment.id && (
-                            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-purple-200">
-                              <span className="text-xs font-semibold text-purple-900">Jump to pages:</span>
-                              {(Array.from(new Set(assignment.mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
-                                .sort((a: number, b: number) => a - b)
-                                .map((page: number) => {
-                                  const mistakesOnPage = assignment.mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
-                                  return (
-                                    <button
-                                      key={page}
-                                      onClick={() => {
-                                        setMushafPage(page);
-                                        setShowMushafForAssignment(assignment.id);
-                                      }}
-                                      className="px-3 py-1 bg-purple-200 text-purple-800 rounded-md hover:bg-purple-300 text-xs font-medium"
-                                    >
-                                      Page {page} ({mistakesOnPage})
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                          )}
-                          
-                          {/* Mistake Summary */}
-                          <div className="mb-3 space-y-3">
-                            <div className="flex flex-wrap gap-2">
-                              {['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'].map((type) => {
-                                const count = assignment.mushafMarkings.filter((m: MushafMistake) => m.type === type).length;
-                                if (count === 0) return null;
-                                return (
-                                  <span key={type} className="px-2 py-1 bg-white rounded text-xs font-medium text-gray-700">
-                                    {type === 'madd' ? 'Mad (Elongation)' : 
-                                     type === 'holding' ? 'Holding/Fluency' :
-                                     type === 'memory' ? 'Memory' :
-                                     type === 'ikhfa' ? 'Ikhfa' :
-                                     type === 'tech' ? 'Ghunna' : 'Other'}: {count}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                            
-                            {/* Audio Corrections Info */}
-                            {assignment.mushafMarkings.some((m: MushafMistake) => m.audioUrl) && (
-                              <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                                <p className="text-xs font-semibold text-blue-900 mb-1">
-                                  🎵 Audio Corrections Available
-                                </p>
-                                <p className="text-xs text-blue-700">
-                                  Hover over highlighted words in the Mushaf view below to hear your teacher's audio corrections.
-                                </p>
-                              </div>
-                            )}
+
+                          <div className="space-y-3 rounded-xl border border-[#2E4D32]/15 bg-white p-4">
+                            {markings.map((mistake: any, idx: number) => {
+                              const typeLabels: Record<string, string> = {
+                                madd: 'Mad (Elongation)',
+                                holding: 'Holding / Fluency',
+                                memory: 'Memory',
+                                ikhfa: 'Ikhfa',
+                                tech: 'Ghunna',
+                                other: 'Other'
+                              };
+                              const label = typeLabels[mistake.type] || mistake.type;
+                              const audioUrl = mistake.audioUrl
+                                ? (mistake.audioUrl.startsWith('http')
+                                    ? mistake.audioUrl
+                                    : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${mistake.audioUrl}`)
+                                : null;
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex flex-col gap-2 border-b border-[#E7AA39]/30 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+                                >
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="inline-flex items-center rounded-full bg-[#FDF7E7] px-3 py-1 text-xs font-semibold text-[#2E4D32]">
+                                        {label}
+                                      </span>
+                                      <span className="text-sm text-[#2E4D32]/80">
+                                        Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                        {mistake.note && ` — ${mistake.note}`}
+                                      </span>
+                                    </div>
+                                    {audioUrl && (
+                                      <div className="ml-0 md:ml-4 text-xs text-[#2E4D32]/70">Audio correction provided</div>
+                                    )}
+                                  </div>
+                                  {audioUrl && (
+                                    <audio controls src={audioUrl} className="w-full max-w-sm rounded md:w-auto">
+                                      Your browser does not support the audio element.
+                                    </audio>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
 
-                          {/* Mushaf View */}
                           {showMushafForAssignment === assignment.id && (
-                            <div className="mt-4 bg-white rounded-lg border-2 border-purple-200 p-4">
-                              <div className="flex justify-between items-center mb-4">
+                            <div className="rounded-xl border border-[#2E4D32]/20 bg-white p-4">
+                              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                  <h5 className="text-md font-bold text-gray-900">📖 Your Mistakes on the Mushaf</h5>
-                                  <p className="text-xs text-gray-600 mt-1">
-                                    Page {mushafPage} • {assignment.mushafMarkings.filter((m: MushafMistake) => m.page === mushafPage).length} mistake{assignment.mushafMarkings.filter((m: MushafMistake) => m.page === mushafPage).length !== 1 ? 's' : ''} on this page
-                                  </p>
+                                  <h5 className="text-base font-semibold text-[#2E4D32]">Mistakes Highlighted in the Mushaf</h5>
+                                  <p className="text-xs text-[#2E4D32]/70">Page {mushafPage} — {markings.filter((m: any) => m.page === mushafPage).length} mistake(s) on this page.</p>
                                 </div>
-                                <button
-                                  onClick={() => setShowMushafForAssignment(null)}
-                                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
-                                >
-                                  Close
-                                </button>
-                              </div>
-                              
-                              {/* Quick navigation buttons */}
-                              <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
-                                <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages with mistakes:</span>
-                                {(Array.from(new Set(assignment.mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
-                                  .sort((a: number, b: number) => a - b)
-                                  .map((page: number) => {
-                                    const mistakesOnPage = assignment.mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
-                                    return (
+                                <div className="flex flex-wrap gap-2">
+                                  {Array.from(new Set(markings.map((m: any) => m.page)))
+                                    .sort((a: number, b: number) => a - b)
+                                    .map((page: number) => (
                                       <button
                                         key={page}
                                         onClick={() => setMushafPage(page)}
-                                        className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                                           mushafPage === page
-                                            ? 'bg-purple-600 text-white'
-                                            : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                            ? 'bg-[#2E4D32] text-white'
+                                            : 'bg-[#FDF7E7] text-[#2E4D32] hover:bg-[#E7AA39] hover:text-white'
                                         }`}
                                       >
-                                        Page {page} ({mistakesOnPage})
+                                        Page {page}
                                       </button>
-                                    );
-                                  })}
+                                    ))}
+                                </div>
                               </div>
-                              
                               <InteractiveMushaf
                                 currentPage={mushafPage}
                                 onPageChange={setMushafPage}
-                                mistakes={assignment.mushafMarkings}
-                                onMistakeMark={() => {}} // Read-only for students
-                                readOnly={true}
+                                mistakes={markings}
+                                onMistakeMark={() => {}}
+                                readOnly
                                 mode="viewing"
                               />
                             </div>
                           )}
-                        </div>
+                        </section>
                       )}
                     </div>
-                    
-                    <div className="flex flex-col items-end space-y-2 ml-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(assignment.status)}`}>
-                        {getStatusText(assignment.status)}
-                      </span>
-                      {assignment.grade !== null && assignment.grade !== undefined && (
-                        <span className="text-lg font-bold text-green-600">
-                          {assignment.grade}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex space-x-3">
+
+                    <div className="flex items-center justify-between gap-3 border-t border-[#E7AA39]/30 bg-[#FDF7E7] p-4">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-[#2E4D32]/70">
+                        {assignment.submissions && assignment.submissions.length > 0 && (
+                          <span>
+                            Submitted {assignment.submissions[0].submittedAt ? new Date(assignment.submissions[0].submittedAt).toLocaleDateString() : ''}
+                          </span>
+                        )}
+                        {assignment.status === 'completed' && (
+                          <span>Completed on {assignment.createdAt.toLocaleDateString()}</span>
+                        )}
+                      </div>
                       {assignment.status === 'pending' && viewMode === 'assigned' && (
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                          Submit Assignment
+                        <button className="rounded-lg border border-[#2E4D32] bg-[#2E4D32] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90">
+                          Submit assignment
                         </button>
                       )}
-                      {assignment.submissions && assignment.submissions.length > 0 && (
-                        <span className="text-sm text-gray-600">
-                          ✅ Submitted {assignment.submissions[0].submittedAt ? new Date(assignment.submissions[0].submittedAt).toLocaleDateString() : ''}
-                        </span>
-                      )}
                     </div>
-                    
-                    {assignment.status === 'completed' && (
-                      <div className="text-sm text-gray-600">
-                        Completed on {assignment.createdAt.toLocaleDateString()}
-                      </div>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {assignmentsToDisplay.length === 0 && (

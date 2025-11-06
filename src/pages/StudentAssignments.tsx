@@ -119,7 +119,7 @@ const StudentAssignments: React.FC = () => {
   }, [viewMode, selectedDate, studentAssignments, mockAssignments]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Header />
       
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -140,13 +140,13 @@ const StudentAssignments: React.FC = () => {
 
           {/* Student Info Banner */}
           {currentStudent && (
-            <div className="rounded-xl shadow-md p-4 border-l-4" style={{ backgroundColor: '#f0fdf4', borderLeftColor: '#2E4D32' }}>
+            <div className="rounded-xl border border-[#E7AA39] bg-[#FDF7E7] p-4 shadow-sm">
               <div className="flex items-center gap-4">
                 <img src={currentStudent.avatar} alt={currentStudent.fullName} className="w-16 h-16 rounded-full" />
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">{currentStudent.fullName}</h2>
-                  <p className="text-sm text-gray-600">Program: <span className="font-semibold" style={{ color: '#2E4D32' }}>{currentStudent.program}</span></p>
-                  <p className="text-sm text-gray-600">Teacher: {currentStudent.assignedTeacher}</p>
+                  <h2 className="text-xl font-semibold text-[#2E4D32]">{currentStudent.fullName}</h2>
+                  <p className="text-sm text-[#2E4D32]/80">Program: <span className="font-semibold text-[#2E4D32]">{currentStudent.program}</span></p>
+                  <p className="text-sm text-[#2E4D32]/80">Teacher: {currentStudent.assignedTeacher}</p>
                 </div>
               </div>
             </div>
@@ -159,18 +159,16 @@ const StudentAssignments: React.FC = () => {
             <div className="flex gap-2">
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  viewMode === 'current' ? 'text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  viewMode === 'current' ? 'text-white shadow-md bg-[#2E4D32]' : 'bg-white border border-[#2E4D32]/30 text-[#2E4D32] hover:border-[#2E4D32]'
                 }`}
-                style={viewMode === 'current' ? { backgroundColor: '#2E4D32' } : {}}
                 onClick={() => setViewMode('current')}
               >
                 Today's Assignment
               </button>
               <button
                 className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                  viewMode === 'history' ? 'text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  viewMode === 'history' ? 'text-white shadow-md bg-[#2E4D32]' : 'bg-white border border-[#2E4D32]/30 text-[#2E4D32] hover:border-[#2E4D32]'
                 }`}
-                style={viewMode === 'history' ? { backgroundColor: '#2E4D32' } : {}}
                 onClick={() => setViewMode('history')}
               >
                 Assignment History
@@ -179,13 +177,12 @@ const StudentAssignments: React.FC = () => {
 
             {viewMode === 'current' && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Select Date</label>
+                <label className="block text-sm font-semibold text-[#2E4D32] mb-2">Select Date</label>
                 <input
                   type="date"
-                  className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 transition"
+                  className="px-4 py-2 border border-[#2E4D32]/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/40 transition"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  style={{ outlineColor: '#2E4D32' }}
                 />
               </div>
             )}
@@ -197,221 +194,254 @@ const StudentAssignments: React.FC = () => {
           {displayedAssignments.length === 0 ? (
             <Card>
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">📚</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">No Assignments Yet</h3>
-                <p className="text-gray-600">Your teacher hasn't posted any assignments for this date.</p>
+                <h3 className="text-xl font-semibold text-[#2E4D32] mb-2">No assignments available</h3>
+                <p className="text-sm text-[#2E4D32]/70">Assignments assigned to you will appear in this section.</p>
               </div>
             </Card>
           ) : (
-            displayedAssignments.map((assignment, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all border-2 overflow-hidden" style={{ borderColor: '#2E4D32' }}>
-                {/* Assignment Header */}
-                <div className="p-6 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
-                  <div className="flex justify-between items-start">
+            displayedAssignments.map((assignment, index) => {
+              const markings = (assignment as any).mushafMarkings || [];
+              const hasAudio = markings.some((m: any) => m.audioUrl);
+              const formattedDate = new Date(assignment.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              });
+
+              return (
+                <div
+                  key={index}
+                  className="overflow-hidden rounded-2xl border border-[#E7AA39] bg-white shadow-sm transition-shadow hover:shadow-md"
+                >
+                  <div className="flex flex-col gap-4 border-b border-[#E7AA39]/30 bg-[#FDF7E7] p-6 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="px-3 py-1 text-xs font-bold text-white rounded-full" style={{ backgroundColor: '#2E4D32' }}>
-                          {new Date(assignment.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                        </span>
-                      </div>
-                      <h2 className="text-2xl font-bold text-gray-900">Daily Assignment</h2>
-                      <p className="text-sm text-gray-600 mt-1">
-                        👂 Listener: <span className="font-semibold">{(assignment as any).listenerName || assignment.teacherName}</span>
+                      <span className="inline-block rounded-full bg-[#E7AA39] px-3 py-1 text-xs font-semibold text-white">
+                        {formattedDate}
+                      </span>
+                      <h2 className="mt-3 text-2xl font-semibold text-[#2E4D32]">Daily Assignment</h2>
+                      <div className="mt-2 flex flex-wrap gap-3 text-sm text-[#2E4D32]/75">
+                        <span>Listener: <span className="font-semibold text-[#2E4D32]">{(assignment as any).listenerName || assignment.teacherName}</span></span>
                         {assignment.teacherName && (assignment as any).listenerName !== assignment.teacherName && (
-                          <span className="ml-2">| Assigned by: <span className="font-semibold">{assignment.teacherName}</span></span>
+                          <span>Assigned by: <span className="font-semibold text-[#2E4D32]">{assignment.teacherName}</span></span>
                         )}
-                      </p>
-                      {(assignment as any).fromTicketId && (
-                        <p className="text-xs text-gray-500 mt-1">📋 Created from ticket workflow</p>
-                      )}
+                        {(assignment as any).fromTicketId && (
+                          <span>Created from ticket workflow</span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: '#E7AA39' }}>
-                        {index + 1}
+                      <p className="text-xs font-medium uppercase tracking-wide text-[#2E4D32]/60">Assignment</p>
+                      <p className="text-3xl font-semibold text-[#2E4D32]">{String(index + 1).padStart(2, '0')}</p>
+                    </div>
+                  </div>
+
+                  <div className="p-6 space-y-6">
+                    <section>
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Today's Classwork</h3>
+                        <div className="h-px flex-1 bg-[#E7AA39]/40 ml-4"></div>
                       </div>
-                    </div>
-                  </div>
-                </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        {[
+                          { title: 'Sabq (New Lesson)', value: assignment.sabq },
+                          { title: 'Sabqi (Revision)', value: assignment.sabqi },
+                          { title: 'Manzil', value: assignment.manzil }
+                        ].map((item) => (
+                          <div key={item.title} className="rounded-xl border border-[#E7AA39]/30 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#2E4D32]/70">{item.title}</p>
+                            <p className="mt-2 text-sm font-medium text-[#2E4D32]">{item.value || 'Not assigned'}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
 
-                {/* Classwork Section */}
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-lg font-bold mb-4" style={{ color: '#2E4D32' }}>📖 Today's Classwork</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Sabq (New Lesson)</label>
-                      <p className="text-base font-semibold text-gray-900">{assignment.sabq || 'Not assigned'}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Sabqi (Revision)</label>
-                      <p className="text-base font-semibold text-gray-900">{assignment.sabqi || 'Not assigned'}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <label className="text-xs font-bold text-gray-600 uppercase tracking-wide block mb-2">Manzil</label>
-                      <p className="text-base font-semibold text-gray-900">{assignment.manzil || 'Not assigned'}</p>
-                    </div>
-                  </div>
-                </div>
+                    {(assignment as any).listenersInfo && (
+                      <section>
+                        <div className="mb-3 flex items-center justify-between">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Listeners</h3>
+                          <div className="h-px flex-1 bg-[#E7AA39]/40 ml-4"></div>
+                        </div>
+                        <div className="rounded-xl border border-[#2E4D32]/15 bg-white p-4">
+                          <p className="text-sm text-[#2E4D32]/80 whitespace-pre-wrap">{(assignment as any).listenersInfo}</p>
+                        </div>
+                      </section>
+                    )}
 
-                {/* Listeners Info */}
-                {(assignment as any).listenersInfo && (
-                  <div className="p-6 border-b border-gray-100 bg-blue-50">
-                    <h3 className="text-lg font-bold mb-3" style={{ color: '#2E4D32' }}>👂 Listeners</h3>
-                    <div className="rounded-lg p-4 border-2 border-blue-200 bg-white">
-                      <p className="text-gray-900 whitespace-pre-wrap">{(assignment as any).listenersInfo}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Mushaf Markings */}
-                {(assignment as any).mushafMarkings && (assignment as any).mushafMarkings.length > 0 && (
-                  <div className="p-6 border-b border-gray-100">
-                    <div className="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-500">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-lg font-bold text-gray-900">📖 Mushaf Mistake Markings</h3>
-                        <button
-                          onClick={() => {
-                            if (showMushafForAssignment === assignment.id) {
-                              setShowMushafForAssignment(null);
-                            } else {
-                              setShowMushafForAssignment(assignment.id);
-                              const firstMistake = (assignment as any).mushafMarkings[0];
-                              if (firstMistake?.page) {
-                                setMushafPage(firstMistake.page);
+                    {markings.length > 0 && (
+                      <section>
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Mushaf Mistake Markings</h3>
+                            <p className="mt-1 text-xs text-[#2E4D32]/70">
+                              {markings.length} mistake{markings.length !== 1 ? 's' : ''} identified by your teacher.
+                              {hasAudio && ' Audio corrections are available for some mistakes.'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (showMushafForAssignment === assignment.id) {
+                                setShowMushafForAssignment(null);
+                              } else {
+                                setShowMushafForAssignment(assignment.id);
+                                const firstMistake = markings[0];
+                                if (firstMistake?.page) {
+                                  setMushafPage(firstMistake.page);
+                                }
                               }
-                            }
-                          }}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-semibold"
-                        >
-                          {showMushafForAssignment === assignment.id ? 'Hide' : 'View'} Mushaf
-                        </button>
-                      </div>
-                      <p className="text-sm text-purple-800 mb-3">
-                        Your teacher marked <strong>{(assignment as any).mushafMarkings.length} mistake{((assignment as any).mushafMarkings.length !== 1) ? 's' : ''}</strong> in your recitation.
-                      </p>
-                      
-                      {/* Mistake Summary */}
-                      <div className="bg-white p-3 rounded space-y-2">
-                        {(assignment as any).mushafMarkings.map((mistake: any, idx: number) => {
-                          const types: any = {
-                            madd: { label: 'Madd (Elongation)', color: 'bg-red-500' },
-                            holding: { label: 'Holding', color: 'bg-orange-500' },
-                            memory: { label: 'Memory', color: 'bg-yellow-500' },
-                            ikhfa: { label: 'Ikhfa', color: 'bg-blue-500' },
-                            tech: { label: 'Technical', color: 'bg-purple-500' },
-                            other: { label: 'Other', color: 'bg-gray-500' }
-                          };
-                          const mistakeInfo = types[mistake.type] || { label: mistake.type, color: 'bg-gray-500' };
-                          // Construct audio URL with API base if it's a relative path
-                          const audioUrl = mistake.audioUrl 
-                            ? (mistake.audioUrl.startsWith('http') 
-                                ? mistake.audioUrl 
-                                : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${mistake.audioUrl}`)
-                            : null;
-                          return (
-                            <div key={idx} className="flex flex-col gap-2 text-sm border-b border-purple-200 pb-2 last:border-b-0">
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-1 rounded text-white text-xs font-medium ${mistakeInfo.color}`}>
-                                  {mistakeInfo.label}
-                                </span>
-                                <span className="text-gray-700">
-                                  Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
-                                  {mistake.note && ` - ${mistake.note}`}
-                                </span>
+                            }}
+                            className={`rounded-lg border px-4 py-2 text-sm font-semibold transition-colors ${
+                              showMushafForAssignment === assignment.id
+                                ? 'border-[#2E4D32] bg-[#2E4D32] text-white'
+                                : 'border-[#2E4D32]/40 text-[#2E4D32] hover:border-[#2E4D32]'
+                            }`}
+                          >
+                            {showMushafForAssignment === assignment.id ? 'Hide Mushaf View' : 'View Markings in Mushaf'}
+                          </button>
+                        </div>
+
+                        <div className="space-y-3 rounded-xl border border-[#2E4D32]/15 bg-white p-4">
+                          {markings.map((mistake: any, idx: number) => {
+                            const typeLabels: Record<string, string> = {
+                              madd: 'Mad (Elongation)',
+                              holding: 'Holding / Fluency',
+                              memory: 'Memory',
+                              ikhfa: 'Ikhfa',
+                              tech: 'Ghunna',
+                              other: 'Other'
+                            };
+                            const label = typeLabels[mistake.type] || mistake.type;
+                            const audioUrl = mistake.audioUrl
+                              ? (mistake.audioUrl.startsWith('http')
+                                  ? mistake.audioUrl
+                                  : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${mistake.audioUrl}`)
+                              : null;
+
+                            return (
+                              <div
+                                key={idx}
+                                className="flex flex-col gap-2 border-b border-[#E7AA39]/30 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+                              >
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="inline-flex items-center rounded-full bg-[#FDF7E7] px-3 py-1 text-xs font-semibold text-[#2E4D32]">
+                                      {label}
+                                    </span>
+                                    <span className="text-sm text-[#2E4D32]/80">
+                                      Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                      {mistake.note && ` — ${mistake.note}`}
+                                    </span>
+                                  </div>
+                                  {audioUrl && (
+                                    <div className="ml-0 md:ml-4 text-xs text-[#2E4D32]/70">
+                                      Audio correction provided
+                                    </div>
+                                  )}
+                                </div>
                                 {audioUrl && (
-                                  <span className="ml-auto text-xs text-blue-600 flex items-center gap-1">
-                                    🎵 Audio available
-                                  </span>
-                                )}
-                              </div>
-                              {audioUrl && (
-                                <div className="ml-4">
-                                  <audio 
-                                    controls 
-                                    src={audioUrl} 
-                                    className="w-full max-w-md h-8"
-                                  >
+                                  <audio controls src={audioUrl} className="w-full max-w-sm rounded md:w-auto">
                                     Your browser does not support the audio element.
                                   </audio>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
 
-                    {/* Mushaf Display for Student */}
-                    {showMushafForAssignment === assignment.id && (
-                      <div className="mt-4 bg-white p-4 rounded-lg border-2 border-purple-200">
-                        <h4 className="text-lg font-bold text-gray-900 mb-4">📖 View Your Mistakes in the Mushaf</h4>
-                        <InteractiveMushaf
-                          currentPage={mushafPage}
-                          onPageChange={setMushafPage}
-                          mistakes={(assignment as any).mushafMarkings || []}
-                          onMistakeMark={() => {}} // Read-only for students
-                          readOnly={true}
-                          mode="viewing"
-                        />
-                      </div>
+                        {showMushafForAssignment === assignment.id && (
+                          <div className="rounded-xl border border-[#2E4D32]/20 bg-white p-4">
+                            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <h4 className="text-base font-semibold text-[#2E4D32]">Mistakes Highlighted in the Mushaf</h4>
+                                <p className="text-xs text-[#2E4D32]/70">Page {mushafPage} — {markings.filter((m: any) => m.page === mushafPage).length} mistake(s) on this page.</p>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {Array.from(new Set(markings.map((m: any) => m.page)))
+                                  .sort((a: number, b: number) => a - b)
+                                  .map((page: number) => (
+                                    <button
+                                      key={page}
+                                      onClick={() => setMushafPage(page)}
+                                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                                        mushafPage === page
+                                          ? 'bg-[#2E4D32] text-white'
+                                          : 'bg-[#FDF7E7] text-[#2E4D32] hover:bg-[#E7AA39] hover:text-white'
+                                      }`}
+                                    >
+                                      Page {page}
+                                    </button>
+                                  ))}
+                              </div>
+                            </div>
+                            <InteractiveMushaf
+                              currentPage={mushafPage}
+                              onPageChange={setMushafPage}
+                              mistakes={markings}
+                              onMistakeMark={() => {}}
+                              readOnly
+                              mode="viewing"
+                            />
+                          </div>
+                        )}
+                      </section>
+                    )}
+
+                    {assignment.homework && (
+                      <section>
+                        <div className="mb-3 flex items-center justify-between">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Homework</h3>
+                          <div className="h-px flex-1 bg-[#E7AA39]/40 ml-4"></div>
+                        </div>
+                        <div className="rounded-xl border border-[#E7AA39]/30 bg-[#FDF7E7] p-4">
+                          <p className="text-sm text-[#2E4D32]/85 whitespace-pre-wrap">{assignment.homework}</p>
+                          {(assignment as any).homeworkLink && (
+                            <div className="mt-3">
+                              <a
+                                href={(assignment as any).homeworkLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-semibold text-[#2E4D32] underline decoration-[#E7AA39]/60 hover:text-[#E7AA39]"
+                              >
+                                Open homework resource
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </section>
+                    )}
+
+                    {assignment.comment && (
+                      <section>
+                        <div className="mb-3 flex items-center justify-between">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-[#2E4D32]">Report & Feedback</h3>
+                          <div className="h-px flex-1 bg-[#E7AA39]/40 ml-4"></div>
+                        </div>
+                        <div className="rounded-xl border border-[#2E4D32]/15 bg-white p-4">
+                          <p className="text-sm text-[#2E4D32]/85 whitespace-pre-wrap">{assignment.comment}</p>
+                          <p className="mt-2 text-xs text-[#2E4D32]/60">
+                            {((assignment as any).listenerName || assignment.teacherName) && `Provided by ${(assignment as any).listenerName || assignment.teacherName}`}
+                          </p>
+                        </div>
+                      </section>
                     )}
                   </div>
-                )}
 
-                {/* Homework Section */}
-                {assignment.homework && (
-                  <div className="p-6 border-b border-gray-100">
-                    <h3 className="text-lg font-bold mb-3" style={{ color: '#E7AA39' }}>📝 Homework</h3>
-                    <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-200">
-                      <p className="text-gray-900 whitespace-pre-wrap">{assignment.homework}</p>
-                      {(assignment as any).homeworkLink && (
-                        <div className="mt-3">
-                          <a
-                            href={(assignment as any).homeworkLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline font-medium"
-                          >
-                            📎 Homework Link →
-                          </a>
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-end gap-3 border-t border-[#E7AA39]/30 bg-[#FDF7E7] p-4">
+                    <button
+                      className="rounded-lg border border-[#2E4D32]/30 px-4 py-2 text-sm font-semibold text-[#2E4D32] transition-colors hover:border-[#2E4D32]"
+                      onClick={() => window.print()}
+                    >
+                      Print assignment
+                    </button>
+                    <button
+                      className="rounded-lg border border-[#2E4D32] bg-[#2E4D32] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                    >
+                      Mark as completed
+                    </button>
                   </div>
-                )}
-
-                {/* Teacher Comment / Report */}
-                {assignment.comment && (
-                  <div className="p-6" style={{ backgroundColor: '#fefdfb' }}>
-                    <h3 className="text-lg font-bold mb-3" style={{ color: '#2E4D32' }}>📝 Report & Feedback</h3>
-                    <div className="rounded-lg p-4 border-l-4" style={{ backgroundColor: '#f0fdf4', borderLeftColor: '#2E4D32' }}>
-                      <p className="text-gray-900 whitespace-pre-wrap">{assignment.comment}</p>
-                      <p className="text-sm text-gray-600 mt-2">
-                        — {(assignment as any).listenerName || assignment.teacherName}
-                        {(assignment as any).listenerName && <span className="text-xs text-gray-500"> (Listener)</span>}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Button */}
-                <div className="p-4 bg-gray-50 flex justify-end gap-2">
-                  <button 
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-                    onClick={() => window.print()}
-                  >
-                    Print Assignment
-                  </button>
-                  <button 
-                    className="px-4 py-2 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-                    style={{ backgroundColor: '#2E4D32' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#253d28'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
-                  >
-                    Mark as Completed
-                  </button>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
