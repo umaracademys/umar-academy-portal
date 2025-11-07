@@ -14,7 +14,8 @@
     "start": "node frontend-server.js",
     "seed": "tsx src/scripts/seedData.ts",
     "test-db": "tsx src/scripts/testConnection.ts",
-    "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts"
+    "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts",
+    "postinstall": "pnpm --filter @umar-academy/mushaf build"
   },
   "dependencies": {
     "@umar-academy/mushaf": "workspace:*",
@@ -26,7 +27,8 @@
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
     "sql.js": "^1.13.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "vite": "^5.0.8"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
@@ -38,7 +40,6 @@
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
     "tsx": "^4.20.6",
-    "typescript": "^5.3.3",
-    "vite": "^5.0.8"
+    "typescript": "^5.3.3"
   }
 }
