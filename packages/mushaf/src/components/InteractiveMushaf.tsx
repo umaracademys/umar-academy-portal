@@ -95,7 +95,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [recordingTimer, setRecordingTimer] = useState<NodeJS.Timeout | null>(null);
+  const [recordingTimer, setRecordingTimer] = useState<number | null>(null);
 
   // Cleanup audio URL on unmount
   useEffect(() => {
@@ -109,8 +109,8 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
-      if (recordingTimer) {
-        clearInterval(recordingTimer);
+      if (recordingTimer !== null) {
+        window.clearInterval(recordingTimer);
       }
     };
   }, [recordingTimer]);
@@ -144,7 +144,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
       setRecordingTime(0);
       
       // Start timer
-      const timer = setInterval(() => {
+      const timer = window.setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
       setRecordingTimer(timer);
@@ -158,8 +158,8 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
     if (mediaRecorder && isRecording) {
       mediaRecorder.stop();
       setIsRecording(false);
-      if (recordingTimer) {
-        clearInterval(recordingTimer);
+      if (recordingTimer !== null) {
+        window.clearInterval(recordingTimer);
         setRecordingTimer(null);
       }
     }
@@ -375,12 +375,14 @@ export const WordByWordPage: React.FC<{
 }> = ({
   pageNumber,
   onWordClick,
-  mistakes = [],
-  historicalMistakes = [],
+  mistakes: mistakesProp = [],
+  historicalMistakes: historicalMistakesProp = [],
   showHistorical = true,
   readOnly = false,
   onMistakesWithWords,
 }) => {
+  const mistakes = React.useMemo(() => mistakesProp as MushafMistake[], [mistakesProp]);
+  const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [layout, setLayout] = useState<LayoutPage | null>(null);
   const [words, setWords] = useState<Word[]>([]);
   const [wordsFromApi, setWordsFromApi] = useState<Word[]>([]); // Words from API response as fallback
@@ -927,7 +929,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   currentPage,
   onPageChange,
   mistakes,
-  historicalMistakes = [],
+  historicalMistakes: historicalMistakesProp = [],
   onMistakeMark,
   readOnly = false,
   mode = 'marking',
@@ -935,6 +937,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   onBack,
   showHistorical: showHistoricalProp = true
 }) => {
+  const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [localMistakes, setLocalMistakes] = useState<Mistake[]>([]);
   const [showSurahIndex, setShowSurahIndex] = useState(false); // Hidden by default, user can toggle
