@@ -1187,11 +1187,11 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               onClick={() => setShowSurahIndex(false)}
             />
             {/* Index Container - Modal on mobile, Sidebar on desktop */}
-            <div className={`bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
-              isIndexMinimized ? 'w-12' : 'w-[calc(100%-2rem)] sm:w-64 lg:w-72'
-            } flex-shrink-0 ${
+            <div className={`bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 ${
+              isIndexMinimized ? 'w-12' : 'w-[calc(100%-2.5rem)] sm:w-56 lg:w-64'
+            } flex-shrink-0 overflow-hidden ${
               // Fixed modal on mobile, sticky sidebar on desktop
-              'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-20 sm:top-24 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 h-fit max-h-[calc(100vh-140px)] sm:max-h-[calc(100vh-120px)] lg:max-h-[calc(100vh-100px)]'
+              'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-16 sm:top-20 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 max-h-[75vh] lg:max-h-[70vh]'
             }`}>
             <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
               <div className="flex items-center justify-between mb-2">
@@ -1238,7 +1238,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               )}
             </div>
             {!isIndexMinimized && (
-              <div className="overflow-y-auto max-h-[calc(100vh-200px)] lg:max-h-[calc(100vh-250px)]">
+              <div className="overflow-y-auto max-h-[55vh] lg:max-h-[50vh]">
                 {filteredChapters.length === 0 ? (
                   <div className="p-4 text-center text-sm text-gray-500">
                     No surahs found
