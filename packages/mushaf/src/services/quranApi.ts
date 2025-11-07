@@ -1,6 +1,8 @@
 // Quran API Service for Mushaf
 // Note: API calls are proxied through backend to avoid CORS issues
 // Handle both cases: API_BASE_URL might include /api or not
+import { FALLBACK_CHAPTERS } from '../data/fallbackChapters';
+
 const getApiBase = () => {
   // Allow configuration via environment variable or prop
   const base = (typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE) || 
@@ -39,14 +41,21 @@ export async function getQuranChapters(): Promise<Chapter[]> {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch chapters: ${response.statusText}`);
+      throw new Error(`Failed to fetch chapters: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
-    return data.chapters || [];
+    const chapters = data.chapters || [];
+
+    if (!Array.isArray(chapters) || chapters.length === 0) {
+      console.warn('Quran chapters API returned no data, using fallback dataset');
+      return FALLBACK_CHAPTERS;
+    }
+
+    return chapters as Chapter[];
   } catch (error) {
     console.error('Error fetching chapters:', error);
-    return [];
+    return FALLBACK_CHAPTERS;
   }
 }
 

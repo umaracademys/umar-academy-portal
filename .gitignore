@@ -41,8 +41,10 @@ build
 
 # MongoDB data (if running locally)
 # But allow public/data/ for static assets
-data/
+/data/
 !public/data/
+src/data/
+packages/mushaf/public/data/
 
 # Uploaded assets
 backend/uploads/
