@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher } from '../types';
+import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher, MushafMistake } from '../types';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
+
+const extractMistakePages = (markings: ReadonlyArray<MushafMistake>): number[] => {
+  const pages = Array.from(
+    new Set(
+      markings
+        .map((mark) => mark.page)
+        .filter((page): page is number => typeof page === 'number')
+    )
+  );
+  pages.sort((a, b) => a - b);
+  return pages;
+};
 
 interface AdminTicketManagementProps {
   onClose?: () => void;
@@ -24,6 +36,9 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const [revisionNotes, setRevisionNotes] = useState('');
   const [showMushaf, setShowMushaf] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
+  const mistakePages = extractMistakePages(selectedTicketMarkings);
 
   // Filter out finalized/completed tickets - they should not appear in the list
   const activeTickets = tickets.filter(t => 
@@ -240,7 +255,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             )}
 
             {/* Mushaf Markings Display */}
-            {selectedTicket.mushafMarkings && selectedTicket.mushafMarkings.length > 0 && (
+            {selectedTicketMarkings.length > 0 && (
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-semibold">Mushaf Mistake Markings:</h4>
@@ -249,28 +264,26 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       setShowMushaf(!showMushaf);
                       if (!showMushaf) {
                         // Set to first page with mistakes
-                        const firstMistakePage = selectedTicket.mushafMarkings?.[0]?.page || 1;
+                        const firstMistakePage = selectedTicketMarkings[0]?.page ?? 1;
                         setCurrentPage(firstMistakePage);
                       }
                     }}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
                   >
-                    {showMushaf ? 'Hide' : 'View'} Mushaf ({selectedTicket.mushafMarkings.length} mistakes)
+                    {showMushaf ? 'Hide' : 'View'} Mushaf ({selectedTicketMarkings.length} mistakes)
                   </button>
                 </div>
                 {!showMushaf && (
                   <div className="bg-purple-50 p-4 rounded-lg">
                     <p className="text-sm text-purple-800 mb-3">
-                      Teacher marked <strong>{selectedTicket.mushafMarkings.length} mistake{selectedTicket.mushafMarkings.length !== 1 ? 's' : ''}</strong> in the Mushaf.
+                      Teacher marked <strong>{selectedTicketMarkings.length} mistake{selectedTicketMarkings.length !== 1 ? 's' : ''}</strong> in the Mushaf.
                       Click "View Mushaf" to see them highlighted on the Quran pages.
                     </p>
                     {/* Quick navigation to pages with mistakes */}
                     <div className="flex flex-wrap gap-2">
                       <span className="text-xs font-semibold text-purple-900">Jump to pages:</span>
-                      {Array.from(new Set((selectedTicket.mushafMarkings || []).map((m: any) => m.page)))
-                        .sort((a: number, b: number) => a - b)
-                        .map((page: number) => {
-                          const mistakesOnPage = (selectedTicket.mushafMarkings || []).filter((m: any) => m.page === page).length;
+                      {mistakePages.map((page) => {
+                          const mistakesOnPage = selectedTicketMarkings.filter((m) => m.page === page).length;
                           return (
                             <button
                               key={page}
@@ -291,13 +304,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             )}
 
             {/* Mushaf View for Admin */}
-            {showMushaf && selectedTicket.mushafMarkings && selectedTicket.mushafMarkings.length > 0 && (
+            {showMushaf && selectedTicketMarkings.length > 0 && (
               <div className="mb-6 bg-white p-4 rounded-lg border-2 border-purple-200">
                 <div className="flex justify-between items-center mb-4">
                   <div>
                     <h4 className="text-lg font-bold text-gray-900">📖 Mushaf with Teacher's Markings</h4>
                     <p className="text-sm text-gray-600 mt-1">
-                      Page {currentPage} • {selectedTicket.mushafMarkings.filter((m: any) => m.page === currentPage).length} mistake{selectedTicket.mushafMarkings.filter((m: any) => m.page === currentPage).length !== 1 ? 's' : ''} on this page
+                      Page {currentPage} • {selectedTicketMarkings.filter((m) => m.page === currentPage).length} mistake{selectedTicketMarkings.filter((m) => m.page === currentPage).length !== 1 ? 's' : ''} on this page
                     </p>
                   </div>
                   <button
@@ -311,10 +324,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 {/* Quick navigation buttons */}
                 <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
                   <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages with mistakes:</span>
-                  {Array.from(new Set((selectedTicket.mushafMarkings || []).map((m: any) => m.page)))
-                    .sort((a: number, b: number) => a - b)
-                    .map((page: number) => {
-                      const mistakesOnPage = (selectedTicket.mushafMarkings || []).filter((m: any) => m.page === page).length;
+                  {mistakePages.map((page) => {
+                      const mistakesOnPage = selectedTicketMarkings.filter((m) => m.page === page).length;
                       return (
                         <button
                           key={page}
@@ -334,7 +345,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 <InteractiveMushaf
                   currentPage={currentPage}
                   onPageChange={setCurrentPage}
-                  mistakes={selectedTicket.mushafMarkings || []}
+                  mistakes={selectedTicketMarkings}
                   onMistakeMark={() => {}} // Read-only for admin
                   readOnly={true}
                   mode="viewing"
