@@ -115,27 +115,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                        t.status === 'approved' || // Show approved tickets assigned to this teacher
                        t.status === 'pending'; // Include pending tickets (filtered by isAssigned below)
     
-    if (isAssigned) {
-      if (!validStatus) {
-        console.log('🔍 Ticket found but wrong status:', {
-          id: t.id || (t as any)._id,
-          workflowStep: t.workflowStep,
-          status: t.status,
-          assignedTeacherId: t.assignedTeacherId,
-          assignedTeacherName: t.assignedTeacherName,
-          userId: user?.id,
-          userName: user?.name
-        });
-      } else {
-        console.log('✅ Ticket visible to teacher:', {
-          id: t.id || (t as any)._id,
-          workflowStep: t.workflowStep,
-          status: t.status,
-          student: t.studentName
-        });
-      }
-    }
-    
     return isAssigned && validStatus;
   });
 
@@ -144,26 +123,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     isTicketAssignedToTeacher(t) && t.status === 'pending_review'
   );
   
-  // Debug logging
-  console.log('🎫 Teacher Tickets Debug:', {
-    userId: user?.id,
-    userName: user?.name,
-    userEmail: user?.email,
-    userRole: user?.role,
-    totalTickets: tickets.length,
-    activeTickets: activeTickets.length,
-    myTickets: myTickets.length,
-    completedTickets: completedTickets.length,
-    allTicketTeacherIds: activeTickets.map(t => ({
-      id: t.id || (t as any)._id,
-      workflowStep: t.workflowStep,
-      assignedTeacherId: t.assignedTeacherId,
-      assignedTeacherName: t.assignedTeacherName,
-      status: t.status,
-      isAssigned: isTicketAssignedToTeacher(t)
-    }))
-  });
-
   // Load chapters on mount
   useEffect(() => {
     const loadChapters = async () => {
@@ -256,12 +215,13 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   };
 
   const handleMistakeMark = (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => {
-    const newMistake: MushafMistake = {
+    const sanitisedMistake: MushafMistake = {
       ...mistake,
+      audioUrl: mistake.audioUrl || undefined,
       id: `mistake-${Date.now()}-${Math.random()}`,
       timestamp: new Date()
     };
-    setMushafMarkings(prev => [...prev, newMistake]);
+    setMushafMarkings(prev => [...prev, sanitisedMistake]);
   };
 
   const handleSubmitTicket = async (e: React.FormEvent) => {

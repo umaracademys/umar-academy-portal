@@ -44,6 +44,9 @@ build
 data/
 !public/data/
 
+# Uploaded assets
+backend/uploads/
+
 # OS files
 Thumbs.db
 .DS_Store
