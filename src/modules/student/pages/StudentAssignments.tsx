@@ -441,9 +441,10 @@ const StudentAssignments: React.FC = () => {
                                   <p className="text-xs text-[#2E4D32]/70">Page {mushafPage} — {markings.filter((m: any) => m.page === mushafPage).length} mistake(s) on this page.</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                  {Array.from(new Set(markings.map((m: any) => m.page)))
-                                    .sort((a: number, b: number) => a - b)
-                                    .map((page: number) => (
+                                  {Array.from(new Set<number>(markings.map((m: any) => Number(m.page))))
+                                    .filter((page): page is number => !Number.isNaN(page))
+                                    .sort((a, b) => a - b)
+                                    .map((page) => (
                                       <button
                                         key={page}
                                         onClick={() => setMushafPage(page)}
