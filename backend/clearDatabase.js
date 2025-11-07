@@ -88,6 +88,18 @@ const assignmentSchema = new mongoose.Schema({
   fromRecitationReviewId: String,
   homeworkLink: String,
   homeworkComments: String,
+  classworkSections: [{
+    step: { type: String },
+    title: { type: String },
+    details: { type: String },
+    teacherName: { type: String },
+    order: { type: Number }
+  }],
+  mushafMarkings: [{
+    type: String,
+    content: String,
+    title: String
+  }],
   attachments: [{
     type: String,
     content: String,

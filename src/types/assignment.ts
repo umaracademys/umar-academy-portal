@@ -4,6 +4,7 @@ export interface Assignment {
   description: string;
   type: 'classwork' | 'homework';
   classworkType?: 'sabq' | 'sabqi' | 'manzil';
+  classworkSections?: ClassworkSection[];
   program: string;
   assignedBy: string; // User ID of who assigned it
   assignedTo: string[]; // Array of student IDs
@@ -75,6 +76,14 @@ export interface AssignmentReport {
     averageGrade: number;
     assignments: AssignmentSubmission[];
   }[];
+}
+
+export interface ClassworkSection {
+  step: 'sabq' | 'sabqi' | 'manzil' | string;
+  title?: string;
+  details?: string;
+  teacherName?: string;
+  order?: number;
 }
 
 

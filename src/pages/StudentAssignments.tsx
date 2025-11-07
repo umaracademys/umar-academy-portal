@@ -71,6 +71,15 @@ const StudentAssignments: React.FC = () => {
           teacherName: assignment.listenerName || 'Teacher',
           listenerName: assignment.listenerName || assignment.assignedTeacherName || 'Teacher',
           listenersInfo: listenersInfo.join('\n'),
+          classworkSections: Array.isArray((assignment as any).classworkSections)
+            ? (assignment as any).classworkSections.map((section: any, index: number) => ({
+                step: (section.step || '').toLowerCase(),
+                title: section.title || '',
+                details: section.details || '',
+                teacherName: section.teacherName || '',
+                order: typeof section.order === 'number' ? section.order : index
+              }))
+            : [] as Array<{ step: string; title: string; details: string; teacherName: string; order: number }> ,
           // Only show mushafMarkings for assignments created from finalized tickets
           mushafMarkings: assignment.fromTicketId && assignment.mushafMarkings ? assignment.mushafMarkings : []
         };
@@ -209,6 +218,43 @@ const StudentAssignments: React.FC = () => {
                 day: 'numeric'
               });
 
+              const classworkSections = Array.isArray((assignment as any).classworkSections)
+                ? (assignment as any).classworkSections
+                : [];
+
+              const formatStepTitle = (step: string) => step.charAt(0).toUpperCase() + step.slice(1);
+              const buildSectionItems = (step: string, fallback?: string) => {
+                const filtered = classworkSections.filter((section: any) => (section.step || '').toLowerCase() === step);
+                if (filtered.length > 0) {
+                  return filtered.map((section: any, idx: number) => (
+                    <li key={`${step}-${idx}`} className="text-sm text-[#2E4D32]/85">
+                      <span className="font-medium text-[#2E4D32]">
+                        {section.title || `${formatStepTitle(step)}${filtered.length > 1 ? ` ${idx + 1}` : ''}`}
+                      </span>
+                      {section.details && (
+                        <span className="block text-xs text-[#2E4D32]/65 mt-1">{section.details}</span>
+                      )}
+                    </li>
+                  ));
+                }
+                if (fallback) {
+                  return [
+                    <li key={`${step}-fallback`} className="text-sm text-[#2E4D32]/70">
+                      {fallback}
+                    </li>
+                  ];
+                }
+                return [
+                  <li key={`${step}-none`} className="text-sm text-[#2E4D32]/50">
+                    Not assigned
+                  </li>
+                ];
+              };
+
+              const sabqItems = buildSectionItems('sabq', assignment.sabq);
+              const sabqiItems = buildSectionItems('sabqi', assignment.sabqi);
+              const manzilItems = buildSectionItems('manzil', assignment.manzil);
+ 
               return (
                 <div
                   key={index}
@@ -244,13 +290,15 @@ const StudentAssignments: React.FC = () => {
                       </div>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         {[
-                          { title: 'Sabq (New Lesson)', value: assignment.sabq },
-                          { title: 'Sabqi (Revision)', value: assignment.sabqi },
-                          { title: 'Manzil', value: assignment.manzil }
-                        ].map((item) => (
-                          <div key={item.title} className="rounded-xl border border-[#E7AA39]/30 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-[#2E4D32]/70">{item.title}</p>
-                            <p className="mt-2 text-sm font-medium text-[#2E4D32]">{item.value || 'Not assigned'}</p>
+                          { title: 'Sabq (New Lesson)', items: sabqItems },
+                          { title: 'Sabqi (Revision)', items: sabqiItems },
+                          { title: 'Manzil', items: manzilItems }
+                        ].map((section) => (
+                          <div key={section.title} className="rounded-xl border border-[#E7AA39]/30 bg-white p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#2E4D32]/70">{section.title}</p>
+                            <ul className="mt-2 space-y-2">
+                              {section.items}
+                            </ul>
                           </div>
                         ))}
                       </div>

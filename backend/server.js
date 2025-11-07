@@ -313,7 +313,14 @@ const assignmentSchema = new mongoose.Schema({
     message: String,
     read: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
-  }]
+  }],
+  classworkSections: [{
+    step: { type: String },
+    title: { type: String },
+    details: { type: String },
+    teacherName: { type: String },
+    order: { type: Number }
+  }],
 }, { timestamps: true });
 
 const Assignment = mongoose.model('Assignment', assignmentSchema);
@@ -783,6 +790,7 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
       existingAssignmentByTicketId.description = req.body.finalReport || '';
       existingAssignmentByTicketId.homeworkComments = req.body.homework || '';
       existingAssignmentByTicketId.homeworkLink = req.body.homeworkLink || '';
+      existingAssignmentByTicketId.classworkSections = ticket.classworkSections;
       await existingAssignmentByTicketId.save();
       
       return res.json({
@@ -832,15 +840,44 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
       }
     }
     
-    // Build description with listener information
-    const listenersInfo = ticketChain
-      .filter(t => t.teacherName) // Only include tickets with assigned teachers
-      .map(t => `👂 ${t.step.charAt(0).toUpperCase() + t.step.slice(1)} Listener: ${t.teacherName}`)
+    // Build structured classwork sections (supports multiple manzil entries)
+    const sectionCounters = {};
+    const classworkSections = [];
+
+    ticketChain.forEach((entry) => {
+      const normalizedStep = (entry.step || '').toLowerCase();
+      if (!['sabq', 'sabqi', 'manzil'].includes(normalizedStep)) {
+        return;
+      }
+
+      sectionCounters[normalizedStep] = (sectionCounters[normalizedStep] || 0) + 1;
+      const count = sectionCounters[normalizedStep];
+      const baseTitle = normalizedStep.charAt(0).toUpperCase() + normalizedStep.slice(1);
+      const title = count > 1 ? `${baseTitle} ${count}` : baseTitle;
+
+      classworkSections.push({
+        step: normalizedStep,
+        title,
+        details: (entry.progressNotes || '').trim(),
+        teacherName: entry.teacherName || '',
+        order: classworkSections.length
+      });
+    });
+
+    // Build description with listener information using structured data
+    const listenersInfo = classworkSections
+      .filter(section => section.teacherName)
+      .map(section => {
+        const parts = [section.title];
+        if (section.teacherName) parts.push(`Teacher: ${section.teacherName}`);
+        if (section.details) parts.push(section.details);
+        return parts.join(' — ');
+      })
       .join('\n');
-    
-    const fullDescription = listenersInfo 
-      ? `${ticket.finalReport || ''}\n\n${listenersInfo}`
-      : ticket.finalReport || '';
+
+    const fullDescription = [ticket.finalReport || '', listenersInfo]
+      .filter(Boolean)
+      .join('\n\n');
     
     // Get main listener (the one who did sabq or the first in chain)
     const mainListener = ticketChain.find(t => t.step === 'sabq') || ticketChain[0];
@@ -880,20 +917,21 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
     try {
       assignment = new Assignment({
         title: `${classworkType} - ${ticket.studentName}`,
-      description: fullDescription,
-      type: 'classwork',
+        description: fullDescription,
+        type: 'classwork',
         classworkType: classworkType,
-      program: ticket.program,
-      assignedTo: [ticket.studentId],
+        program: ticket.program,
+        assignedTo: [ticket.studentId],
         assignedBy: assignedBy,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      status: 'published',
-      homeworkComments: ticket.homework,
-      homeworkLink: ticket.homeworkLink,
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        status: 'published',
+        homeworkComments: ticket.homework,
+        homeworkLink: ticket.homeworkLink,
         listenerName: mainListener?.teacherName || ticket.assignedTeacherName || 'Teacher',
-      listenerId: mainListener?.teacherId || ticket.assignedTeacherId,
+        listenerId: mainListener?.teacherId || ticket.assignedTeacherId,
         fromTicketId: ticket._id.toString(), // Link to ticket
-        mushafMarkings: ticket.mushafMarkings || [] // Copy mistake markings
+        mushafMarkings: ticket.mushafMarkings || [], // Copy mistake markings
+        classworkSections: classworkSections
     });
     
     await assignment.save();
@@ -910,6 +948,8 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
           assignment.description = ticket.finalReport || '';
           assignment.homeworkComments = ticket.homework;
           assignment.homeworkLink = ticket.homeworkLink;
+          assignment.fromTicketId = ticket._id.toString(); // Ensure this is set
+          assignment.classworkSections = classworkSections;
           await assignment.save();
           console.log(`✅ Updated existing assignment ${assignment._id} for ticket ${ticket._id}`);
         } else {
@@ -936,6 +976,7 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
             assignment.homeworkComments = ticket.homework;
             assignment.homeworkLink = ticket.homeworkLink;
             assignment.fromTicketId = ticket._id.toString(); // Ensure this is set
+            assignment.classworkSections = classworkSections;
             await assignment.save();
             console.log(`✅ Updated conflicting assignment ${assignment._id} for ticket ${ticket._id}`);
           } else {

@@ -61,6 +61,15 @@ const StudentAssignments: React.FC = () => {
           description: description,
           type: assignment.type || 'classwork',
           classworkType: assignment.classworkType,
+          classworkSections: Array.isArray(assignment.classworkSections)
+            ? assignment.classworkSections.map((section: any, index: number) => ({
+                step: (section.step || '').toLowerCase(),
+                title: section.title || '',
+                details: section.details || '',
+                teacherName: section.teacherName || '',
+                order: typeof section.order === 'number' ? section.order : index
+              }))
+            : [],
           program: assignment.program || '',
           dueDate: dueDate,
           createdAt: createdAt,
@@ -259,6 +268,48 @@ const StudentAssignments: React.FC = () => {
                     </div>
 
                     <div className="space-y-6 p-6">
+                      {/* Classwork Sections */}
+                      {assignment.classworkSections.length > 0 && (
+                        <div className="mb-4 p-4 bg-[#FDF7E7] rounded-lg border border-[#E7AA39]/40">
+                          <h4 className="text-sm font-semibold text-[#2E4D32] mb-2 uppercase tracking-wide">Classwork Details</h4>
+                          <div className="grid gap-3 md:grid-cols-3">
+                            {[
+                              { step: 'sabq', title: 'Sabq (New Lesson)' },
+                              { step: 'sabqi', title: 'Sabqi (Revision)' },
+                              { step: 'manzil', title: 'Manzil' }
+                            ].map(({ step, title }) => {
+                              const items = assignment.classworkSections.filter((section: any) => (section.step || '').toLowerCase() === step);
+                              if (items.length === 0) {
+                                return (
+                                  <div key={step} className="rounded-lg border border-[#E7AA39]/20 bg-white p-3">
+                                    <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide">{title}</p>
+                                    <p className="mt-2 text-sm text-[#2E4D32]/50">Not specified</p>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div key={step} className="rounded-lg border border-[#E7AA39]/20 bg-white p-3">
+                                  <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide">{title}</p>
+                                  <ul className="mt-2 space-y-2">
+                                    {items.map((section: any, idx: number) => (
+                                      <li key={`${step}-${idx}`} className="text-xs text-[#2E4D32]/80">
+                                        <span className="block font-medium text-[#2E4D32]">
+                                          {section.title || `${title}${items.length > 1 ? ` ${idx + 1}` : ''}`}
+                                        </span>
+                                        {section.details && (
+                                          <span className="mt-1 block text-[#2E4D32]/65">{section.details}</span>
+                                        )}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Report/Description */}
                       {assignment.report && (
                         <section>
                           <div className="mb-3 flex items-center justify-between">
