@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, MushafMistake } from '../types';
@@ -65,6 +65,8 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const [mushafMarkings, setMushafMarkings] = useState<MushafMistake[]>([]);
   const [historicalMistakes, setHistoricalMistakes] = useState<MushafMistake[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [studentFilterLetter, setStudentFilterLetter] = useState<string>('ALL');
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Record<string, boolean>>({});
 
   // Get tickets assigned to current teacher
   // Filter out finalized/completed tickets - they should not appear in the list
@@ -103,15 +105,56 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     // - in_progress: They're currently working on it
     // - needs_revision: They need to revise it
     // - pending: Auto-created tickets waiting for activation (only if assigned)
-    // - approved: Show approved tickets assigned to teacher (for visibility)
     const validStatus = t.status === 'assigned' || 
                        t.status === 'in_progress' || 
                        t.status === 'needs_revision' ||
-                       t.status === 'approved' || // Show approved tickets assigned to this teacher
                        t.status === 'pending'; // Include pending tickets (filtered by isAssigned below)
     
     return isAssigned && validStatus;
   });
+
+  const getStudentName = (studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    return student?.fullName || studentId;
+  };
+
+  const studentTicketHistoryMap = useMemo(() => {
+    const grouped = new Map<string, AssignmentTicket[]>();
+    tickets.forEach(ticket => {
+      const list = grouped.get(ticket.studentId) ?? [];
+      list.push(ticket);
+      grouped.set(ticket.studentId, list);
+    });
+    return grouped;
+  }, [tickets]);
+
+  const availableLetters = useMemo(() => {
+    const letters = new Set<string>();
+    myTickets.forEach(ticket => {
+      const name = getStudentName(ticket.studentId).trim();
+      if (name.length > 0) {
+        letters.add(name[0].toUpperCase());
+      }
+    });
+    return Array.from(letters).sort();
+  }, [myTickets, students]);
+
+  const filteredMyTickets = useMemo(() => {
+    if (studentFilterLetter === 'ALL') {
+      return myTickets;
+    }
+    return myTickets.filter(ticket => {
+      const name = getStudentName(ticket.studentId).trim().toUpperCase();
+      return name.startsWith(studentFilterLetter);
+    });
+  }, [myTickets, studentFilterLetter, students]);
+
+  const handleToggleHistory = (ticketKey: string) => {
+    setExpandedHistoryIds(prev => ({
+      ...prev,
+      [ticketKey]: !prev[ticketKey]
+    }));
+  };
 
   // Get completed tickets (for reference)
   const completedTickets = activeTickets.filter(t => 
@@ -319,9 +362,15 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     }
   };
 
-  const getStudentName = (studentId: string) => {
-    const student = students.find(s => s.id === studentId);
-    return student?.fullName || studentId;
+  const getTicketKey = (ticket: AssignmentTicket) =>
+    ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`;
+
+  const formatHistoryTimestamp = (ticket: AssignmentTicket) => {
+    const rawDate = (ticket as any).updatedAt || (ticket as any).completedAt || (ticket as any).createdAt;
+    if (!rawDate) return '—';
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -727,42 +776,130 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               {myTickets.length > 0 && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Tickets</h3>
-                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {myTickets.map(ticket => (
-                      <div
-                        key={ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`}
-                        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
+                  {availableLetters.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                      <button
+                        onClick={() => setStudentFilterLetter('ALL')}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
+                          studentFilterLetter === 'ALL'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                        }`}
                       >
-                        <div className="p-5">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
-                                  {ticket.status.replace('_', ' ')}
-                                </span>
-                              </div>
-                              <h4 className="font-semibold text-gray-900 mb-1">{getStudentName(ticket.studentId)}</h4>
-                              <p className="text-sm text-gray-600">{ticket.program}</p>
-                            </div>
-                          </div>
-                          {ticket.progressNotes && (
-                            <p className="text-sm text-gray-500 mt-3 line-clamp-2 border-t border-gray-100 pt-3">{ticket.progressNotes}</p>
-                          )}
-                        </div>
-                        <div className="px-5 pb-5">
-                          <button
-                            onClick={() => handleStartTicket(ticket)}
-                            className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
-                            {ticket.status === 'assigned' ? 'Start Review' : 'Continue Review'}
-                          </button>
-                        </div>
+                        All
+                      </button>
+                      {availableLetters.map(letter => (
+                        <button
+                          key={letter}
+                          onClick={() => setStudentFilterLetter(letter)}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                            studentFilterLetter === letter
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                          }`}
+                          aria-label={`Filter by students starting with ${letter}`}
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    {filteredMyTickets.length === 0 && (
+                      <div className="col-span-full bg-white border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
+                        No students found for the selected filter.
                       </div>
-                    ))}
+                    )}
+                    {filteredMyTickets.map(ticket => {
+                      const ticketKey = getTicketKey(ticket);
+                      const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
+                      const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(otherTicket => getTicketKey(otherTicket) !== ticketKey);
+                      const historyEntries = rawHistory
+                        .slice()
+                        .sort((a, b) => {
+                          const aTime = new Date((a as any).updatedAt || (a as any).completedAt || (a as any).createdAt || 0).getTime();
+                          const bTime = new Date((b as any).updatedAt || (b as any).completedAt || (b as any).createdAt || 0).getTime();
+                          return bTime - aTime;
+                        });
+ 
+                      return (
+                        <div
+                          key={ticketKey}
+                          className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
+                        >
+                          <div className="p-5">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                                    {ticket.status.replace('_', ' ')}
+                                  </span>
+                                </div>
+                                <h4 className="font-semibold text-gray-900 mb-1">{getStudentName(ticket.studentId)}</h4>
+                                <p className="text-sm text-gray-600">{ticket.program}</p>
+                              </div>
+                            </div>
+                            {ticket.progressNotes && (
+                              <p className="text-sm text-gray-500 mt-3 line-clamp-2 border-t border-gray-100 pt-3">{ticket.progressNotes}</p>
+                            )}
+                          </div>
+                          <div className="px-5 pb-5">
+                            <button
+                              onClick={() => handleStartTicket(ticket)}
+                              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                              </svg>
+                              {ticket.status === 'assigned' ? 'Start Review' : 'Continue Review'}
+                            </button>
+                            <button
+                              onClick={() => handleToggleHistory(ticketKey)}
+                              className="mt-3 w-full px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <svg className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                              {isHistoryExpanded ? 'Hide Assignment History' : 'Show Assignment History'}
+                            </button>
+                            {isHistoryExpanded && (
+                              <div className="mt-3 space-y-2 text-left">
+                                {historyEntries.length === 0 ? (
+                                  <div className="p-3 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-lg italic">
+                                    No previous assignments recorded for this student.
+                                  </div>
+                                ) : (
+                                  historyEntries.map(historyTicket => {
+                                    const historyKey = getTicketKey(historyTicket);
+                                    return (
+                                      <div key={historyKey} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                        <div className="flex items-center justify-between gap-3 mb-1">
+                                          <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                            <span>{getStepLabel(historyTicket.workflowStep)}</span>
+                                          </div>
+                                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(historyTicket.status)}`}>
+                                            {historyTicket.status.replace('_', ' ')}
+                                          </span>
+                                        </div>
+                                        <div className="text-[11px] text-gray-500">
+                                          Updated {formatHistoryTimestamp(historyTicket)}
+                                        </div>
+                                        {historyTicket.progressNotes && (
+                                          <p className="mt-2 text-xs text-gray-600 line-clamp-3">
+                                            {historyTicket.progressNotes}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
