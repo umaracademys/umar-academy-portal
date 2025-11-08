@@ -101,296 +101,237 @@ const SuperAdminDashboard: React.FC = () => {
     systemAlerts: 1
   };
 
-  // Overview Section - Boss Dashboard
+  // Overview Section - refreshed layout
   const OverviewSection = () => (
-    <div>
-      {/* Boss Header */}
-      <div className="mb-8 bg-gradient-to-r from-red-600 to-red-800 rounded-lg shadow-lg p-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold">👑 SUPER ADMIN CONTROL CENTER</h1>
-            <p className="text-red-100 mt-2 text-lg">Ultimate system authority - Complete control over Umar Academy</p>
-            <div className="mt-3 flex items-center space-x-4">
-              <span className="bg-red-500 px-3 py-1 rounded-full text-sm font-bold">BOSS MODE</span>
-              <span className="bg-yellow-500 px-3 py-1 rounded-full text-sm font-bold">FULL ACCESS</span>
-              <span className="bg-green-500 px-3 py-1 rounded-full text-sm font-bold">SYSTEM OWNER</span>
+    <div className="space-y-10">
+      <div className="rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+          <div className="space-y-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Super Admin Control Center</span>
+            <h1 className="text-3xl font-semibold text-primary">Full Visibility Across Umar Academy</h1>
+            <p className="max-w-3xl text-sm text-primary-soft">
+              Monitor academy-wide metrics, handle escalations, and coordinate cross-team workflows from one mission control.
+              Use the core actions to review recitations, manage tickets, or assign follow-up work instantly.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-soft-primary px-3 py-1 text-xs font-semibold text-primary">System Health {systemStats.systemHealth}%</span>
+              <span className="rounded-full bg-soft-accent px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">Uptime {systemStats.systemUptime}%</span>
+              <span className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-3 py-1 text-xs font-semibold text-primary">Pending Approvals {systemStats.pendingApprovals}</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
             <button
               onClick={() => setShowRecitationReview(true)}
-              className="px-6 py-3 bg-yellow-500 text-white rounded-lg font-semibold hover:bg-yellow-600 transition-all shadow-md relative"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
             >
-              📖 Review Recitations
+              Review Recitations
               {pendingReviewsCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                <span className="ml-2 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-primary">
                   {pendingReviewsCount}
                 </span>
               )}
             </button>
             <button
               onClick={() => setShowTicketManagement(true)}
-              className="px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-all shadow-md"
+              className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
             >
-              🎫 Manage Tickets
+              Manage Tickets
             </button>
             <button
               onClick={() => setShowAssignTicket(true)}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md"
+              className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-5 py-3 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
             >
-              ➕ Assign New Ticket
+              Assign Ticket
             </button>
             <Link
               to="/assignments"
-              className="px-6 py-3 bg-white text-red-600 rounded-lg font-semibold hover:bg-red-50 transition-all shadow-md relative"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
             >
-              Assignments
+              View Assignments
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                <span className="ml-2 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-[var(--color-accent)]">
                   {unreadNotificationsCount}
                 </span>
               )}
             </Link>
-            <div className="text-right">
-              <p className="text-sm text-red-100">System Health</p>
-              <p className="text-3xl font-bold">{systemStats.systemHealth}%</p>
-              <p className="text-red-100 text-xs">Uptime: {systemStats.systemUptime}%</p>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard title="Total Users" value={systemStats.totalUsers} icon="US" />
         <StatCard title="Total Students" value={systemStats.totalStudents} icon="ST" />
         <StatCard title="Total Teachers" value={systemStats.totalTeachers} icon="TC" />
         <StatCard title="Total Revenue" value={`$${systemStats.totalRevenue.toLocaleString()}`} icon="REV" />
       </div>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <div className="flex items-center mb-4">
-          <h3 className="text-lg font-bold text-gray-900">Quick Actions</h3>
-          <div className="ml-3 h-px flex-1 bg-gray-200"></div>
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-primary">Quick Actions</h3>
+          <div className="h-px flex-1 bg-[rgba(var(--color-accent-rgb),0.3)]"></div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Register Student */}
-          <button 
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-4">
+          <button
             onClick={() => setShowStudentForm(true)}
-            className="group relative overflow-hidden bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-transparent transition-all duration-300 hover:shadow-xl"
-            style={{ 
-              backgroundImage: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#2E4D32';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'transparent';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#2E4D32' }}>
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-green-50 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
+            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
+              ST
             </div>
-            <h4 className="text-xl font-bold text-gray-900 mb-2">Register Student</h4>
-            <p className="text-sm text-gray-600">Add new student with complete profile and enrollment details</p>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Student Portal</span>
-            </div>
+            <h4 className="text-base font-semibold text-primary">Register Student</h4>
+            <p className="mt-1 text-sm text-primary-soft">
+              Create a new student profile with enrollment and program details.
+            </p>
           </button>
 
-          {/* Register Teacher */}
-          <button 
+          <button
             onClick={() => setShowTeacherForm(true)}
-            className="group relative overflow-hidden bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-transparent transition-all duration-300 hover:shadow-xl"
-            style={{ 
-              backgroundImage: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#E7AA39';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'transparent';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#E7AA39' }}>
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-yellow-50 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
+            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
+              TC
             </div>
-            <h4 className="text-xl font-bold text-gray-900 mb-2">Register Teacher</h4>
-            <p className="text-sm text-gray-600">Add new teacher with payroll and permission settings</p>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Teacher Portal</span>
-            </div>
+            <h4 className="text-base font-semibold text-primary">Register Teacher</h4>
+            <p className="mt-1 text-sm text-primary-soft">
+              Capture payroll settings, availability, and permission levels.
+            </p>
           </button>
 
-          {/* Register Admin */}
-          <button 
+          <button
             onClick={() => setShowAdminForm(true)}
-            className="group relative overflow-hidden bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-transparent transition-all duration-300 hover:shadow-xl"
-            style={{ 
-              backgroundImage: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#2E4D32';
-              e.currentTarget.style.transform = 'translateY(-4px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'transparent';
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
+            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#2E4D32' }}>
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-green-50 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
+            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
+              AD
             </div>
-            <h4 className="text-xl font-bold text-gray-900 mb-2">Register Admin</h4>
-            <p className="text-sm text-gray-600">Add new administrator with system access rights</p>
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Admin Portal</span>
+            <h4 className="text-base font-semibold text-primary">Register Admin</h4>
+            <p className="mt-1 text-sm text-primary-soft">
+              Provision admin access and connect them to the correct workflows.
+            </p>
+          </button>
+
+          <button
+            onClick={() => setShowPermissionManager(true)}
+            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
+          >
+            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
+              PM
             </div>
+            <h4 className="text-base font-semibold text-primary">Manage Permissions</h4>
+            <p className="mt-1 text-sm text-primary-soft">
+              Adjust team access for sensitive features and system areas.
+            </p>
           </button>
         </div>
       </div>
-      {/* Boss Financial Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card title="💰 Financial Control">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Monthly Revenue</span>
-              <span className="text-2xl font-bold text-green-600">${systemStats.monthlyRevenue}</span>
+
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Card title="Financial Snapshot">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Monthly Revenue</span>
+              <span className="text-lg font-semibold text-primary">${systemStats.monthlyRevenue.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Annual Projection</span>
-              <span className="text-xl font-bold text-blue-600">${systemStats.annualRevenue}</span>
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Annual Projection</span>
+              <span className="text-lg font-semibold text-primary">${systemStats.annualRevenue.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Active Students</span>
-              <span className="text-lg font-bold text-purple-600">{systemStats.totalStudents}</span>
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Active Students</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.totalStudents}</span>
             </div>
-            <button className="w-full mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-              📊 Generate Financial Report
+            <button
+              onClick={() => setActiveSection('financials')}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+            >
+              Open financial reporting
             </button>
           </div>
         </Card>
 
-        <Card title="🔒 Security Command">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Security Status</span>
-              <span className="text-green-600 font-bold">✅ {systemStats.securityStatus}</span>
+        <Card title="Security & Reliability">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Security Status</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.securityStatus}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Data Backup</span>
-              <span className="text-blue-600 font-bold">📁 {systemStats.dataBackup}</span>
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Data Backup</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.dataBackup}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">System Uptime</span>
-              <span className="text-green-600 font-bold">⚡ {systemStats.systemUptime}%</span>
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>System Uptime</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.systemUptime}%</span>
             </div>
-            <button className="w-full mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-              🔒 Security Audit
+            <button
+              onClick={() => setActiveSection('reports')}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+            >
+              Run security audit
             </button>
           </div>
         </Card>
 
-        <Card title="📊 System Analytics">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Total Users</span>
-              <span className="text-lg font-bold text-blue-600">{systemStats.totalUsers}</span>
+        <Card title="Usage & Alerts">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Total Users</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.totalUsers}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Active Users</span>
-              <span className="text-lg font-bold text-green-600">{systemStats.activeUsers}</span>
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>Active Users</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.activeUsers}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">System Alerts</span>
-              <span className="text-lg font-bold text-red-600">{systemStats.systemAlerts}</span>
+            <div className="flex items-center justify-between text-sm text-primary-soft">
+              <span>System Alerts</span>
+              <span className="text-lg font-semibold text-primary">{systemStats.systemAlerts}</span>
             </div>
-            <button className="w-full mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-              📈 View Analytics
+            <button
+              onClick={() => setActiveSection('activities')}
+              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+            >
+              View recent activity
             </button>
           </div>
         </Card>
       </div>
 
-      {/* Boss System Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <Card title="🎛️ System Control Panel">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <Card title="System Controls">
           <div className="grid grid-cols-2 gap-4">
-            <button className="p-4 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition text-center">
-              <div className="text-2xl mb-2">🔄</div>
-              <div className="font-bold text-red-700">System Restart</div>
-            </button>
-            <button className="p-4 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition text-center">
-              <div className="text-2xl mb-2">💾</div>
-              <div className="font-bold text-blue-700">Backup Data</div>
-            </button>
-            <button className="p-4 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition text-center">
-              <div className="text-2xl mb-2">🔒</div>
-              <div className="font-bold text-green-700">Security Scan</div>
-            </button>
-            <button className="p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition text-center">
-              <div className="text-2xl mb-2">📊</div>
-              <div className="font-bold text-purple-700">Generate Reports</div>
-            </button>
+            {[
+              { label: 'System Restart', action: () => {}, description: 'Schedule a rolling restart with notifications.' },
+              { label: 'Backup Data', action: () => setShowDataManager(true), description: 'Trigger manual backup or download snapshots.' },
+              { label: 'Security Scan', action: () => setActiveSection('reports'), description: 'Run integrity checks across services.' },
+              { label: 'Generate Reports', action: () => setActiveSection('reports'), description: 'Export KPI reports for stakeholders.' },
+            ].map((control) => (
+              <button
+                key={control.label}
+                onClick={control.action}
+                className="rounded-2xl border border-accent-soft bg-white px-4 py-3 text-left text-sm transition hover:bg-soft-primary"
+              >
+                <p className="font-semibold text-primary">{control.label}</p>
+                <p className="mt-1 text-xs text-primary-soft">{control.description}</p>
+              </button>
+            ))}
           </div>
         </Card>
 
-        <Card title="🚨 System Alerts & Status">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <span className="text-yellow-600">⚠️</span>
-                <span className="text-sm font-medium">Pending Approvals</span>
-              </div>
-              <span className="bg-yellow-200 text-yellow-800 px-2 py-1 rounded-full text-xs font-bold">
+        <Card title="System Alerts & Status">
+          <div className="space-y-3 text-sm text-primary-soft">
+            <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-accent px-4 py-3">
+              <span className="font-semibold text-[var(--color-accent)]">Pending approvals</span>
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
                 {systemStats.pendingApprovals}
               </span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <span className="text-green-600">✅</span>
-                <span className="text-sm font-medium">System Status</span>
-              </div>
-              <span className="text-green-600 font-bold">All Good</span>
+            <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-primary px-4 py-3">
+              <span className="font-semibold text-primary">System status</span>
+              <span className="text-sm font-semibold text-primary">All services operational</span>
             </div>
-            <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <span className="text-blue-600">📊</span>
-                <span className="text-sm font-medium">Data Backup</span>
-              </div>
-              <span className="text-blue-600 font-bold">Recent</span>
+            <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-white px-4 py-3">
+              <span className="font-semibold text-primary">Latest backup</span>
+              <span className="text-sm font-semibold text-primary">{systemStats.dataBackup}</span>
             </div>
           </div>
         </Card>
@@ -474,60 +415,59 @@ const SuperAdminDashboard: React.FC = () => {
 
     return (
       <div>
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">📊</div>
-              <h3 className="font-bold text-gray-900 mb-2">Analytics</h3>
-              <p className="text-sm text-gray-600 mb-3">Student performance insights</p>
-              <button 
-                onClick={() => setShowStudentAnalytics(true)}
-                className="w-full px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition"
-              >
-                View Analytics
-              </button>
-            </div>
-          </Card>
-          
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">🔐</div>
-              <h3 className="font-bold text-gray-900 mb-2">Credentials</h3>
-              <p className="text-sm text-gray-600 mb-3">Manage student access</p>
-              <button 
-                onClick={() => setShowStudentCredentials(true)}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                Manage Access
-              </button>
-            </div>
-          </Card>
-          
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">⚡</div>
-              <h3 className="font-bold text-gray-900 mb-2">Bulk Operations</h3>
-              <p className="text-sm text-gray-600 mb-3">Import/export students</p>
-              <button 
-                onClick={() => setShowStudentBulkOperations(true)}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-              >
-                Bulk Actions
-              </button>
-            </div>
-          </Card>
-          
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">👥</div>
-              <h3 className="font-bold text-gray-900 mb-2">All Students</h3>
-              <p className="text-sm text-gray-600 mb-3">View complete student directory</p>
-              <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                View Directory
-              </button>
-            </div>
-          </Card>
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              id: 'student-analytics',
+              badge: 'AN',
+              title: 'Analytics',
+              description: 'Review student performance trends and milestones.',
+              action: () => setShowStudentAnalytics(true),
+              button: 'Open analytics',
+            },
+            {
+              id: 'student-credentials',
+              badge: 'CR',
+              title: 'Credentials',
+              description: 'Manage login credentials and portal access.',
+              action: () => setShowStudentCredentials(true),
+              button: 'Manage access',
+            },
+            {
+              id: 'student-bulk',
+              badge: 'BL',
+              title: 'Bulk Operations',
+              description: 'Import, export, or batch update student records.',
+              action: () => setShowStudentBulkOperations(true),
+              button: 'Run bulk action',
+            },
+            {
+              id: 'student-directory',
+              badge: 'SD',
+              title: 'All Students',
+              description: 'Browse and filter the complete student directory.',
+              action: () => setActiveSection('students'),
+              button: 'View directory',
+            },
+          ].map((item) => (
+            <Card key={item.id}>
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-white px-4 py-5">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+                  {item.badge}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-primary">{item.title}</h3>
+                  <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+                </div>
+                <button
+                  onClick={item.action}
+                  className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                >
+                  {item.button}
+                </button>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* Student List */}
@@ -573,67 +513,66 @@ const SuperAdminDashboard: React.FC = () => {
 
     return (
       <div>
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">📊</div>
-              <h3 className="font-bold text-gray-900 mb-2">Analytics</h3>
-              <p className="text-sm text-gray-600 mb-3">Teacher performance insights</p>
-              <button 
-                onClick={() => setShowTeacherAnalytics(true)}
-                className="w-full px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
-              >
-                View Analytics
-              </button>
-            </div>
-          </Card>
-          
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">🔐</div>
-              <h3 className="font-bold text-gray-900 mb-2">Credentials</h3>
-              <p className="text-sm text-gray-600 mb-3">Manage teacher access</p>
-              <button
-                onClick={() => {
-                  // If no teacher selected, select first teacher or show message
-                  if (!selectedTeacher && teachers.length > 0) {
-                    setSelectedTeacher(teachers[0]);
-                  }
-                  setShowTeacherCredentials(true);
-                }}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={!selectedTeacher && teachers.length === 0}
-              >
-                Manage Access
-              </button>
-            </div>
-          </Card>
-          
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">⚡</div>
-              <h3 className="font-bold text-gray-900 mb-2">Bulk Operations</h3>
-              <p className="text-sm text-gray-600 mb-3">Import/export teachers</p>
-              <button 
-                onClick={() => setShowTeacherBulkOperations(true)}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-              >
-                Bulk Actions
-              </button>
-            </div>
-          </Card>
-          
-          <Card>
-            <div className="text-center p-4">
-              <div className="text-4xl mb-2">👥</div>
-              <h3 className="font-bold text-gray-900 mb-2">All Teachers</h3>
-              <p className="text-sm text-gray-600 mb-3">View complete teacher directory</p>
-              <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                View Directory
-              </button>
-            </div>
-          </Card>
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              id: 'teach-analytics',
+              badge: 'AN',
+              title: 'Analytics',
+              description: 'Monitor performance, coverage, and load balancing.',
+              action: () => setShowTeacherAnalytics(true),
+              button: 'Open analytics',
+            },
+            {
+              id: 'teach-credentials',
+              badge: 'CR',
+              title: 'Credentials',
+              description: 'Manage onboarding documents and access credentials.',
+              action: () => {
+                if (!selectedTeacher && teachers.length > 0) {
+                  setSelectedTeacher(teachers[0]);
+                }
+                setShowTeacherCredentials(true);
+              },
+              button: 'Manage access',
+              disabled: !selectedTeacher && teachers.length === 0,
+            },
+            {
+              id: 'teach-bulk',
+              badge: 'BL',
+              title: 'Bulk Operations',
+              description: 'Import, export, or batch update teacher rosters.',
+              action: () => setShowTeacherBulkOperations(true),
+              button: 'Run bulk action',
+            },
+            {
+              id: 'teach-directory',
+              badge: 'TD',
+              title: 'All Teachers',
+              description: 'View and filter the complete teacher directory.',
+              action: () => setActiveSection('teachers'),
+              button: 'View directory',
+            },
+          ].map((item) => (
+            <Card key={item.id}>
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-white px-4 py-5">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+                  {item.badge}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-primary">{item.title}</h3>
+                  <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+                </div>
+                <button
+                  onClick={item.action}
+                  disabled={item.disabled}
+                  className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {item.button}
+                </button>
+              </div>
+            </Card>
+          ))}
         </div>
 
         {/* Teacher List */}
