@@ -126,11 +126,19 @@ export async function getQpcV1Layout(pageNumber: number): Promise<LayoutPage | n
       const firstWordRaw = row.first_word_id as number | string | null;
       const lastWordRaw = row.last_word_id as number | string | null;
       const surahRaw = row.surah_number as number | string | null;
+      const rawLineType = (row.line_type as string) || 'ayah';
+      const normalizedLineType = rawLineType.toLowerCase();
+      const lineType: Line['line_type'] =
+        normalizedLineType === 'surah_name'
+          ? 'surah_name'
+          : normalizedLineType === 'basmallah'
+            ? 'basmallah'
+            : 'ayah';
 
       lines.push({
         page_number: Number(row.page_number ?? pageNumber),
         line_number: Number(row.line_number ?? 0),
-        line_type: (row.line_type as string) || 'ayah',
+        line_type: lineType,
         is_centered: Number(row.is_centered) === 1,
         first_word_id:
           firstWordRaw === null || firstWordRaw === '' ? null : Number(firstWordRaw),
