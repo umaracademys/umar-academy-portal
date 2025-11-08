@@ -11,17 +11,76 @@ let wordsDbPromise: Promise<Database> | null = null;
 let wordsCachePromise: Promise<Word[]> | null = null;
 const loadedFonts = new Map<number, string>();
 
-const locateFile = (file: string) => (file.endsWith('.wasm') ? `https://sql.js.org/dist/${file}` : file);
+const locateFile = (file: string) => (file.endsWith('.wasm') ? `/sqljs/${file}` : file);
 
 async function getSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsPromise) {
-    sqlJsPromise = import('sql.js').then((module: any) => {
-      const initSqlJs = module?.default || module;
-      if (typeof initSqlJs !== 'function') {
-        throw new Error('sql.js init function not found');
+    sqlJsPromise = (async () => {
+      const isTypedArray = (value: any) => ArrayBuffer.isView(value) || value instanceof ArrayBuffer;
+      const pickInitFunction = (moduleNamespace: any) => {
+        const visited = new Set<any>();
+        const stack: any[] = [moduleNamespace];
+
+        while (stack.length) {
+          const current = stack.pop();
+          if (!current || visited.has(current)) continue;
+          visited.add(current);
+
+          if (typeof current === 'function') {
+            return current;
+          }
+
+          if (typeof current !== 'object' || isTypedArray(current)) {
+            continue;
+          }
+
+          for (const key of Object.keys(current)) {
+            const value = current[key];
+            if (key === 'initSqlJs' && typeof value === 'function') {
+              return value;
+            }
+            stack.push(value);
+          }
+        }
+
+        return null;
+      };
+
+      const specifiers = [
+        'sql.js',
+        'sql.js/dist/sql-wasm.js',
+        'sql.js/dist/sql-wasm.js?module'
+      ];
+
+      for (const specifier of specifiers) {
+        try {
+          const module = await import(/* @vite-ignore */ specifier);
+          const initSqlJs =
+            module?.default?.initSqlJs ||
+            module?.initSqlJs ||
+            module?.default?.default ||
+            module?.default ||
+            pickInitFunction(module);
+
+          if (typeof initSqlJs === 'function') {
+            return initSqlJs({ locateFile }) as Promise<SqlJsStatic>;
+          }
+
+          console.group('🧩 sql.js module shape');
+          console.log('specifier:', specifier);
+          console.log('module keys:', Object.keys(module || {}));
+          console.log('module.default keys:', module?.default && Object.keys(module.default));
+          console.log('typeof module:', typeof module);
+          console.log('typeof module.default:', typeof module?.default);
+          console.log('typeof module.default.default:', typeof module?.default?.default);
+          console.groupEnd();
+        } catch (error) {
+          console.warn(`Failed to import ${specifier}:`, error);
+        }
       }
-      return initSqlJs({ locateFile }) as Promise<SqlJsStatic>;
-    });
+
+      throw new Error('sql.js init function not found');
+    })();
   }
   return sqlJsPromise;
 }
