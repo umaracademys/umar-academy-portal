@@ -134,7 +134,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     try {
       const ticketId = selectedTicket.id || (selectedTicket as any)._id;
       const result = await approveTicket(ticketId, user?.id || '');
-      alert('✅ Ticket approved successfully!');
+      alert('Ticket approved successfully!');
       if (result?.ticket) {
         const normalizedTicket = normalizeTicket(result.ticket, selectedTicket);
         setSelectedTicket(normalizedTicket);
@@ -166,7 +166,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     try {
       const ticketId = selectedTicket.id || (selectedTicket as any)._id;
       await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
-      alert(`✅ Next step activated and assigned to ${teacher.fullName}`);
+      alert(`Next step activated and assigned to ${teacher.fullName}`);
       setSelectedTicket(null);
       setSelectedNextTeacher('');
       setAction('approve');
@@ -193,7 +193,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         reviewedBy: user?.id,
         reviewedAt: new Date()
       });
-      alert('✅ Ticket sent back for revision');
+      alert('Ticket sent back for revision');
       setSelectedTicket(null);
       setRevisionNotes('');
       setAction('assign-next');
@@ -227,7 +227,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         homeworkLink: finalizeData.homeworkLink,
         reviewedBy: user?.id || ''
       });
-      alert('✅ Ticket finalized! Assignment created and visible to student.');
+      alert('Ticket finalized! Assignment created and visible to student.');
       setSelectedTicket(null);
       setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
       setAction('assign-next');
@@ -245,20 +245,20 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const getStepLabel = (step: WorkflowStep) => {
     switch (step) {
-      case 'sabq': return '📖 Sabq';
-      case 'sabqi': return '📚 Sabqi';
-      case 'manzil': return '📿 Manzil';
-      case 'finalize': return '✅ Finalize';
+      case 'sabq': return 'Sabq';
+      case 'sabqi': return 'Sabqi';
+      case 'manzil': return 'Manzil';
+      case 'finalize': return 'Finalize';
       default: return step;
     }
   };
 
   const getStatusColor = (status: TicketStatus) => {
     switch (status) {
-      case 'pending_review': return 'bg-purple-100 text-purple-700';
-      case 'approved': return 'bg-green-100 text-green-700';
-      case 'needs_revision': return 'bg-red-100 text-red-700';
-      case 'finalized': return 'bg-blue-100 text-blue-700';
+      case 'pending_review': return 'bg-soft-accent text-[var(--color-accent)]';
+      case 'approved': return 'bg-soft-primary text-[var(--color-primary)]';
+      case 'needs_revision': return 'bg-white border border-[rgba(var(--color-accent-rgb),0.45)] text-[var(--color-accent)]';
+      case 'finalized': return 'bg-[var(--color-primary)] text-white';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -327,20 +327,20 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto max-h-[90vh] overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">🎫 Ticket Management</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
         <div className="flex gap-2">
           <button
             onClick={() => setView('pending')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              view === 'pending' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              view === 'pending' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
             }`}
           >
             Pending Review ({pendingTickets.length})
           </button>
           <button
             onClick={() => setView('all')}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              view === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              view === 'all' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
             }`}
           >
             All Tickets
@@ -350,7 +350,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               onClick={onClose}
               className="text-gray-500 hover:text-gray-700 px-4 py-2"
             >
-              ✕
+              Close
             </button>
           )}
         </div>
@@ -369,8 +369,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     selectedTicket.workflowStep === 'finalize'
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                       : action === 'assign-next'
-                        ? 'bg-blue-600 text-white border-blue-600 shadow'
-                        : 'bg-white text-blue-600 border-blue-200 hover:bg-blue-50'
+                        ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow'
+                        : 'bg-white text-[var(--color-primary)] border-[rgba(var(--color-primary-rgb),0.35)] hover:bg-soft-primary'
                   }`}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -385,8 +385,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     selectedTicket.workflowStep !== 'finalize'
                       ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
                       : action === 'finalize'
-                        ? 'bg-purple-600 text-white border-purple-600 shadow'
-                        : 'bg-white text-purple-600 border-purple-200 hover:bg-purple-50'
+                        ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)] shadow'
+                        : 'bg-white text-[var(--color-accent)] border-[rgba(var(--color-accent-rgb),0.35)] hover:bg-soft-accent'
                   }`}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -427,7 +427,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   href={selectedTicket.audioLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="text-primary hover:text-[rgba(var(--color-primary-rgb),0.85)] underline"
                 >
                   {selectedTicket.audioLink}
                 </a>
@@ -448,20 +448,20 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         setCurrentPage(firstMistakePage);
                       }
                     }}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                    className="px-4 py-2 rounded-lg bg-[var(--color-accent)] text-white text-sm transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
                   >
                     {showMushaf ? 'Hide' : 'View'} Mushaf ({selectedTicketMarkings.length} mistakes)
                   </button>
                 </div>
                 {!showMushaf && (
-                  <div className="bg-purple-50 p-4 rounded-lg">
-                    <p className="text-sm text-purple-800 mb-3">
+                  <div className="rounded-lg bg-soft-accent p-4">
+                    <p className="mb-3 text-sm text-[var(--color-accent)]">
                       Teacher marked <strong>{selectedTicketMarkings.length} mistake{selectedTicketMarkings.length !== 1 ? 's' : ''}</strong> in the Mushaf.
                       Click "View Mushaf" to see them highlighted on the Quran pages.
                     </p>
                     {/* Quick navigation to pages with mistakes */}
                     <div className="flex flex-wrap gap-2">
-                      <span className="text-xs font-semibold text-purple-900">Jump to pages:</span>
+                      <span className="text-xs font-semibold text-[var(--color-accent)]">Jump to pages:</span>
                       {mistakePages.map((page) => {
                           const mistakesOnPage = selectedTicketMarkings.filter((m) => m.page === page).length;
                           return (
@@ -471,7 +471,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                                 setCurrentPage(page);
                                 setShowMushaf(true);
                               }}
-                              className="px-3 py-1 bg-purple-200 text-purple-800 rounded-md hover:bg-purple-300 text-xs font-medium"
+                              className="rounded-md bg-soft-accent px-3 py-1 text-xs font-medium text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]"
                             >
                               Page {page} ({mistakesOnPage})
                             </button>
@@ -485,10 +485,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
             {/* Mushaf View for Admin */}
             {showMushaf && selectedTicketMarkings.length > 0 && (
-              <div className="mb-6 bg-white p-4 rounded-lg border-2 border-purple-200">
+              <div className="mb-6 rounded-lg border-2 border-[rgba(var(--color-accent-rgb),0.35)] bg-white p-4">
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h4 className="text-lg font-bold text-gray-900">📖 Mushaf with Teacher's Markings</h4>
+                    <h4 className="text-lg font-bold text-gray-900">Mushaf with Teacher's Markings</h4>
                     <p className="text-sm text-gray-600 mt-1">
                       Page {currentPage} • {selectedTicketMarkings.filter((m) => m.page === currentPage).length} mistake{selectedTicketMarkings.filter((m) => m.page === currentPage).length !== 1 ? 's' : ''} on this page
                     </p>
@@ -502,7 +502,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 </div>
                 
                 {/* Quick navigation buttons */}
-                <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b border-gray-200">
+                <div className="mb-4 flex flex-wrap gap-2 border-b border-gray-200 pb-4">
                   <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages with mistakes:</span>
                   {mistakePages.map((page) => {
                       const mistakesOnPage = selectedTicketMarkings.filter((m) => m.page === page).length;
@@ -510,10 +510,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         <button
                           key={page}
                           onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                          className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                             currentPage === page
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                              ? 'bg-[var(--color-accent)] text-white'
+                              : 'bg-soft-accent text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]'
                           }`}
                         >
                           Page {page} ({mistakesOnPage})
@@ -542,42 +542,42 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     onClick={() => setAction('approve')}
                     className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                       action === 'approve'
-                        ? 'bg-green-600 text-white shadow-lg'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                        : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-gray-300'
                     }`}
                   >
-                    ✅ Approve
+                    Approve
                   </button>
                 )}
                 {selectedTicket.status === 'approved' && selectedTicket.workflowStep !== 'finalize' && (
-              <button
+                  <button
                     onClick={() => {
                       setAction('assign-next');
                       setSelectedNextTeacher('');
                     }}
                     className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                       action === 'assign-next'
-                        ? 'bg-blue-600 text-white shadow-lg'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                    ➡️ Assign to Next Teacher
-              </button>
+                        ? 'bg-[var(--color-primary)] text-white shadow-lg'
+                        : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-gray-300'
+                    }`}
+                  >
+                    Assign to Next Teacher
+                  </button>
                 )}
                 {selectedTicket.status === 'approved' && selectedTicket.workflowStep === 'finalize' && (
-              <button
+                  <button
                     onClick={() => {
                       setAction('finalize');
                       setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
                     }}
                     className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                       action === 'finalize'
-                        ? 'bg-purple-600 text-white shadow-lg'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                    ✅ Finalize & Add Homework
-              </button>
+                        ? 'bg-[var(--color-accent)] text-white shadow-lg'
+                        : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-gray-300'
+                    }`}
+                  >
+                    Finalize & Add Homework
+                  </button>
                 )}
                 <button
                   onClick={() => {
@@ -586,33 +586,33 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   }}
                   className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                     action === 'reject'
-                      ? 'bg-red-600 text-white shadow-lg'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      ? 'bg-[var(--color-accent)] text-white shadow-lg'
+                      : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-gray-300'
                   }`}
                 >
-                  ↩️ Request Revision
+                  Request Revision
                 </button>
               </div>
             </div>
 
             {/* Approve Action */}
             {action === 'approve' && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="mb-6 rounded-lg border border-[rgba(var(--color-primary-rgb),0.3)] bg-soft-primary p-4">
                 <p className="text-sm text-gray-700 mb-4">
                   Approve this ticket. You can assign it to the next teacher later.
                 </p>
                 <button
                   onClick={handleApprove}
-                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+                  className="w-full rounded-lg bg-[var(--color-primary)] px-6 py-3 font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
                 >
-                  ✅ Approve Ticket
+                  Approve Ticket
                 </button>
               </div>
             )}
 
             {/* Assign to Next Teacher Form */}
             {action === 'assign-next' && selectedTicket.workflowStep !== 'finalize' && (
-              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mb-6 rounded-lg border border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent p-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Teacher for Next Step
                 </label>
@@ -629,18 +629,21 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   ))}
                 </select>
                 <p className="text-sm text-gray-600">
-                  Next step: {
-                    selectedTicket.workflowStep === 'sabq' ? '📚 Sabqi' :
-                    selectedTicket.workflowStep === 'sabqi' ? '📿 Manzil' :
-                    '✅ Finalize'
+                  Next step:{' '}
+                  {
+                    selectedTicket.workflowStep === 'sabq'
+                      ? 'Sabqi'
+                      : selectedTicket.workflowStep === 'sabqi'
+                        ? 'Manzil'
+                        : 'Finalize'
                   }
                 </p>
                 <button
                   onClick={handleAssignToNext}
                   disabled={!selectedNextTeacher}
-                  className="mt-4 w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-4 w-full rounded-lg bg-[var(--color-primary)] px-6 py-3 font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  ➡️ Assign to Next Teacher
+                  Assign to Next Teacher
                 </button>
               </div>
             )}
@@ -659,9 +662,9 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         href={selectedTicket.audioLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-[rgba(var(--color-primary-rgb),0.85)]"
                       >
-                        🎧 Listen to teacher audio
+                        Listen to teacher audio
                       </a>
                     )}
                   </div>
@@ -701,8 +704,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                             onClick={() => setCurrentPage(page)}
                             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                               currentPage === page
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                                ? 'bg-[var(--color-accent)] text-white'
+                                : 'bg-soft-accent text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]'
                             }`}
                           >
                             Page {page}
@@ -732,7 +735,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   <textarea
                     value={finalizeData.homework}
                     onChange={(e) => setFinalizeData((prev) => ({ ...prev, homework: e.target.value }))}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
                     rows={4}
                     placeholder="Enter clear homework instructions for the student..."
                   />
@@ -743,35 +746,35 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
             {/* Revision Notes Form */}
             {action === 'reject' && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Revision Notes <span className="text-red-500">*</span>
+              <div className="mb-6 rounded-lg border border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent p-4">
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Revision Notes <span className="text-[var(--color-accent)]">*</span>
                 </label>
                 <textarea
                   value={revisionNotes}
                   onChange={(e) => setRevisionNotes(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-3"
+                  className="mb-3 w-full rounded-lg border border-gray-300 px-4 py-2"
                   rows={4}
                   placeholder="Explain what needs to be revised..."
                 />
                 <button
                   onClick={handleReject}
                   disabled={!revisionNotes.trim()}
-                  className="w-full px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-lg bg-[var(--color-accent)] px-6 py-3 font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  ↩️ Send for Revision
+                  Send for Revision
                 </button>
               </div>
-              )}
+            )}
 
             {/* Finalize Form Submit Button */}
             {action === 'finalize' && (
               <div className="mb-6">
                 <button
                   onClick={handleFinalize}
-                  className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
+                  className="w-full rounded-lg bg-[var(--color-accent)] px-6 py-3 font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
                 >
-                  ✅ Finalize & Create Assignment
+                  Finalize & Create Assignment
                 </button>
               </div>
             )}
@@ -802,8 +805,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 onClick={() => setStudentFilterLetter('ALL')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
                   studentFilterLetter === 'ALL'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                    : 'bg-white text-[rgba(var(--color-primary-rgb),0.7)] border-gray-300 hover:bg-soft-primary'
                 }`}
               >
                 All
@@ -814,8 +817,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   onClick={() => setStudentFilterLetter(letter)}
                   className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors ${
                     studentFilterLetter === letter
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                      : 'bg-white text-[rgba(var(--color-primary-rgb),0.7)] border-gray-300 hover:bg-soft-primary'
                   }`}
                 >
                   {letter}
@@ -841,16 +844,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               : ticket.workflowStep === 'manzil'
                 ? 'Finalize'
                 : ticket.workflowStep === 'sabqi'
-                  ? '📿 Manzil'
-                  : '📚 Sabqi';
-
-            const currentStepIcon = ticket.workflowStep === 'sabq'
-              ? '📖'
-              : ticket.workflowStep === 'sabqi'
-                ? '📚'
-                : ticket.workflowStep === 'manzil'
-                  ? '📿'
-                  : '✅';
+                  ? 'Manzil'
+                  : 'Sabqi';
 
             return (
               <div
@@ -859,9 +854,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               >
                 <div className="flex justify-between items-start gap-4">
                   <div>
-                    <p className="font-semibold text-gray-900 text-lg flex items-center gap-2">
-                      <span className="text-xl">{currentStepIcon}</span>
-                      {getStudentName(ticket.studentId)}
+                    <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-soft-accent text-sm font-semibold text-[var(--color-accent)]">
+                        {getStepLabel(ticket.workflowStep).slice(0, 1).toUpperCase()}
+                      </span>
+                      <span>{getStudentName(ticket.studentId)}</span>
                     </p>
                     <p className="text-sm text-gray-600 flex items-center gap-1">
                       <span className="font-medium">{getStepLabel(ticket.workflowStep)}</span>
@@ -877,7 +874,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   <div className="flex flex-col gap-2 min-w-[12rem]">
                     <button
                       onClick={() => setSelectedTicket(ticket)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                      className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
                     >
                       Review
                     </button>
@@ -890,7 +887,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                         ticket.workflowStep === 'finalize'
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                          : 'border border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary text-[var(--color-primary)] hover:bg-soft-primary'
                       }`}
                     >
                       Assign to Next Teacher
@@ -904,7 +901,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                         ticket.workflowStep !== 'finalize'
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                          : 'border border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]'
                       }`}
                     >
                       Finalize & Publish

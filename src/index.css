@@ -30,14 +30,15 @@
 }
 
 :root {
-  --color-primary: #2E4D32;
-  --color-primary-hover: #253d28;
-  --color-primary-light: #477d51;
-  --color-primary-dark: #1d2e1f;
-  --color-gold: #E7AA39;
-  --color-gold-light: #fde047;
-  --color-cream: #fefdfb;
-  --color-cream-dark: #f5e6c8;
+  --color-primary: #1F3224;
+  --color-primary-rgb: 31, 50, 36;
+  --color-accent: #E7AA39;
+  --color-accent-rgb: 231, 170, 57;
+  --color-surface: #FFFFFF;
+  --color-background: #F5F7F2;
+  --color-muted: rgba(var(--color-primary-rgb), 0.65);
+  --color-soft-primary: rgba(var(--color-primary-rgb), 0.08);
+  --color-soft-accent: rgba(var(--color-accent-rgb), 0.15);
 }
 
 body {
@@ -47,6 +48,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--color-background);
+  color: var(--color-primary);
 }
 
 code {
@@ -54,17 +57,17 @@ code {
     monospace;
 }
 
-/* Custom styles for consistent branding */
+/* Buttons & surfaces */
 .btn-primary {
   background-color: var(--color-primary);
-  color: white;
+  color: var(--color-surface);
   transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
+  background-color: rgba(var(--color-primary-rgb), 0.9);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(46, 77, 50, 0.3);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
 }
 
 .bg-primary-custom {
@@ -79,14 +82,22 @@ code {
   border-color: var(--color-primary);
 }
 
-.bg-gold-custom {
-  background-color: var(--color-gold);
+.bg-accent-soft {
+  background-color: var(--color-soft-accent);
 }
 
-.accent-line {
+.bg-primary-soft {
+  background-color: var(--color-soft-primary);
+}
+
+.text-muted-custom {
+  color: var(--color-muted);
+}
+
+.accent-bar {
   height: 3px;
   width: 60px;
-  background-color: var(--color-gold);
+  background-color: var(--color-accent);
   border-radius: 2px;
 }
 
@@ -94,4 +105,60 @@ code {
 .surah-name-arabic {
   font-family: 'QPC V2 Font', 'Surah Names', Amiri, 'Arabic Typesetting', 'Traditional Arabic', serif;
   direction: rtl;
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-accent {
+  color: var(--color-accent);
+}
+
+.text-muted {
+  color: var(--color-muted);
+}
+
+.bg-surface {
+  background-color: var(--color-surface);
+}
+
+.bg-background {
+  background-color: var(--color-background);
+}
+
+.bg-accent {
+  background-color: var(--color-accent);
+}
+
+.border-accent {
+  border-color: var(--color-accent);
+}
+
+.border-primary {
+  border-color: var(--color-primary);
+}
+
+.bg-soft-primary {
+  background-color: var(--color-soft-primary);
+}
+
+.bg-soft-accent {
+  background-color: var(--color-soft-accent);
+}
+
+.text-primary-soft {
+  color: rgba(var(--color-primary-rgb), 0.7);
+}
+
+.text-primary-faint {
+  color: rgba(var(--color-primary-rgb), 0.5);
+}
+
+.text-accent-soft {
+  color: rgba(var(--color-accent-rgb), 0.8);
+}
+
+.border-accent-soft {
+  border-color: rgba(var(--color-accent-rgb), 0.4);
 }
