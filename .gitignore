@@ -45,6 +45,7 @@ build
 !public/data/
 !public/data/**/*.db
 src/data/
+!src/data/juzBoundaries.ts
 packages/mushaf/public/data/
 
 # Uploaded assets

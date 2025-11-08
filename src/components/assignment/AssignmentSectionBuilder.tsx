@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AssignmentPortion, ClassworkJuzSelection, ClassworkSection } from '../../types/assignment';
-import { JUZ_SUMMARIES, buildPortionApproxRange } from '../../data/juzBoundaries';
+import { JUZ_SUMMARIES, buildPortionApproxRange } from '../../data/juzBoundaries.ts';
 
 type SectionType = 'sabq' | 'sabqi' | 'manzil';
 
