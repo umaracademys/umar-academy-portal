@@ -48,11 +48,11 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   };
 
   const tabs = [
-    { id: 'overview', label: 'Credentials Overview', icon: '🔐' },
-    { id: 'security', label: 'Security Settings', icon: '🛡️' },
-    { id: 'access', label: 'Access Control', icon: '🚪' },
-    { id: 'notifications', label: 'Notifications', icon: '🔔' },
-    { id: 'history', label: 'Login History', icon: '📊' }
+    { id: 'overview', label: 'Credentials Overview', icon: 'OV' },
+    { id: 'security', label: 'Security Settings', icon: 'SC' },
+    { id: 'access', label: 'Access Control', icon: 'AC' },
+    { id: 'notifications', label: 'Notifications', icon: 'NO' },
+    { id: 'history', label: 'Login History', icon: 'LH' }
   ];
 
   const loginHistory = [
@@ -83,15 +83,21 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <div className="flex items-center space-x-4">
-            <img src={student.avatar} alt={student.fullName} className="h-12 w-12 rounded-full" />
+            <img
+              src={student.avatar || `https://ui-avatars.com/api/?name=${student.fullName?.replace(' ', '+') || 'Student'}&background=2E4D32&color=fff`}
+              alt={student.fullName}
+              className="h-12 w-12 rounded-full border border-accent-soft"
+            />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Student Credentials</h2>
-              <p className="text-gray-600">{student.fullName} - {student.email}</p>
+              <h2 className="text-xl font-bold text-primary">Student Credentials</h2>
+              <p className="text-sm text-primary-soft">
+                Manage login and access settings for {student.fullName}
+              </p>
             </div>
           </div>
           <button
@@ -116,7 +122,9 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
+              <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-soft-primary text-xs font-semibold text-primary uppercase">
+                {tab.icon}
+              </span>
               {tab.label}
             </button>
           ))}
@@ -187,18 +195,18 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowPasswordReset(true)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                  className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
                 >
-                  Reset Password
+                  Reset password
                 </button>
                 <button
                   onClick={() => setShowAccountSettings(true)}
-                  className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition"
+                  className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
                 >
-                  Account Settings
+                  Account settings
                 </button>
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                  Generate Report
+                <button className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                  Generate report
                 </button>
               </div>
             </div>
@@ -376,11 +384,13 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
 
       {/* Password Reset Modal */}
       {showPasswordReset && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Reset Password</h3>
-            <p className="text-gray-600 mb-4">Generate a new password for {student.fullName}</p>
-            
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h3 className="mb-4 text-xl font-bold text-primary">Reset Password</h3>
+            <p className="mb-4 text-sm text-primary-soft">
+              Generate a new password for {student.fullName}.
+            </p>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
@@ -394,7 +404,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                   />
                   <button
                     onClick={generatePassword}
-                    className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition"
+                    className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
                   >
                     Generate
                   </button>
@@ -405,13 +415,13 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                 <button
                   onClick={resetPassword}
                   disabled={!newPassword}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Reset Password
+                  Reset password
                 </button>
                 <button
                   onClick={() => setShowPasswordReset(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
                 >
                   Cancel
                 </button>
@@ -423,10 +433,10 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
 
       {/* Account Settings Modal */}
       {showAccountSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Account Settings</h3>
-            
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h3 className="mb-4 text-xl font-bold text-primary">Account Settings</h3>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Login Enabled</label>
@@ -457,13 +467,13 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
               <div className="flex space-x-3">
                 <button
                   onClick={updateAccountSettings}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                  className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
                 >
-                  Save Settings
+                  Save settings
                 </button>
                 <button
                   onClick={() => setShowAccountSettings(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
                 >
                   Cancel
                 </button>

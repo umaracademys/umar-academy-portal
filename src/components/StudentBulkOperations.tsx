@@ -12,10 +12,10 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const tabs = [
-    { id: 'import', label: 'Import Students', icon: '📥' },
-    { id: 'export', label: 'Export Students', icon: '📤' },
-    { id: 'bulk-actions', label: 'Bulk Actions', icon: '⚡' },
-    { id: 'templates', label: 'Templates', icon: '📋' }
+    { id: 'import', label: 'Import Students', icon: 'IM' },
+    { id: 'export', label: 'Export Students', icon: 'EX' },
+    { id: 'bulk-actions', label: 'Bulk Actions', icon: 'BA' },
+    { id: 'templates', label: 'Templates', icon: 'TP' }
   ];
 
   const sampleStudents = [
@@ -48,13 +48,13 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Student Bulk Operations</h2>
-            <p className="text-gray-600">Manage multiple students at once</p>
+            <h2 className="text-xl font-bold text-primary">Student Bulk Operations</h2>
+            <p className="text-sm text-primary-soft">Manage multiple students at once</p>
           </div>
           <button
             onClick={onClose}
@@ -78,7 +78,9 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
+              <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-soft-primary text-xs font-semibold text-primary uppercase">
+                {tab.icon}
+              </span>
               {tab.label}
             </button>
           ))}
@@ -98,8 +100,8 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                         <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                       <p className="mt-2 text-sm text-gray-600">Drag and drop your CSV file here, or click to browse</p>
-                      <button className="mt-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                        Choose File
+                      <button className="mt-3 rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                        Choose file
                       </button>
                     </div>
                   </div>
@@ -123,8 +125,8 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                     </div>
                   </div>
                   
-                  <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                    Start Import
+                  <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                    Start import
                   </button>
                 </div>
               </Card>
@@ -133,12 +135,12 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Import Template</h3>
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">Download our template to ensure proper formatting:</p>
-                  <div className="flex space-x-3">
-                    <button className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition">
-                      📄 Download CSV Template
+                  <div className="flex gap-3">
+                    <button className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Download CSV template
                     </button>
-                    <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                      📊 Download Excel Template
+                    <button className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Download Excel template
                     </button>
                   </div>
                 </div>
@@ -203,8 +205,8 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                     </div>
                   </div>
                   
-                  <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                    Export Students
+                  <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                    Export students
                   </button>
                 </div>
               </Card>
@@ -278,9 +280,9 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                   <button
                     onClick={handleBulkAction}
                     disabled={!bulkAction || selectedStudents.length === 0}
-                    className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Execute Action ({selectedStudents.length} students selected)
+                    Execute action ({selectedStudents.length} selected)
                   </button>
                 </div>
               </Card>
@@ -295,32 +297,32 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-2">Student Registration</h4>
                     <p className="text-sm text-gray-600 mb-3">Template for bulk student registration</p>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Use Template
+                    <button className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Use template
                     </button>
                   </div>
                   
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-2">Parent Communication</h4>
                     <p className="text-sm text-gray-600 mb-3">Template for parent notifications</p>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Use Template
+                    <button className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Use template
                     </button>
                   </div>
                   
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-2">Payment Reminder</h4>
                     <p className="text-sm text-gray-600 mb-3">Template for payment reminders</p>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Use Template
+                    <button className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Use template
                     </button>
                   </div>
                   
                   <div className="border border-gray-200 rounded-lg p-4">
                     <h4 className="font-medium text-gray-900 mb-2">Progress Report</h4>
                     <p className="text-sm text-gray-600 mb-3">Template for progress reports</p>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Use Template
+                    <button className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Use template
                     </button>
                   </div>
                 </div>
@@ -332,22 +334,22 @@ const StudentBulkOperations: React.FC<StudentBulkOperationsProps> = ({ onClose }
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Confirm Bulk Action</h3>
-            <p className="text-gray-600 mb-4">
-              Are you sure you want to execute "{bulkAction}" for {selectedStudents.length} selected students?
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h3 className="mb-4 text-xl font-bold text-primary">Confirm Bulk Action</h3>
+            <p className="mb-4 text-sm text-primary-soft">
+              Are you sure you want to execute “{bulkAction}” for {selectedStudents.length} selected students?
             </p>
             <div className="flex space-x-3">
               <button
                 onClick={executeBulkAction}
-                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
+                className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
               >
                 Confirm
               </button>
               <button
                 onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
               >
                 Cancel
               </button>
