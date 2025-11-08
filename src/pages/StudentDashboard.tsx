@@ -72,10 +72,10 @@ const StudentDashboard: React.FC = () => {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard title="Enrolled Courses" value={4} icon="📚" color="green" />
-          <StatCard title="Pending Assignments" value={3} icon="📝" color="gold" />
-          <StatCard title="Average Grade" value="90%" icon="🎯" color="blue" />
-          <StatCard title="Attendance" value="95%" icon="✅" color="purple" />
+          <StatCard title="Enrolled Courses" value={4} icon="EC" />
+          <StatCard title="Pending Assignments" value={3} icon="PA" />
+          <StatCard title="Average Grade" value="90%" icon="AG" />
+          <StatCard title="Attendance" value="95%" icon="AT" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

@@ -47,44 +47,64 @@ const AdminDashboard: React.FC = () => {
 
   // Overview Section
   const OverviewSection = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
-        <Link
-          to="/assignments"
-          className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-          style={{ backgroundColor: '#E7AA39' }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d99a2f'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E7AA39'}
-        >
-          Manage Assignments
-        </Link>
-      </div>
-      
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Total Students" value={students.length} icon="👨‍🎓" color="green" />
-        <StatCard title="Total Teachers" value={teachers.length} icon="👨‍🏫" color="blue" />
-        <StatCard title="Active Courses" value={45} icon="📚" color="purple" />
-        <StatCard title="Revenue" value={`$${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}`} icon="💰" color="gold" />
+    <div className="space-y-8">
+      <div className="rounded-3xl border border-accent-soft bg-white px-6 py-6 sm:px-10 sm:py-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between shadow-sm">
+        <div className="space-y-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Admin Control</span>
+          <h2 className="text-3xl font-semibold text-primary">Dashboard Overview</h2>
+          <p className="text-sm text-primary-soft max-w-xl">
+            Monitor enrollment trends, teacher coverage, and revenue performance at a glance. Use the quick actions to jump directly into the sections that need your attention.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/assignments"
+            className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
+          >
+            Manage Assignments
+          </Link>
+          <button
+            onClick={() => setActiveSection('students')}
+            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+          >
+            View Students
+          </button>
+          <button
+            onClick={() => setActiveSection('teachers')}
+            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+          >
+            View Teachers
+          </button>
+        </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Total Students" value={students.length} icon="ST" />
+        <StatCard title="Total Teachers" value={teachers.length} icon="TC" />
+        <StatCard title="Active Courses" value={45} icon="AC" />
+        <StatCard title="Revenue" value={`$${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}`} icon="REV" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card title="Recent Enrollments">
           <div className="space-y-3">
             {students.slice(0, 5).map((student) => (
-              <div key={student.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                <div className="flex items-center space-x-3">
-                  <div className="h-10 w-10 bg-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+              <div
+                key={student.id}
+                className="flex items-center justify-between rounded-2xl border border-accent-soft bg-white px-4 py-3 transition hover:bg-soft-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
                     {student.fullName.charAt(0)}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{student.fullName}</p>
-                    <p className="text-xs text-gray-500">{student.program}</p>
+                    <p className="font-medium text-primary">{student.fullName}</p>
+                    <p className="text-xs text-primary-soft">{student.program}</p>
                   </div>
                 </div>
-                <span className="text-xs text-gray-500">{new Date(student.enrolledDate).toLocaleDateString()}</span>
+                <span className="text-xs font-medium text-primary-soft">
+                  {new Date(student.enrolledDate).toLocaleDateString()}
+                </span>
               </div>
             ))}
           </div>
@@ -93,30 +113,30 @@ const AdminDashboard: React.FC = () => {
         <Card title="Performance Metrics">
           <div className="space-y-4">
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">Student Attendance</span>
+              <div className="mb-2 flex justify-between text-sm">
+                <span className="text-primary-soft">Student Attendance</span>
                 <span className="font-semibold">94%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-primary-600 h-2 rounded-full" style={{ width: '94%' }}></div>
+              <div className="h-2 w-full rounded-full bg-soft-primary">
+                <div className="h-2 rounded-full bg-[var(--color-primary)]" style={{ width: '94%' }}></div>
               </div>
             </div>
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">Teacher Satisfaction</span>
+              <div className="mb-2 flex justify-between text-sm">
+                <span className="text-primary-soft">Teacher Satisfaction</span>
                 <span className="font-semibold">88%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-gold-500 h-2 rounded-full" style={{ width: '88%' }}></div>
+              <div className="h-2 w-full rounded-full bg-soft-accent">
+                <div className="h-2 rounded-full bg-[var(--color-accent)]" style={{ width: '88%' }}></div>
               </div>
             </div>
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-600">Course Completion</span>
+              <div className="mb-2 flex justify-between text-sm">
+                <span className="text-primary-soft">Course Completion</span>
                 <span className="font-semibold">76%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-primary-700 h-2 rounded-full" style={{ width: '76%' }}></div>
+              <div className="h-2 w-full rounded-full bg-soft-primary">
+                <div className="h-2 rounded-full bg-[rgba(var(--color-primary-rgb),0.6)]" style={{ width: '76%' }}></div>
               </div>
             </div>
           </div>
@@ -422,7 +442,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
       <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
       

@@ -162,10 +162,10 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Main Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <StatCard title="Total Users" value={systemStats.totalUsers} icon="👥" color="green" />
-        <StatCard title="Total Students" value={systemStats.totalStudents} icon="👨‍🎓" color="blue" />
-        <StatCard title="Total Teachers" value={systemStats.totalTeachers} icon="👨‍🏫" color="purple" />
-        <StatCard title="Total Revenue" value={`$${systemStats.totalRevenue.toLocaleString()}`} icon="💰" color="gold" />
+        <StatCard title="Total Users" value={systemStats.totalUsers} icon="US" />
+        <StatCard title="Total Students" value={systemStats.totalStudents} icon="ST" />
+        <StatCard title="Total Teachers" value={systemStats.totalTeachers} icon="TC" />
+        <StatCard title="Total Revenue" value={`$${systemStats.totalRevenue.toLocaleString()}`} icon="REV" />
       </div>
 
       {/* Quick Actions */}

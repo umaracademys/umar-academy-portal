@@ -250,10 +250,10 @@ const StudentDashboard: React.FC = () => {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard title="Total Assignments" value={studentAssignments.length} icon="📝" color="blue" />
-          <StatCard title="Completed" value={completedAssignments.length} icon="✅" color="green" />
-          <StatCard title="Average Grade" value={`${averageGrade}%`} icon="⭐" color="gold" />
-          <StatCard title="Pending" value={pendingAssignments.length} icon="⏳" color="purple" />
+          <StatCard title="Total Assignments" value={studentAssignments.length} icon="TA" />
+          <StatCard title="Completed" value={completedAssignments.length} icon="CP" />
+          <StatCard title="Average Grade" value={`${averageGrade}%`} icon="AG" />
+          <StatCard title="Pending" value={pendingAssignments.length} icon="PD" />
         </div>
 
         {/* Student Profile Information */}

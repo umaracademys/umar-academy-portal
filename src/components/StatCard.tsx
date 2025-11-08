@@ -3,29 +3,21 @@ import React from 'react';
 interface StatCardProps {
   title: string;
   value: string | number;
-  icon: string;
-  color?: string;
+  icon?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color = 'blue' }) => {
-  const colorClasses = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    purple: 'bg-purple-500',
-    orange: 'bg-orange-500',
-    red: 'bg-red-500',
-    yellow: 'bg-yellow-500',
-  };
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => {
+  const badgeLabel = icon?.trim() || title.slice(0, 2).toUpperCase();
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between">
+    <div className="rounded-2xl border border-accent-soft bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{value}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary-soft">{title}</p>
+          <p className="mt-2 text-2xl font-semibold text-primary">{value}</p>
         </div>
-        <div className={`${colorClasses[color as keyof typeof colorClasses] || colorClasses.blue} p-4 rounded-lg`}>
-          <span className="text-2xl">{icon}</span>
+        <div className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
+          {badgeLabel}
         </div>
       </div>
     </div>

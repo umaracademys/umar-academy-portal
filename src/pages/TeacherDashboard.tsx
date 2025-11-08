@@ -90,60 +90,59 @@ const TeacherDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Teacher Dashboard</h1>
-            <p className="text-gray-600 mt-2">Manage your assigned students and track their progress.</p>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowRecitationReview(true)}
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-            >
-              📖 Submit Recitation Review
-            </button>
-            <button
-              onClick={() => setShowTickets(true)}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-            >
-              🎫 My Tickets
-            </button>
-            <Link
-              to="/assignments"
-              className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-              style={{ backgroundColor: '#E7AA39' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d99a2f'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E7AA39'}
-            >
-              Manage Assignments
-            </Link>
-            <Link
-              to="/profile"
-              className="px-6 py-3 text-white rounded-lg hover font-medium transition shadow-md hover:shadow-lg"
-              style={{ backgroundColor: '#2E4D32' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#253d28'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
-            >
-              View My Profile
-            </Link>
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8 rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Teacher Workspace</span>
+              <h1 className="text-3xl font-semibold text-primary">Teacher Dashboard</h1>
+              <p className="text-sm text-primary-soft max-w-2xl">
+                Review assignments, log recitation feedback, and stay on top of student progress in one place.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setShowRecitationReview(true)}
+                className="inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+              >
+                Submit Recitation Review
+              </button>
+              <button
+                onClick={() => setShowTickets(true)}
+                className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+              >
+                My Tickets
+              </button>
+              <Link
+                to="/assignments"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
+              >
+                Manage Assignments
+              </Link>
+              <Link
+                to="/profile"
+                className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+              >
+                View My Profile
+              </Link>
+            </div>
           </div>
         </div>
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <StatCard title="Assigned Students" value={assignedStudents.length} icon="👨‍🎓" color="green" />
-          <StatCard title="Total Assessments" value={assignedStudents.reduce((sum, s) => sum + s.assessments.length, 0)} icon="📝" color="blue" />
-          <StatCard title="This Week" value={assignedStudents.filter(s => s.status === 'active').length} icon="📅" color="purple" />
-          <StatCard title="Avg Performance" value="85%" icon="⭐" color="gold" />
+          <StatCard title="Assigned Students" value={assignedStudents.length} icon="AS" />
+          <StatCard title="Total Assessments" value={assignedStudents.reduce((sum, s) => sum + s.assessments.length, 0)} icon="TA" />
+          <StatCard title="Active Students" value={assignedStudents.filter(s => s.status === 'active').length} icon="WK" />
+          <StatCard title="Avg Performance" value="85%" icon="AVG" />
         </div>
 
         {/* Assigned Students List */}
         <div className="mb-8">
-          <Card title={`👥 My Assigned Students (${assignedStudents.length})`}>
+          <Card title={`My Assigned Students (${assignedStudents.length})`}>
             {assignedStudents.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <p>No students assigned yet.</p>
@@ -151,7 +150,7 @@ const TeacherDashboard: React.FC = () => {
             ) : (
               <div className="space-y-4">
                 {assignedStudents.map((student) => (
-                  <div key={student.id} className="bg-gradient-to-r from-cream-100 to-cream-200 p-4 rounded-lg border border-gold-300">
+                  <div key={student.id} className="rounded-2xl border border-accent-soft bg-white p-5 shadow-sm">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center space-x-4">
                         <img
@@ -160,45 +159,50 @@ const TeacherDashboard: React.FC = () => {
                           className="h-12 w-12 rounded-full"
                         />
                         <div>
-                          <h4 className="font-bold text-gray-900">{student.fullName}</h4>
-                          <p className="text-sm text-gray-600">Parent: {student.parentName}</p>
-                          <p className="text-sm text-gray-600">📧 {student.email} | 📞 {student.contact}</p>
+                          <h4 className="font-bold text-primary">{student.fullName}</h4>
+                          <p className="text-sm text-primary-soft">Parent: {student.parentName}</p>
+                          <p className="text-sm text-primary-soft">Email: {student.email} · Phone: {student.contact}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="bg-primary-600 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                        <span className="rounded-full bg-soft-primary px-3 py-1 text-xs font-semibold text-primary">
                           {student.program}
                         </span>
-                        <p className="text-xs text-gray-600 mt-1">ID: {student.id}</p>
+                        <p className="mt-1 text-xs text-primary-soft">ID: {student.id}</p>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                      <div className="bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600">Schedule</p>
+                      <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
+                        <p className="text-xs text-primary-soft">Schedule</p>
                         <p className="text-sm font-medium">{student.schedule.days.join(', ')}</p>
-                        <p className="text-xs text-gray-600">{student.schedule.startTime} - {student.schedule.endTime}</p>
+                        <p className="text-xs text-primary-soft">{student.schedule.startTime} - {student.schedule.endTime}</p>
                       </div>
                       {permissions.canViewFinancials && (
-                        <div className="bg-white p-3 rounded">
-                          <p className="text-xs text-gray-600">Tuition</p>
+                        <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
+                          <p className="text-xs text-primary-soft">Tuition</p>
                           <p className="text-sm font-medium">${student.tuitionFee}/month</p>
-                          <p className="text-xs text-gray-600">Reg: ${student.registrationAmount}</p>
+                          <p className="text-xs text-primary-soft">Reg: ${student.registrationAmount}</p>
                         </div>
                       )}
-                      <div className="bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600">Enrolled</p>
+                      <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
+                        <p className="text-xs text-primary-soft">Enrolled</p>
                         <p className="text-sm font-medium">{new Date(student.enrolledDate).toLocaleDateString()}</p>
-                        <p className="text-xs text-gray-600">Status: <span className="text-green-600 font-semibold">{student.status}</span></p>
+                        <p className="text-xs text-primary-soft">
+                          Status:{' '}
+                          <span className="font-semibold text-primary">
+                            {student.status}
+                          </span>
+                        </p>
                       </div>
                     </div>
 
                     {student.siblings.length > 0 && (
-                      <div className="mb-3 bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600 mb-2">Siblings:</p>
+                      <div className="mb-3 rounded-xl border border-accent-soft bg-white px-3 py-3">
+                        <p className="mb-2 text-xs text-primary-soft">Siblings:</p>
                         <div className="flex flex-wrap gap-2">
                           {student.siblings.map((sibling) => (
-                            <span key={sibling.id} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                            <span key={sibling.id} className="rounded-full bg-soft-primary px-2 py-1 text-xs font-semibold text-primary">
                               {sibling.fullName} ({sibling.program})
                             </span>
                           ))}
@@ -208,16 +212,16 @@ const TeacherDashboard: React.FC = () => {
 
                     {/* Assessments */}
                     {permissions.canViewAssessments && (
-                      <div className="mb-3 bg-white p-3 rounded">
+                      <div className="mb-3 rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-semibold text-gray-900">Assessments ({student.assessments.length})</p>
+                          <p className="text-sm font-semibold text-primary">Assessments ({student.assessments.length})</p>
                           {permissions.canEditAssessments && (
                             <button
                               onClick={() => {
                                 setSelectedStudent(student);
                                 setShowAssessmentForm(true);
                               }}
-                              className="text-xs bg-primary-600 text-white px-3 py-1 rounded hover:bg-primary-700"
+                              className="rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-3 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary"
                             >
                               + Add Assessment
                             </button>
@@ -226,34 +230,34 @@ const TeacherDashboard: React.FC = () => {
                         {student.assessments.length > 0 ? (
                           <div className="space-y-2">
                             {student.assessments.slice(-3).map((assessment) => (
-                              <div key={assessment.id} className="bg-gray-50 p-2 rounded text-xs">
-                                <div className="flex justify-between">
+                              <div key={assessment.id} className="rounded-lg border border-gray-100 bg-soft-primary px-3 py-2 text-xs">
+                                <div className="flex justify-between text-primary">
                                   <span className="font-medium">{assessment.type}</span>
-                                  <span className="font-bold text-primary-600">{assessment.score}/{assessment.maxScore}</span>
+                                  <span className="font-semibold text-primary">{assessment.score}/{assessment.maxScore}</span>
                                 </div>
-                                <p className="text-gray-600">{assessment.notes}</p>
-                                <p className="text-gray-500">{new Date(assessment.date).toLocaleDateString()}</p>
+                                <p className="text-primary-soft">{assessment.notes}</p>
+                                <p className="text-[10px] text-primary-faint">{new Date(assessment.date).toLocaleDateString()}</p>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-500">No assessments yet</p>
+                          <p className="text-xs text-primary-soft">No assessments yet</p>
                         )}
                       </div>
                     )}
 
                     {/* Evaluations */}
                     {permissions.canViewEvaluations && (
-                      <div className="bg-white p-3 rounded">
+                      <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-semibold text-gray-900">Evaluations ({student.evaluations.length})</p>
+                          <p className="text-sm font-semibold text-primary">Evaluations ({student.evaluations.length})</p>
                           {permissions.canEditEvaluations && (
                             <button
                               onClick={() => {
                                 setSelectedStudent(student);
                                 setShowEvaluationForm(true);
                               }}
-                              className="text-xs bg-gold-500 text-white px-3 py-1 rounded hover:bg-gold-600"
+                              className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
                             >
                               + Add Evaluation
                             </button>
@@ -262,18 +266,18 @@ const TeacherDashboard: React.FC = () => {
                         {student.evaluations.length > 0 ? (
                           <div className="space-y-2">
                             {student.evaluations.slice(-3).map((evaluation) => (
-                              <div key={evaluation.id} className="bg-gray-50 p-2 rounded text-xs">
-                                <div className="flex justify-between">
+                              <div key={evaluation.id} className="rounded-lg border border-gray-100 bg-soft-accent px-3 py-2 text-xs">
+                                <div className="flex justify-between text-primary">
                                   <span className="font-medium">{evaluation.category}</span>
-                                  <span className="font-bold text-gold-600">{'⭐'.repeat(evaluation.rating)}</span>
+                                  <span className="font-semibold text-[var(--color-accent)]">Rating: {evaluation.rating}/5</span>
                                 </div>
-                                <p className="text-gray-600">{evaluation.comments}</p>
-                                <p className="text-gray-500">{new Date(evaluation.date).toLocaleDateString()}</p>
+                                <p className="text-primary-soft">{evaluation.comments}</p>
+                                <p className="text-[10px] text-primary-faint">{new Date(evaluation.date).toLocaleDateString()}</p>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-500">No evaluations yet</p>
+                          <p className="text-xs text-primary-soft">No evaluations yet</p>
                         )}
                       </div>
                     )}
@@ -281,8 +285,11 @@ const TeacherDashboard: React.FC = () => {
                     {/* Contact Parent Button */}
                     {permissions.canContactParents && (
                       <div className="mt-3">
-                        <button className="w-full bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 text-sm font-medium">
-                          📧 Contact Parent
+                        <button
+                          onClick={() => alert(`Contacting ${student.parentName} at ${student.contact}`)}
+                          className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                        >
+                          Contact Parent
                         </button>
                       </div>
                     )}
@@ -294,15 +301,26 @@ const TeacherDashboard: React.FC = () => {
         </div>
 
         {/* Teacher Permissions Summary */}
-        <Card title="🔐 Your Permissions">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card title="Your Permissions">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {Object.entries(permissions).map(([key, value]) => (
-              <div key={key} className={`p-3 rounded-lg ${value ? 'bg-primary-50 border border-primary-200' : 'bg-red-50 border border-red-200'}`}>
-                <p className="text-xs font-medium text-gray-900">
+              <div
+                key={key}
+                className={`rounded-xl border px-3 py-3 ${
+                  value
+                    ? 'border-accent-soft bg-soft-primary'
+                    : 'border-[rgba(var(--color-accent-rgb),0.35)] bg-white'
+                }`}
+              >
+                <p className="text-xs font-medium text-primary">
                   {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                 </p>
-                <p className={`text-sm font-bold mt-1 ${value ? 'text-primary-600' : 'text-red-600'}`}>
-                  {value ? '✓ Allowed' : '✗ Denied'}
+                <p
+                  className={`mt-1 text-sm font-semibold ${
+                    value ? 'text-primary' : 'text-[var(--color-accent)]'
+                  }`}
+                >
+                  {value ? 'Allowed' : 'Not allowed'}
                 </p>
               </div>
             ))}
@@ -441,8 +459,7 @@ const TeacherDashboard: React.FC = () => {
                     background: `linear-gradient(to right, #E7AA39 0%, #E7AA39 ${(evaluationData.rating - 1) * 25}%, #e5e7eb ${(evaluationData.rating - 1) * 25}%, #e5e7eb 100%)`
                   }}
                 />
-                <p className="text-center text-3xl mt-2">{'⭐'.repeat(evaluationData.rating)}</p>
-                <p className="text-center text-sm text-gray-600 mt-1">{evaluationData.rating} out of 5 stars</p>
+                <p className="text-center text-sm text-primary-soft mt-2">Rating: {evaluationData.rating} / 5</p>
               </div>
               
               <div>
