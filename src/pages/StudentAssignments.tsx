@@ -206,7 +206,12 @@ const StudentAssignments: React.FC = () => {
       return acc;
     }, {});
 
-    return Object.entries(groups).sort((a, b) => new Date(b[1][0].date).getTime() - new Date(a[1][0].date).getTime());
+    const entries = Object.entries(groups) as Array<[string, EnrichedAssignment[]]>;
+    return entries.sort((a, b) => {
+      const bDate = b[1][0] ? new Date(b[1][0].date).getTime() : 0;
+      const aDate = a[1][0] ? new Date(a[1][0].date).getTime() : 0;
+      return bDate - aDate;
+    });
   }, [historyAssignments]);
 
   const buildSectionItems = (assignment: EnrichedAssignment, step: string, fallback?: string) => {
