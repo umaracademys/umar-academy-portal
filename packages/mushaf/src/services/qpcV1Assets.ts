@@ -1,11 +1,11 @@
-import initSqlJs, { Database } from 'sql.js';
+import type { Database, SqlJsStatic } from 'sql.js';
 import type { LayoutPage, Line, Word } from '../components/InteractiveMushaf';
 
 const LAYOUT_DB_PATH = '/data/layouts/qpc-v1-15-lines.db';
 const WORDS_DB_PATH = '/data/glyphs/qpc-v1-glyph-codes-wbw.db';
 const FONT_DIR_NAME = encodeURIComponent('QPC V1 Font.woff');
 
-let sqlJsPromise: Promise<Awaited<ReturnType<typeof initSqlJs>>> | null = null;
+let sqlJsPromise: Promise<SqlJsStatic> | null = null;
 let layoutDbPromise: Promise<Database> | null = null;
 let wordsDbPromise: Promise<Database> | null = null;
 let wordsCachePromise: Promise<Word[]> | null = null;
@@ -13,9 +13,15 @@ const loadedFonts = new Map<number, string>();
 
 const locateFile = (file: string) => (file.endsWith('.wasm') ? `https://sql.js.org/dist/${file}` : file);
 
-async function getSqlJs() {
+async function getSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsPromise) {
-    sqlJsPromise = initSqlJs({ locateFile });
+    sqlJsPromise = import('sql.js').then((module: any) => {
+      const initSqlJs = module?.default || module;
+      if (typeof initSqlJs !== 'function') {
+        throw new Error('sql.js init function not found');
+      }
+      return initSqlJs({ locateFile }) as Promise<SqlJsStatic>;
+    });
   }
   return sqlJsPromise;
 }
