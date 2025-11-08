@@ -93,7 +93,9 @@ const assignmentSchema = new mongoose.Schema({
     title: { type: String },
     details: { type: String },
     teacherName: { type: String },
-    order: { type: Number }
+    order: { type: Number },
+    assignmentRange: { type: String },
+    assignmentPortion: { type: String }
   }],
   mushafMarkings: [{
     type: String,
@@ -151,7 +153,7 @@ const assignmentTicketSchema = new mongoose.Schema({
   workflowStep: { type: String, enum: ['sabq', 'sabqi', 'manzil', 'finalize'], required: true },
   assignedTeacherId: { type: String, required: true },
   assignedTeacherName: { type: String, required: true },
-  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed'], default: 'assigned' },
+  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed', 'pending'], default: 'assigned' },
   progressNotes: { type: String },
   audioLink: { type: String },
   previousTicketId: { type: String },
@@ -165,7 +167,18 @@ const assignmentTicketSchema = new mongoose.Schema({
   homework: { type: String },
   homeworkLink: { type: String },
   assignmentId: { type: String },
-  program: { type: String, required: true }
+  program: { type: String, required: true },
+  assignmentRange: { type: String },
+  assignmentPortion: { type: String },
+  classworkSections: [{
+    step: { type: String },
+    title: { type: String },
+    details: { type: String },
+    teacherName: { type: String },
+    order: { type: Number },
+    assignmentRange: { type: String },
+    assignmentPortion: { type: String }
+  }]
 }, { timestamps: true });
 
 const AssignmentTicket = mongoose.model('AssignmentTicket', assignmentTicketSchema);

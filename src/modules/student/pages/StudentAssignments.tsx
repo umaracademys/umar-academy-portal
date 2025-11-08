@@ -67,7 +67,9 @@ const StudentAssignments: React.FC = () => {
                 title: section.title || '',
                 details: section.details || '',
                 teacherName: section.teacherName || '',
-                order: typeof section.order === 'number' ? section.order : index
+                order: typeof section.order === 'number' ? section.order : index,
+                assignmentRange: section.assignmentRange || '',
+                assignmentPortion: section.assignmentPortion || ''
               }))
             : [],
           program: assignment.program || '',
@@ -156,6 +158,22 @@ const StudentAssignments: React.FC = () => {
         return 'Overdue';
       default:
         return status;
+    }
+  };
+
+  const formatAssignmentPortion = (portion?: string) => {
+    if (!portion) return '';
+    switch (portion.toLowerCase()) {
+      case 'quarter':
+        return '¼ Juz';
+      case 'half':
+        return '½ Juz';
+      case 'three_quarters':
+        return '¾ Juz';
+      case 'full':
+        return 'Full Juz';
+      default:
+        return portion;
     }
   };
 
@@ -296,6 +314,16 @@ const StudentAssignments: React.FC = () => {
                                         <span className="block font-medium text-[#2E4D32]">
                                           {section.title || `${title}${items.length > 1 ? ` ${idx + 1}` : ''}`}
                                         </span>
+                                        {section.assignmentRange && (
+                                          <span className="block text-[11px] text-[#2E4D32]/65">
+                                            {section.assignmentRange}
+                                          </span>
+                                        )}
+                                        {section.assignmentPortion && (
+                                          <span className="block text-[10px] text-[#2E4D32]/55">
+                                            {formatAssignmentPortion(section.assignmentPortion)}
+                                          </span>
+                                        )}
                                         {section.details && (
                                           <span className="mt-1 block text-[#2E4D32]/65">{section.details}</span>
                                         )}

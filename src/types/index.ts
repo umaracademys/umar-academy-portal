@@ -1,6 +1,7 @@
 // Import Mushaf types - re-export from package for backward compatibility
 export type { MushafMistake, MistakeType, MushafPage as MushafPageType, MushafSession } from '@umar-academy/mushaf';
 import type { MushafMistake } from '@umar-academy/mushaf';
+import type { AssignmentPortion } from './assignment';
 
 export type UserRole = 'superadmin' | 'admin' | 'teacher' | 'student';
 export type ProgramType = 'Full Time HQ' | 'Part Time HQ' | 'After School Reading';
@@ -253,6 +254,8 @@ export interface AssignmentTicket {
   assignmentId?: string; // Final assignment ID
   mushafMarkings?: MushafMistake[]; // Mushaf mistake markings from teacher
   program: string;
+  assignmentRange?: string;
+  assignmentPortion?: AssignmentPortion | string;
   createdAt: Date;
   updatedAt: Date;
 }

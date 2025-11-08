@@ -1,3 +1,5 @@
+export type AssignmentPortion = 'quarter' | 'half' | 'three_quarters' | 'full' | 'custom' | 'pages' | 'surah';
+
 export interface Assignment {
   id: string;
   title: string;
@@ -84,6 +86,8 @@ export interface ClassworkSection {
   details?: string;
   teacherName?: string;
   order?: number;
+  assignmentRange?: string;
+  assignmentPortion?: AssignmentPortion | string;
 }
 
 

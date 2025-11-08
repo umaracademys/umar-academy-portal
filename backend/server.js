@@ -319,7 +319,9 @@ const assignmentSchema = new mongoose.Schema({
     title: { type: String },
     details: { type: String },
     teacherName: { type: String },
-    order: { type: Number }
+    order: { type: Number },
+    assignmentRange: { type: String },
+    assignmentPortion: { type: String }
   }],
 }, { timestamps: true });
 
@@ -379,7 +381,18 @@ const assignmentTicketSchema = new mongoose.Schema({
     audioUrl: String, // URL to audio recording
     timestamp: Date
   }],
-  program: { type: String, required: true }
+  classworkSections: [{
+    step: { type: String },
+    title: { type: String },
+    details: { type: String },
+    teacherName: { type: String },
+    order: { type: Number },
+    assignmentRange: { type: String },
+    assignmentPortion: { type: String }
+  }],
+  program: { type: String, required: true },
+  assignmentRange: { type: String },
+  assignmentPortion: { type: String }
 }, { timestamps: true });
 
 const AssignmentTicket = mongoose.model('AssignmentTicket', assignmentTicketSchema);
@@ -771,6 +784,106 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
       return res.status(400).json({ error: 'Only finalize step tickets can be finalized' });
     }
     
+    const buildTicketClassworkContext = async () => {
+      const ticketChain = [];
+      let currentTicket = ticket;
+      while (currentTicket) {
+        ticketChain.unshift({
+          step: currentTicket.workflowStep,
+          teacherName: currentTicket.assignedTeacherName,
+          teacherId: currentTicket.assignedTeacherId,
+          progressNotes: currentTicket.progressNotes,
+          assignmentRange: currentTicket.assignmentRange,
+          assignmentPortion: currentTicket.assignmentPortion
+        });
+        
+        if (currentTicket.previousTicketId) {
+          currentTicket = await AssignmentTicket.findById(currentTicket.previousTicketId);
+        } else {
+          currentTicket = null;
+        }
+      }
+
+      const sectionCounters = {};
+      const classworkSections = [];
+      const formatPortionLabel = (portion) => {
+        if (!portion) return '';
+        switch (portion.toLowerCase()) {
+          case 'quarter':
+            return '¼ Juz';
+          case 'half':
+            return '½ Juz';
+          case 'three_quarters':
+            return '¾ Juz';
+          case 'full':
+            return 'Full Juz';
+          default:
+            return portion;
+        }
+      };
+
+      ticketChain.forEach((entry) => {
+        const normalizedStep = (entry.step || '').toLowerCase();
+        if (!['sabq', 'sabqi', 'manzil'].includes(normalizedStep)) {
+          return;
+        }
+
+        const portionRaw = (entry.assignmentPortion || '').trim();
+        const notes = (entry.progressNotes || '').trim();
+
+        sectionCounters[normalizedStep] = (sectionCounters[normalizedStep] || 0) + 1;
+        const count = sectionCounters[normalizedStep];
+        const baseTitle = normalizedStep.charAt(0).toUpperCase() + normalizedStep.slice(1);
+        const title = count > 1 ? `${baseTitle} ${count}` : baseTitle;
+
+        classworkSections.push({
+          step: normalizedStep,
+          title,
+          details: notes,
+          teacherName: entry.teacherName || '',
+          order: classworkSections.length,
+          assignmentRange: entry.assignmentRange || '',
+          assignmentPortion: portionRaw
+        });
+      });
+
+      ticket.classworkSections = classworkSections;
+
+      const listenersInfo = classworkSections
+        .filter(section => section.teacherName)
+        .map(section => {
+          const parts = [section.title];
+          if (section.teacherName) parts.push(`Teacher: ${section.teacherName}`);
+          if (section.assignmentRange) parts.push(section.assignmentRange);
+          if (section.assignmentPortion) parts.push(formatPortionLabel(section.assignmentPortion));
+          if (section.details) parts.push(section.details);
+          return parts.join(' — ');
+        })
+        .join('\n');
+
+      const chainLength = ticketChain.length;
+      let classworkType = ticket.workflowStep;
+      if (classworkType === 'finalize') {
+        const previousEntry = chainLength >= 2 ? ticketChain[chainLength - 2] : null;
+        classworkType = (previousEntry?.step) || 'sabq';
+      }
+
+      const mainListener = ticketChain.find(t => t.step === 'sabq') || ticketChain[0];
+
+      const fullDescription = [ticket.finalReport || '', listenersInfo]
+        .filter(Boolean)
+        .join('\n\n');
+
+      return {
+        ticketChain,
+        classworkSections,
+        listenersInfo,
+        classworkType,
+        mainListener,
+        fullDescription
+      };
+    };
+    
     // Check if assignment already exists for this ticket (by fromTicketId)
     const existingAssignmentByTicketId = await Assignment.findOne({ fromTicketId: ticket._id.toString() });
     if (existingAssignmentByTicketId) {
@@ -780,17 +893,34 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
       ticket.homeworkLink = req.body.homeworkLink || '';
       ticket.reviewedBy = req.body.reviewedBy;
       ticket.reviewedAt = new Date();
-    ticket.status = 'finalized';
+      ticket.status = 'finalized';
+      const {
+        classworkSections,
+        fullDescription,
+        mainListener,
+        classworkType
+      } = await buildTicketClassworkContext();
       if (!ticket.assignmentId) {
         ticket.assignmentId = existingAssignmentByTicketId._id.toString();
       }
       await ticket.save();
       
       // Update existing assignment
-      existingAssignmentByTicketId.description = req.body.finalReport || '';
+      existingAssignmentByTicketId.description = fullDescription || req.body.finalReport || '';
       existingAssignmentByTicketId.homeworkComments = req.body.homework || '';
       existingAssignmentByTicketId.homeworkLink = req.body.homeworkLink || '';
-      existingAssignmentByTicketId.classworkSections = ticket.classworkSections;
+      existingAssignmentByTicketId.classworkSections = classworkSections;
+      if (classworkType) {
+        existingAssignmentByTicketId.classworkType = classworkType;
+      }
+      if (mainListener) {
+        if (mainListener.teacherName) {
+          existingAssignmentByTicketId.listenerName = mainListener.teacherName;
+        }
+        if (mainListener.teacherId) {
+          existingAssignmentByTicketId.listenerId = mainListener.teacherId;
+        }
+      }
       await existingAssignmentByTicketId.save();
       
       return res.json({
@@ -820,83 +950,14 @@ app.post('/api/tickets/:id/finalize', async (req, res) => {
     ticket.reviewedBy = req.body.reviewedBy;
     ticket.reviewedAt = new Date();
     ticket.status = 'finalized';
-    await ticket.save();
     
-    // Get ticket chain to find all listeners (teachers)
-    const ticketChain = [];
-    let currentTicket = ticket;
-    while (currentTicket) {
-      ticketChain.unshift({
-        step: currentTicket.workflowStep,
-        teacherName: currentTicket.assignedTeacherName,
-        teacherId: currentTicket.assignedTeacherId,
-        progressNotes: currentTicket.progressNotes
-      });
-      
-      if (currentTicket.previousTicketId) {
-        currentTicket = await AssignmentTicket.findById(currentTicket.previousTicketId);
-      } else {
-        currentTicket = null;
-      }
-    }
-    
-    // Build structured classwork sections (supports multiple manzil entries)
-    const sectionCounters = {};
-    const classworkSections = [];
-
-    ticketChain.forEach((entry) => {
-      const normalizedStep = (entry.step || '').toLowerCase();
-      if (!['sabq', 'sabqi', 'manzil'].includes(normalizedStep)) {
-        return;
-      }
-
-      sectionCounters[normalizedStep] = (sectionCounters[normalizedStep] || 0) + 1;
-      const count = sectionCounters[normalizedStep];
-      const baseTitle = normalizedStep.charAt(0).toUpperCase() + normalizedStep.slice(1);
-      const title = count > 1 ? `${baseTitle} ${count}` : baseTitle;
-
-      classworkSections.push({
-        step: normalizedStep,
-        title,
-        details: (entry.progressNotes || '').trim(),
-        teacherName: entry.teacherName || '',
-        order: classworkSections.length
-      });
-    });
-
-    // Build description with listener information using structured data
-    const listenersInfo = classworkSections
-      .filter(section => section.teacherName)
-      .map(section => {
-        const parts = [section.title];
-        if (section.teacherName) parts.push(`Teacher: ${section.teacherName}`);
-        if (section.details) parts.push(section.details);
-        return parts.join(' — ');
-      })
-      .join('\n');
-
-    const fullDescription = [ticket.finalReport || '', listenersInfo]
-      .filter(Boolean)
-      .join('\n\n');
-    
-    // Get main listener (the one who did sabq or the first in chain)
-    const mainListener = ticketChain.find(t => t.step === 'sabq') || ticketChain[0];
-    
-    // Map workflowStep to valid classworkType (finalize -> sabq, sabqi, or manzil based on previous step)
-    let classworkType = ticket.workflowStep;
-    if (classworkType === 'finalize') {
-      // For finalize, use the previous step's workflow step if available
-      if (ticket.previousTicketId) {
-        const previousTicket = await AssignmentTicket.findById(ticket.previousTicketId);
-        if (previousTicket) {
-          classworkType = previousTicket.workflowStep;
-        } else {
-          classworkType = 'sabq'; // Default fallback
-        }
-      } else {
-        classworkType = 'sabq'; // Default fallback
-      }
-    }
+    const {
+      classworkSections,
+      listenersInfo,
+      classworkType,
+      mainListener,
+      fullDescription
+    } = await buildTicketClassworkContext();
     
     // Get assignedBy - use reviewedBy if it's a valid ObjectId, otherwise use a default admin ID
     let assignedBy = req.body.reviewedBy || ticket.assignedTeacherId;

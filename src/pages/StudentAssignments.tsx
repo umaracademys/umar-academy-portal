@@ -26,6 +26,8 @@ interface EnrichedAssignment {
     details: string;
     teacherName: string;
     order: number;
+    assignmentRange?: string;
+    assignmentPortion?: string;
   }>;
   mushafMarkings: MushafMistake[];
 }
@@ -98,6 +100,8 @@ const StudentAssignments: React.FC = () => {
                 details: section.details || '',
                 teacherName: section.teacherName || '',
                 order: typeof section.order === 'number' ? section.order : index,
+                assignmentRange: section.assignmentRange || '',
+                assignmentPortion: section.assignmentPortion || '',
               }))
             : [],
           mushafMarkings,
@@ -164,6 +168,22 @@ const StudentAssignments: React.FC = () => {
       day: 'numeric',
     });
 
+  const formatAssignmentPortion = (portion?: string) => {
+    if (!portion) return '';
+    switch (portion.toLowerCase()) {
+      case 'quarter':
+        return '¼ Juz';
+      case 'half':
+        return '½ Juz';
+      case 'three_quarters':
+        return '¾ Juz';
+      case 'full':
+        return 'Full Juz';
+      default:
+        return portion;
+    }
+  };
+
   const stats = useMemo(() => {
     const totalAssignments = assignments.length;
     const totalMistakes = assignments.reduce(
@@ -225,6 +245,14 @@ const StudentAssignments: React.FC = () => {
           <span className="font-medium text-primary">
             {section.title || `${step.charAt(0).toUpperCase() + step.slice(1)}${filtered.length > 1 ? ` ${idx + 1}` : ''}`}
                       </span>
+          {section.assignmentRange && (
+            <span className="mt-1 block text-xs text-primary-soft">{section.assignmentRange}</span>
+          )}
+          {section.assignmentPortion && (
+            <span className="block text-[11px] text-primary-faint">
+              {formatAssignmentPortion(section.assignmentPortion)}
+            </span>
+          )}
                       {section.details && (
             <span className="mt-1 block text-xs text-primary-soft">{section.details}</span>
                       )}

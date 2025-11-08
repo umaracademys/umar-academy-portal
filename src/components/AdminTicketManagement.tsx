@@ -108,6 +108,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       assignmentId: merged.assignmentId ?? fallback?.assignmentId,
       mushafMarkings: merged.mushafMarkings ?? fallback?.mushafMarkings,
       program: merged.program || fallback?.program || '',
+      assignmentRange: merged.assignmentRange ?? fallback?.assignmentRange,
+      assignmentPortion: merged.assignmentPortion ?? fallback?.assignmentPortion,
       createdAt: merged.createdAt ? new Date(merged.createdAt) : fallback?.createdAt || new Date(),
       updatedAt: merged.updatedAt ? new Date(merged.updatedAt) : fallback?.updatedAt || new Date(),
     };
@@ -250,6 +252,22 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       case 'manzil': return 'Manzil';
       case 'finalize': return 'Finalize';
       default: return step;
+    }
+  };
+
+  const formatAssignmentPortion = (portion?: string) => {
+    if (!portion) return '';
+    switch (portion.toLowerCase()) {
+      case 'quarter':
+        return '¼ Juz';
+      case 'half':
+        return '½ Juz';
+      case 'three_quarters':
+        return '¾ Juz';
+      case 'full':
+        return 'Full Juz';
+      default:
+        return portion;
     }
   };
 
@@ -408,6 +426,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               </div>
               <div>
                 <span className="font-medium">Program:</span> {selectedTicket.program}
+              </div>
+              <div>
+                <span className="font-medium">Assigned Range:</span>{' '}
+                {selectedTicket.assignmentRange ? selectedTicket.assignmentRange : 'Not specified'}
+              </div>
+              <div>
+                <span className="font-medium">Portion:</span>{' '}
+                {selectedTicket.assignmentPortion ? formatAssignmentPortion(selectedTicket.assignmentPortion) : 'Not specified'}
               </div>
             </div>
 
@@ -673,8 +699,29 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     <ul className="space-y-2 text-sm text-gray-700">
                       {ticketChain.map((ticket) => (
                         <li key={ticket.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                          <span className="font-medium text-gray-900">{getStepLabel(ticket.workflowStep)}</span>
-                          <span className="text-xs uppercase tracking-wide text-gray-500">{ticket.assignedTeacherName || '—'}</span>
+                          <div className="flex-1">
+                            <span className="block text-sm font-semibold text-gray-900">
+                              {getStepLabel(ticket.workflowStep)}
+                            </span>
+                            {ticket.assignmentRange && (
+                              <span className="block text-xs text-gray-600 mt-0.5">
+                                {ticket.assignmentRange}
+                              </span>
+                            )}
+                            {ticket.assignmentPortion && (
+                              <span className="block text-[11px] text-gray-400">
+                                {formatAssignmentPortion(ticket.assignmentPortion)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="block text-xs uppercase tracking-wide text-gray-500">
+                              {ticket.assignedTeacherName || '—'}
+                            </span>
+                            <span className="block text-[10px] text-gray-400">
+                              {ticket.status.replace('_', ' ')}
+                            </span>
+                          </div>
                         </li>
                       ))}
                       {ticketChain.length === 0 && (
