@@ -50,7 +50,7 @@ interface TeacherTicketsProps {
 
 const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const { user } = useAuth();
-  const { tickets, students, teachers, updateTicket, assignTicketToNext, finalizeTicket, refreshData, getStudentPersonalMushafFiltered } = useBackendData();
+  const { tickets, students, teachers, updateTicket, assignTicketToNext, refreshData, getStudentPersonalMushafFiltered } = useBackendData();
   
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [formData, setFormData] = useState({
@@ -58,13 +58,8 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     audioLink: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showFinalizeOption, setShowFinalizeOption] = useState(false);
   const [showAssignOption, setShowAssignOption] = useState(false);
   const [selectedTeacherForAssign, setSelectedTeacherForAssign] = useState('');
-  const [finalizeData, setFinalizeData] = useState({
-    finalReport: '',
-    homework: ''
-  });
   const [showMushaf, setShowMushaf] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [mushafMarkings, setMushafMarkings] = useState<MushafMistake[]>([]);
@@ -258,47 +253,11 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       setMushafMarkings([]);
       setShowMushaf(false);
       setCurrentPage(1);
-      setShowFinalizeOption(false);
       setShowAssignOption(false);
       await refreshData();
     } catch (error) {
       console.error('Error submitting ticket:', error);
       alert('Failed to submit ticket');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleFinalize = async () => {
-    if (!selectedTicket) return;
-    
-    if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
-      alert('Please fill in final report and homework');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-      await finalizeTicket(ticketId, {
-        finalReport: finalizeData.finalReport,
-        homework: finalizeData.homework,
-        homeworkLink: '',
-        reviewedBy: user?.id || ''
-      });
-      
-      alert('✅ Ticket finalized! Assignment created.');
-      setSelectedTicket(null);
-      setFormData({ progressNotes: '', audioLink: '' });
-      setFinalizeData({ finalReport: '', homework: '' });
-      setMushafMarkings([]);
-      setShowMushaf(false);
-      setShowFinalizeOption(false);
-      setCurrentPage(1);
-      await refreshData();
-    } catch (error) {
-      console.error('Error finalizing ticket:', error);
-      alert('Failed to finalize ticket');
     } finally {
       setIsSubmitting(false);
     }
@@ -684,88 +643,17 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
               </div>
             </form>
 
-            {/* Additional Actions: Finalize or Assign to Different Teacher */}
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex flex-col sm:flex-row gap-3">
-                {/* Finalize Option */}
-                <button
-                  onClick={() => {
-                    setShowFinalizeOption(!showFinalizeOption);
-                    setShowAssignOption(false);
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Finalize Ticket
-                </button>
-
-                {/* Assign to Different Teacher Option */}
-                <button
-                  onClick={() => {
-                    setShowAssignOption(!showAssignOption);
-                    setShowFinalizeOption(false);
-                  }}
-                  className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  Assign to Different Teacher
-                </button>
-              </div>
-
-              {/* Finalize Form */}
-              {showFinalizeOption && (
-                <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                  <h4 className="text-sm font-semibold text-purple-900 mb-3">Finalize Ticket</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-purple-900 mb-1">
-                        Final Report <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={finalizeData.finalReport}
-                        onChange={(e) => setFinalizeData(prev => ({ ...prev, finalReport: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-y"
-                        rows={3}
-                        placeholder="Write the final report..."
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-purple-900 mb-1">
-                        Homework Instructions <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={finalizeData.homework}
-                        onChange={(e) => setFinalizeData(prev => ({ ...prev, homework: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 resize-y"
-                        rows={3}
-                        placeholder="Enter homework instructions..."
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleFinalize}
-                        disabled={isSubmitting || !finalizeData.finalReport.trim() || !finalizeData.homework.trim()}
-                        className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                      >
-                        Finalize & Create Assignment
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowFinalizeOption(false);
-                          setFinalizeData({ finalReport: '', homework: '' });
-                        }}
-                        className="px-4 py-2 bg-white border border-purple-300 text-purple-700 rounded-lg font-semibold hover:bg-purple-50 transition-colors text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+            {/* Additional Actions */}
+            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50 space-y-3">
+              <button
+                onClick={() => setShowAssignOption(!showAssignOption)}
+                className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Assign to Different Teacher
+              </button>
 
               {/* Assign to Different Teacher Form */}
               {showAssignOption && (

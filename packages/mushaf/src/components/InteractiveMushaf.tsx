@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { MushafMistake } from '../types/mushaf';
 import { fetchPageLines, getQuranChapters, Chapter } from "../services/quranApi";
 import { uploadMistakeAudio } from "../services/audioService";
+import { FALLBACK_CHAPTERS } from "../data/fallbackChapters";
 
 export interface AyahPosition {
   surah: number;
@@ -387,15 +388,18 @@ export const WordByWordPage: React.FC<{
   const [words, setWords] = useState<Word[]>([]);
   const [wordsFromApi, setWordsFromApi] = useState<Word[]>([]); // Words from API response as fallback
   const [background, setBackground] = useState<string>("");
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>(FALLBACK_CHAPTERS);
 
   // Load chapters/surahs on mount
   useEffect(() => {
     const loadChapters = async () => {
+      if (typeof window === "undefined") return;
       try {
         const loadedChapters = await getQuranChapters();
         if (loadedChapters.length > 0) {
           setChapters(loadedChapters);
+        } else {
+          setChapters(FALLBACK_CHAPTERS);
         }
       } catch (error) {
         console.error("Error loading chapters:", error);
@@ -634,43 +638,25 @@ export const WordByWordPage: React.FC<{
       return "hover:bg-yellow-100 hover:shadow-sm";
     }
 
-    // Historical mistakes use lighter, more transparent colors with dashed borders
+    const isTajweed = ["madd", "ikhfa", "holding", "tech"].includes(mistake.type);
+
     if (isHistorical) {
-      switch (mistake.type) {
-        case "memory":
-          return "bg-yellow-100/50 hover:bg-yellow-200/50 border-b-2 border-dashed border-yellow-400 shadow-sm opacity-75";
-        case "madd":
-          return "bg-red-100/50 hover:bg-red-200/50 border-b-2 border-dashed border-red-400 shadow-sm opacity-75";
-        case "ikhfa":
-          return "bg-blue-100/50 hover:bg-blue-200/50 border-b-2 border-dashed border-blue-400 shadow-sm opacity-75";
-        case "holding":
-          return "bg-orange-100/50 hover:bg-orange-200/50 border-b-2 border-dashed border-orange-400 shadow-sm opacity-75";
-        case "tech":
-          return "bg-purple-100/50 hover:bg-purple-200/50 border-b-2 border-dashed border-purple-400 shadow-sm opacity-75";
-        case "other":
-          return "bg-gray-200/50 hover:bg-gray-300/50 border-b-2 border-dashed border-gray-400 shadow-sm opacity-75";
-        default:
-          return "bg-pink-100/50 hover:bg-pink-200/50 border-b-2 border-dashed border-pink-400 shadow-sm opacity-75";
+      if (mistake.type === "memory") {
+        return "bg-red-100/60 hover:bg-red-200/60 border border-dashed border-red-400 text-red-800 shadow-sm";
       }
+      if (isTajweed) {
+        return "bg-yellow-100/60 hover:bg-yellow-200/60 border border-dashed border-yellow-400 text-yellow-800 shadow-sm";
+      }
+      return "bg-gray-200/60 hover:bg-gray-300/60 border border-dashed border-gray-400 text-gray-700 shadow-sm";
     }
 
-    // Current mistakes use solid, vibrant colors
-    switch (mistake.type) {
-      case "memory":
-        return "bg-yellow-200 hover:bg-yellow-300 border-b-2 border-yellow-600 shadow-sm";
-      case "madd":
-        return "bg-red-200 hover:bg-red-300 border-b-2 border-red-600 shadow-sm";
-      case "ikhfa":
-        return "bg-blue-200 hover:bg-blue-300 border-b-2 border-blue-600 shadow-sm";
-      case "holding":
-        return "bg-orange-200 hover:bg-orange-300 border-b-2 border-orange-600 shadow-sm";
-      case "tech":
-        return "bg-purple-200 hover:bg-purple-300 border-b-2 border-purple-600 shadow-sm";
-      case "other":
-        return "bg-gray-300 hover:bg-gray-400 border-b-2 border-gray-600 shadow-sm";
-      default:
-        return "bg-pink-200 hover:bg-pink-300 border-b-2 border-pink-600 shadow-sm";
+    if (mistake.type === "memory") {
+      return "bg-red-200 hover:bg-red-300 border border-red-500 text-red-900 font-semibold shadow-sm";
     }
+    if (isTajweed) {
+      return "bg-yellow-200 hover:bg-yellow-300 border border-yellow-500 text-yellow-900 font-semibold shadow-sm";
+    }
+    return "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
   };
 
   // Show loading state only if layout is not loaded yet
@@ -941,21 +927,25 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [localMistakes, setLocalMistakes] = useState<Mistake[]>([]);
   const [showSurahIndex, setShowSurahIndex] = useState(false); // Hidden by default, user can toggle
-  const [isIndexMinimized, setIsIndexMinimized] = useState(false);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>(FALLBACK_CHAPTERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [showHistorical, setShowHistorical] = useState(showHistoricalProp);
+  const [isIndexMinimized, setIsIndexMinimized] = useState(false);
 
   // Load chapters/surahs on mount
   useEffect(() => {
     const loadChapters = async () => {
+      if (typeof window === "undefined") return;
       try {
         const loadedChapters = await getQuranChapters();
         if (loadedChapters.length > 0) {
           setChapters(loadedChapters);
+        } else {
+          setChapters(FALLBACK_CHAPTERS);
         }
       } catch (error) {
         console.error("Error loading chapters:", error);
+        setChapters(FALLBACK_CHAPTERS);
       }
     };
     loadChapters();
@@ -1137,13 +1127,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           )}
           {/* Surah Index Toggle Button - Always visible */}
           <button
-            onClick={() => {
-              setShowSurahIndex(!showSurahIndex);
-              // Auto-expand when opening on mobile
-              if (!showSurahIndex && window.innerWidth < 1024) {
-                setIsIndexMinimized(false);
-              }
-            }}
+            onClick={() => setShowSurahIndex(!showSurahIndex)}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm ${
               showSurahIndex 
                 ? 'bg-green-600 text-white hover:bg-green-700' 
@@ -1178,7 +1162,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
       <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full">
-        {/* Surah Index Sidebar - Professional Design - Modal on mobile, sidebar on desktop */}
+        {/* Surah Index Sidebar - Modal on mobile, sidebar on desktop */}
         {showSurahIndex && (
           <>
             {/* Mobile Overlay */}
@@ -1186,104 +1170,103 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               className="fixed inset-0 bg-black/50 z-40 lg:hidden"
               onClick={() => setShowSurahIndex(false)}
             />
-            {/* Index Container - Modal on mobile, Sidebar on desktop */}
-            <div className={`bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 ${
+            {/* Index Container */}
+            <div className={`bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 flex flex-col ${
               isIndexMinimized ? 'w-12' : 'w-[calc(100%-2.5rem)] sm:w-56 lg:w-64'
-            } flex-shrink-0 overflow-hidden ${
-              // Fixed modal on mobile, sticky sidebar on desktop
-              'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-16 sm:top-20 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 max-h-[75vh] lg:max-h-[70vh]'
+            } flex-shrink-0 ${
+              'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-16 sm:top-20 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 max-h-[70vh] lg:max-h-[calc(100vh-8rem)]'
             }`}>
-            <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
-              <div className="flex items-center justify-between mb-2">
-                {!isIndexMinimized && (
-                  <h3 className="text-sm font-bold text-gray-900">Surah Index</h3>
-                )}
-                <div className="flex items-center gap-1 ml-auto">
-                  {/* Minimize button - Only show on desktop */}
-                  <button
-                    onClick={() => setIsIndexMinimized(!isIndexMinimized)}
-                    className="hidden lg:block text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
-                    title={isIndexMinimized ? "Expand" : "Minimize"}
-                  >
-                    {isIndexMinimized ? (
+              <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex-shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  {!isIndexMinimized && (
+                    <h3 className="text-sm font-bold text-gray-900">Surah Index</h3>
+                  )}
+                  <div className="flex items-center gap-1 ml-auto">
+                    {/* Minimize button - desktop only */}
+                    <button
+                      onClick={() => setIsIndexMinimized(!isIndexMinimized)}
+                      className="hidden lg:block text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
+                      title={isIndexMinimized ? "Expand" : "Minimize"}
+                    >
+                      {isIndexMinimized ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      )}
+                    </button>
+                    {/* Close button */}
+                    <button
+                      onClick={() => setShowSurahIndex(false)}
+                      className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
+                      title="Close"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    )}
-                  </button>
-                  {/* Close button - Always visible */}
-                  <button
-                    onClick={() => setShowSurahIndex(false)}
-                    className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
-                    title="Close"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                    </button>
+                  </div>
                 </div>
+                {!isIndexMinimized && (
+                  <input
+                    type="text"
+                    placeholder="Search surah..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
+                  />
+                )}
               </div>
               {!isIndexMinimized && (
-                <input
-                  type="text"
-                  placeholder="Search surah..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                />
-              )}
-            </div>
-            {!isIndexMinimized && (
-              <div className="overflow-y-auto max-h-[55vh] lg:max-h-[50vh]">
-                {filteredChapters.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-gray-500">
-                    No surahs found
-                  </div>
-                ) : (
-                  filteredChapters.map((surah) => (
-                    <button
-                      key={surah.id}
-                      onClick={() => navigateToSurah(surah)}
-                      className={`w-full text-right p-2 sm:p-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                        currentSurah?.id === surah.id
-                          ? 'bg-green-50 border-l-4 border-l-green-600'
-                          : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 text-left">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-gray-600">
-                              {surah.id}.
-                            </span>
-                            <span className={`text-xs font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`}>
-                              {surah.name_simple}
-                            </span>
-                          </div>
-                          {surah.translated_name?.name && (
-                            <div className="text-[10px] text-gray-500 mt-0.5">
-                              {surah.translated_name.name}
+                <div className="overflow-y-auto pr-1 flex-1">
+                  {filteredChapters.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-500">
+                      No surahs found
+                    </div>
+                  ) : (
+                    filteredChapters.map((surah) => (
+                      <button
+                        key={surah.id}
+                        onClick={() => navigateToSurah(surah)}
+                        className={`w-full text-right p-2 sm:p-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
+                          currentSurah?.id === surah.id
+                            ? 'bg-green-50 border-l-4 border-l-green-600'
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-gray-600">
+                                {surah.id}.
+                              </span>
+                              <span className={`text-xs font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`}>
+                                {surah.name_simple}
+                              </span>
                             </div>
-                          )}
+                            {surah.translated_name?.name && (
+                              <div className="text-[10px] text-gray-500 mt-0.5">
+                                {surah.translated_name.name}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-gray-400 ml-2">
+                            Pg {surah.pages?.[0]}
+                          </div>
                         </div>
-                        <div className="text-[10px] text-gray-400 ml-2">
-                          Pg {surah.pages[0]}
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
-        
-        {/* Mushaf Content - Responsive container */}
+
+        {/* Mushaf Content */}
         <div className="flex-1 min-w-0 w-full overflow-hidden">
 
         <WordByWordPage 
