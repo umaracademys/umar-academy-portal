@@ -19,12 +19,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     tuitionFee: student?.tuitionFee || 500,
     registrationAmount: student?.registrationAmount || 100,
     assignedTeacher: student?.assignedTeacher || '',
-    scheduleDays: student?.scheduleDays || [] as ScheduleDay[],
-    startTime: '09:00',
-    endTime: '12:00',
+    scheduleDays: student?.schedule?.days || [] as ScheduleDay[],
+    startTime: student?.schedule?.startTime || '09:00',
+    endTime: student?.schedule?.endTime || '12:00',
   });
 
-  const [siblings, setSiblings] = useState<Sibling[]>([]);
+  const [siblings, setSiblings] = useState<Sibling[]>(Array.isArray(student?.siblings) ? student.siblings : []);
   const [showSiblingForm, setShowSiblingForm] = useState(false);
   const [siblingData, setSiblingData] = useState({
     fullName: '',
@@ -93,7 +93,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full my-8">
         <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-6 rounded-t-lg">
           <h2 className="text-2xl font-bold">
-            {isEdit ? '✏️ Edit Student Profile' : '👨‍🎓 Register New Student'}
+            {isEdit ? 'Edit Student Profile' : 'Register New Student'}
           </h2>
           <p className="text-primary-100 text-sm mt-1">
             {isEdit ? 'Update student information and enrollment details' : 'Complete student profile and enrollment information'}
