@@ -448,37 +448,9 @@ const StudentDashboard: React.FC = () => {
 
                     <div className="flex items-center justify-between pt-3 border-t border-gold-200">
                       {assignment.status === 'pending' && (
-                        <button
-                          onClick={() => {
-                            // Store the assignment with guaranteed _id
-                            // The id field should already be the _id from backend
-                            const assignmentWithId = {
-                              ...assignment,
-                              id: (assignment as any)._id || assignment.id,
-                              _id: (assignment as any)._id || assignment.id
-                            };
-                            
-                            console.log('🎯 Selecting assignment:', {
-                              originalAssignment: assignment,
-                              assignmentWithId,
-                              id: assignmentWithId.id,
-                              _id: assignmentWithId._id
-                            });
-                            
-                            // Validate we have an ID before setting
-                            if (!assignmentWithId.id && !assignmentWithId._id) {
-                              console.error('❌ No ID found in assignment!', assignment);
-                              alert('Error: Assignment ID not found. Please refresh the page.');
-                              return;
-                            }
-                            
-                            setSelectedAssignment(assignmentWithId as any);
-                            setShowSubmissionForm(true);
-                          }}
-                          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
-                        >
-                          📤 Submit Assignment
-                        </button>
+                        <span className="px-4 py-2 rounded-lg bg-primary-50 text-primary-700 text-sm font-medium">
+                          In-class follow-up
+                        </span>
                       )}
                       <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
                         View Details
@@ -561,68 +533,7 @@ const StudentDashboard: React.FC = () => {
         </Card>
       </div>
 
-      {/* Assignment Submission Form Modal */}
-      {showSubmissionForm && selectedAssignment && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center p-4"
-          style={{ 
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 9999 
-          }}
-          onClick={() => setShowSubmissionForm(false)}
-        >
-          <div 
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-6 pb-4 border-b-2" style={{ borderBottomColor: '#2E4D32' }}>
-              <h3 className="text-2xl font-bold" style={{ color: '#2E4D32' }}>Submit Assignment</h3>
-              <p className="text-sm text-gray-600 mt-1">{selectedAssignment.title}</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Submission Content</label>
-                <textarea
-                  value={submissionData.content}
-                  onChange={(e) => setSubmissionData({ ...submissionData, content: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 transition resize-none"
-                  rows={6}
-                  placeholder="Write your assignment submission here..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Attachments (Optional)</label>
-                <input
-                  type="file"
-                  multiple
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 transition"
-                />
-                <p className="text-xs text-gray-500 mt-1">You can upload multiple files</p>
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => setShowSubmissionForm(false)}
-                  className="px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitAssignment}
-                  className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-                  style={{ backgroundColor: '#2E4D32' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#253d28'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
-                >
-                  Submit Assignment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Legacy submission modal intentionally removed until self-submissions are reintroduced */}
       
       <DebugPanel />
     </div>

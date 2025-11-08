@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Assignment, Program } from '../types/assignment';
+import { Assignment, ClassworkSection, Program } from '../types/assignment';
+import AssignmentSectionBuilder from './assignment/AssignmentSectionBuilder';
 
 interface ModernAssignmentFormProps {
   onClose: () => void;
@@ -31,7 +32,8 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
     homeworkLink: (assignment as any)?.homeworkLink || '',
     assignedTeacher: '',
     readingLink: '',
-    comments: ''
+    comments: '',
+    classworkSections: assignment?.classworkSections || [] as ClassworkSection[]
   });
 
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -66,12 +68,27 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
     }));
   };
 
+  const handleClassworkSectionsChange = (sections: ClassworkSection[]) => {
+    setFormData(prev => ({
+      ...prev,
+      classworkSections: sections,
+      classworkType: (sections[0]?.step as 'sabq' | 'sabqi' | 'manzil') || prev.classworkType
+    }));
+
+    if (errors.classworkSections && sections.length > 0) {
+      setErrors(prev => ({ ...prev, classworkSections: '' }));
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.program) newErrors.program = 'Program is required';
     if (formData.assignedTo.length === 0) newErrors.assignedTo = 'At least one student must be selected';
+    if (formData.type === 'classwork' && (!formData.classworkSections || formData.classworkSections.length === 0)) {
+      newErrors.classworkSections = 'Add at least one classwork portion';
+    }
     if (formData.type === 'homework' && !formData.homeworkText.trim() && !formData.homeworkLink.trim()) {
       newErrors.homework = 'Either homework text or link is required';
     }
@@ -88,12 +105,20 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
     setIsSubmitting(true);
     
     try {
+      const classworkSummary = (formData.classworkSections || [])
+        .map(section => section.summary || section.assignmentRange)
+        .filter(Boolean)
+        .join('\n');
+
       const assignmentData = {
         ...formData,
         id: assignment?.id || Date.now().toString(),
         createdAt: assignment?.createdAt || new Date(),
         status: 'active',
-        submissions: assignment?.submissions || []
+        submissions: assignment?.submissions || [],
+        classworkSummary,
+        homeworkSummary: formData.homeworkText,
+        classworkType: formData.classworkSections?.[0]?.step || formData.classworkType
       };
 
       if (isEdit) {
@@ -255,39 +280,20 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
 
             {/* Classwork/Homework Specific Fields */}
             {formData.type === 'classwork' && (
-              <div className="bg-green-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  📖 Classwork Details
+              <div className="bg-green-50/70 rounded-xl p-6">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
+                  <span className="text-2xl">📖</span>
+                  <span>Classwork Details</span>
                 </h3>
-                
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Classwork Type *
-                  </label>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { value: 'sabq', label: 'Sabq', icon: '📖' },
-                      { value: 'sabqi', label: 'Sabqi', icon: '📚' },
-                      { value: 'manzil', label: 'Manzil', icon: '📑' }
-                    ].map(type => (
-                      <button
-                        key={type.value}
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, classworkType: type.value as any }))}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          formData.classworkType === type.value
-                            ? 'border-green-500 bg-green-100 text-green-700'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="text-2xl mb-1">{type.icon}</div>
-                          <div className="font-semibold">{type.label}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <AssignmentSectionBuilder
+                  value={formData.classworkSections}
+                  onChange={handleClassworkSectionsChange}
+                />
+                {errors.classworkSections && (
+                  <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+                    {errors.classworkSections}
+                  </p>
+                )}
               </div>
             )}
 

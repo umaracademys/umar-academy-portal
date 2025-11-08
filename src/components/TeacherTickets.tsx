@@ -79,7 +79,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const [formData, setFormData] = useState({
     progressNotes: '',
     audioLink: '',
-    assignmentRange: '',
     assignmentPortion: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -209,7 +208,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       setFormData({
         progressNotes: selectedTicket.progressNotes || '',
         audioLink: selectedTicket.audioLink || '',
-        assignmentRange: selectedTicket.assignmentRange || '',
         assignmentPortion: selectedTicket.assignmentPortion || ''
       });
       // Load existing Mushaf markings
@@ -253,36 +251,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       setHistoricalMistakes([]);
     }
   }, [selectedTicket, getStudentPersonalMushafFiltered]);
-
-  const previousRangeSuggestions = useMemo(() => {
-    if (!selectedTicket) return [];
-
-    const seen = new Set<string>();
-    return tickets
-      .filter((ticket) => {
-        if (!selectedTicket) return false;
-        if (!ticket.assignmentRange) return false;
-        return (
-          ticket.studentId === selectedTicket.studentId &&
-          ticket.workflowStep === selectedTicket.workflowStep &&
-          (ticket.id || (ticket as any)._id) !== (selectedTicket.id || (selectedTicket as any)._id)
-        );
-      })
-      .sort((a, b) => {
-        const aDate = new Date((a.updatedAt as any) || (a.completedAt as any) || (a.createdAt as any) || 0).getTime();
-        const bDate = new Date((b.updatedAt as any) || (b.completedAt as any) || (b.createdAt as any) || 0).getTime();
-        return bDate - aDate;
-      })
-      .map((ticket) => (ticket.assignmentRange || '').trim())
-      .filter((range) => {
-        if (!range) return false;
-        const key = range.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 3);
-  }, [tickets, selectedTicket]);
 
   const previousPortionSuggestions = useMemo(() => {
     if (!selectedTicket) return [];
@@ -368,20 +336,20 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         setIsSubmitting(false);
         return;
       }
-      await updateTicket(ticketId, {
-        status: 'pending_review',
-        progressNotes: formData.progressNotes,
-        audioLink: formData.audioLink || undefined,
-        mushafMarkings: mushafMarkings, // Include Mushaf markings
-        assignmentRange: formData.assignmentRange.trim() || undefined,
+      const updateData: Partial<AssignmentTicket> = {
+        progressNotes: formData.progressNotes.trim(),
+        audioLink: formData.audioLink.trim() || undefined,
         assignmentPortion: formData.assignmentPortion || undefined,
-        completedBy: user?.id,
-        completedAt: new Date()
-      });
+        mushafMarkings: mushafMarkings,
+        status: 'in_progress',
+        reviewedBy: user?.id || user?.email || undefined,
+        updatedAt: new Date(),
+      };
+      await updateTicket(ticketId, updateData);
       
       alert('Ticket submitted successfully! Admin will review it.');
       setSelectedTicket(null);
-      setFormData({ progressNotes: '', audioLink: '', assignmentRange: '', assignmentPortion: '' });
+      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
       setMushafMarkings([]);
       setShowMushaf(false);
       setCurrentPage(1);
@@ -416,7 +384,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       
       alert('✅ Ticket assigned to different teacher successfully!');
       setSelectedTicket(null);
-      setFormData({ progressNotes: '', audioLink: '', assignmentRange: '', assignmentPortion: '' });
+      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
       setSelectedTeacherForAssign('');
       setShowAssignOption(false);
       setMushafMarkings([]);
@@ -499,7 +467,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                   <button
                     onClick={() => {
                       setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '', assignmentRange: '', assignmentPortion: '' });
+                      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
                       setShowMushaf(false);
                       setCurrentPage(1);
                     }}
@@ -711,38 +679,14 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                     Specify exactly what the student should prepare next so it appears in their dashboard.
                   </p>
                 </div>
-                {formData.assignmentRange && (
+                {formData.assignmentPortion && (
                   <span className="inline-flex items-center rounded-full bg-soft-primary px-3 py-1 text-xs font-medium text-[var(--color-primary)]">
                     {getStepLabel(selectedTicket?.workflowStep || 'sabq')} focus set
                   </span>
                 )}
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned Range</label>
-                  <input
-                    type="text"
-                    value={formData.assignmentRange}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, assignmentRange: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition"
-                    placeholder="e.g. Surah Al-Baqarah 1-20 or Juz 2 (pages 22-30)"
-                  />
-                  {previousRangeSuggestions.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {previousRangeSuggestions.map((range) => (
-                        <button
-                          key={range}
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, assignmentRange: range }))}
-                          className="px-3 py-1 rounded-full border border-gray-200 bg-white text-xs text-gray-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition"
-                        >
-                          {range}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div className="grid gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">Juz Portion</label>
                   <select
@@ -868,12 +812,12 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                     if (mushafMarkings.length > 0 || formData.progressNotes.trim()) {
                       if (confirm('Are you sure you want to cancel? Your progress notes and marked mistakes will be lost.')) {
                         setSelectedTicket(null);
-                        setFormData({ progressNotes: '', audioLink: '', assignmentRange: '', assignmentPortion: '' });
+                        setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
                         setMushafMarkings([]);
                       }
                     } else {
                       setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '', assignmentRange: '', assignmentPortion: '' });
+                      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
                     }
                   }}
                   className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors"

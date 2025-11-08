@@ -1,4 +1,23 @@
-export type AssignmentPortion = 'quarter' | 'half' | 'three_quarters' | 'full' | 'custom' | 'pages' | 'surah';
+export type AssignmentPortion = 'quarter' | 'half' | 'three_quarters' | 'full' | 'custom' | 'pages' | 'surah' | 'multi';
+
+export interface ClassworkJuzSelection {
+  id: string;
+  juzNumber: number;
+  portion: AssignmentPortion;
+  segmentIndex?: number;
+  approxRange?: {
+    startAyah?: number;
+    endAyah?: number;
+  };
+  customRange?: {
+    startSurah?: string;
+    startAyah?: number;
+    endSurah?: string;
+    endAyah?: number;
+  };
+  label?: string;
+  notes?: string;
+}
 
 export interface Assignment {
   id: string;
@@ -20,6 +39,8 @@ export interface Assignment {
   homeworkComments?: string; // Homework instructions
   homeworkLink?: string; // Homework link
   mushafMarkings?: any[]; // Mushaf mistake markings from ticket workflow
+  classworkSummary?: string;
+  homeworkSummary?: string;
   attachments?: {
     type: 'text' | 'link';
     content: string;
@@ -88,6 +109,11 @@ export interface ClassworkSection {
   order?: number;
   assignmentRange?: string;
   assignmentPortion?: AssignmentPortion | string;
+  label?: string;
+  summary?: string;
+  juzSelections?: ClassworkJuzSelection[];
+  nextHomework?: string;
+  metadata?: Record<string, unknown>;
 }
 
 

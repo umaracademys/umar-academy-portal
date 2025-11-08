@@ -166,9 +166,9 @@ const StudentDashboard: React.FC = () => {
                     )}
                   </div>
                   {assignment.status === 'pending' && (
-                    <button className="mt-2 text-xs bg-white px-3 py-1 rounded border border-gray-300 hover:bg-gray-50">
-                      Submit Assignment
-                    </button>
+                    <span className="mt-2 inline-flex items-center rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+                      Awaiting in-class check
+                    </span>
                   )}
                 </div>
               ))}

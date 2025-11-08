@@ -197,10 +197,10 @@ const StudentMainDashboard: React.FC = () => {
               </div>
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button className="flex items-center justify-center p-4 bg-primary-50 text-primary-700 rounded-lg hover:bg-primary-100 transition-colors">
-                    <span className="mr-2">📝</span>
-                    Submit Assignment
-                  </button>
+                  <div className="flex items-center justify-center rounded-lg bg-primary-50 p-4 text-primary-700">
+                    <span className="mr-2">🎧</span>
+                    In-class review handled by teacher
+                  </div>
                   <button className="flex items-center justify-center p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
                     <span className="mr-2">📚</span>
                     View Courses

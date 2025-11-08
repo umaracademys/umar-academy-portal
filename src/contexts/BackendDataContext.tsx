@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Student, Teacher, Admin, RecitationReview, AdminNotification, AssignmentTicket } from '../types';
+import { ClassworkSection } from '../types/assignment';
 
 interface BackendDataContextType {
   students: Student[];
@@ -44,7 +45,19 @@ interface BackendDataContextType {
   approveTicket: (ticketId: string, reviewedBy: string) => Promise<any>;
   assignTicketToNext: (ticketId: string, teacherId: string, teacherName: string) => Promise<any>;
   approveAndAdvanceTicket: (ticketId: string, reviewedBy: string, nextTeacherId?: string, nextTeacherName?: string) => Promise<any>;
-  finalizeTicket: (ticketId: string, data: { finalReport: string; homework: string; homeworkLink?: string; reviewedBy: string }) => Promise<any>;
+  finalizeTicket: (
+    ticketId: string,
+    data: {
+      finalReport: string;
+      homework: string;
+      homeworkLink?: string;
+      reviewedBy: string;
+      classworkSections?: ClassworkSection[];
+      classworkSummary?: string;
+      homeworkSummary?: string;
+      classworkType?: string;
+    }
+  ) => Promise<any>;
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
@@ -1075,7 +1088,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const finalizeTicket = async (ticketId: string, data: { finalReport: string; homework: string; homeworkLink?: string; reviewedBy: string }) => {
+  const finalizeTicket = async (
+    ticketId: string,
+    data: {
+      finalReport: string;
+      homework: string;
+      homeworkLink?: string;
+      reviewedBy: string;
+      classworkSections?: ClassworkSection[];
+      classworkSummary?: string;
+      homeworkSummary?: string;
+      classworkType?: string;
+    }
+  ) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/finalize`, {
         method: 'POST',
@@ -1088,15 +1113,32 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       const result = await response.json();
+      const enhancedTicket = {
+        ...result.ticket,
+        classworkSections: data.classworkSections ?? result.ticket?.classworkSections,
+        classworkSummary: data.classworkSummary ?? result.ticket?.classworkSummary,
+        homeworkSummary: data.homeworkSummary ?? result.ticket?.homeworkSummary,
+      };
+      const enhancedAssignment = {
+        ...result.assignment,
+        classworkSections: data.classworkSections ?? result.assignment?.classworkSections ?? [],
+        classworkSummary: data.classworkSummary ?? result.assignment?.classworkSummary,
+        homeworkSummary: data.homeworkSummary ?? result.assignment?.homeworkSummary,
+        classworkType: data.classworkType ?? result.assignment?.classworkType,
+      };
       
       // Update ticket and add assignment
       setTickets(prev => prev.map(t => 
-        t.id === ticketId || t.id === result.ticket._id ? result.ticket : t
+        t.id === ticketId || t.id === result.ticket._id ? enhancedTicket : t
       ));
-      setAssignments(prev => [...prev, result.assignment]);
+      setAssignments(prev => [...prev, enhancedAssignment]);
       
       await refreshData();
-      return result;
+      return {
+        ...result,
+        ticket: enhancedTicket,
+        assignment: enhancedAssignment,
+      };
     } catch (error) {
       console.error('Error finalizing ticket:', error);
       throw error;

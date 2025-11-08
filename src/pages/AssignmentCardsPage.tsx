@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, Program } from '../types/assignment';
-import SimpleAssignmentForm from '../components/SimpleAssignmentForm';
+import ModernAssignmentForm from '../components/ModernAssignmentForm';
 
 const AssignmentCardsPage: React.FC = () => {
-  const { assignments } = useData();
+  const { assignments, refreshData } = useData();
   const { user } = useAuth();
   
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -267,15 +267,6 @@ const AssignmentCardsPage: React.FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => {
-                          // Assignment detail view can be added here
-                          // Handle submission logic here
-                        }}
-                        className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
-                      >
-                        Submit
-                      </button>
                       {canCreateAssignments && (
                         <button
                           onClick={() => {
@@ -297,14 +288,13 @@ const AssignmentCardsPage: React.FC = () => {
 
         {/* Create Assignment Modal */}
         {showCreateForm && (
-          <SimpleAssignmentForm
+          <ModernAssignmentForm
             onClose={() => {
               setShowCreateForm(false);
-              // Close form
             }}
             onSuccess={() => {
               setShowCreateForm(false);
-              // Close form
+              refreshData();
             }}
           />
         )}

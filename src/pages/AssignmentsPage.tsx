@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Assignment, Program } from '../types/assignment';
+import { Assignment, Program, ClassworkSection } from '../types/assignment';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { AssignmentTicket } from '../types';
-import SimpleAssignmentForm from '../components/SimpleAssignmentForm';
+import ModernAssignmentForm from '../components/ModernAssignmentForm';
+import AssignmentSectionBuilder from '../components/assignment/AssignmentSectionBuilder';
 
 const AssignmentsPage: React.FC = () => {
   const { assignments } = useData();
@@ -25,6 +26,9 @@ const AssignmentsPage: React.FC = () => {
     homework: '',
     homeworkLink: ''
   });
+  const [finalizeSections, setFinalizeSections] = useState<ClassworkSection[]>([]);
+  const [finalReportTouched, setFinalReportTouched] = useState(false);
+  const [homeworkTouched, setHomeworkTouched] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedAssignmentForAction, setSelectedAssignmentForAction] = useState<Assignment | null>(null);
   const [showAssignTeacherOption, setShowAssignTeacherOption] = useState(false);
@@ -44,6 +48,47 @@ const AssignmentsPage: React.FC = () => {
     ];
     setPrograms(mockPrograms);
   }, []);
+
+  useEffect(() => {
+    if (selectedTicket?.workflowStep === 'finalize') {
+      const ticketSections = (selectedTicket as any).classworkSections as ClassworkSection[] | undefined;
+
+      if (ticketSections && ticketSections.length > 0) {
+        setFinalizeSections(ticketSections);
+      } else if (selectedTicket.assignmentRange) {
+        setFinalizeSections([
+          {
+            step: (selectedTicket.workflowStep as 'sabq' | 'sabqi' | 'manzil') || 'sabq',
+            title: 'Ticket range',
+            label: 'Ticket range',
+            assignmentRange: selectedTicket.assignmentRange,
+            assignmentPortion: selectedTicket.assignmentPortion,
+            order: 0,
+            summary: selectedTicket.assignmentRange,
+          },
+        ]);
+      } else {
+        setFinalizeSections([]);
+      }
+
+      setFinalizeData({
+        finalReport: selectedTicket.finalReport || '',
+        homework: selectedTicket.homework || '',
+        homeworkLink: selectedTicket.homeworkLink || '',
+      });
+      setFinalReportTouched(Boolean(selectedTicket.finalReport));
+      setHomeworkTouched(Boolean(selectedTicket.homework));
+    } else {
+      setFinalizeSections([]);
+      setFinalizeData({
+        finalReport: '',
+        homework: '',
+        homeworkLink: '',
+      });
+      setFinalReportTouched(false);
+      setHomeworkTouched(false);
+    }
+  }, [selectedTicket]);
 
   // Filter assignments - only show those from finalized tickets
   const filteredAssignments = assignments.filter(assignment => {
@@ -89,6 +134,73 @@ const AssignmentsPage: React.FC = () => {
     };
     return typeMap[type] || type;
   };
+
+  useEffect(() => {
+    if (!selectedTicket || selectedTicket.workflowStep !== 'finalize') return;
+
+    const sectionSummaries = finalizeSections.map((section, index) => {
+      const title =
+        section.label ||
+        section.title ||
+        `${section.step.charAt(0).toUpperCase() + section.step.slice(1)} ${finalizeSections.length > 1 ? index + 1 : ''}`;
+      const range = section.summary || section.assignmentRange || '';
+      const notes = section.details ? ` — ${section.details}` : '';
+      return `• ${title}${range ? `: ${range}` : ''}${notes}`;
+    });
+
+    const mistakes = selectedTicket.mushafMarkings || [];
+    const mistakeCounts = mistakes.reduce<Record<string, number>>((acc, mistake) => {
+      const key = mistake.type || 'other';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const mistakeLines = Object.entries(mistakeCounts).map(
+      ([type, count]) => `• ${getMistakeTypeLabel(type)} — ${count} time${count === 1 ? '' : 's'}`
+    );
+
+    const autoReport = [
+      `Classwork Summary (${new Date().toLocaleDateString()}):`,
+      sectionSummaries.length > 0 ? sectionSummaries.join('\n') : '• Portions recorded via ticket workflow.',
+      '',
+      mistakes.length > 0
+        ? `Recorded Mistakes (${mistakes.length}):`
+        : 'No mistakes recorded during this session.',
+      mistakeLines.join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    const lastSection = finalizeSections[finalizeSections.length - 1];
+    const mistakeLabels = mistakeLines.map((line) =>
+      line.replace(/^•\s*/, '').replace(/\s—.*$/, '').toLowerCase()
+    );
+    const homeworkLines = [
+      lastSection?.summary || lastSection?.assignmentRange
+        ? `Review ${lastSection.summary || lastSection.assignmentRange} with clean recitation.`
+        : null,
+      mistakeLabels.length > 0
+        ? `Focus on correcting: ${mistakeLabels.join(', ')}.`
+        : null,
+      'Prepare the next portion with steady pacing and tajweed focus.',
+    ].filter(Boolean);
+
+    const autoHomework = homeworkLines.join('\n');
+
+    if (!finalReportTouched) {
+      setFinalizeData((prev) => ({
+        ...prev,
+        finalReport: autoReport,
+      }));
+    }
+
+    if (!homeworkTouched) {
+      setFinalizeData((prev) => ({
+        ...prev,
+        homework: autoHomework,
+      }));
+    }
+  }, [finalizeSections, selectedTicket, finalReportTouched, homeworkTouched]);
 
   // Get workflow step label
   const getWorkflowStepLabel = (assignment: Assignment): string => {
@@ -257,68 +369,185 @@ const AssignmentsPage: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Final Report <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={finalizeData.finalReport}
-                      onChange={(e) => setFinalizeData(prev => ({ ...prev, finalReport: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      rows={4}
-                      placeholder="Write the final report..."
-                    />
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-purple-700">Classwork portions</p>
+                        <p className="text-xs text-purple-600">
+                          Type <span className="font-semibold">sabqi</span>, <span className="font-semibold">manzil</span>, or <span className="font-semibold">juz</span> to build the plan. Students will receive this summary instantly.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                        Mobile friendly
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <AssignmentSectionBuilder
+                        value={finalizeSections}
+                        onChange={(sections) => setFinalizeSections(sections)}
+                      />
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Homework Instructions <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={finalizeData.homework}
-                      onChange={(e) => setFinalizeData(prev => ({ ...prev, homework: e.target.value }))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                      rows={4}
-                      placeholder="Enter homework instructions..."
-                    />
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Final report <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={finalizeData.finalReport}
+                        onChange={(event) => {
+                          setFinalReportTouched(true);
+                          setFinalizeData((prev) => ({ ...prev, finalReport: event.target.value }));
+                        }}
+                        rows={5}
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                        placeholder="Auto-generated summary…"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Homework for next day <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={finalizeData.homework}
+                        onChange={(event) => {
+                          setHomeworkTouched(true);
+                          setFinalizeData((prev) => ({ ...prev, homework: event.target.value }));
+                        }}
+                        rows={4}
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                        placeholder="Auto-generated homework…"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Optional homework link
+                      </label>
+                      <input
+                        type="url"
+                        value={finalizeData.homeworkLink}
+                        onChange={(event) =>
+                          setFinalizeData((prev) => ({ ...prev, homeworkLink: event.target.value }))
+                        }
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                        placeholder="https://resource-link.com"
+                      />
+                    </div>
                   </div>
-                  <div className="flex gap-3">
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    <h4 className="mb-2 text-sm font-semibold text-gray-800">
+                      Student preview
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Classwork</p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          {finalizeSections.length === 0 ? (
+                            <li className="text-gray-500">No portions added yet</li>
+                          ) : (
+                            finalizeSections.map((section, idx) => (
+                              <li key={`${section.step}-${idx}`} className="text-gray-700">
+                                {section.summary || section.assignmentRange || section.label}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                          Mistakes from classwork
+                        </p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          {(selectedTicket.mushafMarkings || []).length === 0 ? (
+                            <li className="text-gray-500">No mistakes recorded</li>
+                          ) : (
+                            Object.entries(
+                              (selectedTicket.mushafMarkings || []).reduce<Record<string, number>>(
+                                (acc, mistake) => {
+                                  const key = mistake.type || 'other';
+                                  acc[key] = (acc[key] || 0) + 1;
+                                  return acc;
+                                },
+                                {}
+                              )
+                            ).map(([type, count]) => (
+                              <li key={type} className="text-gray-700">
+                                {getMistakeTypeLabel(type)} — {count}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
+                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-white px-3 py-2 text-gray-700 shadow-inner">
+                          {finalizeData.homework || 'Auto-generated homework will appear here.'}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
                     <button
                       onClick={async () => {
                         if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
                           alert('Please fill in all required fields');
                           return;
                         }
+
+                        if (finalizeSections.length === 0) {
+                          alert('Please add at least one classwork portion before finalizing.');
+                          return;
+                        }
+
                         try {
                           const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                          const classworkSummary = finalizeSections
+                            .map((section) => section.summary || section.assignmentRange)
+                            .filter(Boolean)
+                            .join('\n');
+
                           await finalizeTicket(ticketId, {
                             finalReport: finalizeData.finalReport,
                             homework: finalizeData.homework,
                             homeworkLink: finalizeData.homeworkLink,
-                            reviewedBy: user?.id || ''
-                          });
+                            reviewedBy: user?.id || '',
+                            classworkSections: finalizeSections,
+                            classworkSummary,
+                            homeworkSummary: finalizeData.homework,
+                            classworkType: finalizeSections[0]?.step,
+                          } as any);
                           alert('✅ Ticket finalized! Assignment created.');
                           setSelectedTicket(null);
+                          setFinalizeSections([]);
                           setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                          setFinalReportTouched(false);
+                          setHomeworkTouched(false);
                           await refreshData();
                         } catch (error) {
                           alert('Failed to finalize ticket');
                         }
                       }}
-                      className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700"
+                      className="flex-1 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
                     >
-                      Finalize & Create Assignment
+                      Finalize &amp; Create Assignment
                     </button>
-                <button
+                    <button
                       onClick={() => {
                         setSelectedTicket(null);
+                        setFinalizeSections([]);
                         setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                        setFinalReportTouched(false);
+                        setHomeworkTouched(false);
                       }}
-                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
-                >
+                      className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
+                    >
                       Cancel
-                </button>
-              </div>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -578,7 +807,7 @@ const AssignmentsPage: React.FC = () => {
 
         {/* Create Assignment Modal */}
         {showCreateForm && (
-          <SimpleAssignmentForm
+          <ModernAssignmentForm
             onClose={() => {
               setShowCreateForm(false);
             }}
