@@ -8,13 +8,13 @@ interface StudentSidebarProps {
 
 const StudentSidebar: React.FC<StudentSidebarProps> = ({ isOpen, onClose }) => {
   const navigation = [
-    { name: 'Dashboard', href: '/student/dashboard', icon: '📊' },
-    { name: 'My Assignments', href: '/student/assignments', icon: '📝' },
-    { name: 'My Courses', href: '/student/courses', icon: '📚' },
-    { name: 'My Progress', href: '/student/progress', icon: '📈' },
-    { name: 'My Payments', href: '/student/payments', icon: '💳' },
-    { name: 'My Profile', href: '/student/profile', icon: '👤' },
-    { name: 'Messages', href: '/student/messages', icon: '💬' },
+    { name: 'Dashboard', href: '/student/dashboard', icon: 'DB' },
+    { name: 'My Assignments', href: '/student/assignments', icon: 'AS' },
+    { name: 'My Courses', href: '/student/courses', icon: 'CR' },
+    { name: 'My Progress', href: '/student/progress', icon: 'PR' },
+    { name: 'My Payments', href: '/student/payments', icon: 'PY' },
+    { name: 'My Profile', href: '/student/profile', icon: 'PF' },
+    { name: 'Messages', href: '/student/messages', icon: 'MS' },
   ];
 
   return (
@@ -40,7 +40,7 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ isOpen, onClose }) => {
               onClick={onClose}
               className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             >
-              ✕
+              X
             </button>
           </div>
 
@@ -59,7 +59,9 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ isOpen, onClose }) => {
                   }`
                 }
               >
-                <span className="mr-3 text-lg">{item.icon}</span>
+                <span className="mr-3 inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-100 text-xs font-semibold text-gray-600 uppercase">
+                  {item.icon}
+                </span>
                 {item.name}
               </NavLink>
             ))}

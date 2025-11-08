@@ -12,15 +12,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuItems = [
-    { id: 'overview', icon: '📊', label: 'Overview', badge: null },
-    { id: 'students', icon: '👨‍🎓', label: 'Students', badge: null },
-    { id: 'teachers', icon: '👨‍🏫', label: 'Teachers', badge: null },
-    { id: 'assignments', icon: '📝', label: 'Assignments', badge: null, isLink: true, href: '/assignments' },
-    { id: 'courses', icon: '📚', label: 'Courses', badge: '45' },
-    { id: 'financials', icon: '💰', label: 'Financials', badge: null },
-    { id: 'reports', icon: '📈', label: 'Reports', badge: null },
-    { id: 'activities', icon: '🔔', label: 'Activities', badge: '12' },
-    { id: 'settings', icon: '⚙️', label: 'Settings', badge: null },
+    { id: 'overview', icon: 'OV', label: 'Overview', badge: null },
+    { id: 'students', icon: 'ST', label: 'Students', badge: null },
+    { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null },
+    { id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' },
+    { id: 'courses', icon: 'CR', label: 'Courses', badge: '45' },
+    { id: 'financials', icon: 'FN', label: 'Financials', badge: null },
+    { id: 'reports', icon: 'RP', label: 'Reports', badge: null },
+    { id: 'activities', icon: 'AC', label: 'Activities', badge: '12' },
+    { id: 'settings', icon: 'SE', label: 'Settings', badge: null },
   ];
 
   return (
@@ -38,9 +38,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 hover:bg-gray-700 rounded-lg transition"
+            className="p-2 hover:bg-gray-700 rounded-lg transition text-sm font-semibold"
           >
-            {isCollapsed ? '→' : '←'}
+            {isCollapsed ? '>' : '<'}
           </button>
         </div>
       </div>
@@ -73,7 +73,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
                   className="w-full flex items-center justify-between p-3 rounded-lg transition-all font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
                   <div className="flex items-center space-x-3">
-                    <span className="text-xl">{item.icon}</span>
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.08)] text-xs font-semibold uppercase">
+                      {item.icon}
+                    </span>
                     {!isCollapsed && <span className="font-semibold">{item.label}</span>}
                   </div>
                   {!isCollapsed && (item as any).badge && (
@@ -96,7 +98,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
                   } : {}}
                 >
                   <div className="flex items-center space-x-3">
-                    <span className="text-xl">{item.icon}</span>
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.08)] text-xs font-semibold uppercase">
+                      {item.icon}
+                    </span>
                     {!isCollapsed && <span className="font-semibold">{item.label}</span>}
                   </div>
                   {!isCollapsed && (item as any).badge && (
@@ -116,21 +120,25 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
         {!isCollapsed ? (
           <div className="space-y-2">
             <button className="w-full flex items-center space-x-3 p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition">
-              <span className="text-xl">❓</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.08)] text-xs font-semibold uppercase">
+                HP
+              </span>
               <span className="text-sm">Help & Support</span>
             </button>
             <button className="w-full flex items-center space-x-3 p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition">
-              <span className="text-xl">🚪</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.08)] text-xs font-semibold uppercase">
+                LO
+              </span>
               <span className="text-sm">Logout</span>
             </button>
           </div>
         ) : (
           <div className="space-y-2">
-            <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xl">
-              ❓
+            <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xs font-semibold uppercase">
+              HP
             </button>
-            <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xl">
-              🚪
+            <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xs font-semibold uppercase">
+              LO
             </button>
           </div>
         )}
