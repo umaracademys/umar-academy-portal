@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher, MushafMistake } from '../types';
@@ -41,6 +41,43 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
   const mistakePages = extractMistakePages(selectedTicketMarkings);
+
+  const ticketChain = useMemo(() => {
+    if (!selectedTicket) return [] as AssignmentTicket[];
+    const chain: AssignmentTicket[] = [];
+    const seen = new Set<string>();
+    let current: AssignmentTicket | null | undefined = selectedTicket;
+
+    while (current) {
+      const key = current.id || (current as any)._id;
+      if (key) {
+        if (seen.has(key)) break;
+        seen.add(key);
+      }
+      chain.unshift(current);
+      const prevId = current.previousTicketId;
+      if (!prevId) break;
+      current = tickets.find((t) => (t.id || (t as any)._id) === prevId);
+      if (!current) break;
+    }
+
+    return chain;
+  }, [selectedTicket, tickets]);
+
+  useEffect(() => {
+    if (action === 'finalize' && selectedTicket) {
+      setFinalizeData((prev) => ({
+        finalReport: selectedTicket.progressNotes || prev.finalReport || '',
+        homework: prev.homework || '',
+        homeworkLink: '',
+      }));
+      if (selectedTicketMarkings.length > 0) {
+        setShowMushaf(true);
+        const firstPage = selectedTicketMarkings[0]?.page;
+        setCurrentPage(firstPage || 1);
+      }
+    }
+  }, [action, selectedTicket, selectedTicketMarkings]);
 
   const normalizeTicket = (incoming: any, fallback?: AssignmentTicket): AssignmentTicket => {
     const merged = {
@@ -171,8 +208,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const handleFinalize = async () => {
     if (!selectedTicket) return;
     
-    if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
-      alert('Please fill in final report and homework');
+    if (!finalizeData.homework.trim()) {
+      alert('Please enter homework instructions');
       return;
     }
 
@@ -181,8 +218,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       if (selectedTicketMarkings.length > 0) {
         await updateTicket(ticketId, { mushafMarkings: selectedTicketMarkings });
       }
+      const finalReportValue = finalizeData.finalReport.trim()
+        ? finalizeData.finalReport.trim()
+        : (selectedTicket.progressNotes?.trim() || 'Finalized by admin');
       await finalizeTicket(ticketId, {
-        finalReport: finalizeData.finalReport,
+        finalReport: finalReportValue,
         homework: finalizeData.homework,
         homeworkLink: finalizeData.homeworkLink,
         reviewedBy: user?.id || ''
@@ -607,56 +647,96 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
             {/* Finalize Form */}
             {action === 'finalize' && (
-              <div className="space-y-4 mb-4">
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">📋 Finalization Steps:</h4>
-                  <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
-                    <li>Listen to the sabq recitation (audio link above if provided)</li>
-                    <li>Write the final report below</li>
-                    <li>Add homework instructions</li>
-                    <li>Submit to create assignment visible to student</li>
-                  </ol>
+              <div className="space-y-6 mb-6">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Teacher Report</h4>
+                    <p className="whitespace-pre-wrap text-sm text-gray-700">
+                      {selectedTicket.progressNotes?.trim() || 'No progress notes were provided.'}
+                    </p>
+                    {selectedTicket.audioLink && (
+                      <a
+                        href={selectedTicket.audioLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
+                      >
+                        🎧 Listen to teacher audio
+                      </a>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Listeners & Steps</h4>
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      {ticketChain.map((ticket) => (
+                        <li key={ticket.id} className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                          <span className="font-medium text-gray-900">{getStepLabel(ticket.workflowStep)}</span>
+                          <span className="text-xs uppercase tracking-wide text-gray-500">{ticket.assignedTeacherName || '—'}</span>
+                        </li>
+                      ))}
+                      {ticketChain.length === 0 && (
+                        <li className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-500">
+                          Listener information unavailable.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
                 </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Final Report <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-2">(Write report after listening to sabq)</span>
-                  </label>
-                  <textarea
-                    value={finalizeData.finalReport}
-                    onChange={(e) => setFinalizeData(prev => ({ ...prev, finalReport: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    rows={6}
-                    placeholder="Write the final report after listening to sabq... Include observations, corrections needed, praise, etc."
-                    required
-                  />
+
+                <div className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Mushaf Mistake Review</h4>
+                      <p className="text-xs text-gray-500">
+                        {selectedTicketMarkings.length > 0
+                          ? `${selectedTicketMarkings.length} mistake${selectedTicketMarkings.length !== 1 ? 's' : ''} highlighted by the teacher.`
+                          : 'No mistakes were marked for this ticket.'}
+                      </p>
+                    </div>
+                    {selectedTicketMarkings.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {mistakePages.map((page) => (
+                          <button
+                            key={`finalize-page-${page}`}
+                            onClick={() => setCurrentPage(page)}
+                            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                            }`}
+                          >
+                            Page {page}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {selectedTicketMarkings.length > 0 ? (
+                    <InteractiveMushaf
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                      mistakes={selectedTicketMarkings}
+                      onMistakeMark={() => {}}
+                      readOnly
+                      mode="viewing"
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500">
+                      No Mushaf markings available for this ticket.
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Homework Instructions <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-2">(This will be visible to student)</span>
-                  </label>
+
+                <div className="space-y-3">
+                  <label className="block text-sm font-semibold text-gray-900">Homework for Student</label>
                   <textarea
                     value={finalizeData.homework}
-                    onChange={(e) => setFinalizeData(prev => ({ ...prev, homework: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    onChange={(e) => setFinalizeData((prev) => ({ ...prev, homework: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     rows={4}
-                    placeholder="Enter homework instructions for the student... e.g., 'Memorize verses 1-5. Practice Tajweed rules for Qalqalah.'"
-                    required
+                    placeholder="Enter clear homework instructions for the student..."
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Homework Link (Optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={finalizeData.homeworkLink}
-                    onChange={(e) => setFinalizeData(prev => ({ ...prev, homeworkLink: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    placeholder="https://..."
-                  />
+                  <p className="text-xs text-gray-500">These instructions will appear on the student dashboard immediately after publishing.</p>
                 </div>
               </div>
             )}

@@ -6,6 +6,29 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import Header from '../components/Header';
 import DebugPanel from '../components/DebugPanel';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
+import { MushafMistake } from '../types';
+
+interface EnrichedAssignment {
+  id: string;
+  date: string;
+  sabq: string;
+  sabqi: string;
+  manzil: string;
+  homework: string;
+  homeworkLink?: string;
+  comment: string;
+  teacherName: string;
+  listenerName?: string;
+  listenersInfo?: string;
+  classworkSections: Array<{
+    step: string;
+    title: string;
+    details: string;
+    teacherName: string;
+    order: number;
+  }>;
+  mushafMarkings: MushafMistake[];
+}
 
 const StudentAssignments: React.FC = () => {
   const { user } = useAuth();
@@ -19,7 +42,7 @@ const StudentAssignments: React.FC = () => {
 
   const currentStudent = students.find((s) => s.email === user?.email);
 
-  const studentAssignments = useMemo(() => {
+  const studentAssignments = useMemo<EnrichedAssignment[]>(() => {
     if (!currentStudent?.id) return [];
 
     return backendAssignments
@@ -53,7 +76,7 @@ const StudentAssignments: React.FC = () => {
         const reportLines = lines.filter((line: string) => !line.includes('Listener:'));
         const report = reportLines.join('\n').trim() || description;
 
-        return {
+        const enriched: EnrichedAssignment = {
           ...assignment,
           id: assignment._id || assignment.id,
           date: assignment.createdAt
@@ -79,10 +102,11 @@ const StudentAssignments: React.FC = () => {
             : [],
           mushafMarkings,
         };
+        return enriched;
       });
   }, [backendAssignments, currentStudent, tickets]);
 
-  const fallbackAssignments = [
+  const fallbackAssignments: EnrichedAssignment[] = [
     {
       id: 'mock-1',
       date: new Date().toISOString().slice(0, 10),
@@ -115,9 +139,9 @@ const StudentAssignments: React.FC = () => {
     },
   ];
 
-  const assignments = useMemo(() => {
+  const assignments = useMemo<EnrichedAssignment[]>(() => {
     const source = studentAssignments.length > 0 ? studentAssignments : fallbackAssignments;
-    return [...source].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return [...source].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [studentAssignments]);
 
   const summaryAssignment = assignments[0];
@@ -143,12 +167,11 @@ const StudentAssignments: React.FC = () => {
   const stats = useMemo(() => {
     const totalAssignments = assignments.length;
     const totalMistakes = assignments.reduce(
-      (acc, assignment) => acc + ((assignment as any).mushafMarkings?.length || 0),
+      (acc, assignment) => acc + assignment.mushafMarkings.length,
       0
     );
     const audioCorrections = assignments.reduce(
-      (acc, assignment) =>
-        acc + ((assignment as any).mushafMarkings || []).filter((m: any) => m.audioUrl).length,
+      (acc, assignment) => acc + assignment.mushafMarkings.filter((m) => !!m.audioUrl).length,
       0
     );
     const homeworkCount = assignments.reduce(
@@ -170,8 +193,8 @@ const StudentAssignments: React.FC = () => {
     };
   }, [assignments, summaryAssignment?.date]);
 
-  const historyGroups = useMemo(() => {
-    const groups = historyAssignments.reduce<Record<string, any[]>>((acc, assignment) => {
+  const historyGroups = useMemo<Array<[string, EnrichedAssignment[]]>>(() => {
+    const groups = historyAssignments.reduce<Record<string, EnrichedAssignment[]>>((acc, assignment) => {
       const label = new Date(assignment.date).toLocaleDateString('en-US', {
         month: 'long',
         year: 'numeric',
@@ -186,13 +209,13 @@ const StudentAssignments: React.FC = () => {
     return Object.entries(groups).sort((a, b) => new Date(b[1][0].date).getTime() - new Date(a[1][0].date).getTime());
   }, [historyAssignments]);
 
-  const buildSectionItems = (assignment: any, step: string, fallback?: string) => {
+  const buildSectionItems = (assignment: EnrichedAssignment, step: string, fallback?: string) => {
     const filtered = Array.isArray(assignment.classworkSections)
-      ? assignment.classworkSections.filter((section: any) => (section.step || '').toLowerCase() === step)
+      ? assignment.classworkSections.filter((section) => (section.step || '').toLowerCase() === step)
       : [];
 
     if (filtered.length > 0) {
-      return filtered.map((section: any, idx: number) => (
+      return filtered.map((section, idx) => (
         <li key={`${assignment.id}-${step}-${idx}`} className="text-sm text-[#2E4D32]/85">
           <span className="font-medium text-[#2E4D32]">
             {section.title || `${step.charAt(0).toUpperCase() + step.slice(1)}${filtered.length > 1 ? ` ${idx + 1}` : ''}`}
@@ -231,8 +254,8 @@ const StudentAssignments: React.FC = () => {
     return map[type] || type;
   };
 
-  const summaryMarkings = (summaryAssignment as any)?.mushafMarkings || [];
-  const summaryHasAudio = summaryMarkings.some((m: any) => m.audioUrl);
+  const summaryMarkings = summaryAssignment?.mushafMarkings ?? [];
+  const summaryHasAudio = summaryMarkings.some((m) => !!m.audioUrl);
 
   return (
     <div className="min-h-screen bg-[#F5F7F2]">
@@ -308,18 +331,16 @@ const StudentAssignments: React.FC = () => {
                   <h2 className="text-2xl font-semibold text-[#1F3224]">Today’s Assignment</h2>
                   <div className="flex flex-wrap items-center gap-3 text-sm text-[#1F3224]/75">
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#1F3224]">
-                      <span role="img" aria-hidden>
-                        👤
-                      </span>
+                      <span role="img" aria-hidden>👤</span>
                       {summaryAssignment.listenerName || summaryAssignment.teacherName || 'Teacher'}
                     </span>
-                    {summaryAssignment.mushafMarkings?.length ? (
+                    {summaryMarkings.length ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#BD3124]">
                         <span role="img" aria-hidden>
                           📝
                         </span>
-                        {summaryAssignment.mushafMarkings.length} mistake
-                        {summaryAssignment.mushafMarkings.length !== 1 ? 's' : ''}
+                        {summaryMarkings.length} mistake
+                        {summaryMarkings.length !== 1 ? 's' : ''}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-[#1F3224]">
@@ -484,8 +505,7 @@ const StudentAssignments: React.FC = () => {
                   <div className="rounded-2xl border border-[#E7AA39]/30 bg-white px-5 py-4 text-sm text-[#1F3224]/85">
                     <p className="whitespace-pre-wrap">{summaryAssignment.comment}</p>
                     <p className="mt-2 text-xs text-[#1F3224]/60">
-                      {summaryAssignment.listenerName || summaryAssignment.teacherName || 'Instructor'} •{' '}
-                      {formatFullDate(summaryAssignment.date)}
+                      {summaryAssignment.listenerName || summaryAssignment.teacherName || 'Instructor'} • {formatFullDate(summaryAssignment.date)}
                     </p>
                   </div>
                 </section>
@@ -528,9 +548,9 @@ const StudentAssignments: React.FC = () => {
                   </button>
                   {historyExpanded[label] && (
                     <div className="space-y-4">
-                      {groupAssignments.map((assignment: any) => {
-                        const markings = assignment.mushafMarkings || [];
-                        const hasAudio = markings.some((m: any) => m.audioUrl);
+                      {groupAssignments.map((assignment) => {
+                        const markings = assignment.mushafMarkings;
+                        const hasAudio = markings.some((m) => !!m.audioUrl);
                         const isExpanded = showMushafForAssignment === assignment.id;
 
                         return (
