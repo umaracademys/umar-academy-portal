@@ -57,23 +57,29 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
   };
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'performance', label: 'Performance', icon: '📈' },
-    { id: 'attendance', label: 'Attendance', icon: '📅' },
-    { id: 'engagement', label: 'Engagement', icon: '💡' },
-    { id: 'reports', label: 'Reports', icon: '📋' }
+    { id: 'overview', label: 'Overview', icon: 'OV' },
+    { id: 'performance', label: 'Performance', icon: 'PF' },
+    { id: 'attendance', label: 'Attendance', icon: 'AT' },
+    { id: 'engagement', label: 'Engagement', icon: 'EN' },
+    { id: 'reports', label: 'Reports', icon: 'RP' }
   ];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <div className="flex items-center space-x-4">
-            <img src={student.avatar} alt={student.fullName} className="h-12 w-12 rounded-full" />
+            <img
+              src={student.avatar || `https://ui-avatars.com/api/?name=${student.fullName?.replace(' ', '+') || 'Student'}&background=2E4D32&color=fff`}
+              alt={student.fullName}
+              className="h-12 w-12 rounded-full border border-accent-soft"
+            />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Student Analytics</h2>
-              <p className="text-gray-600">{student.fullName} - Performance & Progress Analysis</p>
+              <h2 className="text-xl font-bold text-primary">Student Analytics</h2>
+              <p className="text-sm text-primary-soft">
+                Performance &amp; progress analysis for {student.fullName}
+              </p>
             </div>
           </div>
           <button
@@ -98,7 +104,9 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <span className="mr-2">{tab.icon}</span>
+              <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-soft-primary text-xs font-semibold text-primary">
+                {tab.icon}
+              </span>
               {tab.label}
             </button>
           ))}
@@ -155,16 +163,16 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 </Card>
 
                 <Card>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                  <h3 className="mb-4 text-lg font-semibold text-primary">Quick Actions</h3>
                   <div className="space-y-3">
-                    <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Generate Progress Report
+                    <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Generate progress report
                     </button>
-                    <button className="w-full px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition">
-                      Export Analytics Data
+                    <button className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent">
+                      Export analytics data
                     </button>
-                    <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                      Schedule Parent Meeting
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Schedule parent meeting
                     </button>
                   </div>
                 </Card>
@@ -248,7 +256,7 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-600">Attendance Rate:</span>
-                      <span className="font-semibold text-primary-600">{analyticsData.attendance.attendanceRate}%</span>
+                      <span className="font-semibold text-primary">{analyticsData.attendance.attendanceRate}%</span>
                     </div>
                   </div>
                 </Card>
@@ -308,14 +316,14 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement Actions</h3>
                   <div className="space-y-3">
-                    <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Send Engagement Report
+                    <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Send engagement report
                     </button>
-                    <button className="w-full px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition">
-                      Schedule Check-in
+                    <button className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent">
+                      Schedule check-in
                     </button>
-                    <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                      Review Participation
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Review participation
                     </button>
                   </div>
                 </Card>
@@ -329,20 +337,20 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Generate Reports</h3>
                   <div className="space-y-3">
-                    <button className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      📊 Academic Progress Report
+                    <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                      Academic progress report
                     </button>
-                    <button className="w-full px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition">
-                      📅 Attendance Report
+                    <button className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent">
+                      Attendance report
                     </button>
-                    <button className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                      📈 Performance Analysis
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Performance analysis
                     </button>
-                    <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                      💡 Engagement Report
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Engagement report
                     </button>
-                    <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                      📋 Comprehensive Report
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Comprehensive report
                     </button>
                   </div>
                 </Card>
@@ -350,17 +358,17 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Export Options</h3>
                   <div className="space-y-3">
-                    <button className="w-full px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition">
-                      📄 PDF Report
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Export PDF report
                     </button>
-                    <button className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
-                      📊 Excel Spreadsheet
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Export Excel spreadsheet
                     </button>
-                    <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                      📧 Email Report
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Email summary
                     </button>
-                    <button className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-                      🖨️ Print Report
+                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                      Print report
                     </button>
                   </div>
                 </Card>
