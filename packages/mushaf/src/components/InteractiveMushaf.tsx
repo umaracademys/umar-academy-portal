@@ -3,6 +3,7 @@ import { MushafMistake } from '../types/mushaf';
 import { fetchPageLines, getQuranChapters, Chapter } from "../services/quranApi";
 import { uploadMistakeAudio } from "../services/audioService";
 import { FALLBACK_CHAPTERS } from "../data/fallbackChapters";
+import { ensureQpcV1Font, getAllQpcV1Words, getQpcV1Layout } from "../services/qpcV1Assets";
 
 export interface AyahPosition {
   surah: number;
@@ -389,6 +390,8 @@ export const WordByWordPage: React.FC<{
   const [wordsFromApi, setWordsFromApi] = useState<Word[]>([]); // Words from API response as fallback
   const [background, setBackground] = useState<string>("");
   const [chapters, setChapters] = useState<Chapter[]>(FALLBACK_CHAPTERS);
+  const defaultFontStack = 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif';
+  const [fontFamily, setFontFamily] = useState<string>(defaultFontStack);
 
   // Load chapters/surahs on mount
   useEffect(() => {
@@ -412,7 +415,19 @@ export const WordByWordPage: React.FC<{
   useEffect(() => {
     const loadWords = async () => {
       try {
-        // Load words from public folder (works in both dev and production)
+        // Try loading words from QPC V1 glyph database first
+        try {
+          const qpcWords = await getAllQpcV1Words();
+          if (Array.isArray(qpcWords) && qpcWords.length > 0) {
+            setWords(qpcWords);
+            console.log('✅ Loaded words from QPC V1 glyph database');
+            return;
+          }
+        } catch (dbError) {
+          console.warn('⚠️ Unable to load words from QPC V1 database, falling back to JSON words:', dbError);
+        }
+
+        // Fallback: Load words from public JSON file (works in both dev and production)
         const wordsRes = await fetch('/data/words/word_by_word.json');
         if (wordsRes.ok) {
           // Check if response is actually JSON (not HTML error page)
@@ -458,73 +473,90 @@ export const WordByWordPage: React.FC<{
   }, []);
 
   useEffect(() => {
-    // Reset layout and API words when page changes
+    let cancelled = false;
     setLayout(null);
     setWordsFromApi([]);
-    
-    const fetchData = async () => {
+    setBackground("");
+    setFontFamily(defaultFontStack);
+
+    const loadLayout = async () => {
       try {
-        // Fetch page layout from backend API (uses local database)
-        // Don't wait for words - fetch layout independently
-        const pageData = await fetchPageLines(pageNumber, 'v4');
-        
-        if (!pageData || !pageData.lines) {
-          console.error(`No layout data found for page ${pageNumber}`);
-          // Set layout to empty to show error state
-          setLayout(null);
+        const qpcLayout = await getQpcV1Layout(pageNumber);
+        if (!cancelled && qpcLayout && qpcLayout.lines.length > 0) {
+          setLayout(qpcLayout);
+          try {
+            const family = await ensureQpcV1Font(pageNumber);
+            if (!cancelled && family) {
+              setFontFamily(`${family}, ${defaultFontStack}`);
+            }
+          } catch (fontError) {
+            console.warn(`⚠️ Unable to load QPC V1 font for page ${pageNumber}:`, fontError);
+            setFontFamily(defaultFontStack);
+          }
           return;
         }
+        throw new Error(`No QPC V1 layout data for page ${pageNumber}`);
+      } catch (qpcError) {
+        console.warn(`⚠️ Falling back to API layout for page ${pageNumber}`, qpcError);
+        try {
+          const pageData = await fetchPageLines(pageNumber, 'v4');
 
-        // Extract words from API response if available (fallback if word_by_word.json not loaded)
-        const apiWords: Word[] = [];
-        pageData.lines.forEach((line: any) => {
-          if (line.words && Array.isArray(line.words)) {
-            line.words.forEach((wordData: any) => {
-              apiWords.push({
-                word_index: wordData.id || wordData.word_index || 0,
-                surah: parseInt(wordData.surah) || 0,
-                ayah: parseInt(wordData.ayah) || 0,
-                text: wordData.text || ''
-              });
-            });
+          if (!pageData || !pageData.lines) {
+            throw new Error(`No layout data found for page ${pageNumber}`);
           }
-        });
-        
-        if (apiWords.length > 0) {
-          setWordsFromApi(apiWords);
-          console.log(`✅ Extracted ${apiWords.length} words from API response`);
-        }
 
-        // Map backend response to LayoutPage format
-        const layoutJson: LayoutPage = {
-          page_number: pageData.pageNumber || pageNumber,
-          lines: pageData.lines.map((line: any) => ({
+          const apiWords: Word[] = [];
+          pageData.lines.forEach((line: any) => {
+            if (line.words && Array.isArray(line.words)) {
+              line.words.forEach((wordData: any) => {
+                apiWords.push({
+                  word_index: wordData.id || wordData.word_index || 0,
+                  surah: parseInt(wordData.surah) || 0,
+                  ayah: parseInt(wordData.ayah) || 0,
+                  text: wordData.text || ''
+                });
+              });
+            }
+          });
+
+          if (!cancelled && apiWords.length > 0) {
+            setWordsFromApi(apiWords);
+            console.log(`✅ Extracted ${apiWords.length} words from API response`);
+          }
+
+          const layoutJson: LayoutPage = {
             page_number: pageData.pageNumber || pageNumber,
-            line_number: line.line_number,
-            // Handle null/empty string for surah_name and basmallah lines
-            first_word_id: (line.first_word_id && line.first_word_id !== '') ? parseInt(line.first_word_id) : null,
-            last_word_id: (line.last_word_id && line.last_word_id !== '') ? parseInt(line.last_word_id) : null,
-            is_centered: line.is_centered === true || line.is_centered === 1,
-            line_type: line.line_type || 'ayah',
-            surah_number: line.surah_number || pageData.surahId
-          }))
-        };
+            lines: pageData.lines.map((line: any) => ({
+              page_number: pageData.pageNumber || pageNumber,
+              line_number: line.line_number,
+              first_word_id: (line.first_word_id && line.first_word_id !== '') ? parseInt(line.first_word_id) : null,
+              last_word_id: (line.last_word_id && line.last_word_id !== '') ? parseInt(line.last_word_id) : null,
+              is_centered: line.is_centered === true || line.is_centered === 1,
+              line_type: line.line_type || 'ayah',
+              surah_number: line.surah_number || pageData.surahId
+            }))
+          };
 
-        setLayout(layoutJson);
-        console.log(`✅ Loaded layout for page ${pageNumber} from backend API`);
-
-        // Set background image (optional - can be removed if not needed)
-        // Background images may not be available, so we'll skip for now
-        setBackground("");
-      } catch (err) {
-        console.error("Error fetching layout:", err);
-        setLayout(null);
+          if (!cancelled) {
+            setLayout(layoutJson);
+            setFontFamily(defaultFontStack);
+            console.log(`✅ Loaded layout for page ${pageNumber} from backend API fallback`);
+          }
+        } catch (apiError) {
+          if (!cancelled) {
+            console.error("Error fetching fallback layout:", apiError);
+            setLayout(null);
+          }
+        }
       }
     };
 
-    // Fetch layout immediately, don't wait for words
-    fetchData();
-  }, [pageNumber]);
+    loadLayout();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pageNumber, defaultFontStack]);
 
   // Collect mistakes with their word text for the parent component
   useEffect(() => {
@@ -697,7 +729,7 @@ export const WordByWordPage: React.FC<{
           className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12 bg-gradient-to-br from-amber-50 to-yellow-50 mx-auto"
           style={{
             backgroundColor: '#fef9e7',
-            fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
+            fontFamily,
             minHeight: 'auto',
             direction: 'rtl',
             textAlign: 'right',

@@ -43,6 +43,7 @@ build
 # But allow public/data/ for static assets
 /data/
 !public/data/
+!public/data/**/*.db
 src/data/
 packages/mushaf/public/data/
 
