@@ -120,7 +120,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   // Filter out finalized/completed tickets - they should not appear in the list
   const activeTickets = tickets.filter(t => 
-    t.status !== 'finalized' && t.status !== 'completed' && t.status !== 'skipped'
+    t.status !== 'finalized' &&
+    t.status !== 'completed' &&
+    t.status !== 'skipped' &&
+    !(t.workflowStep === 'finalize' && Boolean((t as any).assignmentId))
   );
   
   const pendingTickets = useMemo(

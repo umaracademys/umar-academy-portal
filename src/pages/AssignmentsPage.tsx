@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, Program, ClassworkSection } from '../types/assignment';
 import { MushafMistake } from '@umar-academy/mushaf';
@@ -10,8 +9,17 @@ import ModernAssignmentForm from '../components/ModernAssignmentForm';
 import AssignmentSectionBuilder from '../components/assignment/AssignmentSectionBuilder';
 
 const AssignmentsPage: React.FC = () => {
-  const { assignments } = useData();
-  const { students, tickets, teachers, assignTicketToNext, finalizeTicket, updateAssignment, refreshData } = useBackendData();
+  const {
+    assignments,
+    students,
+    tickets,
+    teachers,
+    assignTicketToNext,
+    finalizeTicket,
+    updateAssignment,
+    deleteAssignment,
+    refreshData,
+  } = useBackendData();
   const { user } = useAuth();
   
   const [showMushafForAssignment, setShowMushafForAssignment] = useState<string | null>(null);
@@ -33,6 +41,15 @@ const AssignmentsPage: React.FC = () => {
   const [selectedAssignmentForAction, setSelectedAssignmentForAction] = useState<Assignment | null>(null);
   const [showAssignTeacherOption, setShowAssignTeacherOption] = useState(false);
   const [selectedTeacherForAssignment, setSelectedTeacherForAssignment] = useState('');
+  const [expandedHistory, setExpandedHistory] = useState<Record<string, boolean>>({});
+  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
+  const [editForm, setEditForm] = useState({
+    finalReport: '',
+    homework: '',
+    homeworkLink: '',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
 
   // Check if user can create assignments
   const canCreateAssignments = user?.role === 'superadmin' || 
@@ -101,6 +118,29 @@ const AssignmentsPage: React.FC = () => {
     return hasTicketId && programMatch && typeMatch;
   });
 
+  const assignmentsByStudent = useMemo(() => {
+    const grouped = new Map<string, Assignment[]>();
+    filteredAssignments.forEach((assignment) => {
+      const studentId = assignment.assignedTo?.[0];
+      if (!studentId) return;
+      const list = grouped.get(studentId) ?? [];
+      list.push(assignment);
+      grouped.set(studentId, list);
+    });
+
+    return Array.from(grouped.entries())
+      .map(([studentId, studentAssignments]) => ({
+        studentId,
+        studentName: getStudentName(studentId),
+        assignments: [...studentAssignments].sort((a, b) => {
+          const aDate = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt || a.updatedAt || '');
+          const bDate = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt || b.updatedAt || '');
+          return bDate.getTime() - aDate.getTime();
+        }),
+      }))
+      .sort((a, b) => a.studentName.localeCompare(b.studentName));
+  }, [filteredAssignments, students]);
+
   // Get approved tickets that need action (assign to next teacher or finalize)
   const approvedTicketsNeedingAction = tickets.filter(ticket => 
     ticket.status === 'approved' && 
@@ -133,6 +173,89 @@ const AssignmentsPage: React.FC = () => {
       "other": "Other",
     };
     return typeMap[type] || type;
+  };
+
+  const resolveAssignmentId = (assignment: Assignment): string | undefined => {
+    return (assignment as any).id || (assignment as any)._id || assignment.id;
+  };
+
+  const formatDisplayDate = (value?: Date | string): string => {
+    if (!value) return '—';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const handleToggleHistoryForStudent = (studentId: string) => {
+    setExpandedHistory((prev) => ({
+      ...prev,
+      [studentId]: !prev[studentId],
+    }));
+  };
+
+  const handleOpenEditModal = (assignment: Assignment) => {
+    setEditingAssignment(assignment);
+    setEditForm({
+      finalReport: assignment.description || '',
+      homework: (assignment as any).homeworkComments || assignment.homeworkSummary || '',
+      homeworkLink: (assignment as any).homeworkLink || '',
+    });
+  };
+
+  const handleDeleteAssignment = async (assignment: Assignment) => {
+    const assignmentId = resolveAssignmentId(assignment);
+    if (!assignmentId) return;
+
+    const confirmed = typeof window === 'undefined' ? true : window.confirm('Delete this assignment report? The student will no longer see it.');
+    if (!confirmed) return;
+
+    try {
+      setDeletingAssignmentId(assignmentId);
+      await deleteAssignment(assignmentId);
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      alert('Failed to delete assignment.');
+    } finally {
+      setDeletingAssignmentId(null);
+    }
+  };
+
+  const handleSaveAssignmentEdits = async () => {
+    if (!editingAssignment) return;
+    if (!editForm.finalReport.trim()) {
+      alert('Final report cannot be empty.');
+      return;
+    }
+    if (!editForm.homework.trim()) {
+      alert('Homework cannot be empty.');
+      return;
+    }
+
+    const assignmentId = resolveAssignmentId(editingAssignment);
+    if (!assignmentId) return;
+
+    try {
+      setIsSavingEdit(true);
+      await updateAssignment(assignmentId, {
+        description: editForm.finalReport,
+        homeworkComments: editForm.homework,
+        homeworkLink: editForm.homeworkLink,
+        homeworkSummary: editForm.homework,
+        updatedAt: new Date(),
+      });
+      await refreshData();
+      setEditingAssignment(null);
+    } catch (error) {
+      console.error('Error updating assignment:', error);
+      alert('Failed to update assignment.');
+    } finally {
+      setIsSavingEdit(false);
+    }
   };
 
   useEffect(() => {
@@ -599,9 +722,12 @@ const AssignmentsPage: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm">
           <div className="p-6 border-b border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900">Assignments ({filteredAssignments.length})</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Daily recitation reports grouped by student. Expand history to revisit previous days, edit notes, or remove reports.
+            </p>
           </div>
-          
-          {filteredAssignments.length === 0 ? (
+
+          {assignmentsByStudent.length === 0 ? (
             <div className="p-12 text-center">
               <div className="text-gray-400 text-6xl mb-4">📝</div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No assignments found</h3>
@@ -611,75 +737,127 @@ const AssignmentsPage: React.FC = () => {
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {filteredAssignments.map((assignment) => {
-                const studentId = assignment.assignedTo[0]; // Usually one student per assignment from ticket
-                const studentName = getStudentName(studentId);
-                const mushafMarkings = (assignment as any).mushafMarkings || [];
-                const workflowStep = getWorkflowStepLabel(assignment);
-                
+              {assignmentsByStudent.map(({ studentId, studentName, assignments }) => {
+                if (assignments.length === 0) {
+                  return null;
+                }
+
+                const [latest, ...history] = assignments;
+                const latestId = resolveAssignmentId(latest) || `${studentId}-latest`;
+                const mushafMarkings = (latest as any).mushafMarkings || [];
+                const workflowStep = getWorkflowStepLabel(latest);
+                const isHistoryExpanded = expandedHistory[studentId] ?? false;
+                const latestProgram = programs.find((program) => program.id === latest.program)?.name || 'Unknown Program';
+
                 return (
-                  <div key={assignment.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={studentId} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="space-y-4">
-                      {/* Header */}
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h3 className="text-xl font-bold text-gray-900">{studentName}</h3>
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
                               {workflowStep}
                             </span>
-                            {assignment.listenerName && (
+                            {latest.listenerName && (
                               <span className="text-sm text-gray-600">
-                                👂 Listener: {assignment.listenerName}
-                          </span>
+                                👂 Listener: {latest.listenerName}
+                              </span>
                             )}
-                        </div>
-                        
-                          <div className="flex items-center space-x-6 text-sm text-gray-500 mb-3">
-                            <span>📚 {programs.find(p => p.id === assignment.program)?.name || 'Unknown Program'}</span>
-                          <span>📅 {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : 'No due date'}</span>
-                            {assignment.createdAt && (
-                              <span>🕒 Created: {new Date(assignment.createdAt).toLocaleDateString()}</span>
+                            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              Finalized {formatDisplayDate(latest.createdAt || latest.updatedAt)}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                            <span>📚 {latestProgram}</span>
+                            <span>📅 Due {formatDisplayDate(latest.dueDate as any)}</span>
+                            {latest.homeworkSummary && (
+                              <span>📝 Homework recorded</span>
                             )}
                           </div>
                         </div>
+
+                        <div className="flex flex-col gap-2 sm:items-end">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              onClick={() => handleOpenEditModal(latest)}
+                              className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                            >
+                              Edit report
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedAssignmentForAction(latest);
+                                setShowAssignTeacherOption(true);
+                                setSelectedTeacherForAssignment('');
+                              }}
+                              className="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                              </svg>
+                              Reassign teacher
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAssignment(latest)}
+                              disabled={deletingAssignmentId === latestId}
+                              className="px-4 py-2 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {deletingAssignmentId === latestId ? 'Deleting…' : 'Delete'}
+                            </button>
+                          </div>
+                          {history.length > 0 && (
+                            <button
+                              onClick={() => handleToggleHistoryForStudent(studentId)}
+                              className="text-xs font-semibold text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                            >
+                              <span>{isHistoryExpanded ? 'Hide daily history' : `Show daily history (${history.length})`}</span>
+                              <svg
+                                className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      
-                      {/* Description/Report */}
-                      {assignment.description && (
+
+                      {latest.description && (
                         <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                           <h4 className="font-semibold text-gray-900 mb-2">📋 Recitation Report</h4>
-                          <p className="text-gray-700 whitespace-pre-wrap text-sm">{assignment.description}</p>
+                          <p className="text-gray-700 whitespace-pre-wrap text-sm">{latest.description}</p>
                         </div>
                       )}
 
-                      {/* Mushaf Markings */}
                       {mushafMarkings.length > 0 && (
                         <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
                           <div className="flex justify-between items-center mb-3">
                             <h4 className="font-semibold text-gray-900">
                               📖 Mushaf Mistake Markings ({mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''})
                             </h4>
-                        <button
-                          onClick={() => {
-                                if (showMushafForAssignment === assignment.id) {
+                            <button
+                              onClick={() => {
+                                if (showMushafForAssignment === latestId) {
                                   setShowMushafForAssignment(null);
                                 } else {
-                                  setShowMushafForAssignment(assignment.id);
+                                  setShowMushafForAssignment(latestId);
                                   const firstMistake = mushafMarkings[0];
                                   if (firstMistake?.page) {
                                     setMushafPage(firstMistake.page);
                                   }
                                 }
-                          }}
+                              }}
                               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
-                        >
-                              {showMushafForAssignment === assignment.id ? '📖 Hide Mushaf' : '📖 View Mushaf'}
-                        </button>
+                            >
+                              {showMushafForAssignment === latestId ? '📖 Hide Mushaf' : '📖 View Mushaf'}
+                            </button>
                           </div>
 
-                          {/* Quick navigation to pages with mistakes */}
-                          {showMushafForAssignment !== assignment.id && (
+                          {showMushafForAssignment !== latestId && (
                             <div className="flex flex-wrap gap-2 mb-3">
                               <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages:</span>
                               {(Array.from(new Set(mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
@@ -687,10 +865,10 @@ const AssignmentsPage: React.FC = () => {
                                 .map((page: number) => {
                                   const mistakesOnPage = mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
                                   return (
-                          <button
+                                    <button
                                       key={page}
-                            onClick={() => {
-                                        setShowMushafForAssignment(assignment.id);
+                                      onClick={() => {
+                                        setShowMushafForAssignment(latestId);
                                         setMushafPage(page);
                                       }}
                                       className="px-3 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
@@ -702,7 +880,6 @@ const AssignmentsPage: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Mistake summary by type */}
                           <div className="flex flex-wrap gap-2 mt-3">
                             {['memory', 'madd', 'ikhfa', 'holding', 'tech', 'other'].map((type) => {
                               const count = mushafMarkings.filter((m: MushafMistake) => m.type === type).length;
@@ -715,8 +892,7 @@ const AssignmentsPage: React.FC = () => {
                             })}
                           </div>
 
-                          {/* Mushaf View */}
-                          {showMushafForAssignment === assignment.id && (
+                          {showMushafForAssignment === latestId && (
                             <div className="mt-4 pt-4 border-t border-purple-200">
                               <div className="flex justify-between items-center mb-3">
                                 <div className="text-sm text-gray-600">
@@ -738,17 +914,17 @@ const AssignmentsPage: React.FC = () => {
                                           }`}
                                         >
                                           Page {page} ({mistakesOnPage})
-                          </button>
+                                        </button>
                                       );
                                     })}
                                 </div>
                               </div>
-                              
+
                               <InteractiveMushaf
                                 currentPage={mushafPage}
                                 onPageChange={setMushafPage}
                                 mistakes={mushafMarkings}
-                                onMistakeMark={() => {}} // Read-only
+                                onMistakeMark={() => {}}
                                 readOnly={true}
                                 mode="viewing"
                               />
@@ -757,15 +933,14 @@ const AssignmentsPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Homework Section */}
-                      {assignment.homeworkComments && (
+                      {latest.homeworkComments && (
                         <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                           <h4 className="font-semibold text-gray-900 mb-2">📝 Homework</h4>
-                          <p className="text-gray-700 whitespace-pre-wrap text-sm">{assignment.homeworkComments}</p>
-                          {(assignment as any).homeworkLink && (
+                          <p className="text-gray-700 whitespace-pre-wrap text-sm">{latest.homeworkComments}</p>
+                          {(latest as any).homeworkLink && (
                             <div className="mt-3">
                               <a
-                                href={(assignment as any).homeworkLink}
+                                href={(latest as any).homeworkLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-blue-600 hover:underline font-medium text-sm"
@@ -773,37 +948,162 @@ const AssignmentsPage: React.FC = () => {
                                 📎 Homework Link →
                               </a>
                             </div>
-                        )}
-                      </div>
-                      )}
-
-                      {/* Assignment Actions */}
-                      {(user?.role === 'superadmin' || user?.role === 'admin') && (
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedAssignmentForAction(assignment);
-                                setShowAssignTeacherOption(true);
-                                setSelectedTeacherForAssignment('');
-                              }}
-                              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                              </svg>
-                              Reassign Teacher
-                            </button>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
+
+                    {history.length > 0 && isHistoryExpanded && (
+                      <div className="mt-6 space-y-4 border-t border-gray-200 pt-4">
+                        {history.map((entry, index) => {
+                          const entryId = resolveAssignmentId(entry) || `${studentId}-${index}`;
+                          const entryWorkflow = getWorkflowStepLabel(entry);
+                          const entryMarkings = (entry as any).mushafMarkings || [];
+                          return (
+                            <div key={entryId} className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-semibold text-gray-900">
+                                      {formatDisplayDate(entry.createdAt || entry.updatedAt)}
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-200 text-gray-700">
+                                      {entryWorkflow}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-600 line-clamp-3">
+                                    {entry.description || 'No report text provided for this day.'}
+                                  </p>
+                                  {entry.homeworkComments && (
+                                    <p className="mt-2 text-xs text-gray-500 line-clamp-2">
+                                      Homework: {entry.homeworkComments}
+                                    </p>
+                                  )}
+                                  {entryMarkings.length > 0 && (
+                                    <p className="mt-2 text-xs text-gray-500">
+                                      {entryMarkings.length} mistake{entryMarkings.length !== 1 ? 's' : ''} recorded.
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2 md:justify-end">
+                                  <button
+                                    onClick={() => handleOpenEditModal(entry)}
+                                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedAssignmentForAction(entry);
+                                      setShowAssignTeacherOption(true);
+                                      setSelectedTeacherForAssignment('');
+                                    }}
+                                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                  >
+                                    Reassign
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteAssignment(entry)}
+                                    disabled={deletingAssignmentId === entryId}
+                                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {deletingAssignmentId === entryId ? 'Deleting…' : 'Delete'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
           )}
         </div>
+
+        {/* Edit Assignment Modal */}
+        {editingAssignment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Edit Daily Report</h3>
+                <button
+                  onClick={() => {
+                    setEditingAssignment(null);
+                    setEditForm({ finalReport: '', homework: '', homeworkLink: '' });
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Final report <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={editForm.finalReport}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, finalReport: event.target.value }))
+                    }
+                    rows={6}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Homework <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={editForm.homework}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, homework: event.target.value }))
+                    }
+                    rows={4}
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Optional homework link
+                  </label>
+                  <input
+                    type="url"
+                    value={editForm.homeworkLink}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, homeworkLink: event.target.value }))
+                    }
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    placeholder="https://resource-link.com"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={handleSaveAssignmentEdits}
+                  disabled={isSavingEdit}
+                  className="flex-1 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSavingEdit ? 'Saving…' : 'Save changes'}
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingAssignment(null);
+                    setEditForm({ finalReport: '', homework: '', homeworkLink: '' });
+                  }}
+                  className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create Assignment Modal */}
         {showCreateForm && (
