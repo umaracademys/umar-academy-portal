@@ -31,6 +31,7 @@ export interface Assignment {
   assignedTo: string[]; // Array of student IDs
   dueDate: Date;
   createdAt: Date;
+  updatedAt?: Date;
   status: 'draft' | 'published' | 'completed' | 'pending_homework';
   fromRecitationReviewId?: string; // Link to recitation review if converted from review
   fromTicketId?: string; // Link to ticket if created from ticket workflow
