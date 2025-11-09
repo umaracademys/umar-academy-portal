@@ -31,6 +31,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     finalizeTicket,
     skipTicketToFinalize,
     deleteTicket,
+    deleteTickets,
     refreshData
   } = useBackendData();
   const { user } = useAuth();
@@ -59,6 +60,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [ticketDeletingId, setTicketDeletingId] = useState<string | null>(null);
+  const [selectedTicketsMap, setSelectedTicketsMap] = useState<Record<string, boolean>>({});
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
 
@@ -116,6 +119,22 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       setSelectedNextTeacher('');
     }
   }, [selectedTicket]);
+
+  const selectedTicketIds = useMemo(
+    () => Object.entries(selectedTicketsMap).filter(([, isSelected]) => isSelected).map(([key]) => key),
+    [selectedTicketsMap]
+  );
+  const selectedCount = selectedTicketIds.length;
+
+  const removeTicketFromSelection = (ticketId: string) => {
+    if (!ticketId) return;
+    setSelectedTicketsMap(prev => {
+      if (!prev[ticketId]) return prev;
+      const next = { ...prev };
+      delete next[ticketId];
+      return next;
+    });
+  };
 
   const normalizeTicket = (incoming: any, fallback?: AssignmentTicket): AssignmentTicket => {
     const merged = {
@@ -218,6 +237,71 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     }
   };
 
+  const getTicketIdString = (ticket: AssignmentTicket): string =>
+    ticket.id || (ticket as any)._id || '';
+
+  const handleToggleTicketSelection = (ticket: AssignmentTicket) => {
+    const ticketId = getTicketIdString(ticket);
+    if (!ticketId) return;
+
+    setSelectedTicketsMap((prev) => {
+      const next = { ...prev };
+      if (next[ticketId]) {
+        delete next[ticketId];
+      } else {
+        next[ticketId] = true;
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllVisible = () => {
+    const next: Record<string, boolean> = {};
+    filteredTickets.forEach((ticket) => {
+      const ticketId = getTicketIdString(ticket);
+      if (ticketId) {
+        next[ticketId] = true;
+      }
+    });
+    setSelectedTicketsMap(next);
+  };
+
+  const clearSelectedTickets = () => {
+    setSelectedTicketsMap({});
+  };
+
+  const handleBulkDeleteTickets = async () => {
+    if (selectedCount === 0) return;
+
+    const confirmDelete =
+      typeof window === 'undefined'
+        ? true
+        : window.confirm(`Delete ${selectedCount} selected ticket${selectedCount === 1 ? '' : 's'}? This cannot be undone.`);
+
+    if (!confirmDelete) return;
+
+    const ticketIds = selectedTicketIds;
+
+    setIsBulkDeleting(true);
+    try {
+      if (ticketIds.length === 1) {
+        await deleteTicket(ticketIds[0]);
+      } else {
+        await deleteTickets(ticketIds);
+      }
+      if (selectedTicket && ticketIds.includes(getTicketIdString(selectedTicket))) {
+        setSelectedTicket(null);
+      }
+      clearSelectedTickets();
+      await refreshData();
+    } catch (error) {
+      console.error('Error deleting tickets:', error);
+      alert('Failed to delete selected tickets.');
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   const handleStartEditTicket = (ticket: AssignmentTicket) => {
     setEditingTicket(ticket);
     setEditForm({
@@ -282,6 +366,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       if (selectedTicket && (selectedTicket.id || (selectedTicket as any)._id) === ticketId) {
         setSelectedTicket(null);
       }
+      removeTicketFromSelection(ticketId);
       await refreshData();
       alert('Ticket deleted successfully.');
     } catch (error) {
@@ -363,6 +448,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         reviewedBy: user?.id || ''
       });
       alert('Ticket finalized! Assignment created and visible to student.');
+      removeTicketFromSelection(ticketId);
       handleBackToList();
       await refreshData();
     } catch (error) {
@@ -408,6 +494,25 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         return 'Full Juz';
       default:
         return portion;
+    }
+  };
+
+  const getMistakeTypeLabel = (type: string) => {
+    switch ((type || '').toLowerCase()) {
+      case 'memory':
+        return 'Memory';
+      case 'madd':
+        return 'Mad (Elongation)';
+      case 'ikhfa':
+        return 'Ikhfa';
+      case 'holding':
+        return 'Holding / Fluency';
+      case 'tech':
+        return 'Ghunna';
+      case 'other':
+        return 'Other';
+      default:
+        return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Other';
     }
   };
 
@@ -474,6 +579,29 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const readyForFinalize = isApproved && selectedTicket?.workflowStep === 'finalize';
   const displayedMarkings = readyForFinalize ? aggregatedMarkings : selectedTicketMarkings;
   const mistakePages = useMemo(() => extractMistakePages(displayedMarkings), [displayedMarkings]);
+  const mistakesByPage = useMemo(() => {
+    const map = new Map<number, MushafMistake[]>();
+    displayedMarkings.forEach((mark) => {
+      if (typeof mark.page !== 'number') return;
+      if (!map.has(mark.page)) {
+        map.set(mark.page, []);
+      }
+      map.get(mark.page)!.push(mark);
+    });
+    return map;
+  }, [displayedMarkings]);
+  const mistakeTypeSummary = useMemo(() => {
+    const counts = displayedMarkings.reduce<Record<string, number>>((acc, mark) => {
+      const key = mark.type || 'other';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [displayedMarkings]);
+  const totalMistakes = displayedMarkings.length;
+  const totalMistakePages = mistakePages.length;
 
   useEffect(() => {
     if (
@@ -542,6 +670,35 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           )}
         </div>
       </div>
+
+      {!selectedTicket && selectedCount > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <span>
+            {selectedCount} ticket{selectedCount === 1 ? '' : 's'} selected
+          </span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleBulkDeleteTickets}
+              disabled={isBulkDeleting}
+              className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-75"
+            >
+              {isBulkDeleting ? 'Deleting…' : 'Delete Selected'}
+            </button>
+            <button
+              onClick={handleSelectAllVisible}
+              className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+            >
+              Select All Visible
+            </button>
+            <button
+              onClick={clearSelectedTickets}
+              className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-100 transition"
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
 
       {selectedTicket ? (
         <div className="space-y-6">
@@ -827,40 +984,100 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             </div>
 
             <aside className="space-y-5">
-              <section className="rounded-xl border border-gray-200 bg-white p-4">
-                <header className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-900">Mistakes marked</h4>
-                  {displayedMarkings.length > 0 && (
+              <section className="rounded-xl border border-gray-200 bg-white p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                        🎯
+                      </span>
+                      <span>Mistakes overview</span>
+                    </div>
+                    {totalMistakes === 0 ? (
+                      <p className="text-sm text-gray-500">
+                        No mistakes were marked for this ticket.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-gray-600">
+                          {totalMistakes} mistake{totalMistakes !== 1 ? 's' : ''} across {totalMistakePages}{' '}
+                          page{totalMistakePages !== 1 ? 's' : ''}
+                        </p>
+                        {mistakeTypeSummary.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {mistakeTypeSummary.map(({ type, count }) => (
+                              <span
+                                key={type}
+                                className="inline-flex items-center gap-1 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700"
+                              >
+                                {getMistakeTypeLabel(type)}
+                                <span className="text-purple-500">· {count}</span>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-stretch gap-2 sm:flex-row">
                     <button
                       onClick={() => {
+                        if (totalMistakes === 0) return;
                         if (!showMushaf) {
-                          const firstMistakePage = displayedMarkings[0]?.page ?? 1;
-                          setCurrentPage(firstMistakePage);
+                          const firstPage = mistakePages[0] ?? 1;
+                          setCurrentPage(firstPage);
                         }
                         setShowMushaf((prev) => !prev);
                       }}
-                      className="text-xs font-semibold text-[var(--color-accent)] hover:text-[rgba(var(--color-accent-rgb),0.8)]"
+                      disabled={totalMistakes === 0}
+                      className={`inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                        totalMistakes === 0
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                          : showMushaf
+                            ? 'border-purple-600 bg-purple-600 text-white hover:bg-purple-700'
+                            : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                      }`}
                     >
-                      {showMushaf ? 'Hide' : 'Open'} Mushaf
+                      {showMushaf ? 'Hide Mushaf' : 'View Mushaf'}
                     </button>
-                  )}
-                </header>
-                {displayedMarkings.length === 0 ? (
-                  <p className="mt-2 text-sm text-gray-500">No mistakes were marked for this ticket.</p>
-                ) : (
-                  <ul className="mt-3 space-y-2 text-xs text-gray-600">
-                    {mistakePages.map((page) => (
-                      <li
-                        key={`mistake-page-${page}`}
-                        className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
-                      >
-                        <span>Page {page}</span>
-                        <span className="text-gray-400">
-                          {displayedMarkings.filter((m) => m.page === page).length} issues
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  </div>
+                </div>
+
+                {totalMistakes > 0 && (
+                  <div className="mt-5 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Pages with mistakes
+                    </p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {mistakePages.map((page) => {
+                        const mistakesOnPage = mistakesByPage.get(page) || [];
+                        return (
+                          <div
+                            key={`mistake-page-${page}`}
+                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">Page {page}</p>
+                              <p className="text-xs text-gray-500">
+                                {mistakesOnPage.length} mistake{mistakesOnPage.length === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (!showMushaf) {
+                                  setShowMushaf(true);
+                                }
+                                setCurrentPage(page);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-3 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition"
+                            >
+                              View
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </section>
 
@@ -920,6 +1137,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
           {filteredTickets.map(ticket => {
             const ticketKey = getTicketKey(ticket);
+            const ticketId = getTicketIdString(ticket);
+            const isSelected = !!selectedTicketsMap[ticketId];
             const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
             const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(otherTicket => getTicketKey(otherTicket) !== ticketKey);
             const historyEntries = rawHistory
@@ -944,23 +1163,31 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start gap-4">
-                  <div>
-                    <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-soft-accent text-sm font-semibold text-[var(--color-accent)]">
-                        {getStepLabel(ticket.workflowStep).slice(0, 1).toUpperCase()}
-                      </span>
-                      <span>{getStudentName(ticket.studentId)}</span>
-                    </p>
-                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                      <span className="font-medium">{getStepLabel(ticket.workflowStep)}</span>
-                      <span className="text-gray-400">→</span>
-                      <span className="font-medium">{nextStepLabel}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {ticket.workflowStep === 'finalize'
-                        ? 'Ready for final report and homework.'
-                        : 'Student hasn\'t recited next portion yet.'}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleTicketSelection(ticket)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[rgba(var(--color-primary-rgb),0.35)]"
+                    />
+                    <div>
+                      <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-soft-accent text-sm font-semibold text-[var(--color-accent)]">
+                          {getStepLabel(ticket.workflowStep).slice(0, 1).toUpperCase()}
+                        </span>
+                        <span>{getStudentName(ticket.studentId)}</span>
+                      </p>
+                      <p className="text-sm text-gray-600 flex items-center gap-1">
+                        <span className="font-medium">{getStepLabel(ticket.workflowStep)}</span>
+                        <span className="text-gray-400">→</span>
+                        <span className="font-medium">{nextStepLabel}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {ticket.workflowStep === 'finalize'
+                          ? 'Ready for final report and homework.'
+                          : 'Student hasn\'t recited next portion yet.'}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-2 min-w-[12rem]">
                     <button

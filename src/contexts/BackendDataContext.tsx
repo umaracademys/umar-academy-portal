@@ -60,6 +60,7 @@ interface BackendDataContextType {
   ) => Promise<any>;
   skipTicketToFinalize: (ticketId: string, reviewedBy?: string) => Promise<any>;
   deleteTicket: (ticketId: string) => Promise<void>;
+  deleteTickets: (ticketIds: string[]) => Promise<void>;
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
@@ -1012,6 +1013,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const deleteTickets = async (ids: string[]) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/tickets/bulk-delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketIds: ids }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to delete tickets');
+      }
+
+      setTickets(prev => prev.filter(ticket => {
+        const ticketId = ticket._id || ticket.id;
+        return !ids.includes(ticketId);
+      }));
+    } catch (error) {
+      console.error('Error deleting tickets:', error);
+      throw error;
+    }
+  };
+
   const assignTicketToNextTeacher = async (ticketId: string, teacherId: string, teacherName: string) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/assign-next`, {
@@ -1265,6 +1291,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     skipTicketToFinalize,
     finalizeTicket,
     deleteTicket,
+    deleteTickets,
     getStudentPersonalMushaf,
     getStudentPersonalMushafFiltered
   };

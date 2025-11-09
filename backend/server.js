@@ -1337,6 +1337,26 @@ app.put('/api/tickets/:id', async (req, res) => {
   }
 });
 
+const detachTicketFromChain = async (ticket) => {
+  if (!ticket) return;
+
+  if (ticket.previousTicketId) {
+    const previous = await AssignmentTicket.findById(ticket.previousTicketId);
+    if (previous && previous.nextTicketId === ticket._id.toString()) {
+      previous.nextTicketId = ticket.nextTicketId || '';
+      await previous.save();
+    }
+  }
+
+  if (ticket.nextTicketId) {
+    const next = await AssignmentTicket.findById(ticket.nextTicketId);
+    if (next && next.previousTicketId === ticket._id.toString()) {
+      next.previousTicketId = ticket.previousTicketId || '';
+      await next.save();
+    }
+  }
+};
+
 // Delete ticket
 app.delete('/api/tickets/:id', async (req, res) => {
   try {
@@ -1347,27 +1367,51 @@ app.delete('/api/tickets/:id', async (req, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    // Detach from previous ticket in the chain
-    if (ticket.previousTicketId) {
-      const previous = await AssignmentTicket.findById(ticket.previousTicketId);
-      if (previous && previous.nextTicketId === ticket._id.toString()) {
-        previous.nextTicketId = ticket.nextTicketId || '';
-        await previous.save();
-      }
-    }
-
-    // Detach from next ticket in the chain
-    if (ticket.nextTicketId) {
-      const next = await AssignmentTicket.findById(ticket.nextTicketId);
-      if (next && next.previousTicketId === ticket._id.toString()) {
-        next.previousTicketId = ticket.previousTicketId || '';
-        await next.save();
-      }
-    }
-
+    await detachTicketFromChain(ticket);
     await AssignmentTicket.deleteOne({ _id: ticketId });
 
     res.json({ message: 'Ticket deleted successfully', ticketId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Bulk delete tickets
+app.post('/api/tickets/bulk-delete', async (req, res) => {
+  try {
+    const { ticketIds } = req.body;
+
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({ error: 'ticketIds array is required' });
+    }
+
+    const uniqueIds = [...new Set(ticketIds.map((id) => id?.toString()).filter(Boolean))];
+    const results = {
+      deleted: [],
+      notFound: [],
+      errors: [],
+    };
+
+    for (const ticketId of uniqueIds) {
+      try {
+        const ticket = await AssignmentTicket.findById(ticketId);
+        if (!ticket) {
+          results.notFound.push(ticketId);
+          continue;
+        }
+
+        await detachTicketFromChain(ticket);
+        await AssignmentTicket.deleteOne({ _id: ticketId });
+        results.deleted.push(ticketId);
+      } catch (error) {
+        results.errors.push({ ticketId, message: error.message });
+      }
+    }
+
+    res.json({
+      message: `Bulk delete processed. Removed ${results.deleted.length} tickets.`,
+      ...results,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
