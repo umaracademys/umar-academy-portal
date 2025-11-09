@@ -209,7 +209,7 @@ export interface AssignmentReport {
 
 // Recitation Review System Types
 export type RecitationType = 'sabq' | 'sabqi' | 'manzil';
-export type TicketStatus = 'assigned' | 'in_progress' | 'pending_review' | 'approved' | 'needs_revision' | 'finalized' | 'completed' | 'pending';
+export type TicketStatus = 'assigned' | 'in_progress' | 'pending_review' | 'approved' | 'needs_revision' | 'finalized' | 'completed' | 'pending' | 'skipped';
 export type WorkflowStep = 'sabq' | 'sabqi' | 'manzil' | 'finalize';
 
 export interface RecitationReview {

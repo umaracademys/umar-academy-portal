@@ -21,7 +21,7 @@ interface AdminTicketManagementProps {
 }
 
 const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }) => {
-  const { tickets, students, teachers, updateTicket, approveTicket, assignTicketToNext, finalizeTicket, refreshData } = useBackendData();
+  const { tickets, students, teachers, updateTicket, approveTicket, assignTicketToNext, finalizeTicket, skipTicketToFinalize, refreshData } = useBackendData();
   const { user } = useAuth();
   
   const [view, setView] = useState<'pending' | 'all'>('pending');
@@ -40,7 +40,6 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const [expandedHistoryIds, setExpandedHistoryIds] = useState<Record<string, boolean>>({});
 
   const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
-  const mistakePages = extractMistakePages(selectedTicketMarkings);
 
   const ticketChain = useMemo(() => {
     if (!selectedTicket) return [] as AssignmentTicket[];
@@ -64,26 +63,24 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     return chain;
   }, [selectedTicket, tickets]);
 
-  useEffect(() => {
-    if (
-      selectedTicket &&
-      selectedTicket.status === 'approved' &&
-      selectedTicket.workflowStep === 'finalize'
-    ) {
-      setFinalizeData((prev) => ({
-        finalReport: selectedTicket.progressNotes || prev.finalReport || '',
-        homework: prev.homework || '',
-        homeworkLink: '',
-      }));
-      if (selectedTicketMarkings.length > 0) {
-        setShowMushaf(true);
-        const firstPage = selectedTicketMarkings[0]?.page;
-        setCurrentPage(firstPage || 1);
+  const aggregatedMarkings = useMemo(() => {
+    if (!selectedTicket) return [] as MushafMistake[];
+    const combined: MushafMistake[] = [];
+    ticketChain.forEach((ticket) => {
+      if (Array.isArray(ticket.mushafMarkings)) {
+        combined.push(...ticket.mushafMarkings);
       }
-    } else {
-      setShowMushaf(false);
+    });
+    return combined;
+  }, [selectedTicket, ticketChain]);
+
+  useEffect(() => {
+    if (selectedTicket && selectedTicket.status === 'approved' && selectedTicket.workflowStep !== 'finalize') {
+      setSelectedNextTeacher(selectedTicket.assignedTeacherId || '');
+    } else if (!selectedTicket) {
+      setSelectedNextTeacher('');
     }
-  }, [selectedTicket, selectedTicketMarkings]);
+  }, [selectedTicket]);
 
   const normalizeTicket = (incoming: any, fallback?: AssignmentTicket): AssignmentTicket => {
     const merged = {
@@ -123,7 +120,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   // Filter out finalized/completed tickets - they should not appear in the list
   const activeTickets = tickets.filter(t => 
-    t.status !== 'finalized' && t.status !== 'completed'
+    t.status !== 'finalized' && t.status !== 'completed' && t.status !== 'skipped'
   );
   
   const pendingTickets = useMemo(
@@ -175,12 +172,31 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       const ticketId = selectedTicket.id || (selectedTicket as any)._id;
       await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
       alert(`Next step activated and assigned to ${teacher.fullName}`);
-      setSelectedTicket(null);
-      setSelectedNextTeacher('');
+      handleBackToList();
       await refreshData();
     } catch (error) {
       console.error('Error assigning to next teacher:', error);
       alert('Failed to assign ticket');
+    }
+  };
+
+  const handleSkipToFinalize = async () => {
+    if (!selectedTicket) return;
+
+    try {
+      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      const result = await skipTicketToFinalize(ticketId, user?.id || '');
+      if (result?.ticket) {
+        const normalizedTicket = normalizeTicket(result.ticket, selectedTicket);
+        setSelectedTicket(normalizedTicket);
+        setShowRevisionForm(false);
+        setSelectedNextTeacher('');
+        setShowMushaf(true);
+        alert('Advanced directly to finalize step.');
+      }
+    } catch (error) {
+      console.error('Error fast-forwarding ticket:', error);
+      alert('Failed to fast-forward to finalization');
     }
   };
 
@@ -235,8 +251,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         reviewedBy: user?.id || ''
       });
       alert('Ticket finalized! Assignment created and visible to student.');
-      setSelectedTicket(null);
-      setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+      handleBackToList();
       await refreshData();
     } catch (error) {
       console.error('Error finalizing ticket:', error);
@@ -290,6 +305,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       case 'approved': return 'bg-soft-primary text-[var(--color-primary)]';
       case 'needs_revision': return 'bg-white border border-[rgba(var(--color-accent-rgb),0.45)] text-[var(--color-accent)]';
       case 'finalized': return 'bg-[var(--color-primary)] text-white';
+      case 'skipped': return 'bg-gray-100 text-gray-500';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -344,6 +360,29 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const isApproved = selectedTicket?.status === 'approved';
   const needsAssignment = isApproved && selectedTicket?.workflowStep !== 'finalize';
   const readyForFinalize = isApproved && selectedTicket?.workflowStep === 'finalize';
+  const displayedMarkings = readyForFinalize ? aggregatedMarkings : selectedTicketMarkings;
+  const mistakePages = useMemo(() => extractMistakePages(displayedMarkings), [displayedMarkings]);
+
+  useEffect(() => {
+    if (
+      selectedTicket &&
+      selectedTicket.status === 'approved' &&
+      selectedTicket.workflowStep === 'finalize'
+    ) {
+      setFinalizeData((prev) => ({
+        finalReport: selectedTicket.progressNotes || prev.finalReport || '',
+        homework: prev.homework || '',
+        homeworkLink: '',
+      }));
+      if (displayedMarkings.length > 0) {
+        setShowMushaf(true);
+        const firstPage = displayedMarkings[0]?.page;
+        setCurrentPage(firstPage || 1);
+      }
+    } else {
+      setShowMushaf(false);
+    }
+  }, [selectedTicket, displayedMarkings]);
 
   const handleToggleHistory = (ticketKey: string) => {
     setExpandedHistoryIds(prev => ({
@@ -535,13 +574,25 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </option>
                     ))}
                   </select>
-                  <button
-                    onClick={handleAssignToNext}
-                    disabled={!selectedNextTeacher}
-                    className="w-full rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Send to next teacher
-                  </button>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      onClick={handleAssignToNext}
+                      disabled={!selectedNextTeacher}
+                      className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Send to next teacher
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSkipToFinalize}
+                      className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                    >
+                      Finalize without next step
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-emerald-700">
+                    If the student will not recite the next portion today, jump straight to finalization and publish homework.
+                  </p>
                 </section>
               )}
 
@@ -576,12 +627,32 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         {ticketChain.map((ticket) => (
                           <li
                             key={ticket.id}
-                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2"
+                            className="rounded-lg border border-gray-200 bg-white px-3 py-2"
                           >
-                            <span className="font-semibold text-gray-900">
-                              {getStepLabel(ticket.workflowStep)}
-                            </span>
-                            <span className="text-gray-500">{ticket.assignedTeacherName || '—'}</span>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="font-semibold text-gray-900">
+                                {getStepLabel(ticket.workflowStep)}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(ticket.status)}`}>
+                                {ticket.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                            {ticket.assignmentRange && (
+                              <p className="mt-1 text-[11px] text-gray-500">{ticket.assignmentRange}</p>
+                            )}
+                            {ticket.assignmentPortion && (
+                              <p className="text-[11px] text-gray-400">
+                                Portion: {ticket.assignmentPortion}
+                              </p>
+                            )}
+                            {ticket.progressNotes && (
+                              <p className="mt-1 whitespace-pre-wrap text-[11px] text-gray-600">
+                                {ticket.progressNotes}
+                              </p>
+                            )}
+                            <p className="mt-1 text-[11px] text-gray-500">
+                              Listener: {ticket.assignedTeacherName || '—'}
+                            </p>
                           </li>
                         ))}
                         {ticketChain.length === 0 && (
@@ -647,11 +718,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               <section className="rounded-xl border border-gray-200 bg-white p-4">
                 <header className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-gray-900">Mistakes marked</h4>
-                  {selectedTicketMarkings.length > 0 && (
+                  {displayedMarkings.length > 0 && (
                     <button
                       onClick={() => {
                         if (!showMushaf) {
-                          const firstMistakePage = selectedTicketMarkings[0]?.page ?? 1;
+                          const firstMistakePage = displayedMarkings[0]?.page ?? 1;
                           setCurrentPage(firstMistakePage);
                         }
                         setShowMushaf((prev) => !prev);
@@ -662,7 +733,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     </button>
                   )}
                 </header>
-                {selectedTicketMarkings.length === 0 ? (
+                {displayedMarkings.length === 0 ? (
                   <p className="mt-2 text-sm text-gray-500">No mistakes were marked for this ticket.</p>
                 ) : (
                   <ul className="mt-3 space-y-2 text-xs text-gray-600">
@@ -673,7 +744,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       >
                         <span>Page {page}</span>
                         <span className="text-gray-400">
-                          {selectedTicketMarkings.filter((m) => m.page === page).length} issues
+                          {displayedMarkings.filter((m) => m.page === page).length} issues
                         </span>
                       </li>
                     ))}
@@ -681,7 +752,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 )}
               </section>
 
-              {showMushaf && selectedTicketMarkings.length > 0 && (
+              {showMushaf && displayedMarkings.length > 0 && (
                 <section className="rounded-xl border border-gray-200 bg-white p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h4 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h4>
@@ -695,7 +766,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   <InteractiveMushaf
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
-                    mistakes={selectedTicketMarkings}
+                    mistakes={displayedMarkings}
                     onMistakeMark={() => {}}
                     readOnly
                     mode="viewing"

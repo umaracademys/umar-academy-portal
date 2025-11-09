@@ -115,11 +115,14 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                     value={formData.studentId}
                     onChange={(e) => {
                       const student = students.find(s => s.id === e.target.value);
+                      const matchingTeacher = student
+                        ? teachers.find(t => t.id === (student as any).assignedTeacher || t.fullName === (student as any).assignedTeacher)
+                        : undefined;
                       setFormData(prev => ({
                         ...prev,
                         studentId: e.target.value,
                         program: student?.program || prev.program,
-                        assignedTeacherId: student?.assignedTeacher || prev.assignedTeacherId
+                        assignedTeacherId: matchingTeacher?.id || prev.assignedTeacherId
                       }));
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

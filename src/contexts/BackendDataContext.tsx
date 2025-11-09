@@ -58,6 +58,7 @@ interface BackendDataContextType {
       classworkType?: string;
     }
   ) => Promise<any>;
+  skipTicketToFinalize: (ticketId: string, reviewedBy?: string) => Promise<any>;
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
@@ -1088,6 +1089,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const skipTicketToFinalize = async (ticketId: string, reviewedBy?: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${ticketId}/skip-to-finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewedBy })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fast-forward ticket to finalize');
+      }
+
+      const result = await response.json();
+      await refreshData();
+      return result;
+    } catch (error) {
+      console.error('Error skipping ticket to finalize:', error);
+      throw error;
+    }
+  };
+
   const finalizeTicket = async (
     ticketId: string,
     data: {
@@ -1218,6 +1240,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     approveTicket,
     assignTicketToNext,
     approveAndAdvanceTicket,
+    skipTicketToFinalize,
     finalizeTicket,
     getStudentPersonalMushaf,
     getStudentPersonalMushafFiltered

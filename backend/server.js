@@ -352,7 +352,7 @@ const assignmentTicketSchema = new mongoose.Schema({
   workflowStep: { type: String, enum: ['sabq', 'sabqi', 'manzil', 'finalize'], required: true },
   assignedTeacherId: { type: String, required: true },
   assignedTeacherName: { type: String, required: true },
-  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed', 'pending'], default: 'assigned' },
+  status: { type: String, enum: ['assigned', 'in_progress', 'pending_review', 'approved', 'needs_revision', 'finalized', 'completed', 'pending', 'skipped'], default: 'assigned' },
   progressNotes: { type: String },
   audioLink: { type: String },
   previousTicketId: { type: String }, // Links to previous step
@@ -764,6 +764,107 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
     res.json({ 
       ticket: nextTicket,
       message: `Next step (${nextStep}) activated and assigned to ${nextTicket.assignedTeacherName}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Skip remaining listening steps and move directly to finalize
+app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    const reviewedBy = req.body.reviewedBy;
+
+    const currentTicket = await AssignmentTicket.findById(ticketId);
+    if (!currentTicket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    // If already at finalize step, ensure it's approved and return
+    if (currentTicket.workflowStep === 'finalize') {
+      if (currentTicket.status !== 'approved') {
+        currentTicket.status = 'approved';
+        currentTicket.reviewedBy = reviewedBy;
+        currentTicket.reviewedAt = new Date();
+        await currentTicket.save();
+      }
+      return res.json({
+        ticket: currentTicket,
+        message: 'Finalize ticket ready for publishing.'
+      });
+    }
+
+    // Approve the current ticket if necessary
+    if (currentTicket.status !== 'approved') {
+      currentTicket.status = 'approved';
+      currentTicket.reviewedBy = reviewedBy;
+      currentTicket.reviewedAt = new Date();
+      await currentTicket.save();
+    }
+
+    let iterator = currentTicket;
+    const visited = new Set<string>();
+    let finalizeTicket = null;
+
+    while (iterator && iterator.nextTicketId) {
+      if (visited.has(iterator.nextTicketId)) {
+        break;
+      }
+      visited.add(iterator.nextTicketId);
+
+      const nextTicket = await AssignmentTicket.findById(iterator.nextTicketId);
+      if (!nextTicket) {
+        break;
+      }
+
+      if (nextTicket.workflowStep === 'finalize') {
+        finalizeTicket = nextTicket;
+        break;
+      }
+
+      nextTicket.status = 'skipped';
+      nextTicket.reviewedBy = reviewedBy;
+      nextTicket.reviewedAt = new Date();
+      await nextTicket.save();
+
+      iterator = nextTicket;
+    }
+
+    if (!finalizeTicket) {
+      finalizeTicket = new AssignmentTicket({
+        studentId: currentTicket.studentId,
+        studentName: currentTicket.studentName,
+        workflowStep: 'finalize',
+        assignedTeacherId: reviewedBy || currentTicket.assignedTeacherId || '',
+        assignedTeacherName: 'Admin',
+        status: 'approved',
+        previousTicketId: currentTicket._id.toString(),
+        program: currentTicket.program,
+        reviewedBy,
+        reviewedAt: new Date()
+      });
+      await finalizeTicket.save();
+    } else {
+      finalizeTicket.previousTicketId = currentTicket._id.toString();
+      finalizeTicket.status = 'approved';
+      finalizeTicket.reviewedBy = reviewedBy;
+      finalizeTicket.reviewedAt = new Date();
+      if (!finalizeTicket.assignedTeacherName) {
+        finalizeTicket.assignedTeacherName = 'Admin';
+      }
+      if (!finalizeTicket.assignedTeacherId && reviewedBy) {
+        finalizeTicket.assignedTeacherId = reviewedBy;
+      }
+      await finalizeTicket.save();
+    }
+
+    currentTicket.nextTicketId = finalizeTicket._id.toString();
+    await currentTicket.save();
+
+    res.json({
+      ticket: finalizeTicket,
+      message: 'Workflow fast-forwarded to finalize step.'
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
