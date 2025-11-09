@@ -804,7 +804,7 @@ app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
     }
 
     let iterator = currentTicket;
-    const visited = new Set<string>();
+    const visited = new Set();
     let finalizeTicket = null;
 
     while (iterator && iterator.nextTicketId) {
