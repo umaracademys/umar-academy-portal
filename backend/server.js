@@ -1360,7 +1360,7 @@ app.post('/api/tickets', async (req, res) => {
         studentId: ticketData.studentId,
         studentName: ticketData.studentName,
         workflowStep: 'sabqi',
-        assignedTeacherId: '', // Will be assigned when sabq is approved
+        assignedTeacherId: ticketData.assignedTeacherId || 'pending',
         assignedTeacherName: 'TBD',
         status: 'pending', // New status - waiting for previous step
         previousTicketId: sabqTicket._id.toString(),
@@ -1373,7 +1373,7 @@ app.post('/api/tickets', async (req, res) => {
         studentId: ticketData.studentId,
         studentName: ticketData.studentName,
         workflowStep: 'manzil',
-        assignedTeacherId: '',
+        assignedTeacherId: ticketData.assignedTeacherId || 'pending',
         assignedTeacherName: 'TBD',
         status: 'pending',
         previousTicketId: sabqiTicket._id.toString(),
@@ -1386,7 +1386,7 @@ app.post('/api/tickets', async (req, res) => {
         studentId: ticketData.studentId,
         studentName: ticketData.studentName,
         workflowStep: 'finalize',
-        assignedTeacherId: '', // Admin will handle this
+        assignedTeacherId: ticketData.assignedTeacherId || 'admin',
         assignedTeacherName: 'Admin',
         status: 'pending',
         previousTicketId: manzilTicket._id.toString(),
