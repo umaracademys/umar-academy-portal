@@ -341,11 +341,27 @@ app.patch('/api/students/:id/recitation', async (req, res) => {
       return res.status(400).json({ error: 'No recitation updates provided' });
     }
 
-    const updatedStudent = await Student.findByIdAndUpdate(
+    let updatedStudent = await Student.findByIdAndUpdate(
       req.params.id,
       updateOps,
       { new: true, runValidators: true }
     );
+
+    if (!updatedStudent && mongoose.Types.ObjectId.isValid(req.params.id)) {
+      updatedStudent = await Student.findOneAndUpdate(
+        { userId: new mongoose.Types.ObjectId(req.params.id) },
+        updateOps,
+        { new: true, runValidators: true }
+      );
+    }
+
+    if (!updatedStudent) {
+      updatedStudent = await Student.findOneAndUpdate(
+        { studentId: req.params.id },
+        updateOps,
+        { new: true, runValidators: true }
+      );
+    }
 
     if (!updatedStudent) {
       return res.status(404).json({ error: 'Student not found' });
