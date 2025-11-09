@@ -596,7 +596,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    return Object.entries(counts)
+    return (Object.entries(counts) as Array<[string, number]>)
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count);
   }, [displayedMarkings]);
