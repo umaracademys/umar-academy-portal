@@ -94,6 +94,37 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// Recitation profile schema helpers
+const recitationUnitSchema = new mongoose.Schema({
+  unitType: { type: String, enum: ['juz', 'surah', 'pages'], default: 'surah' },
+  juzNumber: Number,
+  surahNumber: Number,
+  surahName: String,
+  fromAyah: Number,
+  toAyah: Number,
+  fromPage: Number,
+  toPage: Number,
+  pageCount: Number,
+  notes: String,
+  updatedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+const recitationHistorySchema = new mongoose.Schema({
+  workflowStep: { type: String, enum: ['sabq', 'sabqi', 'manzil'], required: true },
+  unitType: { type: String, enum: ['juz', 'surah', 'pages'], required: true },
+  juzNumber: Number,
+  surahNumber: Number,
+  surahName: String,
+  fromAyah: Number,
+  toAyah: Number,
+  fromPage: Number,
+  toPage: Number,
+  pageCount: Number,
+  notes: String,
+  ticketId: String,
+  completedAt: { type: Date, default: Date.now }
+}, { _id: false });
+
 // Student Schema
 const studentSchema = new mongoose.Schema({
   studentId: String,
@@ -101,7 +132,15 @@ const studentSchema = new mongoose.Schema({
   level: String,
   paymentStatus: String,
   enrollmentDate: Date,
-  courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
+  courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+  recitationProfile: {
+    current: {
+      sabq: { type: recitationUnitSchema, default: () => ({}) },
+      sabqi: { type: recitationUnitSchema, default: () => ({}) },
+      manzil: { type: recitationUnitSchema, default: () => ({}) }
+    },
+    history: { type: [recitationHistorySchema], default: [] }
+  }
 }, { timestamps: true });
 
 const Student = mongoose.model('Student', studentSchema);
@@ -206,10 +245,113 @@ app.post('/api/students', async (req, res) => {
     if (studentData.userId && typeof studentData.userId === 'string') {
       studentData.userId = new mongoose.Types.ObjectId(studentData.userId);
     }
+
+    if (!studentData.recitationProfile) {
+      studentData.recitationProfile = {
+        current: {
+          sabq: {},
+          sabqi: {},
+          manzil: {}
+        },
+        history: []
+      };
+    } else {
+      // Ensure current steps exist even if partial payload was provided
+      studentData.recitationProfile.current = {
+        sabq: studentData.recitationProfile.current?.sabq || {},
+        sabqi: studentData.recitationProfile.current?.sabqi || {},
+        manzil: studentData.recitationProfile.current?.manzil || {}
+      };
+      studentData.recitationProfile.history = Array.isArray(studentData.recitationProfile.history)
+        ? studentData.recitationProfile.history
+        : [];
+    }
     
     const student = new Student(studentData);
     await student.save();
     res.json(student);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update student profile (full update)
+app.put('/api/students/:id', async (req, res) => {
+  try {
+    const studentData = { ...req.body };
+    if (studentData.userId && typeof studentData.userId === 'string') {
+      studentData.userId = new mongoose.Types.ObjectId(studentData.userId);
+    }
+
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      studentData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedStudent) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.json(updatedStudent);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update recitation profile for a student
+app.patch('/api/students/:id/recitation', async (req, res) => {
+  try {
+    const { current, historyEntry } = req.body || {};
+    const updateOps = {};
+    const setOps = {};
+
+    if (current && typeof current === 'object') {
+      ['sabq', 'sabqi', 'manzil'].forEach((step) => {
+        if (current[step] !== undefined) {
+          setOps[`recitationProfile.current.${step}`] = {
+            ...(current[step] || {}),
+            updatedAt: current[step]?.updatedAt || new Date()
+          };
+        }
+      });
+    }
+
+    if (Object.keys(setOps).length > 0) {
+      updateOps.$set = setOps;
+    }
+
+    if (historyEntry) {
+      const entries = Array.isArray(historyEntry) ? historyEntry : [historyEntry];
+      const sanitizedEntries = entries
+        .filter(Boolean)
+        .map((entry) => ({
+          ...entry,
+          completedAt: entry?.completedAt ? new Date(entry.completedAt) : new Date()
+        }));
+
+      if (sanitizedEntries.length > 0) {
+        updateOps.$push = {
+          'recitationProfile.history': { $each: sanitizedEntries }
+        };
+      }
+    }
+
+    if (Object.keys(updateOps).length === 0) {
+      return res.status(400).json({ error: 'No recitation updates provided' });
+    }
+
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      updateOps,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedStudent) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.json(updatedStudent);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Student, Teacher, Admin, RecitationReview, AdminNotification, AssignmentTicket } from '../types';
+import {
+  Student,
+  Teacher,
+  Admin,
+  RecitationReview,
+  AdminNotification,
+  AssignmentTicket,
+  RecitationStep,
+  RecitationUnit,
+  RecitationHistoryEntry,
+  StudentRecitationProfile
+} from '../types';
 import { ClassworkSection } from '../types/assignment';
 
 interface BackendDataContextType {
@@ -10,6 +21,13 @@ interface BackendDataContextType {
   addTeacher: (teacher: Teacher) => Promise<void>;
   addAdmin: (admin: Admin) => Promise<void>;
   updateStudent: (id: string, student: Partial<Student>) => Promise<void>;
+  updateStudentRecitation: (
+    id: string,
+    payload: {
+      current?: Partial<Record<RecitationStep, RecitationUnit>>;
+      historyEntry?: RecitationHistoryEntry | RecitationHistoryEntry[];
+    }
+  ) => Promise<StudentRecitationProfile | null>;
   updateTeacher: (id: string, teacher: Partial<Teacher>) => Promise<void>;
   updateAdmin: (id: string, admin: Partial<Admin>) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
@@ -78,6 +96,75 @@ export const useBackendData = () => {
 
 // API base URL - uses environment variable in production, localhost in development
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+
+const toIsoString = (value?: string | Date | null) => {
+  if (!value) {
+    return undefined;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
+const normalizeRecitationUnit = (unit?: RecitationUnit | null): RecitationUnit | undefined => {
+  if (!unit) {
+    return undefined;
+  }
+  const normalized: RecitationUnit = {
+    unitType: unit.unitType,
+    juzNumber: unit.juzNumber,
+    surahNumber: unit.surahNumber,
+    surahName: unit.surahName,
+    fromAyah: unit.fromAyah,
+    toAyah: unit.toAyah,
+    fromPage: unit.fromPage,
+    toPage: unit.toPage,
+    pageCount: unit.pageCount,
+    notes: unit.notes,
+    updatedAt: toIsoString(unit.updatedAt)
+  };
+  return normalized;
+};
+
+const normalizeRecitationProfile = (profile?: StudentRecitationProfile | null): StudentRecitationProfile => {
+  return {
+    current: {
+      sabq: normalizeRecitationUnit(profile?.current?.sabq),
+      sabqi: normalizeRecitationUnit(profile?.current?.sabqi),
+      manzil: normalizeRecitationUnit(profile?.current?.manzil)
+    },
+    history: Array.isArray(profile?.history)
+      ? profile!.history.map((entry) => ({
+          ...entry,
+          completedAt: toIsoString(entry.completedAt) || new Date().toISOString()
+        }))
+      : []
+  };
+};
+
+const serializeRecitationUnit = (unit?: RecitationUnit) => {
+  if (!unit) {
+    return undefined;
+  }
+  const payload: Record<string, unknown> = {
+    unitType: unit.unitType
+  };
+  if (unit.juzNumber !== undefined) payload.juzNumber = unit.juzNumber;
+  if (unit.surahNumber !== undefined) payload.surahNumber = unit.surahNumber;
+  if (unit.surahName) payload.surahName = unit.surahName;
+  if (unit.fromAyah !== undefined) payload.fromAyah = unit.fromAyah;
+  if (unit.toAyah !== undefined) payload.toAyah = unit.toAyah;
+  if (unit.fromPage !== undefined) payload.fromPage = unit.fromPage;
+  if (unit.toPage !== undefined) payload.toPage = unit.toPage;
+  if (unit.pageCount !== undefined) payload.pageCount = unit.pageCount;
+  if (unit.notes) payload.notes = unit.notes;
+  if (unit.updatedAt) payload.updatedAt = unit.updatedAt;
+  return payload;
+};
+
+const serializeRecitationHistoryEntry = (entry: RecitationHistoryEntry) => ({
+  ...entry,
+  completedAt: entry.completedAt || new Date().toISOString()
+});
 
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -205,6 +292,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           return {
           id: user._id,
+        studentRecordId: studentRecord?._id || studentRecord?.id,
             fullName: user.name || user.fullName || studentRecord?.fullName || 'Unknown',
           email: user.email,
           phone: user.phone || '',
@@ -222,7 +310,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           progress: user.progress || { completed: 0, total: 0, percentage: 0 },
           attendance: user.attendance || { present: 0, absent: 0, total: 0 },
           grades: user.grades || [],
-          notes: user.notes || []
+        notes: user.notes || [],
+        recitationProfile: normalizeRecitationProfile(studentRecord?.recitationProfile)
           };
         });
 
@@ -351,7 +440,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           userId: newUser._id,
           level: 'beginner', // Default level
           paymentStatus: 'pending', // Default payment status
-          enrollmentDate: new Date()
+          enrollmentDate: new Date(),
+          recitationProfile: normalizeRecitationProfile(student.recitationProfile)
         }),
       });
 
@@ -359,11 +449,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error('Failed to create student profile');
       }
 
-      // Update local state
-      setStudents(prev => [...prev, { ...student, id: newUser._id }]);
+      const savedStudent = await studentResponse.json();
+      const normalizedProfile = normalizeRecitationProfile(savedStudent?.recitationProfile || student.recitationProfile);
+
+      const enhancedStudent: Student = {
+        ...student,
+        id: newUser._id,
+        studentRecordId: savedStudent?._id || savedStudent?.id,
+        recitationProfile: normalizedProfile
+      };
+
+      setStudents(prev => [...prev, enhancedStudent]);
       
       // Also save to localStorage as backup
-      const updatedStudents = [...students, { ...student, id: newUser._id }];
+      const updatedStudents = [...students, enhancedStudent];
       localStorage.setItem('umar_academy_students', JSON.stringify(updatedStudents));
 
     } catch (err) {
@@ -371,8 +470,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.error('Error adding student:', err);
       
       // Fallback to localStorage
-      setStudents(prev => [...prev, student]);
-      localStorage.setItem('umar_academy_students', JSON.stringify([...students, student]));
+      const fallbackStudent: Student = {
+        ...student,
+        recitationProfile: normalizeRecitationProfile(student.recitationProfile)
+      };
+      setStudents(prev => [...prev, fallbackStudent]);
+      localStorage.setItem('umar_academy_students', JSON.stringify([...students, fallbackStudent]));
     }
   };
 
@@ -399,6 +502,78 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     } catch (err) {
       setError('Failed to update student');
       console.error('Error updating student:', err);
+    }
+  };
+
+  const updateStudentRecitation = async (
+    id: string,
+    payload: {
+      current?: Partial<Record<RecitationStep, RecitationUnit>>;
+      historyEntry?: RecitationHistoryEntry | RecitationHistoryEntry[];
+    }
+  ): Promise<StudentRecitationProfile | null> => {
+    try {
+      const bodyPayload: Record<string, unknown> = {};
+
+      if (payload.current) {
+        const currentPayload: Record<string, unknown> = {};
+        (Object.entries(payload.current) as [RecitationStep, RecitationUnit | undefined][]).forEach(
+          ([step, unit]) => {
+            if (unit) {
+              currentPayload[step] = serializeRecitationUnit(unit);
+            }
+          }
+        );
+        if (Object.keys(currentPayload).length > 0) {
+          bodyPayload.current = currentPayload;
+        }
+      }
+
+      if (payload.historyEntry) {
+        const entries = Array.isArray(payload.historyEntry)
+          ? payload.historyEntry
+          : [payload.historyEntry];
+        if (entries.length > 0) {
+          bodyPayload.historyEntry = entries.map(serializeRecitationHistoryEntry);
+        }
+      }
+
+      if (Object.keys(bodyPayload).length === 0) {
+        console.warn('⚠️ updateStudentRecitation called without payload for student:', id);
+        return null;
+      }
+
+      const response = await fetch(`${API_BASE}/students/${id}/recitation`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update recitation profile');
+      }
+
+      const updatedStudent = await response.json();
+      const normalizedProfile = normalizeRecitationProfile(updatedStudent.recitationProfile);
+
+      setStudents(prev =>
+        prev.map(s =>
+          s.id === id
+            ? {
+                ...s,
+                recitationProfile: normalizedProfile
+              }
+            : s
+        )
+      );
+
+      return normalizedProfile;
+    } catch (err) {
+      console.error('Error updating student recitation:', err);
+      setError('Failed to update student recitation');
+      return null;
     }
   };
 
@@ -1257,6 +1432,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     addTeacher,
     addAdmin,
     updateStudent,
+  updateStudentRecitation,
     updateTeacher,
     updateAdmin,
     deleteStudent,

@@ -47,8 +47,41 @@ export interface Evaluation {
   evaluatedBy: string;
 }
 
+export type RecitationStep = 'sabq' | 'sabqi' | 'manzil';
+export type RecitationUnitType = 'juz' | 'surah' | 'pages';
+
+export interface RecitationUnit {
+  unitType: RecitationUnitType;
+  juzNumber?: number;
+  surahNumber?: number;
+  surahName?: string;
+  fromAyah?: number;
+  toAyah?: number;
+  fromPage?: number;
+  toPage?: number;
+  pageCount?: number;
+  notes?: string;
+  updatedAt?: string;
+}
+
+export interface RecitationHistoryEntry extends RecitationUnit {
+  workflowStep: RecitationStep;
+  ticketId?: string;
+  completedAt: string;
+}
+
+export interface StudentRecitationProfile {
+  current: {
+    sabq?: RecitationUnit;
+    sabqi?: RecitationUnit;
+    manzil?: RecitationUnit;
+  };
+  history: RecitationHistoryEntry[];
+}
+
 export interface Student {
   id: string;
+  studentRecordId?: string;
   fullName: string;
   parentName: string;
   email: string;
@@ -64,6 +97,7 @@ export interface Student {
   enrolledDate: string;
   status: 'active' | 'inactive' | 'pending';
   avatar?: string;
+  recitationProfile?: StudentRecitationProfile;
 }
 
 export type EmploymentType = 'Full Time' | 'Part Time';
@@ -208,7 +242,7 @@ export interface AssignmentReport {
 }
 
 // Recitation Review System Types
-export type RecitationType = 'sabq' | 'sabqi' | 'manzil';
+export type RecitationType = RecitationStep;
 export type TicketStatus = 'assigned' | 'in_progress' | 'pending_review' | 'approved' | 'needs_revision' | 'finalized' | 'completed' | 'pending' | 'skipped';
 export type WorkflowStep = 'sabq' | 'sabqi' | 'manzil' | 'finalize';
 
@@ -233,6 +267,7 @@ export interface RecitationReview {
 // Ticket-Based Workflow System
 export interface AssignmentTicket {
   id: string;
+  _id?: string;
   studentId: string;
   studentName: string;
   workflowStep: WorkflowStep; // Current step in chain

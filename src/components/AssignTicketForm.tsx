@@ -1,11 +1,130 @@
 import React, { useMemo, useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
-import { AssignmentTicket, WorkflowStep } from '../types';
+import {
+  AssignmentTicket,
+  WorkflowStep,
+  RecitationUnit,
+  StudentRecitationProfile,
+  RecitationStep
+} from '../types';
 
 interface AssignTicketFormProps {
   onClose: () => void;
   onSuccess: () => void;
 }
+
+type RecitationSuggestion = {
+  step: RecitationStep;
+  headline: string;
+  subline?: string;
+  pageInfo?: string;
+  notes?: string;
+  isAvailable: boolean;
+  unit?: RecitationUnit;
+};
+
+const STEP_ICONS: Record<RecitationStep, string> = {
+  sabq: '✨',
+  sabqi: '🧠',
+  manzil: '🔁'
+};
+
+const STEP_TITLES: Record<RecitationStep, string> = {
+  sabq: 'Sabq',
+  sabqi: 'Sabqi',
+  manzil: 'Manzil'
+};
+
+const formatRecitationUnit = (unit?: RecitationUnit): Omit<RecitationSuggestion, 'step' | 'isAvailable'> & { isEmpty: boolean } => {
+  if (!unit) {
+    return {
+      headline: 'No portion recorded',
+      subline: 'Update the student profile to add this step.',
+      isEmpty: true
+    };
+  }
+
+  let headline = '';
+  let subline: string | undefined;
+  let pageInfo: string | undefined;
+
+  if (unit.unitType === 'surah') {
+    const parts: string[] = [];
+    if (unit.surahNumber !== undefined) {
+      parts.push(`Surah ${unit.surahNumber}`);
+    }
+    if (unit.surahName) {
+      parts.push(unit.surahName);
+    }
+    headline = parts.join(' – ') || 'Surah selection';
+
+    if (unit.fromAyah !== undefined || unit.toAyah !== undefined) {
+      const from = unit.fromAyah ?? '?';
+      const to = unit.toAyah ?? '?';
+      subline = `Ayah ${from} – ${to}`;
+    }
+  } else if (unit.unitType === 'juz') {
+    headline = unit.juzNumber ? `Juz ${unit.juzNumber}` : 'Juz selection';
+  } else if (unit.unitType === 'pages') {
+    const from = unit.fromPage ?? '?';
+    const to = unit.toPage ?? '?';
+    headline = `Pages ${from} – ${to}`;
+  }
+
+  if (unit.pageCount) {
+    pageInfo = `${unit.pageCount} page${unit.pageCount === 1 ? '' : 's'}`;
+  }
+
+  const notes = unit.notes;
+
+  return {
+    headline: headline || 'Portion recorded',
+    subline,
+    pageInfo,
+    notes,
+    isEmpty: false
+  };
+};
+
+const buildRecitationSuggestions = (profile?: StudentRecitationProfile): RecitationSuggestion[] => {
+  return (['sabq', 'sabqi', 'manzil'] as RecitationStep[]).map((step) => {
+    const formatted = formatRecitationUnit(profile?.current?.[step]);
+    return {
+      step,
+      headline: formatted.headline,
+      subline: formatted.subline,
+      pageInfo: formatted.pageInfo,
+      notes: formatted.notes,
+      isAvailable: !formatted.isEmpty,
+      unit: profile?.current?.[step]
+    };
+  });
+};
+
+const buildRecitationNotes = (profile?: StudentRecitationProfile) => {
+  const suggestions = buildRecitationSuggestions(profile);
+  const lines = suggestions
+    .filter((suggestion) => suggestion.isAvailable)
+    .map((suggestion) => {
+      const pieces = [
+        `${STEP_TITLES[suggestion.step]}: ${suggestion.headline}`,
+        suggestion.subline,
+        suggestion.pageInfo,
+        suggestion.notes ? `Notes: ${suggestion.notes}` : undefined
+      ].filter(Boolean);
+      return pieces.join(' • ');
+    });
+
+  return lines.join('\n');
+};
+
+const buildAssignmentRangeText = (suggestion?: RecitationSuggestion) => {
+  if (!suggestion || !suggestion.isAvailable) {
+    return undefined;
+  }
+  const parts = [suggestion.headline, suggestion.subline, suggestion.pageInfo].filter(Boolean);
+  return parts.join(' • ');
+};
 
 const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess }) => {
   const { students, teachers, tickets } = useBackendData();
@@ -19,6 +138,16 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   const [assignmentPlan, setAssignmentPlan] = useState<'full-workflow' | 'single-step'>('full-workflow');
   const [singleStep, setSingleStep] = useState<WorkflowStep>('sabqi');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const selectedStudent = useMemo(
+    () => students.find((student) => student.id === formData.studentId),
+    [students, formData.studentId]
+  );
+
+  const recitationSuggestions = useMemo(
+    () => buildRecitationSuggestions(selectedStudent?.recitationProfile),
+    [selectedStudent?.recitationProfile]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +165,20 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       return;
     }
 
+    const sabqSuggestion = recitationSuggestions.find((suggestion) => suggestion.step === 'sabq');
+    const stepForSuggestion: RecitationStep | undefined =
+      assignmentPlan === 'full-workflow'
+        ? 'sabq'
+        : singleStep === 'finalize'
+          ? undefined
+          : (singleStep as RecitationStep);
+    const currentStepSuggestion = stepForSuggestion
+      ? recitationSuggestions.find((suggestion) => suggestion.step === stepForSuggestion)
+      : undefined;
+
+    const assignmentRange = buildAssignmentRangeText(currentStepSuggestion);
+    const assignmentPortion = currentStepSuggestion?.notes || currentStepSuggestion?.pageInfo;
+
     setIsSubmitting(true);
     try {
       const baseTicket = {
@@ -45,7 +188,9 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
         assignedTeacherName: teacher.fullName,
         status: 'assigned',
         program: formData.program,
-        notes: formData.notes.trim() || undefined
+        notes: formData.notes.trim() || undefined,
+        assignmentRange,
+        assignmentPortion
       };
 
       const ticketData =
@@ -118,11 +263,13 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                       const matchingTeacher = student
                         ? teachers.find(t => t.id === (student as any).assignedTeacher || t.fullName === (student as any).assignedTeacher)
                         : undefined;
+                      const notesTemplate = buildRecitationNotes(student?.recitationProfile);
                       setFormData(prev => ({
                         ...prev,
                         studentId: e.target.value,
                         program: student?.program || prev.program,
-                        assignedTeacherId: matchingTeacher?.id || prev.assignedTeacherId
+                        assignedTeacherId: matchingTeacher?.id || prev.assignedTeacherId,
+                        notes: notesTemplate || ''
                       }));
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -138,6 +285,9 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 </div>
                 <StudentSnapshot studentId={formData.studentId} tickets={tickets} />
               </div>
+              {selectedStudent && (
+                <RecitationProfilePreview suggestions={recitationSuggestions} />
+              )}
             </section>
 
             <section className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
@@ -322,6 +472,43 @@ const StudentSnapshot: React.FC<{ studentId: string; tickets: AssignmentTicket[]
           </li>
         ))}
       </ul>
+    </div>
+  );
+};
+
+const RecitationProfilePreview: React.FC<{ suggestions: RecitationSuggestion[] }> = ({ suggestions }) => {
+  const available = suggestions.filter((suggestion) => suggestion.isAvailable);
+  if (suggestions.length === 0) {
+    return null;
+  }
+
+  if (available.length === 0) {
+    return (
+      <div className="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
+        No recitation profile stored for this student yet. Update their registration to unlock quick ticket suggestions.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-3 md:grid-cols-3">
+      {available.map((suggestion) => (
+        <div
+          key={`recitation-suggestion-${suggestion.step}`}
+          className="rounded-lg border border-green-200 bg-green-50 p-3 text-xs text-green-800"
+        >
+          <div className="flex items-center gap-2 text-green-900">
+            <span className="text-base">{STEP_ICONS[suggestion.step]}</span>
+            <span className="font-semibold uppercase tracking-wide text-[11px]">{STEP_TITLES[suggestion.step]}</span>
+          </div>
+          <div className="mt-2 space-y-1">
+            <p className="font-semibold text-sm text-green-900">{suggestion.headline}</p>
+            {suggestion.subline && <p>{suggestion.subline}</p>}
+            {suggestion.pageInfo && <p>{suggestion.pageInfo}</p>}
+            {suggestion.notes && <p className="italic text-green-700">Notes: {suggestion.notes}</p>}
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

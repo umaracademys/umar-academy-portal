@@ -32,3 +32,6 @@ export { fetchPageLines, getQuranChapters, fetchPageVerses, API_BASE } from './s
 export type { Chapter } from './services/quranApi';
 export { uploadMistakeAudio } from './services/audioService';
 
+// Data
+export { FALLBACK_CHAPTERS } from './data/fallbackChapters';
+
