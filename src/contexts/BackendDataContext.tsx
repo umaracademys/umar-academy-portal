@@ -59,6 +59,7 @@ interface BackendDataContextType {
     }
   ) => Promise<any>;
   skipTicketToFinalize: (ticketId: string, reviewedBy?: string) => Promise<any>;
+  deleteTicket: (ticketId: string) => Promise<void>;
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
@@ -990,6 +991,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const deleteTicket = async (id: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || 'Failed to delete ticket');
+      }
+
+      setTickets(prev => prev.filter(ticket => {
+        const ticketId = ticket._id || ticket.id;
+        return ticketId !== id;
+      }));
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      throw error;
+    }
+  };
+
   const assignTicketToNextTeacher = async (ticketId: string, teacherId: string, teacherName: string) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/assign-next`, {
@@ -1242,6 +1264,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     approveAndAdvanceTicket,
     skipTicketToFinalize,
     finalizeTicket,
+    deleteTicket,
     getStudentPersonalMushaf,
     getStudentPersonalMushafFiltered
   };

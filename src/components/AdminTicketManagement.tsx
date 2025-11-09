@@ -21,7 +21,18 @@ interface AdminTicketManagementProps {
 }
 
 const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }) => {
-  const { tickets, students, teachers, updateTicket, approveTicket, assignTicketToNext, finalizeTicket, skipTicketToFinalize, refreshData } = useBackendData();
+  const {
+    tickets,
+    students,
+    teachers,
+    updateTicket,
+    approveTicket,
+    assignTicketToNext,
+    finalizeTicket,
+    skipTicketToFinalize,
+    deleteTicket,
+    refreshData
+  } = useBackendData();
   const { user } = useAuth();
   
   const [view, setView] = useState<'pending' | 'all'>('pending');
@@ -38,8 +49,32 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const [currentPage, setCurrentPage] = useState(1);
   const [studentFilterLetter, setStudentFilterLetter] = useState<'ALL' | string>('ALL');
   const [expandedHistoryIds, setExpandedHistoryIds] = useState<Record<string, boolean>>({});
+  const [editingTicket, setEditingTicket] = useState<AssignmentTicket | null>(null);
+  const [editForm, setEditForm] = useState({
+    assignedTeacherId: '',
+    progressNotes: '',
+    assignmentRange: '',
+    assignmentPortion: '',
+    audioLink: ''
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [ticketDeletingId, setTicketDeletingId] = useState<string | null>(null);
 
   const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
+
+  const TICKET_PORTION_OPTIONS: Array<{ value: string; label: string }> = useMemo(
+    () => [
+      { value: '', label: 'Unspecified' },
+      { value: 'quarter', label: 'Quarter Juz' },
+      { value: 'half', label: 'Half Juz' },
+      { value: 'three_quarters', label: '¾ Juz' },
+      { value: 'full', label: 'Full Juz' },
+      { value: 'custom', label: 'Custom' },
+      { value: 'pages', label: 'Pages' },
+      { value: 'surah', label: 'Surah' },
+    ],
+    []
+  );
 
   const ticketChain = useMemo(() => {
     if (!selectedTicket) return [] as AssignmentTicket[];
@@ -180,6 +215,80 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     } catch (error) {
       console.error('Error assigning to next teacher:', error);
       alert('Failed to assign ticket');
+    }
+  };
+
+  const handleStartEditTicket = (ticket: AssignmentTicket) => {
+    setEditingTicket(ticket);
+    setEditForm({
+      assignedTeacherId: ticket.assignedTeacherId || '',
+      progressNotes: ticket.progressNotes || '',
+      assignmentRange: ticket.assignmentRange || '',
+      assignmentPortion: ticket.assignmentPortion || '',
+      audioLink: ticket.audioLink || ''
+    });
+  };
+
+  const handleSaveTicketEdit = async () => {
+    if (!editingTicket) return;
+
+    const ticketId = editingTicket.id || (editingTicket as any)._id;
+    if (!ticketId) return;
+
+    const teacher = teachers.find(t => t.id === editForm.assignedTeacherId);
+
+    const payload: Partial<AssignmentTicket> = {
+      progressNotes: editForm.progressNotes,
+      assignmentRange: editForm.assignmentRange,
+      assignmentPortion: editForm.assignmentPortion,
+      audioLink: editForm.audioLink,
+    };
+
+    if (editForm.assignedTeacherId) {
+      payload.assignedTeacherId = editForm.assignedTeacherId;
+      payload.assignedTeacherName = teacher?.fullName || editingTicket.assignedTeacherName;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      await updateTicket(ticketId, payload);
+
+      if (selectedTicket && (selectedTicket.id || (selectedTicket as any)._id) === ticketId) {
+        setSelectedTicket(prev => prev ? { ...prev, ...payload } : prev);
+      }
+
+      setEditingTicket(null);
+      await refreshData();
+      alert('Ticket updated successfully.');
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      alert('Failed to update ticket.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteTicket = async (ticket: AssignmentTicket) => {
+    const ticketId = ticket.id || (ticket as any)._id;
+    if (!ticketId) return;
+
+    if (typeof window !== 'undefined' && !window.confirm('Delete this ticket? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setTicketDeletingId(ticketId);
+      await deleteTicket(ticketId);
+      if (selectedTicket && (selectedTicket.id || (selectedTicket as any)._id) === ticketId) {
+        setSelectedTicket(null);
+      }
+      await refreshData();
+      alert('Ticket deleted successfully.');
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      alert('Failed to delete ticket.');
+    } finally {
+      setTicketDeletingId(null);
     }
   };
 
@@ -904,6 +1013,23 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </svg>
                       {isHistoryExpanded ? 'Hide History' : 'Show History'}
                     </button>
+                    <button
+                      onClick={() => handleStartEditTicket(ticket)}
+                      className="px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      Edit Ticket
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTicket(ticket)}
+                      disabled={ticketDeletingId === (ticket.id || (ticket as any)._id)}
+                      className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                        ticketDeletingId === (ticket.id || (ticket as any)._id)
+                          ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
+                          : 'border-red-200 text-red-600 hover:bg-red-50'
+                      }`}
+                    >
+                      {ticketDeletingId === (ticket.id || (ticket as any)._id) ? 'Deleting…' : 'Delete Ticket'}
+                    </button>
                   </div>
                 </div>
                 {isHistoryExpanded && (
@@ -951,6 +1077,129 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               </p>
             </div>
           )}
+        </div>
+      )}
+
+      {editingTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Edit Ticket</h3>
+                <p className="text-xs text-gray-500">
+                  Student: {getStudentName(editingTicket.studentId)} • Step: {getStepLabel(editingTicket.workflowStep)}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingTicket(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-gray-600">
+                  Assigned teacher
+                </label>
+                <select
+                  value={editForm.assignedTeacherId}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, assignedTeacherId: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                >
+                  <option value="">Keep current assignment</option>
+                  {teachers.map((teacher) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-gray-600">
+                  Progress notes
+                </label>
+                <textarea
+                  value={editForm.progressNotes}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, progressNotes: event.target.value }))
+                  }
+                  rows={4}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                  placeholder="Update teacher notes or comments..."
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-gray-600">
+                    Assignment range
+                  </label>
+                  <input
+                    value={editForm.assignmentRange}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, assignmentRange: event.target.value }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                    placeholder="e.g. Juz 5, Ayah 1-20"
+                  />
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-gray-600">
+                    Portion
+                  </label>
+                  <select
+                    value={editForm.assignmentPortion}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, assignmentPortion: event.target.value }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                  >
+                    {TICKET_PORTION_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-gray-600">
+                  Audio link (optional)
+                </label>
+                <input
+                  type="url"
+                  value={editForm.audioLink}
+                  onChange={(event) =>
+                    setEditForm((prev) => ({ ...prev, audioLink: event.target.value }))
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                  placeholder="https://example.com/audio"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handleSaveTicketEdit}
+                disabled={isSavingEdit}
+                className="flex-1 rounded-lg bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingEdit ? 'Saving…' : 'Save changes'}
+              </button>
+              <button
+                onClick={() => setEditingTicket(null)}
+                className="rounded-lg bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
