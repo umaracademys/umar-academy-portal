@@ -107,6 +107,11 @@ const AssignmentsPage: React.FC = () => {
     }
   }, [selectedTicket]);
 
+  const getStudentName = (studentId: string): string => {
+    const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
+    return student?.fullName || 'Unknown Student';
+  };
+
   // Filter assignments - only show those from finalized tickets
   const filteredAssignments = assignments.filter(assignment => {
     // Only show assignments created from approved/finalized tickets
@@ -155,12 +160,6 @@ const AssignmentsPage: React.FC = () => {
     ticket.status === 'approved' && 
     ticket.workflowStep === 'finalize'
   );
-
-  // Get student name from student ID
-  const getStudentName = (studentId: string): string => {
-    const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
-    return student?.fullName || 'Unknown Student';
-  };
 
   // Get mistake type label
   const getMistakeTypeLabel = (type: string): string => {
