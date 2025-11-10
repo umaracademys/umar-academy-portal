@@ -146,6 +146,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     return chain;
   }, [selectedTicket, tickets]);
 
+  const nextActiveTicket = useMemo(
+    () => resolveNextActiveTicket(selectedTicket),
+    [resolveNextActiveTicket, selectedTicket]
+  );
+
   const aggregatedMarkings = useMemo(() => {
     if (!selectedTicket) return [] as MushafMistake[];
     const combined: MushafMistake[] = [];

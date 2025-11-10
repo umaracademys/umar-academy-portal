@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, Program, ClassworkSection } from '../types/assignment';
 import { MushafMistake } from '@umar-academy/mushaf';
@@ -6,6 +6,34 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { AssignmentTicket } from '../types';
 import ModernAssignmentForm from '../components/ModernAssignmentForm';
+
+const findNextActiveTicketInChain = (
+  ticket: AssignmentTicket | null | undefined,
+  tickets: AssignmentTicket[]
+): AssignmentTicket | null => {
+  if (!ticket) return null;
+  const visited = new Set<string>();
+  let nextId = ticket.nextTicketId;
+
+  while (nextId) {
+    if (visited.has(nextId)) break;
+    visited.add(nextId);
+
+    const nextTicket = tickets.find(
+      (candidate) => (candidate.id || (candidate as any)._id) === nextId
+    );
+    if (!nextTicket) break;
+
+    if (['approved', 'completed', 'skipped', 'finalized'].includes(nextTicket.status)) {
+      nextId = nextTicket.nextTicketId || '';
+      continue;
+    }
+
+    return nextTicket;
+  }
+
+  return null;
+};
 
 const AssignmentsPage: React.FC = () => {
   const {
@@ -141,25 +169,15 @@ const AssignmentsPage: React.FC = () => {
     setPrograms(mockPrograms);
   }, []);
 
-  const nextActiveTicket = useMemo(() => {
-    if (!selectedTicket) return null;
-    const visited = new Set<string>();
-    let nextId = selectedTicket.nextTicketId;
-    while (nextId) {
-      if (visited.has(nextId)) break;
-      visited.add(nextId);
-      const ticket = tickets.find(
-        (candidate) => (candidate.id || (candidate as any)._id) === nextId
-      );
-      if (!ticket) break;
-      if (['approved', 'completed', 'skipped', 'finalized'].includes(ticket.status)) {
-        nextId = ticket.nextTicketId || '';
-        continue;
-      }
-      return ticket;
-    }
-    return null;
-  }, [selectedTicket, tickets]);
+  const resolveNextActiveTicket = useCallback(
+    (ticket?: AssignmentTicket | null) => findNextActiveTicketInChain(ticket, tickets),
+    [tickets]
+  );
+
+  const nextActiveTicket = useMemo(
+    () => resolveNextActiveTicket(selectedTicket),
+    [resolveNextActiveTicket, selectedTicket]
+  );
 
   useEffect(() => {
     if (selectedTicket && selectedTicket.workflowStep !== 'finalize') {
@@ -210,14 +228,13 @@ const AssignmentsPage: React.FC = () => {
   }, [filteredAssignments, students]);
 
   // Get approved tickets that need action (assign to next teacher or finalize)
-  const approvedTicketsNeedingAction = tickets.filter(ticket => 
-    ticket.status === 'approved' && 
-    ticket.workflowStep !== 'finalize' && 
-    (!ticket.nextTicketId || (() => {
-      const nextTicket = tickets.find(t => t.id === ticket.nextTicketId || (t as any)._id === ticket.nextTicketId);
-      return nextTicket?.status === 'pending';
-    })())
-  );
+  const approvedTicketsNeedingAction = tickets.filter((ticket) => {
+    if (ticket.status !== 'approved') return false;
+    if (ticket.workflowStep === 'finalize') return false;
+
+    const nextTicket = resolveNextActiveTicket(ticket);
+    return !!nextTicket;
+  });
 
   const approvedFinalizeTickets = tickets.filter(ticket => 
     ticket.status === 'approved' && 
@@ -403,6 +420,8 @@ const AssignmentsPage: React.FC = () => {
             <div className="space-y-3">
               {approvedTicketsNeedingAction.map(ticket => {
                 const ticketId = ticket.id || (ticket as any)._id;
+                const nextTicket = resolveNextActiveTicket(ticket);
+                const advanceToFinalize = nextTicket?.workflowStep === 'finalize';
                 return (
                   <div key={ticketId} className="bg-white p-4 rounded-lg border border-yellow-200">
                     <div className="flex justify-between items-start">
@@ -420,10 +439,14 @@ const AssignmentsPage: React.FC = () => {
                         <p className="text-xs text-gray-500 mt-1">Student hasn't recited next portion yet</p>
                       </div>
                       <button
-                        onClick={() => setSelectedTicket(ticket)}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                        onClick={() => setSelectedTicket(advanceToFinalize && nextTicket ? nextTicket : ticket)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
+                          advanceToFinalize
+                            ? 'bg-purple-600 hover:bg-purple-700'
+                            : 'bg-blue-600 hover:bg-blue-700'
+                        }`}
                       >
-                        Assign to Next Teacher
+                        {advanceToFinalize ? 'Finalize & Add Homework' : 'Assign to Next Teacher'}
                       </button>
                     </div>
                   </div>
