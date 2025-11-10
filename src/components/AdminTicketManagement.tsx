@@ -1187,6 +1187,26 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </p>
                     </div>
                   )}
+                  {!selectedTicket.progressNotes && selectedTicket.revisionNotes && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
+                        Admin focus note
+                      </h4>
+                      <p className="whitespace-pre-wrap text-sm text-amber-900">
+                        {selectedTicket.revisionNotes}
+                      </p>
+                    </div>
+                  )}
+                  {selectedTicket.progressNotes && selectedTicket.revisionNotes && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
+                        Admin focus note
+                      </h4>
+                      <p className="whitespace-pre-wrap text-sm text-amber-900">
+                        {selectedTicket.revisionNotes}
+                      </p>
+                    </div>
+                  )}
                   {selectedTicket.audioLink && (
                     <a
                       href={selectedTicket.audioLink}
