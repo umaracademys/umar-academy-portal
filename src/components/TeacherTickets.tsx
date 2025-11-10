@@ -861,14 +861,8 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      <button className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm bg-gray-200 text-gray-700 hover:bg-gray-300" title="Show surah index">
-                        <span className="hidden sm:inline">Surah </span>Index
-                      </button>
-                    </div>
-
                     <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
-                      <div className="max-h-[calc(100vh-260px)] min-h-[60vh] overflow-auto">
+                      <div className="min-h-[60vh]">
                         <div className="mx-auto max-w-full">
                           <InteractiveMushaf
                             currentPage={currentPage}
