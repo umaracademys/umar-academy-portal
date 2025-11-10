@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   AssignmentTicket,
   WorkflowStep,
@@ -7,6 +8,8 @@ import {
   StudentRecitationProfile,
   RecitationStep
 } from '../types';
+import { InteractiveMushaf, MushafMistake } from '@umar-academy/mushaf';
+import type { ClassworkSection } from '../types/assignment';
 
 interface AssignTicketFormProps {
   onClose: () => void;
@@ -127,7 +130,8 @@ const buildAssignmentRangeText = (suggestion?: RecitationSuggestion) => {
 };
 
 const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess }) => {
-  const { students, teachers, tickets } = useBackendData();
+  const { students, teachers, tickets, finalizeTicket, refreshData } = useBackendData();
+  const { user } = useAuth();
   
   const [formData, setFormData] = useState({
     studentId: '',
@@ -138,6 +142,16 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   const [assignmentPlan, setAssignmentPlan] = useState<'full-workflow' | 'single-step'>('full-workflow');
   const [singleStep, setSingleStep] = useState<WorkflowStep>('sabqi');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [finalizeForm, setFinalizeForm] = useState({
+    sabqSummary: '',
+    homework: '',
+  });
+  const [finalizeTouched, setFinalizeTouched] = useState({
+    sabqSummary: false,
+    homework: false,
+  });
+  const [showFinalizeMushaf, setShowFinalizeMushaf] = useState(false);
+  const [finalizeMushafPage, setFinalizeMushafPage] = useState(1);
 
   const selectedStudent = useMemo(
     () => students.find((student) => student.id === formData.studentId),
@@ -149,23 +163,128 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     [selectedStudent?.recitationProfile]
   );
 
+  useEffect(() => {
+    if (singleStep === 'finalize') {
+      setFormData((prev) => ({ ...prev, assignedTeacherId: '', notes: '' }));
+    }
+  }, [singleStep]);
+
+  const studentTickets = useMemo(() => {
+    if (!formData.studentId) return [] as AssignmentTicket[];
+    return tickets
+      .filter((ticket) => ticket.studentId === formData.studentId)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [formData.studentId, tickets]);
+
+  const latestSabqiTicket = useMemo(
+    () => studentTickets.find((ticket) => ticket.workflowStep === 'sabqi'),
+    [studentTickets]
+  );
+
+  const latestManzilTicket = useMemo(
+    () => studentTickets.find((ticket) => ticket.workflowStep === 'manzil'),
+    [studentTickets]
+  );
+
+  const finalizeHistoryNotes = useMemo(() => {
+    return [
+      {
+        label: 'Sabqi',
+        notes: latestSabqiTicket?.progressNotes?.trim() || '',
+        assignmentRange: latestSabqiTicket?.assignmentRange || '',
+        teacher: latestSabqiTicket?.assignedTeacherName || '',
+        updatedAt: latestSabqiTicket?.updatedAt || latestSabqiTicket?.createdAt,
+      },
+      {
+        label: 'Manzil',
+        notes: latestManzilTicket?.progressNotes?.trim() || '',
+        assignmentRange: latestManzilTicket?.assignmentRange || '',
+        teacher: latestManzilTicket?.assignedTeacherName || '',
+        updatedAt: latestManzilTicket?.updatedAt || latestManzilTicket?.createdAt,
+      },
+    ];
+  }, [latestSabqiTicket, latestManzilTicket]);
+
+  const finalizeMistakes: MushafMistake[] = useMemo(() => {
+    const mistakeSources = [latestSabqiTicket, latestManzilTicket].filter(Boolean);
+    return mistakeSources.flatMap((ticket) => ticket?.mushafMarkings || []);
+  }, [latestSabqiTicket, latestManzilTicket]);
+
+  useEffect(() => {
+    if (singleStep !== 'finalize') {
+      setFinalizeForm({ sabqSummary: '', homework: '' });
+      setFinalizeTouched({ sabqSummary: false, homework: false });
+      setShowFinalizeMushaf(false);
+      setFinalizeMushafPage(1);
+      return;
+    }
+
+    const sabqDefault = latestSabqiTicket?.progressNotes?.trim() || '';
+    const homeworkDefault = latestManzilTicket?.progressNotes?.trim()
+      ? `Review: ${latestManzilTicket.progressNotes.trim()}`
+      : '';
+
+    setFinalizeForm({
+      sabqSummary: sabqDefault,
+      homework: homeworkDefault,
+    });
+    setFinalizeTouched({
+      sabqSummary: Boolean(sabqDefault),
+      homework: Boolean(homeworkDefault),
+    });
+
+    if (finalizeMistakes.length > 0) {
+      const firstPage = finalizeMistakes[0]?.page ?? 1;
+      setFinalizeMushafPage(Number.isNaN(firstPage) ? 1 : firstPage);
+      setShowFinalizeMushaf(true);
+    } else {
+      setShowFinalizeMushaf(false);
+      setFinalizeMushafPage(1);
+    }
+  }, [singleStep, latestSabqiTicket, latestManzilTicket, finalizeMistakes]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.studentId || !formData.assignedTeacherId) {
-      alert('Please select a student and teacher');
+    if (!formData.studentId) {
+      alert('Please select a student');
       return;
     }
 
     const student = students.find(s => s.id === formData.studentId);
-    const teacher = teachers.find(t => t.id === formData.assignedTeacherId);
-
-    if (!student || !teacher) {
-      alert('Student or teacher not found');
+    if (!student) {
+      alert('Student not found');
       return;
     }
 
-    const sabqSuggestion = recitationSuggestions.find((suggestion) => suggestion.step === 'sabq');
+    if (singleStep !== 'finalize' && !formData.assignedTeacherId) {
+      alert('Please select a teacher');
+      return;
+    }
+
+    const teacher =
+      singleStep === 'finalize'
+        ? undefined
+        : teachers.find((t) => t.id === formData.assignedTeacherId);
+
+    if (singleStep !== 'finalize' && !teacher) {
+      alert('Selected teacher not found');
+      return;
+    }
+
+    if (singleStep === 'finalize' && !['admin', 'superadmin'].includes(user?.role ?? '')) {
+      alert('Only admins can finalize tickets directly.');
+      return;
+    }
+
+    if (singleStep === 'finalize') {
+      if (!finalizeForm.sabqSummary.trim() || !finalizeForm.homework.trim()) {
+        setFinalizeTouched({ sabqSummary: true, homework: true });
+        alert('Please add both sabq summary and homework instructions.');
+        return;
+      }
+    }
+
     const stepForSuggestion: RecitationStep | undefined =
       assignmentPlan === 'full-workflow'
         ? 'sabq'
@@ -176,7 +295,10 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       ? recitationSuggestions.find((suggestion) => suggestion.step === stepForSuggestion)
       : undefined;
 
-    const assignmentRange = buildAssignmentRangeText(currentStepSuggestion);
+    const assignmentRange =
+      singleStep === 'finalize'
+        ? undefined
+        : buildAssignmentRangeText(currentStepSuggestion);
     const assignmentPortion = currentStepSuggestion?.notes || currentStepSuggestion?.pageInfo;
 
     setIsSubmitting(true);
@@ -184,8 +306,11 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       const baseTicket = {
         studentId: formData.studentId,
         studentName: student.fullName,
-        assignedTeacherId: formData.assignedTeacherId,
-        assignedTeacherName: teacher.fullName,
+        assignedTeacherId: singleStep === 'finalize' ? user?.id || 'admin' : formData.assignedTeacherId,
+        assignedTeacherName:
+          singleStep === 'finalize'
+            ? user?.name || 'Admin'
+            : teacher?.fullName || '',
         status: 'assigned',
         program: formData.program,
         notes: formData.notes.trim() || undefined,
@@ -193,39 +318,128 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
         assignmentPortion
       };
 
-      const ticketData =
-        assignmentPlan === 'full-workflow'
-          ? {
-              ...baseTicket,
-              workflowStep: 'sabq' as WorkflowStep,
-              autoCreateChain: true
-            }
-          : {
-              ...baseTicket,
-              workflowStep: singleStep,
-              autoCreateChain: false
-            };
+      if (assignmentPlan === 'full-workflow') {
+        const ticketData = {
+          ...baseTicket,
+          workflowStep: 'sabq' as WorkflowStep,
+          autoCreateChain: true
+        };
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(ticketData)
-      });
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ticketData)
+          }
+        );
 
-      if (!response.ok) {
-        throw new Error('Failed to create ticket');
+        if (!response.ok) {
+          throw new Error('Failed to create ticket');
+        }
+
+        await response.json();
+        await refreshData();
+
+        const summaryMessage = `✅ Full workflow ready!\n\nSabq → Sabqi → Manzil → Finalize\n\n${teacher?.fullName || 'Assigned teacher'} will hear the student's new Sabq. The remaining steps will unlock automatically once each one is approved.`;
+
+        alert(summaryMessage);
+        onSuccess();
+        onClose();
+      } else if (singleStep === 'finalize') {
+        const finalizeTicketResponse = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...baseTicket,
+              workflowStep: 'finalize',
+              status: 'approved',
+              previousTicketId:
+                latestManzilTicket?._id || latestManzilTicket?.id || latestSabqiTicket?._id || latestSabqiTicket?.id || undefined,
+            })
+          }
+        );
+
+        if (!finalizeTicketResponse.ok) {
+          throw new Error('Failed to create finalize ticket');
+        }
+
+        const createdTicket = await finalizeTicketResponse.json();
+        const finalizeTicketId = createdTicket._id || createdTicket.id;
+
+        if (!finalizeTicketId) {
+          throw new Error('Finalize ticket ID missing');
+        }
+
+        const classworkSections: ClassworkSection[] = [];
+        if (latestSabqiTicket?.progressNotes?.trim()) {
+          classworkSections.push({
+            step: 'sabqi',
+            title: 'Sabqi Notes',
+            label: 'Sabqi Notes',
+            summary: latestSabqiTicket.progressNotes.trim(),
+            assignmentRange: latestSabqiTicket.assignmentRange || latestSabqiTicket.assignmentPortion || '',
+            order: classworkSections.length,
+          });
+        }
+        if (latestManzilTicket?.progressNotes?.trim()) {
+          classworkSections.push({
+            step: 'manzil',
+            title: 'Manzil Notes',
+            label: 'Manzil Notes',
+            summary: latestManzilTicket.progressNotes.trim(),
+            assignmentRange: latestManzilTicket.assignmentRange || latestManzilTicket.assignmentPortion || '',
+            order: classworkSections.length,
+          });
+        }
+
+        await finalizeTicket(finalizeTicketId, {
+          finalReport: finalizeForm.sabqSummary.trim(),
+          homework: finalizeForm.homework.trim(),
+          reviewedBy: user?.id || 'admin',
+          classworkSections,
+          classworkSummary: finalizeForm.sabqSummary.trim(),
+          homeworkSummary: finalizeForm.homework.trim(),
+          classworkType: 'sabq',
+        });
+
+        await refreshData();
+        alert('✅ Final report published for the student.');
+        onSuccess();
+        onClose();
+      } else {
+        const ticketData = {
+          ...baseTicket,
+          workflowStep: singleStep,
+          autoCreateChain: false
+        };
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ticketData)
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to create ticket');
+        }
+
+        await response.json();
+        await refreshData();
+
+        const summaryMessage = `Ticket assigned to ${
+          teacher?.fullName || 'the selected teacher'
+        } for the ${singleStep.toUpperCase()} step.`;
+
+        alert(summaryMessage);
+        onSuccess();
+        onClose();
       }
-
-      const result = await response.json();
-      
-      const summaryMessage =
-        assignmentPlan === 'full-workflow'
-          ? `✅ Full workflow ready!\n\nSabq → Sabqi → Manzil → Finalize\n\n${teacher.fullName} will hear the student's new Sabq. The remaining steps will unlock automatically once each one is approved.`
-          : `Ticket assigned to ${teacher.fullName} for the ${singleStep.toUpperCase()} step.`;
-
-      alert(summaryMessage);
-      onSuccess();
-      onClose();
     } catch (error) {
       console.error('Error creating ticket:', error);
       alert('Failed to assign ticket');
@@ -352,58 +566,158 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
             </section>
 
             <section className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">3. Assign Teacher & Notes</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Teacher <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.assignedTeacherId}
-                    onChange={(e) => setFormData(prev => ({ ...prev, assignedTeacherId: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Select teacher...</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
-                      </option>
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                {singleStep === 'finalize' ? '3. Finalize Report' : '3. Assign Teacher & Notes'}
+              </h3>
+
+              {singleStep !== 'finalize' ? (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Teacher <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.assignedTeacherId}
+                        onChange={(e) => setFormData(prev => ({ ...prev, assignedTeacherId: e.target.value }))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      >
+                        <option value="">Select teacher...</option>
+                        {teachers.map(teacher => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Program
+                      </label>
+                      <select
+                        value={formData.program}
+                        onChange={(e) => setFormData(prev => ({ ...prev, program: e.target.value }))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="Full Time HQ">Full Time HQ</option>
+                        <option value="Part Time HQ">Part Time HQ</option>
+                        <option value="After School Reading">After School Reading</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Internal note for listening teacher (optional)
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Example: Focus on last week’s sabqi corrections, double-check Madd rules on page 132…"
+                    />
+                  </div>
+                  <AssignmentPreview
+                    plan={assignmentPlan}
+                    singleStep={singleStep}
+                    teacherName={teachers.find(t => t.id === formData.assignedTeacherId)?.fullName}
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {finalizeHistoryNotes.map((entry) => (
+                      <div key={entry.label} className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
+                        <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">
+                          {entry.label}
+                        </p>
+                        <p className="text-xs text-gray-600 mb-1">
+                          Teacher: <span className="font-medium text-gray-900">{entry.teacher || '—'}</span>
+                        </p>
+                        {entry.assignmentRange && (
+                          <p className="text-xs text-gray-500 mb-1">{entry.assignmentRange}</p>
+                        )}
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap min-h-[40px]">
+                          {entry.notes || 'No notes recorded yet.'}
+                        </p>
+                      </div>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">
-                    Program
-                  </label>
-                  <select
-                    value={formData.program}
-                    onChange={(e) => setFormData(prev => ({ ...prev, program: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="Full Time HQ">Full Time HQ</option>
-                    <option value="Part Time HQ">Part Time HQ</option>
-                    <option value="After School Reading">After School Reading</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Internal note for listening teacher (optional)
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Example: Focus on last week’s sabqi corrections, double-check Madd rules on page 132…"
-                />
-              </div>
-              <AssignmentPreview
-                plan={assignmentPlan}
-                singleStep={singleStep}
-                teacherName={teachers.find(t => t.id === formData.assignedTeacherId)?.fullName}
-              />
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Sabq summary <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={finalizeForm.sabqSummary}
+                        onChange={(e) => {
+                          setFinalizeTouched((prev) => ({ ...prev, sabqSummary: true }));
+                          setFinalizeForm((prev) => ({ ...prev, sabqSummary: e.target.value }));
+                        }}
+                        rows={4}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                      {finalizeTouched.sabqSummary && !finalizeForm.sabqSummary.trim() && (
+                        <p className="text-xs text-red-500 mt-1">Please add a sabq summary.</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Homework for next lesson <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={finalizeForm.homework}
+                        onChange={(e) => {
+                          setFinalizeTouched((prev) => ({ ...prev, homework: true }));
+                          setFinalizeForm((prev) => ({ ...prev, homework: e.target.value }));
+                        }}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      />
+                      {finalizeTouched.homework && !finalizeForm.homework.trim() && (
+                        <p className="text-xs text-red-500 mt-1">Homework instructions are required.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-800">Interactive Mushaf</h4>
+                        <p className="text-xs text-gray-500">Review the pages with recorded mistakes.</p>
+                      </div>
+                      {finalizeMistakes.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowFinalizeMushaf((prev) => !prev)}
+                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                        >
+                          {showFinalizeMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
+                        </button>
+                      )}
+                    </div>
+                    {finalizeMistakes.length === 0 && (
+                      <p className="mt-3 text-xs text-gray-500">
+                        No mistakes were logged in the latest Sabqi or Manzil tickets.
+                      </p>
+                    )}
+                    {showFinalizeMushaf && finalizeMistakes.length > 0 && (
+                      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
+                        <InteractiveMushaf
+                          currentPage={finalizeMushafPage}
+                          onPageChange={setFinalizeMushafPage}
+                          mistakes={finalizeMistakes}
+                          historicalMistakes={[]}
+                          onMistakeMark={() => {}}
+                          mode="viewing"
+                          studentName={selectedStudent?.fullName || ''}
+                          showHistorical={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </section>
 
             <div className="flex gap-3 pt-2">
