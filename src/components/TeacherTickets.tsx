@@ -596,7 +596,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         progressNotes: formData.progressNotes.trim(),
         audioLink: formData.audioLink.trim() || undefined,
         mushafMarkings: mushafMarkings,
-        status: 'in_progress',
+        status: 'pending_review',
         reviewedBy: user?.id || user?.email || undefined,
         updatedAt: new Date(),
       };
