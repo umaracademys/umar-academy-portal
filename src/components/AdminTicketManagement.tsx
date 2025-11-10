@@ -78,6 +78,38 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
 
+  const resolveNextActiveTicket = useCallback(
+    (ticket?: AssignmentTicket | null) => {
+      if (!ticket) return null;
+      const visited = new Set<string>();
+      let currentNextId = ticket.nextTicketId;
+
+      while (currentNextId) {
+        if (visited.has(currentNextId)) break;
+        visited.add(currentNextId);
+
+        const nextTicket = tickets.find(
+          (candidate) =>
+            (candidate.id || (candidate as any)._id) === currentNextId
+        );
+
+        if (!nextTicket) {
+          break;
+        }
+
+        if (['approved', 'completed', 'skipped', 'finalized'].includes(nextTicket.status)) {
+          currentNextId = nextTicket.nextTicketId || '';
+          continue;
+        }
+
+        return nextTicket;
+      }
+
+      return null;
+    },
+    [tickets]
+  );
+
   const TICKET_PORTION_OPTIONS: Array<{ value: string; label: string }> = useMemo(
     () => [
       { value: '', label: 'Unspecified' },
@@ -527,7 +559,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         ticketId,
         teacher.id,
         teacher.fullName,
-        trimmedNote || undefined
+                        trimmedNote || undefined
       );
       alert(`Next step activated and assigned to ${teacher.fullName}`);
       handleBackToList();
@@ -1021,13 +1053,19 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     selectedTicket,
   ]);
 
+  const nextActiveTicket = useMemo(
+    () => resolveNextActiveTicket(selectedTicket),
+    [resolveNextActiveTicket, selectedTicket]
+  );
+
   useEffect(() => {
     if (selectedTicket && selectedTicket.workflowStep !== 'finalize') {
-      setSelectedNextTeacherNote(selectedTicket.revisionNotes || '');
+      const fallbackNote = selectedTicket.revisionNotes || '';
+      setSelectedNextTeacherNote(nextActiveTicket?.revisionNotes || fallbackNote);
     } else {
       setSelectedNextTeacherNote('');
     }
-  }, [selectedTicket]);
+  }, [nextActiveTicket, selectedTicket]);
 
   const handleToggleHistory = (ticketKey: string) => {
     setExpandedHistoryIds(prev => ({
@@ -1187,23 +1225,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </p>
                     </div>
                   )}
-                  {!selectedTicket.progressNotes && selectedTicket.revisionNotes && (
+                  {(nextActiveTicket?.revisionNotes || selectedTicket.revisionNotes) && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
                         Admin focus note
                       </h4>
                       <p className="whitespace-pre-wrap text-sm text-amber-900">
-                        {selectedTicket.revisionNotes}
-                      </p>
-                    </div>
-                  )}
-                  {selectedTicket.progressNotes && selectedTicket.revisionNotes && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
-                        Admin focus note
-                      </h4>
-                      <p className="whitespace-pre-wrap text-sm text-amber-900">
-                        {selectedTicket.revisionNotes}
+                        {nextActiveTicket?.revisionNotes || selectedTicket.revisionNotes}
                       </p>
                     </div>
                   )}

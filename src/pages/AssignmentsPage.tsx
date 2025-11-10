@@ -141,13 +141,34 @@ const AssignmentsPage: React.FC = () => {
     setPrograms(mockPrograms);
   }, []);
 
+  const nextActiveTicket = useMemo(() => {
+    if (!selectedTicket) return null;
+    const visited = new Set<string>();
+    let nextId = selectedTicket.nextTicketId;
+    while (nextId) {
+      if (visited.has(nextId)) break;
+      visited.add(nextId);
+      const ticket = tickets.find(
+        (candidate) => (candidate.id || (candidate as any)._id) === nextId
+      );
+      if (!ticket) break;
+      if (['approved', 'completed', 'skipped', 'finalized'].includes(ticket.status)) {
+        nextId = ticket.nextTicketId || '';
+        continue;
+      }
+      return ticket;
+    }
+    return null;
+  }, [selectedTicket, tickets]);
+
   useEffect(() => {
     if (selectedTicket && selectedTicket.workflowStep !== 'finalize') {
-      setSelectedNextTeacherNote(selectedTicket.revisionNotes || '');
+      const fallbackNote = selectedTicket.revisionNotes || '';
+      setSelectedNextTeacherNote(nextActiveTicket?.revisionNotes || fallbackNote);
     } else {
       setSelectedNextTeacherNote('');
     }
-  }, [selectedTicket]);
+  }, [nextActiveTicket, selectedTicket]);
 
   const getStudentName = (studentId: string): string => {
     const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
@@ -540,13 +561,13 @@ const AssignmentsPage: React.FC = () => {
                         const teacher = teachers.find(t => t.id === selectedNextTeacher);
                         if (!teacher) return;
                         try {
-                          const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-                          await assignTicketToNext(
-                            ticketId,
-                            teacher.id,
-                            teacher.fullName,
-                            selectedNextTeacherNote.trim() || undefined
-                          );
+                        const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                        await assignTicketToNext(
+                          ticketId,
+                          teacher.id,
+                          teacher.fullName,
+                          selectedNextTeacherNote.trim() || undefined
+                        );
                           alert('✅ Next step assigned successfully!');
                           setSelectedTicket(null);
                           setSelectedNextTeacher('');
