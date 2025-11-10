@@ -36,8 +36,18 @@ import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 
 const SuperAdminDashboard: React.FC = () => {
-  const { students, teachers, admins, loading, error, adminNotifications, recitationReviews, refreshNotifications } = useData();
-  
+  const {
+    students,
+    teachers,
+    admins,
+    loading,
+    error,
+    adminNotifications,
+    recitationReviews,
+    refreshNotifications
+  } = useData();
+  const { tickets } = useBackendData();
+
   // Debug logging (commented out - uncomment for debugging)
   // console.log('🔍 SuperAdminDashboard - Data state:', { 
   //   students: students.length, 
@@ -83,311 +93,353 @@ const SuperAdminDashboard: React.FC = () => {
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
   const unreadNotificationsCount = adminNotifications.filter(n => !n.read).length;
 
-  const systemStats = {
-    totalUsers: students.length + teachers.length + admins.length,
-    totalStudents: students.length,
-    totalTeachers: teachers.length,
-    totalAdmins: admins.length,
-    activeCourses: 45,
-    totalRevenue: students.reduce((sum, s) => sum + s.tuitionFee, 0),
-    systemHealth: 98.5,
-    monthlyRevenue: students.reduce((sum, s) => sum + s.tuitionFee, 0),
-    annualRevenue: students.reduce((sum, s) => sum + s.tuitionFee, 0) * 12,
-    activeUsers: students.filter(s => s.status === 'active').length + teachers.filter(t => t.status === 'active').length,
-    systemUptime: 99.9,
-    dataBackup: 'Last backup: 2 hours ago',
-    securityStatus: 'All systems secure',
-    pendingApprovals: 3,
-    systemAlerts: 1
-  };
+  const totalStudents = students.length;
+  const activeStudentCount = students.filter((student) => student.status === 'active').length;
+  const totalTeachers = teachers.length;
+  const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
+  const totalAdmins = admins.length;
+  const pendingReviewTicketCount = tickets.filter((ticket) => ticket.status === 'pending_review').length;
+  const assignedTicketCount = tickets.filter((ticket) => ticket.status === 'assigned').length;
+  const finalizeReadyTicketCount = tickets.filter(
+    (ticket) => ticket.status === 'approved' && ticket.workflowStep === 'finalize'
+  ).length;
+  const totalTicketCount = tickets.length;
 
-  // Overview Section - refreshed layout
+  const overviewQuickActions = [
+    {
+      id: 'review-recitations',
+      label: 'Review Recitations',
+      description: 'Approve sabq, sabqi, and manzil submissions.',
+      onClick: () => setShowRecitationReview(true),
+      badge: pendingReviewsCount,
+      emphasis: 'primary',
+    },
+    {
+      id: 'manage-tickets',
+      label: 'Manage Tickets',
+      description: 'Handle listening queue and finalize reports.',
+      onClick: () => setShowTicketManagement(true),
+      badge: pendingReviewTicketCount + finalizeReadyTicketCount,
+      emphasis: 'neutral',
+    },
+    {
+      id: 'assign-ticket',
+      label: 'Assign Ticket',
+      description: 'Create a sabq / sabqi / manzil ticket for a student.',
+      onClick: () => setShowAssignTicket(true),
+      badge: assignedTicketCount,
+      emphasis: 'accent',
+    },
+    {
+      id: 'view-assignments',
+      label: 'View Assignments',
+      description: 'See finalized homework and student-facing reports.',
+      link: '/assignments',
+      badge: unreadNotificationsCount,
+      emphasis: 'accent-solid',
+    },
+  ];
+
+  const managementActions = [
+    {
+      id: 'manage-students',
+      badge: 'ST',
+      title: 'Manage Students',
+      description: 'Browse roster, open profiles, and update enrollment.',
+      action: () => setActiveSection('students'),
+      footer: `${totalStudents} students`,
+    },
+    {
+      id: 'add-student',
+      badge: '➕',
+      title: 'Add Student',
+      description: 'Register a new student and capture program details.',
+      action: () => {
+        setSelectedStudent(null);
+        setShowStudentForm(true);
+      },
+      footer: 'Create profile',
+    },
+    {
+      id: 'manage-teachers',
+      badge: 'TC',
+      title: 'Manage Teachers',
+      description: 'Assign classes, review metrics, and update profiles.',
+      action: () => setActiveSection('teachers'),
+      footer: `${totalTeachers} teachers`,
+    },
+    {
+      id: 'add-teacher',
+      badge: '➕',
+      title: 'Add Teacher',
+      description: 'Onboard a new teacher with availability and payroll.',
+      action: () => {
+        setSelectedTeacher(null);
+        setShowTeacherForm(true);
+      },
+      footer: 'Create profile',
+    },
+    {
+      id: 'add-admin',
+      badge: 'AD',
+      title: 'Add Admin',
+      description: 'Provision a new admin with the right permissions.',
+      action: () => setShowAdminForm(true),
+      footer: `${totalAdmins} admins`,
+    },
+    {
+      id: 'permissions',
+      badge: 'PM',
+      title: 'Permission Manager',
+      description: 'Adjust access across teacher, admin, and QA roles.',
+      action: () => setShowPermissionManager(true),
+      footer: 'Open manager',
+    },
+    {
+      id: 'data-manager',
+      badge: 'DB',
+      title: 'Data Manager',
+      description: 'Export records or trigger backups for compliance.',
+      action: () => setShowDataManager(true),
+      footer: 'Manage data',
+    },
+    {
+      id: 'refresh-notifications',
+      badge: '🔄',
+      title: 'Refresh Alerts',
+      description: 'Sync admin notifications and ticket updates.',
+      action: () => refreshNotifications(),
+      footer: 'Fetch latest',
+    },
+  ];
+
   const OverviewSection = () => (
     <div className="space-y-10">
-      <div className="rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-          <div className="space-y-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Super Admin Control Center</span>
-            <h1 className="text-3xl font-semibold text-primary">Full Visibility Across Umar Academy</h1>
+      <section className="rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-3">
+            <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
+              Super Admin Control Center
+            </span>
+            <h1 className="text-3xl font-semibold text-primary">Stay ahead of every workflow</h1>
             <p className="max-w-3xl text-sm text-primary-soft">
-              Monitor academy-wide metrics, handle escalations, and coordinate cross-team workflows from one mission control.
-              Use the core actions to review recitations, manage tickets, or assign follow-up work instantly.
+              Review listening submissions, create new tickets, and keep student progress moving without leaving this
+              page. Each card below opens a live workflow or modal.
             </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-soft-primary px-3 py-1 text-xs font-semibold text-primary">System Health {systemStats.systemHealth}%</span>
-              <span className="rounded-full bg-soft-accent px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">Uptime {systemStats.systemUptime}%</span>
-              <span className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-3 py-1 text-xs font-semibold text-primary">Pending Approvals {systemStats.pendingApprovals}</span>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-            <button
-              onClick={() => setShowRecitationReview(true)}
-              className="inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
-            >
-              Review Recitations
-              {pendingReviewsCount > 0 && (
-                <span className="ml-2 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-primary">
-                  {pendingReviewsCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setShowTicketManagement(true)}
-              className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
-            >
-              Manage Tickets
-            </button>
-            <button
-              onClick={() => setShowAssignTicket(true)}
-              className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-5 py-3 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
-            >
-              Assign Ticket
-            </button>
-            <Link
-              to="/assignments"
-              className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
-            >
-              View Assignments
-              {unreadNotificationsCount > 0 && (
-                <span className="ml-2 rounded-full bg-white/90 px-2 py-1 text-xs font-semibold text-[var(--color-accent)]">
-                  {unreadNotificationsCount}
-                </span>
-              )}
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Users" value={systemStats.totalUsers} icon="US" />
-        <StatCard title="Total Students" value={systemStats.totalStudents} icon="ST" />
-        <StatCard title="Total Teachers" value={systemStats.totalTeachers} icon="TC" />
-        <StatCard title="Total Revenue" value={`$${systemStats.totalRevenue.toLocaleString()}`} icon="REV" />
-      </div>
-
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-primary">Quick Actions</h3>
-          <div className="h-px flex-1 bg-[rgba(var(--color-accent-rgb),0.3)]"></div>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-4">
-          <button
-            onClick={() => setShowStudentForm(true)}
-            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
-          >
-            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
-              ST
-            </div>
-            <h4 className="text-base font-semibold text-primary">Register Student</h4>
-            <p className="mt-1 text-sm text-primary-soft">
-              Create a new student profile with enrollment and program details.
-            </p>
-          </button>
-
-          <button
-            onClick={() => setShowTeacherForm(true)}
-            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
-          >
-            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
-              TC
-            </div>
-            <h4 className="text-base font-semibold text-primary">Register Teacher</h4>
-            <p className="mt-1 text-sm text-primary-soft">
-              Capture payroll settings, availability, and permission levels.
-            </p>
-          </button>
-
-          <button
-            onClick={() => setShowAdminForm(true)}
-            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
-          >
-            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
-              AD
-            </div>
-            <h4 className="text-base font-semibold text-primary">Register Admin</h4>
-            <p className="mt-1 text-sm text-primary-soft">
-              Provision admin access and connect them to the correct workflows.
-            </p>
-          </button>
-
-          <button
-            onClick={() => setShowPermissionManager(true)}
-            className="rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
-          >
-            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
-              PM
-            </div>
-            <h4 className="text-base font-semibold text-primary">Manage Permissions</h4>
-            <p className="mt-1 text-sm text-primary-soft">
-              Adjust team access for sensitive features and system areas.
-            </p>
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card title="Financial Snapshot">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Monthly Revenue</span>
-              <span className="text-lg font-semibold text-primary">${systemStats.monthlyRevenue.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Annual Projection</span>
-              <span className="text-lg font-semibold text-primary">${systemStats.annualRevenue.toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Active Students</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.totalStudents}</span>
-            </div>
-            <button
-              onClick={() => setActiveSection('financials')}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
-            >
-              Open financial reporting
-            </button>
-          </div>
-        </Card>
-
-        <Card title="Security & Reliability">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Security Status</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.securityStatus}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Data Backup</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.dataBackup}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>System Uptime</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.systemUptime}%</span>
-            </div>
-            <button
-              onClick={() => setActiveSection('reports')}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
-            >
-              Run security audit
-            </button>
-          </div>
-        </Card>
-
-        <Card title="Usage & Alerts">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Total Users</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.totalUsers}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>Active Users</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.activeUsers}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm text-primary-soft">
-              <span>System Alerts</span>
-              <span className="text-lg font-semibold text-primary">{systemStats.systemAlerts}</span>
-            </div>
-            <button
-              onClick={() => setActiveSection('activities')}
-              className="mt-4 inline-flex w-full items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
-            >
-              View recent activity
-            </button>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Card title="System Controls">
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { label: 'System Restart', action: () => {}, description: 'Schedule a rolling restart with notifications.' },
-              { label: 'Backup Data', action: () => setShowDataManager(true), description: 'Trigger manual backup or download snapshots.' },
-              { label: 'Security Scan', action: () => setActiveSection('reports'), description: 'Run integrity checks across services.' },
-              { label: 'Generate Reports', action: () => setActiveSection('reports'), description: 'Export KPI reports for stakeholders.' },
-            ].map((control) => (
-              <button
-                key={control.label}
-                onClick={control.action}
-                className="rounded-2xl border border-accent-soft bg-white px-4 py-3 text-left text-sm transition hover:bg-soft-primary"
-              >
-                <p className="font-semibold text-primary">{control.label}</p>
-                <p className="mt-1 text-xs text-primary-soft">{control.description}</p>
-              </button>
-            ))}
-          </div>
-        </Card>
-
-        <Card title="System Alerts & Status">
-          <div className="space-y-3 text-sm text-primary-soft">
-            <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-accent px-4 py-3">
-              <span className="font-semibold text-[var(--color-accent)]">Pending approvals</span>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
-                {systemStats.pendingApprovals}
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-soft-primary px-3 py-1 text-primary">
+                {activeStudentCount} active students
+              </span>
+              <span className="rounded-full bg-soft-accent px-3 py-1 text-[var(--color-accent)]">
+                {pendingReviewTicketCount} tickets awaiting review
+              </span>
+              <span className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-3 py-1 text-primary">
+                {pendingReviewsCount} recitation reviews
               </span>
             </div>
-            <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-primary px-4 py-3">
-              <span className="font-semibold text-primary">System status</span>
-              <span className="text-sm font-semibold text-primary">All services operational</span>
-            </div>
-            <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-white px-4 py-3">
-              <span className="font-semibold text-primary">Latest backup</span>
-              <span className="text-sm font-semibold text-primary">{systemStats.dataBackup}</span>
-            </div>
           </div>
-        </Card>
-      </div>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {overviewQuickActions.map((action) => {
+            const commonClasses =
+              'flex h-full flex-col justify-between rounded-2xl border px-5 py-4 text-left shadow-sm transition';
+            const activeButtonClasses = {
+              primary: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.35)] bg-white hover:bg-soft-primary`,
+              neutral: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.15)] bg-white hover:bg-gray-50`,
+              accent: `${commonClasses} border-[rgba(var(--color-accent-rgb),0.35)] bg-white hover:bg-soft-accent`,
+              'accent-solid': `${commonClasses} border-transparent bg-[var(--color-accent)] text-white hover:bg-[rgba(var(--color-accent-rgb),0.85)]`,
+            };
+
+            const badge =
+              action.badge && action.badge > 0 ? (
+                <span className="ml-auto rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+                  {action.badge}
+                </span>
+              ) : null;
+
+            if (action.link) {
+              return (
+                <Link key={action.id} to={action.link} className={activeButtonClasses[action.emphasis || 'neutral']}>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-base font-semibold">
+                        {action.label}
+                        {badge}
+                      </p>
+                    </div>
+                    <p className="mt-2 text-sm text-primary-soft">{action.description}</p>
+                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-white/80">
+                    Go to assignments →
+                  </span>
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={action.id}
+                onClick={action.onClick}
+                className={activeButtonClasses[action.emphasis || 'neutral']}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-semibold text-primary">
+                      {action.label}
+                      {badge}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm text-primary-soft">{action.description}</p>
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
+                  Open workflow
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Students"
+          value={`${totalStudents} • ${activeStudentCount} active`}
+          icon="ST"
+        />
+        <StatCard
+          title="Teachers"
+          value={`${totalTeachers} • ${activeTeacherCount} active`}
+          icon="TC"
+        />
+        <StatCard
+          title="Tickets In Review"
+          value={`${pendingReviewTicketCount} pending • ${assignedTicketCount} assigned`}
+          icon="TK"
+        />
+        <StatCard
+          title="Finalize Queue"
+          value={`${finalizeReadyTicketCount} waiting`}
+          icon="FZ"
+        />
+      </section>
+
+      <section className="space-y-6">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-primary">Manage Records & Settings</h3>
+          <div className="h-px flex-1 bg-[rgba(var(--color-accent-rgb),0.3)]" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {managementActions.map((item) => (
+            <button
+              key={item.id}
+              onClick={item.action}
+              className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
+            >
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+                {item.badge}
+              </div>
+              <div className="flex-1">
+                <h4 className="text-base font-semibold text-primary">{item.title}</h4>
+                <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+              </div>
+              <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">{item.footer}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-primary">Ticket Insights</h3>
+            <p className="text-sm text-primary-soft">
+              There are {totalTicketCount} tickets in the system. {pendingReviewTicketCount} are pending review and{' '}
+              {finalizeReadyTicketCount} are ready to finalize.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowTicketManagement(true)}
+            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+          >
+            Open ticket management
+          </button>
+        </div>
+      </section>
     </div>
   );
 
   // System Management Section
   const SystemSection = () => (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">🔧 System Management</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <button 
+    <div className="space-y-8">
+      <h2 className="text-2xl font-bold text-gray-900">🔧 System Tools</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <button
           onClick={() => setShowPermissionManager(true)}
-          className="p-6 bg-red-600 text-white rounded-lg hover:bg-red-700 transition shadow-lg text-center"
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-primary"
         >
-          <div className="text-sm font-medium">Manage Permissions</div>
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+            PM
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-primary">Permission Manager</h3>
+            <p className="mt-1 text-sm text-primary-soft">
+              Adjust role access for teachers, admins, and QA reviewers.
+            </p>
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Open manager</span>
         </button>
-        <button 
+
+        <button
           onClick={() => setShowDataManager(true)}
-          className="p-6 text-white rounded-lg transition shadow-lg text-center"
-          style={{ backgroundColor: '#2E4D32' }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#253d28'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
         >
-          <div className="text-sm font-medium">Data Management</div>
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+            DB
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-primary">Data Manager</h3>
+            <p className="mt-1 text-sm text-primary-soft">
+              Export student or ticket data and trigger manual backups.
+            </p>
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Launch data tools</span>
         </button>
-        <button className="p-6 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition text-center">
-          <div className="text-sm font-medium">Financial Reports</div>
-        </button>
-        <button className="p-6 bg-primary-800 text-white rounded-lg hover:bg-primary-900 transition text-center">
-          <div className="text-sm font-medium">System Settings</div>
+
+        <button
+          onClick={() => refreshNotifications()}
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-gray-50"
+        >
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+            🔄
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-semibold text-primary">Refresh Notifications</h3>
+            <p className="mt-1 text-sm text-primary-soft">
+              Pull the latest admin notifications and ticket alerts.
+            </p>
+          </div>
+          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Sync now</span>
         </button>
       </div>
 
-      {/* System Alerts */}
-      <div className="mt-6">
-        <Card title="🚨 System Alerts">
-          <div className="space-y-3">
-            <div className="p-4 rounded-lg border-l-4 border-gold-500 bg-gold-50">
-              <div className="flex justify-between items-start mb-1">
-                <h4 className="font-semibold text-gray-900">Server CPU Usage High</h4>
-                <span className="text-xs text-gray-500">30 mins ago</span>
-              </div>
-              <p className="text-sm text-gray-700">CPU usage at 78%</p>
-            </div>
-            <div className="p-4 rounded-lg border-l-4 border-primary-500 bg-primary-50">
-              <div className="flex justify-between items-start mb-1">
-                <h4 className="font-semibold text-gray-900">Backup Successful</h4>
-                <span className="text-xs text-gray-500">10 mins ago</span>
-              </div>
-              <p className="text-sm text-gray-700">Daily backup completed</p>
-            </div>
+      <Card title="Live Signals">
+        <div className="space-y-3 text-sm text-primary-soft">
+          <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-accent px-4 py-3">
+            <span className="font-semibold text-[var(--color-accent)]">Unread admin notifications</span>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
+              {unreadNotificationsCount}
+            </span>
           </div>
-        </Card>
-      </div>
+          <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-primary px-4 py-3">
+            <span className="font-semibold text-primary">Pending recitation reviews</span>
+            <span className="text-sm font-semibold text-primary">{pendingReviewsCount}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-white px-4 py-3">
+            <span className="font-semibold text-primary">Tickets ready to finalize</span>
+            <span className="text-sm font-semibold text-primary">{finalizeReadyTicketCount}</span>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 
