@@ -6,7 +6,6 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { AssignmentTicket } from '../types';
 import ModernAssignmentForm from '../components/ModernAssignmentForm';
-import AssignmentSectionBuilder from '../components/assignment/AssignmentSectionBuilder';
 
 const AssignmentsPage: React.FC = () => {
   const {
@@ -34,7 +33,6 @@ const AssignmentsPage: React.FC = () => {
     homework: '',
     homeworkLink: ''
   });
-  const [finalizeSections, setFinalizeSections] = useState<ClassworkSection[]>([]);
   const [finalReportTouched, setFinalReportTouched] = useState(false);
   const [homeworkTouched, setHomeworkTouched] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -50,11 +48,57 @@ const AssignmentsPage: React.FC = () => {
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
+  const [showFinalizeMushaf, setShowFinalizeMushaf] = useState(false);
+  const [finalizeMushafPage, setFinalizeMushafPage] = useState(1);
 
   // Check if user can create assignments
   const canCreateAssignments = user?.role === 'superadmin' || 
     user?.role === 'admin' ||
     user?.role === 'teacher';
+
+  const getTicketId = (ticket?: AssignmentTicket | null) =>
+    ticket ? (ticket.id || (ticket as any)._id || '') : '';
+
+  const selectedTicketChain = useMemo(() => {
+    if (!selectedTicket) return [] as AssignmentTicket[];
+    const chain: AssignmentTicket[] = [];
+    let current: AssignmentTicket | null = selectedTicket;
+    let guard = 0;
+    while (current && guard < 10) {
+      chain.unshift(current);
+      const prevId = current.previousTicketId;
+      if (!prevId) break;
+      current = tickets.find((t) => (t.id || (t as any)._id) === prevId) || null;
+      guard += 1;
+    }
+    return chain;
+  }, [selectedTicket, tickets]);
+
+  const sabqTicket = useMemo(
+    () => selectedTicketChain.find((t) => t.workflowStep === 'sabq'),
+    [selectedTicketChain]
+  );
+
+  const sabqiTicket = useMemo(
+    () => selectedTicketChain.find((t) => t.workflowStep === 'sabqi'),
+    [selectedTicketChain]
+  );
+
+  const manzilTicket = useMemo(
+    () => selectedTicketChain.find((t) => t.workflowStep === 'manzil'),
+    [selectedTicketChain]
+  );
+
+  const finalizeMistakeCounts = useMemo(() => {
+    if (!selectedTicket || selectedTicket.workflowStep !== 'finalize') {
+      return {} as Record<string, number>;
+    }
+    return (selectedTicket.mushafMarkings || []).reduce<Record<string, number>>((acc, mistake) => {
+      const key = mistake.type || 'other';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  }, [selectedTicket]);
 
   // Mock programs - in real app, this would come from API
   useEffect(() => {
@@ -65,47 +109,6 @@ const AssignmentsPage: React.FC = () => {
     ];
     setPrograms(mockPrograms);
   }, []);
-
-  useEffect(() => {
-    if (selectedTicket?.workflowStep === 'finalize') {
-      const ticketSections = (selectedTicket as any).classworkSections as ClassworkSection[] | undefined;
-
-      if (ticketSections && ticketSections.length > 0) {
-        setFinalizeSections(ticketSections);
-      } else if (selectedTicket.assignmentRange) {
-        setFinalizeSections([
-          {
-            step: (selectedTicket.workflowStep as 'sabq' | 'sabqi' | 'manzil') || 'sabq',
-            title: 'Ticket range',
-            label: 'Ticket range',
-            assignmentRange: selectedTicket.assignmentRange,
-            assignmentPortion: selectedTicket.assignmentPortion,
-            order: 0,
-            summary: selectedTicket.assignmentRange,
-          },
-        ]);
-      } else {
-        setFinalizeSections([]);
-      }
-
-      setFinalizeData({
-        finalReport: selectedTicket.finalReport || '',
-        homework: selectedTicket.homework || '',
-        homeworkLink: selectedTicket.homeworkLink || '',
-      });
-      setFinalReportTouched(Boolean(selectedTicket.finalReport));
-      setHomeworkTouched(Boolean(selectedTicket.homework));
-    } else {
-      setFinalizeSections([]);
-      setFinalizeData({
-        finalReport: '',
-        homework: '',
-        homeworkLink: '',
-      });
-      setFinalReportTouched(false);
-      setHomeworkTouched(false);
-    }
-  }, [selectedTicket]);
 
   const getStudentName = (studentId: string): string => {
     const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
@@ -258,71 +261,29 @@ const AssignmentsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (!selectedTicket || selectedTicket.workflowStep !== 'finalize') return;
+    if (!selectedTicket || selectedTicket.workflowStep !== 'finalize') {
+      setShowFinalizeMushaf(false);
+      setFinalizeMushafPage(1);
+      return;
+    }
 
-    const sectionSummaries = finalizeSections.map((section, index) => {
-      const title =
-        section.label ||
-        section.title ||
-        `${section.step.charAt(0).toUpperCase() + section.step.slice(1)} ${finalizeSections.length > 1 ? index + 1 : ''}`;
-      const range = section.summary || section.assignmentRange || '';
-      const notes = section.details ? ` — ${section.details}` : '';
-      return `• ${title}${range ? `: ${range}` : ''}${notes}`;
+    const sabqSummary = sabqTicket?.progressNotes?.trim() || '';
+    const defaultHomework = manzilTicket?.progressNotes?.trim()
+      ? `Review: ${manzilTicket.progressNotes.trim()}`
+      : '';
+
+    setFinalizeData({
+      finalReport: sabqSummary,
+      homework: defaultHomework,
+      homeworkLink: '',
     });
+    setFinalReportTouched(Boolean(sabqSummary));
+    setHomeworkTouched(Boolean(defaultHomework));
 
-    const mistakes = selectedTicket.mushafMarkings || [];
-    const mistakeCounts = mistakes.reduce<Record<string, number>>((acc, mistake) => {
-      const key = mistake.type || 'other';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    const mistakeLines = Object.entries(mistakeCounts).map(
-      ([type, count]) => `• ${getMistakeTypeLabel(type)} — ${count} time${count === 1 ? '' : 's'}`
-    );
-
-    const autoReport = [
-      `Classwork Summary (${new Date().toLocaleDateString()}):`,
-      sectionSummaries.length > 0 ? sectionSummaries.join('\n') : '• Portions recorded via ticket workflow.',
-      '',
-      mistakes.length > 0
-        ? `Recorded Mistakes (${mistakes.length}):`
-        : 'No mistakes recorded during this session.',
-      mistakeLines.join('\n'),
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    const lastSection = finalizeSections[finalizeSections.length - 1];
-    const mistakeLabels = mistakeLines.map((line) =>
-      line.replace(/^•\s*/, '').replace(/\s—.*$/, '').toLowerCase()
-    );
-    const homeworkLines = [
-      lastSection?.summary || lastSection?.assignmentRange
-        ? `Review ${lastSection.summary || lastSection.assignmentRange} with clean recitation.`
-        : null,
-      mistakeLabels.length > 0
-        ? `Focus on correcting: ${mistakeLabels.join(', ')}.`
-        : null,
-      'Prepare the next portion with steady pacing and tajweed focus.',
-    ].filter(Boolean);
-
-    const autoHomework = homeworkLines.join('\n');
-
-    if (!finalReportTouched) {
-      setFinalizeData((prev) => ({
-        ...prev,
-        finalReport: autoReport,
-      }));
-    }
-
-    if (!homeworkTouched) {
-      setFinalizeData((prev) => ({
-        ...prev,
-        homework: autoHomework,
-      }));
-    }
-  }, [finalizeSections, selectedTicket, finalReportTouched, homeworkTouched]);
+    const firstMistakePage = selectedTicket.mushafMarkings?.[0]?.page;
+    setFinalizeMushafPage(firstMistakePage && !Number.isNaN(firstMistakePage) ? firstMistakePage : 1);
+    setShowFinalizeMushaf(Boolean(selectedTicket.mushafMarkings?.length));
+  }, [manzilTicket, sabqTicket, selectedTicket]);
 
   // Get workflow step label
   const getWorkflowStepLabel = (assignment: Assignment): string => {
@@ -492,30 +453,30 @@ const AssignmentsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="text-sm font-semibold text-purple-700">Classwork portions</p>
-                        <p className="text-xs text-purple-600">
-                          Type <span className="font-semibold">sabqi</span>, <span className="font-semibold">manzil</span>, or <span className="font-semibold">juz</span> to build the plan. Students will receive this summary instantly.
+                  <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
+                    <h4 className="text-sm font-semibold text-purple-800 mb-3">
+                      Recent listening reports
+                    </h4>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
+                        <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Sabqi</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {sabqiTicket?.progressNotes?.trim() || 'No sabqi notes recorded.'}
                         </p>
                       </div>
-                      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
-                        Mobile friendly
-                      </span>
-                    </div>
-                    <div className="mt-4">
-                      <AssignmentSectionBuilder
-                        value={finalizeSections}
-                        onChange={(sections) => setFinalizeSections(sections)}
-                      />
+                      <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
+                        <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Manzil</p>
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {manzilTicket?.progressNotes?.trim() || 'No manzil notes recorded.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-5 md:grid-cols-2">
-                    <div className="md:col-span-2">
+                  <div className="space-y-5">
+                    <div>
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
-                        Final report <span className="text-red-500">*</span>
+                        Sabq summary <span className="text-red-500">*</span>
                       </label>
                       <textarea
                         value={finalizeData.finalReport}
@@ -525,10 +486,10 @@ const AssignmentsPage: React.FC = () => {
                         }}
                         rows={5}
                         className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                        placeholder="Auto-generated summary…"
+                        placeholder="Summarize today’s sabq..."
                       />
                     </div>
-                    <div className="md:col-span-2">
+                    <div>
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         Homework for next day <span className="text-red-500">*</span>
                       </label>
@@ -540,73 +501,60 @@ const AssignmentsPage: React.FC = () => {
                         }}
                         rows={4}
                         className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                        placeholder="Auto-generated homework…"
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-2 block text-sm font-semibold text-gray-700">
-                        Optional homework link
-                      </label>
-                      <input
-                        type="url"
-                        value={finalizeData.homeworkLink}
-                        onChange={(event) =>
-                          setFinalizeData((prev) => ({ ...prev, homeworkLink: event.target.value }))
-                        }
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                        placeholder="https://resource-link.com"
+                        placeholder="Homework instructions for the student..."
                       />
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                    <h4 className="mb-2 text-sm font-semibold text-gray-800">
-                      Student preview
-                    </h4>
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-800">Interactive Mushaf</h4>
+                        <p className="text-xs text-gray-500">Share what was marked during the session.</p>
+                      </div>
+                      <button
+                        onClick={() => setShowFinalizeMushaf((prev) => !prev)}
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                      >
+                        {showFinalizeMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
+                      </button>
+                    </div>
+                    {showFinalizeMushaf && (
+                      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
+                        <InteractiveMushaf
+                          currentPage={finalizeMushafPage}
+                          onPageChange={setFinalizeMushafPage}
+                          mistakes={selectedTicket.mushafMarkings || []}
+                          historicalMistakes={[]}
+                          onMistakeMark={() => {}}
+                          mode="review"
+                          studentName={getStudentName(selectedTicket.studentId)}
+                          showHistorical={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm">
+                    <h4 className="mb-3 text-sm font-semibold text-gray-800">Student preview</h4>
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Classwork</p>
-                        <ul className="mt-1 list-disc space-y-1 pl-5">
-                          {finalizeSections.length === 0 ? (
-                            <li className="text-gray-500">No portions added yet</li>
-                          ) : (
-                            finalizeSections.map((section, idx) => (
-                              <li key={`${section.step}-${idx}`} className="text-gray-700">
-                                {section.summary || section.assignmentRange || section.label}
-                              </li>
-                            ))
-                          )}
-                        </ul>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Sabq summary</p>
+                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-700">
+                          {finalizeData.finalReport || 'Add a sabq summary above.'}
+                        </pre>
                       </div>
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">
-                          Mistakes from classwork
-                        </p>
-                        <ul className="mt-1 list-disc space-y-1 pl-5">
-                          {(selectedTicket.mushafMarkings || []).length === 0 ? (
-                            <li className="text-gray-500">No mistakes recorded</li>
-                          ) : (
-                            Object.entries(
-                              (selectedTicket.mushafMarkings || []).reduce<Record<string, number>>(
-                                (acc, mistake) => {
-                                  const key = mistake.type || 'other';
-                                  acc[key] = (acc[key] || 0) + 1;
-                                  return acc;
-                                },
-                                {}
-                              )
-                            ).map(([type, count]) => (
-                              <li key={type} className="text-gray-700">
-                                {getMistakeTypeLabel(type)} — {count}
-                              </li>
-                            ))
-                          )}
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Previous reports</p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5 text-gray-700">
+                          <li><span className="font-semibold">Sabqi:</span> {sabqiTicket?.progressNotes?.trim() || 'No report.'}</li>
+                          <li><span className="font-semibold">Manzil:</span> {manzilTicket?.progressNotes?.trim() || 'No report.'}</li>
                         </ul>
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
-                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-white px-3 py-2 text-gray-700 shadow-inner">
-                          {finalizeData.homework || 'Auto-generated homework will appear here.'}
+                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-700">
+                          {finalizeData.homework || 'Add homework instructions above.'}
                         </pre>
                       </div>
                     </div>
@@ -620,34 +568,75 @@ const AssignmentsPage: React.FC = () => {
                           return;
                         }
 
-                        if (finalizeSections.length === 0) {
-                          alert('Please add at least one classwork portion before finalizing.');
-                          return;
-                        }
-
                         try {
                           const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-                          const classworkSummary = finalizeSections
-                            .map((section) => section.summary || section.assignmentRange)
+                          const classworkSectionsPayload: ClassworkSection[] = [
+                            {
+                              step: 'sabq',
+                              title: 'Sabq Summary',
+                              label: 'Sabq Summary',
+                              summary: finalizeData.finalReport.trim(),
+                              assignmentRange: finalizeData.finalReport.trim(),
+                              order: 0,
+                            },
+                            ...(sabqiTicket?.progressNotes?.trim()
+                              ? [
+                                  {
+                                    step: 'sabqi',
+                                    title: 'Sabqi Notes',
+                                    label: 'Sabqi Notes',
+                                    summary: sabqiTicket.progressNotes.trim(),
+                                    assignmentRange: sabqiTicket.progressNotes.trim(),
+                                    order: 1,
+                                  } as ClassworkSection,
+                                ]
+                              : []),
+                            ...(manzilTicket?.progressNotes?.trim()
+                              ? [
+                                  {
+                                    step: 'manzil',
+                                    title: 'Manzil Notes',
+                                    label: 'Manzil Notes',
+                                    summary: manzilTicket.progressNotes.trim(),
+                                    assignmentRange: manzilTicket.progressNotes.trim(),
+                                    order: 2,
+                                  } as ClassworkSection,
+                                ]
+                              : []),
+                          ];
+
+                          const previousReportsText = [
+                            sabqiTicket?.progressNotes?.trim()
+                              ? `Sabqi Notes:\n${sabqiTicket.progressNotes.trim()}`
+                              : null,
+                            manzilTicket?.progressNotes?.trim()
+                              ? `Manzil Notes:\n${manzilTicket.progressNotes.trim()}`
+                              : null,
+                          ]
                             .filter(Boolean)
-                            .join('\n');
+                            .join('\n\n');
 
                           await finalizeTicket(ticketId, {
-                            finalReport: finalizeData.finalReport,
+                            finalReport: [
+                              finalizeData.finalReport.trim(),
+                              previousReportsText,
+                            ]
+                              .filter(Boolean)
+                              .join('\n\n'),
                             homework: finalizeData.homework,
-                            homeworkLink: finalizeData.homeworkLink,
+                            homeworkLink: '',
                             reviewedBy: user?.id || '',
-                            classworkSections: finalizeSections,
-                            classworkSummary,
+                            classworkSections: classworkSectionsPayload,
+                            classworkSummary: finalizeData.finalReport.trim(),
                             homeworkSummary: finalizeData.homework,
-                            classworkType: finalizeSections[0]?.step,
+                            classworkType: 'sabq',
                           } as any);
                           alert('✅ Ticket finalized! Assignment created.');
                           setSelectedTicket(null);
-                          setFinalizeSections([]);
                           setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
                           setFinalReportTouched(false);
                           setHomeworkTouched(false);
+                          setShowFinalizeMushaf(false);
                           await refreshData();
                         } catch (error) {
                           alert('Failed to finalize ticket');
@@ -660,10 +649,10 @@ const AssignmentsPage: React.FC = () => {
                     <button
                       onClick={() => {
                         setSelectedTicket(null);
-                        setFinalizeSections([]);
                         setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
                         setFinalReportTouched(false);
                         setHomeworkTouched(false);
+                        setShowFinalizeMushaf(false);
                       }}
                       className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
                     >
