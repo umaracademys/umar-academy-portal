@@ -323,6 +323,23 @@ const AssignmentsPage: React.FC = () => {
     return 'Recitation';
   };
 
+  const formatAssignmentPortion = (portion?: string) => {
+    if (!portion) return '';
+    const normalized = portion.toLowerCase();
+    switch (normalized) {
+      case 'quarter':
+        return '¼ Juz';
+      case 'half':
+        return '½ Juz';
+      case 'three_quarters':
+        return '¾ Juz';
+      case 'full':
+        return 'Full Juz';
+      default:
+        return portion;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -431,6 +448,47 @@ const AssignmentsPage: React.FC = () => {
               <div className="mb-4">
                 <p className="font-semibold">Student: {getStudentName(selectedTicket.studentId)}</p>
                 <p className="text-sm text-gray-600">Step: {selectedTicket.workflowStep}</p>
+                <div className="mt-3 space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Last listener
+                    </span>
+                    <p className="mt-1 text-gray-800">{selectedTicket.assignedTeacherName || '—'}</p>
+                  </div>
+                  {(selectedTicket.assignmentRange || selectedTicket.assignmentPortion) && (
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Portion covered
+                      </span>
+                      <p className="mt-1 text-gray-800">
+                        {selectedTicket.assignmentRange || '—'}
+                        {selectedTicket.assignmentPortion
+                          ? ` • ${formatAssignmentPortion(selectedTicket.assignmentPortion as string)}`
+                          : ''}
+                      </p>
+                    </div>
+                  )}
+                  {selectedTicket.progressNotes && (
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Teacher notes
+                      </span>
+                      <p className="mt-1 whitespace-pre-wrap rounded-md bg-white px-3 py-2 text-gray-800 shadow-sm">
+                        {selectedTicket.progressNotes}
+                      </p>
+                    </div>
+                  )}
+                  {selectedTicket.revisionNotes && (
+                    <div>
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Internal notes
+                      </span>
+                      <p className="mt-1 whitespace-pre-wrap rounded-md bg-white px-3 py-2 text-gray-800 shadow-sm">
+                        {selectedTicket.revisionNotes}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {selectedTicket.workflowStep !== 'finalize' ? (
