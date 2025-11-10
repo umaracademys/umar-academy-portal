@@ -778,6 +778,16 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                           {selectedTicket.progressNotes?.trim() || 'No notes recorded yet.'}
                         </p>
                       </div>
+                      {selectedTicket.revisionNotes && (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
+                            Admin focus note
+                          </h4>
+                          <p className="whitespace-pre-wrap text-sm text-amber-900">
+                            {selectedTicket.revisionNotes}
+                          </p>
+                        </div>
+                      )}
                     </section>
 
                     <section className="rounded-xl border border-gray-200 bg-white p-5">

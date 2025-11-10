@@ -28,6 +28,7 @@ const AssignmentsPage: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
+  const [selectedNextTeacherNote, setSelectedNextTeacherNote] = useState('');
   const [finalizeData, setFinalizeData] = useState({
     finalReport: '',
     homework: '',
@@ -139,6 +140,14 @@ const AssignmentsPage: React.FC = () => {
     ];
     setPrograms(mockPrograms);
   }, []);
+
+  useEffect(() => {
+    if (selectedTicket && selectedTicket.workflowStep !== 'finalize') {
+      setSelectedNextTeacherNote(selectedTicket.revisionNotes || '');
+    } else {
+      setSelectedNextTeacherNote('');
+    }
+  }, [selectedTicket]);
 
   const getStudentName = (studentId: string): string => {
     const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
@@ -437,6 +446,7 @@ const AssignmentsPage: React.FC = () => {
                   onClick={() => {
                     setSelectedTicket(null);
                     setSelectedNextTeacher('');
+                    setSelectedNextTeacherNote('');
                     setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
                   }}
                   className="text-gray-500 hover:text-gray-700"
@@ -493,6 +503,18 @@ const AssignmentsPage: React.FC = () => {
 
               {selectedTicket.workflowStep !== 'finalize' ? (
                 <div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Internal note for next teacher
+                    </label>
+                    <textarea
+                      value={selectedNextTeacherNote}
+                      onChange={(event) => setSelectedNextTeacherNote(event.target.value)}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Highlight focus areas, mistakes to watch for, or pacing guidance…"
+                    />
+                  </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Teacher for Next Step
                   </label>
@@ -519,10 +541,16 @@ const AssignmentsPage: React.FC = () => {
                         if (!teacher) return;
                         try {
                           const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-                          await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
+                          await assignTicketToNext(
+                            ticketId,
+                            teacher.id,
+                            teacher.fullName,
+                            selectedNextTeacherNote.trim() || undefined
+                          );
                           alert('✅ Next step assigned successfully!');
                           setSelectedTicket(null);
                           setSelectedNextTeacher('');
+                          setSelectedNextTeacherNote('');
                           await refreshData();
                         } catch (error) {
                           alert('Failed to assign ticket');

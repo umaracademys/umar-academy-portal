@@ -1229,7 +1229,9 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
     const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
     const nextStep = workflowFlow[currentTicket.workflowStep];
     
-    if (!req.body.assignedTeacherId || !req.body.assignedTeacherName) {
+    const { assignedTeacherId, assignedTeacherName, internalNote } = req.body || {};
+
+    if (!assignedTeacherId || !assignedTeacherName) {
       return res.status(400).json({ error: 'Teacher ID and name are required' });
     }
     
@@ -2029,11 +2031,12 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
         studentId: currentTicket.studentId,
         studentName: currentTicket.studentName,
         workflowStep: nextStep,
-        assignedTeacherId: req.body.assignedTeacherId,
-        assignedTeacherName: req.body.assignedTeacherName,
+        assignedTeacherId,
+        assignedTeacherName,
         status: 'assigned',
         previousTicketId: currentTicket._id.toString(),
-        program: currentTicket.program
+        program: currentTicket.program,
+        revisionNotes: internalNote ? internalNote.trim() : undefined
       });
       await nextTicket.save();
       
@@ -2042,9 +2045,12 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
       await currentTicket.save();
     } else {
       // Assign teacher to existing next ticket
-      nextTicket.assignedTeacherId = req.body.assignedTeacherId;
-      nextTicket.assignedTeacherName = req.body.assignedTeacherName;
+      nextTicket.assignedTeacherId = assignedTeacherId;
+      nextTicket.assignedTeacherName = assignedTeacherName;
       nextTicket.status = 'assigned';
+      if (typeof internalNote === 'string') {
+        nextTicket.revisionNotes = internalNote.trim();
+      }
       await nextTicket.save();
     }
     

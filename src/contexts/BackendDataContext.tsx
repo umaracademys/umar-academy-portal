@@ -63,9 +63,19 @@ interface BackendDataContextType {
   tickets: AssignmentTicket[];
   addTicket: (ticket: AssignmentTicket) => Promise<void>;
   updateTicket: (id: string, ticket: Partial<AssignmentTicket>) => Promise<void>;
-  assignTicketToNextTeacher: (ticketId: string, teacherId: string, teacherName: string) => Promise<AssignmentTicket>;
+  assignTicketToNextTeacher: (
+    ticketId: string,
+    teacherId: string,
+    teacherName: string,
+    internalNote?: string
+  ) => Promise<AssignmentTicket>;
   approveTicket: (ticketId: string, reviewedBy: string) => Promise<any>;
-  assignTicketToNext: (ticketId: string, teacherId: string, teacherName: string) => Promise<any>;
+  assignTicketToNext: (
+    ticketId: string,
+    teacherId: string,
+    teacherName: string,
+    internalNote?: string
+  ) => Promise<any>;
   approveAndAdvanceTicket: (ticketId: string, reviewedBy: string, nextTeacherId?: string, nextTeacherName?: string) => Promise<any>;
   finalizeTicket: (
     ticketId: string,
@@ -1221,12 +1231,21 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const assignTicketToNextTeacher = async (ticketId: string, teacherId: string, teacherName: string) => {
+  const assignTicketToNextTeacher = async (
+    ticketId: string,
+    teacherId: string,
+    teacherName: string,
+    internalNote?: string
+  ) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/assign-next`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignedTeacherId: teacherId, assignedTeacherName: teacherName })
+        body: JSON.stringify({
+          assignedTeacherId: teacherId,
+          assignedTeacherName: teacherName,
+          internalNote,
+        }),
       });
       
       if (!response.ok) {
@@ -1271,14 +1290,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const assignTicketToNext = async (ticketId: string, teacherId: string, teacherName: string) => {
+  const assignTicketToNext = async (
+    ticketId: string,
+    teacherId: string,
+    teacherName: string,
+    internalNote?: string
+  ) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/assign-next`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           assignedTeacherId: teacherId,
-          assignedTeacherName: teacherName
+          assignedTeacherName: teacherName,
+          internalNote,
         })
       });
       

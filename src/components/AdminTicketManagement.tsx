@@ -46,6 +46,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     homeworkLink: ''
   });
   const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
+  const [selectedNextTeacherNote, setSelectedNextTeacherNote] = useState('');
   const [revisionNotes, setRevisionNotes] = useState('');
   const [showRevisionForm, setShowRevisionForm] = useState(false);
   const [showMushaf, setShowMushaf] = useState(false);
@@ -71,6 +72,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const [quickAssignFinalReport, setQuickAssignFinalReport] = useState('');
   const [quickAssignHomework, setQuickAssignHomework] = useState('');
   const [quickAssignHomeworkLink, setQuickAssignHomeworkLink] = useState('');
+  const [quickAssignTeacherNote, setQuickAssignTeacherNote] = useState('');
   const [quickAssignLoading, setQuickAssignLoading] = useState({ approve: false, assign: false, finalize: false });
   const [quickAssignError, setQuickAssignError] = useState<string | null>(null);
 
@@ -282,6 +284,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     setQuickAssignFinalReport(ticket.progressNotes || '');
     setQuickAssignHomework('');
     setQuickAssignHomeworkLink('');
+    setQuickAssignTeacherNote(ticket.revisionNotes || '');
     setQuickAssignError(null);
     setQuickAssignLoading({ approve: false, assign: false, finalize: false });
   }, []);
@@ -292,6 +295,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     setQuickAssignFinalReport('');
     setQuickAssignHomework('');
     setQuickAssignHomeworkLink('');
+    setQuickAssignTeacherNote('');
     setQuickAssignError(null);
     setQuickAssignLoading({ approve: false, assign: false, finalize: false });
   }, []);
@@ -312,7 +316,26 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         setQuickAssignTeacherId(defaultTeacherId);
       }
     }
-  }, [quickAssignContext, quickAssignTicket, quickAssignTeacherId, quickAssignFinalReport]);
+    if (nextTicket?.workflowStep === 'finalize') {
+      if (!quickAssignFinalReport.trim()) {
+        const fallbackReport = baseTicket.progressNotes || quickAssignTicket.progressNotes || '';
+        setQuickAssignFinalReport(fallbackReport);
+      }
+      if (!quickAssignTeacherNote.trim() && baseTicket.revisionNotes) {
+        setQuickAssignTeacherNote(baseTicket.revisionNotes);
+      }
+    } else if (nextTicket) {
+      const defaultTeacherId = nextTicket.assignedTeacherId || baseTicket.assignedTeacherId || '';
+      if (!quickAssignTeacherId && defaultTeacherId) {
+        setQuickAssignTeacherId(defaultTeacherId);
+      }
+      if (!quickAssignTeacherNote.trim()) {
+        setQuickAssignTeacherNote(nextTicket.revisionNotes || baseTicket.revisionNotes || '');
+      }
+    } else if (!quickAssignTeacherNote.trim()) {
+      setQuickAssignTeacherNote(baseTicket.revisionNotes || '');
+    }
+  }, [quickAssignContext, quickAssignFinalReport, quickAssignTeacherId, quickAssignTeacherNote, quickAssignTicket]);
 
   const handleQuickApprove = useCallback(async () => {
     if (!quickAssignTicket) return;
@@ -352,7 +375,12 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     try {
       setQuickAssignLoading((prev) => ({ ...prev, assign: true }));
       const baseTicketId = getTicketId(quickAssignContext.baseTicket);
-      await assignTicketToNext(baseTicketId, teacher.id, teacher.fullName);
+      await assignTicketToNext(
+        baseTicketId,
+        teacher.id,
+        teacher.fullName,
+        quickAssignTeacherNote.trim() || undefined
+      );
       alert(`Assigned ${quickAssignContext.nextTicket.workflowStep} to ${teacher.fullName}`);
       setQuickAssignError(null);
       closeQuickAssign();
@@ -363,7 +391,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     } finally {
       setQuickAssignLoading((prev) => ({ ...prev, assign: false }));
     }
-  }, [assignTicketToNext, closeQuickAssign, quickAssignContext, quickAssignTeacherId, refreshData, teachers]);
+  }, [assignTicketToNext, closeQuickAssign, quickAssignContext, quickAssignTeacherId, quickAssignTeacherNote, refreshData, teachers]);
 
   const handleQuickFinalize = useCallback(async () => {
     if (!quickAssignContext?.nextTicket) return;
@@ -494,7 +522,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
     try {
       const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-      await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
+      const trimmedNote = selectedNextTeacherNote.trim();
+      await assignTicketToNext(
+        ticketId,
+        teacher.id,
+        teacher.fullName,
+        trimmedNote || undefined
+      );
       alert(`Next step activated and assigned to ${teacher.fullName}`);
       handleBackToList();
       await refreshData();
@@ -800,6 +834,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     setSelectedTicket(null);
     setRevisionNotes('');
     setSelectedNextTeacher('');
+    setSelectedNextTeacherNote('');
     setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
     setShowMushaf(false);
     setShowRevisionForm(false);
@@ -985,6 +1020,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     sabqTicketInChain,
     selectedTicket,
   ]);
+
+  useEffect(() => {
+    if (selectedTicket && selectedTicket.workflowStep !== 'finalize') {
+      setSelectedNextTeacherNote(selectedTicket.revisionNotes || '');
+    } else {
+      setSelectedNextTeacherNote('');
+    }
+  }, [selectedTicket]);
 
   const handleToggleHistory = (ticketKey: string) => {
     setExpandedHistoryIds(prev => ({
@@ -1217,6 +1260,18 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         ({selectedTicket.workflowStep === 'sabq' ? 'Sabqi' : selectedTicket.workflowStep === 'sabqi' ? 'Manzil' : 'Finalize'} step).
                       </p>
                     </header>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                        Internal note for next teacher
+                      </label>
+                      <textarea
+                        value={selectedNextTeacherNote}
+                        onChange={(event) => setSelectedNextTeacherNote(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-emerald-200 px-3 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                        placeholder="Mention focus areas, mistakes to watch for, or pacing instructions…"
+                      />
+                    </div>
                     <select
                       value={selectedNextTeacher}
                       onChange={(e) => setSelectedNextTeacher(e.target.value)}
@@ -2104,6 +2159,18 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   </div>
                 ) : (
                   <div className="mt-5 space-y-4">
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Internal note for next teacher
+                      </label>
+                      <textarea
+                        value={quickAssignTeacherNote}
+                        onChange={(event) => setQuickAssignTeacherNote(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                        placeholder="Highlight focus areas, mistakes to watch for, or pacing instructions…"
+                      />
+                    </div>
                     <div>
                       <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-600">
                         Assign teacher
