@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, Program, ClassworkSection } from '../types/assignment';
 import { MushafMistake } from '@umar-academy/mushaf';
@@ -14,7 +14,6 @@ const AssignmentsPage: React.FC = () => {
     students,
     tickets,
     teachers,
-    approveTicket,
     assignTicketToNext,
     finalizeTicket,
     updateAssignment,
@@ -28,16 +27,16 @@ const AssignmentsPage: React.FC = () => {
   const [filterProgram, setFilterProgram] = useState<string>('');
   const [filterType, setFilterType] = useState<string>('');
   const [programs, setPrograms] = useState<Program[]>([]);
-  const [quickAssignTicket, setQuickAssignTicket] = useState<AssignmentTicket | null>(null);
-  const [quickAssignTeacherId, setQuickAssignTeacherId] = useState('');
-  const [quickAssignFinalReport, setQuickAssignFinalReport] = useState('');
-  const [quickAssignHomework, setQuickAssignHomework] = useState('');
-  const [quickAssignHomeworkLink, setQuickAssignHomeworkLink] = useState('');
-  const [quickAssignSections, setQuickAssignSections] = useState<ClassworkSection[]>([]);
-  const [quickAssignFinalReportTouched, setQuickAssignFinalReportTouched] = useState(false);
-  const [quickAssignHomeworkTouched, setQuickAssignHomeworkTouched] = useState(false);
-  const [quickAssignError, setQuickAssignError] = useState<string | null>(null);
-  const [quickAssignLoading, setQuickAssignLoading] = useState({ approve: false, assign: false, finalize: false });
+  const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
+  const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
+  const [finalizeData, setFinalizeData] = useState({
+    finalReport: '',
+    homework: '',
+    homeworkLink: ''
+  });
+  const [finalizeSections, setFinalizeSections] = useState<ClassworkSection[]>([]);
+  const [finalReportTouched, setFinalReportTouched] = useState(false);
+  const [homeworkTouched, setHomeworkTouched] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedAssignmentForAction, setSelectedAssignmentForAction] = useState<Assignment | null>(null);
   const [showAssignTeacherOption, setShowAssignTeacherOption] = useState(false);
@@ -52,311 +51,11 @@ const AssignmentsPage: React.FC = () => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
 
-  const getTicketId = (ticket?: AssignmentTicket | null) =>
-    ticket ? (ticket.id || (ticket as any)._id || '') : '';
-
-  const findTicketById = useCallback(
-    (id?: string | null) => {
-      if (!id) return null;
-      return tickets.find((t) => (t.id || (t as any)._id) === id) || null;
-    },
-    [tickets]
-  );
-
-  const quickAssignContext = useMemo(() => {
-    if (!quickAssignTicket) {
-      return null;
-    }
-
-    if (quickAssignTicket.workflowStep === 'finalize') {
-      return {
-        baseTicket: quickAssignTicket,
-        nextTicket: quickAssignTicket,
-      };
-    }
-
-    let basePointer: AssignmentTicket = quickAssignTicket;
-    let nextTicket: AssignmentTicket | null = null;
-    let guard = 0;
-
-    while (guard < 10) {
-      const nextId = basePointer.nextTicketId;
-      if (!nextId) {
-        break;
-      }
-
-      const candidate = findTicketById(nextId);
-      if (!candidate) {
-        break;
-      }
-
-      if (candidate.status === 'approved' || candidate.status === 'completed') {
-        basePointer = candidate;
-        guard += 1;
-        continue;
-      }
-
-      nextTicket = candidate;
-      break;
-    }
-
-    return {
-      baseTicket: basePointer,
-      nextTicket,
-    };
-  }, [findTicketById, quickAssignTicket]);
-
-  const quickAssignNextTicket = quickAssignContext?.nextTicket ||
-    (quickAssignContext?.baseTicket?.workflowStep === 'finalize' ? quickAssignContext.baseTicket : null);
-
-  const quickAssignCurrentLabel = quickAssignContext?.baseTicket
-    ? (quickAssignContext.baseTicket.workflowStep === 'sabq'
-        ? 'Sabq'
-        : quickAssignContext.baseTicket.workflowStep === 'sabqi'
-          ? 'Sabqi'
-          : quickAssignContext.baseTicket.workflowStep === 'manzil'
-            ? 'Manzil'
-            : quickAssignContext.baseTicket.workflowStep)
-    : '';
-
-  const quickAssignNextStepLabel = quickAssignNextTicket
-    ? (quickAssignNextTicket.workflowStep === 'sabq'
-        ? 'Sabq'
-        : quickAssignNextTicket.workflowStep === 'sabqi'
-          ? 'Sabqi'
-        : quickAssignNextTicket.workflowStep === 'manzil'
-            ? 'Manzil'
-            : quickAssignNextTicket.workflowStep === 'finalize'
-              ? 'Finalize'
-              : quickAssignNextTicket.workflowStep)
-    : '';
-
-  const quickAssignIsFinalizeMode = quickAssignNextTicket?.workflowStep === 'finalize';
-
-  const quickAssignFinalizeTarget = useMemo(() => {
-    if (!quickAssignContext) {
-      return null;
-    }
- 
-    if (quickAssignIsFinalizeMode && quickAssignNextTicket) {
-      return quickAssignNextTicket;
-    }
- 
-    if (quickAssignContext.baseTicket.workflowStep === 'finalize') {
-      return quickAssignContext.baseTicket;
-    }
- 
-    return null;
-   }, [quickAssignContext, quickAssignIsFinalizeMode, quickAssignNextTicket]);
- 
-   const quickAssignBaseTicket = quickAssignContext?.baseTicket || quickAssignTicket;
-
-  const quickAssignMistakeCounts = useMemo(() => {
-    if (!quickAssignFinalizeTarget?.mushafMarkings) {
-      return {} as Record<string, number>;
-    }
-    return quickAssignFinalizeTarget.mushafMarkings.reduce<Record<string, number>>((acc, mistake) => {
-      const key = mistake.type || 'other';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-  }, [quickAssignFinalizeTarget]);
-
-  const openQuickAssign = useCallback((ticket: AssignmentTicket) => {
-    setQuickAssignTicket(ticket);
-    setQuickAssignTeacherId('');
-    setQuickAssignFinalReport('');
-    setQuickAssignHomework('');
-    setQuickAssignHomeworkLink('');
-    setQuickAssignSections([]);
-    setQuickAssignFinalReportTouched(false);
-    setQuickAssignHomeworkTouched(false);
-    setQuickAssignError(null);
-    setQuickAssignLoading({ approve: false, assign: false, finalize: false });
-  }, []);
-
-  const closeQuickAssign = useCallback(() => {
-    setQuickAssignTicket(null);
-    setQuickAssignTeacherId('');
-    setQuickAssignFinalReport('');
-    setQuickAssignHomework('');
-    setQuickAssignHomeworkLink('');
-    setQuickAssignSections([]);
-    setQuickAssignFinalReportTouched(false);
-    setQuickAssignHomeworkTouched(false);
-    setQuickAssignError(null);
-    setQuickAssignLoading({ approve: false, assign: false, finalize: false });
-  }, []);
-
-  const quickAssignIsApproved = quickAssignContext?.baseTicket?.status === 'approved';
-
-  useEffect(() => {
-    if (!quickAssignContext || !quickAssignTicket) {
-      return;
-    }
-
-    const { baseTicket, nextTicket } = quickAssignContext;
-
-    if (nextTicket && nextTicket.workflowStep !== 'finalize') {
-      const defaultTeacherId = nextTicket.assignedTeacherId || baseTicket.assignedTeacherId || '';
-      if (defaultTeacherId && !quickAssignTeacherId) {
-        setQuickAssignTeacherId(defaultTeacherId);
-      }
-      return;
-    }
-
-    const finalizeTarget = nextTicket && nextTicket.workflowStep === 'finalize'
-      ? nextTicket
-      : baseTicket.workflowStep === 'finalize'
-        ? baseTicket
-        : null;
-
-    if (!finalizeTarget) {
-      return;
-    }
-
-    const ticketSections = (finalizeTarget as any).classworkSections as ClassworkSection[] | undefined;
-
-    if (ticketSections && ticketSections.length > 0) {
-      setQuickAssignSections(ticketSections);
-    } else if (finalizeTarget.assignmentRange) {
-      setQuickAssignSections([
-        {
-          step: (finalizeTarget.workflowStep as 'sabq' | 'sabqi' | 'manzil') || 'sabq',
-          title: 'Ticket range',
-          label: 'Ticket range',
-          assignmentRange: finalizeTarget.assignmentRange,
-          assignmentPortion: finalizeTarget.assignmentPortion,
-          order: 0,
-          summary: finalizeTarget.assignmentRange,
-        },
-      ]);
-    } else {
-      setQuickAssignSections([]);
-    }
-
-    setQuickAssignFinalReportTouched(Boolean(finalizeTarget.finalReport));
-    setQuickAssignHomeworkTouched(Boolean(finalizeTarget.homework));
-    setQuickAssignFinalReport(finalizeTarget.finalReport || '');
-    setQuickAssignHomework(finalizeTarget.homework || '');
-    setQuickAssignHomeworkLink(finalizeTarget.homeworkLink || '');
-  }, [quickAssignContext, quickAssignTeacherId, quickAssignTicket]);
-
   // Check if user can create assignments
   const canCreateAssignments = user?.role === 'superadmin' || 
     user?.role === 'admin' ||
     user?.role === 'teacher';
 
-  const handleQuickApprove = useCallback(async () => {
-    const baseTicket = quickAssignContext?.baseTicket;
-    if (!baseTicket || baseTicket.status === 'approved') {
-      return;
-    }
-
-    try {
-      setQuickAssignLoading((prev) => ({ ...prev, approve: true }));
-      const ticketId = getTicketId(baseTicket);
-      await approveTicket(ticketId, user?.id || '');
-      alert('Ticket approved successfully.');
-      setQuickAssignError(null);
-      await refreshData();
-    } catch (error) {
-      console.error('Error approving ticket from assignments page:', error);
-      setQuickAssignError('Failed to approve the ticket. Please try again.');
-    } finally {
-      setQuickAssignLoading((prev) => ({ ...prev, approve: false }));
-    }
-  }, [approveTicket, quickAssignContext, refreshData, user]);
-
-  const handleQuickAssignNext = useCallback(async () => {
-    if (!quickAssignContext?.baseTicket || !quickAssignNextTicket || quickAssignNextTicket.workflowStep === 'finalize') {
-      return;
-    }
-
-    if (!quickAssignTeacherId) {
-      setQuickAssignError('Select a teacher for the next step.');
-      return;
-    }
-
-    const teacher = teachers.find((t) => t.id === quickAssignTeacherId);
-    if (!teacher) {
-      setQuickAssignError('Unable to find the selected teacher.');
-      return;
-    }
-
-    try {
-      setQuickAssignLoading((prev) => ({ ...prev, assign: true }));
-      const ticketId = getTicketId(quickAssignContext.baseTicket);
-      await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
-      alert(`Assigned ${quickAssignNextStepLabel} to ${teacher.fullName}.`);
-      setQuickAssignError(null);
-      closeQuickAssign();
-      await refreshData();
-    } catch (error) {
-      console.error('Error assigning next teacher from assignments page:', error);
-      setQuickAssignError('Failed to assign the next teacher.');
-    } finally {
-      setQuickAssignLoading((prev) => ({ ...prev, assign: false }));
-    }
-  }, [assignTicketToNext, closeQuickAssign, quickAssignContext, quickAssignNextStepLabel, quickAssignNextTicket, quickAssignTeacherId, refreshData, teachers]);
-
-  const handleQuickFinalize = useCallback(async () => {
-    if (!quickAssignIsFinalizeMode || !quickAssignNextTicket) {
-      return;
-    }
-
-    if (!quickAssignFinalReport.trim() || !quickAssignHomework.trim()) {
-      setQuickAssignError('Final report and homework are required.');
-      return;
-    }
-
-    if (quickAssignSections.length === 0) {
-      setQuickAssignError('Add at least one portion before finalizing.');
-      return;
-    }
-
-    try {
-      setQuickAssignLoading((prev) => ({ ...prev, finalize: true }));
-      const ticketId = getTicketId(quickAssignNextTicket);
-      const classworkSummary = quickAssignSections
-        .map((section) => section.summary || section.assignmentRange)
-        .filter(Boolean)
-        .join('\n');
-
-      await finalizeTicket(ticketId, {
-        finalReport: quickAssignFinalReport.trim(),
-        homework: quickAssignHomework.trim(),
-        homeworkLink: quickAssignHomeworkLink.trim(),
-        reviewedBy: user?.id || '',
-        classworkSections: quickAssignSections,
-        classworkSummary,
-        homeworkSummary: quickAssignHomework.trim(),
-        classworkType: quickAssignSections[0]?.step,
-      } as any);
-
-      alert('Ticket finalized and assignment published.');
-      setQuickAssignError(null);
-      closeQuickAssign();
-      await refreshData();
-    } catch (error) {
-      console.error('Error finalizing ticket from assignments page:', error);
-      setQuickAssignError('Failed to finalize this ticket.');
-    } finally {
-      setQuickAssignLoading((prev) => ({ ...prev, finalize: false }));
-    }
-  }, [
-    closeQuickAssign,
-    finalizeTicket,
-    quickAssignFinalReport,
-    quickAssignHomework,
-    quickAssignHomeworkLink,
-    quickAssignIsFinalizeMode,
-    quickAssignNextTicket,
-    quickAssignSections,
-    refreshData,
-    user,
-  ]);
- 
   // Mock programs - in real app, this would come from API
   useEffect(() => {
     const mockPrograms: Program[] = [
@@ -366,6 +65,47 @@ const AssignmentsPage: React.FC = () => {
     ];
     setPrograms(mockPrograms);
   }, []);
+
+  useEffect(() => {
+    if (selectedTicket?.workflowStep === 'finalize') {
+      const ticketSections = (selectedTicket as any).classworkSections as ClassworkSection[] | undefined;
+
+      if (ticketSections && ticketSections.length > 0) {
+        setFinalizeSections(ticketSections);
+      } else if (selectedTicket.assignmentRange) {
+        setFinalizeSections([
+          {
+            step: (selectedTicket.workflowStep as 'sabq' | 'sabqi' | 'manzil') || 'sabq',
+            title: 'Ticket range',
+            label: 'Ticket range',
+            assignmentRange: selectedTicket.assignmentRange,
+            assignmentPortion: selectedTicket.assignmentPortion,
+            order: 0,
+            summary: selectedTicket.assignmentRange,
+          },
+        ]);
+      } else {
+        setFinalizeSections([]);
+      }
+
+      setFinalizeData({
+        finalReport: selectedTicket.finalReport || '',
+        homework: selectedTicket.homework || '',
+        homeworkLink: selectedTicket.homeworkLink || '',
+      });
+      setFinalReportTouched(Boolean(selectedTicket.finalReport));
+      setHomeworkTouched(Boolean(selectedTicket.homework));
+    } else {
+      setFinalizeSections([]);
+      setFinalizeData({
+        finalReport: '',
+        homework: '',
+        homeworkLink: '',
+      });
+      setFinalReportTouched(false);
+      setHomeworkTouched(false);
+    }
+  }, [selectedTicket]);
 
   const getStudentName = (studentId: string): string => {
     const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
@@ -518,23 +258,19 @@ const AssignmentsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const finalizeTarget = quickAssignFinalizeTarget;
+    if (!selectedTicket || selectedTicket.workflowStep !== 'finalize') return;
 
-    if (!quickAssignTicket || !finalizeTarget || finalizeTarget.workflowStep !== 'finalize') {
-      return;
-    }
-
-    const sectionSummaries = quickAssignSections.map((section, index) => {
+    const sectionSummaries = finalizeSections.map((section, index) => {
       const title =
         section.label ||
         section.title ||
-        `${section.step.charAt(0).toUpperCase() + section.step.slice(1)} ${quickAssignSections.length > 1 ? index + 1 : ''}`;
+        `${section.step.charAt(0).toUpperCase() + section.step.slice(1)} ${finalizeSections.length > 1 ? index + 1 : ''}`;
       const range = section.summary || section.assignmentRange || '';
       const notes = section.details ? ` — ${section.details}` : '';
       return `• ${title}${range ? `: ${range}` : ''}${notes}`;
     });
 
-    const mistakes = finalizeTarget.mushafMarkings || [];
+    const mistakes = selectedTicket.mushafMarkings || [];
     const mistakeCounts = mistakes.reduce<Record<string, number>>((acc, mistake) => {
       const key = mistake.type || 'other';
       acc[key] = (acc[key] || 0) + 1;
@@ -557,35 +293,36 @@ const AssignmentsPage: React.FC = () => {
       .filter(Boolean)
       .join('\n');
 
-    const lastSection = quickAssignSections[quickAssignSections.length - 1];
+    const lastSection = finalizeSections[finalizeSections.length - 1];
+    const mistakeLabels = mistakeLines.map((line) =>
+      line.replace(/^•\s*/, '').replace(/\s—.*$/, '').toLowerCase()
+    );
     const homeworkLines = [
       lastSection?.summary || lastSection?.assignmentRange
         ? `Review ${lastSection.summary || lastSection.assignmentRange} with clean recitation.`
         : null,
-      mistakeLines.length > 0
-        ? `Focus on correcting: ${mistakeLines
-            .map((line) => line.replace(/^•\s*/, '').replace(/\s—.*$/, '').toLowerCase())
-            .join(', ')}.`
+      mistakeLabels.length > 0
+        ? `Focus on correcting: ${mistakeLabels.join(', ')}.`
         : null,
       'Prepare the next portion with steady pacing and tajweed focus.',
     ].filter(Boolean);
 
     const autoHomework = homeworkLines.join('\n');
 
-    if (!quickAssignFinalReportTouched) {
-      setQuickAssignFinalReport(autoReport);
+    if (!finalReportTouched) {
+      setFinalizeData((prev) => ({
+        ...prev,
+        finalReport: autoReport,
+      }));
     }
 
-    if (!quickAssignHomeworkTouched) {
-      setQuickAssignHomework(autoHomework);
+    if (!homeworkTouched) {
+      setFinalizeData((prev) => ({
+        ...prev,
+        homework: autoHomework,
+      }));
     }
-  }, [
-    quickAssignFinalizeTarget,
-    quickAssignFinalReportTouched,
-    quickAssignHomeworkTouched,
-    quickAssignSections,
-    quickAssignTicket,
-  ]);
+  }, [finalizeSections, selectedTicket, finalReportTouched, homeworkTouched]);
 
   // Get workflow step label
   const getWorkflowStepLabel = (assignment: Assignment): string => {
@@ -645,7 +382,7 @@ const AssignmentsPage: React.FC = () => {
                         <p className="text-xs text-gray-500 mt-1">Student hasn't recited next portion yet</p>
                       </div>
                       <button
-                        onClick={() => openQuickAssign(ticket)}
+                        onClick={() => setSelectedTicket(ticket)}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
                       >
                         Assign to Next Teacher
@@ -664,7 +401,7 @@ const AssignmentsPage: React.FC = () => {
                         <p className="text-sm text-gray-600">✅ Finalize - Ready to add homework</p>
                       </div>
                       <button
-                        onClick={() => openQuickAssign(ticket)}
+                        onClick={() => setSelectedTicket(ticket)}
                         className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
                       >
                         Finalize & Add Homework
@@ -677,271 +414,264 @@ const AssignmentsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Quick Assign Modal */}
-        {quickAssignTicket && (
-          <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4">
-            <div className="w-full max-w-4xl rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="flex flex-col gap-2 border-b border-gray-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Quick ticket workflow</p>
-                  <h3 className="text-2xl font-bold text-gray-900">
-                    {quickAssignBaseTicket ? getStudentName(quickAssignBaseTicket.studentId) : 'Student'}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    Current step · {quickAssignCurrentLabel}
-                    {quickAssignNextTicket && (
-                      <span className="text-gray-400">
-                        {' '}
-                        → {quickAssignNextStepLabel}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${quickAssignIsApproved ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
-                  >
-                    {quickAssignIsApproved ? 'Approved' : 'Pending approval'}
-                  </span>
-                  <button
-                    onClick={closeQuickAssign}
-                    className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-100"
-                  >
-                    Close
-                  </button>
-                </div>
+        {/* Ticket Action Modal */}
+        {selectedTicket && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold">Ticket Action</h3>
+                <button
+                  onClick={() => {
+                    setSelectedTicket(null);
+                    setSelectedNextTeacher('');
+                    setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <p className="font-semibold">Student: {getStudentName(selectedTicket.studentId)}</p>
+                <p className="text-sm text-gray-600">Step: {selectedTicket.workflowStep}</p>
               </div>
 
-              {quickAssignError && (
-                <div className="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {quickAssignError}
+              {selectedTicket.workflowStep !== 'finalize' ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Teacher for Next Step
+                  </label>
+                  <select
+                    value={selectedNextTeacher}
+                    onChange={(e) => setSelectedNextTeacher(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
+                  >
+                    <option value="">Choose a teacher...</option>
+                    {teachers.map(teacher => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.fullName}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!selectedNextTeacher) {
+                          alert('Please select a teacher');
+                          return;
+                        }
+                        const teacher = teachers.find(t => t.id === selectedNextTeacher);
+                        if (!teacher) return;
+                        try {
+                          const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                          await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
+                          alert('✅ Next step assigned successfully!');
+                          setSelectedTicket(null);
+                          setSelectedNextTeacher('');
+                          await refreshData();
+                        } catch (error) {
+                          alert('Failed to assign ticket');
+                        }
+                      }}
+                      disabled={!selectedNextTeacher}
+                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      Assign to Next Teacher
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedTicket(null);
+                        setSelectedNextTeacher('');
+                      }}
+                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold text-purple-700">Classwork portions</p>
+                        <p className="text-xs text-purple-600">
+                          Type <span className="font-semibold">sabqi</span>, <span className="font-semibold">manzil</span>, or <span className="font-semibold">juz</span> to build the plan. Students will receive this summary instantly.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                        Mobile friendly
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <AssignmentSectionBuilder
+                        value={finalizeSections}
+                        onChange={(sections) => setFinalizeSections(sections)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Final report <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={finalizeData.finalReport}
+                        onChange={(event) => {
+                          setFinalReportTouched(true);
+                          setFinalizeData((prev) => ({ ...prev, finalReport: event.target.value }));
+                        }}
+                        rows={5}
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                        placeholder="Auto-generated summary…"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Homework for next day <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={finalizeData.homework}
+                        onChange={(event) => {
+                          setHomeworkTouched(true);
+                          setFinalizeData((prev) => ({ ...prev, homework: event.target.value }));
+                        }}
+                        rows={4}
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                        placeholder="Auto-generated homework…"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Optional homework link
+                      </label>
+                      <input
+                        type="url"
+                        value={finalizeData.homeworkLink}
+                        onChange={(event) =>
+                          setFinalizeData((prev) => ({ ...prev, homeworkLink: event.target.value }))
+                        }
+                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                        placeholder="https://resource-link.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    <h4 className="mb-2 text-sm font-semibold text-gray-800">
+                      Student preview
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Classwork</p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          {finalizeSections.length === 0 ? (
+                            <li className="text-gray-500">No portions added yet</li>
+                          ) : (
+                            finalizeSections.map((section, idx) => (
+                              <li key={`${section.step}-${idx}`} className="text-gray-700">
+                                {section.summary || section.assignmentRange || section.label}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                          Mistakes from classwork
+                        </p>
+                        <ul className="mt-1 list-disc space-y-1 pl-5">
+                          {(selectedTicket.mushafMarkings || []).length === 0 ? (
+                            <li className="text-gray-500">No mistakes recorded</li>
+                          ) : (
+                            Object.entries(
+                              (selectedTicket.mushafMarkings || []).reduce<Record<string, number>>(
+                                (acc, mistake) => {
+                                  const key = mistake.type || 'other';
+                                  acc[key] = (acc[key] || 0) + 1;
+                                  return acc;
+                                },
+                                {}
+                              )
+                            ).map(([type, count]) => (
+                              <li key={type} className="text-gray-700">
+                                {getMistakeTypeLabel(type)} — {count}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
+                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-white px-3 py-2 text-gray-700 shadow-inner">
+                          {finalizeData.homework || 'Auto-generated homework will appear here.'}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <button
+                      onClick={async () => {
+                        if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
+                          alert('Please fill in all required fields');
+                          return;
+                        }
+
+                        if (finalizeSections.length === 0) {
+                          alert('Please add at least one classwork portion before finalizing.');
+                          return;
+                        }
+
+                        try {
+                          const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                          const classworkSummary = finalizeSections
+                            .map((section) => section.summary || section.assignmentRange)
+                            .filter(Boolean)
+                            .join('\n');
+
+                          await finalizeTicket(ticketId, {
+                            finalReport: finalizeData.finalReport,
+                            homework: finalizeData.homework,
+                            homeworkLink: finalizeData.homeworkLink,
+                            reviewedBy: user?.id || '',
+                            classworkSections: finalizeSections,
+                            classworkSummary,
+                            homeworkSummary: finalizeData.homework,
+                            classworkType: finalizeSections[0]?.step,
+                          } as any);
+                          alert('✅ Ticket finalized! Assignment created.');
+                          setSelectedTicket(null);
+                          setFinalizeSections([]);
+                          setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                          setFinalReportTouched(false);
+                          setHomeworkTouched(false);
+                          await refreshData();
+                        } catch (error) {
+                          alert('Failed to finalize ticket');
+                        }
+                      }}
+                      className="flex-1 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                    >
+                      Finalize &amp; Create Assignment
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedTicket(null);
+                        setFinalizeSections([]);
+                        setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                        setFinalReportTouched(false);
+                        setHomeworkTouched(false);
+                      }}
+                      className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
-
-              <div className="max-h-[80vh] space-y-6 overflow-y-auto px-6 py-6">
-                <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Step 1</p>
-                      <h4 className="text-base font-semibold text-gray-900">Approve {quickAssignCurrentLabel}</h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Approval unlocks the remaining steps in this workflow chain.
-                      </p>
-                    </div>
-                    {quickAssignIsApproved && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        ✅ Approved
-                      </span>
-                    )}
-                  </div>
-                  {!quickAssignIsApproved && (
-                    <button
-                      onClick={handleQuickApprove}
-                      disabled={quickAssignLoading.approve}
-                      className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {quickAssignLoading.approve ? 'Approving…' : 'Approve & unlock next step'}
-                    </button>
-                  )}
-                </section>
-
-                <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Step 2</p>
-                      <h4 className="text-base font-semibold text-gray-900">
-                        {quickAssignNextTicket
-                          ? quickAssignIsFinalizeMode
-                            ? 'Finalize & publish homework'
-                            : `Assign ${quickAssignNextStepLabel}`
-                          : 'Workflow complete'}
-                      </h4>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {quickAssignNextTicket
-                          ? quickAssignIsFinalizeMode
-                            ? 'Summarize the session and push homework to the student dashboard.'
-                            : 'Choose who should hear the student next.'
-                          : 'All tickets in this chain are already finalized.'}
-                      </p>
-                    </div>
-                    {quickAssignNextTicket && (
-                      <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600">
-                        Next status: {quickAssignNextTicket.status.replace('_', ' ')}
-                      </span>
-                    )}
-                  </div>
-
-                  {!quickAssignNextTicket ? (
-                    <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                      No remaining steps. Create a new Sabq ticket to start the next cycle for this student.
-                    </div>
-                  ) : quickAssignIsFinalizeMode ? (
-                    <div className="space-y-6">
-                      <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-purple-700">Classwork portions</p>
-                            <p className="text-xs text-purple-600">
-                              Build the assignment summary that the student will see instantly.
-                            </p>
-                          </div>
-                          <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
-                            Mobile friendly
-                          </span>
-                        </div>
-                        <div className="mt-4">
-                          <AssignmentSectionBuilder
-                            value={quickAssignSections}
-                            onChange={setQuickAssignSections}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid gap-5 md:grid-cols-2">
-                        <div className="md:col-span-2">
-                          <label className="mb-2 block text-sm font-semibold text-gray-700">
-                            Final report <span className="text-red-500">*</span>
-                          </label>
-                          <textarea
-                            value={quickAssignFinalReport}
-                            onChange={(event) => {
-                              setQuickAssignFinalReportTouched(true);
-                              setQuickAssignFinalReport(event.target.value);
-                            }}
-                            rows={5}
-                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                            placeholder="Auto-generated summary…"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="mb-2 block text-sm font-semibold text-gray-700">
-                            Homework for next day <span className="text-red-500">*</span>
-                          </label>
-                          <textarea
-                            value={quickAssignHomework}
-                            onChange={(event) => {
-                              setQuickAssignHomeworkTouched(true);
-                              setQuickAssignHomework(event.target.value);
-                            }}
-                            rows={4}
-                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                            placeholder="Auto-generated homework…"
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="mb-2 block text-sm font-semibold text-gray-700">
-                            Optional homework link
-                          </label>
-                          <input
-                            type="url"
-                            value={quickAssignHomeworkLink}
-                            onChange={(event) => setQuickAssignHomeworkLink(event.target.value)}
-                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                            placeholder="https://resource-link.com"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                        <h4 className="mb-3 text-sm font-semibold text-gray-800">Student preview</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">Classwork</p>
-                            <ul className="mt-1 list-disc space-y-1 pl-5">
-                              {quickAssignSections.length === 0 ? (
-                                <li className="text-gray-500">No portions added yet</li>
-                              ) : (
-                                quickAssignSections.map((section, idx) => (
-                                  <li key={`${section.step}-${idx}`} className="text-gray-700">
-                                    {section.summary || section.assignmentRange || section.label}
-                                  </li>
-                                ))
-                              )}
-                            </ul>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">Mistakes from classwork</p>
-                            <ul className="mt-1 list-disc space-y-1 pl-5">
-                              {Object.keys(quickAssignMistakeCounts).length === 0 ? (
-                                <li className="text-gray-500">No mistakes recorded</li>
-                              ) : (
-                                Object.entries(quickAssignMistakeCounts).map(([type, count]) => (
-                                  <li key={type} className="text-gray-700">
-                                    {getMistakeTypeLabel(type)} — {count}
-                                  </li>
-                                ))
-                              )}
-                            </ul>
-                          </div>
-                          <div>
-                            <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
-                            <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-white px-3 py-2 text-gray-700 shadow-inner">
-                              {quickAssignHomework || 'Auto-generated homework will appear here.'}
-                            </pre>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <button
-                          onClick={handleQuickFinalize}
-                          disabled={quickAssignLoading.finalize}
-                          className="flex-1 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {quickAssignLoading.finalize ? 'Publishing…' : 'Finalize & create assignment'}
-                        </button>
-                        <button
-                          onClick={closeQuickAssign}
-                          className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="mb-2 block text-sm font-semibold text-gray-700">
-                          Assign listening teacher
-                        </label>
-                        <select
-                          value={quickAssignTeacherId}
-                          onChange={(event) => setQuickAssignTeacherId(event.target.value)}
-                          disabled={!quickAssignIsApproved || quickAssignLoading.assign}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)] disabled:cursor-not-allowed disabled:bg-gray-100"
-                        >
-                          <option value="">Select teacher…</option>
-                          {teachers.map((teacher) => (
-                            <option key={teacher.id} value={teacher.id}>
-                              {teacher.fullName}
-                            </option>
-                          ))}
-                        </select>
-                        {!quickAssignIsApproved && (
-                          <p className="mt-2 text-xs text-orange-600">
-                            Approve the current step first to unlock assigning.
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <button
-                          onClick={handleQuickAssignNext}
-                          disabled={!quickAssignIsApproved || !quickAssignTeacherId || quickAssignLoading.assign}
-                          className="flex-1 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {quickAssignLoading.assign ? 'Assigning…' : `Send to ${quickAssignNextStepLabel}`}
-                        </button>
-                        <button
-                          onClick={closeQuickAssign}
-                          className="rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-200"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </section>
-              </div>
             </div>
           </div>
         )}
