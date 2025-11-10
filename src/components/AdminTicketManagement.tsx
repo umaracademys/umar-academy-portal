@@ -1952,6 +1952,53 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             )}
 
             <div className="space-y-6 px-5 py-6 max-h-[80vh] overflow-y-auto">
+              {quickAssignContext?.baseTicket && (
+                <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recitation recap</p>
+                  <div className="mt-3 space-y-3 text-sm text-gray-700">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Listener
+                      </span>
+                      <span>{quickAssignContext.baseTicket.assignedTeacherName || '—'}</span>
+                    </div>
+                    {(quickAssignContext.baseTicket.assignmentRange || quickAssignContext.baseTicket.assignmentPortion) && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Portion covered
+                        </span>
+                        <span>
+                          {quickAssignContext.baseTicket.assignmentRange || '—'}
+                          {quickAssignContext.baseTicket.assignmentPortion
+                            ? ` • ${formatAssignmentPortion(quickAssignContext.baseTicket.assignmentPortion)}`
+                            : ''}
+                        </span>
+                      </div>
+                    )}
+                    {quickAssignContext.baseTicket.progressNotes && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Teacher notes
+                        </span>
+                        <p className="whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 text-gray-800">
+                          {quickAssignContext.baseTicket.progressNotes}
+                        </p>
+                      </div>
+                    )}
+                    {quickAssignContext.baseTicket.revisionNotes && (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          Internal notes
+                        </span>
+                        <p className="whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 text-gray-800">
+                          {quickAssignContext.baseTicket.revisionNotes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
               <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
