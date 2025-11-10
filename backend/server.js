@@ -597,6 +597,135 @@ const adminNotificationSchema = new mongoose.Schema({
 
 const AdminNotification = mongoose.model('AdminNotification', adminNotificationSchema);
 
+
+// Listening Session Schema - tracks live listening telemetry for control tower
+const listeningMistakeSchema = new mongoose.Schema({
+  id: String,
+  type: { type: String },
+  page: Number,
+  surah: Number,
+  ayah: Number,
+  wordIndex: Number,
+  note: String,
+  timestamp: { type: Date, default: Date.now }
+}, { _id: false });
+
+const listeningSessionSchema = new mongoose.Schema({
+  ticketId: { type: String, required: true, index: true },
+  studentId: { type: String, required: true },
+  studentName: { type: String, required: true },
+  teacherId: { type: String, required: true },
+  teacherName: { type: String, required: true },
+  workflowStep: { type: String, enum: ['sabq', 'sabqi', 'manzil', 'finalize'], required: true },
+  status: { type: String, enum: ['in_progress', 'completed', 'abandoned'], default: 'in_progress' },
+  startedAt: { type: Date, default: Date.now },
+  endedAt: { type: Date },
+  lastHeartbeatAt: { type: Date, default: Date.now },
+  totalListeningSeconds: { type: Number, default: 0 },
+  currentPage: { type: Number },
+  currentSurah: { type: Number },
+  currentAyah: { type: Number },
+  currentSection: { type: String },
+  mistakeCount: { type: Number, default: 0 },
+  mistakes: { type: [listeningMistakeSchema], default: [] }
+}, { timestamps: true });
+
+listeningSessionSchema.index({ status: 1, lastHeartbeatAt: 1 });
+
+const ListeningSession = mongoose.model('ListeningSession', listeningSessionSchema);
+
+
+// --- Listening session helpers & SSE support ---
+const listeningSessionClients = new Map();
+
+const serializeListeningSession = (session) => {
+  if (!session) return null;
+  const plain = session.toObject ? session.toObject() : session;
+  return {
+    id: plain._id?.toString?.() || plain.id,
+    ticketId: plain.ticketId,
+    studentId: plain.studentId,
+    studentName: plain.studentName,
+    teacherId: plain.teacherId,
+    teacherName: plain.teacherName,
+    workflowStep: plain.workflowStep,
+    status: plain.status,
+    startedAt: plain.startedAt,
+    endedAt: plain.endedAt,
+    lastHeartbeatAt: plain.lastHeartbeatAt,
+    totalListeningSeconds: plain.totalListeningSeconds,
+    currentPage: plain.currentPage,
+    currentSurah: plain.currentSurah,
+    currentAyah: plain.currentAyah,
+    currentSection: plain.currentSection,
+    mistakeCount: plain.mistakeCount,
+    mistakes: (plain.mistakes || []).map((mistake) => ({
+      id: mistake.id,
+      type: mistake.type,
+      page: mistake.page,
+      surah: mistake.surah,
+      ayah: mistake.ayah,
+      wordIndex: mistake.wordIndex,
+      note: mistake.note,
+      timestamp: mistake.timestamp
+    }))
+  };
+};
+
+const broadcastListeningSessionEvent = (event, payload) => {
+  const data = `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
+  const staleClientIds = [];
+  listeningSessionClients.forEach((client, clientId) => {
+    try {
+      client.res.write(data);
+    } catch (err) {
+      console.warn('⚠️  Failed to write to SSE client:', err.message);
+      staleClientIds.push(clientId);
+    }
+  });
+  staleClientIds.forEach((clientId) => {
+    const client = listeningSessionClients.get(clientId);
+    if (client?.heartbeat) {
+      clearInterval(client.heartbeat);
+    }
+    listeningSessionClients.delete(clientId);
+  });
+};
+
+const getActiveListeningSessions = async () => {
+  const cutoff = new Date(Date.now() - 1000 * 60 * 60 * 2); // 2 hours heartbeat grace
+  return ListeningSession.find({
+    status: 'in_progress',
+    lastHeartbeatAt: { $gte: cutoff }
+  }).sort({ startedAt: -1 });
+};
+
+const getRecentListeningSessions = async (limit = 10) => {
+  return ListeningSession.find({
+    status: { $in: ['completed', 'abandoned'] }
+  })
+    .sort({ endedAt: -1 })
+    .limit(limit);
+};
+
+const findListeningSessionByParam = async (param) => {
+  if (!param) return null;
+  if (mongoose.Types.ObjectId.isValid(param)) {
+    const session = await ListeningSession.findById(param);
+    if (session) {
+      return session;
+    }
+  }
+  return ListeningSession.findOne({ ticketId: param, status: 'in_progress' });
+};
+
+const enforceMistakeHistoryLimit = (session, limit = 50) => {
+  if (session.mistakes && session.mistakes.length > limit) {
+    session.mistakes = session.mistakes.slice(session.mistakes.length - limit);
+  }
+};
+
+
 // Assignment routes
 app.get('/api/assignments', async (req, res) => {
   try {
@@ -774,6 +903,227 @@ app.put('/api/admin-notifications/read-all', async (req, res) => {
     await AdminNotification.updateMany({}, { read: true });
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
+// Listening Session Routes
+app.get('/api/listening-sessions/live', async (req, res) => {
+  try {
+    const [activeSessions, recentSessions] = await Promise.all([
+      getActiveListeningSessions(),
+      getRecentListeningSessions(10)
+    ]);
+
+    res.json({
+      active: activeSessions.map(serializeListeningSession),
+      recent: recentSessions.map(serializeListeningSession)
+    });
+  } catch (error) {
+    console.error('Error fetching listening sessions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/listening-sessions/stream', async (req, res) => {
+  try {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive'
+    });
+    res.write('\n');
+
+    const clientId = Date.now().toString();
+    const heartbeat = setInterval(() => {
+      try {
+        res.write(': keep-alive\n\n');
+      } catch (err) {
+        clearInterval(heartbeat);
+        listeningSessionClients.delete(clientId);
+      }
+    }, 25000);
+
+    listeningSessionClients.set(clientId, { res, heartbeat });
+
+    const [activeSessions, recentSessions] = await Promise.all([
+      getActiveListeningSessions(),
+      getRecentListeningSessions(10)
+    ]);
+    const snapshot = {
+      active: activeSessions.map(serializeListeningSession),
+      recent: recentSessions.map(serializeListeningSession)
+    };
+    res.write(`event: session_snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
+
+    req.on('close', () => {
+      clearInterval(heartbeat);
+      listeningSessionClients.delete(clientId);
+    });
+  } catch (error) {
+    console.error('Error establishing listening session stream:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: error.message });
+    } else {
+      try {
+        res.write(`event: session_error\ndata: ${JSON.stringify({ message: error.message })}\n\n`);
+      } finally {
+        res.end();
+      }
+    }
+  }
+});
+
+app.post('/api/listening-sessions/start', async (req, res) => {
+  try {
+    const {
+      ticketId,
+      studentId,
+      studentName,
+      teacherId,
+      teacherName,
+      workflowStep,
+      startedAt,
+      currentPage,
+      currentSurah,
+      currentAyah,
+      currentSection
+    } = req.body || {};
+
+    if (!ticketId || !studentId || !studentName || !teacherId || !teacherName || !workflowStep) {
+      return res.status(400).json({ error: 'ticketId, student, teacher, and workflowStep are required' });
+    }
+
+    let session = await ListeningSession.findOne({ ticketId, status: 'in_progress' });
+    if (!session) {
+      session = new ListeningSession({
+        ticketId,
+        studentId,
+        studentName,
+        teacherId,
+        teacherName,
+        workflowStep
+      });
+    } else {
+      session.studentId = studentId;
+      session.studentName = studentName;
+      session.teacherId = teacherId;
+      session.teacherName = teacherName;
+      session.workflowStep = workflowStep;
+    }
+
+    if (startedAt) {
+      session.startedAt = new Date(startedAt);
+    } else if (!session.startedAt) {
+      session.startedAt = new Date();
+    }
+
+    session.status = 'in_progress';
+    session.endedAt = null;
+    session.lastHeartbeatAt = new Date();
+
+    if (currentPage !== undefined) session.currentPage = currentPage;
+    if (currentSurah !== undefined) session.currentSurah = currentSurah;
+    if (currentAyah !== undefined) session.currentAyah = currentAyah;
+    if (currentSection !== undefined) session.currentSection = currentSection;
+
+    await session.save();
+
+    const serialized = serializeListeningSession(session);
+    broadcastListeningSessionEvent('session_started', serialized);
+
+    res.status(201).json(serialized);
+  } catch (error) {
+    console.error('Error starting listening session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/listening-sessions/:id', async (req, res) => {
+  try {
+    const session = await findListeningSessionByParam(req.params.id);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Listening session not found' });
+    }
+
+    const {
+      currentPage,
+      currentSurah,
+      currentAyah,
+      currentSection,
+      mistake,
+      status
+    } = req.body || {};
+
+    if (currentPage !== undefined) session.currentPage = currentPage;
+    if (currentSurah !== undefined) session.currentSurah = currentSurah;
+    if (currentAyah !== undefined) session.currentAyah = currentAyah;
+    if (currentSection !== undefined) session.currentSection = currentSection;
+    if (status && ['in_progress', 'completed', 'abandoned'].includes(status)) {
+      session.status = status;
+    }
+
+    if (mistake) {
+      session.mistakes = session.mistakes || [];
+      session.mistakes.push({
+        id: mistake.id || new mongoose.Types.ObjectId().toString(),
+        type: mistake.type,
+        page: mistake.page,
+        surah: mistake.surah,
+        ayah: mistake.ayah,
+        wordIndex: mistake.wordIndex,
+        note: mistake.note,
+        timestamp: mistake.timestamp ? new Date(mistake.timestamp) : new Date()
+      });
+      session.mistakeCount = (session.mistakeCount || 0) + 1;
+      enforceMistakeHistoryLimit(session);
+    }
+
+    session.lastHeartbeatAt = new Date();
+
+    await session.save();
+
+    const serialized = serializeListeningSession(session);
+    broadcastListeningSessionEvent('session_updated', serialized);
+
+    res.json(serialized);
+  } catch (error) {
+    console.error('Error updating listening session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/listening-sessions/:id/end', async (req, res) => {
+  try {
+    const session = await findListeningSessionByParam(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Listening session not found' });
+    }
+
+    const endedAt = req.body?.endedAt ? new Date(req.body.endedAt) : new Date();
+    const nextStatus = req.body?.status === 'abandoned' ? 'abandoned' : 'completed';
+
+    session.status = nextStatus;
+    session.endedAt = endedAt;
+    session.lastHeartbeatAt = endedAt;
+
+    if (session.startedAt) {
+      session.totalListeningSeconds = Math.max(
+        0,
+        Math.round((endedAt.getTime() - session.startedAt.getTime()) / 1000)
+      );
+    }
+
+    await session.save();
+
+    const serialized = serializeListeningSession(session);
+    broadcastListeningSessionEvent('session_ended', serialized);
+
+    res.json(serialized);
+  } catch (error) {
+    console.error('Error ending listening session:', error);
     res.status(500).json({ error: error.message });
   }
 });

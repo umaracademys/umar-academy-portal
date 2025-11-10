@@ -9,7 +9,11 @@ import {
   RecitationStep,
   RecitationUnit,
   RecitationHistoryEntry,
-  StudentRecitationProfile
+  StudentRecitationProfile,
+  ListeningSession,
+  ListeningSessionStartPayload,
+  ListeningSessionUpdatePayload,
+  ListeningSessionEndPayload
 } from '../types';
 import { ClassworkSection } from '../types/assignment';
 
@@ -82,6 +86,10 @@ interface BackendDataContextType {
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
+  // Listening sessions
+  createListeningSession: (payload: ListeningSessionStartPayload) => Promise<ListeningSession>;
+  updateListeningSession: (sessionIdOrTicketId: string, payload: ListeningSessionUpdatePayload) => Promise<ListeningSession>;
+  endListeningSession: (sessionIdOrTicketId: string, payload?: ListeningSessionEndPayload) => Promise<ListeningSession>;
 }
 
 const BackendDataContext = createContext<BackendDataContextType | undefined>(undefined);
@@ -1424,6 +1432,75 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const createListeningSession = async (payload: ListeningSessionStartPayload): Promise<ListeningSession> => {
+    try {
+      const response = await fetch(`${API_BASE}/listening-sessions/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start listening session');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error starting listening session:', error);
+      throw error;
+    }
+  };
+
+  const updateListeningSession = async (
+    sessionIdOrTicketId: string,
+    payload: ListeningSessionUpdatePayload
+  ): Promise<ListeningSession> => {
+    try {
+      const response = await fetch(
+        `${API_BASE}/listening-sessions/${encodeURIComponent(sessionIdOrTicketId)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload || {})
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update listening session');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating listening session:', error);
+      throw error;
+    }
+  };
+
+  const endListeningSession = async (
+    sessionIdOrTicketId: string,
+    payload?: ListeningSessionEndPayload
+  ): Promise<ListeningSession> => {
+    try {
+      const response = await fetch(
+        `${API_BASE}/listening-sessions/${encodeURIComponent(sessionIdOrTicketId)}/end`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload || {})
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to end listening session');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error ending listening session:', error);
+      throw error;
+    }
+  };
+
   const value: BackendDataContextType = {
     students,
     teachers,
@@ -1469,7 +1546,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     deleteTicket,
     deleteTickets,
     getStudentPersonalMushaf,
-    getStudentPersonalMushafFiltered
+    getStudentPersonalMushafFiltered,
+    createListeningSession,
+    updateListeningSession,
+    endListeningSession
   };
 
   return (

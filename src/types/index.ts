@@ -79,6 +79,68 @@ export interface StudentRecitationProfile {
   history: RecitationHistoryEntry[];
 }
 
+export type ListeningSessionStatus = 'in_progress' | 'completed' | 'abandoned';
+
+export interface ListeningMistake {
+  id?: string;
+  type?: string;
+  page?: number;
+  surah?: number;
+  ayah?: number;
+  wordIndex?: number;
+  note?: string;
+  timestamp?: string | Date;
+}
+
+export interface ListeningSession {
+  id: string;
+  ticketId: string;
+  studentId: string;
+  studentName: string;
+  teacherId: string;
+  teacherName: string;
+  workflowStep: RecitationStep | 'finalize';
+  status: ListeningSessionStatus;
+  startedAt: string;
+  endedAt?: string;
+  lastHeartbeatAt: string;
+  totalListeningSeconds: number;
+  currentPage?: number;
+  currentSurah?: number;
+  currentAyah?: number;
+  currentSection?: string;
+  mistakeCount: number;
+  mistakes: ListeningMistake[];
+}
+
+export interface ListeningSessionStartPayload {
+  ticketId: string;
+  studentId: string;
+  studentName: string;
+  teacherId: string;
+  teacherName: string;
+  workflowStep: RecitationStep | 'finalize';
+  startedAt?: string;
+  currentPage?: number;
+  currentSurah?: number;
+  currentAyah?: number;
+  currentSection?: string;
+}
+
+export interface ListeningSessionUpdatePayload {
+  currentPage?: number;
+  currentSurah?: number;
+  currentAyah?: number;
+  currentSection?: string;
+  status?: ListeningSessionStatus;
+  mistake?: Omit<ListeningMistake, 'id' | 'timestamp'> & { id?: string; timestamp?: string };
+}
+
+export interface ListeningSessionEndPayload {
+  status?: ListeningSessionStatus;
+  endedAt?: string;
+}
+
 export interface Student {
   id: string;
   studentRecordId?: string;

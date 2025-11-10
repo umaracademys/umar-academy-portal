@@ -1,7 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
-import { AssignmentTicket, TicketStatus, WorkflowStep, MushafMistake } from '../types';
+import {
+  AssignmentTicket,
+  TicketStatus,
+  WorkflowStep,
+  MushafMistake,
+  ListeningSession,
+  ListeningSessionStatus,
+  ListeningSessionUpdatePayload
+} from '../types';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { getQuranChapters, Chapter } from '@umar-academy/mushaf';
 
@@ -131,7 +139,18 @@ interface TeacherTicketsProps {
 
 const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const { user } = useAuth();
-  const { tickets, students, teachers, updateTicket, assignTicketToNext, refreshData, getStudentPersonalMushafFiltered } = useBackendData();
+  const {
+    tickets,
+    students,
+    teachers,
+    updateTicket,
+    assignTicketToNext,
+    refreshData,
+    getStudentPersonalMushafFiltered,
+    createListeningSession,
+    updateListeningSession,
+    endListeningSession
+  } = useBackendData();
   
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [formData, setFormData] = useState({
@@ -148,6 +167,21 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [studentFilterLetter, setStudentFilterLetter] = useState<string>('ALL');
   const [expandedHistoryIds, setExpandedHistoryIds] = useState<Record<string, boolean>>({});
+  const [activeSession, setActiveSession] = useState<ListeningSession | null>(null);
+
+  const currentTeacherId = useMemo(
+    () => (user?.id || (user as any)?._id || '').toString(),
+    [user]
+  );
+  const currentTeacherName = useMemo(
+    () => user?.name || (user as any)?.fullName || user?.email || 'Teacher',
+    [user]
+  );
+
+  const getTicketId = useCallback((ticket?: AssignmentTicket | null) => {
+    if (!ticket) return '';
+    return ticket.id || (ticket as any)._id || '';
+  }, []);
 
   // Get tickets assigned to current teacher
   // Filter out finalized/completed tickets - they should not appear in the list
@@ -194,10 +228,10 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     return isAssigned && validStatus;
   });
 
-  const getStudentName = (studentId: string) => {
+  const getStudentName = useCallback((studentId: string) => {
     const student = students.find(s => s.id === studentId);
     return student?.fullName || studentId;
-  };
+  }, [students]);
 
   const studentTicketHistoryMap = useMemo(() => {
     const grouped = new Map<string, AssignmentTicket[]>();
@@ -284,6 +318,76 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const visibleTickets = ticketView === 'pending' ? completedTickets : myTickets;
   const pendingCount = completedTickets.length;
 
+  const startListeningSessionForTicket = useCallback(
+    async (ticket: AssignmentTicket) => {
+      if (!ticket || !currentTeacherId) {
+        return;
+      }
+      const ticketId = getTicketId(ticket);
+      if (!ticketId) {
+        return;
+      }
+      try {
+        const session = await createListeningSession({
+          ticketId,
+          studentId: ticket.studentId,
+          studentName: getStudentName(ticket.studentId),
+          teacherId: currentTeacherId,
+          teacherName: currentTeacherName,
+          workflowStep: ticket.workflowStep,
+          startedAt: new Date().toISOString(),
+          currentPage: currentPage || undefined
+        });
+        setActiveSession(session);
+      } catch (error) {
+        console.error('Error starting listening session:', error);
+      }
+    },
+    [createListeningSession, currentTeacherId, currentTeacherName, getStudentName, getTicketId, currentPage]
+  );
+
+  const sendListeningSessionUpdate = useCallback(
+    async (updates: ListeningSessionUpdatePayload) => {
+      if (!selectedTicket) {
+        return;
+      }
+      const targetId = activeSession?.id || getTicketId(selectedTicket);
+      if (!targetId) {
+        return;
+      }
+      try {
+        const session = await updateListeningSession(targetId, updates);
+        setActiveSession(session);
+      } catch (error) {
+        console.error('Error updating listening session:', error);
+      }
+    },
+    [activeSession?.id, selectedTicket, updateListeningSession, getTicketId]
+  );
+
+  const endListeningSessionForTicket = useCallback(
+    async (status: ListeningSessionStatus = 'completed') => {
+      if (!selectedTicket) {
+        return;
+      }
+      const targetId = activeSession?.id || getTicketId(selectedTicket);
+      if (!targetId) {
+        return;
+      }
+      try {
+        await endListeningSession(targetId, {
+          status,
+          endedAt: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error('Error ending listening session:', error);
+      } finally {
+        setActiveSession(null);
+      }
+    },
+    [activeSession?.id, endListeningSession, selectedTicket, getTicketId]
+  );
+
   // Load chapters on mount
   useEffect(() => {
     const loadChapters = async () => {
@@ -350,6 +454,57 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     }
   }, [selectedTicket, getStudentPersonalMushafFiltered]);
 
+  useEffect(() => {
+    if (!selectedTicket) {
+      setActiveSession(null);
+      return;
+    }
+    const ticketId = getTicketId(selectedTicket);
+    if (!ticketId) {
+      return;
+    }
+    if (selectedTicket.status === 'in_progress' && activeSession?.ticketId !== ticketId) {
+      startListeningSessionForTicket(selectedTicket);
+    }
+    if (selectedTicket.status !== 'in_progress') {
+      setActiveSession(null);
+    }
+  }, [selectedTicket, activeSession?.ticketId, getTicketId, startListeningSessionForTicket]);
+
+  useEffect(() => {
+    if (!activeSession || !selectedTicket) {
+      return;
+    }
+    const heartbeat = window.setInterval(() => {
+      sendListeningSessionUpdate({}).catch((error) => {
+        console.error('Error sending session heartbeat:', error);
+      });
+    }, 20000);
+
+    return () => {
+      window.clearInterval(heartbeat);
+    };
+  }, [activeSession, selectedTicket, sendListeningSessionUpdate]);
+
+  const activeSessionRef = useRef<ListeningSession | null>(null);
+  useEffect(() => {
+    activeSessionRef.current = activeSession;
+  }, [activeSession]);
+
+  useEffect(() => {
+    return () => {
+      const session = activeSessionRef.current;
+      if (session) {
+        endListeningSession(session.id, {
+          status: 'abandoned',
+          endedAt: new Date().toISOString()
+        }).catch((error) => {
+          console.error('Error ending listening session on unmount:', error);
+        });
+      }
+    };
+  }, [endListeningSession]);
+
   const selectedAssignmentDetails = useMemo(() => {
     if (!selectedTicket) return null;
     return extractAssignmentDetails(selectedTicket);
@@ -369,6 +524,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       // Update ticket with new status
       const updatedTicket = { ...ticket, status: 'in_progress' as TicketStatus };
       setSelectedTicket(updatedTicket);
+      await startListeningSessionForTicket(updatedTicket);
       // Use setTimeout to ensure state updates are applied
       setTimeout(() => {
         setShowMushaf(true);
@@ -388,6 +544,33 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       timestamp: new Date()
     };
     setMushafMarkings(prev => [...prev, sanitisedMistake]);
+    sendListeningSessionUpdate({
+      currentPage: sanitisedMistake.page,
+      currentSurah: sanitisedMistake.surah,
+      currentAyah: sanitisedMistake.ayah,
+      mistake: {
+        type: sanitisedMistake.type,
+        page: sanitisedMistake.page,
+        surah: sanitisedMistake.surah,
+        ayah: sanitisedMistake.ayah,
+        wordIndex: sanitisedMistake.wordIndex,
+        note: sanitisedMistake.note
+      }
+    }).catch((error) => {
+      console.error('Error sending mistake update:', error);
+    });
+  };
+
+  const handleMushafPageChange = (page: number) => {
+    setCurrentPage(page);
+    const surah = getCurrentSurah(page);
+    sendListeningSessionUpdate({
+      currentPage: page,
+      currentSurah: (surah as any)?.number ?? (surah as any)?.id,
+      currentSection: surah?.name
+    }).catch((error) => {
+      console.error('Error sending page change update:', error);
+    });
   };
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
@@ -418,6 +601,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         updatedAt: new Date(),
       };
       await updateTicket(ticketId, updateData);
+      await endListeningSessionForTicket('completed');
       
       alert('Ticket submitted successfully! Admin will review it.');
       setSelectedTicket(null);
@@ -454,6 +638,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       const ticketId = selectedTicket.id || (selectedTicket as any)._id;
       await assignTicketToNext(ticketId, teacher.id, teacher.fullName);
       
+      await endListeningSessionForTicket('abandoned');
       alert('✅ Ticket assigned to different teacher successfully!');
       setSelectedTicket(null);
       setFormData({ progressNotes: '', audioLink: '' });
@@ -866,7 +1051,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                         <div className="mx-auto max-w-full">
                           <InteractiveMushaf
                             currentPage={currentPage}
-                            onPageChange={setCurrentPage}
+                            onPageChange={handleMushafPageChange}
                             mistakes={mushafMarkings}
                             historicalMistakes={historicalMistakes}
                             onMistakeMark={handleMistakeMark}
