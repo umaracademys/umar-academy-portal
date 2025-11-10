@@ -802,44 +802,56 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                 </section>
 
                 {showMushaf && (
-                  <section className="rounded-xl border border-gray-200 bg-white p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h4>
-                      <button
-                        className="text-xs font-semibold text-gray-500 hover:text-gray-700"
-                        onClick={() => setShowMushaf(false)}
-                      >
-                        Close
-                      </button>
-                    </div>
-                    <div className="relative w-full overflow-x-hidden">
-                      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <button className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm bg-gray-200 text-gray-700 hover:bg-gray-300" title="Show surah index">
-                            <span className="hidden sm:inline">Surah </span>Index
+                  <div className="fixed inset-0 z-[70] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
+                    <section className="relative w-full h-full max-w-7xl mx-auto flex flex-col rounded-xl border border-gray-200 bg-white shadow-2xl">
+                      <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                        <h4 className="text-base font-semibold text-gray-900">Interactive Mushaf</h4>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                          >
+                            Prev page
+                          </button>
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Page {currentPage}</span>
+                          <button
+                            onClick={() => setCurrentPage((prev) => prev + 1)}
+                            className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
+                          >
+                            Next page
+                          </button>
+                          <button
+                            className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                            onClick={() => setShowMushaf(false)}
+                          >
+                            Close
                           </button>
                         </div>
                       </div>
-                      <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full">
-                        <div className="flex-1 min-w-0 w-full overflow-hidden">
-                          <div className="relative w-full flex flex-col items-center overflow-hidden">
-                            <div className="w-full max-w-full mx-auto px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-                              <InteractiveMushaf
-                                currentPage={currentPage}
-                                onPageChange={setCurrentPage}
-                                mistakes={mushafMarkings}
-                                historicalMistakes={historicalMistakes}
-                                onMistakeMark={handleMistakeMark}
-                                mode="marking"
-                                studentName={selectedTicket.studentName}
-                                showHistorical={true}
-                              />
+                      <div className="flex-1 min-h-0 overflow-hidden">
+                        <div className="h-full w-full overflow-hidden">
+                          <div className="flex h-full flex-col lg:flex-row">
+                            <div className="flex-1 h-full overflow-hidden">
+                              <div className="h-full w-full overflow-auto px-3 sm:px-6 lg:px-10 xl:px-16 py-6">
+                                <div className="max-w-full mx-auto">
+                                  <InteractiveMushaf
+                                    currentPage={currentPage}
+                                    onPageChange={setCurrentPage}
+                                    mistakes={mushafMarkings}
+                                    historicalMistakes={historicalMistakes}
+                                    onMistakeMark={handleMistakeMark}
+                                    mode="marking"
+                                    studentName={selectedTicket.studentName}
+                                    showHistorical={true}
+                                  />
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </section>
+                    </section>
+                  </div>
                 )}
 
                 {mistakeStats.total > 0 && (
