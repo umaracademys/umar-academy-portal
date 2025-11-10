@@ -1,0 +1,365 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { ListeningSession } from '../types';
+
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+
+interface ListeningControlTowerProps {
+  onClose?: () => void;
+}
+
+type SessionBucket = {
+  active: ListeningSession[];
+  recent: ListeningSession[];
+};
+
+const formatDuration = (seconds: number) => {
+  if (!Number.isFinite(seconds)) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const upsertSession = (collection: ListeningSession[], session: ListeningSession) => {
+  const next = [...collection];
+  const index = next.findIndex((item) => item.id === session.id);
+  if (index >= 0) {
+    next[index] = session;
+  } else {
+    next.push(session);
+  }
+  return next;
+};
+
+const removeSession = (collection: ListeningSession[], sessionId: string) =>
+  collection.filter((session) => session.id !== sessionId);
+
+const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }) => {
+  const [sessions, setSessions] = useState<SessionBucket>({ active: [], recent: [] });
+  const [isConnecting, setIsConnecting] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchInitialSnapshot = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/listening-sessions/live`);
+        if (!response.ok) {
+          throw new Error(`Snapshot request failed (${response.status})`);
+        }
+        const payload = await response.json();
+        if (!cancelled) {
+          setSessions({
+            active: payload.active ?? [],
+            recent: payload.recent ?? []
+          });
+          setIsConnecting(false);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setConnectionError(error?.message || 'Failed to load listening sessions');
+          setIsConnecting(false);
+        }
+      }
+    };
+
+    fetchInitialSnapshot();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_BASE}/listening-sessions/stream`, {
+      withCredentials: false
+    });
+    eventSourceRef.current = eventSource;
+
+    const handleSnapshot = (event: MessageEvent) => {
+      try {
+        const payload = JSON.parse(event.data);
+        setSessions({
+          active: payload.active ?? [],
+          recent: payload.recent ?? []
+        });
+        setConnectionError(null);
+        setIsConnecting(false);
+      } catch (error) {
+        console.error('Failed to parse session snapshot:', error);
+      }
+    };
+
+    const handleStarted = (event: MessageEvent) => {
+      try {
+        const payload: ListeningSession = JSON.parse(event.data);
+        setSessions((prev) => ({
+          active: upsertSession(prev.active, payload),
+          recent: prev.recent
+        }));
+      } catch (error) {
+        console.error('Failed to parse session started payload:', error);
+      }
+    };
+
+    const handleUpdated = (event: MessageEvent) => {
+      try {
+        const payload: ListeningSession = JSON.parse(event.data);
+        setSessions((prev) => ({
+          active: upsertSession(prev.active, payload),
+          recent: prev.recent
+        }));
+      } catch (error) {
+        console.error('Failed to parse session updated payload:', error);
+      }
+    };
+
+    const handleEnded = (event: MessageEvent) => {
+      try {
+        const payload: ListeningSession = JSON.parse(event.data);
+        setSessions((prev) => {
+          const nextActive = removeSession(prev.active, payload.id);
+          const nextRecent = upsertSession(prev.recent, payload)
+            .sort((a, b) => {
+              const aTime = new Date(a.endedAt || a.updatedAt || a.createdAt || 0).getTime();
+              const bTime = new Date(b.endedAt || b.updatedAt || b.createdAt || 0).getTime();
+              return bTime - aTime;
+            })
+            .slice(0, 10);
+          return {
+            active: nextActive,
+            recent: nextRecent
+          };
+        });
+      } catch (error) {
+        console.error('Failed to parse session ended payload:', error);
+      }
+    };
+
+    const handleError = (event: Event) => {
+      console.error('Listening session stream encountered an error:', event);
+      setConnectionError('Live stream unavailable – retrying…');
+    };
+
+    eventSource.addEventListener('session_snapshot', handleSnapshot);
+    eventSource.addEventListener('session_started', handleStarted);
+    eventSource.addEventListener('session_updated', handleUpdated);
+    eventSource.addEventListener('session_ended', handleEnded);
+    eventSource.addEventListener('session_error', handleError);
+    eventSource.onerror = handleError;
+
+    return () => {
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+  }, []);
+
+  const sortedActiveSessions = useMemo(
+    () =>
+      [...sessions.active].sort((a, b) => {
+        const aTime = new Date(a.startedAt).getTime();
+        const bTime = new Date(b.startedAt).getTime();
+        return aTime - bTime;
+      }),
+    [sessions.active]
+  );
+
+  const activeSessionsWithElapsed = useMemo(
+    () =>
+      sortedActiveSessions.map((session) => {
+        const startedAtMs = new Date(session.startedAt).getTime();
+        const elapsedSeconds =
+          session.status === 'in_progress'
+            ? Math.max(0, Math.round((now - startedAtMs) / 1000))
+            : session.totalListeningSeconds;
+        return {
+          session,
+          elapsedSeconds
+        };
+      }),
+    [sortedActiveSessions, now]
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="relative flex h-full max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-start justify-between border-b border-gray-200 px-6 py-4">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900">Listening Control Tower</h2>
+            <p className="text-sm text-gray-500">
+              Monitor active listening sessions, timer progress, and Mushaf activity in real time.
+            </p>
+            {connectionError && (
+              <p className="mt-2 text-xs font-semibold text-red-600">{connectionError}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 transition hover:bg-gray-100"
+          >
+            Close
+          </button>
+        </header>
+
+        <main className="flex-1 overflow-y-auto bg-gray-50 px-6 py-6">
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900">Active sessions</h3>
+              <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
+                {sessions.active.length}
+              </span>
+              {isConnecting && (
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Connecting…
+                </span>
+              )}
+            </div>
+            {sessions.active.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center">
+                <p className="text-sm font-medium text-gray-500">
+                  No active listening sessions right now. Live updates will appear here automatically.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {activeSessionsWithElapsed.map(({ session, elapsedSeconds }) => (
+                  <div
+                    key={session.id}
+                    className="flex h-full flex-col gap-4 rounded-2xl border border-blue-200 bg-white px-5 py-5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">
+                          {session.workflowStep.toUpperCase()}
+                        </p>
+                        <h4 className="text-base font-semibold text-gray-900">
+                          {session.studentName}
+                        </h4>
+                        <p className="text-xs text-gray-500">Teacher: {session.teacherName}</p>
+                      </div>
+                      <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                        {formatDuration(elapsedSeconds)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl bg-blue-50/60 px-4 py-3 text-sm text-blue-900">
+                      <div className="flex items-center justify-between">
+                        <span>Current page</span>
+                        <span className="font-semibold">{session.currentPage ?? '—'}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-blue-700">
+                        {session.currentSection || 'Section not reported'}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                      <div className="flex items-center justify-between">
+                        <span>Mistakes marked</span>
+                        <span className="font-semibold">{session.mistakeCount}</span>
+                      </div>
+                      {session.mistakes.length > 0 && (
+                        <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-lg bg-white px-3 py-2 text-xs text-gray-600">
+                          {session.mistakes
+                            .slice()
+                            .reverse()
+                            .map((mistake) => (
+                              <div key={mistake.id || `${mistake.page}-${mistake.ayah}-${mistake.wordIndex}`}>
+                                <span className="font-semibold text-gray-800">{mistake.type || 'Mistake'}</span>
+                                <span className="mx-1 text-gray-400">•</span>
+                                <span>
+                                  Page {mistake.page ?? '—'} • Ayah {mistake.ayah ?? '—'}
+                                </span>
+                                {mistake.note && (
+                                  <span className="ml-1 text-gray-400">({mistake.note})</span>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>Started {formatDateTime(session.startedAt)}</span>
+                      <span>Last update {formatDateTime(session.lastHeartbeatAt)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="mt-8 space-y-3">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-gray-900">Recently completed</h3>
+              <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
+                {sessions.recent.length}
+              </span>
+            </div>
+            {sessions.recent.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-6 text-center text-sm text-gray-500">
+                No recent listening sessions recorded yet.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sessions.recent.map((session) => (
+                  <div
+                    key={`recent-${session.id}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {session.studentName} <span className="text-gray-400">·</span>{' '}
+                        <span className="uppercase tracking-wide text-xs text-gray-500">
+                          {session.workflowStep}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Teacher {session.teacherName} • Ended {formatDateTime(session.endedAt || session.updatedAt)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Total listening time</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {formatDuration(session.totalListeningSeconds)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">Mistakes</p>
+                        <p className="text-sm font-semibold text-gray-900">{session.mistakeCount}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default ListeningControlTower;
+
+

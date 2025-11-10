@@ -111,6 +111,8 @@ export interface ListeningSession {
   currentSection?: string;
   mistakeCount: number;
   mistakes: ListeningMistake[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ListeningSessionStartPayload {

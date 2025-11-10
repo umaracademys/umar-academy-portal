@@ -32,6 +32,7 @@ import DebugPanel from '../components/DebugPanel';
 import AdminRecitationReview from '../components/AdminRecitationReview';
 import AdminTicketManagement from '../components/AdminTicketManagement';
 import AssignTicketForm from '../components/AssignTicketForm';
+import ListeningControlTower from '../components/ListeningControlTower';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 
@@ -88,6 +89,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showTicketManagement, setShowTicketManagement] = useState(false);
   const [showAssignTicket, setShowAssignTicket] = useState(false);
+  const [showControlTower, setShowControlTower] = useState(false);
 
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
@@ -107,12 +109,20 @@ const SuperAdminDashboard: React.FC = () => {
 
   const overviewQuickActions = [
     {
+      id: 'control-tower',
+      label: 'Control Tower',
+      description: 'Watch listening sessions live – timers, pages, mistake feed.',
+      onClick: () => setShowControlTower(true),
+      badge: pendingReviewTicketCount + finalizeReadyTicketCount,
+      emphasis: 'primary',
+    },
+    {
       id: 'review-recitations',
       label: 'Review Recitations',
       description: 'Approve sabq, sabqi, and manzil submissions.',
       onClick: () => setShowRecitationReview(true),
       badge: pendingReviewsCount,
-      emphasis: 'primary',
+      emphasis: 'neutral',
     },
     {
       id: 'manage-tickets',
@@ -210,6 +220,14 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'Sync admin notifications and ticket updates.',
       action: () => refreshNotifications(),
       footer: 'Fetch latest',
+    },
+    {
+      id: 'review-recitations',
+      badge: 'RR',
+      title: 'Review Recitations',
+      description: 'Open the sabq / sabqi / manzil review queue.',
+      action: () => setShowRecitationReview(true),
+      footer: `${pendingReviewsCount} pending`,
     },
   ];
 
@@ -987,6 +1005,13 @@ const SuperAdminDashboard: React.FC = () => {
             setShowAssignTicket(false);
             refreshNotifications();
           }}
+        />
+      )}
+
+      {/* Listening Control Tower */}
+      {showControlTower && (
+        <ListeningControlTower
+          onClose={() => setShowControlTower(false)}
         />
       )}
       
