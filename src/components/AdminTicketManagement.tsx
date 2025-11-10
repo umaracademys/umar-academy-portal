@@ -991,7 +991,47 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const isPendingReview = selectedTicket?.status === 'pending_review';
   const isApproved = selectedTicket?.status === 'approved';
-  const needsAssignment = isApproved && selectedTicket?.workflowStep !== 'finalize';
+  const resolveNextActiveTicket = useCallback(
+    (ticket?: AssignmentTicket | null) => {
+      if (!ticket) return null;
+      const visited = new Set<string>();
+      let currentNextId = ticket.nextTicketId;
+
+      while (currentNextId) {
+        if (visited.has(currentNextId)) break;
+        visited.add(currentNextId);
+
+        const nextTicket = tickets.find(
+          (candidate) =>
+            (candidate.id || (candidate as any)._id) === currentNextId
+        );
+
+        if (!nextTicket) {
+          break;
+        }
+
+        if (['approved', 'completed', 'skipped', 'finalized'].includes(nextTicket.status)) {
+          currentNextId = nextTicket.nextTicketId || '';
+          continue;
+        }
+
+        return nextTicket;
+      }
+
+      return null;
+    },
+    [tickets]
+  );
+
+  const nextActiveTicket = useMemo(
+    () => resolveNextActiveTicket(selectedTicket),
+    [resolveNextActiveTicket, selectedTicket]
+  );
+
+  const needsAssignment =
+    isApproved &&
+    selectedTicket?.workflowStep !== 'finalize' &&
+    !!nextActiveTicket;
   const readyForFinalize = isApproved && selectedTicket?.workflowStep === 'finalize';
   const isAdminUser = user?.role === 'admin' || user?.role === 'superadmin';
   const displayedMarkings = readyForFinalize ? aggregatedMarkings : selectedTicketMarkings;
@@ -2088,13 +2128,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         </p>
                       </div>
                     )}
-                    {quickAssignContext.baseTicket.revisionNotes && (
+                    {(quickAssignContext.nextTicket?.revisionNotes || quickAssignContext.baseTicket.revisionNotes) && (
                       <div className="flex flex-col gap-1">
                         <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                           Internal notes
                         </span>
                         <p className="whitespace-pre-wrap rounded-lg bg-gray-50 px-3 py-2 text-gray-800">
-                          {quickAssignContext.baseTicket.revisionNotes}
+                          {quickAssignContext.nextTicket?.revisionNotes || quickAssignContext.baseTicket.revisionNotes}
                         </p>
                       </div>
                     )}

@@ -522,7 +522,7 @@ const AssignmentsPage: React.FC = () => {
                 </div>
               </div>
 
-              {selectedTicket.workflowStep !== 'finalize' ? (
+              {selectedTicket.workflowStep !== 'finalize' && nextActiveTicket ? (
                 <div>
                   <div className="mb-4">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -561,13 +561,13 @@ const AssignmentsPage: React.FC = () => {
                         const teacher = teachers.find(t => t.id === selectedNextTeacher);
                         if (!teacher) return;
                         try {
-                        const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-                        await assignTicketToNext(
-                          ticketId,
-                          teacher.id,
-                          teacher.fullName,
-                          selectedNextTeacherNote.trim() || undefined
-                        );
+                          const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                          await assignTicketToNext(
+                            ticketId,
+                            teacher.id,
+                            teacher.fullName,
+                            selectedNextTeacherNote.trim() || undefined
+                          );
                           alert('✅ Next step assigned successfully!');
                           setSelectedTicket(null);
                           setSelectedNextTeacher('');
@@ -592,6 +592,10 @@ const AssignmentsPage: React.FC = () => {
                       Cancel
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                  All listening steps are approved. Finalize to publish homework and close the chain.
                 </div>
               ) : (
                 <div className="space-y-6">
