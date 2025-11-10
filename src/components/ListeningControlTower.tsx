@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ListeningSession } from '../types';
+import { useBackendData } from '../contexts/BackendDataContext';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
@@ -67,6 +68,7 @@ const formatStatusLabel = (status: ListeningSession['status']) => {
 };
 
 const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }) => {
+  const { deleteTicket, endListeningSession } = useBackendData();
   const [sessions, setSessions] = useState<SessionBucket>({ active: [], recent: [] });
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -74,6 +76,8 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
   const [stepFilter, setStepFilter] = useState<'ALL' | 'sabq' | 'sabqi' | 'manzil' | 'finalize'>('ALL');
   const [teacherFilter, setTeacherFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [cancelingTicketId, setCancelingTicketId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -258,6 +262,69 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
     [sessions.recent, stepFilter, teacherFilter, searchTerm]
   );
 
+  const handleCancelTicket = useCallback(
+    async (session: ListeningSession) => {
+      if (!session?.ticketId) {
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        const confirmed = window.confirm(
+          `Cancel ticket ${session.ticketId} for ${session.studentName}? This will end the active listening session and remove the ticket.`
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      setActionError(null);
+      setCancelingTicketId(session.ticketId);
+
+      const targetId = session.id || session.ticketId;
+      let endErrorMessage: string | null = null;
+
+      if (targetId) {
+        try {
+          await endListeningSession(targetId, {
+            status: 'abandoned',
+            endedAt: new Date().toISOString()
+          });
+        } catch (error) {
+          endErrorMessage =
+            error instanceof Error
+              ? error.message
+              : 'Unable to end the listening session before cancelling.';
+          console.error('Failed to end listening session prior to cancellation:', error);
+        }
+      }
+
+      try {
+        await deleteTicket(session.ticketId);
+        if (targetId) {
+          setSessions((prev) => ({
+            active: removeSession(prev.active, targetId),
+            recent: removeSession(prev.recent, targetId)
+          }));
+        }
+
+        if (endErrorMessage) {
+          setActionError(
+            `${endErrorMessage} The ticket was removed, but the session may take a moment to disappear.`
+          );
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to cancel ticket. Please try again.';
+        setActionError(message);
+        console.error('Failed to cancel ticket from control tower:', error);
+        return;
+      } finally {
+        setCancelingTicketId(null);
+      }
+    },
+    [deleteTicket, endListeningSession]
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
       <div className="relative flex h-full max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -269,6 +336,9 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
             </p>
             {connectionError && (
               <p className="mt-2 text-xs font-semibold text-red-600">{connectionError}</p>
+            )}
+            {actionError && (
+              <p className="mt-2 text-xs font-semibold text-red-600">{actionError}</p>
             )}
           </div>
           <button
@@ -352,8 +422,8 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
                     key={session.id}
                     className="flex h-full flex-col gap-4 rounded-2xl border border-blue-200 bg-white px-5 py-5 shadow-sm"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
                         <p className="text-xs uppercase tracking-wide text-blue-600 font-semibold">
                           {session.workflowStep.toUpperCase()}
                         </p>
@@ -362,8 +432,17 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
                         </h4>
                         <p className="text-xs text-gray-500">Teacher: {session.teacherName}</p>
                       </div>
-                      <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                        {formatDuration(elapsedSeconds)}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+                          {formatDuration(elapsedSeconds)}
+                        </div>
+                        <button
+                          onClick={() => handleCancelTicket(session)}
+                          disabled={cancelingTicketId === session.ticketId}
+                          className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {cancelingTicketId === session.ticketId ? 'Cancelling…' : 'Cancel ticket'}
+                        </button>
                       </div>
                     </div>
 
