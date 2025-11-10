@@ -29,6 +29,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     updateTicket,
     approveTicket,
     assignTicketToNext,
+    approveAndAdvanceTicket,
     finalizeTicket,
     skipTicketToFinalize,
     deleteTicket,
@@ -62,6 +63,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [ticketDeletingId, setTicketDeletingId] = useState<string | null>(null);
   const [approvingTicketId, setApprovingTicketId] = useState<string | null>(null);
+  const [actionBanner, setActionBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [selectedTicketsMap, setSelectedTicketsMap] = useState<Record<string, boolean>>({});
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [quickAssignTicket, setQuickAssignTicket] = useState<AssignmentTicket | null>(null);
@@ -422,33 +424,57 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     const targetTicket = ticketOverride ?? selectedTicket;
     if (!targetTicket) return;
 
-    const ticketId = targetTicket.id || (targetTicket as any)._id;
+    const ticketId = getTicketIdString(targetTicket);
     if (!ticketId) return;
 
-    const shouldShowAlert = !ticketOverride;
+    const isFinalStep = targetTicket.workflowStep === 'finalize';
 
     try {
       setApprovingTicketId(ticketId);
-      const result = await approveTicket(ticketId, user?.id || '');
+      setActionBanner(null);
 
-      if (shouldShowAlert) {
-        alert('Ticket approved successfully!');
+      let bannerMessage = '';
+      let normalizedTicket = targetTicket;
+
+      if (isFinalStep) {
+        const result = await approveTicket(ticketId, user?.id || '');
         if (result?.ticket) {
-          const normalizedTicket = normalizeTicket(result.ticket, targetTicket);
-          setSelectedTicket(normalizedTicket);
+          normalizedTicket = normalizeTicket(result.ticket, targetTicket);
         }
-        setRevisionNotes('');
-        setShowMushaf(false);
-        refreshData().catch((err) => console.error('Error refreshing data after approval:', err));
-      }
-    } catch (error) {
-      console.error('Error approving ticket:', error);
-      alert('Failed to approve ticket');
-    } finally {
-      if (shouldShowAlert) {
+
+        bannerMessage =
+          result?.message ||
+          `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Add homework and finalize next.`;
+
+        setSelectedTicket(normalizedTicket);
+        setShowRevisionForm(false);
+      } else {
+        await approveAndAdvanceTicket(ticketId, user?.id || '');
+
+        const workflowFlow: Record<Exclude<WorkflowStep, 'finalize'>, WorkflowStep> = {
+          sabq: 'sabqi',
+          sabqi: 'manzil',
+          manzil: 'finalize',
+        };
+        const nextStep = workflowFlow[targetTicket.workflowStep as Exclude<WorkflowStep, 'finalize'>];
+        const nextStepLabel = nextStep ? getStepLabel(nextStep) : 'next step';
+
+        bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. ${nextStepLabel} ticket has been activated.`;
+
+        setSelectedTicket(null);
         setShowRevisionForm(false);
       }
-      setApprovingTicketId((prev) => (prev === ticketId ? null : prev));
+
+      setRevisionNotes('');
+      setShowMushaf(false);
+
+      await refreshData();
+      setActionBanner({ type: 'success', message: bannerMessage });
+    } catch (error) {
+      console.error('Error approving ticket:', error);
+      setActionBanner({ type: 'error', message: 'Failed to approve ticket. Please try again.' });
+    } finally {
+      setApprovingTicketId(null);
     }
   };
 
@@ -777,6 +803,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
     setShowMushaf(false);
     setShowRevisionForm(false);
+    setActionBanner(null);
   };
 
   const getStudentName = (studentId: string) => {
@@ -998,6 +1025,17 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             )}
           </div>
         </div>
+        {actionBanner && (
+          <div
+            className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
+              actionBanner.type === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-red-200 bg-red-50 text-red-700'
+            }`}
+          >
+            {actionBanner.message}
+          </div>
+        )}
         <div className="hidden">
           <div className="flex gap-2">
             <button
@@ -1566,6 +1604,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               const ticketKey = getTicketKey(ticket);
               const ticketId = getTicketIdString(ticket);
               const isSelected = !!selectedTicketsMap[ticketId];
+              const isApproving = approvingTicketId === ticketId;
               const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
               const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(otherTicket => getTicketKey(otherTicket) !== ticketKey);
               const historyEntries = rawHistory
@@ -1627,13 +1666,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     <div className="flex flex-col gap-2 min-w-[12rem]">
                       <button
                         onClick={() => handleApprove(ticket)}
-                        disabled={approvingTicketId === ticketId}
+                        disabled={isApproving}
                         className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
                       >
-                        {approvingTicketId === ticketId ? 'Approving…' : 'Approve'}
+                        {isApproving ? 'Approving…' : 'Approve'}
                       </button>
                       <button
                         onClick={() => {
+                          setActionBanner(null);
                           setSelectedTicket(ticket);
                           setShowRevisionForm(false);
                           setSelectedNextTeacher('');
@@ -1644,6 +1684,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </button>
                       <button
                         onClick={() => {
+                          setActionBanner(null);
                           setSelectedTicket(ticket);
                           setShowRevisionForm(false);
                           setSelectedNextTeacher('');
@@ -1654,6 +1695,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </button>
                       <button
                         onClick={() => {
+                          setActionBanner(null);
                           openQuickAssign(ticket);
                           setShowRevisionForm(false);
                           setSelectedNextTeacher('');
@@ -1669,6 +1711,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </button>
                       <button
                         onClick={() => {
+                          setActionBanner(null);
                           setSelectedTicket(ticket);
                           setShowRevisionForm(false);
                           setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
@@ -1699,14 +1742,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </button>
                       <button
                         onClick={() => handleDeleteTicket(ticket)}
-                        disabled={ticketDeletingId === (ticket.id || (ticket as any)._id)}
+                        disabled={ticketDeletingId === ticketId}
                         className={`hidden px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-                          ticketDeletingId === (ticket.id || (ticket as any)._id)
+                          ticketDeletingId === ticketId
                             ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
                             : 'border-red-200 text-red-600 hover:bg-red-50'
                         }`}
                       >
-                        {ticketDeletingId === (ticket.id || (ticket as any)._id) ? 'Deleting…' : 'Delete Ticket'}
+                        {ticketDeletingId === ticketId ? 'Deleting…' : 'Delete Ticket'}
                       </button>
                     </div>
                   </div>
