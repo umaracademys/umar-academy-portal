@@ -522,81 +522,83 @@ const AssignmentsPage: React.FC = () => {
                 </div>
               </div>
 
-              {selectedTicket.workflowStep !== 'finalize' && nextActiveTicket ? (
-                <div>
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Internal note for next teacher
+              {selectedTicket.workflowStep !== 'finalize' ? (
+                nextActiveTicket ? (
+                  <div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Internal note for next teacher
+                      </label>
+                      <textarea
+                        value={selectedNextTeacherNote}
+                        onChange={(event) => setSelectedNextTeacherNote(event.target.value)}
+                        rows={3}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Highlight focus areas, mistakes to watch for, or pacing guidance…"
+                      />
+                    </div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Teacher for Next Step
                     </label>
-                    <textarea
-                      value={selectedNextTeacherNote}
-                      onChange={(event) => setSelectedNextTeacherNote(event.target.value)}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Highlight focus areas, mistakes to watch for, or pacing guidance…"
-                    />
-                  </div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Select Teacher for Next Step
-                  </label>
-                  <select
-                    value={selectedNextTeacher}
-                    onChange={(e) => setSelectedNextTeacher(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
-                  >
-                    <option value="">Choose a teacher...</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={async () => {
-                        if (!selectedNextTeacher) {
-                          alert('Please select a teacher');
-                          return;
-                        }
-                        const teacher = teachers.find(t => t.id === selectedNextTeacher);
-                        if (!teacher) return;
-                        try {
-                          const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-                          await assignTicketToNext(
-                            ticketId,
-                            teacher.id,
-                            teacher.fullName,
-                            selectedNextTeacherNote.trim() || undefined
-                          );
-                          alert('✅ Next step assigned successfully!');
+                    <select
+                      value={selectedNextTeacher}
+                      onChange={(e) => setSelectedNextTeacher(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"
+                    >
+                      <option value="">Choose a teacher...</option>
+                      {teachers.map(teacher => (
+                        <option key={teacher.id} value={teacher.id}>
+                          {teacher.fullName}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={async () => {
+                          if (!selectedNextTeacher) {
+                            alert('Please select a teacher');
+                            return;
+                          }
+                          const teacher = teachers.find(t => t.id === selectedNextTeacher);
+                          if (!teacher) return;
+                          try {
+                            const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                            await assignTicketToNext(
+                              ticketId,
+                              teacher.id,
+                              teacher.fullName,
+                              selectedNextTeacherNote.trim() || undefined
+                            );
+                            alert('✅ Next step assigned successfully!');
+                            setSelectedTicket(null);
+                            setSelectedNextTeacher('');
+                            setSelectedNextTeacherNote('');
+                            await refreshData();
+                          } catch (error) {
+                            alert('Failed to assign ticket');
+                          }
+                        }}
+                        disabled={!selectedNextTeacher}
+                        className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        Assign to Next Teacher
+                      </button>
+                      <button
+                        onClick={() => {
                           setSelectedTicket(null);
                           setSelectedNextTeacher('');
-                          setSelectedNextTeacherNote('');
-                          await refreshData();
-                        } catch (error) {
-                          alert('Failed to assign ticket');
-                        }
-                      }}
-                      disabled={!selectedNextTeacher}
-                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      Assign to Next Teacher
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedTicket(null);
-                        setSelectedNextTeacher('');
-                      }}
-                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
+                        }}
+                        className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                  All listening steps are approved. Finalize to publish homework and close the chain.
-                </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    All listening steps are approved. Finalize to publish homework and close the chain.
+                  </div>
+                )
               ) : (
                 <div className="space-y-6">
                   {!canFinalizeTickets ? (
