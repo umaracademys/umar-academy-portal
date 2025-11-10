@@ -242,6 +242,48 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     isTicketAssignedToTeacher(t) && t.status === 'pending_review'
   );
   
+  const [ticketView, setTicketView] = useState<'all' | 'pending'>('all');
+  
+  const mistakeLabels: Record<string, string> = {
+    madd: 'Mad (Elongation)',
+    ghunna: 'Ghunna',
+    holding: 'Holding',
+    memory: 'Memory',
+    ikhfa: 'Ikhfa',
+    tech: 'Tech',
+    other: 'Other'
+  };
+  
+  const mistakeStats = useMemo(() => {
+    const byType = mushafMarkings.reduce<Record<string, number>>((acc, mistake) => {
+      const key = (mistake.type || 'other').toLowerCase();
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const total = mushafMarkings.length;
+    return { total, byType };
+  }, [mushafMarkings]);
+  
+  const mistakesByPage = useMemo(() => {
+    const map = new Map<number, { count: number; types: Record<string, number> }>();
+    mushafMarkings.forEach((mistake) => {
+      const page = mistake.page || 0;
+      if (!map.has(page)) {
+        map.set(page, { count: 0, types: {} });
+      }
+      const bucket = map.get(page)!;
+      bucket.count += 1;
+      const typeKey = (mistake.type || 'other').toLowerCase();
+      bucket.types[typeKey] = (bucket.types[typeKey] || 0) + 1;
+    });
+    return Array.from(map.entries())
+      .map(([page, data]) => ({ page, ...data }))
+      .sort((a, b) => a.page - b.page);
+  }, [mushafMarkings]);
+
+  const visibleTickets = ticketView === 'pending' ? completedTickets : myTickets;
+  const pendingCount = completedTickets.length;
+
   // Load chapters on mount
   useEffect(() => {
     const loadChapters = async () => {
@@ -461,610 +503,554 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="max-w-7xl 2xl:max-w-[90rem] mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16 py-4 sm:py-6">
-        {/* Professional Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-4 sm:mb-6">
-          <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Ticket Management</h1>
-                <p className="text-xs sm:text-sm text-gray-500 mt-1">Review and manage student recitation tickets</p>
-              </div>
-              {onClose && (
-                <button
-                  onClick={onClose}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  aria-label="Close"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
+    <div className="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setTicketView('pending')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              ticketView === 'pending'
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
+            }`}
+          >
+            Pending Review ({pendingCount})
+          </button>
+          <button
+            onClick={() => setTicketView('all')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              ticketView === 'all'
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
+            }`}
+          >
+            All Tickets
+          </button>
+          {onClose && (
+            <button className="text-gray-500 hover:text-gray-700 px-4 py-2" onClick={onClose}>
+              Close
+            </button>
+          )}
         </div>
+      </div>
 
-      {selectedTicket ? (
-        <div className="space-y-4 sm:space-y-6">
-          {/* Ticket Information Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-4">
-                  {/* Back Button */}
-                  <button
-                    onClick={() => {
-                      setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '' });
-                      setShowMushaf(false);
-                      setCurrentPage(1);
-                    }}
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white rounded-lg transition-colors"
-                    title="Back to Tickets"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    <span className="hidden sm:inline">Back</span>
-                  </button>
-                  <div>
-                    <h2 className="text-base sm:text-lg lg:text-xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h2>
-                    <div className="flex items-center gap-2 sm:gap-3 mt-1">
-                      <span className="text-xs sm:text-sm text-gray-600">{getStepLabel(selectedTicket.workflowStep)}</span>
-                      <span className="text-gray-300">•</span>
-                      <span className="text-xs sm:text-sm text-gray-600">{selectedTicket.program}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(selectedTicket.status)}`}>
-                    {selectedTicket.status.replace('_', ' ')}
-                  </span>
-                  <button
-                    onClick={() => setShowMushaf(!showMushaf)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm ${
-                      showMushaf 
-                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                        : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
-                    }`}
-                  >
-                    {showMushaf ? (
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Hide Mushaf
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                        Show Mushaf
-                      </span>
-                    )}
-                  </button>
-                </div>
-              </div>
+      <div className="space-y-6">
+        {selectedTicket ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                onClick={() => {
+                  setSelectedTicket(null);
+                  setFormData({ progressNotes: '', audioLink: '' });
+                  setShowMushaf(false);
+                  setCurrentPage(1);
+                }}
+              >
+                <span>←</span>
+                Back to tickets
+              </button>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusColor(selectedTicket.status)}`}>
+                {selectedTicket.status.replace('_', ' ')}
+              </span>
             </div>
-            {selectedAssignmentDetails?.hasDetails && (
-              <div className="px-6 py-4 border-b border-gray-100 bg-white">
-                <div
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border ${getStepTheme(selectedTicket.workflowStep).accent}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className={`text-base sm:text-lg font-semibold ${getStepTheme(selectedTicket.workflowStep).chip}`}>
-                      {getStepLabel(selectedTicket.workflowStep)}
-                    </span>
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+              <div className="space-y-6">
+                <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+                  <header className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Current step • {getStepLabel(selectedTicket.workflowStep).replace(/^[^ ]+\s/, '')}
+                    </p>
+                    <h3 className="text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
+                  </header>
+
+                  <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
-                        Focus for this listening
-                      </p>
-                      <p className="text-sm sm:text-base font-medium">
-                        {selectedAssignmentDetails.summary}
-                      </p>
+                      <dt className="font-semibold text-gray-700">Assigned teacher</dt>
+                      <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedAssignmentDetails.range && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStepTheme(selectedTicket.workflowStep).badge}`}>
-                        Range: {selectedAssignmentDetails.range}
-                      </span>
-                    )}
-                    {selectedAssignmentDetails.portion && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStepTheme(selectedTicket.workflowStep).badge}`}>
-                        Portion: {selectedAssignmentDetails.portion}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+                    <div>
+                      <dt className="font-semibold text-gray-700">Program</dt>
+                      <dd>{selectedTicket.program || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-gray-700">Range / Focus</dt>
+                      <dd>{selectedAssignmentDetails?.summary || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-gray-700">Portion size</dt>
+                      <dd>{selectedAssignmentDetails?.portion || '—'}</dd>
+                    </div>
+                  </dl>
 
-            {(selectedTicket.revisionNotes || selectedTicket.audioLink) && (
-              <div className="px-6 py-4 space-y-3">
-                {selectedTicket.revisionNotes && (
-                  <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-red-900 mb-1">Revision Notes</p>
-                      <p className="text-sm text-red-700">{selectedTicket.revisionNotes}</p>
-                    </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Teacher notes</h4>
+                    <p className="whitespace-pre-wrap text-sm text-gray-700">
+                      {selectedTicket.progressNotes?.trim() || 'No notes recorded yet.'}
+                    </p>
                   </div>
-                )}
-                {selectedTicket.audioLink && (
-                  <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <svg className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-green-900 mb-1">Audio Recording</p>
-                      <a
-                        href={selectedTicket.audioLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-green-700 hover:text-green-900 underline break-all inline-flex items-center gap-1"
-                      >
-                        {selectedTicket.audioLink}
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+                </section>
 
-          {/* Mushaf View - Contained Layout like Assignments Page */}
-          {showMushaf && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              {/* Compact Header */}
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      📖 Interactive Mushaf
-                    </h3>
-                    {mushafMarkings.length > 0 && (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-                        {mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Compact Page Navigation */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage <= 1}
-                      className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Previous page"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                    
-                    <div className="text-center min-w-[80px]">
-                      <div className="text-xs font-semibold text-gray-900">Page {currentPage}</div>
-                      <div className="text-[10px] text-gray-500">
-                        {getCurrentSurah(currentPage)?.name_simple || 'N/A'} • Juz {getJuzFromPage(currentPage)}
+                <section className="rounded-xl border border-gray-200 bg-white p-5">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4">Review & Submit</h4>
+                  <form onSubmit={handleSubmitTicket} className="space-y-5">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Progress Notes <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Include observations, corrections, praise, and specific feedback
+                        </p>
+                        <textarea
+                          value={formData.progressNotes}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, progressNotes: e.target.value }))}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y transition-colors"
+                          rows={6}
+                          placeholder="Enter detailed progress notes...&#10;&#10;Example:&#10;- Student recited pages 1-2 well&#10;- Needs improvement on elongation (madd) rules&#10;- Good memory retention&#10;- Practice tajweed rules for page 3..."
+                          required
+                        />
+                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Tip: Mention specific pages, ayahs, or mistakes marked in the Mushaf
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                          Audio Link <span className="text-gray-400 text-xs font-normal">(Optional)</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">If you have a different audio link than the one above</p>
+                        <input
+                          type="url"
+                          value={formData.audioLink}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, audioLink: e.target.value }))}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          placeholder="https://..."
+                        />
                       </div>
                     </div>
-                    
-                    <button
-                      onClick={() => setCurrentPage(Math.min(604, currentPage + 1))}
-                      disabled={currentPage >= 604}
-                      className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Next page"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
 
-              {/* Mushaf Container - Compact and Contained - Responsive for mobile and large screens */}
-              <div className="p-3 sm:p-4 lg:p-6 xl:p-8 bg-white overflow-x-hidden">
-                <div className="max-h-[60vh] sm:max-h-[65vh] lg:max-h-[70vh] xl:max-h-[75vh] 2xl:max-h-[80vh] overflow-y-auto">
-                  <InteractiveMushaf
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    mistakes={mushafMarkings}
-                    historicalMistakes={historicalMistakes}
-                    onMistakeMark={handleMistakeMark}
-                    mode="marking"
-                    studentName={selectedTicket.studentName}
-                    showHistorical={true}
-                  />
-                </div>
-              </div>
-
-              {/* Mistake Summary - Compact Footer */}
-              {mushafMarkings.length > 0 && (
-                <div className="px-4 py-3 bg-green-50 border-t border-green-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <p className="text-xs font-semibold text-green-900">
-                        {mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''} marked for this recitation
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (confirm('Are you sure you want to clear all marked mistakes?')) {
-                          setMushafMarkings([]);
-                        }
-                      }}
-                      className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 hover:bg-red-50 rounded transition-colors"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Submission Form */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">Review & Submit</h3>
-                {mushafMarkings.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1 bg-green-100 rounded-full">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span className="text-sm font-semibold text-green-700">{mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <form onSubmit={handleSubmitTicket} className="p-6 space-y-5">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Progress Notes <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-gray-500 mb-3">Include observations, corrections, praise, and specific feedback</p>
-                <textarea
-                  value={formData.progressNotes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, progressNotes: e.target.value }))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y transition-colors"
-                  rows={6}
-                  placeholder="Enter detailed progress notes...&#10;&#10;Example:&#10;- Student recited pages 1-2 well&#10;- Needs improvement on elongation (madd) rules&#10;- Good memory retention&#10;- Practice tajweed rules for page 3..."
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Tip: Mention specific pages, ayahs, or mistakes marked in the Mushaf
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                  Audio Link <span className="text-gray-400 text-xs font-normal">(Optional)</span>
-                </label>
-                <p className="text-xs text-gray-500 mb-3">If you have a different audio link than the one above</p>
-                <input
-                  type="url"
-                  value={formData.audioLink}
-                  onChange={(e) => setFormData(prev => ({ ...prev, audioLink: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                  placeholder="https://..."
-                />
-              </div>
-            </div>
-
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Submit for Review
-                    </>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (mushafMarkings.length > 0 || formData.progressNotes.trim()) {
-                      if (confirm('Are you sure you want to cancel? Your progress notes and marked mistakes will be lost.')) {
-                        setSelectedTicket(null);
-      setFormData({ progressNotes: '', audioLink: '' });
-                        setMushafMarkings([]);
-                      }
-                    } else {
-                      setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '' });
-                    }
-                  }}
-                  className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-
-            {/* Additional Actions */}
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50 space-y-3">
-              <button
-                onClick={() => setShowAssignOption(!showAssignOption)}
-                className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-                Assign to Different Teacher
-              </button>
-
-              {/* Assign to Different Teacher Form */}
-              {showAssignOption && (
-                <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
-                  <h4 className="text-sm font-semibold text-indigo-900 mb-3">Assign to Different Teacher</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-indigo-900 mb-1">
-                        Select Teacher <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={selectedTeacherForAssign}
-                        onChange={(e) => setSelectedTeacherForAssign(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        <option value="">Choose a teacher...</option>
-                        {teachers.filter(t => t.id !== user?.id).map(teacher => (
-                          <option key={teacher.id} value={teacher.id}>
-                            {teacher.fullName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-4 border-t border-gray-200">
                       <button
-                        onClick={handleAssignToDifferentTeacher}
-                        disabled={isSubmitting || !selectedTeacherForAssign}
-                        className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center justify-center gap-2"
                       >
-                        Assign Ticket
+                        {isSubmitting ? (
+                          <>
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Submit for Review
+                          </>
+                        )}
                       </button>
                       <button
+                        type="button"
                         onClick={() => {
-                          setShowAssignOption(false);
-                          setSelectedTeacherForAssign('');
+                          if (mushafMarkings.length > 0 || formData.progressNotes.trim()) {
+                            if (confirm('Are you sure you want to cancel? Your progress notes and marked mistakes will be lost.')) {
+                              setSelectedTicket(null);
+                              setFormData({ progressNotes: '', audioLink: '' });
+                              setMushafMarkings([]);
+                            }
+                          } else {
+                            setSelectedTicket(null);
+                            setFormData({ progressNotes: '', audioLink: '' });
+                          }
                         }}
-                        className="px-4 py-2 bg-white border border-indigo-300 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-50 transition-colors text-sm"
+                        className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors"
                       >
                         Cancel
                       </button>
                     </div>
+                  </form>
+
+                  <div className="mt-4 border-t border-gray-200 pt-4">
+                    <button
+                      onClick={() => setShowAssignOption(!showAssignOption)}
+                      className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      Assign to Different Teacher
+                    </button>
+
+                    {showAssignOption && (
+                      <div className="mt-4 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                        <h4 className="text-sm font-semibold text-indigo-900 mb-3">Assign to Different Teacher</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-indigo-900 mb-1">
+                              Select Teacher <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                              value={selectedTeacherForAssign}
+                              onChange={(e) => setSelectedTeacherForAssign(e.target.value)}
+                              className="w-full px-3 py-2 text-sm border border-indigo-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            >
+                              <option value="">Choose a teacher...</option>
+                              {teachers.filter(t => t.id !== user?.id).map(teacher => (
+                                <option key={teacher.id} value={teacher.id}>
+                                  {teacher.fullName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleAssignToDifferentTeacher}
+                              disabled={isSubmitting || !selectedTeacherForAssign}
+                              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                            >
+                              Assign Ticket
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowAssignOption(false);
+                                setSelectedTeacherForAssign('');
+                              }}
+                              className="px-4 py-2 bg-white border border-indigo-300 text-indigo-700 rounded-lg font-semibold hover:bg-indigo-50 transition-colors text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {myTickets.length === 0 && completedTickets.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <p className="text-lg font-semibold text-gray-900 mb-2">No active tickets</p>
-              <p className="text-sm text-gray-500">
-                Tickets with status "assigned", "in_progress", or "needs_revision" will appear here.
-              </p>
-              {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length > 0 && (
-                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    ⚠️ You have {activeTickets.filter(t => isTicketAssignedToTeacher(t)).length} ticket(s) assigned to you, 
-                    but they have status "{activeTickets.find(t => isTicketAssignedToTeacher(t))?.status}" 
-                    which is not currently active. Please contact admin if you need to work on these tickets.
-                  </p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <>
-              {myTickets.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Tickets</h3>
-                  {availableLetters.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-2 mb-4">
+                </section>
+              </div>
+
+              <aside className="space-y-5">
+                <section className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-700">🎯</span>
+                        <span>Mistakes overview</span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {mistakeStats.total > 0
+                          ? `${mistakeStats.total} mistake${mistakeStats.total !== 1 ? 's' : ''} across ${mistakesByPage.length} page${mistakesByPage.length !== 1 ? 's' : ''}`
+                          : 'No mistakes marked yet'}
+                      </p>
+                      {mistakeStats.total > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {Object.entries(mistakeStats.byType).map(([type, count]) => (
+                            <span
+                              key={`mistake-chip-${type}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700"
+                            >
+                              {mistakeLabels[type] || type}
+                              <span className="text-purple-500">· {count}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-stretch gap-2 sm:flex-row">
                       <button
-                        onClick={() => setStudentFilterLetter('ALL')}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
-                          studentFilterLetter === 'ALL'
+                        onClick={() => setShowMushaf((prev) => !prev)}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition border-purple-600 bg-purple-600 text-white hover:bg-purple-700"
+                      >
+                        {showMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
+                      </button>
+                    </div>
+                  </div>
+                  {mistakesByPage.length > 0 && (
+                    <div className="mt-5 space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Pages with mistakes</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {mistakesByPage.map(({ page, count }) => (
+                          <div
+                            key={`mistake-page-${page}`}
+                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">Page {page}</p>
+                              <p className="text-xs text-gray-500">{count} mistake{count !== 1 ? 's' : ''}</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setCurrentPage(page);
+                                setShowMushaf(true);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-3 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition"
+                            >
+                              View
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {showMushaf && (
+                  <section className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h4>
+                      <button
+                        className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                        onClick={() => setShowMushaf(false)}
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <div className="relative w-full overflow-x-hidden">
+                      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <button className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm bg-gray-200 text-gray-700 hover:bg-gray-300" title="Show surah index">
+                            <span className="hidden sm:inline">Surah </span>Index
+                          </button>
+                        </div>
+                      </div>
+                      <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full">
+                        <div className="flex-1 min-w-0 w-full overflow-hidden">
+                          <div className="relative w-full flex flex-col items-center overflow-hidden">
+                            <div className="w-full max-w-full mx-auto px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
+                              <InteractiveMushaf
+                                currentPage={currentPage}
+                                onPageChange={setCurrentPage}
+                                mistakes={mushafMarkings}
+                                historicalMistakes={historicalMistakes}
+                                onMistakeMark={handleMistakeMark}
+                                mode="marking"
+                                studentName={selectedTicket.studentName}
+                                showHistorical={true}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {mistakeStats.total > 0 && (
+                  <section className="mt-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Mistake Report ({mistakeStats.total})
+                    </h3>
+                    <div className="space-y-2">
+                      {mushafMarkings.map((mistake) => (
+                        <div
+                          key={mistake.id}
+                          className="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-200"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <span className="font-semibold text-gray-900">{mistake.word}</span>
+                              <span className="text-gray-600"> — {mistakeLabels[mistake.type || 'other'] || mistake.type || 'Other'} Mistake</span>
+                              <span className="text-gray-500 text-[10px] ml-2">(Surah {mistake.surah}, Ayah {mistake.ayah})</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </aside>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            {visibleTickets.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-lg font-semibold text-gray-900 mb-2">No tickets found</p>
+                <p className="text-sm text-gray-500">
+                  {ticketView === 'pending'
+                    ? 'Tickets submitted and waiting for admin review will appear here.'
+                    : 'Tickets with status "assigned", "in_progress", or "needs_revision" will appear here.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                {ticketView === 'all' && availableLetters.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setStudentFilterLetter('ALL')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
+                        studentFilterLetter === 'ALL'
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      All
+                    </button>
+                    {availableLetters.map((letter) => (
+                      <button
+                        key={letter}
+                        onClick={() => setStudentFilterLetter(letter)}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                          studentFilterLetter === letter
                             ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                             : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                         }`}
+                        aria-label={`Filter by students starting with ${letter}`}
                       >
-                        All
+                        {letter}
                       </button>
-                      {availableLetters.map(letter => (
-                        <button
-                          key={letter}
-                          onClick={() => setStudentFilterLetter(letter)}
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors ${
-                            studentFilterLetter === letter
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                          }`}
-                          aria-label={`Filter by students starting with ${letter}`}
-                        >
-                          {letter}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {filteredMyTickets.length === 0 && (
-                      <div className="col-span-full bg-white border border-dashed border-gray-300 rounded-xl p-6 text-center text-sm text-gray-500">
-                        No students found for the selected filter.
-                      </div>
-                    )}
-                    {filteredMyTickets.map(ticket => {
-                      const ticketKey = getTicketKey(ticket);
-                      const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
-                      const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(otherTicket => getTicketKey(otherTicket) !== ticketKey);
-                      const historyEntries = rawHistory
-                        .slice()
-                        .sort((a, b) => {
-                          const aTime = new Date((a as any).updatedAt || (a as any).completedAt || (a as any).createdAt || 0).getTime();
-                          const bTime = new Date((b as any).updatedAt || (b as any).completedAt || (b as any).createdAt || 0).getTime();
-                          return bTime - aTime;
-                        });
- 
-                      const assignmentDetails = extractAssignmentDetails(ticket);
-                      const stepTheme = getStepTheme(ticket.workflowStep);
-
-                      return (
-                        <div
-                          key={ticketKey}
-                          className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
-                        >
-                          <div className="p-5">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
-                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
-                                    {ticket.status.replace('_', ' ')}
-                                  </span>
-                                </div>
-                                <h4 className="font-semibold text-gray-900 mb-1">{getStudentName(ticket.studentId)}</h4>
-                                <p className="text-sm text-gray-600">{ticket.program}</p>
-                              </div>
-                            </div>
-                            {assignmentDetails.hasDetails && (
-                              <div className={`mt-3 p-3 text-xs sm:text-sm border rounded-lg ${stepTheme.accent}`}>
-                                <p className="font-semibold">{assignmentDetails.summary}</p>
-                              </div>
-                            )}
-                            {ticket.progressNotes && (
-                              <p className="text-sm text-gray-500 mt-3 line-clamp-2 border-t border-gray-100 pt-3">{ticket.progressNotes}</p>
-                            )}
-                          </div>
-                          <div className="px-5 pb-5">
-                            <button
-                              onClick={() => handleStartTicket(ticket)}
-                              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                              </svg>
-                              {ticket.status === 'assigned' ? 'Start Review' : 'Continue Review'}
-                            </button>
-                            <button
-                              onClick={() => handleToggleHistory(ticketKey)}
-                              className="mt-3 w-full px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                            >
-                              <svg className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                              </svg>
-                              {isHistoryExpanded ? 'Hide Assignment History' : 'Show Assignment History'}
-                            </button>
-                            {isHistoryExpanded && (
-                              <div className="mt-3 space-y-2 text-left">
-                                {historyEntries.length === 0 ? (
-                                  <div className="p-3 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-lg italic">
-                                    No previous assignments recorded for this student.
-                                  </div>
-                                ) : (
-                                  historyEntries.map(historyTicket => {
-                                    const historyKey = getTicketKey(historyTicket);
-                                    const historyAssignment = extractAssignmentDetails(historyTicket);
-                                    const historyTheme = getStepTheme(historyTicket.workflowStep);
-                                    return (
-                                      <div key={historyKey} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                                        <div className="flex items-center justify-between gap-3 mb-1">
-                                          <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                                            <span>{getStepLabel(historyTicket.workflowStep)}</span>
-                                          </div>
-                                          <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(historyTicket.status)}`}>
-                                            {historyTicket.status.replace('_', ' ')}
-                                          </span>
-                                        </div>
-                                        <div className="text-[11px] text-gray-500">
-                                          Updated {formatHistoryTimestamp(historyTicket)}
-                                        </div>
-                                        {historyAssignment.hasDetails && (
-                                          <div className={`mt-2 text-xs border rounded-md px-2 py-1 ${historyTheme.accent}`}>
-                                            {historyAssignment.summary}
-                                          </div>
-                                        )}
-                                        {historyTicket.progressNotes && (
-                                          <p className="mt-2 text-xs text-gray-600 line-clamp-3">
-                                            {historyTicket.progressNotes}
-                                          </p>
-                                        )}
-                                      </div>
-                                    );
-                                  })
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {completedTickets.length > 0 && (
-                <div className="mt-8">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Review</h3>
-                  <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-                    {completedTickets.map(ticket => (
-                      <div
-                        key={ticket.id || (ticket as any)._id || `completed-ticket-${ticket.studentId}-${ticket.workflowStep}`}
-                        className="bg-gray-50 rounded-xl border border-gray-200 p-5"
-                      >
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
-                            Awaiting Review
-                          </span>
-                        </div>
-                        <p className="font-semibold text-gray-900">{getStudentName(ticket.studentId)}</p>
-                      </div>
                     ))}
                   </div>
+                )}
+
+                <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  {visibleTickets.map((ticket) => {
+                    const ticketKey = getTicketKey(ticket);
+                    const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
+                    const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(
+                      (otherTicket) => getTicketKey(otherTicket) !== ticketKey
+                    );
+                    const historyEntries = rawHistory
+                      .slice()
+                      .sort((a, b) => {
+                        const aTime = new Date((a as any).updatedAt || (a as any).completedAt || (a as any).createdAt || 0).getTime();
+                        const bTime = new Date((b as any).updatedAt || (b as any).completedAt || (b as any).createdAt || 0).getTime();
+                        return bTime - aTime;
+                      });
+                    const assignmentDetails = extractAssignmentDetails(ticket);
+                    const stepTheme = getStepTheme(ticket.workflowStep);
+
+                    return (
+                      <div
+                        key={ticketKey}
+                        className="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all overflow-hidden"
+                      >
+                        <div className="p-5">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                                  {ticket.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                              <h4 className="font-semibold text-gray-900 mb-1">{getStudentName(ticket.studentId)}</h4>
+                              <p className="text-sm text-gray-600">{ticket.program}</p>
+                            </div>
+                          </div>
+                          {assignmentDetails.hasDetails && (
+                            <div className={`mt-3 p-3 text-xs sm:text-sm border rounded-lg ${stepTheme.accent}`}>
+                              <p className="font-semibold">{assignmentDetails.summary}</p>
+                            </div>
+                          )}
+                          {ticket.progressNotes && (
+                            <p className="text-sm text-gray-500 mt-3 line-clamp-2 border-t border-gray-100 pt-3">{ticket.progressNotes}</p>
+                          )}
+                        </div>
+                        <div className="px-5 pb-5">
+                          <button
+                            onClick={() => handleStartTicket(ticket)}
+                            className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            {ticket.status === 'assigned' ? 'Start Review' : 'Continue Review'}
+                          </button>
+                          <button
+                            onClick={() => handleToggleHistory(ticketKey)}
+                            className="mt-3 w-full px-4 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <svg
+                              className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'transform rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                            {isHistoryExpanded ? 'Hide Assignment History' : 'Show Assignment History'}
+                          </button>
+                          {isHistoryExpanded && (
+                            <div className="mt-3 space-y-2 text-left">
+                              {historyEntries.length === 0 ? (
+                                <div className="p-3 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-lg italic">
+                                  No previous assignments recorded for this student.
+                                </div>
+                              ) : (
+                                historyEntries.map((historyTicket) => {
+                                  const historyKey = getTicketKey(historyTicket);
+                                  const historyAssignment = extractAssignmentDetails(historyTicket);
+                                  const historyTheme = getStepTheme(historyTicket.workflowStep);
+                                  return (
+                                    <div key={historyKey} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                      <div className="flex items-center justify-between gap-3 mb-1">
+                                        <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                          <span>{getStepLabel(historyTicket.workflowStep)}</span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(historyTicket.status)}`}>
+                                          {historyTicket.status.replace('_', ' ')}
+                                        </span>
+                                      </div>
+                                      <div className="text-[11px] text-gray-500">Updated {formatHistoryTimestamp(historyTicket)}</div>
+                                      {historyAssignment.hasDetails && (
+                                        <div className={`mt-2 text-xs border rounded-md px-2 py-1 ${historyTheme.accent}`}>
+                                          {historyAssignment.summary}
+                                        </div>
+                                      )}
+                                      {historyTicket.progressNotes && (
+                                        <p className="mt-2 text-xs text-gray-600 line-clamp-3">{historyTicket.progressNotes}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+              </>
+            )}
+
+            {ticketView === 'all' && completedTickets.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Pending Review</h3>
+                <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                  {completedTickets.map((ticket) => (
+                    <div
+                      key={ticket.id || (ticket as any)._id || `completed-ticket-${ticket.studentId}-${ticket.workflowStep}`}
+                      className="bg-gray-50 rounded-xl border border-gray-200 p-5"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-lg">{getStepLabel(ticket.workflowStep)}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                          Awaiting Review
+                        </span>
+                      </div>
+                      <p className="font-semibold text-gray-900">{getStudentName(ticket.studentId)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
