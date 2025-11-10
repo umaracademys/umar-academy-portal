@@ -991,43 +991,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const isPendingReview = selectedTicket?.status === 'pending_review';
   const isApproved = selectedTicket?.status === 'approved';
-  const resolveNextActiveTicket = useCallback(
-    (ticket?: AssignmentTicket | null) => {
-      if (!ticket) return null;
-      const visited = new Set<string>();
-      let currentNextId = ticket.nextTicketId;
-
-      while (currentNextId) {
-        if (visited.has(currentNextId)) break;
-        visited.add(currentNextId);
-
-        const nextTicket = tickets.find(
-          (candidate) =>
-            (candidate.id || (candidate as any)._id) === currentNextId
-        );
-
-        if (!nextTicket) {
-          break;
-        }
-
-        if (['approved', 'completed', 'skipped', 'finalized'].includes(nextTicket.status)) {
-          currentNextId = nextTicket.nextTicketId || '';
-          continue;
-        }
-
-        return nextTicket;
-      }
-
-      return null;
-    },
-    [tickets]
-  );
-
   const nextActiveTicket = useMemo(
     () => resolveNextActiveTicket(selectedTicket),
     [resolveNextActiveTicket, selectedTicket]
   );
-
   const needsAssignment =
     isApproved &&
     selectedTicket?.workflowStep !== 'finalize' &&
@@ -1092,11 +1059,6 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     sabqTicketInChain,
     selectedTicket,
   ]);
-
-  const nextActiveTicket = useMemo(
-    () => resolveNextActiveTicket(selectedTicket),
-    [resolveNextActiveTicket, selectedTicket]
-  );
 
   useEffect(() => {
     if (selectedTicket && selectedTicket.workflowStep !== 'finalize') {
