@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher, MushafMistake } from '../types';
@@ -62,6 +62,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const [ticketDeletingId, setTicketDeletingId] = useState<string | null>(null);
   const [selectedTicketsMap, setSelectedTicketsMap] = useState<Record<string, boolean>>({});
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [quickAssignTicket, setQuickAssignTicket] = useState<AssignmentTicket | null>(null);
+  const [quickAssignTeacherId, setQuickAssignTeacherId] = useState('');
+  const [quickAssignFinalReport, setQuickAssignFinalReport] = useState('');
+  const [quickAssignHomework, setQuickAssignHomework] = useState('');
+  const [quickAssignHomeworkLink, setQuickAssignHomeworkLink] = useState('');
+  const [quickAssignLoading, setQuickAssignLoading] = useState({ approve: false, assign: false, finalize: false });
+  const [quickAssignError, setQuickAssignError] = useState<string | null>(null);
 
   const selectedTicketMarkings = selectedTicket?.mushafMarkings ?? ([] as MushafMistake[]);
 
@@ -136,6 +143,21 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     });
   };
 
+  const getStepLabel = (step: WorkflowStep) => {
+    switch (step) {
+      case 'sabq':
+        return 'Sabq';
+      case 'sabqi':
+        return 'Sabqi';
+      case 'manzil':
+        return 'Manzil';
+      case 'finalize':
+        return 'Finalize';
+      default:
+        return step;
+    }
+  };
+
   const normalizeTicket = (incoming: any, fallback?: AssignmentTicket): AssignmentTicket => {
     const merged = {
       ...fallback,
@@ -172,6 +194,173 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     };
   };
 
+  const getTicketId = (ticket?: AssignmentTicket | null) =>
+    ticket ? (ticket.id || (ticket as any)._id || '') : '';
+
+  const findTicketById = useCallback((id?: string | null) => {
+    if (!id) return null;
+    return tickets.find((t) => (t.id || (t as any)._id) === id) || null;
+  }, [tickets]);
+
+  const quickAssignContext = useMemo(() => {
+    if (!quickAssignTicket) return null;
+
+    let base = quickAssignTicket;
+    let next: AssignmentTicket | null = null;
+    let guard = 0;
+
+    while (guard < 10) {
+      const nextId = base.nextTicketId;
+      if (!nextId) {
+        next = null;
+        break;
+      }
+
+      const resolvedNext = findTicketById(nextId);
+      if (!resolvedNext) {
+        next = null;
+        break;
+      }
+
+      if (resolvedNext.status === 'approved' || resolvedNext.status === 'completed') {
+        base = resolvedNext;
+        guard += 1;
+        continue;
+      }
+
+      next = resolvedNext;
+      break;
+    }
+
+    return { baseTicket: base, nextTicket: next };
+  }, [quickAssignTicket, findTicketById]);
+
+  const openQuickAssign = useCallback((ticket: AssignmentTicket) => {
+    setQuickAssignTicket(ticket);
+    setQuickAssignTeacherId('');
+    setQuickAssignFinalReport(ticket.progressNotes || '');
+    setQuickAssignHomework('');
+    setQuickAssignHomeworkLink('');
+    setQuickAssignError(null);
+    setQuickAssignLoading({ approve: false, assign: false, finalize: false });
+  }, []);
+
+  const closeQuickAssign = useCallback(() => {
+    setQuickAssignTicket(null);
+    setQuickAssignTeacherId('');
+    setQuickAssignFinalReport('');
+    setQuickAssignHomework('');
+    setQuickAssignHomeworkLink('');
+    setQuickAssignError(null);
+    setQuickAssignLoading({ approve: false, assign: false, finalize: false });
+  }, []);
+
+  useEffect(() => {
+    if (!quickAssignContext || !quickAssignTicket) return;
+
+    const { baseTicket, nextTicket } = quickAssignContext;
+
+    if (nextTicket?.workflowStep === 'finalize') {
+      if (!quickAssignFinalReport.trim()) {
+        const fallbackReport = baseTicket.progressNotes || quickAssignTicket.progressNotes || '';
+        setQuickAssignFinalReport(fallbackReport);
+      }
+    } else if (nextTicket) {
+      const defaultTeacherId = nextTicket.assignedTeacherId || baseTicket.assignedTeacherId || '';
+      if (!quickAssignTeacherId && defaultTeacherId) {
+        setQuickAssignTeacherId(defaultTeacherId);
+      }
+    }
+  }, [quickAssignContext, quickAssignTicket, quickAssignTeacherId, quickAssignFinalReport]);
+
+  const handleQuickApprove = useCallback(async () => {
+    if (!quickAssignTicket) return;
+
+    try {
+      setQuickAssignLoading((prev) => ({ ...prev, approve: true }));
+      const ticketId = getTicketId(quickAssignTicket);
+      const result = await approveTicket(ticketId, user?.id || '');
+      if (result?.ticket) {
+        const normalizedTicket = normalizeTicket(result.ticket, quickAssignTicket);
+        setQuickAssignTicket(normalizedTicket);
+      }
+      setQuickAssignError(null);
+      await refreshData();
+    } catch (error) {
+      console.error('Error approving ticket in quick assign:', error);
+      setQuickAssignError('Failed to approve this ticket. Please try again.');
+    } finally {
+      setQuickAssignLoading((prev) => ({ ...prev, approve: false }));
+    }
+  }, [approveTicket, quickAssignTicket, refreshData, user]);
+
+  const handleQuickAssignNext = useCallback(async () => {
+    if (!quickAssignContext?.baseTicket || !quickAssignContext.nextTicket) return;
+
+    if (!quickAssignTeacherId) {
+      setQuickAssignError('Select a teacher for the next step.');
+      return;
+    }
+
+    const teacher = teachers.find((t) => t.id === quickAssignTeacherId);
+    if (!teacher) {
+      setQuickAssignError('Unable to find the selected teacher.');
+      return;
+    }
+
+    try {
+      setQuickAssignLoading((prev) => ({ ...prev, assign: true }));
+      const baseTicketId = getTicketId(quickAssignContext.baseTicket);
+      await assignTicketToNext(baseTicketId, teacher.id, teacher.fullName);
+      alert(`Assigned ${quickAssignContext.nextTicket.workflowStep} to ${teacher.fullName}`);
+      setQuickAssignError(null);
+      closeQuickAssign();
+      await refreshData();
+    } catch (error) {
+      console.error('Error assigning next step:', error);
+      setQuickAssignError('Failed to assign the next step.');
+    } finally {
+      setQuickAssignLoading((prev) => ({ ...prev, assign: false }));
+    }
+  }, [assignTicketToNext, closeQuickAssign, quickAssignContext, quickAssignTeacherId, refreshData, teachers]);
+
+  const handleQuickFinalize = useCallback(async () => {
+    if (!quickAssignContext?.nextTicket) return;
+
+    if (!quickAssignHomework.trim()) {
+      setQuickAssignError('Homework instructions are required to finalize.');
+      return;
+    }
+
+    try {
+      setQuickAssignLoading((prev) => ({ ...prev, finalize: true }));
+      const ticketId = getTicketId(quickAssignContext.nextTicket);
+      const finalReportValue = quickAssignFinalReport.trim()
+        ? quickAssignFinalReport.trim()
+        : quickAssignContext.baseTicket.progressNotes || 'Finalized by admin';
+      await finalizeTicket(ticketId, {
+        finalReport: finalReportValue,
+        homework: quickAssignHomework.trim(),
+        homeworkLink: quickAssignHomeworkLink.trim(),
+        reviewedBy: user?.id || ''
+      });
+      alert('Homework published and ticket finalized.');
+      setQuickAssignError(null);
+      closeQuickAssign();
+      await refreshData();
+    } catch (error) {
+      console.error('Error finalizing ticket:', error);
+      setQuickAssignError('Failed to finalize this ticket.');
+    } finally {
+      setQuickAssignLoading((prev) => ({ ...prev, finalize: false }));
+    }
+  }, [closeQuickAssign, finalizeTicket, quickAssignContext, quickAssignFinalReport, quickAssignHomework, quickAssignHomeworkLink, refreshData, user]);
+
+  const quickAssignIsApproved = quickAssignTicket?.status === 'approved';
+  const quickAssignNextTicket = quickAssignContext?.nextTicket || null;
+  const quickAssignNextStepLabel = quickAssignNextTicket ? getStepLabel(quickAssignNextTicket.workflowStep) : '';
+  const quickAssignCurrentLabel = quickAssignTicket ? getStepLabel(quickAssignTicket.workflowStep) : '';
+ 
   // Filter out finalized/completed tickets - they should not appear in the list
   const activeTickets = tickets.filter(t => 
     t.status !== 'finalized' &&
@@ -471,16 +660,6 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     return student?.fullName || studentId;
   };
 
-  const getStepLabel = (step: WorkflowStep) => {
-    switch (step) {
-      case 'sabq': return 'Sabq';
-      case 'sabqi': return 'Sabqi';
-      case 'manzil': return 'Manzil';
-      case 'finalize': return 'Finalize';
-      default: return step;
-    }
-  };
-
   const formatAssignmentPortion = (portion?: string) => {
     if (!portion) return '';
     switch (portion.toLowerCase()) {
@@ -528,7 +707,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   };
 
   const getTicketKey = (ticket: AssignmentTicket) =>
-    ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}-${ticket.status}`;
+    ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`;
 
   const formatHistoryTimestamp = (ticket: AssignmentTicket) => {
     const rawDate = (ticket as any).updatedAt || (ticket as any).completedAt || (ticket as any).createdAt;
@@ -640,796 +819,967 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto max-h-[90vh] overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setView('pending')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              view === 'pending' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
-            }`}
-          >
-            Pending Review ({pendingTickets.length})
-          </button>
-          <button
-            onClick={() => setView('all')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              view === 'all' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
-            }`}
-          >
-            All Tickets
-          </button>
-          {onClose && (
+    <>
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
+          <div className="flex gap-2">
             <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 px-4 py-2"
+              onClick={() => setView('pending')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                view === 'pending' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
+              }`}
             >
-              Close
-            </button>
-          )}
-        </div>
-      </div>
-
-      {!selectedTicket && selectedCount > 0 && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <span>
-            {selectedCount} ticket{selectedCount === 1 ? '' : 's'} selected
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleBulkDeleteTickets}
-              disabled={isBulkDeleting}
-              className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-75"
-            >
-              {isBulkDeleting ? 'Deleting…' : 'Delete Selected'}
+              Pending Review ({pendingTickets.length})
             </button>
             <button
-              onClick={handleSelectAllVisible}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+              onClick={() => setView('all')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                view === 'all' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
+              }`}
             >
-              Select All Visible
+              All Tickets
             </button>
-            <button
-              onClick={clearSelectedTickets}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-100 transition"
-            >
-              Clear Selection
-            </button>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 px-4 py-2"
+              >
+                Close
+              </button>
+            )}
           </div>
         </div>
-      )}
 
-      {selectedTicket ? (
-        <div className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              onClick={handleBackToList}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-            >
-              <span>←</span>
-              Back to tickets
-            </button>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusColor(selectedTicket.status)}`}
-            >
-              {selectedTicket.status.replace('_', ' ')}
+        {!selectedTicket && selectedCount > 0 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span>
+              {selectedCount} ticket{selectedCount === 1 ? '' : 's'} selected
             </span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={handleBulkDeleteTickets}
+                disabled={isBulkDeleting}
+                className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-75"
+              >
+                {isBulkDeleting ? 'Deleting…' : 'Delete Selected'}
+              </button>
+              <button
+                onClick={handleSelectAllVisible}
+                className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+              >
+                Select All Visible
+              </button>
+              <button
+                onClick={clearSelectedTickets}
+                className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-100 transition"
+              >
+                Clear Selection
+              </button>
+            </div>
           </div>
+        )}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-            <div className="space-y-6">
-              <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
-                <header className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                    Current step • {getStepLabel(selectedTicket.workflowStep)}
-                  </p>
-                  <h3 className="text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
-                </header>
-                <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600">
-                  <div>
-                    <dt className="font-semibold text-gray-700">Assigned teacher</dt>
-                    <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-gray-700">Program</dt>
-                    <dd>{selectedTicket.program || '—'}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-gray-700">Range / Focus</dt>
-                    <dd>{selectedTicket.assignmentRange || 'Not specified'}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-semibold text-gray-700">Portion size</dt>
-                    <dd>
-                      {selectedTicket.assignmentPortion
-                        ? formatAssignmentPortion(selectedTicket.assignmentPortion)
-                        : 'Not specified'}
-                    </dd>
-                  </div>
-                </dl>
-                {selectedTicket.progressNotes && (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                      Teacher notes
-                    </h4>
-                    <p className="whitespace-pre-wrap text-sm text-gray-700">
-                      {selectedTicket.progressNotes}
-                    </p>
-                  </div>
-                )}
-                {selectedTicket.audioLink && (
-                  <a
-                    href={selectedTicket.audioLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:text-[rgba(var(--color-primary-rgb),0.85)]"
-                  >
-                    🎧 Listen to teacher audio
-                  </a>
-                )}
-              </section>
+        {selectedTicket ? (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={handleBackToList}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+              >
+                <span>←</span>
+                Back to tickets
+              </button>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusColor(selectedTicket.status)}`}
+              >
+                {selectedTicket.status.replace('_', ' ')}
+              </span>
+            </div>
 
-              {isPendingReview && (
-                <section className="space-y-4 rounded-xl border border-blue-200 bg-blue-50 p-5">
-                  <header>
-                    <h4 className="text-base font-semibold text-blue-900">Review ticket</h4>
-                    <p className="text-xs text-blue-700">
-                      Approve if the recitation is good, or request a revision with clear guidance.
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+              <div className="space-y-6">
+                <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+                  <header className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Current step • {selectedTicket.workflowStep}
                     </p>
+                    <h3 className="text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
                   </header>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      onClick={() => {
-                        setShowRevisionForm(false);
-                        handleApprove();
-                      }}
-                      className="rounded-lg bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                  <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600">
+                    <div>
+                      <dt className="font-semibold text-gray-700">Assigned teacher</dt>
+                      <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-gray-700">Program</dt>
+                      <dd>{selectedTicket.program || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-gray-700">Range / Focus</dt>
+                      <dd>{selectedTicket.assignmentRange || 'Not specified'}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-gray-700">Portion size</dt>
+                      <dd>
+                        {selectedTicket.assignmentPortion
+                          ? formatAssignmentPortion(selectedTicket.assignmentPortion)
+                          : 'Not specified'}
+                      </dd>
+                    </div>
+                  </dl>
+                  {selectedTicket.progressNotes && (
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                        Teacher notes
+                      </h4>
+                      <p className="whitespace-pre-wrap text-sm text-gray-700">
+                        {selectedTicket.progressNotes}
+                      </p>
+                    </div>
+                  )}
+                  {selectedTicket.audioLink && (
+                    <a
+                      href={selectedTicket.audioLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:text-[rgba(var(--color-primary-rgb),0.85)]"
                     >
-                      ✅ Approve and continue
-                    </button>
-                    <button
-                      onClick={() => setShowRevisionForm((prev) => !prev)}
-                      className="rounded-lg border border-blue-300 bg-white px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100"
-                    >
-                      ↺ Request revision
-                    </button>
-                  </div>
-                  {showRevisionForm && (
-                    <div className="rounded-lg border border-dashed border-blue-200 bg-white p-4">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-blue-800">
-                        Revision notes
-                      </label>
-                      <textarea
-                        value={revisionNotes}
-                        onChange={(e) => setRevisionNotes(e.target.value)}
-                        rows={3}
-                        className="mt-2 w-full rounded-lg border border-blue-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        placeholder="Explain what needs to be redone..."
-                      />
+                      🎧 Listen to teacher audio
+                    </a>
+                  )}
+                </section>
+
+                {isPendingReview && (
+                  <section className="space-y-4 rounded-xl border border-blue-200 bg-blue-50 p-5">
+                    <header>
+                      <h4 className="text-base font-semibold text-blue-900">Review ticket</h4>
+                      <p className="text-xs text-blue-700">
+                        Approve if the recitation is good, or request a revision with clear guidance.
+                      </p>
+                    </header>
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <button
                         onClick={() => {
-                          handleReject();
                           setShowRevisionForm(false);
+                          handleApprove();
                         }}
-                        disabled={!revisionNotes.trim()}
-                        className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-lg bg-[var(--color-primary)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
                       >
-                        Send back for revision
+                        ✅ Approve and continue
                       </button>
+                      <button
+                        onClick={() => setShowRevisionForm((prev) => !prev)}
+                        className="rounded-lg border border-blue-300 bg-white px-4 py-3 text-sm font-semibold text-blue-800 hover:bg-blue-100"
+                      >
+                        ↺ Request revision
+                      </button>
+                    </div>
+                    {showRevisionForm && (
+                      <div className="rounded-lg border border-dashed border-blue-200 bg-white p-4">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-blue-800">
+                          Revision notes
+                        </label>
+                        <textarea
+                          value={revisionNotes}
+                          onChange={(e) => setRevisionNotes(e.target.value)}
+                          rows={3}
+                          className="mt-2 w-full rounded-lg border border-blue-200 px-3 py-2 text-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          placeholder="Explain what needs to be redone..."
+                        />
+                        <button
+                          onClick={() => {
+                            handleReject();
+                            setShowRevisionForm(false);
+                          }}
+                          disabled={!revisionNotes.trim()}
+                          className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Send back for revision
+                        </button>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {needsAssignment && (
+                  <section className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+                    <header>
+                      <h4 className="text-base font-semibold text-emerald-900">Assign the next listener</h4>
+                      <p className="text-xs text-emerald-700">
+                        Choose who should hear the next portion
+                        ({selectedTicket.workflowStep === 'sabq' ? 'Sabqi' : selectedTicket.workflowStep === 'sabqi' ? 'Manzil' : 'Finalize'} step).
+                      </p>
+                    </header>
+                    <select
+                      value={selectedNextTeacher}
+                      onChange={(e) => setSelectedNextTeacher(e.target.value)}
+                      className="w-full rounded-lg border border-emerald-200 px-4 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                    >
+                      <option value="">Select listening teacher…</option>
+                      {teachers.map((teacher) => (
+                        <option key={teacher.id} value={teacher.id}>
+                          {teacher.fullName}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <button
+                        onClick={handleAssignToNext}
+                        disabled={!selectedNextTeacher}
+                        className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Send to next teacher
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSkipToFinalize}
+                        className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                      >
+                        Finalize without next step
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-emerald-700">
+                      If the student will not recite the next portion today, jump straight to finalization and publish homework.
+                    </p>
+                  </section>
+                )}
+
+                {readyForFinalize && (
+                  <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+                    <header className="space-y-1">
+                      <h4 className="text-base font-semibold text-gray-900">Finalize & publish</h4>
+                      <p className="text-xs text-gray-500">
+                        Summarize today's session and assign homework. The student will see this immediately.
+                      </p>
+                    </header>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                        <div className="font-semibold text-gray-900 mb-2">Teacher report</div>
+                        <p className="whitespace-pre-wrap">
+                          {selectedTicket.progressNotes?.trim() || 'No notes were provided by the teacher.'}
+                        </p>
+                        {selectedTicket.audioLink && (
+                          <a
+                            href={selectedTicket.audioLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:text-[rgba(var(--color-primary-rgb),0.85)]"
+                          >
+                            🎧 Listen to teacher audio
+                          </a>
+                        )}
+                      </div>
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                        <div className="font-semibold text-gray-900 mb-2 text-sm">Workflow progress</div>
+                        <ul className="space-y-2 text-xs text-gray-700">
+                          {ticketChain.map((ticket) => (
+                            <li
+                              key={ticket.id}
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-2"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="font-semibold text-gray-900">
+                                  {ticket.workflowStep}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(ticket.status)}`}>
+                                  {ticket.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                              {ticket.assignmentRange && (
+                                <p className="mt-1 text-[11px] text-gray-500">{ticket.assignmentRange}</p>
+                              )}
+                              {ticket.assignmentPortion && (
+                                <p className="text-[11px] text-gray-400">
+                                  Portion: {ticket.assignmentPortion}
+                                </p>
+                              )}
+                              {ticket.progressNotes && (
+                                <p className="mt-1 whitespace-pre-wrap text-[11px] text-gray-600">
+                                  {ticket.progressNotes}
+                                </p>
+                              )}
+                              <p className="mt-1 text-[11px] text-gray-500">
+                                Listener: {ticket.assignedTeacherName || '—'}
+                              </p>
+                            </li>
+                          ))}
+                          {ticketChain.length === 0 && (
+                            <li className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-gray-500">
+                              Step history unavailable.
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                          Final report
+                        </label>
+                        <textarea
+                          value={finalizeData.finalReport}
+                          onChange={(e) => setFinalizeData((prev) => ({ ...prev, finalReport: e.target.value }))}
+                          rows={4}
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
+                          placeholder="Summarize today's recitation and general feedback…"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                          Homework for next session
+                        </label>
+                        <textarea
+                          value={finalizeData.homework}
+                          onChange={(e) => setFinalizeData((prev) => ({ ...prev, homework: e.target.value }))}
+                          rows={4}
+                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
+                          placeholder="Clearly outline tomorrow's assignment…"
+                        />
+                        <p className="text-[11px] text-gray-500">
+                          Homework appears at the top of the student dashboard once you publish.
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Optional resource link
+                      </label>
+                      <input
+                        type="url"
+                        value={finalizeData.homeworkLink}
+                        onChange={(e) => setFinalizeData((prev) => ({ ...prev, homeworkLink: e.target.value }))}
+                        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                    <button
+                      onClick={handleFinalize}
+                      className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
+                    >
+                      Finalize & publish to student
+                    </button>
+                  </section>
+                )}
+              </div>
+
+              <aside className="space-y-5">
+                <section className="rounded-xl border border-gray-200 bg-white p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                          🎯
+                        </span>
+                        <span>Mistakes overview</span>
+                      </div>
+                      {totalMistakes === 0 ? (
+                        <p className="text-sm text-gray-500">
+                          No mistakes were marked for this ticket.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-600">
+                            {totalMistakes} mistake{totalMistakes !== 1 ? 's' : ''} across {totalMistakePages}{' '}
+                            page{totalMistakePages !== 1 ? 's' : ''}
+                          </p>
+                          {mistakeTypeSummary.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {mistakeTypeSummary.map(({ type, count }) => (
+                                <span
+                                  key={type}
+                                  className="inline-flex items-center gap-1 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700"
+                                >
+                                  {getMistakeTypeLabel(type)}
+                                  <span className="text-purple-500">· {count}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-stretch gap-2 sm:flex-row">
+                      <button
+                        onClick={() => {
+                          if (totalMistakes === 0) return;
+                          if (!showMushaf) {
+                            const firstPage = mistakePages[0] ?? 1;
+                            setCurrentPage(firstPage);
+                          }
+                          setShowMushaf((prev) => !prev);
+                        }}
+                        disabled={totalMistakes === 0}
+                        className={`inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                          totalMistakes === 0
+                            ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                            : showMushaf
+                              ? 'border-purple-600 bg-purple-600 text-white hover:bg-purple-700'
+                              : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                        }`}
+                      >
+                        {showMushaf ? 'Hide Mushaf' : 'View Mushaf'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {totalMistakes > 0 && (
+                    <div className="mt-5 space-y-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Pages with mistakes
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {mistakePages.map((page) => {
+                          const mistakesOnPage = mistakesByPage.get(page) || [];
+                          return (
+                            <div
+                              key={`mistake-page-${page}`}
+                              className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+                            >
+                              <div>
+                                <p className="text-sm font-semibold text-gray-900">Page {page}</p>
+                                <p className="text-xs text-gray-500">
+                                  {mistakesOnPage.length} mistake{mistakesOnPage.length === 1 ? '' : 's'}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  if (!showMushaf) {
+                                    setShowMushaf(true);
+                                  }
+                                  setCurrentPage(page);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-3 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition"
+                              >
+                                View
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </section>
-              )}
 
-              {needsAssignment && (
-                <section className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-                  <header>
-                    <h4 className="text-base font-semibold text-emerald-900">Assign the next listener</h4>
-                    <p className="text-xs text-emerald-700">
-                      Choose who should hear the next portion
-                      ({selectedTicket.workflowStep === 'sabq' ? 'Sabqi' : selectedTicket.workflowStep === 'sabqi' ? 'Manzil' : 'Finalize'} step).
-                    </p>
-                  </header>
-                  <select
-                    value={selectedNextTeacher}
-                    onChange={(e) => setSelectedNextTeacher(e.target.value)}
-                    className="w-full rounded-lg border border-emerald-200 px-4 py-2 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                {showMushaf && displayedMarkings.length > 0 && (
+                  <section className="rounded-xl border border-gray-200 bg-white p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h4>
+                      <button
+                        onClick={() => setShowMushaf(false)}
+                        className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                      >
+                        Close
+                      </button>
+                    </div>
+                    <InteractiveMushaf
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                      mistakes={displayedMarkings}
+                      onMistakeMark={() => {}}
+                      readOnly
+                      mode="viewing"
+                    />
+                  </section>
+                )}
+              </aside>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {availableLetters.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setStudentFilterLetter('ALL')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
+                    studentFilterLetter === 'ALL'
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                      : 'bg-white text-[rgba(var(--color-primary-rgb),0.7)] border-gray-300 hover:bg-soft-primary'
+                  }`}
+                >
+                  All
+                </button>
+                {availableLetters.map(letter => (
+                  <button
+                    key={letter}
+                    onClick={() => setStudentFilterLetter(letter)}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors ${
+                      studentFilterLetter === letter
+                        ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                        : 'bg-white text-[rgba(var(--color-primary-rgb),0.7)] border-gray-300 hover:bg-soft-primary'
+                    }`}
                   >
-                    <option value="">Select listening teacher…</option>
+                    {letter}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {filteredTickets.map(ticket => {
+              const ticketKey = getTicketKey(ticket);
+              const ticketId = getTicketIdString(ticket);
+              const isSelected = !!selectedTicketsMap[ticketId];
+              const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
+              const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(otherTicket => getTicketKey(otherTicket) !== ticketKey);
+              const historyEntries = rawHistory
+                .slice()
+                .sort((a, b) => {
+                  const aTime = new Date((a as any).updatedAt || (a as any).completedAt || (a as any).createdAt || 0).getTime();
+                  const bTime = new Date((b as any).updatedAt || (b as any).completedAt || (b as any).createdAt || 0).getTime();
+                  return bTime - aTime;
+                });
+
+              const nextStepLabel = ticket.workflowStep === 'finalize'
+                ? 'Finalize'
+                : ticket.workflowStep === 'manzil'
+                  ? 'Finalize'
+                  : ticket.workflowStep === 'sabqi'
+                    ? 'Manzil'
+                    : 'Sabqi';
+
+              return (
+                <div
+                  key={ticketKey}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleTicketSelection(ticket)}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[rgba(var(--color-primary-rgb),0.35)]"
+                      />
+                      <div>
+                        <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-soft-accent text-sm font-semibold text-[var(--color-accent)]">
+                            {getStepLabel(ticket.workflowStep).slice(0, 1).toUpperCase()}
+                          </span>
+                          <span>{getStudentName(ticket.studentId)}</span>
+                        </p>
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          <span className="font-medium">{getStepLabel(ticket.workflowStep)}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="font-medium">{nextStepLabel}</span>
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {ticket.workflowStep === 'finalize'
+                            ? 'Ready for final report and homework.'
+                            : 'Student hasn\'t recited next portion yet.'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-2 min-w-[12rem]">
+                      <button
+                        onClick={() => {
+                          setSelectedTicket(ticket);
+                          setShowRevisionForm(false);
+                          setSelectedNextTeacher('');
+                        }}
+                        className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                      >
+                        Review
+                      </button>
+                      <button
+                        onClick={() => {
+                          openQuickAssign(ticket);
+                          setShowRevisionForm(false);
+                          setSelectedNextTeacher('');
+                        }}
+                        disabled={ticket.workflowStep === 'finalize'}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          ticket.workflowStep === 'finalize'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'border border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary text-[var(--color-primary)] hover:bg-soft-primary'
+                        }`}
+                      >
+                        Assign Next
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTicket(ticket);
+                          setShowRevisionForm(false);
+                          setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                        }}
+                        disabled={ticket.workflowStep !== 'finalize'}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                          ticket.workflowStep !== 'finalize'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'border border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]'
+                        }`}
+                      >
+                        Finalize
+                      </button>
+                      <button
+                        onClick={() => handleToggleHistory(ticketKey)}
+                        className="px-3 py-2 text-xs font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <svg className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {isHistoryExpanded ? 'Hide History' : 'Show History'}
+                      </button>
+                      <button
+                        onClick={() => handleStartEditTicket(ticket)}
+                        className="px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                      >
+                        Edit Ticket
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTicket(ticket)}
+                        disabled={ticketDeletingId === (ticket.id || (ticket as any)._id)}
+                        className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                          ticketDeletingId === (ticket.id || (ticket as any)._id)
+                            ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
+                            : 'border-red-200 text-red-600 hover:bg-red-50'
+                        }`}
+                      >
+                        {ticketDeletingId === (ticket.id || (ticket as any)._id) ? 'Deleting…' : 'Delete Ticket'}
+                      </button>
+                    </div>
+                  </div>
+                  {isHistoryExpanded && (
+                    <div className="mt-3 space-y-2">
+                      {historyEntries.length === 0 ? (
+                        <div className="p-3 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-lg italic">
+                          No previous assignments recorded for this student.
+                        </div>
+                      ) : (
+                        historyEntries.map(historyTicket => {
+                          const historyKey = getTicketKey(historyTicket);
+                          return (
+                            <div key={historyKey} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                              <div className="flex items-center justify-between gap-3 mb-1">
+                                <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                                  <span>{historyTicket.workflowStep}</span>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(historyTicket.status)}`}>
+                                  {historyTicket.status.replace('_', ' ')}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-gray-500">Updated {formatHistoryTimestamp(historyTicket)}</div>
+                              <div className="text-[11px] text-gray-500">Teacher: {historyTicket.assignedTeacherName || '—'}</div>
+                              {historyTicket.progressNotes && (
+                                <p className="mt-2 text-xs text-gray-600 line-clamp-3">
+                                  {historyTicket.progressNotes}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {filteredTickets.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <p className="text-lg">
+                  {currentTicketList.length === 0
+                    ? 'No tickets found.'
+                    : 'No tickets match the selected filter.'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {editingTicket && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Edit Ticket</h3>
+                  <p className="text-xs text-gray-500">
+                    Student: {getStudentName(editingTicket.studentId)} • Step: {editingTicket.workflowStep}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditingTicket(null)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-gray-600">
+                    Assigned teacher
+                  </label>
+                  <select
+                    value={editForm.assignedTeacherId}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, assignedTeacherId: event.target.value }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                  >
+                    <option value="">Keep current assignment</option>
                     {teachers.map((teacher) => (
                       <option key={teacher.id} value={teacher.id}>
                         {teacher.fullName}
                       </option>
                     ))}
                   </select>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <button
-                      onClick={handleAssignToNext}
-                      disabled={!selectedNextTeacher}
-                      className="rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Send to next teacher
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSkipToFinalize}
-                      className="rounded-lg border border-emerald-300 bg-white px-4 py-3 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-                    >
-                      Finalize without next step
-                    </button>
-                  </div>
-                  <p className="text-[11px] text-emerald-700">
-                    If the student will not recite the next portion today, jump straight to finalization and publish homework.
-                  </p>
-                </section>
-              )}
+                </div>
 
-              {readyForFinalize && (
-                <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
-                  <header className="space-y-1">
-                    <h4 className="text-base font-semibold text-gray-900">Finalize & publish</h4>
-                    <p className="text-xs text-gray-500">
-                      Summarize today’s session and assign homework. The student will see this immediately.
-                    </p>
-                  </header>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-                      <div className="font-semibold text-gray-900 mb-2">Teacher report</div>
-                      <p className="whitespace-pre-wrap">
-                        {selectedTicket.progressNotes?.trim() || 'No notes were provided by the teacher.'}
-                      </p>
-                      {selectedTicket.audioLink && (
-                        <a
-                          href={selectedTicket.audioLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:text-[rgba(var(--color-primary-rgb),0.85)]"
-                        >
-                          🎧 Listen to teacher audio
-                        </a>
-                      )}
-                    </div>
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                      <div className="font-semibold text-gray-900 mb-2 text-sm">Workflow progress</div>
-                      <ul className="space-y-2 text-xs text-gray-700">
-                        {ticketChain.map((ticket) => (
-                          <li
-                            key={ticket.id}
-                            className="rounded-lg border border-gray-200 bg-white px-3 py-2"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="font-semibold text-gray-900">
-                                {getStepLabel(ticket.workflowStep)}
-                              </span>
-                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(ticket.status)}`}>
-                                {ticket.status.replace('_', ' ')}
-                              </span>
-                            </div>
-                            {ticket.assignmentRange && (
-                              <p className="mt-1 text-[11px] text-gray-500">{ticket.assignmentRange}</p>
-                            )}
-                            {ticket.assignmentPortion && (
-                              <p className="text-[11px] text-gray-400">
-                                Portion: {ticket.assignmentPortion}
-                              </p>
-                            )}
-                            {ticket.progressNotes && (
-                              <p className="mt-1 whitespace-pre-wrap text-[11px] text-gray-600">
-                                {ticket.progressNotes}
-                              </p>
-                            )}
-                            <p className="mt-1 text-[11px] text-gray-500">
-                              Listener: {ticket.assignedTeacherName || '—'}
-                            </p>
-                          </li>
-                        ))}
-                        {ticketChain.length === 0 && (
-                          <li className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-gray-500">
-                            Step history unavailable.
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                        Final report
-                      </label>
-                      <textarea
-                        value={finalizeData.finalReport}
-                        onChange={(e) => setFinalizeData((prev) => ({ ...prev, finalReport: e.target.value }))}
-                        rows={4}
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
-                        placeholder="Summarize today’s recitation and general feedback…"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                        Homework for next session
-                      </label>
-                      <textarea
-                        value={finalizeData.homework}
-                        onChange={(e) => setFinalizeData((prev) => ({ ...prev, homework: e.target.value }))}
-                        rows={4}
-                        className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
-                        placeholder="Clearly outline tomorrow’s assignment…"
-                      />
-                      <p className="text-[11px] text-gray-500">
-                        Homework appears at the top of the student dashboard once you publish.
-                      </p>
-                    </div>
-                  </div>
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-gray-600">
+                    Progress notes
+                  </label>
+                  <textarea
+                    value={editForm.progressNotes}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, progressNotes: event.target.value }))
+                    }
+                    rows={4}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                    placeholder="Update teacher notes or comments..."
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                      Optional resource link
+                    <label className="mb-2 block text-xs font-semibold text-gray-600">
+                      Assignment range
                     </label>
                     <input
-                      type="url"
-                      value={finalizeData.homeworkLink}
-                      onChange={(e) => setFinalizeData((prev) => ({ ...prev, homeworkLink: e.target.value }))}
-                      className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
-                      placeholder="https://example.com"
+                      value={editForm.assignmentRange}
+                      onChange={(event) =>
+                        setEditForm((prev) => ({ ...prev, assignmentRange: event.target.value }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                      placeholder="e.g. Juz 5, Ayah 1-20"
                     />
                   </div>
-                  <button
-                    onClick={handleFinalize}
-                    className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
-                  >
-                    Finalize & publish to student
-                  </button>
-                </section>
-              )}
-            </div>
-
-            <aside className="space-y-5">
-              <section className="rounded-xl border border-gray-200 bg-white p-5">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                        🎯
-                      </span>
-                      <span>Mistakes overview</span>
-                    </div>
-                    {totalMistakes === 0 ? (
-                      <p className="text-sm text-gray-500">
-                        No mistakes were marked for this ticket.
-                      </p>
-                    ) : (
-                      <>
-                        <p className="text-sm text-gray-600">
-                          {totalMistakes} mistake{totalMistakes !== 1 ? 's' : ''} across {totalMistakePages}{' '}
-                          page{totalMistakePages !== 1 ? 's' : ''}
-                        </p>
-                        {mistakeTypeSummary.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {mistakeTypeSummary.map(({ type, count }) => (
-                              <span
-                                key={type}
-                                className="inline-flex items-center gap-1 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700"
-                              >
-                                {getMistakeTypeLabel(type)}
-                                <span className="text-purple-500">· {count}</span>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-stretch gap-2 sm:flex-row">
-                    <button
-                      onClick={() => {
-                        if (totalMistakes === 0) return;
-                        if (!showMushaf) {
-                          const firstPage = mistakePages[0] ?? 1;
-                          setCurrentPage(firstPage);
-                        }
-                        setShowMushaf((prev) => !prev);
-                      }}
-                      disabled={totalMistakes === 0}
-                      className={`inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                        totalMistakes === 0
-                          ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
-                          : showMushaf
-                            ? 'border-purple-600 bg-purple-600 text-white hover:bg-purple-700'
-                            : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
-                      }`}
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold text-gray-600">
+                      Portion
+                    </label>
+                    <select
+                      value={editForm.assignmentPortion}
+                      onChange={(event) =>
+                        setEditForm((prev) => ({ ...prev, assignmentPortion: event.target.value }))
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
                     >
-                      {showMushaf ? 'Hide Mushaf' : 'View Mushaf'}
-                    </button>
+                      {TICKET_PORTION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {totalMistakes > 0 && (
-                  <div className="mt-5 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Pages with mistakes
-                    </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {mistakePages.map((page) => {
-                        const mistakesOnPage = mistakesByPage.get(page) || [];
-                        return (
-                          <div
-                            key={`mistake-page-${page}`}
-                            className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
-                          >
-                            <div>
-                              <p className="text-sm font-semibold text-gray-900">Page {page}</p>
-                              <p className="text-xs text-gray-500">
-                                {mistakesOnPage.length} mistake{mistakesOnPage.length === 1 ? '' : 's'}
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => {
-                                if (!showMushaf) {
-                                  setShowMushaf(true);
-                                }
-                                setCurrentPage(page);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-3 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition"
-                            >
-                              View
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              {showMushaf && displayedMarkings.length > 0 && (
-                <section className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h4>
-                    <button
-                      onClick={() => setShowMushaf(false)}
-                      className="text-xs font-semibold text-gray-500 hover:text-gray-700"
-                    >
-                      Close
-                    </button>
-                  </div>
-                  <InteractiveMushaf
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    mistakes={displayedMarkings}
-                    onMistakeMark={() => {}}
-                    readOnly
-                    mode="viewing"
+                <div>
+                  <label className="mb-2 block text-xs font-semibold text-gray-600">
+                    Audio link (optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={editForm.audioLink}
+                    onChange={(event) =>
+                      setEditForm((prev) => ({ ...prev, audioLink: event.target.value }))
+                    }
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                    placeholder="https://example.com/audio"
                   />
-                </section>
-              )}
-            </aside>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {availableLetters.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setStudentFilterLetter('ALL')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
-                  studentFilterLetter === 'ALL'
-                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
-                    : 'bg-white text-[rgba(var(--color-primary-rgb),0.7)] border-gray-300 hover:bg-soft-primary'
-                }`}
-              >
-                All
-              </button>
-              {availableLetters.map(letter => (
-                <button
-                  key={letter}
-                  onClick={() => setStudentFilterLetter(letter)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-full border transition-colors ${
-                    studentFilterLetter === letter
-                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
-                      : 'bg-white text-[rgba(var(--color-primary-rgb),0.7)] border-gray-300 hover:bg-soft-primary'
-                  }`}
-                >
-                  {letter}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {filteredTickets.map(ticket => {
-            const ticketKey = getTicketKey(ticket);
-            const ticketId = getTicketIdString(ticket);
-            const isSelected = !!selectedTicketsMap[ticketId];
-            const isHistoryExpanded = !!expandedHistoryIds[ticketKey];
-            const rawHistory = (studentTicketHistoryMap.get(ticket.studentId) || []).filter(otherTicket => getTicketKey(otherTicket) !== ticketKey);
-            const historyEntries = rawHistory
-              .slice()
-              .sort((a, b) => {
-                const aTime = new Date((a as any).updatedAt || (a as any).completedAt || (a as any).createdAt || 0).getTime();
-                const bTime = new Date((b as any).updatedAt || (b as any).completedAt || (b as any).createdAt || 0).getTime();
-                return bTime - aTime;
-              });
-
-            const nextStepLabel = ticket.workflowStep === 'finalize'
-              ? 'Finalize'
-              : ticket.workflowStep === 'manzil'
-                ? 'Finalize'
-                : ticket.workflowStep === 'sabqi'
-                  ? 'Manzil'
-                  : 'Sabqi';
-
-            return (
-              <div
-                key={ticketKey}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleToggleTicketSelection(ticket)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[rgba(var(--color-primary-rgb),0.35)]"
-                    />
-                    <div>
-                      <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-soft-accent text-sm font-semibold text-[var(--color-accent)]">
-                          {getStepLabel(ticket.workflowStep).slice(0, 1).toUpperCase()}
-                        </span>
-                        <span>{getStudentName(ticket.studentId)}</span>
-                      </p>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <span className="font-medium">{getStepLabel(ticket.workflowStep)}</span>
-                        <span className="text-gray-400">→</span>
-                        <span className="font-medium">{nextStepLabel}</span>
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {ticket.workflowStep === 'finalize'
-                          ? 'Ready for final report and homework.'
-                          : 'Student hasn\'t recited next portion yet.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 min-w-[12rem]">
-                    <button
-                      onClick={() => {
-                        setSelectedTicket(ticket);
-                        setShowRevisionForm(false);
-                        setSelectedNextTeacher('');
-                        setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
-                      }}
-                      className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
-                    >
-                      Review
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedTicket(ticket);
-                        setShowRevisionForm(false);
-                        setSelectedNextTeacher('');
-                      }}
-                      disabled={ticket.workflowStep === 'finalize'}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        ticket.workflowStep === 'finalize'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'border border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary text-[var(--color-primary)] hover:bg-soft-primary'
-                      }`}
-                    >
-                      Assign Next
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedTicket(ticket);
-                        setShowRevisionForm(false);
-                        setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
-                      }}
-                      disabled={ticket.workflowStep !== 'finalize'}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                        ticket.workflowStep !== 'finalize'
-                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'border border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]'
-                      }`}
-                    >
-                      Finalize
-                    </button>
-                    <button
-                      onClick={() => handleToggleHistory(ticketKey)}
-                      className="px-3 py-2 text-xs font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                      {isHistoryExpanded ? 'Hide History' : 'Show History'}
-                    </button>
-                    <button
-                      onClick={() => handleStartEditTicket(ticket)}
-                      className="px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-                    >
-                      Edit Ticket
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTicket(ticket)}
-                      disabled={ticketDeletingId === (ticket.id || (ticket as any)._id)}
-                      className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-                        ticketDeletingId === (ticket.id || (ticket as any)._id)
-                          ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
-                          : 'border-red-200 text-red-600 hover:bg-red-50'
-                      }`}
-                    >
-                      {ticketDeletingId === (ticket.id || (ticket as any)._id) ? 'Deleting…' : 'Delete Ticket'}
-                    </button>
-                  </div>
                 </div>
-                {isHistoryExpanded && (
-                  <div className="mt-3 space-y-2">
-                    {historyEntries.length === 0 ? (
-                      <div className="p-3 text-xs text-gray-500 bg-gray-50 border border-dashed border-gray-300 rounded-lg italic">
-                        No previous assignments recorded for this student.
-                      </div>
-                    ) : (
-                      historyEntries.map(historyTicket => {
-                        const historyKey = getTicketKey(historyTicket);
-                        return (
-                          <div key={historyKey} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                            <div className="flex items-center justify-between gap-3 mb-1">
-                              <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                                <span>{getStepLabel(historyTicket.workflowStep)}</span>
-                              </div>
-                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(historyTicket.status)}`}>
-                                {historyTicket.status.replace('_', ' ')}
-                              </span>
-                            </div>
-                            <div className="text-[11px] text-gray-500">Updated {formatHistoryTimestamp(historyTicket)}</div>
-                            <div className="text-[11px] text-gray-500">Teacher: {historyTicket.assignedTeacherName || '—'}</div>
-                            {historyTicket.progressNotes && (
-                              <p className="mt-2 text-xs text-gray-600 line-clamp-3">
-                                {historyTicket.progressNotes}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                )}
               </div>
-            );
-          })}
 
-          {filteredTickets.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <p className="text-lg">
-                {currentTicketList.length === 0
-                  ? 'No tickets found.'
-                  : 'No tickets match the selected filter.'}
-              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  onClick={handleSaveTicketEdit}
+                  disabled={isSavingEdit}
+                  className="flex-1 rounded-lg bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSavingEdit ? 'Saving…' : 'Save changes'}
+                </button>
+                <button
+                  onClick={() => setEditingTicket(null)}
+                  className="rounded-lg bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {editingTicket && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
+          </div>
+        )}
+      </div>
+      {quickAssignTicket && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 px-4 py-6">
+          <div className="w-full max-w-3xl rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="flex flex-col gap-2 border-b border-gray-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Edit Ticket</h3>
-                <p className="text-xs text-gray-500">
-                  Student: {getStudentName(editingTicket.studentId)} • Step: {getStepLabel(editingTicket.workflowStep)}
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Quick assign flow</p>
+                <h3 className="text-lg font-bold text-gray-900">
+                  {quickAssignTicket.studentName || getStudentName(quickAssignTicket.studentId)}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Current step · {quickAssignCurrentLabel}
                 </p>
               </div>
               <button
-                onClick={() => setEditingTicket(null)}
-                className="text-gray-500 hover:text-gray-700"
+                onClick={closeQuickAssign}
+                className="self-end rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition hover:bg-gray-100 sm:self-center"
               >
-                ✕
+                Close
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-gray-600">
-                  Assigned teacher
-                </label>
-                <select
-                  value={editForm.assignedTeacherId}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({ ...prev, assignedTeacherId: event.target.value }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
-                >
-                  <option value="">Keep current assignment</option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.fullName}
-                    </option>
-                  ))}
-                </select>
+            {quickAssignError && (
+              <div className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {quickAssignError}
               </div>
+            )}
 
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-gray-600">
-                  Progress notes
-                </label>
-                <textarea
-                  value={editForm.progressNotes}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({ ...prev, progressNotes: event.target.value }))
-                  }
-                  rows={4}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
-                  placeholder="Update teacher notes or comments..."
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-gray-600">
-                    Assignment range
-                  </label>
-                  <input
-                    value={editForm.assignmentRange}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, assignmentRange: event.target.value }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
-                    placeholder="e.g. Juz 5, Ayah 1-20"
-                  />
+            <div className="space-y-6 px-5 py-6 max-h-[80vh] overflow-y-auto">
+              <section className="rounded-xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Step 1</p>
+                    <h4 className="text-base font-semibold text-gray-900">Approve {quickAssignCurrentLabel}</h4>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Approval unlocks the next ticket in the chain.
+                    </p>
+                  </div>
+                  {quickAssignIsApproved && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      ✅ Approved
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <label className="mb-2 block text-xs font-semibold text-gray-600">
-                    Portion
-                  </label>
-                  <select
-                    value={editForm.assignmentPortion}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, assignmentPortion: event.target.value }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                {!quickAssignIsApproved && (
+                  <button
+                    onClick={handleQuickApprove}
+                    disabled={quickAssignLoading.approve}
+                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {TICKET_PORTION_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    {quickAssignLoading.approve ? 'Approving…' : 'Approve & unlock next step'}
+                  </button>
+                )}
+              </section>
+
+              <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Step 2</p>
+                    <h4 className="text-base font-semibold text-gray-900">
+                      {quickAssignNextTicket ? `Next: ${quickAssignNextStepLabel}` : 'Workflow complete'}
+                    </h4>
+                    {quickAssignNextTicket ? (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {quickAssignNextTicket.workflowStep === 'finalize'
+                          ? 'Publish homework and close the chain.'
+                          : 'Choose who should hear the next portion.'}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-600 mt-1">
+                        All steps in this chain are already approved. Create a new Sabq ticket to begin the next cycle.
+                      </p>
+                    )}
+                  </div>
+                  {quickAssignNextTicket && (
+                    <span className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600">
+                      Status: {quickAssignNextTicket.status.replace('_', ' ')}
+                    </span>
+                  )}
                 </div>
-              </div>
 
-              <div>
-                <label className="mb-2 block text-xs font-semibold text-gray-600">
-                  Audio link (optional)
-                </label>
-                <input
-                  type="url"
-                  value={editForm.audioLink}
-                  onChange={(event) =>
-                    setEditForm((prev) => ({ ...prev, audioLink: event.target.value }))
-                  }
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
-                  placeholder="https://example.com/audio"
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <button
-                onClick={handleSaveTicketEdit}
-                disabled={isSavingEdit}
-                className="flex-1 rounded-lg bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSavingEdit ? 'Saving…' : 'Save changes'}
-              </button>
-              <button
-                onClick={() => setEditingTicket(null)}
-                className="rounded-lg bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-200"
-              >
-                Cancel
-              </button>
+                {!quickAssignNextTicket ? null : quickAssignNextTicket.workflowStep === 'finalize' ? (
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Final report (optional)
+                      </label>
+                      <textarea
+                        value={quickAssignFinalReport}
+                        onChange={(event) => setQuickAssignFinalReport(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                        placeholder="Summary for the student…"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Homework instructions <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={quickAssignHomework}
+                        onChange={(event) => setQuickAssignHomework(event.target.value)}
+                        rows={3}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                        placeholder="Example: Revise Surah An-Naba, pages 582-584."
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Homework link (optional)
+                      </label>
+                      <input
+                        type="url"
+                        value={quickAssignHomeworkLink}
+                        onChange={(event) => setQuickAssignHomeworkLink(event.target.value)}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)]"
+                        placeholder="https://…"
+                      />
+                    </div>
+                    <button
+                      onClick={handleQuickFinalize}
+                      disabled={!quickAssignIsApproved || quickAssignLoading.finalize}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {quickAssignLoading.finalize ? 'Publishing…' : 'Finalize & publish homework'}
+                    </button>
+                    {!quickAssignIsApproved && (
+                      <p className="text-xs text-orange-600">
+                        Approve the current step first to enable finalization.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-600">
+                        Assign teacher
+                      </label>
+                      <select
+                        value={quickAssignTeacherId}
+                        onChange={(event) => setQuickAssignTeacherId(event.target.value)}
+                        disabled={!quickAssignIsApproved || quickAssignLoading.assign}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-primary-rgb),0.25)] disabled:cursor-not-allowed disabled:bg-gray-100"
+                      >
+                        <option value="">Select teacher…</option>
+                        {teachers.map((teacher) => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleQuickAssignNext}
+                      disabled={!quickAssignIsApproved || !quickAssignTeacherId || quickAssignLoading.assign}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--color-primary)] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {quickAssignLoading.assign ? 'Assigning…' : `Assign ${quickAssignNextStepLabel}`}
+                    </button>
+                    {!quickAssignIsApproved && (
+                      <p className="text-xs text-orange-600">
+                        Approve the current step to unlock assignment controls.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
