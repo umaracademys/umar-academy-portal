@@ -44,13 +44,6 @@ const getJuzFromPage = (page: number): number => {
   return 30; // pages 86-604
 };
 
-const PORTION_OPTIONS = [
-  { value: 'quarter', label: '¼ Juz' },
-  { value: 'half', label: '½ Juz' },
-  { value: 'three_quarters', label: '¾ Juz' },
-  { value: 'full', label: 'Full Juz' },
-];
-
 const formatPortionLabel = (portion?: string) => {
   if (!portion) return '';
   switch (portion.toLowerCase()) {
@@ -143,8 +136,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [formData, setFormData] = useState({
     progressNotes: '',
-    audioLink: '',
-    assignmentPortion: ''
+    audioLink: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAssignOption, setShowAssignOption] = useState(false);
@@ -272,8 +264,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     if (selectedTicket) {
       setFormData({
         progressNotes: selectedTicket.progressNotes || '',
-        audioLink: selectedTicket.audioLink || '',
-        assignmentPortion: selectedTicket.assignmentPortion || ''
+        audioLink: selectedTicket.audioLink || ''
       });
       // Load existing Mushaf markings
       if (selectedTicket.mushafMarkings) {
@@ -316,36 +307,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       setHistoricalMistakes([]);
     }
   }, [selectedTicket, getStudentPersonalMushafFiltered]);
-
-  const previousPortionSuggestions = useMemo(() => {
-    if (!selectedTicket) return [];
-
-    const seen = new Set<string>();
-    return tickets
-      .filter((ticket) => {
-        if (!selectedTicket) return false;
-        if (!ticket.assignmentPortion) return false;
-        return (
-          ticket.studentId === selectedTicket.studentId &&
-          ticket.workflowStep === selectedTicket.workflowStep &&
-          (ticket.id || (ticket as any)._id) !== (selectedTicket.id || (selectedTicket as any)._id)
-        );
-      })
-      .sort((a, b) => {
-        const aDate = new Date((a.updatedAt as any) || (a.completedAt as any) || (a.createdAt as any) || 0).getTime();
-        const bDate = new Date((b.updatedAt as any) || (b.completedAt as any) || (b.createdAt as any) || 0).getTime();
-        return bDate - aDate;
-      })
-      .map((ticket) => (ticket.assignmentPortion || '').trim())
-      .filter((portion) => {
-        if (!portion) return false;
-        const key = portion.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .slice(0, 2);
-  }, [tickets, selectedTicket]);
 
   const selectedAssignmentDetails = useMemo(() => {
     if (!selectedTicket) return null;
@@ -409,7 +370,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       const updateData: Partial<AssignmentTicket> = {
         progressNotes: formData.progressNotes.trim(),
         audioLink: formData.audioLink.trim() || undefined,
-        assignmentPortion: formData.assignmentPortion || undefined,
         mushafMarkings: mushafMarkings,
         status: 'in_progress',
         reviewedBy: user?.id || user?.email || undefined,
@@ -419,7 +379,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       
       alert('Ticket submitted successfully! Admin will review it.');
       setSelectedTicket(null);
-      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
+      setFormData({ progressNotes: '', audioLink: '' });
       setMushafMarkings([]);
       setShowMushaf(false);
       setCurrentPage(1);
@@ -454,7 +414,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       
       alert('✅ Ticket assigned to different teacher successfully!');
       setSelectedTicket(null);
-      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
+      setFormData({ progressNotes: '', audioLink: '' });
       setSelectedTeacherForAssign('');
       setShowAssignOption(false);
       setMushafMarkings([]);
@@ -537,7 +497,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                   <button
                     onClick={() => {
                       setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
+                      setFormData({ progressNotes: '', audioLink: '' });
                       setShowMushaf(false);
                       setCurrentPage(1);
                     }}
@@ -773,84 +733,6 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
             </div>
             <form onSubmit={handleSubmitTicket} className="p-6 space-y-5">
             <div className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900">
-                    Assignment Focus
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    Specify exactly what the student should prepare next so it appears in their dashboard.
-                  </p>
-                </div>
-                {formData.assignmentPortion && (
-                  <span className="inline-flex items-center rounded-full bg-soft-primary px-3 py-1 text-xs font-medium text-[var(--color-primary)]">
-                    {getStepLabel(selectedTicket?.workflowStep || 'sabq')} focus set
-                  </span>
-                )}
-              </div>
-
-              <div className="grid gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Juz Portion</label>
-                  <select
-                    value={formData.assignmentPortion}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, assignmentPortion: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition"
-                  >
-                    <option value="">Select portion...</option>
-                    {PORTION_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {PORTION_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, assignmentPortion: option.value }))}
-                        className={`px-3 py-1 rounded-full text-xs transition ${
-                          formData.assignmentPortion === option.value
-                            ? 'bg-[var(--color-primary)] text-white'
-                            : 'border border-gray-200 bg-white text-gray-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                    {previousPortionSuggestions
-                      .filter(
-                        (value) => !PORTION_OPTIONS.some((option) => option.value === value)
-                      )
-                      .map((value) => (
-                        <button
-                          key={`prev-portion-${value}`}
-                          type="button"
-                          onClick={() => setFormData((prev) => ({ ...prev, assignmentPortion: value }))}
-                          className={`px-3 py-1 rounded-full text-xs transition ${
-                            formData.assignmentPortion === value
-                              ? 'bg-[var(--color-primary)] text-white'
-                              : 'border border-gray-200 bg-white text-gray-700 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
-                          }`}
-                        >
-                          {formatPortionLabel(value)}
-                        </button>
-                      ))}
-                    {formData.assignmentPortion && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData((prev) => ({ ...prev, assignmentPortion: '' }))}
-                        className="px-3 py-1 rounded-full border border-gray-200 bg-white text-xs text-gray-500 hover:border-red-300 hover:text-red-500 transition"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                   Progress Notes <span className="text-red-500">*</span>
@@ -885,6 +767,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                   placeholder="https://..."
                 />
               </div>
+            </div>
 
               <div className="flex gap-3 pt-4 border-t border-gray-200">
                 <button
@@ -915,12 +798,12 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                     if (mushafMarkings.length > 0 || formData.progressNotes.trim()) {
                       if (confirm('Are you sure you want to cancel? Your progress notes and marked mistakes will be lost.')) {
                         setSelectedTicket(null);
-                        setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
+      setFormData({ progressNotes: '', audioLink: '' });
                         setMushafMarkings([]);
                       }
                     } else {
                       setSelectedTicket(null);
-                      setFormData({ progressNotes: '', audioLink: '', assignmentPortion: '' });
+                      setFormData({ progressNotes: '', audioLink: '' });
                     }
                   }}
                   className="px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors"
