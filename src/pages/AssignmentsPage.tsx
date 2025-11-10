@@ -55,6 +55,7 @@ const AssignmentsPage: React.FC = () => {
   const canCreateAssignments = user?.role === 'superadmin' || 
     user?.role === 'admin' ||
     user?.role === 'teacher';
+  const canFinalizeTickets = user?.role === 'superadmin' || user?.role === 'admin';
 
   const getTicketId = (ticket?: AssignmentTicket | null) =>
     ticket ? (ticket.id || (ticket as any)._id || '') : '';
@@ -99,6 +100,35 @@ const AssignmentsPage: React.FC = () => {
       return acc;
     }, {});
   }, [selectedTicket]);
+
+  const getTicketStepLabel = (ticket: AssignmentTicket) => {
+    switch (ticket.workflowStep) {
+      case 'sabq':
+        return 'Sabq';
+      case 'sabqi':
+        return 'Sabqi';
+      case 'manzil':
+        return 'Manzil';
+      case 'finalize':
+        return 'Finalize';
+      default:
+        return ticket.workflowStep;
+    }
+  };
+
+  const getTicketTimestampLabel = (ticket: AssignmentTicket) => {
+    const rawDate = (ticket as any).updatedAt || ticket.completedAt || ticket.createdAt;
+    if (!rawDate) return '—';
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   // Mock programs - in real app, this would come from API
   useEffect(() => {
@@ -353,24 +383,29 @@ const AssignmentsPage: React.FC = () => {
                 );
               })}
               {approvedFinalizeTickets.map(ticket => {
-                const ticketId = ticket.id || (ticket as any)._id;
-                return (
-                  <div key={ticketId} className="bg-white p-4 rounded-lg border border-yellow-200">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold text-gray-900">{getStudentName(ticket.studentId)}</p>
-                        <p className="text-sm text-gray-600">✅ Finalize - Ready to add homework</p>
-                      </div>
-                      <button
-                        onClick={() => setSelectedTicket(ticket)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
-                      >
-                        Finalize & Add Homework
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                 const ticketId = ticket.id || (ticket as any)._id;
+                 return (
+                   <div key={ticketId} className="bg-white p-4 rounded-lg border border-yellow-200">
+                     <div className="flex justify-between items-start">
+                       <div>
+                         <p className="font-semibold text-gray-900">{getStudentName(ticket.studentId)}</p>
+                         <p className="text-sm text-gray-600">✅ Finalize - Ready to add homework</p>
+                        {!canFinalizeTickets && (
+                          <p className="text-xs text-orange-600 mt-2">Only admins can finalize assignments.</p>
+                        )}
+                       </div>
+                      {canFinalizeTickets && (
+                        <button
+                          onClick={() => setSelectedTicket(ticket)}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
+                        >
+                          Finalize & Add Homework
+                        </button>
+                      )}
+                     </div>
+                   </div>
+                 );
+               })}
             </div>
           </div>
         )}
@@ -453,212 +488,246 @@ const AssignmentsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
-                    <h4 className="text-sm font-semibold text-purple-800 mb-3">
-                      Recent listening reports
-                    </h4>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
-                        <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Sabqi</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {sabqiTicket?.progressNotes?.trim() || 'No sabqi notes recorded.'}
-                        </p>
-                      </div>
-                      <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
-                        <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Manzil</p>
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {manzilTicket?.progressNotes?.trim() || 'No manzil notes recorded.'}
-                        </p>
-                      </div>
+                  {!canFinalizeTickets ? (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                      Only admins can finalize assignments. Please contact an administrator to publish this report.
                     </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-gray-700">
-                        Sabq summary <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={finalizeData.finalReport}
-                        onChange={(event) => {
-                          setFinalReportTouched(true);
-                          setFinalizeData((prev) => ({ ...prev, finalReport: event.target.value }));
-                        }}
-                        rows={5}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                        placeholder="Summarize today’s sabq..."
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-sm font-semibold text-gray-700">
-                        Homework for next day <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={finalizeData.homework}
-                        onChange={(event) => {
-                          setHomeworkTouched(true);
-                          setFinalizeData((prev) => ({ ...prev, homework: event.target.value }));
-                        }}
-                        rows={4}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                        placeholder="Homework instructions for the student..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-800">Interactive Mushaf</h4>
-                        <p className="text-xs text-gray-500">Share what was marked during the session.</p>
+                  ) : (
+                    <>
+                      <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
+                        <h4 className="text-sm font-semibold text-purple-800 mb-3">
+                          Recent listening reports
+                        </h4>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
+                            <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Sabqi</p>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {sabqiTicket?.progressNotes?.trim() || 'No sabqi notes recorded.'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
+                            <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Manzil</p>
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {manzilTicket?.progressNotes?.trim() || 'No manzil notes recorded.'}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => setShowFinalizeMushaf((prev) => !prev)}
-                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
-                      >
-                        {showFinalizeMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
-                      </button>
-                    </div>
-                    {showFinalizeMushaf && (
-                      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
-                        <InteractiveMushaf
-                          currentPage={finalizeMushafPage}
-                          onPageChange={setFinalizeMushafPage}
-                          mistakes={selectedTicket.mushafMarkings || []}
-                          historicalMistakes={[]}
-                          onMistakeMark={() => {}}
-                          mode="review"
-                          studentName={getStudentName(selectedTicket.studentId)}
-                          showHistorical={false}
-                        />
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm">
-                    <h4 className="mb-3 text-sm font-semibold text-gray-800">Student preview</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Sabq summary</p>
-                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-700">
-                          {finalizeData.finalReport || 'Add a sabq summary above.'}
-                        </pre>
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <h4 className="text-sm font-semibold text-gray-800 mb-3">Ticket history</h4>
+                        <div className="space-y-3">
+                          {selectedTicketChain.map((ticket, idx) => (
+                            <div
+                              key={`${ticket.workflowStep}-${idx}`}
+                              className="rounded-xl border border-gray-100 bg-gray-50 p-3"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                                  <span>{getTicketStepLabel(ticket)}</span>
+                                  <span className="text-gray-400 text-xs">• {ticket.status.replace('_', ' ')}</span>
+                                </div>
+                                <span className="text-xs text-gray-500">{getTicketTimestampLabel(ticket)}</span>
+                              </div>
+                              <p className="mt-2 text-xs text-gray-600 whitespace-pre-wrap">
+                                {ticket.progressNotes?.trim() || 'No notes recorded.'}
+                              </p>
+                              <p className="mt-1 text-[11px] text-gray-500">
+                                Teacher: {ticket.assignedTeacherName || '—'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Previous reports</p>
-                        <ul className="mt-1 list-disc space-y-1 pl-5 text-gray-700">
-                          <li><span className="font-semibold">Sabqi:</span> {sabqiTicket?.progressNotes?.trim() || 'No report.'}</li>
-                          <li><span className="font-semibold">Manzil:</span> {manzilTicket?.progressNotes?.trim() || 'No report.'}</li>
-                        </ul>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
-                        <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-700">
-                          {finalizeData.homework || 'Add homework instructions above.'}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <button
-                      onClick={async () => {
-                        if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
-                          alert('Please fill in all required fields');
-                          return;
-                        }
+                      <div className="space-y-5">
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-gray-700">
+                            Sabq summary <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={finalizeData.finalReport}
+                            onChange={(event) => {
+                              setFinalReportTouched(true);
+                              setFinalizeData((prev) => ({ ...prev, finalReport: event.target.value }));
+                            }}
+                            rows={5}
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                            placeholder="Summarize today’s sabq..."
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-semibold text-gray-700">
+                            Homework for next day <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={finalizeData.homework}
+                            onChange={(event) => {
+                              setHomeworkTouched(true);
+                              setFinalizeData((prev) => ({ ...prev, homework: event.target.value }));
+                            }}
+                            rows={4}
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                            placeholder="Homework instructions for the student..."
+                          />
+                        </div>
+                      </div>
 
-                        try {
-                          const ticketId = selectedTicket.id || (selectedTicket as any)._id;
-                          const classworkSectionsPayload: ClassworkSection[] = [
-                            {
-                              step: 'sabq',
-                              title: 'Sabq Summary',
-                              label: 'Sabq Summary',
-                              summary: finalizeData.finalReport.trim(),
-                              assignmentRange: finalizeData.finalReport.trim(),
-                              order: 0,
-                            },
-                            ...(sabqiTicket?.progressNotes?.trim()
-                              ? [
-                                  {
-                                    step: 'sabqi',
-                                    title: 'Sabqi Notes',
-                                    label: 'Sabqi Notes',
-                                    summary: sabqiTicket.progressNotes.trim(),
-                                    assignmentRange: sabqiTicket.progressNotes.trim(),
-                                    order: 1,
-                                  } as ClassworkSection,
+                      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-800">Interactive Mushaf</h4>
+                            <p className="text-xs text-gray-500">Share what was marked during the session.</p>
+                          </div>
+                          <button
+                            onClick={() => setShowFinalizeMushaf((prev) => !prev)}
+                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
+                          >
+                            {showFinalizeMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
+                          </button>
+                        </div>
+                        {showFinalizeMushaf && (
+                          <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
+                            <InteractiveMushaf
+                              currentPage={finalizeMushafPage}
+                              onPageChange={setFinalizeMushafPage}
+                              mistakes={selectedTicket.mushafMarkings || []}
+                              historicalMistakes={[]}
+                              onMistakeMark={() => {}}
+                              mode="viewing"
+                              studentName={getStudentName(selectedTicket.studentId)}
+                              showHistorical={false}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm">
+                        <h4 className="mb-3 text-sm font-semibold text-gray-800">Student preview</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Sabq summary</p>
+                            <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-700">
+                              {finalizeData.finalReport || 'Add a sabq summary above.'}
+                            </pre>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Previous reports</p>
+                            <ul className="mt-1 list-disc space-y-1 pl-5 text-gray-700">
+                              <li><span className="font-semibold">Sabqi:</span> {sabqiTicket?.progressNotes?.trim() || 'No report.'}</li>
+                              <li><span className="font-semibold">Manzil:</span> {manzilTicket?.progressNotes?.trim() || 'No report.'}</li>
+                            </ul>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
+                            <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-700">
+                              {finalizeData.homework || 'Add homework instructions above.'}
+                            </pre>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-3 sm:flex-row">
+                        <button
+                          onClick={async () => {
+                            if (!finalizeData.finalReport.trim() || !finalizeData.homework.trim()) {
+                              alert('Please fill in all required fields');
+                              return;
+                            }
+
+                            try {
+                              const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+                              const classworkSectionsPayload: ClassworkSection[] = [
+                                {
+                                  step: 'sabq',
+                                  title: 'Sabq Summary',
+                                  label: 'Sabq Summary',
+                                  summary: finalizeData.finalReport.trim(),
+                                  assignmentRange: finalizeData.finalReport.trim(),
+                                  order: 0,
+                                },
+                                ...(sabqiTicket?.progressNotes?.trim()
+                                  ? [
+                                      {
+                                        step: 'sabqi',
+                                        title: 'Sabqi Notes',
+                                        label: 'Sabqi Notes',
+                                        summary: sabqiTicket.progressNotes.trim(),
+                                        assignmentRange: sabqiTicket.progressNotes.trim(),
+                                        order: 1,
+                                      } as ClassworkSection,
+                                    ]
+                                  : []),
+                                ...(manzilTicket?.progressNotes?.trim()
+                                  ? [
+                                      {
+                                        step: 'manzil',
+                                        title: 'Manzil Notes',
+                                        label: 'Manzil Notes',
+                                        summary: manzilTicket.progressNotes.trim(),
+                                        assignmentRange: manzilTicket.progressNotes.trim(),
+                                        order: 2,
+                                      } as ClassworkSection,
+                                    ]
+                                  : []),
+                              ];
+
+                              const previousReportsText = [
+                                sabqiTicket?.progressNotes?.trim()
+                                  ? `Sabqi Notes:\n${sabqiTicket.progressNotes.trim()}`
+                                  : null,
+                                manzilTicket?.progressNotes?.trim()
+                                  ? `Manzil Notes:\n${manzilTicket.progressNotes.trim()}`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join('\n\n');
+
+                              await finalizeTicket(ticketId, {
+                                finalReport: [
+                                  finalizeData.finalReport.trim(),
+                                  previousReportsText,
                                 ]
-                              : []),
-                            ...(manzilTicket?.progressNotes?.trim()
-                              ? [
-                                  {
-                                    step: 'manzil',
-                                    title: 'Manzil Notes',
-                                    label: 'Manzil Notes',
-                                    summary: manzilTicket.progressNotes.trim(),
-                                    assignmentRange: manzilTicket.progressNotes.trim(),
-                                    order: 2,
-                                  } as ClassworkSection,
-                                ]
-                              : []),
-                          ];
-
-                          const previousReportsText = [
-                            sabqiTicket?.progressNotes?.trim()
-                              ? `Sabqi Notes:\n${sabqiTicket.progressNotes.trim()}`
-                              : null,
-                            manzilTicket?.progressNotes?.trim()
-                              ? `Manzil Notes:\n${manzilTicket.progressNotes.trim()}`
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join('\n\n');
-
-                          await finalizeTicket(ticketId, {
-                            finalReport: [
-                              finalizeData.finalReport.trim(),
-                              previousReportsText,
-                            ]
-                              .filter(Boolean)
-                              .join('\n\n'),
-                            homework: finalizeData.homework,
-                            homeworkLink: '',
-                            reviewedBy: user?.id || '',
-                            classworkSections: classworkSectionsPayload,
-                            classworkSummary: finalizeData.finalReport.trim(),
-                            homeworkSummary: finalizeData.homework,
-                            classworkType: 'sabq',
-                          } as any);
-                          alert('✅ Ticket finalized! Assignment created.');
-                          setSelectedTicket(null);
-                          setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
-                          setFinalReportTouched(false);
-                          setHomeworkTouched(false);
-                          setShowFinalizeMushaf(false);
-                          await refreshData();
-                        } catch (error) {
-                          alert('Failed to finalize ticket');
-                        }
-                      }}
-                      className="flex-1 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
-                    >
-                      Finalize &amp; Create Assignment
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedTicket(null);
-                        setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
-                        setFinalReportTouched(false);
-                        setHomeworkTouched(false);
-                        setShowFinalizeMushaf(false);
-                      }}
-                      className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
-                  </div>
+                                  .filter(Boolean)
+                                  .join('\n\n'),
+                                homework: finalizeData.homework,
+                                homeworkLink: '',
+                                reviewedBy: user?.id || '',
+                                classworkSections: classworkSectionsPayload,
+                                classworkSummary: finalizeData.finalReport.trim(),
+                                homeworkSummary: finalizeData.homework,
+                                classworkType: 'sabq',
+                              } as any);
+                              alert('✅ Ticket finalized! Assignment created.');
+                              setSelectedTicket(null);
+                              setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                              setFinalReportTouched(false);
+                              setHomeworkTouched(false);
+                              setShowFinalizeMushaf(false);
+                              await refreshData();
+                            } catch (error) {
+                              alert('Failed to finalize ticket');
+                            }
+                          }}
+                          className="flex-1 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                        >
+                          Finalize &amp; Create Assignment
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedTicket(null);
+                            setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
+                            setFinalReportTouched(false);
+                            setHomeworkTouched(false);
+                            setShowFinalizeMushaf(false);
+                          }}
+                          className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
