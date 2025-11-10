@@ -61,6 +61,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [ticketDeletingId, setTicketDeletingId] = useState<string | null>(null);
+  const [approvingTicketId, setApprovingTicketId] = useState<string | null>(null);
   const [selectedTicketsMap, setSelectedTicketsMap] = useState<Record<string, boolean>>({});
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [quickAssignTicket, setQuickAssignTicket] = useState<AssignmentTicket | null>(null);
@@ -417,25 +418,38 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     [activeTickets]
   );
 
-  const handleApprove = async () => {
-    if (!selectedTicket) return;
-    
+  const handleApprove = async (ticketOverride?: AssignmentTicket) => {
+    const targetTicket = ticketOverride ?? selectedTicket;
+    if (!targetTicket) return;
+
+    const ticketId = targetTicket.id || (targetTicket as any)._id;
+    if (!ticketId) return;
+
+    const shouldShowAlert = !ticketOverride;
+
     try {
-      const ticketId = selectedTicket.id || (selectedTicket as any)._id;
+      setApprovingTicketId(ticketId);
       const result = await approveTicket(ticketId, user?.id || '');
-      alert('Ticket approved successfully!');
-      if (result?.ticket) {
-        const normalizedTicket = normalizeTicket(result.ticket, selectedTicket);
-        setSelectedTicket(normalizedTicket);
+
+      if (shouldShowAlert) {
+        alert('Ticket approved successfully!');
+        if (result?.ticket) {
+          const normalizedTicket = normalizeTicket(result.ticket, targetTicket);
+          setSelectedTicket(normalizedTicket);
+        }
+        setRevisionNotes('');
+        setShowMushaf(false);
+        refreshData().catch((err) => console.error('Error refreshing data after approval:', err));
       }
-      setRevisionNotes('');
-      setShowMushaf(false);
-      refreshData().catch((err) => console.error('Error refreshing data after approval:', err));
     } catch (error) {
       console.error('Error approving ticket:', error);
       alert('Failed to approve ticket');
+    } finally {
+      if (shouldShowAlert) {
+        setShowRevisionForm(false);
+      }
+      setApprovingTicketId((prev) => (prev === ticketId ? null : prev));
     }
-    setShowRevisionForm(false);
   };
 
   const handleAssignToNext = async () => {
@@ -963,8 +977,28 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   return (
     <>
       <div className="bg-white rounded-lg shadow-lg p-6 max-w-7xl mx-auto max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
+            <p className="text-sm text-gray-500">
+              Tickets that are currently under review. Approve each ticket to clear it from the queue.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-soft-accent px-3 py-1 text-sm font-semibold text-[var(--color-accent)]">
+              {pendingTickets.length} pending
+            </span>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
+              >
+                Close
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="hidden">
           <div className="flex gap-2">
             <button
               onClick={() => setView('pending')}
@@ -982,19 +1016,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             >
               All Tickets
             </button>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 px-4 py-2"
-              >
-                Close
-              </button>
-            )}
           </div>
         </div>
 
         {!selectedTicket && selectedCount > 0 && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="hidden mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <span>
               {selectedCount} ticket{selectedCount === 1 ? '' : 's'} selected
             </span>
@@ -1505,7 +1531,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         ) : (
           <div className="space-y-4">
             {availableLetters.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => setStudentFilterLetter('ALL')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
@@ -1531,6 +1557,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 ))}
               </div>
             )}
+
+            <p className="text-sm text-gray-500">
+              Approve tickets once you have reviewed the recitation. They will disappear from this list automatically.
+            </p>
 
             {filteredTickets.map(ticket => {
               const ticketKey = getTicketKey(ticket);
@@ -1559,41 +1589,66 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   key={ticketKey}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-start gap-3">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="flex-1 space-y-2">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleTicketSelection(ticket)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[rgba(var(--color-primary-rgb),0.35)]"
+                        className="hidden"
                       />
-                      <div>
-                        <p className="flex items-center gap-2 text-lg font-semibold text-gray-900">
-                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-soft-accent text-sm font-semibold text-[var(--color-accent)]">
-                            {getStepLabel(ticket.workflowStep).slice(0, 1).toUpperCase()}
-                          </span>
-                          <span>{getStudentName(ticket.studentId)}</span>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent)]">
+                        Under review · {getStepLabel(ticket.workflowStep)}
+                      </p>
+                      <h3 className="text-lg font-semibold text-gray-900">{getStudentName(ticket.studentId)}</h3>
+                      <p className="text-sm text-gray-600">
+                        Teacher {ticket.assignedTeacherName || '—'} • Submitted {formatTicketTimestamp(ticket)}
+                      </p>
+                      {ticket.assignmentRange && (
+                        <p className="text-xs text-gray-500">Range: {ticket.assignmentRange}</p>
+                      )}
+                      {ticket.assignmentPortion && (
+                        <p className="text-xs text-gray-500">
+                          Portion: {formatAssignmentPortion(ticket.assignmentPortion as string)}
                         </p>
-                        <p className="text-sm text-gray-600 flex items-center gap-1">
-                          <span className="font-medium">{getStepLabel(ticket.workflowStep)}</span>
-                          <span className="text-gray-400">→</span>
-                          <span className="font-medium">{nextStepLabel}</span>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Mistakes marked: {typeof (ticket as any).mistakeCount === 'number' ? (ticket as any).mistakeCount : 0}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Next step: {nextStepLabel}
+                      </p>
+                      {ticket.progressNotes && (
+                        <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap leading-6 line-clamp-4">
+                          {ticket.progressNotes}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {ticket.workflowStep === 'finalize'
-                            ? 'Ready for final report and homework.'
-                            : 'Student hasn\'t recited next portion yet.'}
-                        </p>
-                      </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2 min-w-[12rem]">
+                      <button
+                        onClick={() => handleApprove(ticket)}
+                        disabled={approvingTicketId === ticketId}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {approvingTicketId === ticketId ? 'Approving…' : 'Approve'}
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedTicket(ticket);
                           setShowRevisionForm(false);
                           setSelectedNextTeacher('');
                         }}
-                        className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                      >
+                        View details
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTicket(ticket);
+                          setShowRevisionForm(false);
+                          setSelectedNextTeacher('');
+                        }}
+                        className="hidden rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
                       >
                         Review
                       </button>
@@ -1604,7 +1659,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                           setSelectedNextTeacher('');
                         }}
                         disabled={ticket.workflowStep === 'finalize'}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        className={`hidden px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                           ticket.workflowStep === 'finalize'
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'border border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary text-[var(--color-primary)] hover:bg-soft-primary'
@@ -1619,7 +1674,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                           setFinalizeData({ finalReport: '', homework: '', homeworkLink: '' });
                         }}
                         disabled={ticket.workflowStep !== 'finalize'}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                        className={`hidden px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                           ticket.workflowStep !== 'finalize'
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'border border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent text-[var(--color-accent)] hover:bg-[rgba(var(--color-accent-rgb),0.25)]'
@@ -1629,7 +1684,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </button>
                       <button
                         onClick={() => handleToggleHistory(ticketKey)}
-                        className="px-3 py-2 text-xs font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                        className="hidden px-3 py-2 text-xs font-semibold text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
                       >
                         <svg className={`w-4 h-4 transition-transform ${isHistoryExpanded ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
@@ -1638,14 +1693,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </button>
                       <button
                         onClick={() => handleStartEditTicket(ticket)}
-                        className="px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                        className="hidden px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
                       >
                         Edit Ticket
                       </button>
                       <button
                         onClick={() => handleDeleteTicket(ticket)}
                         disabled={ticketDeletingId === (ticket.id || (ticket as any)._id)}
-                        className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                        className={`hidden px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
                           ticketDeletingId === (ticket.id || (ticket as any)._id)
                             ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
                             : 'border-red-200 text-red-600 hover:bg-red-50'
@@ -1695,7 +1750,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               <div className="text-center py-12 text-gray-500">
                 <p className="text-lg">
                   {currentTicketList.length === 0
-                    ? 'No tickets found.'
+                    ? 'No tickets are currently pending review.'
                     : 'No tickets match the selected filter.'}
                 </p>
               </div>
