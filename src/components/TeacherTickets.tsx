@@ -67,6 +67,71 @@ const formatPortionLabel = (portion?: string) => {
   }
 };
 
+const STEP_THEMES: Record<
+  WorkflowStep,
+  {
+    accent: string;
+    badge: string;
+    chip: string;
+  }
+> = {
+  sabq: {
+    accent: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+    badge: 'bg-emerald-500/10 text-emerald-700',
+    chip: 'text-emerald-700'
+  },
+  sabqi: {
+    accent: 'bg-sky-50 border-sky-200 text-sky-800',
+    badge: 'bg-sky-500/10 text-sky-700',
+    chip: 'text-sky-700'
+  },
+  manzil: {
+    accent: 'bg-indigo-50 border-indigo-200 text-indigo-800',
+    badge: 'bg-indigo-500/10 text-indigo-700',
+    chip: 'text-indigo-700'
+  },
+  finalize: {
+    accent: 'bg-amber-50 border-amber-200 text-amber-800',
+    badge: 'bg-amber-500/10 text-amber-700',
+    chip: 'text-amber-700'
+  }
+};
+
+const getStepTheme = (step: WorkflowStep) =>
+  STEP_THEMES[step] || STEP_THEMES.sabq;
+
+const extractAssignmentDetails = (ticket: AssignmentTicket) => {
+  const range =
+    typeof ticket.assignmentRange === 'string'
+      ? ticket.assignmentRange.trim()
+      : '';
+
+  const rawPortion =
+    typeof ticket.assignmentPortion === 'string'
+      ? ticket.assignmentPortion.trim()
+      : ticket.assignmentPortion
+      ? String(ticket.assignmentPortion)
+      : '';
+
+  const portionLabel = rawPortion ? formatPortionLabel(rawPortion) : '';
+
+  const uniquePortion =
+    portionLabel &&
+    range &&
+    portionLabel.toLowerCase() === range.toLowerCase()
+      ? ''
+      : portionLabel;
+
+  const summaryParts = [range, uniquePortion].filter(Boolean);
+
+  return {
+    range,
+    portion: uniquePortion,
+    summary: summaryParts.join(' • '),
+    hasDetails: summaryParts.length > 0
+  };
+};
+
 interface TeacherTicketsProps {
   onClose?: () => void;
 }
@@ -281,6 +346,11 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
       })
       .slice(0, 2);
   }, [tickets, selectedTicket]);
+
+  const selectedAssignmentDetails = useMemo(() => {
+    if (!selectedTicket) return null;
+    return extractAssignmentDetails(selectedTicket);
+  }, [selectedTicket]);
 
   const handleStartTicket = async (ticket: AssignmentTicket) => {
     try {
@@ -519,7 +589,40 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                 </div>
               </div>
             </div>
-            
+            {selectedAssignmentDetails?.hasDetails && (
+              <div className="px-6 py-4 border-b border-gray-100 bg-white">
+                <div
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border ${getStepTheme(selectedTicket.workflowStep).accent}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className={`text-base sm:text-lg font-semibold ${getStepTheme(selectedTicket.workflowStep).chip}`}>
+                      {getStepLabel(selectedTicket.workflowStep)}
+                    </span>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                        Focus for this listening
+                      </p>
+                      <p className="text-sm sm:text-base font-medium">
+                        {selectedAssignmentDetails.summary}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedAssignmentDetails.range && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStepTheme(selectedTicket.workflowStep).badge}`}>
+                        Range: {selectedAssignmentDetails.range}
+                      </span>
+                    )}
+                    {selectedAssignmentDetails.portion && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStepTheme(selectedTicket.workflowStep).badge}`}>
+                        Portion: {selectedAssignmentDetails.portion}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {(selectedTicket.revisionNotes || selectedTicket.audioLink) && (
               <div className="px-6 py-4 space-y-3">
                 {selectedTicket.revisionNotes && (
@@ -957,6 +1060,9 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                           return bTime - aTime;
                         });
  
+                      const assignmentDetails = extractAssignmentDetails(ticket);
+                      const stepTheme = getStepTheme(ticket.workflowStep);
+
                       return (
                         <div
                           key={ticketKey}
@@ -975,6 +1081,11 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                                 <p className="text-sm text-gray-600">{ticket.program}</p>
                               </div>
                             </div>
+                            {assignmentDetails.hasDetails && (
+                              <div className={`mt-3 p-3 text-xs sm:text-sm border rounded-lg ${stepTheme.accent}`}>
+                                <p className="font-semibold">{assignmentDetails.summary}</p>
+                              </div>
+                            )}
                             {ticket.progressNotes && (
                               <p className="text-sm text-gray-500 mt-3 line-clamp-2 border-t border-gray-100 pt-3">{ticket.progressNotes}</p>
                             )}
@@ -1007,6 +1118,8 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                                 ) : (
                                   historyEntries.map(historyTicket => {
                                     const historyKey = getTicketKey(historyTicket);
+                                    const historyAssignment = extractAssignmentDetails(historyTicket);
+                                    const historyTheme = getStepTheme(historyTicket.workflowStep);
                                     return (
                                       <div key={historyKey} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
                                         <div className="flex items-center justify-between gap-3 mb-1">
@@ -1020,6 +1133,11 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                                         <div className="text-[11px] text-gray-500">
                                           Updated {formatHistoryTimestamp(historyTicket)}
                                         </div>
+                                        {historyAssignment.hasDetails && (
+                                          <div className={`mt-2 text-xs border rounded-md px-2 py-1 ${historyTheme.accent}`}>
+                                            {historyAssignment.summary}
+                                          </div>
+                                        )}
                                         {historyTicket.progressNotes && (
                                           <p className="mt-2 text-xs text-gray-600 line-clamp-3">
                                             {historyTicket.progressNotes}
