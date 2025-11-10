@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AssignmentTicket, TicketStatus, WorkflowStep, Student, Teacher, MushafMistake } from '../types';
+import type { ClassworkSection } from '../types/assignment';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 
 const extractMistakePages = (markings: ReadonlyArray<MushafMistake>): number[] => {
@@ -118,6 +119,43 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     });
     return combined;
   }, [selectedTicket, ticketChain]);
+
+  const sabqTicketInChain = useMemo(() => {
+    const reversed = [...ticketChain].reverse();
+    return reversed.find((ticket) => ticket.workflowStep === 'sabq') || null;
+  }, [ticketChain]);
+
+  const sabqiTicketInChain = useMemo(() => {
+    const reversed = [...ticketChain].reverse();
+    return reversed.find((ticket) => ticket.workflowStep === 'sabqi') || null;
+  }, [ticketChain]);
+
+  const manzilTicketInChain = useMemo(() => {
+    const reversed = [...ticketChain].reverse();
+    return reversed.find((ticket) => ticket.workflowStep === 'manzil') || null;
+  }, [ticketChain]);
+
+  const finalizeHistoryEntries = useMemo(
+    () => [
+      {
+        label: 'Sabqi',
+        ticket: sabqiTicketInChain,
+        notes: sabqiTicketInChain?.progressNotes?.trim() || '',
+        range: sabqiTicketInChain?.assignmentRange || '',
+        portion: sabqiTicketInChain?.assignmentPortion || '',
+        teacher: sabqiTicketInChain?.assignedTeacherName || '',
+      },
+      {
+        label: 'Manzil',
+        ticket: manzilTicketInChain,
+        notes: manzilTicketInChain?.progressNotes?.trim() || '',
+        range: manzilTicketInChain?.assignmentRange || '',
+        portion: manzilTicketInChain?.assignmentPortion || '',
+        teacher: manzilTicketInChain?.assignedTeacherName || '',
+      },
+    ],
+    [sabqiTicketInChain, manzilTicketInChain]
+  );
 
   useEffect(() => {
     if (selectedTicket && selectedTicket.status === 'approved' && selectedTicket.workflowStep !== 'finalize') {
@@ -616,8 +654,19 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const handleFinalize = async () => {
     if (!selectedTicket) return;
-    
-    if (!finalizeData.homework.trim()) {
+    if (!isAdminUser) {
+      alert('Only admins can finalize tickets.');
+      return;
+    }
+
+    const trimmedReport = finalizeData.finalReport.trim();
+    const trimmedHomework = finalizeData.homework.trim();
+
+    if (!trimmedReport) {
+      alert('Please enter a sabq summary');
+      return;
+    }
+    if (!trimmedHomework) {
       alert('Please enter homework instructions');
       return;
     }
@@ -627,15 +676,76 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       if (selectedTicketMarkings.length > 0) {
         await updateTicket(ticketId, { mushafMarkings: selectedTicketMarkings });
       }
-      const finalReportValue = finalizeData.finalReport.trim()
-        ? finalizeData.finalReport.trim()
-        : (selectedTicket.progressNotes?.trim() || 'Finalized by admin');
+
+      const previousReportsText = [
+        sabqiTicketInChain?.progressNotes?.trim()
+          ? `Sabqi Notes:\n${sabqiTicketInChain.progressNotes.trim()}`
+          : null,
+        manzilTicketInChain?.progressNotes?.trim()
+          ? `Manzil Notes:\n${manzilTicketInChain.progressNotes.trim()}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const defaultReport =
+        sabqTicketInChain?.progressNotes?.trim() ||
+        selectedTicket.progressNotes?.trim() ||
+        'Finalized by admin';
+
+      const combinedFinalReport = [trimmedReport || defaultReport, previousReportsText]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const classworkSections: ClassworkSection[] = [];
+
+      if (sabqTicketInChain?.progressNotes?.trim()) {
+        classworkSections.push({
+          step: 'sabq',
+          title: 'Sabq Notes',
+          summary: sabqTicketInChain.progressNotes.trim(),
+          assignmentRange: sabqTicketInChain.assignmentRange || '',
+          assignmentPortion: sabqTicketInChain.assignmentPortion,
+          teacherName: sabqTicketInChain.assignedTeacherName || '',
+          order: classworkSections.length,
+        });
+      }
+
+      if (sabqiTicketInChain?.progressNotes?.trim()) {
+        classworkSections.push({
+          step: 'sabqi',
+          title: 'Sabqi Notes',
+          summary: sabqiTicketInChain.progressNotes.trim(),
+          assignmentRange: sabqiTicketInChain.assignmentRange || '',
+          assignmentPortion: sabqiTicketInChain.assignmentPortion,
+          teacherName: sabqiTicketInChain.assignedTeacherName || '',
+          order: classworkSections.length,
+        });
+      }
+
+      if (manzilTicketInChain?.progressNotes?.trim()) {
+        classworkSections.push({
+          step: 'manzil',
+          title: 'Manzil Notes',
+          summary: manzilTicketInChain.progressNotes.trim(),
+          assignmentRange: manzilTicketInChain.assignmentRange || '',
+          assignmentPortion: manzilTicketInChain.assignmentPortion,
+          teacherName: manzilTicketInChain.assignedTeacherName || '',
+          order: classworkSections.length,
+        });
+      }
+
       await finalizeTicket(ticketId, {
-        finalReport: finalReportValue,
-        homework: finalizeData.homework,
-        homeworkLink: finalizeData.homeworkLink,
-        reviewedBy: user?.id || ''
+        finalReport: combinedFinalReport,
+        homework: trimmedHomework,
+        homeworkLink: finalizeData.homeworkLink.trim(),
+        reviewedBy: user?.id || '',
+        classworkSections,
+        classworkSummary: trimmedReport,
+        homeworkSummary: trimmedHomework,
+        classworkType: 'sabq',
       });
+
       alert('Ticket finalized! Assignment created and visible to student.');
       removeTicketFromSelection(ticketId);
       handleBackToList();
@@ -674,6 +784,25 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       default:
         return portion;
     }
+  };
+
+  const formatTicketTimestamp = (ticket?: AssignmentTicket | null) => {
+    if (!ticket) return '—';
+    const reference =
+      (ticket.updatedAt instanceof Date ? ticket.updatedAt : null) ||
+      (ticket.completedAt instanceof Date ? ticket.completedAt : null) ||
+      (ticket.createdAt instanceof Date ? ticket.createdAt : null) ||
+      null;
+    const date =
+      reference ||
+      (ticket.updatedAt ? new Date(ticket.updatedAt) : ticket.createdAt ? new Date(ticket.createdAt) : null);
+    if (!date || Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
   const getMistakeTypeLabel = (type: string) => {
@@ -756,6 +885,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const isApproved = selectedTicket?.status === 'approved';
   const needsAssignment = isApproved && selectedTicket?.workflowStep !== 'finalize';
   const readyForFinalize = isApproved && selectedTicket?.workflowStep === 'finalize';
+  const isAdminUser = user?.role === 'admin' || user?.role === 'superadmin';
   const displayedMarkings = readyForFinalize ? aggregatedMarkings : selectedTicketMarkings;
   const mistakePages = useMemo(() => extractMistakePages(displayedMarkings), [displayedMarkings]);
   const mistakesByPage = useMemo(() => {
@@ -783,25 +913,37 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const totalMistakePages = mistakePages.length;
 
   useEffect(() => {
-    if (
-      selectedTicket &&
-      selectedTicket.status === 'approved' &&
-      selectedTicket.workflowStep === 'finalize'
-    ) {
+    if (readyForFinalize && selectedTicket) {
+      const sabqDefault = sabqTicketInChain?.progressNotes?.trim() || selectedTicket.progressNotes?.trim() || '';
+      const homeworkDefault = manzilTicketInChain?.progressNotes?.trim()
+        ? `Review: ${manzilTicketInChain.progressNotes.trim()}`
+        : '';
+
       setFinalizeData((prev) => ({
-        finalReport: selectedTicket.progressNotes || prev.finalReport || '',
-        homework: prev.homework || '',
-        homeworkLink: '',
+        finalReport: prev.finalReport || sabqDefault,
+        homework: prev.homework || homeworkDefault,
+        homeworkLink: prev.homeworkLink || '',
       }));
-      if (displayedMarkings.length > 0) {
+
+      if (aggregatedMarkings.length > 0) {
+        const firstPage = aggregatedMarkings[0]?.page;
+        setCurrentPage(typeof firstPage === 'number' ? firstPage : 1);
         setShowMushaf(true);
-        const firstPage = displayedMarkings[0]?.page;
-        setCurrentPage(firstPage || 1);
+      } else {
+        setShowMushaf(false);
+        setCurrentPage(1);
       }
-    } else {
+    } else if (!selectedTicket || displayedMarkings.length === 0) {
       setShowMushaf(false);
     }
-  }, [selectedTicket, displayedMarkings]);
+  }, [
+    aggregatedMarkings,
+    displayedMarkings,
+    manzilTicketInChain,
+    readyForFinalize,
+    sabqTicketInChain,
+    selectedTicket,
+  ]);
 
   const handleToggleHistory = (ticketKey: string) => {
     setExpandedHistoryIds(prev => ({
@@ -1046,119 +1188,194 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 )}
 
                 {readyForFinalize && (
-                  <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+                  <section className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5">
                     <header className="space-y-1">
                       <h4 className="text-base font-semibold text-gray-900">Finalize & publish</h4>
                       <p className="text-xs text-gray-500">
-                        Summarize today's session and assign homework. The student will see this immediately.
+                        Summarize today's session, assign homework, and send the full report to the student.
                       </p>
                     </header>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
-                        <div className="font-semibold text-gray-900 mb-2">Teacher report</div>
-                        <p className="whitespace-pre-wrap">
-                          {selectedTicket.progressNotes?.trim() || 'No notes were provided by the teacher.'}
-                        </p>
-                        {selectedTicket.audioLink && (
-                          <a
-                            href={selectedTicket.audioLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] hover:text-[rgba(var(--color-primary-rgb),0.85)]"
-                          >
-                            🎧 Listen to teacher audio
-                          </a>
-                        )}
+
+                    {!isAdminUser ? (
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        Only admins can finalize tickets. Please reach out to an administrator to publish this report.
                       </div>
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <div className="font-semibold text-gray-900 mb-2 text-sm">Workflow progress</div>
-                        <ul className="space-y-2 text-xs text-gray-700">
-                          {ticketChain.map((ticket) => (
-                            <li
-                              key={ticket.id}
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-2"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="font-semibold text-gray-900">
-                                  {ticket.workflowStep}
-                                </span>
-                                <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusColor(ticket.status)}`}>
-                                  {ticket.status.replace('_', ' ')}
-                                </span>
+                    ) : (
+                      <>
+                        <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4">
+                          <h5 className="text-sm font-semibold text-purple-800 mb-3">Recent listening reports</h5>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {finalizeHistoryEntries.map((entry) => (
+                              <div
+                                key={`finalize-history-${entry.label}`}
+                                className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm text-sm text-gray-700"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold">
+                                    {entry.label}
+                                  </p>
+                                  <span className="text-[11px] text-gray-400">
+                                    {formatTicketTimestamp(entry.ticket)}
+                                  </span>
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">
+                                  Teacher:{' '}
+                                  <span className="font-semibold text-gray-900">
+                                    {entry.teacher || '—'}
+                                  </span>
+                                </p>
+                                {entry.range && (
+                                  <p className="text-xs text-gray-500">{entry.range}</p>
+                                )}
+                                {entry.portion && (
+                                  <p className="text-[11px] text-gray-400">
+                                    Portion: {formatAssignmentPortion(entry.portion)}
+                                  </p>
+                                )}
+                                <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700 min-h-[40px]">
+                                  {entry.notes || 'No notes recorded yet.'}
+                                </p>
                               </div>
-                              {ticket.assignmentRange && (
-                                <p className="mt-1 text-[11px] text-gray-500">{ticket.assignmentRange}</p>
-                              )}
-                              {ticket.assignmentPortion && (
-                                <p className="text-[11px] text-gray-400">
-                                  Portion: {ticket.assignmentPortion}
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                          <h5 className="text-sm font-semibold text-gray-800 mb-3">Ticket history</h5>
+                          <div className="space-y-3">
+                            {ticketChain.map((ticket) => (
+                              <div
+                                key={ticket.id}
+                                className="rounded-xl border border-gray-200 bg-white p-3 text-xs text-gray-600"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                                    <span>{getStepLabel(ticket.workflowStep)}</span>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(ticket.status)}`}>
+                                      {ticket.status.replace('_', ' ')}
+                                    </span>
+                                  </div>
+                                  <span className="text-[11px] text-gray-400">
+                                    {formatTicketTimestamp(ticket)}
+                                  </span>
+                                </div>
+                                {ticket.assignmentRange && (
+                                  <p className="mt-1 text-[11px] text-gray-500">{ticket.assignmentRange}</p>
+                                )}
+                                {ticket.assignmentPortion && (
+                                  <p className="text-[11px] text-gray-400">
+                                    Portion: {formatAssignmentPortion(ticket.assignmentPortion as string)}
+                                  </p>
+                                )}
+                                {ticket.progressNotes && (
+                                  <p className="mt-2 whitespace-pre-wrap text-[11px] text-gray-600">
+                                    {ticket.progressNotes}
+                                  </p>
+                                )}
+                                <p className="mt-1 text-[11px] text-gray-500">
+                                  Listener: {ticket.assignedTeacherName || '—'}
                                 </p>
-                              )}
-                              {ticket.progressNotes && (
-                                <p className="mt-1 whitespace-pre-wrap text-[11px] text-gray-600">
-                                  {ticket.progressNotes}
-                                </p>
-                              )}
-                              <p className="mt-1 text-[11px] text-gray-500">
-                                Listener: {ticket.assignedTeacherName || '—'}
-                              </p>
-                            </li>
-                          ))}
-                          {ticketChain.length === 0 && (
-                            <li className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-gray-500">
-                              Step history unavailable.
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                          Final report
-                        </label>
-                        <textarea
-                          value={finalizeData.finalReport}
-                          onChange={(e) => setFinalizeData((prev) => ({ ...prev, finalReport: e.target.value }))}
-                          rows={4}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
-                          placeholder="Summarize today's recitation and general feedback…"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                          Homework for next session
-                        </label>
-                        <textarea
-                          value={finalizeData.homework}
-                          onChange={(e) => setFinalizeData((prev) => ({ ...prev, homework: e.target.value }))}
-                          rows={4}
-                          className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
-                          placeholder="Clearly outline tomorrow's assignment…"
-                        />
-                        <p className="text-[11px] text-gray-500">
-                          Homework appears at the top of the student dashboard once you publish.
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
-                        Optional resource link
-                      </label>
-                      <input
-                        type="url"
-                        value={finalizeData.homeworkLink}
-                        onChange={(e) => setFinalizeData((prev) => ({ ...prev, homeworkLink: e.target.value }))}
-                        className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
-                        placeholder="https://example.com"
-                      />
-                    </div>
-                    <button
-                      onClick={handleFinalize}
-                      className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
-                    >
-                      Finalize & publish to student
-                    </button>
+                              </div>
+                            ))}
+                            {ticketChain.length === 0 && (
+                              <div className="rounded-xl border border-dashed border-gray-300 bg-white px-3 py-2 text-xs text-gray-500">
+                                Step history unavailable.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              Sabq summary <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                              value={finalizeData.finalReport}
+                              onChange={(e) => setFinalizeData((prev) => ({ ...prev, finalReport: e.target.value }))}
+                              rows={4}
+                              className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
+                              placeholder="Summarize today's sabq…"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                              Homework for next session <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                              value={finalizeData.homework}
+                              onChange={(e) => setFinalizeData((prev) => ({ ...prev, homework: e.target.value }))}
+                              rows={4}
+                              className="w-full rounded-2xl border border-gray-300 px-4 py-3 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
+                              placeholder="Clearly outline tomorrow's assignment…"
+                            />
+                            <p className="text-[11px] text-gray-500">
+                              Homework appears at the top of the student dashboard once you publish.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+                            Optional resource link
+                          </label>
+                          <input
+                            type="url"
+                            value={finalizeData.homeworkLink}
+                            onChange={(e) => setFinalizeData((prev) => ({ ...prev, homeworkLink: e.target.value }))}
+                            className="mt-2 w-full rounded-2xl border border-gray-300 px-4 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none focus:ring-2 focus:ring-[rgba(var(--color-accent-rgb),0.35)]"
+                            placeholder="https://example.com"
+                          />
+                        </div>
+
+                        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm">
+                          <h5 className="text-sm font-semibold text-gray-800 mb-3">Student preview</h5>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-gray-500">Sabq summary</p>
+                              <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-800 text-sm">
+                                {finalizeData.finalReport || 'Add a sabq summary above.'}
+                              </pre>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-gray-500">Previous reports</p>
+                              <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-gray-700">
+                                <li>
+                                  <span className="font-semibold">Sabqi:</span>{' '}
+                                  {sabqiTicketInChain?.progressNotes?.trim() || 'No report.'}
+                                </li>
+                                <li>
+                                  <span className="font-semibold">Manzil:</span>{' '}
+                                  {manzilTicketInChain?.progressNotes?.trim() || 'No report.'}
+                                </li>
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="text-xs uppercase tracking-wide text-gray-500">Homework</p>
+                              <pre className="mt-1 whitespace-pre-wrap rounded-xl bg-gray-50 px-3 py-2 text-gray-800 text-sm">
+                                {finalizeData.homework || 'Add homework instructions above.'}
+                              </pre>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button
+                            onClick={handleFinalize}
+                            className="flex-1 rounded-xl bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
+                          >
+                            Finalize & publish to student
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleBackToList}
+                            className="rounded-xl bg-gray-100 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </section>
                 )}
               </div>
