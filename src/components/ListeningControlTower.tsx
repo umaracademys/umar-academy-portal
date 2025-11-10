@@ -45,11 +45,35 @@ const upsertSession = (collection: ListeningSession[], session: ListeningSession
 const removeSession = (collection: ListeningSession[], sessionId: string) =>
   collection.filter((session) => session.id !== sessionId);
 
+const STEP_OPTIONS: Array<{ value: 'ALL' | 'sabq' | 'sabqi' | 'manzil' | 'finalize'; label: string }> = [
+  { value: 'ALL', label: 'All steps' },
+  { value: 'sabq', label: 'Sabq (new lesson)' },
+  { value: 'sabqi', label: 'Sabqi (recent revision)' },
+  { value: 'manzil', label: 'Manzil (established review)' },
+  { value: 'finalize', label: 'Finalize' }
+];
+
+const formatStatusLabel = (status: ListeningSession['status']) => {
+  switch (status) {
+    case 'in_progress':
+      return 'In Progress';
+    case 'completed':
+      return 'Completed';
+    case 'abandoned':
+      return 'Abandoned';
+    default:
+      return status;
+  }
+};
+
 const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }) => {
   const [sessions, setSessions] = useState<SessionBucket>({ active: [], recent: [] });
   const [isConnecting, setIsConnecting] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [stepFilter, setStepFilter] = useState<'ALL' | 'sabq' | 'sabqi' | 'manzil' | 'finalize'>('ALL');
+  const [teacherFilter, setTeacherFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -200,6 +224,40 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
     [sortedActiveSessions, now]
   );
 
+  const teacherOptions = useMemo(() => {
+    const names = new Set<string>();
+    sessions.active.forEach((session) => names.add(session.teacherName));
+    sessions.recent.forEach((session) => names.add(session.teacherName));
+    return Array.from(names).sort();
+  }, [sessions.active, sessions.recent]);
+
+  const matchesFilters = (session: ListeningSession) => {
+    if (stepFilter !== 'ALL' && session.workflowStep !== stepFilter) {
+      return false;
+    }
+    if (teacherFilter !== 'ALL' && session.teacherName !== teacherFilter) {
+      return false;
+    }
+    if (searchTerm.trim()) {
+      const query = searchTerm.trim().toLowerCase();
+      const studentMatch = session.studentName.toLowerCase().includes(query);
+      const teacherMatch = session.teacherName.toLowerCase().includes(query);
+      const ticketMatch = session.ticketId.toLowerCase().includes(query);
+      if (!studentMatch && !teacherMatch && !ticketMatch) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const filteredActiveSessions = activeSessionsWithElapsed.filter(({ session }) => matchesFilters(session));
+
+  const filteredRecentSessions = useMemo(
+    () => sessions.recent.filter((session) => matchesFilters(session)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessions.recent, stepFilter, teacherFilter, searchTerm]
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
       <div className="relative flex h-full max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
@@ -222,11 +280,58 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         </header>
 
         <main className="flex-1 overflow-y-auto bg-gray-50 px-6 py-6">
+          <section className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto_auto]">
+            <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+              <input
+                type="search"
+                placeholder="Search student, teacher, or ticket…"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full border-none text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+              <label htmlFor="listening-step-filter" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Step
+              </label>
+              <select
+                id="listening-step-filter"
+                value={stepFilter}
+                onChange={(event) => setStepFilter(event.target.value as typeof stepFilter)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                {STEP_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+              <label htmlFor="listening-teacher-filter" className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Teacher
+              </label>
+              <select
+                id="listening-teacher-filter"
+                value={teacherFilter}
+                onChange={(event) => setTeacherFilter(event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-700 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="ALL">All teachers</option>
+                {teacherOptions.map((teacher) => (
+                  <option key={teacher} value={teacher}>
+                    {teacher}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </section>
+
           <section className="space-y-4">
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-gray-900">Active sessions</h3>
               <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-700">
-                {sessions.active.length}
+                {filteredActiveSessions.length}
               </span>
               {isConnecting && (
                 <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -234,7 +339,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
                 </span>
               )}
             </div>
-            {sessions.active.length === 0 ? (
+            {filteredActiveSessions.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-10 text-center">
                 <p className="text-sm font-medium text-gray-500">
                   No active listening sessions right now. Live updates will appear here automatically.
@@ -242,7 +347,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                {activeSessionsWithElapsed.map(({ session, elapsedSeconds }) => (
+                {filteredActiveSessions.map(({ session, elapsedSeconds }) => (
                   <div
                     key={session.id}
                     className="flex h-full flex-col gap-4 rounded-2xl border border-blue-200 bg-white px-5 py-5 shadow-sm"
@@ -312,16 +417,16 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-gray-900">Recently completed</h3>
               <span className="rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
-                {sessions.recent.length}
+                {filteredRecentSessions.length}
               </span>
             </div>
-            {sessions.recent.length === 0 ? (
+            {filteredRecentSessions.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-gray-300 bg-white px-5 py-6 text-center text-sm text-gray-500">
                 No recent listening sessions recorded yet.
               </div>
             ) : (
               <div className="space-y-3">
-                {sessions.recent.map((session) => (
+                {filteredRecentSessions.map((session) => (
                   <div
                     key={`recent-${session.id}`}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
@@ -338,6 +443,17 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
                       </p>
                     </div>
                     <div className="flex items-center gap-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                          session.status === 'completed'
+                            ? 'bg-green-100 text-green-700'
+                            : session.status === 'abandoned'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        {formatStatusLabel(session.status)}
+                      </span>
                       <div className="text-right">
                         <p className="text-xs text-gray-500">Total listening time</p>
                         <p className="text-sm font-semibold text-gray-900">
