@@ -126,28 +126,45 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
         }
         const payload = await response.json();
         if (Array.isArray(payload)) {
-          const normalizedStudents: Student[] = payload.map((student: any) => ({
-            id: student._id || student.id,
-            fullName: student.fullName || student.name || 'Unnamed Student',
-            email: student.email || '',
-            parentName: student.parentName || '',
-            contact: student.contact || '',
-            program: student.program || student.programName || '',
-            siblings: student.siblings || [],
-            tuitionFee: student.tuitionFee || 0,
-            registrationAmount: student.registrationAmount || 0,
-            assignedTeacher: student.assignedTeacher || '',
-            schedule: student.schedule || ({} as any),
-            assessments: student.assessments || [],
-            evaluations: student.evaluations || [],
-            enrolledDate:
-              student.enrolledDate || student.createdAt || new Date().toISOString(),
-            status: student.status || 'active',
-            avatar: student.avatar || '',
-            recitationProfile: student.recitationProfile,
-            studentRecordId: student.studentRecordId,
-            studentId: student.studentId,
-          }));
+          const normalizedStudents: Student[] = payload.map((student: any) => {
+            const id = student._id || student.id;
+            const cached = students.find((existing) => existing.id === id);
+
+            return {
+              id,
+              fullName:
+                student.fullName ||
+                student.name ||
+                cached?.fullName ||
+                'Unnamed Student',
+              email: student.email || cached?.email || '',
+              parentName: student.parentName || cached?.parentName || '',
+              contact: student.contact || cached?.contact || '',
+              program:
+                student.program ||
+                student.programName ||
+                cached?.program ||
+                '',
+              siblings: student.siblings || cached?.siblings || [],
+              tuitionFee: student.tuitionFee ?? cached?.tuitionFee ?? 0,
+              registrationAmount:
+                student.registrationAmount ?? cached?.registrationAmount ?? 0,
+              assignedTeacher: student.assignedTeacher || cached?.assignedTeacher || '',
+              schedule: student.schedule || cached?.schedule || ({} as any),
+              assessments: student.assessments || cached?.assessments || [],
+              evaluations: student.evaluations || cached?.evaluations || [],
+              enrolledDate:
+                student.enrolledDate ||
+                student.createdAt ||
+                cached?.enrolledDate ||
+                new Date().toISOString(),
+              status: student.status || cached?.status || 'active',
+              avatar: student.avatar || cached?.avatar || '',
+              recitationProfile: student.recitationProfile || cached?.recitationProfile,
+              studentRecordId: student.studentRecordId || cached?.studentRecordId,
+              studentId: student.studentId || cached?.studentId,
+            };
+          });
           setStudentsFromApi(normalizedStudents);
         }
       } catch (error) {
