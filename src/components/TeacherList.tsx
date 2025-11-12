@@ -5,7 +5,7 @@ import Card from './Card';
 interface TeacherListProps {
   onTeacherSelect: (teacher: any) => void;
   onEditTeacher: (teacher: any) => void;
-  onDeleteTeacher: (teacherId: string) => void;
+  onDeleteTeacher: (teacherId: string) => void | Promise<void>;
   onAddTeacher?: () => void;
   onCredentials?: (teacher: any) => void;
   onAnalytics?: (teacher: any) => void;

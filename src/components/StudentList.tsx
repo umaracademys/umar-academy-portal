@@ -5,7 +5,7 @@ import Card from './Card';
 interface StudentListProps {
   onStudentSelect: (student: any) => void;
   onEditStudent: (student: any) => void;
-  onDeleteStudent: (studentId: string) => void;
+  onDeleteStudent: (studentId: string) => void | Promise<void>;
   onAddStudent?: () => void;
   onCredentials?: (student: any) => void;
   onAnalytics?: (student: any) => void;
