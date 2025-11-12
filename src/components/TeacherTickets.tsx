@@ -561,6 +561,15 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     });
   };
 
+  const handleRemoveMistake = useCallback(
+    (targetId: string) => {
+      setMushafMarkings((prev) =>
+        prev.filter((mistake) => getMistakeIdentifier(mistake) !== targetId)
+      );
+    },
+    []
+  );
+
   const handleMushafPageChange = (page: number) => {
     setCurrentPage(page);
     const surah = getCurrentSurah(page);
@@ -678,6 +687,9 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
   const getTicketKey = (ticket: AssignmentTicket) =>
     ticket.id || (ticket as any)._id || `ticket-${ticket.studentId}-${ticket.workflowStep}`;
+
+  const getMistakeIdentifier = (mistake: MushafMistake) =>
+    mistake.id || (mistake as any)._id || `${mistake.page}-${mistake.word || ''}-${mistake.timestamp || ''}`;
 
   const formatHistoryTimestamp = (ticket: AssignmentTicket) => {
     const rawDate = (ticket as any).updatedAt || (ticket as any).completedAt || (ticket as any).createdAt;
@@ -935,20 +947,54 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
                   <aside className="space-y-5">
                     <section className="rounded-xl border border-gray-200 bg-white p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                             <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-700">🎯</span>
-                            <span>Mistakes overview</span>
+                            <span>Mistake summary</span>
                           </div>
                           <p className="text-sm text-gray-600">
                             {mistakeStats.total > 0
-                              ? `${mistakeStats.total} mistake${mistakeStats.total !== 1 ? 's' : ''} across ${mistakesByPage.length} page${mistakesByPage.length !== 1 ? 's' : ''}`
-                              : 'No mistakes marked yet'}
+                              ? `Logged ${mistakeStats.total} mark${mistakeStats.total !== 1 ? 's' : ''} across ${mistakesByPage.length || 1} page${mistakesByPage.length !== 1 ? 's' : ''}.`
+                              : 'No Mushaf markings captured yet. Launch the workspace to begin tracking.'}
                           </p>
-                          {mistakeStats.total > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {Object.entries(mistakeStats.byType).map(([type, count]) => (
+                        </div>
+                        <button
+                          onClick={() => setShowMushaf(true)}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4l2 4 4 .5-3 3 .7 4.5-3.7-2-3.7 2 .7-4.5-3-3 4-.5z" />
+                          </svg>
+                          Open Mushaf Workspace
+                        </button>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-center">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Total marks</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900">{mistakeStats.total}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-center">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Pages touched</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900">{mistakesByPage.length}</p>
+                        </div>
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-center">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Current page</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900">Page {currentPage}</p>
+                        </div>
+                      </div>
+
+                      {mistakeStats.total > 0 && (
+                        <div className="mt-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            Mistakes by category
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {Object.entries(mistakeStats.byType)
+                              .sort((a, b) => b[1] - a[1])
+                              .slice(0, 4)
+                              .map(([type, count]) => (
                                 <span
                                   key={`mistake-chip-${type}`}
                                   className="inline-flex items-center gap-1 rounded-full border border-purple-100 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700"
@@ -957,122 +1003,61 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                                   <span className="text-purple-500">· {count}</span>
                                 </span>
                               ))}
-                            </div>
+                          </div>
+                          {Object.keys(mistakeStats.byType).length > 4 && (
+                            <p className="mt-2 text-[11px] text-gray-500">
+                              Open the workspace to explore the full breakdown.
+                            </p>
                           )}
                         </div>
-                        <div className="flex flex-col items-stretch gap-2 sm:flex-row">
-                          <button
-                            onClick={() => setShowMushaf((prev) => !prev)}
-                            className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition border-purple-600 bg-purple-600 text-white hover:bg-purple-700"
-                          >
-                            {showMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
-                          </button>
-                        </div>
-                      </div>
+                      )}
+
                       {mistakesByPage.length > 0 && (
-                        <div className="mt-5 space-y-3">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Pages with mistakes</p>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            {mistakesByPage.map(({ page, count }) => (
-                              <div
-                                key={`mistake-page-${page}`}
-                                className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+                        <div className="mt-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                            Recently marked pages
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {mistakesByPage.slice(0, 4).map(({ page, count }) => (
+                              <button
+                                key={`mistake-page-pill-${page}`}
+                                onClick={() => {
+                                  setCurrentPage(page);
+                                  setShowMushaf(true);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
                               >
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-900">Page {page}</p>
-                                  <p className="text-xs text-gray-500">{count} mistake{count !== 1 ? 's' : ''}</p>
-                                </div>
-                                <button
-                                  onClick={() => {
-                                    setCurrentPage(page);
-                                    setShowMushaf(true);
-                                  }}
-                                  className="inline-flex items-center gap-1 rounded-md border border-purple-200 bg-white px-3 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition"
-                                >
-                                  View
-                                </button>
-                              </div>
+                                Page {page}
+                                <span className="text-gray-500">· {count}</span>
+                              </button>
                             ))}
                           </div>
+                          {mistakesByPage.length > 4 && (
+                            <p className="mt-2 text-[11px] text-gray-500">
+                              +{mistakesByPage.length - 4} more pages tracked.
+                            </p>
+                          )}
                         </div>
                       )}
                     </section>
-
-                    {mistakeStats.total > 0 && (
-                      <section className="mt-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Mistake Report ({mistakeStats.total})
-                        </h3>
-                        <div className="space-y-2">
-                          {mushafMarkings.map((mistake) => (
-                            <div
-                              key={mistake.id}
-                              className="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-200"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1">
-                                  <span className="font-semibold text-gray-900">{mistake.word}</span>
-                                  <span className="text-gray-600"> — {mistakeLabels[mistake.type || 'other'] || mistake.type || 'Other'} Mistake</span>
-                                  <span className="text-gray-500 text-[10px] ml-2">(Surah {mistake.surah}, Ayah {mistake.ayah})</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </section>
-                    )}
                   </aside>
                 </div>
 
-                {showMushaf && (
-                  <section className="rounded-2xl border border-gray-200 bg-white shadow-sm p-4 sm:p-6 lg:p-8">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <h4 className="text-lg font-semibold text-gray-900">Interactive Mushaf</h4>
-                        <p className="text-xs uppercase font-semibold tracking-wide text-gray-500">Page {currentPage}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                          className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-                        >
-                          ← Prev Page
-                        </button>
-                        <button
-                          onClick={() => setCurrentPage((prev) => prev + 1)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-                        >
-                          Next Page →
-                        </button>
-                        <button
-                          onClick={() => setShowMushaf(false)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
-                        >
-                          Close
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/80 p-3 sm:p-4">
-                      <div className="min-h-[60vh]">
-                        <div className="mx-auto max-w-full">
-                          <InteractiveMushaf
-                            currentPage={currentPage}
-                            onPageChange={handleMushafPageChange}
-                            mistakes={mushafMarkings}
-                            historicalMistakes={historicalMistakes}
-                            onMistakeMark={handleMistakeMark}
-                            mode="marking"
-                            studentName={selectedTicket.studentName}
-                            showHistorical={true}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </section>
+                {showMushaf && selectedTicket && (
+                  <TeacherMushafWorkspace
+                    studentName={selectedTicket.studentName || getStudentName(selectedTicket.studentId)}
+                    stepLabel={getStepLabel(selectedTicket.workflowStep)}
+                    currentPage={currentPage}
+                    onPageChange={handleMushafPageChange}
+                    mistakes={mushafMarkings}
+                    historicalMistakes={historicalMistakes}
+                    onMistakeMark={handleMistakeMark}
+                    onRemoveMistake={handleRemoveMistake}
+                    onClose={() => setShowMushaf(false)}
+                    mistakesByPage={mistakesByPage}
+                    mistakeStats={mistakeStats}
+                    mistakeLabels={mistakeLabels}
+                  />
                 )}
               </>
             ) : (
@@ -1255,6 +1240,279 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface TeacherMushafWorkspaceProps {
+  studentName: string;
+  stepLabel: string;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  mistakes: MushafMistake[];
+  historicalMistakes: MushafMistake[];
+  onMistakeMark: (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => void;
+  onRemoveMistake: (mistakeId: string) => void;
+  onClose: () => void;
+  mistakesByPage: Array<{ page: number; count: number; types: Record<string, number> }>;
+  mistakeStats: { total: number; byType: Record<string, number> };
+  mistakeLabels: Record<string, string>;
+}
+
+const TeacherMushafWorkspace: React.FC<TeacherMushafWorkspaceProps> = ({
+  studentName,
+  stepLabel,
+  currentPage,
+  onPageChange,
+  mistakes,
+  historicalMistakes,
+  onMistakeMark,
+  onRemoveMistake,
+  onClose,
+  mistakesByPage,
+  mistakeStats,
+  mistakeLabels
+}) => {
+  const [showHistorical, setShowHistorical] = useState(true);
+  const resolveMistakeId = useCallback(
+    (mistake: MushafMistake) =>
+      mistake.id || (mistake as any)._id || `${mistake.page}-${mistake.word || ''}-${mistake.timestamp || ''}`,
+    []
+  );
+
+  const currentPageMistakes = useMemo(
+    () => mistakes.filter((mistake) => mistake.page === currentPage),
+    [mistakes, currentPage]
+  );
+
+  const totalHistorical = historicalMistakes.length;
+  const handlePrevPage = useCallback(() => {
+    if (currentPage <= 1) {
+      return;
+    }
+    onPageChange(Math.max(currentPage - 1, 1));
+  }, [currentPage, onPageChange]);
+
+  const handleNextPage = useCallback(() => {
+    onPageChange(currentPage + 1);
+  }, [currentPage, onPageChange]);
+
+  const activeMistakesByPage = useMemo(
+    () =>
+      mistakesByPage.map((entry) => ({
+        ...entry,
+        isActive: entry.page === currentPage
+      })),
+    [mistakesByPage, currentPage]
+  );
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/65 backdrop-blur-sm px-4 py-6">
+      <div className="relative w-full max-w-6xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex flex-col lg:flex-row">
+          <div className="flex-1 border-r border-gray-200 bg-gray-50">
+            <div className="flex flex-col gap-4 border-b border-gray-200 bg-white px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <span className="inline-flex items-center justify-center rounded-full bg-purple-100 px-2.5 py-1 text-xs text-purple-700">
+                    {stepLabel}
+                  </span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-500">Focused recitation workspace</span>
+                </div>
+                <h3 className="mt-2 text-2xl font-bold text-gray-900">{studentName}</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Mark mistakes directly on the Mushaf. Everything you add here will sync with the ticket submission.
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-3 sm:items-stretch">
+                <div className="flex items-center gap-2 self-end rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+                  Page {currentPage}
+                </div>
+                <div className="flex items-center gap-3 self-end">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                    <span>Historical marks</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowHistorical((prev) => !prev)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                        showHistorical ? 'bg-purple-600' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                          showHistorical ? 'translate-x-5' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-6 py-4 text-xs font-semibold text-gray-600">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePrevPage}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 transition"
+                >
+                  <span className="text-base leading-none">←</span>
+                  Prev
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextPage}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 hover:bg-gray-50 transition"
+                >
+                  Next
+                  <span className="text-base leading-none">→</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-1 font-semibold text-gray-700">
+                  {mistakeStats.total} active mark{mistakeStats.total !== 1 ? 's' : ''}
+                </span>
+                <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-1 font-semibold text-gray-700">
+                  {showHistorical ? `${totalHistorical} historical` : 'Historical off'}
+                </span>
+              </div>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+              <div className="rounded-2xl border border-amber-100 bg-white p-3 shadow-sm sm:p-4 lg:p-5">
+                <div className="min-h-[60vh]">
+                  <InteractiveMushaf
+                    currentPage={currentPage}
+                    onPageChange={onPageChange}
+                    mistakes={mistakes}
+                    historicalMistakes={showHistorical ? historicalMistakes : []}
+                    onMistakeMark={onMistakeMark}
+                    mode="marking"
+                    studentName={studentName}
+                    showHistorical={showHistorical}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full max-w-full border-t border-gray-200 bg-white lg:max-w-xs lg:border-t-0">
+            <div className="border-b border-gray-200 px-6 py-5">
+              <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Current page notes
+              </h4>
+              <p className="mt-1 text-sm text-gray-600">
+                Review the markings you&apos;ve added to this page. Remove any accidental entries before submitting.
+              </p>
+            </div>
+            <div className="max-h-[70vh] space-y-6 overflow-y-auto px-6 py-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Page overview
+                </p>
+                <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-gray-900">
+                      Page {currentPage}
+                    </div>
+                    <div className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+                      {currentPageMistakes.length} active mark{currentPageMistakes.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    {mistakeStats.total > 0
+                      ? 'Use the list below to fine-tune each marking.'
+                      : 'Tap anywhere on the Mushaf to capture the first mistake.'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Marked pages
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {activeMistakesByPage.length === 0 ? (
+                    <span className="rounded-full border border-dashed border-gray-300 px-3 py-1 text-xs text-gray-500">
+                      No pages marked yet
+                    </span>
+                  ) : (
+                    activeMistakesByPage.map(({ page, count, isActive }) => (
+                      <button
+                        key={`workspace-page-${page}`}
+                        onClick={() => onPageChange(page)}
+                        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                          isActive
+                            ? 'border-purple-400 bg-purple-50 text-purple-700'
+                            : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        Page {page}
+                        <span className="text-gray-400">· {count}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Active markings
+                </p>
+                {currentPageMistakes.length === 0 ? (
+                  <div className="mt-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-xs text-gray-500">
+                    No marks on this page yet. Tap the Mushaf to drop a pin and add contextual notes.
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-3">
+                    {currentPageMistakes.map((mistake) => {
+                      const mistakeId = resolveMistakeId(mistake);
+                      return (
+                        <div
+                          key={mistakeId}
+                          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-700"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-semibold text-gray-900">
+                                {mistake.word || 'Mark'}
+                              </p>
+                              <p className="mt-1 text-[11px] text-gray-500">
+                                {mistakeLabels[mistake.type || 'other'] || 'Other'} · Surah {mistake.surah} · Ayah{' '}
+                                {mistake.ayah}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onRemoveMistake(mistakeId)}
+                              className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-2 py-1 text-[10px] font-semibold text-gray-500 hover:bg-gray-100 transition"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          {mistake.note && (
+                            <p className="mt-2 whitespace-pre-wrap text-[11px] text-gray-600">
+                              {mistake.note}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
