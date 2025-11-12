@@ -399,8 +399,11 @@ const AssignmentsPage: React.FC = () => {
                 <p className="text-purple-100 text-lg">View assignments created from approved ticket workflow</p>
               </div>
                 {canCreateAssignments && (
-                    <button
-                      onClick={() => setShowCreateForm(true)}
+                <button
+                  onClick={() => {
+                    console.log('🛠️ AssignmentsPage: Create New Assignment clicked');
+                    setShowCreateForm(true);
+                  }}
                   className="px-8 py-4 bg-white text-purple-600 rounded-xl hover:bg-purple-50 font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center"
                     >
                       <span className="mr-2">✨</span>

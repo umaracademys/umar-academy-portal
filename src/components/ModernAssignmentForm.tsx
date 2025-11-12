@@ -49,6 +49,16 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   const { students, addAssignment, updateAssignment } = useData();
   const { user } = useAuth();
 
+  useEffect(() => {
+    console.log('🛠️ ModernAssignmentForm mounted', {
+      mode: isEdit ? 'edit' : 'create',
+      assignmentId: assignment?.id,
+    });
+    return () => {
+      console.log('🛠️ ModernAssignmentForm unmounted');
+    };
+  }, [assignment?.id, isEdit]);
+
   const [studentsFromApi, setStudentsFromApi] = useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentFetchError, setStudentFetchError] = useState<string | null>(null);

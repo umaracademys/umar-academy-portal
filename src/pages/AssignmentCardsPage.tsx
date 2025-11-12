@@ -101,7 +101,10 @@ const AssignmentCardsPage: React.FC = () => {
               </div>
               {canCreateAssignments && (
                 <button
-                  onClick={() => setShowCreateForm(true)}
+                  onClick={() => {
+                    console.log('🛠️ AssignmentCardsPage: Create New Assignment clicked');
+                    setShowCreateForm(true);
+                  }}
                   className="px-8 py-4 bg-white text-blue-600 rounded-xl hover:bg-blue-50 font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center"
                 >
                   <span className="mr-2">✨</span>
