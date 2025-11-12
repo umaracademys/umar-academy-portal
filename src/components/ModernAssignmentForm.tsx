@@ -754,86 +754,83 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                     </div>
                   </section>
 
-                  <section className="space-y-5 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-                    <header className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">Classwork structure</h3>
-                        <p className="text-xs text-gray-500">
-                          Mirror the ticket workflow: define sabq, sabqi, and manzil expectations the
-                          student will see in their portal.
-                        </p>
-                      </div>
-                      <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
-                        Classwork focus
-                      </div>
-                    </header>
+                  <section className="space-y-5 rounded-3xl border border-[#E7AA39]/40 bg-[#FBF4E6] p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#2E4D32]">
+                        Classwork Details
+                      </h3>
+                      <div className="h-px flex-1 bg-[#E7AA39]/40"></div>
+                    </div>
 
-                    <div className="space-y-4">
+                    <p className="text-xs text-[#2E4D32]/70">
+                      Capture today&apos;s sabq, revision, and manzil portions exactly how they appear for students.
+                    </p>
+
+                    <div className="grid gap-4 md:grid-cols-3">
                       {(Object.keys(STEP_CONFIG) as StepKey[]).map((step) => {
                         const config = STEP_CONFIG[step];
                         const detail = classworkDetails[step];
-                        const isHighlighted = detail.portion.trim() || detail.notes.trim();
+                        const hasContent = detail.portion.trim() || detail.notes.trim();
+                        const headline =
+                          step === 'sabq'
+                            ? 'Sabq (New Lesson)'
+                            : step === 'sabqi'
+                              ? 'Sabqi (Revision)'
+                              : 'Manzil';
 
                         return (
                           <div
                             key={step}
-                            className={`rounded-2xl border px-5 py-4 transition ${
-                              isHighlighted
-                                ? 'border-primary/60 bg-soft-primary/60'
-                                : 'border-gray-200 bg-white'
+                            className={`flex h-full flex-col gap-3 rounded-2xl border border-[#E7AA39]/40 bg-white p-4 shadow-sm transition ${
+                              hasContent ? 'shadow-[#E7AA39]/20' : ''
                             }`}
                           >
-                            <div className="flex items-start gap-4">
-                              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-2xl">
-                                {config.emoji}
-                              </div>
-                              <div className="flex-1 space-y-3">
-                                <div>
-                                  <h4 className="text-base font-semibold text-gray-900">
-                                    {config.label}
-                                  </h4>
-                                  <p className="text-xs text-gray-500">{config.description}</p>
-                                </div>
-                                <div className="grid gap-3 md:grid-cols-2">
-                                  <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                      Portion / Pages
-                                    </label>
-                                    <input
-                                      type="text"
-                                      value={detail.portion}
-                                      onChange={(event) =>
-                                        handleClassworkDetailChange(
-                                          step,
-                                          'portion',
-                                          event.target.value,
-                                        )
-                                      }
-                                      placeholder="E.g., Juz 5: Ayah 1-20 or Pages 142-144"
-                                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                      Key notes / focus
-                                    </label>
-                                    <textarea
-                                      rows={3}
-                                      value={detail.notes}
-                                      onChange={(event) =>
-                                        handleClassworkDetailChange(step, 'notes', event.target.value)
-                                      }
-                                      placeholder="Coaching cues, tajweed reminders, or memorisation targets"
-                                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2E4D32]/60">
+                                {headline}
+                              </p>
+                              <p className="mt-1 text-sm font-semibold text-[#2E4D32]">
+                                {detail.portion ? detail.portion : config.label}
+                              </p>
+                              <p className="text-[11px] text-[#2E4D32]/60">
+                                {detail.notes ? detail.notes : 'Not specified'}
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#2E4D32]/70">
+                                Assignment Range
+                              </label>
+                              <input
+                                type="text"
+                                value={detail.portion}
+                                onChange={(event) =>
+                                  handleClassworkDetailChange(step, 'portion', event.target.value)
+                                }
+                                placeholder="E.g., Surah 2 • Ayah 1-20 or Pages 142-144"
+                                className="w-full rounded-lg border border-[#E7AA39]/30 bg-[#FBF4E6]/40 px-3 py-2 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#2E4D32]/70">
+                                Notes & Emphasis
+                              </label>
+                              <textarea
+                                rows={3}
+                                value={detail.notes}
+                                onChange={(event) =>
+                                  handleClassworkDetailChange(step, 'notes', event.target.value)
+                                }
+                                placeholder="Coaching cues, tajweed reminders, or memorisation targets."
+                                className="w-full rounded-lg border border-[#E7AA39]/30 bg-[#FBF4E6]/40 px-3 py-2 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
+                              />
                             </div>
                           </div>
                         );
                       })}
                     </div>
+
                     {errors.classwork && (
                       <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
                         {errors.classwork}
@@ -841,27 +838,36 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                     )}
                   </section>
 
-                  <section className="grid gap-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Homework</label>
-                      <textarea
-                        rows={5}
-                        value={homeworkText}
-                        onChange={(event) => setHomeworkText(event.target.value)}
-                        placeholder="Homework instructions (e.g., rewrite ayat 15-20, listen to Sheikh Husary recitation, etc.)"
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
+                  <section className="space-y-4 rounded-3xl border border-[#E7AA39]/40 bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#2E4D32]">
+                        Report & Feedback
+                      </h3>
+                      <div className="h-px flex-1 bg-[#E7AA39]/40"></div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-semibold text-gray-700">Internal comments</label>
-                      <textarea
-                        rows={5}
-                        value={generalComments}
-                        onChange={(event) => setGeneralComments(event.target.value)}
-                        placeholder="Notes for staff or future reference (not visible to student)."
-                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                      />
+                    <textarea
+                      rows={6}
+                      value={generalComments}
+                      onChange={(event) => setGeneralComments(event.target.value)}
+                      placeholder="Summarise the session, include overall progress notes, and optional manzil highlights."
+                      className="w-full rounded-2xl border border-[#E7AA39]/30 bg-white px-4 py-3 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
+                    />
+                  </section>
+
+                  <section className="space-y-4 rounded-3xl border border-[#E7AA39]/30 bg-[#FDF7E7] p-6 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#2E4D32]">
+                        Homework
+                      </h3>
+                      <div className="h-px flex-1 bg-[#E7AA39]/30"></div>
                     </div>
+                    <textarea
+                      rows={5}
+                      value={homeworkText}
+                      onChange={(event) => setHomeworkText(event.target.value)}
+                      placeholder="Homework instructions (e.g., review ayat 15-20, listen to Sheikh Husary recitation, share reflection)."
+                      className="w-full rounded-2xl border border-[#E7AA39]/40 bg-white px-4 py-3 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
+                    />
                   </section>
 
                   <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-6">
