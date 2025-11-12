@@ -49,6 +49,13 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   const { students, addAssignment, updateAssignment } = useData();
   const { user } = useAuth();
 
+  const [studentsFromApi, setStudentsFromApi] = useState<Student[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [studentFetchError, setStudentFetchError] = useState<string | null>(null);
+  const [assignmentsFromApi, setAssignmentsFromApi] = useState<any[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+  const [assignmentFetchError, setAssignmentFetchError] = useState<string | null>(null);
+
   const [selectedProgram, setSelectedProgram] = useState<string>(assignment?.program || '');
   const [activeLetter, setActiveLetter] = useState<string>('ALL');
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
@@ -99,9 +106,88 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [titleTouched, setTitleTouched] = useState<boolean>(Boolean(assignment?.title));
 
+  const allStudents = useMemo<Student[]>(() => {
+    return studentsFromApi.length > 0 ? studentsFromApi : students;
+  }, [studentsFromApi, students]);
+
+  useEffect(() => {
+    const API_BASE =
+      (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+
+    const fetchStudents = async () => {
+      setIsLoadingStudents(true);
+      setStudentFetchError(null);
+      try {
+        const response = await fetch(`${API_BASE}/students`);
+        if (!response.ok) {
+          throw new Error(`Failed to load students (${response.status})`);
+        }
+        const payload = await response.json();
+        if (Array.isArray(payload)) {
+          const normalizedStudents: Student[] = payload.map((student: any) => ({
+            id: student._id || student.id,
+            fullName: student.fullName || student.name || 'Unnamed Student',
+            email: student.email || '',
+            parentName: student.parentName || '',
+            contact: student.contact || '',
+            program: student.program || student.programName || '',
+            siblings: student.siblings || [],
+            tuitionFee: student.tuitionFee || 0,
+            registrationAmount: student.registrationAmount || 0,
+            assignedTeacher: student.assignedTeacher || '',
+            schedule: student.schedule || ({} as any),
+            assessments: student.assessments || [],
+            evaluations: student.evaluations || [],
+            enrolledDate:
+              student.enrolledDate || student.createdAt || new Date().toISOString(),
+            status: student.status || 'active',
+            avatar: student.avatar || '',
+            recitationProfile: student.recitationProfile,
+            studentRecordId: student.studentRecordId,
+            studentId: student.studentId,
+          }));
+          setStudentsFromApi(normalizedStudents);
+        }
+      } catch (error) {
+        console.error('Failed to fetch students for manual assignment builder:', error);
+        setStudentFetchError('Unable to load students from server. Using cached data.');
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    };
+
+    const fetchAssignments = async () => {
+      setIsLoadingAssignments(true);
+      setAssignmentFetchError(null);
+      try {
+        const response = await fetch(`${API_BASE}/assignments`);
+        if (!response.ok) {
+          throw new Error(`Failed to load assignments (${response.status})`);
+        }
+        const payload = await response.json();
+        if (Array.isArray(payload)) {
+          setAssignmentsFromApi(
+            payload.map((assignmentItem: any) => ({
+              ...assignmentItem,
+              id: assignmentItem._id || assignmentItem.id,
+            })),
+          );
+        }
+      } catch (error) {
+        console.error('Failed to fetch assignments for manual assignment builder:', error);
+        setAssignmentFetchError('Unable to load existing assignments from server.');
+      } finally {
+        setIsLoadingAssignments(false);
+      }
+    };
+
+    fetchStudents();
+    fetchAssignments();
+  }, []);
+
   const programOptions = useMemo(() => {
     const set = new Set<string>();
-    students.forEach((student: Student) => {
+    allStudents.forEach((student: Student) => {
       const programName = (student.program || '').trim();
       if (programName) {
         set.add(programName);
@@ -113,7 +199,7 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
     }
 
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [students]);
+  }, [allStudents]);
 
   useEffect(() => {
     if (!selectedProgram && programOptions.length > 0) {
@@ -122,14 +208,14 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   }, [programOptions, selectedProgram]);
 
   const studentsByProgram = useMemo(() => {
-    return students
+    return allStudents
       .filter((student: Student) => {
         if (!selectedProgram) return true;
         const programName = (student.program || '').trim();
         return programName === selectedProgram;
       })
       .sort((a: Student, b: Student) => a.fullName.localeCompare(b.fullName, 'en'));
-  }, [students, selectedProgram]);
+  }, [allStudents, selectedProgram]);
 
   const availableLetters = useMemo(() => {
     const set = new Set<string>();
@@ -164,8 +250,8 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   }, [filteredStudents, selectedStudentId]);
 
   const selectedStudent = useMemo(
-    () => students.find((student) => student.id === selectedStudentId),
-    [students, selectedStudentId],
+    () => allStudents.find((student) => student.id === selectedStudentId),
+    [allStudents, selectedStudentId],
   );
 
   useEffect(() => {
@@ -454,7 +540,17 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
               </section>
 
               <section className="flex max-h-[360px] flex-col gap-3 overflow-y-auto pr-1">
-                {filteredStudents.length === 0 ? (
+                {isLoadingStudents ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center text-sm">
+                    <div className="text-3xl text-primary">⏳</div>
+                    <p className="mt-2 font-semibold text-gray-700">
+                      Loading students from the server…
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      This ensures you always work with the latest roster.
+                    </p>
+                  </div>
+                ) : filteredStudents.length === 0 ? (
                   <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center">
                     <div className="text-3xl">🔍</div>
                     <p className="mt-2 text-sm font-semibold text-gray-700">
@@ -463,9 +559,21 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                     <p className="mt-1 text-xs text-gray-500">
                       Adjust the program or letter filters to see matching students.
                     </p>
+                    {studentFetchError && (
+                      <p className="mt-3 text-xs font-semibold text-amber-600">
+                        {studentFetchError}
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  filteredStudents.map(renderStudentCard)
+                  <>
+                    {studentFetchError && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">
+                        {studentFetchError}
+                      </div>
+                    )}
+                    {filteredStudents.map(renderStudentCard)}
+                  </>
                 )}
               </section>
 
@@ -521,6 +629,30 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                         Manual assignment
                       </div>
                     </div>
+                    {assignmentFetchError && (
+                      <p className="mt-4 rounded-lg bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-700">
+                        {assignmentFetchError}
+                      </p>
+                    )}
+                    {!assignmentFetchError && (
+                      <div className="mt-4 rounded-2xl bg-gray-50 px-4 py-3 text-xs text-gray-600">
+                        {isLoadingAssignments ? (
+                          <span className="font-medium text-primary">Loading assignment history…</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-gray-800">
+                              Existing assignments for this student:
+                            </span>{' '}
+                            {
+                              assignmentsFromApi.filter((assignmentItem) =>
+                                (assignmentItem.assignedTo || []).includes(selectedStudent.id),
+                              ).length
+                            }{' '}
+                            total
+                          </>
+                        )}
+                      </div>
+                    )}
                   </section>
 
                   <section className="grid gap-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:grid-cols-2">
