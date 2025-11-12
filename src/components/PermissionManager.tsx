@@ -519,7 +519,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         );
         const item = {
           definition,
-          value: selectedTeacher.permissions[definition.key],
+          value: teacherPermissions[definition.key],
         };
         if (existing) {
           existing.items.push(item);
