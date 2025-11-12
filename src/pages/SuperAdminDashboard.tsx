@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -464,6 +464,18 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Students Management
   const StudentsSection = () => {
+    const studentDirectoryRef = useRef<HTMLDivElement | null>(null);
+    const [highlightDirectory, setHighlightDirectory] = useState(false);
+
+    useEffect(() => {
+      if (!highlightDirectory) {
+        return;
+      }
+
+      const timer = window.setTimeout(() => setHighlightDirectory(false), 1200);
+      return () => window.clearTimeout(timer);
+    }, [highlightDirectory]);
+
     const handleStudentSelect = (student: any) => {
       console.log('🔍 handleStudentSelect called with student:', student);
       setSelectedStudent(student);
@@ -481,6 +493,19 @@ const SuperAdminDashboard: React.FC = () => {
         // In a real app, this would delete the student
         alert('Student deleted successfully');
       }
+    };
+
+    const focusStudentDirectory = () => {
+      const scrollTarget = studentDirectoryRef.current;
+      if (!scrollTarget) {
+        return;
+      }
+
+      scrollTarget.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      setHighlightDirectory(true);
     };
 
     return (
@@ -516,7 +541,7 @@ const SuperAdminDashboard: React.FC = () => {
               badge: 'SD',
               title: 'Student Directory',
               description: 'Browse and filter the complete student directory.',
-              action: () => setActiveSection('students'),
+              action: focusStudentDirectory,
               button: 'View directory',
             },
           ].map((item) => (
@@ -541,21 +566,28 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
 
         {/* Student List */}
-        <StudentList
-          onStudentSelect={handleStudentSelect}
-          onEditStudent={handleEditStudent}
-          onDeleteStudent={handleDeleteStudent}
-          onAddStudent={() => setShowStudentForm(true)}
-          onCredentials={(student) => {
-            setSelectedStudent(student);
-            setShowStudentCredentials(true);
-          }}
-          onAnalytics={(student) => {
-            setSelectedStudent(student);
-            setShowStudentAnalytics(true);
-          }}
-          onBulkOperations={() => setShowStudentBulkOperations(true)}
-        />
+        <div
+          ref={studentDirectoryRef}
+          className={`rounded-3xl transition-all duration-500 ${
+            highlightDirectory ? 'ring-2 ring-primary ring-offset-2 ring-offset-white shadow-lg shadow-primary/20' : ''
+          }`}
+        >
+          <StudentList
+            onStudentSelect={handleStudentSelect}
+            onEditStudent={handleEditStudent}
+            onDeleteStudent={handleDeleteStudent}
+            onAddStudent={() => setShowStudentForm(true)}
+            onCredentials={(student) => {
+              setSelectedStudent(student);
+              setShowStudentCredentials(true);
+            }}
+            onAnalytics={(student) => {
+              setSelectedStudent(student);
+              setShowStudentAnalytics(true);
+            }}
+            onBulkOperations={() => setShowStudentBulkOperations(true)}
+          />
+        </div>
       </div>
     );
   };
