@@ -233,7 +233,11 @@ app.post('/api/users', async (req, res) => {
     await user.save();
     res.json(user);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: 'A user with that email already exists.' });
+    }
+    console.error('❌ Failed to create user:', error);
+    res.status(500).json({ error: error.message || 'Failed to create user' });
   }
 });
 

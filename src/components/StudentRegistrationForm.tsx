@@ -103,7 +103,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       onClose();
     } catch (error) {
       console.error('Error saving student:', error);
-      alert('Failed to save student. Please try again.');
+      const message =
+        error instanceof Error ? error.message : 'Failed to save student. Please try again.';
+      alert(message);
     }
   };
 

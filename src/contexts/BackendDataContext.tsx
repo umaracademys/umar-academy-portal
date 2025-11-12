@@ -442,7 +442,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
 
       if (!userResponse.ok) {
-        throw new Error('Failed to create user');
+        let message = 'Failed to create user';
+        try {
+          const errorPayload = await userResponse.json();
+          message = errorPayload?.error || message;
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(message);
       }
 
       const newUser = await userResponse.json();
@@ -464,7 +471,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
 
       if (!studentResponse.ok) {
-        throw new Error('Failed to create student profile');
+        let message = 'Failed to create student profile';
+        try {
+          const errorPayload = await studentResponse.json();
+          message = errorPayload?.error || message;
+        } catch {
+          // ignore JSON parse errors
+        }
+        throw new Error(message);
       }
 
       const savedStudent = await studentResponse.json();
