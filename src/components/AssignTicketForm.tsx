@@ -104,23 +104,6 @@ const buildRecitationSuggestions = (profile?: StudentRecitationProfile): Recitat
   });
 };
 
-const buildRecitationNotes = (profile?: StudentRecitationProfile) => {
-  const suggestions = buildRecitationSuggestions(profile);
-  const lines = suggestions
-    .filter((suggestion) => suggestion.isAvailable)
-    .map((suggestion) => {
-      const pieces = [
-        `${STEP_TITLES[suggestion.step]}: ${suggestion.headline}`,
-        suggestion.subline,
-        suggestion.pageInfo,
-        suggestion.notes ? `Notes: ${suggestion.notes}` : undefined
-      ].filter(Boolean);
-      return pieces.join(' • ');
-    });
-
-  return lines.join('\n');
-};
-
 const buildAssignmentRangeText = (suggestion?: RecitationSuggestion) => {
   if (!suggestion || !suggestion.isAvailable) {
     return undefined;
@@ -139,6 +122,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     program: 'Full Time HQ',
     notes: ''
   });
+  const [notesTouched, setNotesTouched] = useState(false);
   const [assignmentPlan, setAssignmentPlan] = useState<'full-workflow' | 'single-step'>('full-workflow');
   const [singleStep, setSingleStep] = useState<WorkflowStep>('sabqi');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -186,6 +170,17 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     [studentTickets]
   );
 
+  const latestFinalizeTicket = useMemo(
+    () =>
+      studentTickets.find(
+        (ticket) =>
+          ticket.workflowStep === 'finalize' &&
+          ((ticket.homework && ticket.homework.trim().length > 0) ||
+            (ticket.finalReport && ticket.finalReport.trim().length > 0))
+      ),
+    [studentTickets]
+  );
+
   const finalizeHistoryNotes = useMemo(() => {
     return [
       {
@@ -209,6 +204,20 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     const mistakeSources = [latestSabqiTicket, latestManzilTicket].filter(Boolean);
     return mistakeSources.flatMap((ticket) => ticket?.mushafMarkings || []);
   }, [latestSabqiTicket, latestManzilTicket]);
+
+  useEffect(() => {
+    if (notesTouched) {
+      return;
+    }
+
+    const homeworkNote = latestFinalizeTicket?.homework?.trim() ?? '';
+    setFormData((prev) => {
+      if (prev.notes === homeworkNote) {
+        return prev;
+      }
+      return { ...prev, notes: homeworkNote };
+    });
+  }, [latestFinalizeTicket, notesTouched]);
 
   useEffect(() => {
     if (singleStep !== 'finalize') {
@@ -477,13 +486,13 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                       const matchingTeacher = student
                         ? teachers.find(t => t.id === (student as any).assignedTeacher || t.fullName === (student as any).assignedTeacher)
                         : undefined;
-                      const notesTemplate = buildRecitationNotes(student?.recitationProfile);
+                      setNotesTouched(false);
                       setFormData(prev => ({
                         ...prev,
                         studentId: e.target.value,
                         program: student?.program || prev.program,
                         assignedTeacherId: matchingTeacher?.id || prev.assignedTeacherId,
-                        notes: notesTemplate || ''
+                        notes: ''
                       }));
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -612,7 +621,10 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                     </label>
                     <textarea
                       value={formData.notes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                      onChange={(e) => {
+                        setNotesTouched(true);
+                        setFormData(prev => ({ ...prev, notes: e.target.value }));
+                      }}
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Example: Focus on last week’s sabqi corrections, double-check Madd rules on page 132…"
