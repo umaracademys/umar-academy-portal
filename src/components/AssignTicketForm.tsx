@@ -508,9 +508,6 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 </div>
                 <StudentSnapshot studentId={formData.studentId} tickets={tickets} />
               </div>
-              {selectedStudent && (
-                <RecitationProfilePreview suggestions={recitationSuggestions} />
-              )}
             </section>
 
             <section className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
@@ -798,43 +795,6 @@ const StudentSnapshot: React.FC<{ studentId: string; tickets: AssignmentTicket[]
           </li>
         ))}
       </ul>
-    </div>
-  );
-};
-
-const RecitationProfilePreview: React.FC<{ suggestions: RecitationSuggestion[] }> = ({ suggestions }) => {
-  const available = suggestions.filter((suggestion) => suggestion.isAvailable);
-  if (suggestions.length === 0) {
-    return null;
-  }
-
-  if (available.length === 0) {
-    return (
-      <div className="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-        No recitation profile stored for this student yet. Update their registration to unlock quick ticket suggestions.
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4 grid gap-3 md:grid-cols-3">
-      {available.map((suggestion) => (
-        <div
-          key={`recitation-suggestion-${suggestion.step}`}
-          className="rounded-lg border border-green-200 bg-green-50 p-3 text-xs text-green-800"
-        >
-          <div className="flex items-center gap-2 text-green-900">
-            <span className="text-base">{STEP_ICONS[suggestion.step]}</span>
-            <span className="font-semibold uppercase tracking-wide text-[11px]">{STEP_TITLES[suggestion.step]}</span>
-          </div>
-          <div className="mt-2 space-y-1">
-            <p className="font-semibold text-sm text-green-900">{suggestion.headline}</p>
-            {suggestion.subline && <p>{suggestion.subline}</p>}
-            {suggestion.pageInfo && <p>{suggestion.pageInfo}</p>}
-            {suggestion.notes && <p className="italic text-green-700">Notes: {suggestion.notes}</p>}
-          </div>
-        </div>
-      ))}
     </div>
   );
 };
