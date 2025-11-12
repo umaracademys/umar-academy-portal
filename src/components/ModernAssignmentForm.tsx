@@ -82,6 +82,9 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   const [homeworkText, setHomeworkText] = useState<string>(
     assignment?.homeworkComments || '',
   );
+  const [homeworkLink, setHomeworkLink] = useState<string>(
+    (assignment as any)?.homeworkLink || '',
+  );
   const [classworkDetails, setClassworkDetails] = useState<Record<StepKey, StepState>>(() => {
     const initial: Record<StepKey, StepState> = {
       sabq: { ...defaultStepState },
@@ -410,6 +413,7 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
         updatedAt: new Date(),
         homeworkComments: homeworkText.trim(),
         homeworkSummary: homeworkText.trim(),
+        homeworkLink: homeworkLink.trim(),
         submissions: assignment?.submissions || [],
         notifications: assignment?.notifications || [],
       };
@@ -815,10 +819,8 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                       </label>
                       <input
                         type="url"
-                        value={formData.homeworkLink}
-                        onChange={(event) =>
-                          setFormData((prev) => ({ ...prev, homeworkLink: event.target.value }))
-                        }
+                        value={homeworkLink}
+                        onChange={(event) => setHomeworkLink(event.target.value)}
                         placeholder="https://"
                         className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       />
