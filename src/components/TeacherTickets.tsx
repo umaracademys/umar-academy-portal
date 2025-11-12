@@ -966,7 +966,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4l2 4 4 .5-3 3 .7 4.5-3.7-2-3.7 2 .7-4.5-3-3 4-.5z" />
                           </svg>
-                          Open Mushaf Workspace
+                          Launch Mushaf Workspace
                         </button>
                       </div>
 
@@ -991,8 +991,8 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                             Mistakes by category
                           </p>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {Object.entries(mistakeStats.byType)
-                              .sort((a, b) => b[1] - a[1])
+                            {(Object.entries(mistakeStats.byType) as Array<[string, number]>)
+                              .sort(([, countA], [, countB]) => countB - countA)
                               .slice(0, 4)
                               .map(([type, count]) => (
                                 <span
@@ -1479,10 +1479,10 @@ const TeacherMushafWorkspace: React.FC<TeacherMushafWorkspaceProps> = ({
                     {currentPageMistakes.map((mistake) => {
                       const mistakeId = resolveMistakeId(mistake);
                       return (
-                        <div
-                          key={mistakeId}
-                          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-700"
-                        >
+                          <div
+                            key={mistakeId}
+                            className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-xs text-gray-700"
+                          >
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <p className="text-sm font-semibold text-gray-900">
