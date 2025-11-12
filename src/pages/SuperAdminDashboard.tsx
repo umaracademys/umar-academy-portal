@@ -45,7 +45,8 @@ const SuperAdminDashboard: React.FC = () => {
     error,
     adminNotifications,
     recitationReviews,
-    refreshNotifications
+    refreshNotifications,
+    deleteStudent,
   } = useData();
   const { tickets } = useBackendData();
 
@@ -488,10 +489,22 @@ const SuperAdminDashboard: React.FC = () => {
       setShowStudentProfile(true);
     };
 
-    const handleDeleteStudent = (_studentId: string) => {
-      if (window.confirm('Are you sure you want to delete this student?')) {
-        // In a real app, this would delete the student
-        alert('Student deleted successfully');
+    const handleDeleteStudent = async (studentId: string) => {
+      if (!studentId) {
+        return;
+      }
+
+      const confirmed = window.confirm('Are you sure you want to delete this student?');
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        await deleteStudent(studentId);
+        alert('Student deleted successfully.');
+      } catch (err) {
+        console.error('Failed to delete student:', err);
+        alert('Failed to delete student. Please try again.');
       }
     };
 
