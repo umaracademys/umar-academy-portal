@@ -205,6 +205,22 @@ const ADMIN_PERMISSION_KEYS = ADMIN_PERMISSION_DEFINITIONS.map(
   (definition) => definition.key,
 ) as AdminPermissionKey[];
 
+const buildTeacherPermissions = (
+  permissions?: Partial<TeacherPermissions>,
+): TeacherPermissions =>
+  TEACHER_PERMISSION_KEYS.reduce((acc, key) => {
+    acc[key] = Boolean(permissions?.[key]);
+    return acc;
+  }, {} as TeacherPermissions);
+
+const buildAdminPermissions = (
+  permissions?: Partial<AdminPermissions>,
+): AdminPermissions =>
+  ADMIN_PERMISSION_KEYS.reduce((acc, key) => {
+    acc[key] = Boolean(permissions?.[key]);
+    return acc;
+  }, {} as AdminPermissions);
+
 const TEACHER_DEFINITION_MAP = TEACHER_PERMISSION_DEFINITIONS.reduce(
   (acc, definition) => {
     acc[definition.key] = definition;
@@ -262,6 +278,16 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       ? sortedAdmins.find((admin) => admin.id === selectedUser)
       : undefined;
 
+  const teacherPermissions = useMemo(
+    () => buildTeacherPermissions(selectedTeacher?.permissions),
+    [selectedTeacher],
+  );
+
+  const adminPermissions = useMemo(
+    () => buildAdminPermissions(selectedAdmin?.permissions),
+    [selectedAdmin],
+  );
+
   useEffect(() => {
     if (!feedback) {
       return;
@@ -318,7 +344,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
 
     const definition = TEACHER_DEFINITION_MAP[permission];
     const nextPermissions: TeacherPermissions = {
-      ...selectedTeacher.permissions,
+      ...teacherPermissions,
       [permission]: value,
     };
 
@@ -339,7 +365,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
 
     const definition = ADMIN_DEFINITION_MAP[permission];
     const nextPermissions: AdminPermissions = {
-      ...selectedAdmin.permissions,
+      ...adminPermissions,
       [permission]: value,
     };
 
@@ -421,23 +447,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     }
 
     const activeCount = TEACHER_PERMISSION_KEYS.reduce(
-      (sum, key) => (selectedTeacher.permissions[key] ? sum + 1 : sum),
+      (sum, key) => (teacherPermissions[key] ? sum + 1 : sum),
       0,
     );
     const highImpactCount = TEACHER_PERMISSION_DEFINITIONS.filter(
       (definition) =>
         definition.risk === 'high' &&
-        selectedTeacher.permissions[definition.key],
+        teacherPermissions[definition.key],
     ).length;
-    const communicationEnabled =
-      selectedTeacher.permissions.canContactParents;
+    const communicationEnabled = teacherPermissions.canContactParents;
 
     return {
       activeCount,
       highImpactCount,
       communicationEnabled,
     };
-  }, [selectedTeacher]);
+  }, [selectedTeacher, teacherPermissions]);
 
   const adminSummary = useMemo(() => {
     if (!selectedAdmin) {
@@ -445,20 +470,20 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     }
 
     const activeCount = ADMIN_PERMISSION_KEYS.reduce(
-      (sum, key) => (selectedAdmin.permissions[key] ? sum + 1 : sum),
+      (sum, key) => (adminPermissions[key] ? sum + 1 : sum),
       0,
     );
     const highImpactCount = ADMIN_PERMISSION_DEFINITIONS.filter(
       (definition) =>
-        definition.risk === 'high' && selectedAdmin.permissions[definition.key],
+        definition.risk === 'high' && adminPermissions[definition.key],
     ).length;
 
     return {
       activeCount,
       highImpactCount,
-      isPermissionAdmin: selectedAdmin.permissions.canManagePermissions,
+      isPermissionAdmin: adminPermissions.canManagePermissions,
     };
-  }, [selectedAdmin]);
+  }, [selectedAdmin, adminPermissions]);
 
   const renderEmptyState = (type: 'teacher' | 'admin') => (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-8 py-16 text-center text-gray-500">
@@ -515,7 +540,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       }>,
     );
 
-    return (
+  return (
       <div className="space-y-6">
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -549,7 +574,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                   Assigned students: {selectedTeacher.assignedStudents.length}
                 </p>
               </div>
-            </div>
+        </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -650,70 +675,73 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 </div>
               </header>
               <div className="space-y-3">
-                {sortedItems.map(({ definition, value }) => (
-                  <div
-                    key={definition.key}
-                    className={`rounded-lg border px-4 py-3 transition ${
-                      value
-                        ? 'border-purple-200 bg-purple-50'
-                        : 'border-gray-200 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {definition.icon && (
-                        <span className="mt-1 text-base text-gray-500">
-                          {definition.icon}
-                        </span>
-                      )}
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {definition.label}
+                {sortedItems.map(({ definition }) => {
+                  const value = teacherPermissions[definition.key];
+                  return (
+                    <div
+                      key={definition.key}
+                      className={`rounded-lg border px-4 py-3 transition ${
+                        value
+                          ? 'border-purple-200 bg-purple-50'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {definition.icon && (
+                          <span className="mt-1 text-base text-gray-500">
+                            {definition.icon}
+                          </span>
+                        )}
+                    <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {definition.label}
+                            </p>
+                            {definition.risk === 'high' && (
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
+                                High impact
+                              </span>
+                            )}
+                            {definition.defaultView && (
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                                View preset
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-sm text-gray-600">
+                            {definition.description}
                           </p>
-                          {definition.risk === 'high' && (
-                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-                              High impact
-                            </span>
-                          )}
-                          {definition.defaultView && (
-                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                              View preset
-                            </span>
+                          {definition.helper && (
+                            <p className="mt-2 text-xs text-gray-500">
+                              {definition.helper}
+                            </p>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-gray-600">
-                          {definition.description}
-                        </p>
-                        {definition.helper && (
-                          <p className="mt-2 text-xs text-gray-500">
-                            {definition.helper}
-                          </p>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleTeacherPermissionChange(
+                              definition.key,
+                              !value,
+                            )
+                          }
+                          disabled={isSaving}
+                          role="switch"
+                          aria-checked={value}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                            value ? 'bg-purple-600' : 'bg-gray-300'
+                          } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                              value ? 'translate-x-5' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleTeacherPermissionChange(
-                            definition.key,
-                            !value,
-                          )
-                        }
-                        disabled={isSaving}
-                        role="switch"
-                        aria-checked={value}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                          value ? 'bg-purple-600' : 'bg-gray-300'
-                        } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                            value ? 'translate-x-5' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           );
@@ -743,7 +771,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         );
         const item = {
           definition,
-          value: selectedAdmin.permissions[definition.key],
+          value: adminPermissions[definition.key],
         };
         if (existing) {
           existing.items.push(item);
@@ -788,7 +816,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                   >
                     {selectedAdmin.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
-                </div>
+                    </div>
                 <p className="text-sm text-amber-900/80">{selectedAdmin.email}</p>
                 <p className="text-xs text-amber-900/60">
                   Departments: {selectedAdmin.assignedDepartments.join(', ')}
@@ -911,7 +939,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                           {definition.icon}
                         </span>
                       )}
-                      <div className="flex-1">
+                    <div className="flex-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-semibold text-amber-900">
                             {definition.label}
@@ -935,7 +963,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                             {definition.helper}
                           </p>
                         )}
-                      </div>
+                    </div>
                       <button
                         type="button"
                         onClick={() =>
@@ -1101,8 +1129,8 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 }`}
               >
                 {feedback.message}
-              </div>
-            )}
+            </div>
+          )}
             {selectedType === 'teacher'
               ? renderTeacherDetail()
               : renderAdminDetail()}
@@ -1110,13 +1138,13 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         </div>
 
         <div className="flex justify-end border-t border-gray-200 bg-white px-6 py-4">
-          <button
+            <button
             type="button"
-            onClick={onClose}
+              onClick={onClose}
             className="rounded-lg bg-gray-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-gray-700"
-          >
-            Done
-          </button>
+            >
+              Done
+            </button>
         </div>
       </div>
     </div>
