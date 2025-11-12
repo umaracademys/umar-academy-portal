@@ -56,7 +56,9 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
   const [assignmentFetchError, setAssignmentFetchError] = useState<string | null>(null);
 
-  const [selectedProgram, setSelectedProgram] = useState<string>(assignment?.program || '');
+  const [selectedProgram, setSelectedProgram] = useState<string>(
+    assignment?.program || 'All Programs',
+  );
   const [activeLetter, setActiveLetter] = useState<string>('ALL');
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
     assignment?.assignedTo?.[0] || '',
@@ -194,23 +196,24 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
       }
     });
 
-    if (set.size === 0) {
-      return ['Full Time HQ', 'Part Time HQ', 'After School Reading'];
-    }
+    const uniquePrograms =
+      set.size === 0
+        ? ['Full Time HQ', 'Part Time HQ', 'After School Reading']
+        : Array.from(set).sort((a, b) => a.localeCompare(b));
 
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
+    return ['All Programs', ...uniquePrograms.filter((program) => program.length > 0)];
   }, [allStudents]);
 
   useEffect(() => {
-    if (!selectedProgram && programOptions.length > 0) {
-      setSelectedProgram(programOptions[0]);
+    if (!programOptions.includes(selectedProgram)) {
+      setSelectedProgram(programOptions[0] || 'All Programs');
     }
   }, [programOptions, selectedProgram]);
 
   const studentsByProgram = useMemo(() => {
     return allStudents
       .filter((student: Student) => {
-        if (!selectedProgram) return true;
+        if (!selectedProgram || selectedProgram === 'All Programs') return true;
         const programName = (student.program || '').trim();
         return programName === selectedProgram;
       })
@@ -263,6 +266,7 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
   const handleSelectProgram = (program: string) => {
     setSelectedProgram(program);
     setSelectedStudentId('');
+    setActiveLetter('ALL');
     setErrors((prev) => {
       const next = { ...prev };
       delete next.program;
@@ -477,7 +481,7 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                   Program Filter
                 </h3>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {programOptions.map((program) => (
+                      {programOptions.map((program) => (
                     <button
                       key={program}
                       type="button"
@@ -589,14 +593,42 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
             <form onSubmit={handleSubmit} className="mx-auto flex max-w-3xl flex-col gap-6">
               {!selectedStudent ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-gray-300 bg-gray-50/60 px-8 py-16 text-center">
-                  <div className="text-4xl">👆</div>
-                  <h3 className="mt-3 text-lg font-semibold text-gray-800">
-                    Choose a student to start planning
-                  </h3>
-                  <p className="mt-2 text-sm text-gray-500">
-                    Filter by program and letter on the left, then select a student to open the sabq,
-                    sabqi, manzil, and homework builder.
-                  </p>
+                  {isLoadingStudents ? (
+                    <>
+                      <div className="text-4xl text-primary">⏳</div>
+                      <h3 className="mt-3 text-lg font-semibold text-gray-800">
+                        Loading students from the server
+                      </h3>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Hang tight — we’re pulling the most recent roster so manual assignments stay
+                        in sync.
+                      </p>
+                    </>
+                  ) : allStudents.length === 0 ? (
+                    <>
+                      <div className="text-4xl">📭</div>
+                      <h3 className="mt-3 text-lg font-semibold text-gray-800">
+                        No students available yet
+                      </h3>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Add students or import a roster before creating manual assignments.
+                      </p>
+                      <p className="mt-3 text-xs text-gray-400">
+                        Tip: Use Student Bulk Operations in the dashboard cards to seed demo data.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-4xl">👆</div>
+                      <h3 className="mt-3 text-lg font-semibold text-gray-800">
+                        Choose a student to start planning
+                      </h3>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Filter by program and letter on the left, then select a student to open the
+                        sabq, sabqi, manzil, and homework builder.
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <>
@@ -617,9 +649,9 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                           {selectedStudent.fullName}
                         </h3>
                         <p className="text-sm text-gray-500">
-                          {(selectedStudent.program && selectedStudent.program.length > 0 && selectedStudent.program) ||
-                            selectedProgram ||
-                            'Program not set'}
+                          {selectedStudent.program && selectedStudent.program.trim().length > 0
+                            ? selectedStudent.program
+                            : 'Program not set'}
                         </p>
                         <p className="text-xs text-gray-400">
                           {selectedStudent.email || 'No email on file'}
