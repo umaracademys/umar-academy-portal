@@ -996,10 +996,6 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
   const isPendingReview = selectedTicket?.status === 'pending_review';
   const isApproved = selectedTicket?.status === 'approved';
-  const nextActiveTicket = useMemo(
-    () => resolveNextActiveTicket(selectedTicket),
-    [resolveNextActiveTicket, selectedTicket]
-  );
   const needsAssignment =
     isApproved &&
     selectedTicket?.workflowStep !== 'finalize' &&
