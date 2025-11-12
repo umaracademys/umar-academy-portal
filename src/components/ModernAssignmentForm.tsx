@@ -754,83 +754,43 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                     </div>
                   </section>
 
-                  <section className="space-y-5 rounded-3xl border border-[#E7AA39]/40 bg-[#FBF4E6] p-6 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#2E4D32]">
-                        Classwork Details
-                      </h3>
-                      <div className="h-px flex-1 bg-[#E7AA39]/40"></div>
-                    </div>
-
-                    <p className="text-xs text-[#2E4D32]/70">
-                      Capture today&apos;s sabq, revision, and manzil portions exactly how they appear for students.
-                    </p>
-
-                    <div className="grid gap-4 md:grid-cols-3">
+                  <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600">
+                      Classwork
+                    </h3>
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
                       {(Object.keys(STEP_CONFIG) as StepKey[]).map((step) => {
                         const config = STEP_CONFIG[step];
                         const detail = classworkDetails[step];
-                        const hasContent = detail.portion.trim() || detail.notes.trim();
-                        const headline =
-                          step === 'sabq'
-                            ? 'Sabq (New Lesson)'
-                            : step === 'sabqi'
-                              ? 'Sabqi (Revision)'
-                              : 'Manzil';
-
                         return (
-                          <div
-                            key={step}
-                            className={`flex h-full flex-col gap-3 rounded-2xl border border-[#E7AA39]/40 bg-white p-4 shadow-sm transition ${
-                              hasContent ? 'shadow-[#E7AA39]/20' : ''
-                            }`}
-                          >
+                          <div key={step} className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
                             <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#2E4D32]/60">
-                                {headline}
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                                {config.label}
                               </p>
-                              <p className="mt-1 text-sm font-semibold text-[#2E4D32]">
-                                {detail.portion ? detail.portion : config.label}
-                              </p>
-                              <p className="text-[11px] text-[#2E4D32]/60">
-                                {detail.notes ? detail.notes : 'Not specified'}
-                              </p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#2E4D32]/70">
-                                Assignment Range
-                              </label>
                               <input
                                 type="text"
                                 value={detail.portion}
                                 onChange={(event) =>
                                   handleClassworkDetailChange(step, 'portion', event.target.value)
                                 }
-                                placeholder="E.g., Surah 2 • Ayah 1-20 or Pages 142-144"
-                                className="w-full rounded-lg border border-[#E7AA39]/30 bg-[#FBF4E6]/40 px-3 py-2 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
+                                placeholder="Portion"
+                                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                               />
                             </div>
-
-                            <div className="space-y-2">
-                              <label className="text-[11px] font-semibold uppercase tracking-wide text-[#2E4D32]/70">
-                                Notes & Emphasis
-                              </label>
-                              <textarea
-                                rows={3}
-                                value={detail.notes}
-                                onChange={(event) =>
-                                  handleClassworkDetailChange(step, 'notes', event.target.value)
-                                }
-                                placeholder="Coaching cues, tajweed reminders, or memorisation targets."
-                                className="w-full rounded-lg border border-[#E7AA39]/30 bg-[#FBF4E6]/40 px-3 py-2 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
-                              />
-                            </div>
+                            <textarea
+                              rows={3}
+                              value={detail.notes}
+                              onChange={(event) =>
+                                handleClassworkDetailChange(step, 'notes', event.target.value)
+                              }
+                              placeholder="Notes"
+                              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            />
                           </div>
                         );
                       })}
                     </div>
-
                     {errors.classwork && (
                       <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
                         {errors.classwork}
@@ -838,36 +798,31 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                     )}
                   </section>
 
-                  <section className="space-y-4 rounded-3xl border border-[#E7AA39]/40 bg-white p-6 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#2E4D32]">
-                        Report & Feedback
-                      </h3>
-                      <div className="h-px flex-1 bg-[#E7AA39]/40"></div>
-                    </div>
+                  <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-gray-600">
+                      Homework
+                    </h3>
                     <textarea
-                      rows={6}
-                      value={generalComments}
-                      onChange={(event) => setGeneralComments(event.target.value)}
-                      placeholder="Summarise the session, include overall progress notes, and optional manzil highlights."
-                      className="w-full rounded-2xl border border-[#E7AA39]/30 bg-white px-4 py-3 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
-                    />
-                  </section>
-
-                  <section className="space-y-4 rounded-3xl border border-[#E7AA39]/30 bg-[#FDF7E7] p-6 shadow-sm">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-[#2E4D32]">
-                        Homework
-                      </h3>
-                      <div className="h-px flex-1 bg-[#E7AA39]/30"></div>
-                    </div>
-                    <textarea
-                      rows={5}
+                      rows={4}
                       value={homeworkText}
                       onChange={(event) => setHomeworkText(event.target.value)}
-                      placeholder="Homework instructions (e.g., review ayat 15-20, listen to Sheikh Husary recitation, share reflection)."
-                      className="w-full rounded-2xl border border-[#E7AA39]/40 bg-white px-4 py-3 text-sm text-[#2E4D32] placeholder:text-[#2E4D32]/40 focus:border-[#E7AA39] focus:outline-none focus:ring-2 focus:ring-[#E7AA39]/30"
+                      placeholder="Homework instructions"
+                      className="mt-3 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
+                    <div className="mt-3">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Homework Link (optional)
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.homeworkLink}
+                        onChange={(event) =>
+                          setFormData((prev) => ({ ...prev, homeworkLink: event.target.value }))
+                        }
+                        placeholder="https://"
+                        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
                   </section>
 
                   <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-6">
