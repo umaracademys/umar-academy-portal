@@ -588,7 +588,7 @@ const SuperAdminDashboard: React.FC = () => {
             {
               id: 'teach-analytics',
               badge: 'AN',
-              title: 'Analytics',
+              title: 'Teacher Analytics',
               description: 'Monitor performance, coverage, and load balancing.',
               action: () => setShowTeacherAnalytics(true),
               button: 'Open analytics',
@@ -596,7 +596,7 @@ const SuperAdminDashboard: React.FC = () => {
             {
               id: 'teach-credentials',
               badge: 'CR',
-              title: 'Credentials',
+              title: 'Teacher Credentials',
               description: 'Manage onboarding documents and access credentials.',
               action: () => {
                 if (!selectedTeacher && teachers.length > 0) {
@@ -610,7 +610,7 @@ const SuperAdminDashboard: React.FC = () => {
             {
               id: 'teach-bulk',
               badge: 'BL',
-              title: 'Bulk Operations',
+              title: 'Teacher Bulk Operations',
               description: 'Import, export, or batch update teacher rosters.',
               action: () => setShowTeacherBulkOperations(true),
               button: 'Run bulk action',
@@ -618,7 +618,7 @@ const SuperAdminDashboard: React.FC = () => {
             {
               id: 'teach-directory',
               badge: 'TD',
-              title: 'All Teachers',
+              title: 'Teacher Directory',
               description: 'View and filter the complete teacher directory.',
               action: () => setActiveSection('teachers'),
               button: 'View directory',
@@ -953,7 +953,13 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Teacher Advanced Features Modals */}
       {showTeacherCredentials && (
         <TeacherCredentials
-          teacher={selectedTeacher || { id: 'general', name: 'System Access Management' }}
+          teacher={
+            selectedTeacher || {
+              id: 'general',
+              fullName: 'All Teachers',
+              email: 'access@umaracademy.org',
+            }
+          }
           onClose={() => {
             setShowTeacherCredentials(false);
             setSelectedTeacher(null);
@@ -963,7 +969,13 @@ const SuperAdminDashboard: React.FC = () => {
 
       {showTeacherAnalytics && (
         <TeacherAnalytics
-          teacher={selectedTeacher || { id: 'general', name: 'System Analytics' }}
+          teacher={
+            selectedTeacher || {
+              id: 'general',
+              fullName: 'All Teachers',
+              email: 'analytics@umaracademy.org',
+            }
+          }
           onClose={() => {
             setShowTeacherAnalytics(false);
             setSelectedTeacher(null);

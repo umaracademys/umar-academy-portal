@@ -62,7 +62,9 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
               </div>
               <div>
                 <h2 className="text-2xl font-bold">Teacher Analytics Dashboard</h2>
-                <p className="text-purple-100">{teacher?.name || 'Selected Teacher'}</p>
+                <p className="text-purple-100">
+                  {teacher?.fullName ?? teacher?.name ?? teacher?.email ?? 'this teacher'}
+                </p>
               </div>
             </div>
             <button

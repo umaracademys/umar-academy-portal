@@ -1,132 +1,318 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Assignment, ClassworkSection, Program } from '../types/assignment';
-import AssignmentSectionBuilder from './assignment/AssignmentSectionBuilder';
+import type { ClassworkSection } from '../types/assignment';
+import type { Student } from '../types';
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+const STEP_CONFIG = {
+  sabq: {
+    label: 'Sabq',
+    emoji: '✨',
+    description: 'Primary new lesson portion for today.',
+  },
+  sabqi: {
+    label: 'Sabqi',
+    emoji: '🧠',
+    description: 'Recent retention review to reinforce yesterday\'s work.',
+  },
+  manzil: {
+    label: 'Manzil',
+    emoji: '🔁',
+    description: 'Long-term revision to maintain mastery.',
+  },
+} as const;
+
+type StepKey = keyof typeof STEP_CONFIG;
 
 interface ModernAssignmentFormProps {
   onClose: () => void;
   onSuccess: () => void;
-  assignment?: Assignment;
+  assignment?: any;
   isEdit?: boolean;
 }
 
-const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({ 
-  onClose, 
-  onSuccess, 
-  assignment, 
-  isEdit = false 
+type StepState = {
+  portion: string;
+  notes: string;
+};
+
+const defaultStepState: StepState = { portion: '', notes: '' };
+
+const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
+  onClose,
+  onSuccess,
+  assignment,
+  isEdit = false,
 }) => {
   const { students, addAssignment, updateAssignment } = useData();
   const { user } = useAuth();
-  
-  const [formData, setFormData] = useState({
-    title: assignment?.title || '',
-    description: assignment?.description || '',
-    type: assignment?.type || 'classwork' as 'classwork' | 'homework',
-    classworkType: assignment?.classworkType || 'sabq' as 'sabq' | 'sabqi' | 'manzil',
-    program: assignment?.program || '',
-    assignedTo: assignment?.assignedTo || [],
-    dueDate: assignment?.dueDate ? new Date(assignment.dueDate).toISOString().split('T')[0] : '',
-    homeworkText: (assignment as any)?.homeworkComments || '',
-    homeworkLink: (assignment as any)?.homeworkLink || '',
-    assignedTeacher: '',
-    readingLink: '',
-    comments: '',
-    classworkSections: assignment?.classworkSections || [] as ClassworkSection[]
+
+  const [selectedProgram, setSelectedProgram] = useState<string>(assignment?.program || '');
+  const [activeLetter, setActiveLetter] = useState<string>('ALL');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(
+    assignment?.assignedTo?.[0] || '',
+  );
+  const [assignmentTitle, setAssignmentTitle] = useState<string>(
+    assignment?.title || 'Manual Recitation Assignment',
+  );
+  const [dueDate, setDueDate] = useState<string>(() => {
+    if (assignment?.dueDate) {
+      try {
+        return new Date(assignment.dueDate).toISOString().split('T')[0];
+      } catch {
+        return new Date().toISOString().split('T')[0];
+      }
+    }
+    return new Date().toISOString().split('T')[0];
+  });
+  const [generalComments, setGeneralComments] = useState<string>(
+    assignment?.description || '',
+  );
+  const [homeworkText, setHomeworkText] = useState<string>(
+    assignment?.homeworkComments || '',
+  );
+  const [classworkDetails, setClassworkDetails] = useState<Record<StepKey, StepState>>(() => {
+    const initial: Record<StepKey, StepState> = {
+      sabq: { ...defaultStepState },
+      sabqi: { ...defaultStepState },
+      manzil: { ...defaultStepState },
+    };
+
+    if (assignment?.classworkSections?.length) {
+      assignment.classworkSections.forEach((section: ClassworkSection) => {
+        const step = section.step as StepKey;
+        if (step && initial[step]) {
+          initial[step] = {
+            portion: section.assignmentRange || section.summary || '',
+            notes: section.summary || section.details || '',
+          };
+        }
+      });
+    }
+
+    return initial;
   });
 
-  const [programs, setPrograms] = useState<Program[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [titleTouched, setTitleTouched] = useState<boolean>(Boolean(assignment?.title));
 
-  // Mock programs
-  useEffect(() => {
-    const mockPrograms: Program[] = [
-      { id: '1', name: 'Full Time HQ', description: 'Full-time Hifz program', students: ['1', '2', '3'], createdAt: new Date(), status: 'active' },
-      { id: '2', name: 'Part Time HQ', description: 'Part-time Hifz program', students: ['1', '4', '5'], createdAt: new Date(), status: 'active' },
-      { id: '3', name: 'After School Reading', description: 'After school reading program', students: ['2', '3', '6'], createdAt: new Date(), status: 'active' }
-    ];
-    setPrograms(mockPrograms);
-  }, []);
+  const programOptions = useMemo(() => {
+    const set = new Set<string>();
+    students.forEach((student: Student) => {
+      const programName = (student.program || '').trim();
+      if (programName) {
+        set.add(programName);
+      }
+    });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    if (set.size === 0) {
+      return ['Full Time HQ', 'Part Time HQ', 'After School Reading'];
     }
+
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [students]);
+
+  useEffect(() => {
+    if (!selectedProgram && programOptions.length > 0) {
+      setSelectedProgram(programOptions[0]);
+    }
+  }, [programOptions, selectedProgram]);
+
+  const studentsByProgram = useMemo(() => {
+    return students
+      .filter((student: Student) => {
+        if (!selectedProgram) return true;
+        const programName = (student.program || '').trim();
+        return programName === selectedProgram;
+      })
+      .sort((a: Student, b: Student) => a.fullName.localeCompare(b.fullName, 'en'));
+  }, [students, selectedProgram]);
+
+  const availableLetters = useMemo(() => {
+    const set = new Set<string>();
+    studentsByProgram.forEach((student: Student) => {
+      const letter = student.fullName?.trim()?.charAt(0)?.toUpperCase();
+      if (letter) {
+        set.add(letter);
+      }
+    });
+    return set;
+  }, [studentsByProgram]);
+
+  useEffect(() => {
+    if (activeLetter !== 'ALL' && !availableLetters.has(activeLetter)) {
+      setActiveLetter('ALL');
+    }
+  }, [availableLetters, activeLetter]);
+
+  const filteredStudents = useMemo(() => {
+    const base = activeLetter === 'ALL'
+      ? studentsByProgram
+      : studentsByProgram.filter((student: Student) =>
+          student.fullName?.toUpperCase().startsWith(activeLetter),
+        );
+    return base;
+  }, [studentsByProgram, activeLetter]);
+
+  useEffect(() => {
+    if (selectedStudentId && !filteredStudents.some((student) => student.id === selectedStudentId)) {
+      setSelectedStudentId('');
+    }
+  }, [filteredStudents, selectedStudentId]);
+
+  const selectedStudent = useMemo(
+    () => students.find((student) => student.id === selectedStudentId),
+    [students, selectedStudentId],
+  );
+
+  useEffect(() => {
+    if (selectedStudent && !titleTouched && !isEdit) {
+      setAssignmentTitle(`${selectedStudent.fullName} — Recitation Assignment`);
+    }
+  }, [selectedStudent, titleTouched, isEdit]);
+
+  const handleSelectProgram = (program: string) => {
+    setSelectedProgram(program);
+    setSelectedStudentId('');
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.program;
+      delete next.student;
+      return next;
+    });
   };
 
-  const handleStudentToggle = (studentId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      assignedTo: prev.assignedTo.includes(studentId)
-        ? prev.assignedTo.filter(id => id !== studentId)
-        : [...prev.assignedTo, studentId]
-    }));
+  const handleSelectLetter = (letter: string) => {
+    if (letter !== 'ALL' && !availableLetters.has(letter)) return;
+    setActiveLetter(letter);
   };
 
-  const handleClassworkSectionsChange = (sections: ClassworkSection[]) => {
-    setFormData(prev => ({
-      ...prev,
-      classworkSections: sections,
-      classworkType: (sections[0]?.step as 'sabq' | 'sabqi' | 'manzil') || prev.classworkType
-    }));
+  const handleSelectStudent = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    setErrors((prev) => {
+      const next = { ...prev };
+      delete next.student;
+      return next;
+    });
+  };
 
-    if (errors.classworkSections && sections.length > 0) {
-      setErrors(prev => ({ ...prev, classworkSections: '' }));
+  const handleClassworkDetailChange = (step: StepKey, field: keyof StepState, value: string) => {
+    setClassworkDetails((prev) => ({
+      ...prev,
+      [step]: {
+        ...prev[step],
+        [field]: value,
+      },
+    }));
+    if (errors.classwork) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.classwork;
+        return next;
+      });
     }
   };
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.program) newErrors.program = 'Program is required';
-    if (formData.assignedTo.length === 0) newErrors.assignedTo = 'At least one student must be selected';
-    if (formData.type === 'classwork' && (!formData.classworkSections || formData.classworkSections.length === 0)) {
-      newErrors.classworkSections = 'Add at least one classwork portion';
+    const nextErrors: Record<string, string> = {};
+
+    if (!selectedProgram) {
+      nextErrors.program = 'Select a program to continue.';
     }
-    if (formData.type === 'homework' && !formData.homeworkText.trim() && !formData.homeworkLink.trim()) {
-      newErrors.homework = 'Either homework text or link is required';
+
+    if (!selectedStudentId) {
+      nextErrors.student = 'Choose a student from the list.';
     }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    if (!assignmentTitle.trim()) {
+      nextErrors.title = 'Assignment title is required.';
+    }
+
+    if (!dueDate) {
+      nextErrors.dueDate = 'Due date is required.';
+    }
+
+    const hasClasswork = (Object.keys(STEP_CONFIG) as StepKey[]).some((step) => {
+      const detail = classworkDetails[step];
+      return detail.portion.trim() || detail.notes.trim();
+    });
+
+    if (!hasClasswork) {
+      nextErrors.classwork =
+        'Provide details for at least one classwork step (Sabq, Sabqi, or Manzil).';
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
+  const buildClassworkSections = (): ClassworkSection[] => {
+    return (Object.keys(STEP_CONFIG) as StepKey[])
+      .map((step, index) => {
+        const detail = classworkDetails[step];
+        if (!detail.portion.trim() && !detail.notes.trim()) return null;
+        return {
+          step,
+          order: index,
+          assignmentRange: detail.portion.trim(),
+          summary: detail.notes.trim(),
+          label: STEP_CONFIG[step].label,
+        } as ClassworkSection;
+      })
+      .filter(Boolean) as ClassworkSection[];
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     setIsSubmitting(true);
-    
+
     try {
-      const classworkSummary = (formData.classworkSections || [])
-        .map(section => section.summary || section.assignmentRange)
+      const classworkSections = buildClassworkSections();
+      const classworkSummary = classworkSections
+        .map((section) => {
+          const label = STEP_CONFIG[section.step as StepKey]?.label || section.step;
+          const range = section.assignmentRange || '';
+          const notes = section.summary || '';
+          return `${label}: ${[range, notes].filter(Boolean).join(' • ')}`.trim();
+        })
         .filter(Boolean)
         .join('\n');
 
-      const assignmentData = {
-        ...formData,
+      const payload = {
         id: assignment?.id || Date.now().toString(),
-        createdAt: assignment?.createdAt || new Date(),
-        status: 'active',
-        submissions: assignment?.submissions || [],
+        title: assignmentTitle.trim(),
+        description: generalComments.trim() || 'Manual assignment created via portal.',
+        type: 'classwork',
+        classworkType: classworkSections[0]?.step || 'sabq',
+        classworkSections,
         classworkSummary,
-        homeworkSummary: formData.homeworkText,
-        classworkType: formData.classworkSections?.[0]?.step || formData.classworkType
+        program: selectedProgram,
+        assignedBy: user?.id || user?.email || 'manual-admin',
+        assignedTo: selectedStudentId ? [selectedStudentId] : [],
+        dueDate: new Date(dueDate),
+        status: assignment?.status || 'published',
+        createdAt: assignment?.createdAt || new Date(),
+        updatedAt: new Date(),
+        homeworkComments: homeworkText.trim(),
+        homeworkSummary: homeworkText.trim(),
+        submissions: assignment?.submissions || [],
+        notifications: assignment?.notifications || [],
       };
 
-      if (isEdit) {
-        await updateAssignment(assignmentData.id, assignmentData);
+      if (isEdit && assignment?.id) {
+        await updateAssignment(assignment.id, payload);
       } else {
-        await addAssignment(assignmentData);
+        await addAssignment(payload);
       }
-      
+
       onSuccess();
     } catch (error) {
       console.error('Error saving assignment:', error);
@@ -135,339 +321,395 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
     }
   };
 
-  const selectedProgramStudents = programs.find(p => p.id === formData.program)?.students || [];
-  const availableStudents = students.filter(s => selectedProgramStudents.includes(s.id));
+  const renderStudentCard = (student: Student) => {
+    const isActive = student.id === selectedStudentId;
+    return (
+      <button
+        key={student.id}
+        type="button"
+        onClick={() => handleSelectStudent(student.id)}
+        className={`flex w-full flex-col rounded-2xl border px-4 py-3 text-left transition ${
+          isActive
+            ? 'border-primary bg-soft-primary/80 shadow-md shadow-primary/10'
+            : 'border-gray-200 bg-white hover:border-primary/50 hover:shadow-sm'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <img
+            src={
+              student.avatar ||
+              `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                student.fullName || 'Student',
+              )}&background=2563eb&color=fff`
+            }
+            alt={student.fullName}
+            className="h-10 w-10 rounded-full border border-white shadow-sm"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900">{student.fullName}</p>
+            <p className="truncate text-xs text-gray-500">
+              {(student.program && student.program.length > 0 && student.program) || 'Program not set'}
+            </p>
+          </div>
+        </div>
+      </button>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-y-auto">
-        {/* Modern Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white p-8 rounded-t-2xl">
-          <div className="flex justify-between items-start">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
+      <div className="flex h-full w-full max-w-[1200px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 px-8 py-6 text-white">
+          <div className="flex items-start justify-between gap-6">
             <div>
-              <h2 className="text-3xl font-bold mb-2">
-                {isEdit ? '✏️ Edit Assignment' : '📝 Create New Assignment'}
+              <p className="text-xs uppercase tracking-[0.4em] text-white/70">
+                Manual Assignment Builder
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold leading-tight">
+                {isEdit ? 'Update Assignment Plan' : 'Create New Assignment'}
               </h2>
-              <p className="text-blue-100 text-lg">
-                {isEdit ? 'Update assignment details and settings' : 'Create a new assignment for your students'}
+              <p className="mt-3 max-w-xl text-sm text-white/80">
+                Filter by program, pick a student, and craft sabq, sabqi, manzil, and homework
+                instructions that mirror the ticket workflow output.
               </p>
             </div>
             <button
+              type="button"
               onClick={onClose}
-              className="text-white hover:text-gray-200 text-4xl font-light transition-colors p-2 hover:bg-white hover:bg-opacity-10 rounded-full"
+              className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur transition hover:bg-white/20"
             >
-              ×
+              Close
             </button>
           </div>
-        </div>
+        </header>
 
-        <div className="p-8">
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Basic Information Section */}
-            <div className="bg-gray-50 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                📋 Basic Information
-              </h3>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Assignment Title *
-                    </label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.title ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                      }`}
-                      placeholder="Enter assignment title..."
-                    />
-                    {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Program *
-                    </label>
-                    <select
-                      name="program"
-                      value={formData.program}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                        errors.program ? 'border-red-300 bg-red-50' : 'border-gray-300'
+        <div className="flex flex-1 flex-col lg:flex-row">
+          <aside className="w-full border-b border-gray-100 bg-gray-50/80 p-6 lg:w-[320px] lg:border-r lg:border-b-0">
+            <div className="space-y-6">
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Program Filter
+                </h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {programOptions.map((program) => (
+                    <button
+                      key={program}
+                      type="button"
+                      onClick={() => handleSelectProgram(program)}
+                      className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                        program === selectedProgram
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'bg-white text-gray-700 hover:bg-primary/10'
                       }`}
                     >
-                      <option value="">Select a program...</option>
-                      {programs.map(program => (
-                        <option key={program.id} value={program.id}>
-                          {program.name}
-                        </option>
-                      ))}
-                    </select>
-                    {errors.program && <p className="text-red-500 text-sm mt-1">{errors.program}</p>}
-                  </div>
+                      {program}
+                    </button>
+                  ))}
                 </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Assignment Type *
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, type: 'classwork' }))}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          formData.type === 'classwork'
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="text-2xl mb-1">📚</div>
-                          <div className="font-semibold">Classwork</div>
-                        </div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, type: 'homework' }))}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          formData.type === 'homework'
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        <div className="text-center">
-                          <div className="text-2xl mb-1">🏠</div>
-                          <div className="font-semibold">Homework</div>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Due Date
-                    </label>
-                    <input
-                      type="date"
-                      name="dueDate"
-                      value={formData.dueDate}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Enter assignment description..."
-                />
-              </div>
-            </div>
-
-            {/* Classwork/Homework Specific Fields */}
-            {formData.type === 'classwork' && (
-              <div className="bg-green-50/70 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-3">
-                  <span className="text-2xl">📖</span>
-                  <span>Classwork Details</span>
-                </h3>
-                <AssignmentSectionBuilder
-                  value={formData.classworkSections}
-                  onChange={handleClassworkSectionsChange}
-                />
-                {errors.classworkSections && (
-                  <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-                    {errors.classworkSections}
+                {errors.program && (
+                  <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                    {errors.program}
                   </p>
                 )}
-              </div>
-            )}
+              </section>
 
-            {formData.type === 'homework' && (
-              <div className="bg-orange-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  🏠 Homework Details
+              <section>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Search by Letter
                 </h3>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Homework Text
-                    </label>
-                    <textarea
-                      name="homeworkText"
-                      value={formData.homeworkText}
-                      onChange={handleInputChange}
-                      rows={4}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                      placeholder="Enter homework instructions..."
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Homework Link
-                    </label>
-                    <input
-                      type="url"
-                      name="homeworkLink"
-                      value={formData.homeworkLink}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                      placeholder="https://example.com"
-                    />
-                  </div>
+                <div className="mt-3 grid grid-cols-7 gap-1 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectLetter('ALL')}
+                    className={`rounded-md px-2 py-1 font-medium transition ${
+                      activeLetter === 'ALL'
+                        ? 'bg-primary text-white'
+                        : 'bg-white text-gray-600 hover:bg-primary/10'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {ALPHABET.map((letter) => {
+                    const disabled = !availableLetters.has(letter);
+                    const isActive = activeLetter === letter;
+                    return (
+                      <button
+                        key={letter}
+                        type="button"
+                        onClick={() => handleSelectLetter(letter)}
+                        disabled={disabled}
+                        className={`rounded-md px-2 py-1 font-medium transition ${
+                          isActive
+                            ? 'bg-primary text-white'
+                            : disabled
+                              ? 'bg-gray-100 text-gray-400'
+                              : 'bg-white text-gray-600 hover:bg-primary/10'
+                        }`}
+                      >
+                        {letter}
+                      </button>
+                    );
+                  })}
                 </div>
-                
-                {errors.homework && <p className="text-red-500 text-sm mt-2">{errors.homework}</p>}
-              </div>
-            )}
+              </section>
 
-            {/* After School Reading Special Fields */}
-            {formData.program === '3' && (
-              <div className="bg-purple-50 rounded-xl p-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                  📚 After School Reading Details
-                </h3>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Assigned Teacher
-                    </label>
-                    <input
-                      type="text"
-                      name="assignedTeacher"
-                      value={formData.assignedTeacher}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      placeholder="Teacher name..."
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Reading Link
-                    </label>
-                    <input
-                      type="url"
-                      name="readingLink"
-                      value={formData.readingLink}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                      placeholder="https://example.com/reading"
-                    />
-                  </div>
-                </div>
-                
-                <div className="mt-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Comments
-                  </label>
-                  <textarea
-                    name="comments"
-                    value={formData.comments}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    placeholder="Additional comments..."
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Student Selection */}
-            <div className="bg-blue-50 rounded-xl p-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                👥 Assign to Students
-              </h3>
-              
-              {formData.program ? (
-                <div>
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600">
-                      Select students from <strong>{programs.find(p => p.id === formData.program)?.name}</strong> program
+              <section className="flex max-h-[360px] flex-col gap-3 overflow-y-auto pr-1">
+                {filteredStudents.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white px-4 py-10 text-center">
+                    <div className="text-3xl">🔍</div>
+                    <p className="mt-2 text-sm font-semibold text-gray-700">
+                      No students found
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Adjust the program or letter filters to see matching students.
                     </p>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-60 overflow-y-auto">
-                    {availableStudents.map(student => (
-                      <label
-                        key={student.id}
-                        className="flex items-center p-3 bg-white rounded-lg border-2 border-gray-200 hover:border-blue-300 cursor-pointer transition-all"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.assignedTo.includes(student.id)}
-                          onChange={() => handleStudentToggle(student.id)}
-                          className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <div className="flex items-center">
-                          <img
-                            src={student.avatar || `https://ui-avatars.com/api/?name=${student.fullName}&background=10b981&color=fff`}
-                            alt={student.fullName}
-                            className="h-8 w-8 rounded-full mr-3"
-                          />
-                          <div>
-                            <div className="font-medium text-gray-900">{student.fullName}</div>
-                            <div className="text-sm text-gray-500">{student.email}</div>
-                          </div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  
-                  {errors.assignedTo && <p className="text-red-500 text-sm mt-2">{errors.assignedTo}</p>}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <div className="text-gray-400 text-4xl mb-4">👥</div>
-                  <p className="text-gray-600">Please select a program first to see available students</p>
-                </div>
+                ) : (
+                  filteredStudents.map(renderStudentCard)
+                )}
+              </section>
+
+              {errors.student && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                  {errors.student}
+                </p>
               )}
             </div>
+          </aside>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    {isEdit ? 'Updating...' : 'Creating...'}
-                  </>
-                ) : (
-                  <>
-                    {isEdit ? '✏️ Update Assignment' : '📝 Create Assignment'}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
+          <main className="flex-1 overflow-y-auto bg-white p-6 lg:p-8">
+            <form onSubmit={handleSubmit} className="mx-auto flex max-w-3xl flex-col gap-6">
+              {!selectedStudent ? (
+                <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-gray-300 bg-gray-50/60 px-8 py-16 text-center">
+                  <div className="text-4xl">👆</div>
+                  <h3 className="mt-3 text-lg font-semibold text-gray-800">
+                    Choose a student to start planning
+                  </h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Filter by program and letter on the left, then select a student to open the sabq,
+                    sabqi, manzil, and homework builder.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <div className="flex items-center gap-4">
+                      <img
+                        src={
+                          selectedStudent.avatar ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            selectedStudent.fullName || 'Student',
+                          )}&background=2563eb&color=fff`
+                        }
+                        alt={selectedStudent.fullName}
+                        className="h-14 w-14 rounded-full border border-gray-200 shadow-inner"
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {selectedStudent.fullName}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          {(selectedStudent.program && selectedStudent.program.length > 0 && selectedStudent.program) ||
+                            selectedProgram ||
+                            'Program not set'}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {selectedStudent.email || 'No email on file'}
+                        </p>
+                      </div>
+                      <div className="rounded-full bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
+                        Manual assignment
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="grid gap-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">
+                        Assignment title
+                      </label>
+                      <input
+                        type="text"
+                        value={assignmentTitle}
+                        onChange={(event) => {
+                          if (!titleTouched) setTitleTouched(true);
+                          setAssignmentTitle(event.target.value);
+                          setErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.title;
+                            return next;
+                          });
+                        }}
+                        className={`w-full rounded-xl border px-4 py-3 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20 ${
+                          errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                        }`}
+                        placeholder="E.g., Daily Recitation Assignment"
+                      />
+                      {errors.title && (
+                        <p className="text-xs font-medium text-red-600">{errors.title}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Due date</label>
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={(event) => {
+                          setDueDate(event.target.value);
+                          setErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.dueDate;
+                            return next;
+                          });
+                        }}
+                        className={`w-full rounded-xl border px-4 py-3 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20 ${
+                          errors.dueDate ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                        }`}
+                      />
+                      {errors.dueDate && (
+                        <p className="text-xs font-medium text-red-600">{errors.dueDate}</p>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="space-y-5 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+                    <header className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Classwork structure</h3>
+                        <p className="text-xs text-gray-500">
+                          Mirror the ticket workflow: define sabq, sabqi, and manzil expectations the
+                          student will see in their portal.
+                        </p>
+                      </div>
+                      <div className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary">
+                        Classwork focus
+                      </div>
+                    </header>
+
+                    <div className="space-y-4">
+                      {(Object.keys(STEP_CONFIG) as StepKey[]).map((step) => {
+                        const config = STEP_CONFIG[step];
+                        const detail = classworkDetails[step];
+                        const isHighlighted = detail.portion.trim() || detail.notes.trim();
+
+                        return (
+                          <div
+                            key={step}
+                            className={`rounded-2xl border px-5 py-4 transition ${
+                              isHighlighted
+                                ? 'border-primary/60 bg-soft-primary/60'
+                                : 'border-gray-200 bg-white'
+                            }`}
+                          >
+                            <div className="flex items-start gap-4">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-2xl">
+                                {config.emoji}
+                              </div>
+                              <div className="flex-1 space-y-3">
+                                <div>
+                                  <h4 className="text-base font-semibold text-gray-900">
+                                    {config.label}
+                                  </h4>
+                                  <p className="text-xs text-gray-500">{config.description}</p>
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                      Portion / Pages
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={detail.portion}
+                                      onChange={(event) =>
+                                        handleClassworkDetailChange(
+                                          step,
+                                          'portion',
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="E.g., Juz 5: Ayah 1-20 or Pages 142-144"
+                                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                      Key notes / focus
+                                    </label>
+                                    <textarea
+                                      rows={3}
+                                      value={detail.notes}
+                                      onChange={(event) =>
+                                        handleClassworkDetailChange(step, 'notes', event.target.value)
+                                      }
+                                      placeholder="Coaching cues, tajweed reminders, or memorisation targets"
+                                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {errors.classwork && (
+                      <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                        {errors.classwork}
+                      </p>
+                    )}
+                  </section>
+
+                  <section className="grid gap-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Homework</label>
+                      <textarea
+                        rows={5}
+                        value={homeworkText}
+                        onChange={(event) => setHomeworkText(event.target.value)}
+                        placeholder="Homework instructions (e.g., rewrite ayat 15-20, listen to Sheikh Husary recitation, etc.)"
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-gray-700">Internal comments</label>
+                      <textarea
+                        rows={5}
+                        value={generalComments}
+                        onChange={(event) => setGeneralComments(event.target.value)}
+                        placeholder="Notes for staff or future reference (not visible to student)."
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                  </section>
+
+                  <div className="flex flex-wrap justify-end gap-3 border-t border-gray-200 pt-6">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="inline-flex items-center rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-[2px] border-white border-b-transparent" />
+                          {isEdit ? 'Updating...' : 'Creating...'}
+                        </>
+                      ) : (
+                        <>{isEdit ? 'Update assignment' : 'Create assignment'}</>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </main>
         </div>
       </div>
     </div>

@@ -56,7 +56,9 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
               </div>
               <div>
                 <h2 className="text-2xl font-bold">Teacher Credentials Management</h2>
-                <p className="text-blue-100">{teacher?.name || teacher?.fullName || teacher?.email || 'Selected Teacher'}</p>
+                <p className="text-blue-100">
+                  {teacher?.fullName ?? teacher?.name ?? teacher?.email ?? 'this teacher'}
+                </p>
               </div>
             </div>
             <button
