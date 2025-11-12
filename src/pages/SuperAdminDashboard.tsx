@@ -498,7 +498,7 @@ const SuperAdminDashboard: React.FC = () => {
             {
               id: 'student-credentials',
               badge: 'CR',
-              title: 'Credentials',
+              title: 'Student Credentials',
               description: 'Manage login credentials and portal access.',
               action: () => setShowStudentCredentials(true),
               button: 'Manage access',
@@ -506,15 +506,15 @@ const SuperAdminDashboard: React.FC = () => {
             {
               id: 'student-bulk',
               badge: 'BL',
-              title: 'Bulk Operations',
-              description: 'Import, export, or batch update student records.',
+              title: 'Student Bulk Operations',
+              description: 'Manage multiple students at once.',
               action: () => setShowStudentBulkOperations(true),
               button: 'Run bulk action',
             },
             {
               id: 'student-directory',
               badge: 'SD',
-              title: 'All Students',
+              title: 'Student Directory',
               description: 'Browse and filter the complete student directory.',
               action: () => setActiveSection('students'),
               button: 'View directory',

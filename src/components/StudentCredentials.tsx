@@ -89,14 +89,17 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
         <div className="flex items-center justify-between border-b border-gray-200 p-6">
           <div className="flex items-center space-x-4">
             <img
-              src={student.avatar || `https://ui-avatars.com/api/?name=${student.fullName?.replace(' ', '+') || 'Student'}&background=2E4D32&color=fff`}
-              alt={student.fullName}
+              src={
+                student.avatar ||
+                `https://ui-avatars.com/api/?name=${(student.fullName ?? student.name ?? 'Student').replace(' ', '+')}&background=2E4D32&color=fff`
+              }
+              alt={student.fullName ?? student.name ?? 'Student'}
               className="h-12 w-12 rounded-full border border-accent-soft"
             />
             <div>
               <h2 className="text-xl font-bold text-primary">Student Credentials</h2>
               <p className="text-sm text-primary-soft">
-                Manage login and access settings for {student.fullName}
+                Manage login and access settings for {student.fullName ?? student.name ?? 'this student'}
               </p>
             </div>
           </div>
