@@ -636,6 +636,9 @@ app.post('/api/teachers', async (req, res) => {
 // Update teacher profile
 app.put('/api/teachers/:id', async (req, res) => {
   try {
+    const teacherId = req.params.id;
+    console.log(`🔄 PUT /api/teachers/${teacherId}`);
+    
     const teacherData = { ...req.body };
     if (teacherData.userId && typeof teacherData.userId === 'string') {
       teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
@@ -644,38 +647,73 @@ app.put('/api/teachers/:id', async (req, res) => {
     // Normalize the teacher data
     const normalizedData = normalizeTeacherData(teacherData);
     
-    const updatedTeacher = await Teacher.findByIdAndUpdate(
-      req.params.id,
+    // Try to convert ID to ObjectId if it's a valid ObjectId string
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(teacherId);
+    const queryId = isValidObjectId ? new mongoose.Types.ObjectId(teacherId) : teacherId;
+    
+    console.log(`🔍 Looking for teacher with ID: ${teacherId} (valid ObjectId: ${isValidObjectId})`);
+    
+    let updatedTeacher = await Teacher.findByIdAndUpdate(
+      queryId,
       normalizedData,
       { new: true, runValidators: true }
     );
 
     if (!updatedTeacher) {
-      // Try finding by userId or teacherId
+      console.log(`⚠️ Teacher not found with direct ID, trying alternative queries...`);
+      
+      // Try finding by userId or teacherId (with proper ObjectId conversion)
+      const queryConditions = [];
+      
+      if (isValidObjectId) {
+        const objectId = new mongoose.Types.ObjectId(teacherId);
+        queryConditions.push(
+          { _id: objectId },
+          { userId: objectId }
+        );
+      }
+      
+      // Also try as string
+      queryConditions.push(
+        { userId: teacherId },
+        { teacherId: teacherId },
+        { _id: teacherId }
+      );
+      
+      console.log(`🔍 Query conditions:`, JSON.stringify(queryConditions, null, 2));
+      
       const teacher = await Teacher.findOne({
-        $or: [
-          { userId: req.params.id },
-          { teacherId: req.params.id },
-          { _id: req.params.id }
-        ]
+        $or: queryConditions
       });
       
       if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
+        console.error(`❌ Teacher not found with any query condition. ID: ${teacherId}`);
+        // List all teacher IDs for debugging
+        const allTeachers = await Teacher.find({}, '_id userId teacherId fullName email').limit(10);
+        console.log(`📋 Sample teacher IDs:`, allTeachers.map(t => ({
+          _id: t._id.toString(),
+          userId: t.userId?.toString(),
+          teacherId: t.teacherId,
+          name: t.fullName || t.email
+        })));
+        return res.status(404).json({ error: `Teacher not found with ID: ${teacherId}` });
       }
       
-      const finalUpdate = await Teacher.findByIdAndUpdate(
+      console.log(`✅ Found teacher via fallback query:`, teacher._id.toString());
+      
+      updatedTeacher = await Teacher.findByIdAndUpdate(
         teacher._id,
         normalizedData,
         { new: true, runValidators: true }
       );
       
-      return res.json(finalUpdate);
+      return res.json(updatedTeacher);
     }
 
+    console.log(`✅ Teacher updated successfully:`, updatedTeacher._id.toString());
     res.json(updatedTeacher);
   } catch (error) {
-    console.error('Error updating teacher:', error);
+    console.error('❌ Error updating teacher:', error);
     if (error.code === 11000) {
       return res.status(409).json({ error: 'A teacher with that email already exists.' });
     }
