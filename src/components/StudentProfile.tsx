@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
 
 interface StudentProfileProps {
@@ -11,615 +11,556 @@ interface StudentProfileProps {
   onCommunication?: () => void;
 }
 
-const StudentProfile: React.FC<StudentProfileProps> = ({ 
-  student, 
-  onClose, 
-  onEdit, 
-  onEnrollment, 
-  onPayments, 
-  onProgress, 
-  onCommunication 
+const StudentProfile: React.FC<StudentProfileProps> = ({
+  student,
+  onClose,
+  onEdit,
+  onEnrollment,
+  onPayments,
+  onProgress,
+  onCommunication,
 }) => {
-  const { teachers, updateStudent } = useData();
+  const { students, teachers, assignments } = useData();
   const [activeTab, setActiveTab] = useState('overview');
 
-  const assignedTeacher = teachers.find(t => t.id === student.assignedTeacher);
+  const currentStudent = useMemo(
+    () => students.find((entry) => entry.id === student.id) ?? student,
+    [students, student],
+  );
+
+  const assignedTeacher = teachers.find((t) => t.id === currentStudent.assignedTeacher);
+
+  const scheduleEntries = useMemo(() => {
+    const days = Array.isArray(currentStudent.schedule?.days)
+      ? currentStudent.schedule?.days
+      : [];
+
+    return days.map((day: string) => ({
+      day,
+      time:
+        currentStudent.schedule?.startTime && currentStudent.schedule?.endTime
+          ? `${currentStudent.schedule?.startTime} - ${currentStudent.schedule?.endTime}`
+          : '—',
+      teacher: assignedTeacher?.fullName || 'Not assigned',
+      room: currentStudent.schedule?.room || '—',
+    }));
+  }, [assignedTeacher?.fullName, currentStudent.schedule]);
+
+  const studentAssignments = useMemo(
+    () =>
+      assignments.filter(
+        (assignment) =>
+          Array.isArray(assignment.assignedTo) && assignment.assignedTo.includes(currentStudent.id),
+      ),
+    [assignments, currentStudent.id],
+  );
+
+  const gradedAssignments = studentAssignments.filter(
+    (assignment) => typeof (assignment as any).grade === 'number',
+  );
+
+  const averageGrade =
+    gradedAssignments.length > 0
+      ? Math.round(
+          gradedAssignments.reduce((sum, assignment) => sum + ((assignment as any).grade || 0), 0) /
+            gradedAssignments.length,
+        )
+      : null;
+
+  const payments = Array.isArray((currentStudent as any).payments)
+    ? (currentStudent as any).payments
+    : [];
+
+  const notes = Array.isArray((currentStudent as any).notes)
+    ? (currentStudent as any).notes
+    : [];
+
+  const attendance = Array.isArray((currentStudent as any).attendance)
+    ? (currentStudent as any).attendance
+    : [];
+
+  const courses = Array.isArray((currentStudent as any).courses)
+    ? (currentStudent as any).courses
+    : [];
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'courses', label: 'Courses', icon: '📚' },
     { id: 'schedule', label: 'Schedule', icon: '📅' },
-    { id: 'attendance', label: 'Attendance', icon: '✅' },
-    { id: 'progress', label: 'Progress', icon: '📈' },
     { id: 'assignments', label: 'Assignments', icon: '📝' },
+    { id: 'progress', label: 'Progress', icon: '📈' },
+    { id: 'attendance', label: 'Attendance', icon: '✅' },
     { id: 'payments', label: 'Payments', icon: '💰' },
     { id: 'notes', label: 'Notes', icon: '📄' },
-    { id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦' }
+    { id: 'courses', label: 'Courses', icon: '📚' },
+    { id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦' },
   ];
 
-  // Mock data for comprehensive display
-  const mockSchedule = [
-    { day: 'Monday', time: '9:00 AM - 11:00 AM', subject: 'Quran Recitation', teacher: 'Ustadh Ahmad', room: 'Room 101' },
-    { day: 'Tuesday', time: '9:00 AM - 11:00 AM', subject: 'Tajweed', teacher: 'Ustadh Fatima', room: 'Room 102' },
-    { day: 'Wednesday', time: '9:00 AM - 11:00 AM', subject: 'Islamic Studies', teacher: 'Ustadh Ibrahim', room: 'Room 103' },
-    { day: 'Thursday', time: '9:00 AM - 11:00 AM', subject: 'Arabic Language', teacher: 'Ustadh Ahmad', room: 'Room 101' },
-    { day: 'Friday', time: '9:00 AM - 11:00 AM', subject: 'Memorization', teacher: 'Ustadh Fatima', room: 'Room 102' }
-  ];
+  const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : '—');
 
-  const mockAttendance = [
-    { date: '2024-01-15', status: 'Present', time: '9:05 AM', notes: 'On time' },
-    { date: '2024-01-16', status: 'Present', time: '9:02 AM', notes: 'On time' },
-    { date: '2024-01-17', status: 'Late', time: '9:15 AM', notes: 'Traffic delay' },
-    { date: '2024-01-18', status: 'Present', time: '9:00 AM', notes: 'On time' },
-    { date: '2024-01-19', status: 'Absent', time: '-', notes: 'Sick leave' }
-  ];
-
-  const mockAssignments = [
-    { id: 1, title: 'Surah Al-Fatiha Memorization', subject: 'Quran Recitation', dueDate: '2024-02-15', status: 'Completed', grade: 95 },
-    { id: 2, title: 'Tajweed Rules Quiz', subject: 'Tajweed', dueDate: '2024-02-10', status: 'Completed', grade: 88 },
-    { id: 3, title: 'Islamic History Essay', subject: 'Islamic Studies', dueDate: '2024-02-20', status: 'Pending', grade: null },
-    { id: 4, title: 'Arabic Vocabulary Test', subject: 'Arabic Language', dueDate: '2024-02-12', status: 'Completed', grade: 92 }
-  ];
-
-  const mockPayments = [
-    { id: 1, amount: 150, date: '2024-01-15', status: 'Paid', method: 'Bank Transfer', reference: 'TXN001' },
-    { id: 2, amount: 150, date: '2024-02-15', status: 'Paid', method: 'Cash', reference: 'CASH001' },
-    { id: 3, amount: 150, date: '2024-03-15', status: 'Pending', method: 'Bank Transfer', reference: 'TXN002' },
-    { id: 4, amount: 150, date: '2024-04-15', status: 'Overdue', method: 'Bank Transfer', reference: 'TXN003' }
-  ];
-
-  const mockNotes = [
-    { id: 1, date: '2024-01-20', author: 'Ustadh Ahmad', content: 'Excellent progress in Quran recitation. Keep up the good work!', type: 'Positive' },
-    { id: 2, date: '2024-01-25', author: 'Ustadh Fatima', content: 'Needs to focus more on Tajweed rules. Practice daily.', type: 'Improvement' },
-    { id: 3, date: '2024-02-01', author: 'Ustadh Ibrahim', content: 'Great improvement in Islamic Studies. Very attentive in class.', type: 'Positive' }
-  ];
-
-  const mockProgress = {
-    overall: 85,
-    subjects: [
-      { name: 'Quran Recitation', progress: 90, grade: 'A+' },
-      { name: 'Tajweed', progress: 85, grade: 'A' },
-      { name: 'Islamic Studies', progress: 88, grade: 'A' },
-      { name: 'Arabic Language', progress: 82, grade: 'B+' },
-      { name: 'Memorization', progress: 90, grade: 'A+' }
-    ]
-  };
-
-  console.log('🔍 StudentProfile component rendering with student:', student);
-  
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Modern Header */}
-        <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
-          <div className="p-8">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <img 
-                    src={student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.fullName)}&background=random&color=fff`} 
-                    alt={student.fullName}
-                    className="h-24 w-24 rounded-full border-4 border-white shadow-lg"
-                  />
-                  <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-white ${
-                    student.status === 'active' ? 'bg-green-500' : 
-                    student.status === 'inactive' ? 'bg-gray-500' : 'bg-yellow-500'
-                  }`}></div>
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">{student.fullName}</h1>
-                  <p className="text-blue-100 text-lg mb-1">{student.email}</p>
-                  <p className="text-blue-200 text-sm">Student ID: {student.id}</p>
-                  <div className="flex items-center space-x-4 mt-3">
-                    <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">
-                      {student.program || 'No Program Assigned'}
-                    </span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      student.status === 'active' ? 'bg-green-500 bg-opacity-20 text-green-100' :
-                      student.status === 'inactive' ? 'bg-gray-500 bg-opacity-20 text-gray-100' :
-                      'bg-yellow-500 bg-opacity-20 text-yellow-100'
-                    }`}>
-                      {student.status}
-                    </span>
-                  </div>
-                </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6">
+      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <header className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white">
+          <div className="flex flex-col gap-6 px-8 py-8 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-5">
+              <div className="relative">
+                <img
+                  src={
+                    currentStudent.avatar ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      currentStudent.fullName || 'Student',
+                    )}&background=random&color=fff`
+                  }
+                  alt={currentStudent.fullName}
+                  className="h-24 w-24 rounded-full border-4 border-white shadow-lg"
+                />
+                <span
+                  className={`absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-4 border-white ${
+                    currentStudent.status === 'active'
+                      ? 'bg-green-500'
+                      : currentStudent.status === 'inactive'
+                        ? 'bg-gray-500'
+                        : 'bg-yellow-500'
+                  }`}
+                />
               </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => {
-                    console.log('🔍 Edit button clicked for student:', student);
-                    onEdit(student);
-                  }}
-                  className="px-6 py-3 bg-white bg-opacity-20 backdrop-blur-sm text-white rounded-xl hover:bg-opacity-30 transition-all duration-200 border border-white border-opacity-30"
-                >
-                  ✏️ Edit Profile
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-6 py-3 bg-red-500 bg-opacity-90 text-white rounded-xl hover:bg-opacity-100 transition-all duration-200"
-                >
-                  ✕ Close
-                </button>
+              <div>
+                <h1 className="text-3xl font-bold leading-tight">{currentStudent.fullName}</h1>
+                <p className="text-blue-100">{currentStudent.email || 'No email on file'}</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                  <span className="rounded-full bg-white/20 px-3 py-1 font-medium">
+                    {currentStudent.program || 'No program assigned'}
+                  </span>
+                  <span className="rounded-full bg-white/20 px-3 py-1 font-medium capitalize">
+                    {currentStudent.status || 'active'}
+                  </span>
+                  {assignedTeacher && (
+                    <span className="rounded-full bg-white/20 px-3 py-1 font-medium">
+                      Teacher: {assignedTeacher.fullName}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* Modern Navigation Tabs */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-          <div className="flex space-x-2 px-8 py-4 overflow-x-auto">
-            {tabs.map((tab) => (
+            <div className="flex flex-wrap gap-3">
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 rounded-xl font-medium transition-all duration-200 whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white shadow-lg transform scale-105'
-                    : 'text-gray-600 hover:text-blue-600 hover:bg-white hover:shadow-md'
-                }`}
+                onClick={() => onEdit(currentStudent)}
+                className="inline-flex items-center rounded-xl border border-white/30 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                ✏️ Edit Profile
               </button>
-            ))}
+              <button
+                onClick={onClose}
+                className="inline-flex items-center rounded-xl bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600"
+              >
+                ✕ Close
+              </button>
+            </div>
           </div>
-        </div>
+        </header>
 
-        {/* Content Area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            {/* Overview Tab */}
+        <nav className="flex gap-2 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 py-3">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`whitespace-nowrap rounded-xl px-5 py-3 text-sm font-medium transition ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white shadow'
+                  : 'text-gray-600 hover:bg-white hover:text-blue-600'
+              }`}
+            >
+              <span className="mr-2">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <main className="flex-1 overflow-y-auto px-6 py-6">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
             {activeTab === 'overview' && (
-              <div className="space-y-8">
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-                    <div className="flex items-center">
-                      <div className="p-3 bg-blue-500 rounded-lg">
-                        <span className="text-white text-xl">📚</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-blue-600">Courses</p>
-                        <p className="text-2xl font-bold text-blue-900">{student.courses?.length || 5}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-                    <div className="flex items-center">
-                      <div className="p-3 bg-green-500 rounded-lg">
-                        <span className="text-white text-xl">📈</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-green-600">Progress</p>
-                        <p className="text-2xl font-bold text-green-900">{mockProgress.overall}%</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-                    <div className="flex items-center">
-                      <div className="p-3 bg-purple-500 rounded-lg">
-                        <span className="text-white text-xl">💰</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-purple-600">Payments</p>
-                        <p className="text-2xl font-bold text-purple-900">$600</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200">
-                    <div className="flex items-center">
-                      <div className="p-3 bg-orange-500 rounded-lg">
-                        <span className="text-white text-xl">⭐</span>
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-orange-600">Grade</p>
-                        <p className="text-2xl font-bold text-orange-900">A+</p>
-                      </div>
-                    </div>
-                  </div>
+              <>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <StatCard label="Assignments" value={studentAssignments.length} icon="📝" />
+                  <StatCard
+                    label="Average Grade"
+                    value={averageGrade !== null ? `${averageGrade}%` : '—'}
+                    icon="📈"
+                  />
+                  <StatCard
+                    label="Monthly Tuition"
+                    value={currentStudent.tuitionFee ? `$${currentStudent.tuitionFee}` : '—'}
+                    icon="💰"
+                  />
+                  <StatCard
+                    label="Enrollment Date"
+                    value={formatDate(currentStudent.enrolledDate)}
+                    icon="📅"
+                  />
                 </div>
 
-                {/* Personal Information */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                      <span className="mr-3">👤</span>
-                      Personal Information
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Full Name</label>
-                          <p className="text-gray-900 font-semibold">{student.fullName}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Email</label>
-                          <p className="text-gray-900">{student.email}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Phone</label>
-                          <p className="text-gray-900">{student.contact || 'Not provided'}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Address</label>
-                          <p className="text-gray-900">{student.address || 'Not provided'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-                      <span className="mr-3">🎓</span>
-                      Academic Information
-                    </h3>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Program</label>
-                          <p className="text-gray-900 font-semibold">{student.program || 'Not assigned'}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Level</label>
-                          <p className="text-gray-900">{student.level || 'Not set'}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Assigned Teacher</label>
-                          <p className="text-gray-900">{assignedTeacher?.fullName || 'Not assigned'}</p>
-                        </div>
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">Enrollment Date</label>
-                          <p className="text-gray-900">{student.enrolledDate ? new Date(student.enrolledDate).toLocaleDateString() : 'Not set'}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <InfoCard
+                    title="Profile"
+                    icon="👤"
+                    items={[
+                      { label: 'Parent / Guardian', value: currentStudent.parentName },
+                      { label: 'Contact', value: currentStudent.contact },
+                      { label: 'Email', value: currentStudent.email },
+                      { label: 'Status', value: currentStudent.status },
+                    ]}
+                  />
+                  <InfoCard
+                    title="Enrollment"
+                    icon="🎓"
+                    items={[
+                      { label: 'Program', value: currentStudent.program },
+                      {
+                        label: 'Assigned Teacher',
+                        value: assignedTeacher ? assignedTeacher.fullName : 'Not assigned',
+                      },
+                      {
+                        label: 'Tuition',
+                        value: currentStudent.tuitionFee ? `$${currentStudent.tuitionFee}` : '—',
+                      },
+                      {
+                        label: 'Registration',
+                        value: currentStudent.registrationAmount
+                          ? `$${currentStudent.registrationAmount}`
+                          : '—',
+                      },
+                    ]}
+                  />
                 </div>
-              </div>
+
+                <SectionCard title="Upcoming Sessions" icon="📅">
+                  {scheduleEntries.length === 0 ? (
+                    <EmptyState message="No schedule has been added for this student yet." />
+                  ) : (
+                    <ul className="space-y-3 text-sm text-gray-700">
+                      {scheduleEntries.map((entry, index) => (
+                        <li
+                          key={`${entry.day}-${index}`}
+                          className="flex flex-wrap items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        >
+                          <span className="font-semibold text-blue-700">{entry.day}</span>
+                          <span>{entry.time}</span>
+                          <span>{entry.teacher}</span>
+                          <span>{entry.room}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SectionCard>
+
+                <SectionCard title="Recent Assignments" icon="📝" onAction={onProgress} actionLabel="View All">
+                  {studentAssignments.length === 0 ? (
+                    <EmptyState message="No assignments found for this student." />
+                  ) : (
+                    <ul className="space-y-3 text-sm text-gray-700">
+                      {studentAssignments.slice(0, 4).map((assignment) => (
+                        <li
+                          key={assignment.id}
+                          className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        >
+                          <div className="flex flex-wrap items-center justify-between">
+                            <span className="font-semibold text-gray-900">{assignment.title}</span>
+                            <span className="text-xs text-gray-500">
+                              {assignment.dueDate
+                                ? new Date(assignment.dueDate).toLocaleDateString()
+                                : 'No due date'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {assignment.program || assignment.classworkType || 'Classwork'}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </SectionCard>
+              </>
             )}
 
-            {/* Courses Tab */}
-            {activeTab === 'courses' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Courses</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {mockProgress.subjects.map((subject, index) => (
-                    <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="font-bold text-gray-900">{subject.name}</h4>
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                          {subject.grade}
-                        </span>
-                      </div>
-                      <div className="mb-4">
-                        <div className="flex justify-between text-sm text-gray-600 mb-2">
-                          <span>Progress</span>
-                          <span>{subject.progress}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${subject.progress}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        <p>Instructor: {assignedTeacher?.fullName || 'Not assigned'}</p>
-                        <p>Status: Active</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Schedule Tab */}
             {activeTab === 'schedule' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Weekly Schedule</h3>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Day</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Time</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Subject</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Teacher</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Room</th>
+              <SectionCard title="Weekly Schedule" icon="📅">
+                {scheduleEntries.length === 0 ? (
+                  <EmptyState message="No schedule yet. Add days and times from the student registration form." />
+                ) : (
+                  <table className="w-full table-auto text-sm">
+                    <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500">
+                      <tr>
+                        <th className="px-4 py-3">Day</th>
+                        <th className="px-4 py-3">Time</th>
+                        <th className="px-4 py-3">Teacher</th>
+                        <th className="px-4 py-3">Room</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {scheduleEntries.map((entry, index) => (
+                        <tr key={`${entry.day}-${index}`} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{entry.day}</td>
+                          <td className="px-4 py-3 text-gray-600">{entry.time}</td>
+                          <td className="px-4 py-3 text-gray-600">{entry.teacher}</td>
+                          <td className="px-4 py-3 text-gray-600">{entry.room}</td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {mockSchedule.map((schedule, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{schedule.day}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{schedule.time}</td>
-                            <td className="px-6 py-4 text-sm text-gray-900">{schedule.subject}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{schedule.teacher}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{schedule.room}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </SectionCard>
             )}
 
-            {/* Attendance Tab */}
-            {activeTab === 'attendance' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-2xl font-bold text-gray-900">Attendance Record</h3>
-                  <div className="flex space-x-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">80%</p>
-                      <p className="text-sm text-gray-600">Attendance Rate</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-blue-600">4</p>
-                      <p className="text-sm text-gray-600">Present</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-red-600">1</p>
-                      <p className="text-sm text-gray-600">Absent</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Date</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Status</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Time</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Notes</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {mockAttendance.map((record, index) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              {new Date(record.date).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                record.status === 'Present' ? 'bg-green-100 text-green-800' :
-                                record.status === 'Late' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {record.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{record.time}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{record.notes}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Progress Tab */}
-            {activeTab === 'progress' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Academic Progress</h3>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-lg font-medium text-gray-900">Overall Progress</span>
-                      <span className="text-2xl font-bold text-blue-600">{mockProgress.overall}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div 
-                        className="bg-blue-600 h-4 rounded-full transition-all duration-300" 
-                        style={{ width: `${mockProgress.overall}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    {mockProgress.subjects.map((subject, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium text-gray-900">{subject.name}</span>
-                          <span className="text-sm font-medium text-gray-600">{subject.grade}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-green-500 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${subject.progress}%` }}
-                          ></div>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
-                          <span>Progress</span>
-                          <span>{subject.progress}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Assignments Tab */}
             {activeTab === 'assignments' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Assignments</h3>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Title</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Subject</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Due Date</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Status</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Grade</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {mockAssignments.map((assignment) => (
-                          <tr key={assignment.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{assignment.title}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{assignment.subject}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">
-                              {new Date(assignment.dueDate).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                assignment.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                                assignment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {assignment.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              {assignment.grade ? `${assignment.grade}%` : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Payments Tab */}
-            {activeTab === 'payments' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-2xl font-bold text-gray-900">Payment History</h3>
-                  <div className="flex space-x-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-green-600">$300</p>
-                      <p className="text-sm text-gray-600">Paid</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-yellow-600">$150</p>
-                      <p className="text-sm text-gray-600">Pending</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-red-600">$150</p>
-                      <p className="text-sm text-gray-600">Overdue</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Date</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Amount</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Status</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Method</th>
-                          <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">Reference</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {mockPayments.map((payment) => (
-                          <tr key={payment.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                              {new Date(payment.date).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4 text-sm font-medium text-gray-900">${payment.amount}</td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                payment.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                                payment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-red-100 text-red-800'
-                              }`}>
-                                {payment.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{payment.method}</td>
-                            <td className="px-6 py-4 text-sm text-gray-600">{payment.reference}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Notes Tab */}
-            {activeTab === 'notes' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Notes & Comments</h3>
-                <div className="space-y-4">
-                  {mockNotes.map((note) => (
-                    <div key={note.id} className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h4 className="font-semibold text-gray-900">{note.author}</h4>
-                          <p className="text-sm text-gray-600">{new Date(note.date).toLocaleDateString()}</p>
-                        </div>
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          note.type === 'Positive' ? 'bg-green-100 text-green-800' :
-                          note.type === 'Improvement' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-blue-100 text-blue-800'
-                        }`}>
-                          {note.type}
-                        </span>
-                      </div>
-                      <p className="text-gray-700">{note.content}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Family Tab */}
-            {activeTab === 'family' && (
-              <div className="space-y-6">
-                <h3 className="text-2xl font-bold text-gray-900">Family Information</h3>
-                {student.siblings && student.siblings.length > 0 ? (
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4">
-                      Siblings in Academy ({student.siblings.length})
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {student.siblings.map((sibling: any, index: number) => (
-                        <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                          <div className="flex items-center space-x-3">
-                            <img 
-                              src={sibling.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(sibling.fullName)}&background=random&color=fff`}
-                              alt={sibling.fullName}
-                              className="h-12 w-12 rounded-full"
-                            />
-                            <div>
-                              <p className="font-semibold text-gray-900">{sibling.fullName}</p>
-                              <p className="text-sm text-gray-600">{sibling.program}</p>
-                              <p className="text-sm text-gray-500">ID: {sibling.id}</p>
-                            </div>
+              <SectionCard title="Assignments" icon="📝">
+                {studentAssignments.length === 0 ? (
+                  <EmptyState message="This student does not have any assignments yet." />
+                ) : (
+                  <ul className="space-y-3 text-sm text-gray-700">
+                    {studentAssignments.map((assignment) => (
+                      <li
+                        key={assignment.id}
+                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-900">{assignment.title}</p>
+                            <p className="text-xs text-gray-500">
+                              {assignment.program || assignment.classworkType || 'Classwork'}
+                            </p>
+                          </div>
+                          <div className="text-right text-xs text-gray-500">
+                            <p>
+                              Due:{' '}
+                              {assignment.dueDate
+                                ? new Date(assignment.dueDate).toLocaleDateString()
+                                : 'Not set'}
+                            </p>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            )}
+
+            {activeTab === 'progress' && (
+              <SectionCard title="Progress Snapshot" icon="📈">
+                {studentAssignments.length === 0 ? (
+                  <EmptyState message="Assign coursework to start tracking progress." />
                 ) : (
-                  <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-                    <div className="text-center py-12">
-                      <p className="text-gray-500 text-lg">No family members in the academy.</p>
-                    </div>
+                  <div className="space-y-3 text-sm text-gray-700">
+                    <p>
+                      <span className="font-semibold">Assignments completed:</span>{' '}
+                      {gradedAssignments.length} of {studentAssignments.length}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Average grade:</span>{' '}
+                      {averageGrade !== null ? `${averageGrade}%` : '—'}
+                    </p>
                   </div>
                 )}
-              </div>
+              </SectionCard>
+            )}
+
+            {activeTab === 'attendance' && (
+              <SectionCard title="Attendance" icon="✅">
+                {attendance.length === 0 ? (
+                  <EmptyState message="No attendance records found." />
+                ) : (
+                  <ul className="space-y-3 text-sm text-gray-700">
+                    {attendance.map((record: any, index: number) => (
+                      <li
+                        key={`${record.date}-${index}`}
+                        className="flex flex-wrap items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                      >
+                        <span className="font-semibold text-gray-900">
+                          {record.date ? new Date(record.date).toLocaleDateString() : '—'}
+                        </span>
+                        <span className="text-xs text-gray-500">{record.status}</span>
+                        <span className="text-xs text-gray-500">{record.notes}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            )}
+
+            {activeTab === 'payments' && (
+              <SectionCard title="Payments" icon="💰" actionLabel="Record Payment" onAction={onPayments}>
+                {payments.length === 0 ? (
+                  <EmptyState message="No payments recorded for this student." />
+                ) : (
+                  <ul className="space-y-3 text-sm text-gray-700">
+                    {payments.map((payment: any, index: number) => (
+                      <li
+                        key={payment.id || index}
+                        className="flex flex-wrap items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                      >
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            ${payment.amount}{' '}
+                            <span className="text-xs text-gray-500">({payment.status})</span>
+                          </p>
+                          <p className="text-xs text-gray-500">Method: {payment.method || '—'}</p>
+                        </div>
+                        <div className="text-right text-xs text-gray-500">
+                          <p>{formatDate(payment.date)}</p>
+                          {payment.reference && <p>Ref: {payment.reference}</p>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            )}
+
+            {activeTab === 'notes' && (
+              <SectionCard title="Teacher Notes" icon="📄" actionLabel="Add Note">
+                {notes.length === 0 ? (
+                  <EmptyState message="No notes for this student yet." />
+                ) : (
+                  <ul className="space-y-3 text-sm text-gray-700">
+                    {notes.map((note: any) => (
+                      <li
+                        key={note.id}
+                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{note.author || 'Team member'}</span>
+                          <span>{formatDate(note.date)}</span>
+                        </div>
+                        <p className="mt-2 text-gray-800">{note.content}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            )}
+
+            {activeTab === 'courses' && (
+              <SectionCard title="Courses" icon="📚">
+                {courses.length === 0 ? (
+                  <EmptyState message="No courses assigned yet." />
+                ) : (
+                  <ul className="space-y-3 text-sm text-gray-700">
+                    {courses.map((course: any, index: number) => (
+                      <li
+                        key={course.id || index}
+                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                      >
+                        {course.name || course}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+            )}
+
+            {activeTab === 'family' && (
+              <SectionCard title="Family & Emergency Contacts" icon="👨‍👩‍👧‍👦">
+                <ul className="space-y-3 text-sm text-gray-700">
+                  <li className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="font-semibold text-gray-900">Primary Guardian</p>
+                    <p>{currentStudent.parentName || 'Not provided'}</p>
+                    <p className="text-xs text-gray-500">{currentStudent.contact || 'No phone'}</p>
+                  </li>
+                  {Array.isArray((currentStudent as any).familyContacts) &&
+                    (currentStudent as any).familyContacts.map((contact: any, index: number) => (
+                      <li
+                        key={contact.id || index}
+                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                      >
+                        <p className="font-semibold text-gray-900">
+                          {contact.name} — {contact.relationship}
+                        </p>
+                        <p className="text-xs text-gray-500">{contact.phone}</p>
+                      </li>
+                    ))}
+                </ul>
+              </SectionCard>
             )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
 };
+
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  icon: string;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon }) => (
+  <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className="flex items-center justify-between">
+      <span className="text-2xl">{icon}</span>
+      <div className="text-right">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+        <p className="mt-1 text-lg font-semibold text-gray-900">{value}</p>
+      </div>
+    </div>
+  </div>
+);
+
+interface InfoCardProps {
+  title: string;
+  icon: string;
+  items: Array<{ label: string; value?: string | number | null }>;
+}
+
+const InfoCard: React.FC<InfoCardProps> = ({ title, icon, items }) => (
+  <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <h3 className="mb-4 flex items-center text-lg font-semibold text-gray-900">
+      <span className="mr-3 text-xl">{icon}</span>
+      {title}
+    </h3>
+    <div className="grid grid-cols-1 gap-3 text-sm text-gray-700">
+      {items.map(({ label, value }) => (
+        <div key={label} className="flex justify-between">
+          <span className="font-medium text-gray-500">{label}</span>
+          <span className="text-gray-900">{value ?? '—'}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface SectionCardProps {
+  title: string;
+  icon: string;
+  children: React.ReactNode;
+  actionLabel?: string;
+  onAction?: (() => void) | undefined;
+}
+
+const SectionCard: React.FC<SectionCardProps> = ({ title, icon, children, actionLabel, onAction }) => (
+  <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="mb-4 flex items-center justify-between">
+      <h3 className="flex items-center text-lg font-semibold text-gray-900">
+        <span className="mr-3 text-xl">{icon}</span>
+        {title}
+      </h3>
+      {actionLabel && onAction && (
+        <button
+          onClick={onAction}
+          className="text-sm font-semibold text-blue-600 hover:text-blue-800 underline"
+        >
+          {actionLabel}
+        </button>
+      )}
+    </div>
+    {children}
+  </div>
+);
+
+const EmptyState: React.FC<{ message: string }> = ({ message }) => (
+  <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+    {message}
+  </div>
+);
 
 export default StudentProfile;
