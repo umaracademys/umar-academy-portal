@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Student,
   ProgramType,
@@ -39,6 +39,27 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
   });
 
   const allDays: ScheduleDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+  // Initialize form data when student prop changes (for edit mode)
+  useEffect(() => {
+    if (isEdit && student) {
+      console.log('🔄 Initializing StudentRegistrationForm with student data:', student);
+      setFormData({
+        fullName: student.fullName || '',
+        parentName: student.parentName || '',
+        email: student.email || '',
+        contact: student.contact || '',
+        program: student.program || 'Full Time HQ' as ProgramType,
+        tuitionFee: student.tuitionFee || 500,
+        registrationAmount: student.registrationAmount || 100,
+        assignedTeacher: student.assignedTeacher || '',
+        scheduleDays: student.schedule?.days || [] as ScheduleDay[],
+        startTime: student.schedule?.startTime || '09:00',
+        endTime: student.schedule?.endTime || '12:00',
+      });
+      setSiblings(Array.isArray(student.siblings) ? student.siblings : []);
+    }
+  }, [isEdit, student]);
 
   const handleDayToggle = (day: ScheduleDay) => {
     setFormData(prev => ({
