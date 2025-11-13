@@ -174,8 +174,7 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
               status: student.status || cached?.status || 'active',
               avatar: student.avatar || cached?.avatar || '',
               recitationProfile: student.recitationProfile || cached?.recitationProfile,
-              studentRecordId: student.studentRecordId || cached?.studentRecordId,
-              studentId: student.studentId || cached?.studentId,
+              studentRecordId: student.studentRecordId || cached?.studentRecordId || id,
             };
           });
           setStudentsFromApi(normalizedStudents);
