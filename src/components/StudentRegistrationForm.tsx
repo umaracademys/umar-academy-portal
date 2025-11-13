@@ -22,8 +22,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     email: student?.email || '',
     contact: student?.contact || '',
     program: student?.program || 'Full Time HQ' as ProgramType,
-    tuitionFee: student?.tuitionFee || 500,
-    registrationAmount: student?.registrationAmount || 100,
+    tuitionFee: typeof student?.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : 500,
+    registrationAmount: typeof student?.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : 100,
     assignedTeacher: student?.assignedTeacher || '',
     scheduleDays: student?.schedule?.days || [] as ScheduleDay[],
     startTime: student?.schedule?.startTime || '09:00',
@@ -50,8 +50,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         email: student.email || '',
         contact: student.contact || '',
         program: student.program || 'Full Time HQ' as ProgramType,
-        tuitionFee: student.tuitionFee || 500,
-        registrationAmount: student.registrationAmount || 100,
+        tuitionFee: typeof student.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : (typeof student.tuitionFee === 'string' && student.tuitionFee ? parseFloat(student.tuitionFee) || 500 : 500),
+        registrationAmount: typeof student.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : (typeof student.registrationAmount === 'string' && student.registrationAmount ? parseFloat(student.registrationAmount) || 100 : 100),
         assignedTeacher: student.assignedTeacher || '',
         scheduleDays: student.schedule?.days || [] as ScheduleDay[],
         startTime: student.schedule?.startTime || '09:00',
@@ -251,8 +251,13 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                   type="number"
                   required
                   min="0"
-                  value={formData.tuitionFee}
-                  onChange={(e) => setFormData({ ...formData, tuitionFee: parseFloat(e.target.value) })}
+                  step="0.01"
+                  value={isNaN(formData.tuitionFee) ? '' : formData.tuitionFee}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value === '' ? 0 : parseFloat(value);
+                    setFormData({ ...formData, tuitionFee: isNaN(numValue) ? 0 : numValue });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -262,8 +267,13 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                   type="number"
                   required
                   min="0"
-                  value={formData.registrationAmount}
-                  onChange={(e) => setFormData({ ...formData, registrationAmount: parseFloat(e.target.value) })}
+                  step="0.01"
+                  value={isNaN(formData.registrationAmount) ? '' : formData.registrationAmount}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const numValue = value === '' ? 0 : parseFloat(value);
+                    setFormData({ ...formData, registrationAmount: isNaN(numValue) ? 0 : numValue });
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
