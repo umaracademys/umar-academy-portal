@@ -34,11 +34,24 @@ const formatDateTime = (value?: string) => {
 
 const upsertSession = (collection: ListeningSession[], session: ListeningSession) => {
   const next = [...collection];
-  const index = next.findIndex((item) => item.id === session.id);
+  // First, try to find by id (exact match)
+  let index = next.findIndex((item) => item.id === session.id);
+  
+  // If not found by id, try to find by ticketId (since only one session should exist per ticket)
+  if (index < 0 && session.ticketId) {
+    index = next.findIndex((item) => item.ticketId === session.ticketId);
+  }
+  
   if (index >= 0) {
+    // Update existing session
     next[index] = session;
   } else {
-    next.push(session);
+    // Only add if no duplicate exists
+    // Double-check for ticketId duplicates before adding
+    const hasDuplicate = session.ticketId && next.some((item) => item.ticketId === session.ticketId);
+    if (!hasDuplicate) {
+      next.push(session);
+    }
   }
   return next;
 };
@@ -127,8 +140,24 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
     const handleSnapshot = (event: MessageEvent) => {
       try {
         const payload = JSON.parse(event.data);
+        
+        // Deduplicate sessions by ticketId
+        const activeSessions = payload.active ?? [];
+        const deduplicatedActive = new Map<string, ListeningSession>();
+        
+        activeSessions.forEach((session: ListeningSession) => {
+          const key = session.ticketId || session.id;
+          const existing = deduplicatedActive.get(key);
+          // Keep the most recent session
+          if (!existing || 
+              new Date(session.lastHeartbeatAt || session.startedAt).getTime() > 
+              new Date(existing.lastHeartbeatAt || existing.startedAt).getTime()) {
+            deduplicatedActive.set(key, session);
+          }
+        });
+        
         setSessions({
-          active: payload.active ?? [],
+          active: Array.from(deduplicatedActive.values()),
           recent: payload.recent ?? []
         });
         setConnectionError(null);
@@ -202,15 +231,26 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
     };
   }, []);
 
-  const sortedActiveSessions = useMemo(
-    () =>
-      [...sessions.active].sort((a, b) => {
-        const aTime = new Date(a.startedAt).getTime();
-        const bTime = new Date(b.startedAt).getTime();
-        return aTime - bTime;
-      }),
-    [sessions.active]
-  );
+  // Deduplicate active sessions by ticketId before sorting (only keep the most recent one per ticket)
+  const sortedActiveSessions = useMemo(() => {
+    const deduplicated = new Map<string, ListeningSession>();
+    
+    sessions.active.forEach((session) => {
+      const key = session.ticketId || session.id;
+      const existing = deduplicated.get(key);
+      
+      // Keep the most recent session (by startedAt) if duplicates exist
+      if (!existing || new Date(session.startedAt).getTime() > new Date(existing.startedAt).getTime()) {
+        deduplicated.set(key, session);
+      }
+    });
+    
+    return Array.from(deduplicated.values()).sort((a, b) => {
+      const aTime = new Date(a.startedAt).getTime();
+      const bTime = new Date(b.startedAt).getTime();
+      return aTime - bTime;
+    });
+  }, [sessions.active]);
 
   const activeSessionsWithElapsed = useMemo(
     () =>

@@ -1090,10 +1090,34 @@ const broadcastListeningSessionEvent = (event, payload) => {
 
 const getActiveListeningSessions = async () => {
   const cutoff = new Date(Date.now() - 1000 * 60 * 60 * 2); // 2 hours heartbeat grace
-  return ListeningSession.find({
+  const allSessions = await ListeningSession.find({
     status: 'in_progress',
     lastHeartbeatAt: { $gte: cutoff }
   }).sort({ startedAt: -1 });
+  
+  // Deduplicate by ticketId - keep only the most recent session per ticket
+  const deduplicated = new Map();
+  allSessions.forEach((session) => {
+    const ticketId = session.ticketId?.toString();
+    if (ticketId) {
+      const existing = deduplicated.get(ticketId);
+      // Keep the session with the most recent lastHeartbeatAt
+      if (!existing || 
+          (session.lastHeartbeatAt && existing.lastHeartbeatAt && 
+           session.lastHeartbeatAt.getTime() > existing.lastHeartbeatAt.getTime())) {
+        deduplicated.set(ticketId, session);
+      }
+    } else {
+      // If no ticketId, keep by _id
+      deduplicated.set(session._id.toString(), session);
+    }
+  });
+  
+  return Array.from(deduplicated.values()).sort((a, b) => {
+    const aTime = (a.startedAt || new Date()).getTime();
+    const bTime = (b.startedAt || new Date()).getTime();
+    return bTime - aTime;
+  });
 };
 
 const getRecentListeningSessions = async (limit = 10) => {
