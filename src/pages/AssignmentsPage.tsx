@@ -1344,13 +1344,21 @@ const AssignmentsPage: React.FC = () => {
         {/* Edit Assignment Modal */}
         {editingAssignment && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">Edit Daily Report</h3>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Edit & Finalize Assignment</h3>
+                  {recitationReviewData && (
+                    <p className="text-sm text-purple-600 mt-1">
+                      📖 From Recitation Review: {recitationReviewData.recitationType} by {recitationReviewData.teacherName}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => {
                     setEditingAssignment(null);
-                    setEditForm({ finalReport: '', homework: '', homeworkLink: '' });
+                    setEditForm({ finalReport: '', homework: '', homeworkLink: '', sabq: { portion: '', notes: '' }, sabqi: { portion: '', notes: '' }, manzil: { portion: '', notes: '' } });
+                    setRecitationReviewData(null);
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -1358,10 +1366,98 @@ const AssignmentsPage: React.FC = () => {
                 </button>
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
+                {/* Classwork Sections - Sabq, Sabqi, Manzil */}
+                <div className="bg-[#FDF7E7] rounded-lg border border-[#E7AA39]/40 p-4">
+                  <h4 className="text-sm font-semibold text-[#2E4D32] mb-4 uppercase tracking-wide">Classwork Details</h4>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {/* Sabq Section */}
+                    <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-4">
+                      <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-3">✨ Sabq (New Lesson)</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Portion/Range</label>
+                          <input
+                            type="text"
+                            value={editForm.sabq.portion}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, sabq: { ...prev.sabq, portion: e.target.value } }))}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="e.g., Juz 1, Page 2-5"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                          <textarea
+                            value={editForm.sabq.notes}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, sabq: { ...prev.sabq, notes: e.target.value } }))}
+                            rows={3}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="Teacher's notes for sabq..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sabqi Section */}
+                    <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-4">
+                      <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-3">🧠 Sabqi (Revision)</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Portion/Range</label>
+                          <input
+                            type="text"
+                            value={editForm.sabqi.portion}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, sabqi: { ...prev.sabqi, portion: e.target.value } }))}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="e.g., Juz 1, Page 1-3"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                          <textarea
+                            value={editForm.sabqi.notes}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, sabqi: { ...prev.sabqi, notes: e.target.value } }))}
+                            rows={3}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="Teacher's notes for sabqi..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Manzil Section */}
+                    <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-4">
+                      <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-3">🔁 Manzil</p>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Portion/Range</label>
+                          <input
+                            type="text"
+                            value={editForm.manzil.portion}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, manzil: { ...prev.manzil, portion: e.target.value } }))}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="e.g., Juz 1, Page 1-10"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                          <textarea
+                            value={editForm.manzil.notes}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, manzil: { ...prev.manzil, notes: e.target.value } }))}
+                            rows={3}
+                            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="Teacher's notes for manzil..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Final Report */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Final report <span className="text-red-500">*</span>
+                    Final Report / Summary <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     value={editForm.finalReport}
@@ -1370,34 +1466,43 @@ const AssignmentsPage: React.FC = () => {
                     }
                     rows={6}
                     className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                    placeholder="Overall summary and final report..."
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Homework <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={editForm.homework}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, homework: event.target.value }))
-                    }
-                    rows={4}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Optional homework link
-                  </label>
-                  <input
-                    type="url"
-                    value={editForm.homeworkLink}
-                    onChange={(event) =>
-                      setEditForm((prev) => ({ ...prev, homeworkLink: event.target.value }))
-                    }
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
-                    placeholder="https://resource-link.com"
-                  />
+
+                {/* Homework Section */}
+                <div className="bg-yellow-50 rounded-lg border border-yellow-200 p-4">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-3">📝 Homework</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Homework Instructions <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={editForm.homework}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, homework: event.target.value }))
+                        }
+                        rows={4}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                        placeholder="What should the student practice for homework?"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Optional Homework Link
+                      </label>
+                      <input
+                        type="url"
+                        value={editForm.homeworkLink}
+                        onChange={(event) =>
+                          setEditForm((prev) => ({ ...prev, homeworkLink: event.target.value }))
+                        }
+                        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                        placeholder="https://resource-link.com"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1407,14 +1512,15 @@ const AssignmentsPage: React.FC = () => {
                   disabled={isSavingEdit}
                   className="flex-1 rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSavingEdit ? 'Saving…' : 'Save changes'}
+                  {isSavingEdit ? 'Saving & Finalizing…' : '✅ Save & Finalize'}
                 </button>
                 <button
                   onClick={() => {
                     setEditingAssignment(null);
-                    setEditForm({ finalReport: '', homework: '', homeworkLink: '' });
+                    setEditForm({ finalReport: '', homework: '', homeworkLink: '', sabq: { portion: '', notes: '' }, sabqi: { portion: '', notes: '' }, manzil: { portion: '', notes: '' } });
+                    setRecitationReviewData(null);
                   }}
-                  className="rounded-xl bg-gray-100 px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-200"
+                  className="rounded-xl border border-gray-300 px-6 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                 >
                   Cancel
                 </button>
