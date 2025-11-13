@@ -37,7 +37,11 @@ const AdminRecitationReview: React.FC<AdminRecitationReviewProps> = ({ onClose, 
         reviewedAt: new Date()
       });
       
-      alert(`Recitation review ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
+      const actionMessage = action === 'approve' 
+        ? 'approved! The review has been marked as complete. Use "Convert to Assignment" if you want to create an assignment from it.'
+        : 'rejected. The teacher has been notified.';
+      
+      alert(`Recitation review ${actionMessage}`);
       await refreshData();
       setSelectedReview(null);
     } catch (error) {

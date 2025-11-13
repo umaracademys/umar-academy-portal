@@ -1223,10 +1223,27 @@ app.post('/api/recitation-reviews', async (req, res) => {
 
 app.put('/api/recitation-reviews/:id', async (req, res) => {
   try {
-    const review = await RecitationReview.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!review) {
+    const oldReview = await RecitationReview.findById(req.params.id);
+    if (!oldReview) {
       return res.status(404).json({ error: 'Recitation review not found' });
     }
+
+    const review = await RecitationReview.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    
+    // If status changed to approved or rejected, create notifications and update admin notification
+    if (req.body.status && oldReview.status === 'pending_review' && (req.body.status === 'approved' || req.body.status === 'rejected')) {
+      // Mark the related admin notification as read/resolved
+      await AdminNotification.updateMany(
+        { recitationReviewId: req.params.id, type: 'recitation_review_pending' },
+        { read: true }
+      );
+
+      // Create a notification for the teacher about the review decision
+      // Note: This assumes you might want to add a teacher notification system in the future
+      // For now, we'll just update the admin notification
+      console.log(`📢 Recitation review ${req.body.status}: ${review.recitationType} review for ${review.studentName} by ${review.teacherName}`);
+    }
+
     res.json(review);
   } catch (error) {
     res.status(500).json({ error: error.message });
