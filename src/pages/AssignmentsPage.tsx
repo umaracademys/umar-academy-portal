@@ -386,8 +386,9 @@ const AssignmentsPage: React.FC = () => {
           `Recitation review for ${(reviewData as any).studentName} - ${(reviewData as any).recitationType} by ${(reviewData as any).teacherName}`;
         
         // Get audio link from any review (prioritize the main review)
+        const reviewWithAudio = allReviewsForStudent.find((r: any) => (r as any).audioLink);
         const audioLink = (reviewData as any).audioLink || 
-          allReviewsForStudent.find((r: any) => (r as any).audioLink)?.(r as any).audioLink ||
+          (reviewWithAudio ? (reviewWithAudio as any).audioLink : '') ||
           (assignment as any).homeworkLink || '';
         
         // Initialize form with all available data
@@ -1441,9 +1442,19 @@ const AssignmentsPage: React.FC = () => {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">Edit & Finalize Assignment</h3>
                   {recitationReviewData && (
-                    <p className="text-sm text-purple-600 mt-1">
-                      📖 From Recitation Review: {recitationReviewData.recitationType} by {recitationReviewData.teacherName}
-                    </p>
+                    <div className="text-sm text-purple-600 mt-1 space-y-1">
+                      <p>
+                        📖 From Recitation Review: <span className="font-semibold">{(recitationReviewData as any).recitationType}</span> by <span className="font-semibold">{(recitationReviewData as any).teacherName}</span>
+                      </p>
+                      {(recitationReviewData as any).audioLink && (
+                        <p>
+                          🔊 <a href={(recitationReviewData as any).audioLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-purple-800">Listen to Audio Recording</a>
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-600">
+                        Student: {(recitationReviewData as any).studentName} • Program: {(recitationReviewData as any).program}
+                      </p>
+                    </div>
                   )}
                 </div>
                 <button
