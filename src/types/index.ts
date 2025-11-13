@@ -26,6 +26,16 @@ export interface Schedule {
   days: ScheduleDay[];
   startTime: string;
   endTime: string;
+  workingDays?: ScheduleDay[]; // Alias for days (backend compatibility)
+  workingHours?: {
+    start: string;
+    end: string;
+  }; // Backend format
+  dayGroupSchedules?: {
+    monThu: { startTime: string; endTime: string };
+    friday: { startTime: string; endTime: string };
+    saturday: { startTime: string; endTime: string };
+  }; // Per-day-group schedules
 }
 
 export interface Assessment {

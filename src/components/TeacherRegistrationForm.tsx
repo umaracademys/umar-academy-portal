@@ -233,6 +233,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
           days: employmentInfo.scheduleDays,
           startTime: dayGroupSchedules.monThu.startTime, // Default to Mon-Thu start time
           endTime: dayGroupSchedules.monThu.endTime, // Default to Mon-Thu end time
+          workingDays: employmentInfo.scheduleDays, // Backend compatibility
           workingHours: {
             start: dayGroupSchedules.monThu.startTime,
             end: dayGroupSchedules.monThu.endTime,
@@ -242,7 +243,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
             monThu: dayGroupSchedules.monThu,
             friday: dayGroupSchedules.friday,
             saturday: dayGroupSchedules.saturday,
-          } as any, // Extend Schedule type to include dayGroupSchedules
+          },
         },
         payroll: {
           hourlyRate: payrollInfo.hourlyRate,
