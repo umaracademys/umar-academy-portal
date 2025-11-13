@@ -13,7 +13,7 @@ interface TeacherListProps {
 }
 
 const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeacher, onDeleteTeacher, onAddTeacher, onCredentials, onAnalytics, onBulkOperations }) => {
-  const { teachers, students } = useData();
+  const { teachers, students, getStudentsByTeacher } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -22,6 +22,13 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Helper function to get assigned students count for a teacher
+  const getAssignedStudentsCount = (teacher: any) => {
+    if (!teacher || !teacher.id) return 0;
+    const assignedStudents = getStudentsByTeacher(teacher.id);
+    return assignedStudents.length;
+  };
 
   // Get unique values for filters
   const uniqueSpecializations = Array.from(new Set(teachers.map(t => t.department))) as string[];
@@ -339,7 +346,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                     </td>
                     <td className="px-4 py-4 text-sm">
                       <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-primary-600">{teacher.assignedStudents?.length || 0}</span>
+                        <span className="font-semibold text-primary-600">{getAssignedStudentsCount(teacher)}</span>
                         <span className="text-gray-500">students</span>
                       </div>
                     </td>
