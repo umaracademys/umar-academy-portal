@@ -175,8 +175,16 @@ const TeacherDashboard: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                       <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <p className="text-xs text-primary-soft">Schedule</p>
-                        <p className="text-sm font-medium">{student.schedule.days.join(', ')}</p>
-                        <p className="text-xs text-primary-soft">{student.schedule.startTime} - {student.schedule.endTime}</p>
+                        <p className="text-sm font-medium">
+                          {Array.isArray(student.schedule?.days) && student.schedule.days.length > 0
+                            ? student.schedule.days.join(', ')
+                            : 'Not scheduled'}
+                        </p>
+                        <p className="text-xs text-primary-soft">
+                          {student.schedule?.startTime && student.schedule?.endTime
+                            ? `${student.schedule.startTime} - ${student.schedule.endTime}`
+                            : '—'}
+                        </p>
                       </div>
                       {permissions.canViewFinancials && (
                         <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
