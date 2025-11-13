@@ -195,6 +195,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper function to fetch with timeout
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error: any) {
+      clearTimeout(id);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeout}ms`);
+      }
+      throw error;
+    }
+  };
+
   // Load data from backend API
   const loadData = async () => {
     try {
@@ -202,8 +223,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setError(null);
       console.log('🔄 Loading data from backend...');
 
-      // Load users from backend
-      const usersResponse = await fetch(`${API_BASE}/users`);
+      // Load users from backend with timeout
+      const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000);
       console.log('📡 Backend response status:', usersResponse.status);
       
       if (!usersResponse.ok) {
@@ -215,7 +236,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Load actual teacher records from /api/teachers endpoint
       let teacherRecords: any[] = [];
       try {
-      const teachersResponse = await fetch(`${API_BASE}/teachers`);
+      const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers`, {}, 10000);
       if (teachersResponse.ok) {
           teacherRecords = await teachersResponse.json();
           console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
@@ -253,7 +274,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load recitation reviews
-      const reviewsResponse = await fetch(`${API_BASE}/recitation-reviews`);
+      const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 10000);
       if (reviewsResponse.ok) {
         const reviewsData = await reviewsResponse.json();
         console.log('📖 Recitation reviews loaded:', reviewsData.length);
@@ -261,7 +282,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load admin notifications
-      const notificationsResponse = await fetch(`${API_BASE}/admin-notifications`);
+      const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 10000);
       if (notificationsResponse.ok) {
         const notificationsData = await notificationsResponse.json();
         console.log('🔔 Admin notifications loaded:', notificationsData.length);
@@ -269,7 +290,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load tickets
-      const ticketsResponse = await fetch(`${API_BASE}/tickets`);
+      const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 10000);
       if (ticketsResponse.ok) {
         const ticketsData = await ticketsResponse.json();
         console.log('🎫 Tickets loaded:', ticketsData.length);
@@ -288,7 +309,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Load actual student records from /api/students endpoint
       let studentRecords: any[] = [];
       try {
-        const studentsResponse = await fetch(`${API_BASE}/students`);
+        const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 10000);
         if (studentsResponse.ok) {
           studentRecords = await studentsResponse.json();
           console.log('📚 Student records loaded from /api/students:', studentRecords.length);
