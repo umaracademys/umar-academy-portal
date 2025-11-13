@@ -46,6 +46,7 @@ const AssignmentsPage: React.FC = () => {
     updateAssignment,
     deleteAssignment,
     refreshData,
+    recitationReviews,
   } = useBackendData();
   const { user } = useAuth();
   
@@ -74,8 +75,12 @@ const AssignmentsPage: React.FC = () => {
     finalReport: '',
     homework: '',
     homeworkLink: '',
+    sabq: { portion: '', notes: '' },
+    sabqi: { portion: '', notes: '' },
+    manzil: { portion: '', notes: '' },
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [recitationReviewData, setRecitationReviewData] = useState<any>(null);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
   const [showFinalizeMushaf, setShowFinalizeMushaf] = useState(false);
   const [finalizeMushafPage, setFinalizeMushafPage] = useState(1);
@@ -278,13 +283,76 @@ const AssignmentsPage: React.FC = () => {
     }));
   };
 
-  const handleOpenEditModal = (assignment: Assignment) => {
+  const handleOpenEditModal = async (assignment: Assignment) => {
     setEditingAssignment(assignment);
+    
+    // Initialize form with existing assignment data
+    const existingClassworkSections = (assignment as any).classworkSections || [];
+    const sabqSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabq');
+    const sabqiSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabqi');
+    const manzilSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'manzil');
+    
+    // Check if this assignment came from a recitation review
+    const fromRecitationReviewId = (assignment as any).fromRecitationReviewId;
+    let reviewData = null;
+    
+    if (fromRecitationReviewId) {
+      // Find the recitation review
+      reviewData = recitationReviews.find((r: any) => 
+        (r.id || (r as any)._id) === fromRecitationReviewId
+      );
+      
+      if (reviewData) {
+        console.log('📖 Found recitation review data:', reviewData);
+        setRecitationReviewData(reviewData);
+        
+        // Pre-fill the section that matches the review type
+        const reviewType = (reviewData.recitationType || '').toLowerCase();
+        const reviewNotes = reviewData.notes || '';
+        
+        // Initialize form with review data
+        const initialForm = {
+          finalReport: assignment.description || '',
+          homework: (assignment as any).homeworkComments || assignment.homeworkSummary || '',
+          homeworkLink: (assignment as any).homeworkLink || '',
+          sabq: { 
+            portion: reviewType === 'sabq' ? reviewNotes : (sabqSection?.assignmentRange || sabqSection?.assignmentPortion || ''),
+            notes: reviewType === 'sabq' ? reviewNotes : (sabqSection?.details || sabqSection?.summary || '')
+          },
+          sabqi: { 
+            portion: reviewType === 'sabqi' ? reviewNotes : (sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || ''),
+            notes: reviewType === 'sabqi' ? reviewNotes : (sabqiSection?.details || sabqiSection?.summary || '')
+          },
+          manzil: { 
+            portion: reviewType === 'manzil' ? reviewNotes : (manzilSection?.assignmentRange || manzilSection?.assignmentPortion || ''),
+            notes: reviewType === 'manzil' ? reviewNotes : (manzilSection?.details || manzilSection?.summary || '')
+          },
+        };
+        
+        setEditForm(initialForm);
+        return;
+      }
+    }
+    
+    // If no recitation review, use existing classwork sections or empty
     setEditForm({
       finalReport: assignment.description || '',
       homework: (assignment as any).homeworkComments || assignment.homeworkSummary || '',
       homeworkLink: (assignment as any).homeworkLink || '',
+      sabq: { 
+        portion: sabqSection?.assignmentRange || sabqSection?.assignmentPortion || '',
+        notes: sabqSection?.details || sabqSection?.summary || ''
+      },
+      sabqi: { 
+        portion: sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || '',
+        notes: sabqiSection?.details || sabqiSection?.summary || ''
+      },
+      manzil: { 
+        portion: manzilSection?.assignmentRange || manzilSection?.assignmentPortion || '',
+        notes: manzilSection?.details || manzilSection?.summary || ''
+      },
     });
+    setRecitationReviewData(null);
   };
 
   const handleDeleteAssignment = async (assignment: Assignment) => {
@@ -322,15 +390,59 @@ const AssignmentsPage: React.FC = () => {
 
     try {
       setIsSavingEdit(true);
+      
+      // Build classwork sections from form data
+      const classworkSections: ClassworkSection[] = [];
+      
+      // Add sabq section if it has data
+      if (editForm.sabq.portion.trim() || editForm.sabq.notes.trim()) {
+        classworkSections.push({
+          step: 'sabq',
+          title: 'Sabq (New Lesson)',
+          label: 'Sabq',
+          summary: editForm.sabq.notes.trim(),
+          assignmentRange: editForm.sabq.portion.trim(),
+          order: 0,
+        });
+      }
+      
+      // Add sabqi section if it has data
+      if (editForm.sabqi.portion.trim() || editForm.sabqi.notes.trim()) {
+        classworkSections.push({
+          step: 'sabqi',
+          title: 'Sabqi (Revision)',
+          label: 'Sabqi',
+          summary: editForm.sabqi.notes.trim(),
+          assignmentRange: editForm.sabqi.portion.trim(),
+          order: 1,
+        });
+      }
+      
+      // Add manzil section if it has data
+      if (editForm.manzil.portion.trim() || editForm.manzil.notes.trim()) {
+        classworkSections.push({
+          step: 'manzil',
+          title: 'Manzil',
+          label: 'Manzil',
+          summary: editForm.manzil.notes.trim(),
+          assignmentRange: editForm.manzil.portion.trim(),
+          order: 2,
+        });
+      }
+      
       await updateAssignment(assignmentId, {
         description: editForm.finalReport,
         homeworkComments: editForm.homework,
         homeworkLink: editForm.homeworkLink,
         homeworkSummary: editForm.homework,
+        classworkSections: classworkSections,
+        status: 'published', // Mark as finalized/published
         updatedAt: new Date(),
       });
       await refreshData();
       setEditingAssignment(null);
+      setRecitationReviewData(null);
+      alert('✅ Assignment updated and finalized successfully!');
     } catch (error) {
       console.error('Error updating assignment:', error);
       alert('Failed to update assignment.');
