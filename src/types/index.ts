@@ -182,6 +182,8 @@ export interface Payroll {
   daysWorking: number;
   monthlyHours: number; // auto-calculated
   monthlySalary: number; // auto-calculated
+  paymentType?: string; // monthly, weekly, hourly, per-student
+  bankAccount?: string;
 }
 
 export interface TeacherPermissions {
@@ -199,6 +201,7 @@ export interface Teacher {
   fullName: string;
   email: string;
   phoneNumber: string;
+  contact?: string; // Alias for phoneNumber (for backend compatibility)
   emergencyContact: string;
   department: string;
   location: TeacherLocation;

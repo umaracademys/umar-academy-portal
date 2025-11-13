@@ -759,8 +759,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const updatePayload = {
         ...teacher,
         // Map phoneNumber to contact if needed
-        contact: teacher.phoneNumber || teacher.contact || undefined,
-        phoneNumber: teacher.phoneNumber || teacher.contact,
+        contact: teacher.phoneNumber || ((teacher as Teacher & { contact?: string }).contact) || undefined,
+        phoneNumber: teacher.phoneNumber || ((teacher as Teacher & { contact?: string }).contact),
       };
 
       // Try updating via /api/teachers/:id first
