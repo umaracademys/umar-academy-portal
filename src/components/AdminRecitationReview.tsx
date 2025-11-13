@@ -21,8 +21,17 @@ const AdminRecitationReview: React.FC<AdminRecitationReviewProps> = ({ onClose, 
   );
 
   const handleReview = async (review: RecitationReview, action: 'approve' | 'reject') => {
+    // Get the ID from either id or _id field
+    const reviewId = review.id || (review as any)._id;
+    
+    if (!reviewId) {
+      console.error('❌ Review ID is missing:', review);
+      alert('Error: Review ID is missing. Please refresh the page and try again.');
+      return;
+    }
+
     try {
-      await updateRecitationReview(review.id, {
+      await updateRecitationReview(reviewId, {
         status: action === 'approve' ? 'approved' : 'rejected',
         reviewedBy: user?.id || '',
         reviewedAt: new Date()
@@ -38,13 +47,23 @@ const AdminRecitationReview: React.FC<AdminRecitationReviewProps> = ({ onClose, 
   };
 
   const handleConvertToAssignment = async (review: RecitationReview) => {
+    // Get the ID from either id or _id field
+    const reviewId = review.id || (review as any)._id;
+    
+    if (!reviewId) {
+      console.error('❌ Review ID is missing:', review);
+      alert('Error: Review ID is missing. Please refresh the page and try again.');
+      return;
+    }
+
     if (!confirm(`Convert this ${review.recitationType} review for ${review.studentName} to an assignment?`)) {
       return;
     }
 
     setIsConverting(true);
     try {
-      await convertRecitationReviewToAssignment(review.id);
+      console.log('🔄 Converting review to assignment:', reviewId);
+      await convertRecitationReviewToAssignment(reviewId);
       alert('Recitation review converted to assignment successfully! You can now edit it to add homework.');
       await refreshData();
       setSelectedReview(null);

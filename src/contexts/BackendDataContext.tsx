@@ -278,7 +278,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (reviewsResponse.ok) {
         const reviewsData = await reviewsResponse.json();
         console.log('📖 Recitation reviews loaded:', reviewsData.length);
-        setRecitationReviews(reviewsData);
+        // Normalize recitation reviews to map _id to id
+        const normalizedReviews = Array.isArray(reviewsData) ? reviewsData.map((review: any) => ({
+          ...review,
+          id: review._id || review.id,
+          studentId: review.studentId || review.student?._id || review.student?.id || '',
+          studentName: review.studentName || review.student?.fullName || review.student?.name || 'Unknown',
+          teacherId: review.teacherId || review.teacher?._id || review.teacher?.id || '',
+          teacherName: review.teacherName || review.teacher?.fullName || review.teacher?.name || 'Unknown',
+          createdAt: review.createdAt ? new Date(review.createdAt) : new Date(),
+          updatedAt: review.updatedAt ? new Date(review.updatedAt) : new Date(),
+          reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : undefined,
+        })) : [];
+        setRecitationReviews(normalizedReviews);
       }
 
       // Load admin notifications
