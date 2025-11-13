@@ -65,8 +65,8 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
           bValue = b.assignedStudents?.length || 0;
           break;
         case 'salary':
-          aValue = a.payroll.monthlySalary;
-          bValue = b.payroll.monthlySalary;
+          aValue = a.payroll?.monthlySalary || 0;
+          bValue = b.payroll?.monthlySalary || 0;
           break;
         default:
           aValue = a.fullName;

@@ -267,7 +267,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                     <div>
                       <label className="text-sm font-medium text-gray-500">Monthly Salary</label>
                       <p className="text-2xl font-bold text-primary-600">
-                        {teacher.payroll.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll.monthlySalary.toLocaleString()}
+                        {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{(teacher.payroll?.monthlySalary || 0).toLocaleString()}
                       </p>
                     </div>
                     <div>

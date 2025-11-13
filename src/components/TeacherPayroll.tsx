@@ -11,11 +11,17 @@ const TeacherPayroll: React.FC<TeacherPayrollProps> = ({ teacher, onClose }) => 
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showSalaryForm, setShowSalaryForm] = useState(false);
 
+  const payroll = teacher?.payroll || {
+    monthlySalary: 0,
+    currency: 'USD',
+    paymentType: 'Monthly'
+  };
+
   const paymentHistory = [
     {
       id: 'payment-1',
       date: '2025-10-15',
-      amount: teacher.payroll.monthlySalary,
+      amount: payroll.monthlySalary || 0,
       method: 'Bank Transfer',
       status: 'completed',
       reference: 'TXN-123456789',
@@ -24,7 +30,7 @@ const TeacherPayroll: React.FC<TeacherPayrollProps> = ({ teacher, onClose }) => 
     {
       id: 'payment-2',
       date: '2025-09-15',
-      amount: teacher.payroll.monthlySalary,
+      amount: payroll.monthlySalary || 0,
       method: 'Bank Transfer',
       status: 'completed',
       reference: 'TXN-123456788',
@@ -33,7 +39,7 @@ const TeacherPayroll: React.FC<TeacherPayrollProps> = ({ teacher, onClose }) => 
     {
       id: 'payment-3',
       date: '2025-08-15',
-      amount: teacher.payroll.monthlySalary,
+      amount: payroll.monthlySalary || 0,
       method: 'Bank Transfer',
       status: 'completed',
       reference: 'TXN-123456787',
@@ -42,7 +48,7 @@ const TeacherPayroll: React.FC<TeacherPayrollProps> = ({ teacher, onClose }) => 
     {
       id: 'payment-4',
       date: '2025-07-15',
-      amount: teacher.payroll.monthlySalary,
+      amount: payroll.monthlySalary || 0,
       method: 'Bank Transfer',
       status: 'completed',
       reference: 'TXN-123456786',
@@ -51,7 +57,7 @@ const TeacherPayroll: React.FC<TeacherPayrollProps> = ({ teacher, onClose }) => 
     {
       id: 'payment-5',
       date: '2025-06-15',
-      amount: teacher.payroll.monthlySalary,
+      amount: payroll.monthlySalary || 0,
       method: 'Bank Transfer',
       status: 'completed',
       reference: 'TXN-123456785',
@@ -60,23 +66,23 @@ const TeacherPayroll: React.FC<TeacherPayrollProps> = ({ teacher, onClose }) => 
   ];
 
   const salaryStructure = {
-    baseSalary: teacher.payroll.monthlySalary,
-    currency: teacher.payroll.currency,
-    paymentType: teacher.payroll.paymentType || 'Monthly',
+    baseSalary: payroll.monthlySalary || 0,
+    currency: payroll.currency || 'USD',
+    paymentType: payroll.paymentType || 'Monthly',
     allowances: [
-      { name: 'Housing Allowance', amount: teacher.payroll.currency === 'USD' ? 200 : 50000, type: 'fixed' },
-      { name: 'Transport Allowance', amount: teacher.payroll.currency === 'USD' ? 100 : 25000, type: 'fixed' },
-      { name: 'Performance Bonus', amount: teacher.payroll.currency === 'USD' ? 150 : 37500, type: 'variable' }
+      { name: 'Housing Allowance', amount: payroll.currency === 'USD' ? 200 : 50000, type: 'fixed' },
+      { name: 'Transport Allowance', amount: payroll.currency === 'USD' ? 100 : 25000, type: 'fixed' },
+      { name: 'Performance Bonus', amount: payroll.currency === 'USD' ? 150 : 37500, type: 'variable' }
     ],
     deductions: [
-      { name: 'Tax', amount: teacher.payroll.currency === 'USD' ? 150 : 37500, type: 'fixed' },
-      { name: 'Insurance', amount: teacher.payroll.currency === 'USD' ? 50 : 12500, type: 'fixed' }
+      { name: 'Tax', amount: payroll.currency === 'USD' ? 150 : 37500, type: 'fixed' },
+      { name: 'Insurance', amount: payroll.currency === 'USD' ? 50 : 12500, type: 'fixed' }
     ]
   };
 
-  const totalAllowances = salaryStructure.allowances.reduce((sum, allowance) => sum + allowance.amount, 0);
-  const totalDeductions = salaryStructure.deductions.reduce((sum, deduction) => sum + deduction.amount, 0);
-  const netSalary = salaryStructure.baseSalary + totalAllowances - totalDeductions;
+  const totalAllowances = (salaryStructure.allowances || []).reduce((sum, allowance) => sum + (allowance.amount || 0), 0);
+  const totalDeductions = (salaryStructure.deductions || []).reduce((sum, deduction) => sum + (deduction.amount || 0), 0);
+  const netSalary = (salaryStructure.baseSalary || 0) + totalAllowances - totalDeductions;
 
   const getStatusColor = (status: string) => {
     const colors = {

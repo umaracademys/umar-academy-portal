@@ -70,12 +70,20 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
           trend: 'up' as const
         }));
       })(),
-      assessments: teacherAssignments.slice(0, 4).map((assignment: any, index: number) => ({
-        name: assignment.title || assignment.description || `Assignment ${index + 1}`,
-        average: assignment.averageGrade || assignment.grade || 85,
-        completion: assignment.submittedBy ? (assignment.submittedBy.length / (assignment.assignedTo?.length || 1)) * 100 : 90,
-        trend: 'up' as const
-      }))
+      assessments: teacherAssignments.slice(0, 4).map((assignment: any, index: number) => {
+        const submittedBy = Array.isArray(assignment.submittedBy) ? assignment.submittedBy : [];
+        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [];
+        const completion = assignedTo.length > 0 
+          ? (submittedBy.length / assignedTo.length) * 100 
+          : (submittedBy.length > 0 ? 100 : 0);
+        
+        return {
+          name: assignment.title || assignment.description || `Assignment ${index + 1}`,
+          average: assignment.averageGrade || assignment.grade || 85,
+          completion: completion,
+          trend: 'up' as const
+        };
+      })
     },
     engagement: {
       communication: {
