@@ -533,16 +533,28 @@ const SuperAdminDashboard: React.FC = () => {
               badge: 'AN',
               title: 'Analytics',
               description: 'Review student performance trends and milestones.',
-              action: () => setShowStudentAnalytics(true),
+              action: () => {
+                if (!selectedStudent && students.length > 0) {
+                  setSelectedStudent(students[0]);
+                }
+                setShowStudentAnalytics(true);
+              },
               button: 'Open analytics',
+              disabled: students.length === 0,
             },
             {
               id: 'student-credentials',
               badge: 'CR',
               title: 'Student Credentials',
               description: 'Manage login credentials and portal access.',
-              action: () => setShowStudentCredentials(true),
+              action: () => {
+                if (!selectedStudent && students.length > 0) {
+                  setSelectedStudent(students[0]);
+                }
+                setShowStudentCredentials(true);
+              },
               button: 'Manage access',
+              disabled: students.length === 0,
             },
             {
               id: 'student-bulk',
@@ -551,6 +563,7 @@ const SuperAdminDashboard: React.FC = () => {
               description: 'Manage multiple students at once.',
               action: () => setShowStudentBulkOperations(true),
               button: 'Run bulk action',
+              disabled: false,
             },
             {
               id: 'student-directory',
@@ -559,6 +572,7 @@ const SuperAdminDashboard: React.FC = () => {
               description: 'Browse and filter the complete student directory.',
               action: focusStudentDirectory,
               button: 'View directory',
+              disabled: false,
             },
           ].map((item) => (
             <Card key={item.id}>
@@ -572,7 +586,8 @@ const SuperAdminDashboard: React.FC = () => {
                 </div>
                 <button
                   onClick={item.action}
-                  className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                  disabled={item.disabled}
+                  className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {item.button}
                 </button>
