@@ -1195,26 +1195,33 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
                   <header className="space-y-1">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Current step • {selectedTicket.workflowStep}
+                      CURRENT STEP • {selectedTicket.workflowStep.toUpperCase()}
                     </p>
                     <h3 className="text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
                   </header>
-                  <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600">
+                  <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600 mt-4">
                     <div>
-                      <dt className="font-semibold text-gray-700">Assigned teacher</dt>
-                      <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
+                      <dt className="font-semibold text-gray-700 mb-1">Assigned teacher</dt>
+                      <dd className="text-gray-900">{selectedTicket.assignedTeacherName || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-gray-700">Program</dt>
-                      <dd>{selectedTicket.program || '—'}</dd>
+                      <dt className="font-semibold text-gray-700 mb-1">Program</dt>
+                      <dd className="text-gray-900">{selectedTicket.program || '—'}</dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-gray-700">Range / Focus</dt>
-                      <dd>{selectedTicket.assignmentRange || 'Not specified'}</dd>
+                      <dt className="font-semibold text-gray-700 mb-1">Range / Focus</dt>
+                      <dd className="text-gray-900">
+                        {selectedTicket.assignmentRange || 'Not specified'}
+                        {selectedTicket.assignmentPortion && (
+                          <span className="ml-1">
+                            • {formatAssignmentPortion(selectedTicket.assignmentPortion)}
+                          </span>
+                        )}
+                      </dd>
                     </div>
                     <div>
-                      <dt className="font-semibold text-gray-700">Portion size</dt>
-                      <dd>
+                      <dt className="font-semibold text-gray-700 mb-1">Portion size</dt>
+                      <dd className="text-gray-900">
                         {selectedTicket.assignmentPortion
                           ? formatAssignmentPortion(selectedTicket.assignmentPortion)
                           : 'Not specified'}
