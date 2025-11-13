@@ -731,6 +731,70 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
+// Delete student
+app.delete('/api/students/:id', async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    console.log(`🗑️ DELETE /api/students/${studentId}`);
+    
+    // Try to find the student first
+    let student = null;
+    
+    // Check if it's a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(studentId)) {
+      student = await Student.findById(studentId);
+    }
+    
+    // If not found by _id, try finding by userId or studentId
+    if (!student) {
+      student = await Student.findOne({
+        $or: [
+          { userId: studentId },
+          { studentId: studentId },
+          { _id: studentId }
+        ]
+      });
+    }
+    
+    if (!student) {
+      console.error(`❌ Student not found with ID: ${studentId}`);
+      return res.status(404).json({ error: `Student not found with ID: ${studentId}` });
+    }
+    
+    // Delete the student record
+    await Student.findByIdAndDelete(student._id);
+    
+    // If student has a userId, also delete the associated user
+    if (student.userId) {
+      try {
+        await User.findByIdAndDelete(student.userId);
+        console.log(`✅ Also deleted associated user: ${student.userId}`);
+      } catch (userError) {
+        console.warn(`⚠️ Could not delete associated user: ${userError.message}`);
+        // Continue even if user deletion fails
+      }
+    }
+    
+    // Remove student from any teacher's assignedStudents array
+    try {
+      await Teacher.updateMany(
+        { assignedStudents: student._id },
+        { $pull: { assignedStudents: student._id } }
+      );
+      console.log(`✅ Removed student from teacher assignments`);
+    } catch (teacherError) {
+      console.warn(`⚠️ Could not update teacher assignments: ${teacherError.message}`);
+    }
+    
+    console.log(`✅ Student deleted successfully: ${student._id}`);
+    res.json({ message: 'Student deleted successfully', deletedId: student._id });
+    
+  } catch (error) {
+    console.error('❌ Error deleting student:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete user
 app.delete('/api/users/:id', async (req, res) => {
   try {

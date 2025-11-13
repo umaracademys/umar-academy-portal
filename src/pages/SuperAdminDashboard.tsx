@@ -494,20 +494,24 @@ const SuperAdminDashboard: React.FC = () => {
 
     const handleDeleteStudent = async (studentId: string) => {
       if (!studentId) {
+        console.error('❌ No student ID provided for deletion');
         return;
       }
 
-      const confirmed = window.confirm('Are you sure you want to delete this student?');
+      const confirmed = window.confirm('Are you sure you want to delete this student? This action cannot be undone.');
       if (!confirmed) {
         return;
       }
 
       try {
+        console.log(`🗑️ Deleting student with ID: ${studentId}`);
         await deleteStudent(studentId);
-        alert('Student deleted successfully.');
+        alert('✅ Student deleted successfully.');
+        // Refresh will happen automatically via refreshData in deleteStudent
       } catch (err) {
-        console.error('Failed to delete student:', err);
-        alert('Failed to delete student. Please try again.');
+        const errorMessage = err instanceof Error ? err.message : 'Failed to delete student';
+        console.error('❌ Failed to delete student:', err);
+        alert(`❌ Failed to delete student: ${errorMessage}`);
       }
     };
 

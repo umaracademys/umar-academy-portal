@@ -709,23 +709,56 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteStudent = async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${id}`, {
+      console.log(`🗑️ Attempting to delete student with ID: ${id}`);
+      
+      // Find the student to get all possible IDs
+      const studentToDelete = students.find(s => s.id === id || (s as any)._id === id);
+      if (!studentToDelete) {
+        console.warn(`⚠️ Student not found in local state with ID: ${id}`);
+      }
+      
+      // Try deleting via /api/students/:id first (preferred endpoint)
+      let response = await fetch(`${API_BASE}/students/${id}`, {
         method: 'DELETE',
       });
 
+      // If that fails, try /api/users/:id as fallback
       if (!response.ok) {
-        throw new Error('Failed to delete student');
+        console.log(`⚠️ DELETE /api/students/${id} failed (${response.status}), trying /api/users/${id}...`);
+        response = await fetch(`${API_BASE}/users/${id}`, {
+          method: 'DELETE',
+        });
       }
 
-      setStudents(prev => prev.filter(s => s.id !== id));
-      
-      // Update localStorage
-      const updatedStudents = students.filter(s => s.id !== id);
-      localStorage.setItem('umar_academy_students', JSON.stringify(updatedStudents));
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to delete student';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        console.error(`❌ Delete failed: ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
 
+      // Remove from local state (handle both id and _id matching)
+      setStudents(prev => prev.filter(s => {
+        const sId = s.id || (s as any)._id;
+        return sId !== id && sId !== (studentToDelete?.id) && sId !== (studentToDelete as any)?._id;
+      }));
+      
+      // Refresh data from backend to ensure consistency
+      await refreshData();
+
+      console.log('✅ Student deleted successfully');
+      
     } catch (err) {
-      setError('Failed to delete student');
-      console.error('Error deleting student:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete student';
+      setError(errorMessage);
+      console.error('❌ Error deleting student:', err);
+      throw err; // Re-throw to let the handler show the error
     }
   };
 
