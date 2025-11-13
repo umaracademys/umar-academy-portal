@@ -64,7 +64,7 @@ const TeacherDashboard: React.FC = () => {
         conductedBy: currentTeacher?.id || '',
       };
 
-      const updatedAssessments = [...selectedStudent.assessments, newAssessment];
+      const updatedAssessments = [...(Array.isArray(selectedStudent.assessments) ? selectedStudent.assessments : []), newAssessment];
       updateStudent(selectedStudent.id, { assessments: updatedAssessments });
       setShowAssessmentForm(false);
       setAssessmentData({ type: '', score: 0, maxScore: 100, notes: '' });
@@ -82,7 +82,7 @@ const TeacherDashboard: React.FC = () => {
         evaluatedBy: currentTeacher?.id || '',
       };
 
-      const updatedEvaluations = [...selectedStudent.evaluations, newEvaluation];
+      const updatedEvaluations = [...(Array.isArray(selectedStudent.evaluations) ? selectedStudent.evaluations : []), newEvaluation];
       updateStudent(selectedStudent.id, { evaluations: updatedEvaluations });
       setShowEvaluationForm(false);
       setEvaluationData({ category: '', rating: 5, comments: '' });
@@ -135,7 +135,7 @@ const TeacherDashboard: React.FC = () => {
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard title="Assigned Students" value={assignedStudents.length} icon="AS" />
-          <StatCard title="Total Assessments" value={assignedStudents.reduce((sum, s) => sum + s.assessments.length, 0)} icon="TA" />
+          <StatCard title="Total Assessments" value={assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0)} icon="TA" />
           <StatCard title="Active Students" value={assignedStudents.filter(s => s.status === 'active').length} icon="WK" />
           <StatCard title="Avg Performance" value="85%" icon="AVG" />
         </div>
@@ -205,7 +205,7 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {student.siblings.length > 0 && (
+                    {Array.isArray(student.siblings) && student.siblings.length > 0 && (
                       <div className="mb-3 rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <p className="mb-2 text-xs text-primary-soft">Siblings:</p>
                         <div className="flex flex-wrap gap-2">
@@ -222,7 +222,7 @@ const TeacherDashboard: React.FC = () => {
                     {permissions.canViewAssessments && (
                       <div className="mb-3 rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-semibold text-primary">Assessments ({student.assessments.length})</p>
+                          <p className="text-sm font-semibold text-primary">Assessments ({Array.isArray(student.assessments) ? student.assessments.length : 0})</p>
                           {permissions.canEditAssessments && (
                             <button
                               onClick={() => {
@@ -235,7 +235,7 @@ const TeacherDashboard: React.FC = () => {
                             </button>
                           )}
                         </div>
-                        {student.assessments.length > 0 ? (
+                        {Array.isArray(student.assessments) && student.assessments.length > 0 ? (
                           <div className="space-y-2">
                             {student.assessments.slice(-3).map((assessment) => (
                               <div key={assessment.id} className="rounded-lg border border-gray-100 bg-soft-primary px-3 py-2 text-xs">
@@ -258,7 +258,7 @@ const TeacherDashboard: React.FC = () => {
                     {permissions.canViewEvaluations && (
                       <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-semibold text-primary">Evaluations ({student.evaluations.length})</p>
+                          <p className="text-sm font-semibold text-primary">Evaluations ({Array.isArray(student.evaluations) ? student.evaluations.length : 0})</p>
                           {permissions.canEditEvaluations && (
                             <button
                               onClick={() => {
@@ -271,7 +271,7 @@ const TeacherDashboard: React.FC = () => {
                             </button>
                           )}
                         </div>
-                        {student.evaluations.length > 0 ? (
+                        {Array.isArray(student.evaluations) && student.evaluations.length > 0 ? (
                           <div className="space-y-2">
                             {student.evaluations.slice(-3).map((evaluation) => (
                               <div key={evaluation.id} className="rounded-lg border border-gray-100 bg-soft-accent px-3 py-2 text-xs">
