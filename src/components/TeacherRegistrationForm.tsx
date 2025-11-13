@@ -399,7 +399,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
 
             {/* Tab 2: Employment & Scheduling */}
             {currentTab === 1 && (
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-y-auto max-h-[calc(95vh-300px)] pr-2">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Employment & Scheduling</h3>
                 
                 {/* Employment Type */}
@@ -462,20 +462,80 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   </div>
                 )}
 
-                {/* Shift Display */}
-                <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
-                  <h4 className="font-semibold text-gray-900 mb-3">
-                    {employmentInfo.employmentType === 'Full Time' ? 'Assigned Shifts (Auto)' : 'Selected Shift'}
-                  </h4>
-                  <div className="space-y-2">
-                    {shifts.map((shift, index) => (
-                      <div key={index} className="bg-white p-3 rounded flex justify-between items-center">
-                        <span className="font-medium">{shift.name}</span>
-                        <span className="text-sm text-gray-600">{shift.startTime} - {shift.endTime}</span>
-                      </div>
-                    ))}
+                {/* Shift Configuration for Full Time */}
+                {employmentInfo.employmentType === 'Full Time' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Configure Shifts *</label>
+                    <div className="space-y-4">
+                      {shifts.map((shift, index) => (
+                        <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
+                          <div className="flex justify-between items-center mb-3">
+                            <label className="block text-sm font-medium text-gray-700">
+                              Shift {index + 1} Name *
+                            </label>
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            value={shift.name}
+                            onChange={(e) => {
+                              const updatedShifts = [...shifts];
+                              updatedShifts[index] = { ...updatedShifts[index], name: e.target.value };
+                              setShifts(updatedShifts);
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 mb-3"
+                            placeholder="e.g., Morning Shift, Afternoon Shift"
+                          />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                              <input
+                                type="time"
+                                required
+                                value={shift.startTime}
+                                onChange={(e) => {
+                                  const updatedShifts = [...shifts];
+                                  updatedShifts[index] = { ...updatedShifts[index], startTime: e.target.value };
+                                  setShifts(updatedShifts);
+                                }}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                              <input
+                                type="time"
+                                required
+                                value={shift.endTime}
+                                onChange={(e) => {
+                                  const updatedShifts = [...shifts];
+                                  updatedShifts[index] = { ...updatedShifts[index], endTime: e.target.value };
+                                  setShifts(updatedShifts);
+                                }}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Shift Display for Part Time */}
+                {employmentInfo.employmentType === 'Part Time' && (
+                  <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
+                    <h4 className="font-semibold text-gray-900 mb-3">Selected Shift</h4>
+                    <div className="space-y-2">
+                      {shifts.map((shift, index) => (
+                        <div key={index} className="bg-white p-3 rounded flex justify-between items-center">
+                          <span className="font-medium">{shift.name}</span>
+                          <span className="text-sm text-gray-600">{shift.startTime} - {shift.endTime}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Working Days */}
                 <div>
