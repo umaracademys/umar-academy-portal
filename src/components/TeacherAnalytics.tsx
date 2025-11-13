@@ -49,7 +49,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
     overview: {
       totalStudents: assignedStudents.length,
       classesTaught: teacherRecitationReviews.length,
-      averageRating: teacher?.performance?.rating || teacher?.payroll?.monthlySalary ? 4.5 : 0,
+      averageRating: teacher?.performance?.rating || (teacher?.payroll?.monthlySalary ? 4.5 : 0) || 0,
       assignmentsCreated: teacherAssignments.length,
       assignmentsGraded: teacherAssignments.filter((a: any) => a.grade || a.status === 'graded').length,
       hoursTeaching: assignedStudents.length * 4, // Estimate: 4 hours per student
@@ -66,7 +66,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
         return Object.entries(programGroups).map(([name, count]) => ({
           name,
           students: count,
-          rating: 4.5 + Math.random() * 0.4, // Placeholder rating
+          rating: 4.5 + (count % 4) * 0.1, // Placeholder rating based on count
           trend: 'up' as const
         }));
       })(),
@@ -176,7 +176,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                 <Card>
                   <div className="text-center p-4">
                     <div className="text-3xl mb-2">⏰</div>
-                    <div className="text-2xl font-bold text-purple-600">{analyticsData.overview.hoursTeaching}</div>
+                    <div className="text-2xl font-bold text-green-600">{analyticsData.overview.hoursTeaching}</div>
                     <div className="text-sm text-gray-600">Teaching Hours</div>
                   </div>
                 </Card>
