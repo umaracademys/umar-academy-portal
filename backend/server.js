@@ -357,7 +357,7 @@ app.put('/api/students/:id', async (req, res) => {
 
     // Get the old student data to check for teacher assignment changes
     const oldStudent = await Student.findById(req.params.id);
-    const oldTeacherId = oldStudent?.assignedTeacherId || oldStudent?.assignedTeacher;
+    const oldTeacherId = (oldStudent && (oldStudent.assignedTeacherId || oldStudent.assignedTeacher)) || null;
     const newTeacherId = studentData.assignedTeacherId || studentData.assignedTeacher;
 
     const updatedStudent = await Student.findByIdAndUpdate(
@@ -391,7 +391,7 @@ app.put('/api/students/:id', async (req, res) => {
       
       if (oldTeacher && oldTeacher.assignedStudents) {
         oldTeacher.assignedStudents = oldTeacher.assignedStudents.filter(
-          (id: string) => id.toString() !== studentId
+          (id) => id.toString() !== studentId
         );
         await oldTeacher.save();
         console.log(`✅ Removed student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array`);
