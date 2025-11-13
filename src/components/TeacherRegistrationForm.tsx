@@ -34,18 +34,27 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
   ]);
 
-  // Individual day schedules (simple approach)
-  const [daySchedules, setDaySchedules] = useState<Array<{
+  // Schedule configuration
+  // For Full Time: Mon-Sat with morning and evening shifts
+  // For Part Time: Individual day schedules
+  const [fullTimeSchedule, setFullTimeSchedule] = useState({
+    morningShift: { startTime: '08:00', endTime: '12:00' },
+    eveningShift: { startTime: '13:00', endTime: '17:00' },
+    workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as ScheduleDay[],
+  });
+
+  // For Part Time teachers
+  const [partTimeDaySchedules, setPartTimeDaySchedules] = useState<Array<{
     day: ScheduleDay;
     startTime: string;
     endTime: string;
   }>>([]);
 
-  // Form for adding a new day schedule
-  const [newDaySchedule, setNewDaySchedule] = useState({
+  // Form for adding a new day (Part Time)
+  const [newPartTimeDay, setNewPartTimeDay] = useState({
     day: 'Monday' as ScheduleDay,
     startTime: '08:00',
-    endTime: '17:00',
+    endTime: '12:00',
   });
 
   // Payroll Information
@@ -108,16 +117,22 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     setEmploymentInfo(prev => ({ ...prev, employmentType: type }));
     
     if (type === 'Full Time') {
-      // Full time gets both shifts
+      // Full time: 2 shifts (morning and evening), Mon-Sat
       setEmploymentInfo(prev => ({ ...prev, shiftType: 'Both' }));
       setShifts([
         { name: 'Morning Shift', startTime: '08:00', endTime: '12:00' },
-        { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
+        { name: 'Evening Shift', startTime: '13:00', endTime: '17:00' },
       ]);
-      setPayrollInfo(prev => ({ ...prev, dailyHours: 8, daysWorking: 22 }));
+      setFullTimeSchedule({
+        morningShift: { startTime: '08:00', endTime: '12:00' },
+        eveningShift: { startTime: '13:00', endTime: '17:00' },
+        workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      });
+      setPayrollInfo(prev => ({ ...prev, dailyHours: 8, daysWorking: 26 }));
     } else {
-      // Part time gets one shift
+      // Part time: one shift, flexible days
       setShifts([{ name: 'Morning Shift', startTime: '08:00', endTime: '12:00' }]);
+      setPartTimeDaySchedules([]);
       setPayrollInfo(prev => ({ ...prev, dailyHours: 4, daysWorking: 22 }));
     }
   };
@@ -162,49 +177,40 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
           ]);
         }
 
-        // Initialize day schedules from teacher schedule
+        // Initialize schedule based on employment type
         if (teacher.schedule) {
-          // Check if daySchedules exist (new simple format)
-          const dayScheds = (teacher.schedule as any).daySchedules;
-          if (dayScheds && Array.isArray(dayScheds) && dayScheds.length > 0) {
-            setDaySchedules(dayScheds);
-          } else {
-            // Check if dayGroupSchedules exist (old format)
-            const dayGroups = (teacher.schedule as any).dayGroupSchedules;
-            const scheduleDays = (teacher.schedule.days || teacher.schedule.workingDays || []) as ScheduleDay[];
-            const defaultStart = teacher.schedule.startTime || teacher.schedule.workingHours?.start || '08:00';
-            const defaultEnd = teacher.schedule.endTime || teacher.schedule.workingHours?.end || '17:00';
+          const scheduleDays = (teacher.schedule.days || teacher.schedule.workingDays || []) as ScheduleDay[];
+          
+          if (teacher.employmentType === 'Full Time') {
+            // Full Time: Initialize from shifts and schedule
+            const morningShift = teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('morning')) || 
+                                teacher.shifts?.[0] || 
+                                { startTime: '08:00', endTime: '12:00' };
+            const eveningShift = teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('evening')) || 
+                                teacher.shifts?.[1] || 
+                                { startTime: '13:00', endTime: '17:00' };
             
-            if (dayGroups) {
-              // Convert dayGroupSchedules to individual day schedules
-              const schedules: Array<{ day: ScheduleDay; startTime: string; endTime: string }> = [];
-              scheduleDays.forEach(day => {
-                if (['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(day)) {
-                  schedules.push({
-                    day,
-                    startTime: dayGroups.monThu?.startTime || defaultStart,
-                    endTime: dayGroups.monThu?.endTime || defaultEnd,
-                  });
-                } else if (day === 'Friday') {
-                  schedules.push({
-                    day,
-                    startTime: dayGroups.friday?.startTime || defaultStart,
-                    endTime: dayGroups.friday?.endTime || defaultEnd,
-                  });
-                } else if (day === 'Saturday') {
-                  schedules.push({
-                    day,
-                    startTime: dayGroups.saturday?.startTime || defaultStart,
-                    endTime: dayGroups.saturday?.endTime || defaultEnd,
-                  });
-                } else {
-                  schedules.push({ day, startTime: defaultStart, endTime: defaultEnd });
-                }
-              });
-              setDaySchedules(schedules);
+            setFullTimeSchedule({
+              morningShift: {
+                startTime: morningShift.startTime || '08:00',
+                endTime: morningShift.endTime || '12:00',
+              },
+              eveningShift: {
+                startTime: eveningShift.startTime || '13:00',
+                endTime: eveningShift.endTime || '17:00',
+              },
+              workingDays: scheduleDays.length > 0 ? scheduleDays : 
+                          ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+            });
+          } else {
+            // Part Time: Initialize individual day schedules
+            const dayScheds = (teacher.schedule as any).daySchedules;
+            if (dayScheds && Array.isArray(dayScheds) && dayScheds.length > 0) {
+              setPartTimeDaySchedules(dayScheds);
             } else if (scheduleDays.length > 0) {
-              // Use same time for all days if no dayGroupSchedules
-              setDaySchedules(scheduleDays.map(day => ({
+              const defaultStart = teacher.schedule.startTime || teacher.schedule.workingHours?.start || '08:00';
+              const defaultEnd = teacher.schedule.endTime || teacher.schedule.workingHours?.end || '12:00';
+              setPartTimeDaySchedules(scheduleDays.map(day => ({
                 day,
                 startTime: defaultStart,
                 endTime: defaultEnd,
@@ -246,8 +252,14 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         throw new Error('Please fill in all required fields');
       }
       
-      if (daySchedules.length === 0) {
-        throw new Error('Please add at least one day schedule');
+      if (employmentInfo.employmentType === 'Full Time') {
+        if (fullTimeSchedule.workingDays.length === 0) {
+          throw new Error('Please select working days for Full Time schedule');
+        }
+      } else {
+        if (partTimeDaySchedules.length === 0) {
+          throw new Error('Please add at least one day schedule for Part Time');
+        }
       }
       
       const newTeacher: Teacher = {
@@ -260,21 +272,39 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         location: personalInfo.location,
         employmentType: employmentInfo.employmentType,
         shiftType: employmentInfo.shiftType,
-        shifts: shifts,
+        shifts: employmentInfo.employmentType === 'Full Time' ? [
+          { name: 'Morning Shift', startTime: fullTimeSchedule.morningShift.startTime, endTime: fullTimeSchedule.morningShift.endTime },
+          { name: 'Evening Shift', startTime: fullTimeSchedule.eveningShift.startTime, endTime: fullTimeSchedule.eveningShift.endTime },
+        ] : shifts,
         idDocument: idDocument,
         assignedStudents: isEdit ? teacher?.assignedStudents || [] : [],
         permissions: permissions,
-        schedule: {
-          days: daySchedules.map(ds => ds.day),
-          startTime: daySchedules[0]?.startTime || '08:00', // First day's start time as default
-          endTime: daySchedules[0]?.endTime || '17:00', // First day's end time as default
-          workingDays: daySchedules.map(ds => ds.day),
+        schedule: employmentInfo.employmentType === 'Full Time' ? {
+          days: fullTimeSchedule.workingDays,
+          startTime: fullTimeSchedule.morningShift.startTime,
+          endTime: fullTimeSchedule.eveningShift.endTime,
+          workingDays: fullTimeSchedule.workingDays,
           workingHours: {
-            start: daySchedules[0]?.startTime || '08:00',
-            end: daySchedules[0]?.endTime || '17:00',
+            start: fullTimeSchedule.morningShift.startTime,
+            end: fullTimeSchedule.eveningShift.endTime,
           },
-          // Store individual day schedules
-          daySchedules: daySchedules.map(ds => ({
+          // Store Full Time schedule format
+          fullTimeSchedule: {
+            morningShift: fullTimeSchedule.morningShift,
+            eveningShift: fullTimeSchedule.eveningShift,
+            workingDays: fullTimeSchedule.workingDays,
+          },
+        } : {
+          days: partTimeDaySchedules.map(ds => ds.day),
+          startTime: partTimeDaySchedules[0]?.startTime || '08:00',
+          endTime: partTimeDaySchedules[0]?.endTime || '12:00',
+          workingDays: partTimeDaySchedules.map(ds => ds.day),
+          workingHours: {
+            start: partTimeDaySchedules[0]?.startTime || '08:00',
+            end: partTimeDaySchedules[0]?.endTime || '12:00',
+          },
+          // Store individual day schedules for Part Time
+          daySchedules: partTimeDaySchedules.map(ds => ({
             day: ds.day,
             startTime: ds.startTime,
             endTime: ds.endTime,
@@ -507,200 +537,196 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   </div>
                 </div>
 
-                {/* Shift Selection for Part Time */}
-                {employmentInfo.employmentType === 'Part Time' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Shift *</label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button
-                        type="button"
-                        onClick={() => handleShiftTypeChange('Morning')}
-                        className={`py-4 px-4 rounded-lg font-medium transition ${
-                          employmentInfo.shiftType === 'Morning'
-                            ? 'bg-primary-600 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        🌅 Morning
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleShiftTypeChange('Evening')}
-                        className={`py-4 px-4 rounded-lg font-medium transition ${
-                          employmentInfo.shiftType === 'Evening'
-                            ? 'bg-primary-700 text-white shadow-lg'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        🌙 Evening
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Shift Configuration for Full Time */}
-                {employmentInfo.employmentType === 'Full Time' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Configure Shifts *</label>
-                    <div className="space-y-4">
-                      {shifts.map((shift, index) => (
-                        <div key={index} className="bg-white p-4 rounded-lg border border-gray-200">
-                          <div className="flex justify-between items-center mb-3">
-                            <label className="block text-sm font-medium text-gray-700">
-                              Shift {index + 1} Name *
-                            </label>
-                          </div>
+                {/* Schedule Configuration */}
+                {employmentInfo.employmentType === 'Full Time' ? (
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-4">Full Time Schedule (Mon-Sat, 2 Shifts) *</label>
+                    
+                    {/* Morning Shift */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">🌅 Morning Shift</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
                           <input
-                            type="text"
+                            type="time"
                             required
-                            value={shift.name}
-                            onChange={(e) => {
-                              const updatedShifts = [...shifts];
-                              updatedShifts[index] = { ...updatedShifts[index], name: e.target.value };
-                              setShifts(updatedShifts);
-                            }}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 mb-3"
-                            placeholder="e.g., Morning Shift, Afternoon Shift"
+                            value={fullTimeSchedule.morningShift.startTime}
+                            onChange={(e) => setFullTimeSchedule(prev => ({
+                              ...prev,
+                              morningShift: { ...prev.morningShift, startTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                           />
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
-                              <input
-                                type="time"
-                                required
-                                value={shift.startTime}
-                                onChange={(e) => {
-                                  const updatedShifts = [...shifts];
-                                  updatedShifts[index] = { ...updatedShifts[index], startTime: e.target.value };
-                                  setShifts(updatedShifts);
-                                }}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
-                              <input
-                                type="time"
-                                required
-                                value={shift.endTime}
-                                onChange={(e) => {
-                                  const updatedShifts = [...shifts];
-                                  updatedShifts[index] = { ...updatedShifts[index], endTime: e.target.value };
-                                  setShifts(updatedShifts);
-                                }}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                              />
-                            </div>
-                          </div>
                         </div>
-                      ))}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={fullTimeSchedule.morningShift.endTime}
+                            onChange={(e) => setFullTimeSchedule(prev => ({
+                              ...prev,
+                              morningShift: { ...prev.morningShift, endTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Evening Shift */}
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 mb-4">
+                      <h4 className="font-semibold text-gray-900 mb-3">🌙 Evening Shift</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={fullTimeSchedule.eveningShift.startTime}
+                            onChange={(e) => setFullTimeSchedule(prev => ({
+                              ...prev,
+                              eveningShift: { ...prev.eveningShift, startTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={fullTimeSchedule.eveningShift.endTime}
+                            onChange={(e) => setFullTimeSchedule(prev => ({
+                              ...prev,
+                              eveningShift: { ...prev.eveningShift, endTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Working Days (Mon-Sat) */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-3">Working Days (Monday - Saturday)</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => {
+                              const isSelected = fullTimeSchedule.workingDays.includes(day as ScheduleDay);
+                              setFullTimeSchedule(prev => ({
+                                ...prev,
+                                workingDays: isSelected
+                                  ? prev.workingDays.filter(d => d !== day)
+                                  : [...prev.workingDays, day as ScheduleDay]
+                              }));
+                            }}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                              fullTimeSchedule.workingDays.includes(day as ScheduleDay)
+                                ? 'bg-green-600 text-white'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {day.substring(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-2">Select the days this teacher will work (default: Mon-Sat)</p>
                     </div>
                   </div>
-                )}
-
-                {/* Shift Display for Part Time */}
-                {employmentInfo.employmentType === 'Part Time' && (
-                  <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
-                    <h4 className="font-semibold text-gray-900 mb-3">Selected Shift</h4>
-                    <div className="space-y-2">
-                      {shifts.map((shift, index) => (
-                        <div key={index} className="bg-white p-3 rounded flex justify-between items-center">
-                          <span className="font-medium">{shift.name}</span>
-                          <span className="text-sm text-gray-600">{shift.startTime} - {shift.endTime}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Day Schedule Configuration */}
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Working Schedule *</label>
-                  
-                  {/* List of added days */}
-                  {daySchedules.length > 0 && (
-                    <div className="mb-4 space-y-2">
-                      {daySchedules.map((daySchedule, index) => (
-                        <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                          <div className="flex-1">
-                            <span className="font-semibold text-gray-900">{daySchedule.day}</span>
-                            <span className="ml-4 text-sm text-gray-600">
-                              {daySchedule.startTime} - {daySchedule.endTime}
-                            </span>
+                ) : (
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">Part Time Schedule *</label>
+                    
+                    {/* List of added days */}
+                    {partTimeDaySchedules.length > 0 && (
+                      <div className="mb-4 space-y-2">
+                        {partTimeDaySchedules.map((daySchedule, index) => (
+                          <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                            <div className="flex-1">
+                              <span className="font-semibold text-gray-900">{daySchedule.day}</span>
+                              <span className="ml-4 text-sm text-gray-600">
+                                {daySchedule.startTime} - {daySchedule.endTime}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPartTimeDaySchedules(partTimeDaySchedules.filter((_, i) => i !== index));
+                              }}
+                              className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
                           </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Form to add a new day */}
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold text-gray-900 mb-3">Add Day Schedule</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Day *</label>
+                          <select
+                            value={newPartTimeDay.day}
+                            onChange={(e) => setNewPartTimeDay({ ...newPartTimeDay, day: e.target.value as ScheduleDay })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                          >
+                            {allDays.filter(day => !partTimeDaySchedules.find(ds => ds.day === day)).map(day => (
+                              <option key={day} value={day}>{day}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                          <input
+                            type="time"
+                            value={newPartTimeDay.startTime}
+                            onChange={(e) => setNewPartTimeDay({ ...newPartTimeDay, startTime: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                          <input
+                            type="time"
+                            value={newPartTimeDay.endTime}
+                            onChange={(e) => setNewPartTimeDay({ ...newPartTimeDay, endTime: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                          />
+                        </div>
+                        <div className="flex items-end">
                           <button
                             type="button"
                             onClick={() => {
-                              setDaySchedules(daySchedules.filter((_, i) => i !== index));
+                              if (!partTimeDaySchedules.find(ds => ds.day === newPartTimeDay.day)) {
+                                setPartTimeDaySchedules([...partTimeDaySchedules, { ...newPartTimeDay }]);
+                                setNewPartTimeDay({
+                                  day: allDays.find(day => !partTimeDaySchedules.find(ds => ds.day === day)) || 'Monday' as ScheduleDay,
+                                  startTime: '08:00',
+                                  endTime: '12:00',
+                                });
+                              }
                             }}
-                            className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium"
+                            disabled={!!partTimeDaySchedules.find(ds => ds.day === newPartTimeDay.day)}
+                            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition"
                           >
-                            Remove
+                            Add Day
                           </button>
                         </div>
-                      ))}
+                      </div>
+                      {partTimeDaySchedules.find(ds => ds.day === newPartTimeDay.day) && (
+                        <p className="text-xs text-red-600 mt-2">This day is already added</p>
+                      )}
                     </div>
-                  )}
-
-                  {/* Form to add a new day */}
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-3">Add Day Schedule</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Day *</label>
-                        <select
-                          value={newDaySchedule.day}
-                          onChange={(e) => setNewDaySchedule({ ...newDaySchedule, day: e.target.value as ScheduleDay })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
-                        >
-                          {allDays.filter(day => !daySchedules.find(ds => ds.day === day)).map(day => (
-                            <option key={day} value={day}>{day}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
-                        <input
-                          type="time"
-                          value={newDaySchedule.startTime}
-                          onChange={(e) => setNewDaySchedule({ ...newDaySchedule, startTime: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
-                        <input
-                          type="time"
-                          value={newDaySchedule.endTime}
-                          onChange={(e) => setNewDaySchedule({ ...newDaySchedule, endTime: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!daySchedules.find(ds => ds.day === newDaySchedule.day)) {
-                              setDaySchedules([...daySchedules, { ...newDaySchedule }]);
-                              setNewDaySchedule({
-                                day: allDays.find(day => !daySchedules.find(ds => ds.day === day)) || 'Monday' as ScheduleDay,
-                                startTime: '08:00',
-                                endTime: '17:00',
-                              });
-                            }
-                          }}
-                          disabled={!!daySchedules.find(ds => ds.day === newDaySchedule.day)}
-                          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition"
-                        >
-                          Add Day
-                        </button>
-                      </div>
-                    </div>
-                    {daySchedules.find(ds => ds.day === newDaySchedule.day) && (
-                      <p className="text-xs text-red-600 mt-2">This day is already added</p>
-                    )}
                   </div>
-                </div>
+                )}
               </div>
             )}
 

@@ -218,7 +218,25 @@ const teacherSchema = new mongoose.Schema({
       start: String,
       end: String
     },
-    timezone: String
+    timezone: String,
+    // Full Time schedule format
+    fullTimeSchedule: {
+      morningShift: {
+        startTime: String,
+        endTime: String
+      },
+      eveningShift: {
+        startTime: String,
+        endTime: String
+      },
+      workingDays: [String]
+    },
+    // Part Time schedule format (individual day schedules)
+    daySchedules: [{
+      day: String,
+      startTime: String,
+      endTime: String
+    }]
   },
   qualifications: [{
     degree: String,
