@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RecitationReview, RecitationType, Student } from '../types';
@@ -9,9 +9,10 @@ interface TeacherRecitationReviewProps {
 }
 
 const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClose, onSuccess }) => {
-  const { students, addRecitationReview } = useData();
+  const { students, addRecitationReview, getStudentsByTeacher } = useData();
   const { user } = useAuth();
   
+  const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [formData, setFormData] = useState({
     studentId: '',
     recitationType: 'sabq' as RecitationType,
@@ -20,17 +21,55 @@ const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClo
     audioLink: ''
   });
 
-  const [availableStudents, setAvailableStudents] = useState<Student[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get all students (teachers can access all students)
+  // Get assigned students for this teacher
+  const assignedStudents = useMemo(() => {
+    const teacherId = user?.id || '';
+    if (!teacherId) return [];
+    return getStudentsByTeacher(teacherId);
+  }, [students, user?.id, getStudentsByTeacher]);
+
+  // Get unique programs from assigned students
+  const availablePrograms = useMemo(() => {
+    return Array.from(new Set(assignedStudents.map(s => s.program).filter(Boolean)));
+  }, [assignedStudents]);
+
+  // Get assigned students filtered by program (only show when program is selected)
+  const availableStudents = useMemo(() => {
+    if (!selectedProgram) {
+      return []; // Don't show any students until a program is selected
+    }
+    return assignedStudents.filter(student => student.program === selectedProgram);
+  }, [assignedStudents, selectedProgram]);
+
+  // Clear student selection if the selected student is no longer in the filtered list
   useEffect(() => {
-    setAvailableStudents(students);
-  }, [students]);
+    if (formData.studentId && !availableStudents.find(s => s.id === formData.studentId)) {
+      setFormData(prev => ({ ...prev, studentId: '', program: '' }));
+    }
+  }, [availableStudents, formData.studentId]);
+
+  // Auto-fill program from selected student
+  useEffect(() => {
+    if (formData.studentId) {
+      const selectedStudent = availableStudents.find(s => s.id === formData.studentId);
+      if (selectedStudent?.program) {
+        setFormData(prev => ({ ...prev, program: selectedStudent.program }));
+      }
+    }
+  }, [formData.studentId, availableStudents]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleProgramFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const program = e.target.value;
+    setSelectedProgram(program);
+    // Clear student selection when program filter changes
+    setFormData(prev => ({ ...prev, studentId: '', program: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,6 +135,37 @@ const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClo
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Program Filter */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              🎓 Filter by Program *
+            </label>
+            <select
+              value={selectedProgram}
+              onChange={handleProgramFilterChange}
+              required
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            >
+              <option value="">Select a program...</option>
+              {availablePrograms.length > 0 ? (
+                availablePrograms.map(program => (
+                  <option key={program} value={program}>
+                    {program}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>No programs available</option>
+              )}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              {selectedProgram 
+                ? `Showing students assigned to you in ${selectedProgram}`
+                : availablePrograms.length > 0
+                ? 'Select a program to see your assigned students'
+                : 'No students assigned to you. Contact admin to get students assigned.'}
+            </p>
+          </div>
+
           {/* Student Selection */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -106,17 +176,28 @@ const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClo
               value={formData.studentId}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              disabled={!selectedProgram}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
-              <option value="">Choose a student...</option>
+              <option value="">
+                {!selectedProgram 
+                  ? 'Please select a program first...' 
+                  : availableStudents.length === 0 
+                  ? `No students assigned to you in ${selectedProgram}`
+                  : `Choose a student... (${availableStudents.length} available)`}
+              </option>
               {availableStudents.map(student => (
                 <option key={student.id} value={student.id}>
-                  {student.fullName} - {student.program}
+                  {student.fullName} {student.program ? `- ${student.program}` : ''}
                 </option>
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              All students are available for recitation review
+              {!selectedProgram
+                ? 'Select a program above to see your assigned students'
+                : availableStudents.length > 0 
+                ? `Showing ${availableStudents.length} assigned student${availableStudents.length > 1 ? 's' : ''} in ${selectedProgram}`
+                : `No students assigned to you in ${selectedProgram}. Contact admin to get students assigned.`}
             </p>
           </div>
 
@@ -138,23 +219,20 @@ const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClo
             </select>
           </div>
 
-          {/* Program */}
+          {/* Program (Auto-filled) */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              🎓 Program
+              🎓 Program (Auto-filled)
             </label>
-            <select
+            <input
+              type="text"
               name="program"
-              value={formData.program}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="Full Time HQ">Full Time HQ</option>
-              <option value="Part Time HQ">Part Time HQ</option>
-              <option value="After School Reading">After School Reading</option>
-            </select>
+              value={formData.program || 'Will auto-fill from selected student'}
+              readOnly
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+            />
             <p className="text-xs text-gray-500 mt-1">
-              Will auto-fill from student's program if not specified
+              Automatically filled from the selected student's program
             </p>
           </div>
 
