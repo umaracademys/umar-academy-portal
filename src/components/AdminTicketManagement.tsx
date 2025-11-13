@@ -1228,24 +1228,36 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </dd>
                     </div>
                   </dl>
-                  {selectedTicket.progressNotes && (
-                    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  {/* Admin's Internal Note Section */}
+                  {(selectedTicket as any).revisionNotes && (
+                    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
                       <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                        Teacher notes
+                        ADMIN NOTES
+                      </h4>
+                      <p className="whitespace-pre-wrap text-sm text-gray-700">
+                        {(selectedTicket as any).revisionNotes}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Teacher Notes Section */}
+                  {selectedTicket.progressNotes && (
+                    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                        TEACHER NOTES
                       </h4>
                       <p className="whitespace-pre-wrap text-sm text-gray-700">
                         {selectedTicket.progressNotes}
                       </p>
                     </div>
                   )}
-                  {(nextActiveTicket?.revisionNotes || selectedTicket.revisionNotes) && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
-                        Admin focus note
+
+                  {!selectedTicket.progressNotes && !(selectedTicket as any).revisionNotes && (
+                    <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                        TEACHER NOTES
                       </h4>
-                      <p className="whitespace-pre-wrap text-sm text-amber-900">
-                        {nextActiveTicket?.revisionNotes || selectedTicket.revisionNotes}
-                      </p>
+                      <p className="text-sm text-gray-500 italic">No notes recorded yet.</p>
                     </div>
                   )}
                   {selectedTicket.audioLink && (
