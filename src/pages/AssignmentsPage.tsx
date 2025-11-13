@@ -292,9 +292,34 @@ const AssignmentsPage: React.FC = () => {
     const sabqiSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabqi');
     const manzilSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'manzil');
     
+    // Get student ID from assignment
+    const studentId = assignment.assignedTo?.[0] || (assignment as any).studentId;
+    
     // Check if this assignment came from a recitation review
     const fromRecitationReviewId = (assignment as any).fromRecitationReviewId;
     let reviewData: any = null;
+    
+    // Also check for tickets from the same student that might have additional data
+    let relatedTickets: any[] = [];
+    if (studentId) {
+      // Find tickets for this student that were created/updated around the same time as the assignment
+      const assignmentDate = assignment.createdAt ? new Date(assignment.createdAt) : new Date();
+      relatedTickets = tickets.filter((ticket: any) => {
+        const ticketStudentId = ticket.studentId || (ticket as any).studentId;
+        if (ticketStudentId !== studentId && ticketStudentId?.toString() !== studentId?.toString()) {
+          return false;
+        }
+        // Check if ticket is from the same day or recent
+        const ticketDate = ticket.createdAt ? new Date(ticket.createdAt) : new Date(ticket.updatedAt || new Date());
+        const daysDiff = Math.abs(assignmentDate.getTime() - ticketDate.getTime()) / (1000 * 60 * 60 * 24);
+        return daysDiff <= 1; // Same day or within 1 day
+      });
+    }
+    
+    // Extract data from related tickets
+    const sabqTicket = relatedTickets.find((t: any) => (t.workflowStep || '').toLowerCase() === 'sabq');
+    const sabqiTicket = relatedTickets.find((t: any) => (t.workflowStep || '').toLowerCase() === 'sabqi');
+    const manzilTicket = relatedTickets.find((t: any) => (t.workflowStep || '').toLowerCase() === 'manzil');
     
     if (fromRecitationReviewId) {
       // Find the recitation review
@@ -304,52 +329,82 @@ const AssignmentsPage: React.FC = () => {
       
       if (reviewData) {
         console.log('📖 Found recitation review data:', reviewData);
+        console.log('🎫 Found related tickets:', relatedTickets.length);
         setRecitationReviewData(reviewData);
         
-        // Pre-fill the section that matches the review type
+        // Pre-fill the section that matches the review type with review notes
         const reviewType = ((reviewData as any).recitationType || '').toLowerCase();
         const reviewNotes = (reviewData as any).notes || '';
         
-        // Initialize form with review data
+        // Use review notes for the matching section, existing sections, or ticket data as fallback
+        // Priority: 1. Review notes (if type matches), 2. Existing section data, 3. Ticket data, 4. Empty
+        const sabqPortion = reviewType === 'sabq' ? reviewNotes : 
+          (sabqSection?.assignmentRange || sabqSection?.assignmentPortion || sabqTicket?.assignmentRange || sabqTicket?.assignmentPortion || '');
+        const sabqNotes = reviewType === 'sabq' ? reviewNotes : 
+          (sabqSection?.details || sabqSection?.summary || sabqTicket?.progressNotes || '');
+        
+        const sabqiPortion = reviewType === 'sabqi' ? reviewNotes : 
+          (sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || sabqiTicket?.assignmentRange || sabqiTicket?.assignmentPortion || '');
+        const sabqiNotes = reviewType === 'sabqi' ? reviewNotes : 
+          (sabqiSection?.details || sabqiSection?.summary || sabqiTicket?.progressNotes || '');
+        
+        const manzilPortion = reviewType === 'manzil' ? reviewNotes : 
+          (manzilSection?.assignmentRange || manzilSection?.assignmentPortion || manzilTicket?.assignmentRange || manzilTicket?.assignmentPortion || '');
+        const manzilNotes = reviewType === 'manzil' ? reviewNotes : 
+          (manzilSection?.details || manzilSection?.summary || manzilTicket?.progressNotes || '');
+        
+        // Use review notes as final report if no existing description, or combine with existing
+        const finalReport = assignment.description || reviewNotes || 
+          `Recitation review for ${(reviewData as any).studentName} - ${(reviewData as any).recitationType} by ${(reviewData as any).teacherName}`;
+        
+        // Initialize form with all available data
         const initialForm = {
-          finalReport: assignment.description || '',
+          finalReport: finalReport,
           homework: (assignment as any).homeworkComments || assignment.homeworkSummary || '',
-          homeworkLink: (assignment as any).homeworkLink || '',
+          homeworkLink: (assignment as any).homeworkLink || (reviewData as any).audioLink || '',
           sabq: { 
-            portion: reviewType === 'sabq' ? reviewNotes : (sabqSection?.assignmentRange || sabqSection?.assignmentPortion || ''),
-            notes: reviewType === 'sabq' ? reviewNotes : (sabqSection?.details || sabqSection?.summary || '')
+            portion: sabqPortion,
+            notes: sabqNotes
           },
           sabqi: { 
-            portion: reviewType === 'sabqi' ? reviewNotes : (sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || ''),
-            notes: reviewType === 'sabqi' ? reviewNotes : (sabqiSection?.details || sabqiSection?.summary || '')
+            portion: sabqiPortion,
+            notes: sabqiNotes
           },
           manzil: { 
-            portion: reviewType === 'manzil' ? reviewNotes : (manzilSection?.assignmentRange || manzilSection?.assignmentPortion || ''),
-            notes: reviewType === 'manzil' ? reviewNotes : (manzilSection?.details || manzilSection?.summary || '')
+            portion: manzilPortion,
+            notes: manzilNotes
           },
         };
+        
+        console.log('📝 Initialized form with data:', {
+          reviewType,
+          sabq: initialForm.sabq,
+          sabqi: initialForm.sabqi,
+          manzil: initialForm.manzil,
+          finalReport: initialForm.finalReport
+        });
         
         setEditForm(initialForm);
         return;
       }
     }
     
-    // If no recitation review, use existing classwork sections or empty
+    // If no recitation review, use existing classwork sections, ticket data, or empty
     setEditForm({
       finalReport: assignment.description || '',
       homework: (assignment as any).homeworkComments || assignment.homeworkSummary || '',
       homeworkLink: (assignment as any).homeworkLink || '',
       sabq: { 
-        portion: sabqSection?.assignmentRange || sabqSection?.assignmentPortion || '',
-        notes: sabqSection?.details || sabqSection?.summary || ''
+        portion: sabqSection?.assignmentRange || sabqSection?.assignmentPortion || sabqTicket?.assignmentRange || sabqTicket?.assignmentPortion || '',
+        notes: sabqSection?.details || sabqSection?.summary || sabqTicket?.progressNotes || ''
       },
       sabqi: { 
-        portion: sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || '',
-        notes: sabqiSection?.details || sabqiSection?.summary || ''
+        portion: sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || sabqiTicket?.assignmentRange || sabqiTicket?.assignmentPortion || '',
+        notes: sabqiSection?.details || sabqiSection?.summary || sabqiTicket?.progressNotes || ''
       },
       manzil: { 
-        portion: manzilSection?.assignmentRange || manzilSection?.assignmentPortion || '',
-        notes: manzilSection?.details || manzilSection?.summary || ''
+        portion: manzilSection?.assignmentRange || manzilSection?.assignmentPortion || manzilTicket?.assignmentRange || manzilTicket?.assignmentPortion || '',
+        notes: manzilSection?.details || manzilSection?.summary || manzilTicket?.progressNotes || ''
       },
     });
     setRecitationReviewData(null);
