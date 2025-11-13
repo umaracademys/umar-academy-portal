@@ -258,7 +258,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load assignments from backend
-      const assignmentsResponse = await fetch(`${API_BASE}/assignments`);
+      const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 10000);
       if (assignmentsResponse.ok) {
         const assignmentsData = await assignmentsResponse.json();
         console.log('📝 Assignments loaded from backend:', assignmentsData.length);
