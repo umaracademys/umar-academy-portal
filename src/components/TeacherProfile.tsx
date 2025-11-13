@@ -470,7 +470,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">Monthly Salary</p>
                     <p className="text-2xl font-bold text-primary-600">
-                      {teacher.payroll.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll.monthlySalary.toLocaleString()}
+                      {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{(teacher.payroll?.monthlySalary || 0).toLocaleString()}
                     </p>
                   </div>
                 </Card>
@@ -491,9 +491,9 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
               <Card title="Payment History">
                 <div className="space-y-2">
                   {[
-                    { month: 'October 2025', amount: teacher.payroll.monthlySalary, status: 'Paid', date: 'Oct 15, 2025' },
-                    { month: 'September 2025', amount: teacher.payroll.monthlySalary, status: 'Paid', date: 'Sep 15, 2025' },
-                    { month: 'August 2025', amount: teacher.payroll.monthlySalary, status: 'Paid', date: 'Aug 15, 2025' },
+                    { month: 'October 2025', amount: teacher.payroll?.monthlySalary || 0, status: 'Paid', date: 'Oct 15, 2025' },
+                    { month: 'September 2025', amount: teacher.payroll?.monthlySalary || 0, status: 'Paid', date: 'Sep 15, 2025' },
+                    { month: 'August 2025', amount: teacher.payroll?.monthlySalary || 0, status: 'Paid', date: 'Aug 15, 2025' },
                   ].map((payment, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
@@ -502,7 +502,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                       </div>
                       <div className="text-right">
                         <p className="font-semibold text-gray-900">
-                          {teacher.payroll.currency === 'USD' ? '$' : 'Rs'}{payment.amount.toLocaleString()}
+                          {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{payment.amount.toLocaleString()}
                         </p>
                         <span className="text-xs text-green-600 font-semibold">{payment.status}</span>
                       </div>
