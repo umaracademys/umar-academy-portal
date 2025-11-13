@@ -524,6 +524,9 @@ const SuperAdminDashboard: React.FC = () => {
       setHighlightDirectory(true);
     };
 
+    const studentsCount = students.length;
+    const activeStudentsCount = students.filter((s) => s.status === 'active').length;
+
     return (
       <div>
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -533,6 +536,7 @@ const SuperAdminDashboard: React.FC = () => {
               badge: 'AN',
               title: 'Analytics',
               description: 'Review student performance trends and milestones.',
+              footer: `${studentsCount} total • ${activeStudentsCount} active`,
               action: () => {
                 if (!selectedStudent && students.length > 0) {
                   setSelectedStudent(students[0]);
@@ -547,6 +551,7 @@ const SuperAdminDashboard: React.FC = () => {
               badge: 'CR',
               title: 'Student Credentials',
               description: 'Manage login credentials and portal access.',
+              footer: `${studentsCount} students`,
               action: () => {
                 if (!selectedStudent && students.length > 0) {
                   setSelectedStudent(students[0]);
@@ -561,6 +566,7 @@ const SuperAdminDashboard: React.FC = () => {
               badge: 'BL',
               title: 'Student Bulk Operations',
               description: 'Manage multiple students at once.',
+              footer: `${studentsCount} students`,
               action: () => setShowStudentBulkOperations(true),
               button: 'Run bulk action',
               disabled: false,
@@ -570,6 +576,7 @@ const SuperAdminDashboard: React.FC = () => {
               badge: 'SD',
               title: 'Student Directory',
               description: 'Browse and filter the complete student directory.',
+              footer: `${studentsCount} students`,
               action: focusStudentDirectory,
               button: 'View directory',
               disabled: false,
@@ -583,6 +590,9 @@ const SuperAdminDashboard: React.FC = () => {
                 <div className="flex-1">
                   <h3 className="text-base font-semibold text-primary">{item.title}</h3>
                   <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+                  {item.footer && (
+                    <p className="mt-2 text-xs font-semibold text-primary-soft">{item.footer}</p>
+                  )}
                 </div>
                 <button
                   onClick={item.action}
