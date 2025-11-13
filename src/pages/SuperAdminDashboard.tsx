@@ -486,8 +486,10 @@ const SuperAdminDashboard: React.FC = () => {
     };
 
     const handleEditStudent = (student: any) => {
+      console.log('🔍 Edit student clicked:', student);
       setSelectedStudent(student);
-      setShowStudentProfile(true);
+      setShowStudentProfile(false);
+      setShowStudentForm(true);
     };
 
     const handleDeleteStudent = async (studentId: string) => {
