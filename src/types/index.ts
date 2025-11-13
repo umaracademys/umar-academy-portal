@@ -35,7 +35,12 @@ export interface Schedule {
     monThu: { startTime: string; endTime: string };
     friday: { startTime: string; endTime: string };
     saturday: { startTime: string; endTime: string };
-  }; // Per-day-group schedules
+  }; // Per-day-group schedules (legacy)
+  daySchedules?: Array<{
+    day: ScheduleDay;
+    startTime: string;
+    endTime: string;
+  }>; // Individual day schedules (new simple format)
 }
 
 export interface Assessment {

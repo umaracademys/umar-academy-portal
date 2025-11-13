@@ -34,11 +34,18 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
   ]);
 
-  // Schedule configuration for different day groups
-  const [dayGroupSchedules, setDayGroupSchedules] = useState({
-    monThu: { startTime: '08:00', endTime: '17:00' },
-    friday: { startTime: '08:00', endTime: '17:00' },
-    saturday: { startTime: '08:00', endTime: '17:00' },
+  // Individual day schedules (simple approach)
+  const [daySchedules, setDaySchedules] = useState<Array<{
+    day: ScheduleDay;
+    startTime: string;
+    endTime: string;
+  }>>([]);
+
+  // Form for adding a new day schedule
+  const [newDaySchedule, setNewDaySchedule] = useState({
+    day: 'Monday' as ScheduleDay,
+    startTime: '08:00',
+    endTime: '17:00',
   });
 
   // Payroll Information
@@ -155,26 +162,54 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
           ]);
         }
 
-        // Initialize day group schedules from teacher schedule if available
+        // Initialize day schedules from teacher schedule
         if (teacher.schedule) {
-          // Check if dayGroupSchedules exist in schedule
-          const dayGroups = (teacher.schedule as any).dayGroupSchedules;
-          if (dayGroups) {
-            setDayGroupSchedules({
-              monThu: dayGroups.monThu || { startTime: '08:00', endTime: '17:00' },
-              friday: dayGroups.friday || { startTime: '08:00', endTime: '17:00' },
-              saturday: dayGroups.saturday || { startTime: '08:00', endTime: '17:00' },
-            });
+          // Check if daySchedules exist (new simple format)
+          const dayScheds = (teacher.schedule as any).daySchedules;
+          if (dayScheds && Array.isArray(dayScheds) && dayScheds.length > 0) {
+            setDaySchedules(dayScheds);
           } else {
-            // Fallback to existing schedule times if not specified per day group
+            // Check if dayGroupSchedules exist (old format)
+            const dayGroups = (teacher.schedule as any).dayGroupSchedules;
+            const scheduleDays = (teacher.schedule.days || teacher.schedule.workingDays || []) as ScheduleDay[];
             const defaultStart = teacher.schedule.startTime || teacher.schedule.workingHours?.start || '08:00';
             const defaultEnd = teacher.schedule.endTime || teacher.schedule.workingHours?.end || '17:00';
             
-            setDayGroupSchedules({
-              monThu: { startTime: defaultStart, endTime: defaultEnd },
-              friday: { startTime: defaultStart, endTime: defaultEnd },
-              saturday: { startTime: defaultStart, endTime: defaultEnd },
-            });
+            if (dayGroups) {
+              // Convert dayGroupSchedules to individual day schedules
+              const schedules: Array<{ day: ScheduleDay; startTime: string; endTime: string }> = [];
+              scheduleDays.forEach(day => {
+                if (['Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(day)) {
+                  schedules.push({
+                    day,
+                    startTime: dayGroups.monThu?.startTime || defaultStart,
+                    endTime: dayGroups.monThu?.endTime || defaultEnd,
+                  });
+                } else if (day === 'Friday') {
+                  schedules.push({
+                    day,
+                    startTime: dayGroups.friday?.startTime || defaultStart,
+                    endTime: dayGroups.friday?.endTime || defaultEnd,
+                  });
+                } else if (day === 'Saturday') {
+                  schedules.push({
+                    day,
+                    startTime: dayGroups.saturday?.startTime || defaultStart,
+                    endTime: dayGroups.saturday?.endTime || defaultEnd,
+                  });
+                } else {
+                  schedules.push({ day, startTime: defaultStart, endTime: defaultEnd });
+                }
+              });
+              setDaySchedules(schedules);
+            } else if (scheduleDays.length > 0) {
+              // Use same time for all days if no dayGroupSchedules
+              setDaySchedules(scheduleDays.map(day => ({
+                day,
+                startTime: defaultStart,
+                endTime: defaultEnd,
+              })));
+            }
           }
         }
       }
@@ -211,8 +246,8 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         throw new Error('Please fill in all required fields');
       }
       
-      if (employmentInfo.scheduleDays.length === 0) {
-        throw new Error('Please select at least one working day');
+      if (daySchedules.length === 0) {
+        throw new Error('Please add at least one day schedule');
       }
       
       const newTeacher: Teacher = {
@@ -230,21 +265,21 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         assignedStudents: isEdit ? teacher?.assignedStudents || [] : [],
         permissions: permissions,
         schedule: {
-          days: employmentInfo.scheduleDays,
-          startTime: dayGroupSchedules.monThu.startTime, // Default to Mon-Thu start time
-          endTime: dayGroupSchedules.monThu.endTime, // Default to Mon-Thu end time
-          workingDays: employmentInfo.scheduleDays, // Backend compatibility
+          days: daySchedules.map(ds => ds.day),
+          startTime: daySchedules[0]?.startTime || '08:00', // First day's start time as default
+          endTime: daySchedules[0]?.endTime || '17:00', // First day's end time as default
+          workingDays: daySchedules.map(ds => ds.day),
           workingHours: {
-            start: dayGroupSchedules.monThu.startTime,
-            end: dayGroupSchedules.monThu.endTime,
+            start: daySchedules[0]?.startTime || '08:00',
+            end: daySchedules[0]?.endTime || '17:00',
           },
-          // Store day group schedules in schedule object
-          dayGroupSchedules: {
-            monThu: dayGroupSchedules.monThu,
-            friday: dayGroupSchedules.friday,
-            saturday: dayGroupSchedules.saturday,
-          },
-        },
+          // Store individual day schedules
+          daySchedules: daySchedules.map(ds => ({
+            day: ds.day,
+            startTime: ds.startTime,
+            endTime: ds.endTime,
+          })),
+        } as any,
         payroll: {
           hourlyRate: payrollInfo.hourlyRate,
           currency: currency,
@@ -578,129 +613,92 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   </div>
                 )}
 
-                {/* Working Days */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Working Days *</label>
-                  <div className="flex flex-wrap gap-2">
-                    {allDays.map(day => (
-                      <button
-                        key={day}
-                        type="button"
-                        onClick={() => handleDayToggle(day)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                          employmentInfo.scheduleDays.includes(day)
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {day.substring(0, 3)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Day Group Schedule Configuration */}
+                {/* Day Schedule Configuration */}
                 <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">Schedule by Day Groups *</label>
-                  <div className="space-y-4">
-                    {/* Monday to Thursday */}
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                      <h4 className="font-semibold text-gray-900 mb-3">Monday - Thursday</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={dayGroupSchedules.monThu.startTime}
-                            onChange={(e) => setDayGroupSchedules(prev => ({
-                              ...prev,
-                              monThu: { ...prev.monThu, startTime: e.target.value }
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                          />
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Working Schedule *</label>
+                  
+                  {/* List of added days */}
+                  {daySchedules.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      {daySchedules.map((daySchedule, index) => (
+                        <div key={index} className="bg-white p-3 rounded-lg border border-gray-200 flex items-center justify-between">
+                          <div className="flex-1">
+                            <span className="font-semibold text-gray-900">{daySchedule.day}</span>
+                            <span className="ml-4 text-sm text-gray-600">
+                              {daySchedule.startTime} - {daySchedule.endTime}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDaySchedules(daySchedules.filter((_, i) => i !== index));
+                            }}
+                            className="ml-4 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-medium"
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={dayGroupSchedules.monThu.endTime}
-                            onChange={(e) => setDayGroupSchedules(prev => ({
-                              ...prev,
-                              monThu: { ...prev.monThu, endTime: e.target.value }
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                          />
-                        </div>
-                      </div>
+                      ))}
                     </div>
+                  )}
 
-                    {/* Friday */}
-                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                      <h4 className="font-semibold text-gray-900 mb-3">Friday</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={dayGroupSchedules.friday.startTime}
-                            onChange={(e) => setDayGroupSchedules(prev => ({
-                              ...prev,
-                              friday: { ...prev.friday, startTime: e.target.value }
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={dayGroupSchedules.friday.endTime}
-                            onChange={(e) => setDayGroupSchedules(prev => ({
-                              ...prev,
-                              friday: { ...prev.friday, endTime: e.target.value }
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                          />
-                        </div>
+                  {/* Form to add a new day */}
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 className="font-semibold text-gray-900 mb-3">Add Day Schedule</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Day *</label>
+                        <select
+                          value={newDaySchedule.day}
+                          onChange={(e) => setNewDaySchedule({ ...newDaySchedule, day: e.target.value as ScheduleDay })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                        >
+                          {allDays.filter(day => !daySchedules.find(ds => ds.day === day)).map(day => (
+                            <option key={day} value={day}>{day}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                        <input
+                          type="time"
+                          value={newDaySchedule.startTime}
+                          onChange={(e) => setNewDaySchedule({ ...newDaySchedule, startTime: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                        <input
+                          type="time"
+                          value={newDaySchedule.endTime}
+                          onChange={(e) => setNewDaySchedule({ ...newDaySchedule, endTime: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-sm"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!daySchedules.find(ds => ds.day === newDaySchedule.day)) {
+                              setDaySchedules([...daySchedules, { ...newDaySchedule }]);
+                              setNewDaySchedule({
+                                day: allDays.find(day => !daySchedules.find(ds => ds.day === day)) || 'Monday' as ScheduleDay,
+                                startTime: '08:00',
+                                endTime: '17:00',
+                              });
+                            }
+                          }}
+                          disabled={!!daySchedules.find(ds => ds.day === newDaySchedule.day)}
+                          className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm font-medium transition"
+                        >
+                          Add Day
+                        </button>
                       </div>
                     </div>
-
-                    {/* Saturday */}
-                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                      <h4 className="font-semibold text-gray-900 mb-3">Saturday</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={dayGroupSchedules.saturday.startTime}
-                            onChange={(e) => setDayGroupSchedules(prev => ({
-                              ...prev,
-                              saturday: { ...prev.saturday, startTime: e.target.value }
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
-                          <input
-                            type="time"
-                            required
-                            value={dayGroupSchedules.saturday.endTime}
-                            onChange={(e) => setDayGroupSchedules(prev => ({
-                              ...prev,
-                              saturday: { ...prev.saturday, endTime: e.target.value }
-                            }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    {daySchedules.find(ds => ds.day === newDaySchedule.day) && (
+                      <p className="text-xs text-red-600 mt-2">This day is already added</p>
+                    )}
                   </div>
                 </div>
               </div>
