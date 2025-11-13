@@ -1745,32 +1745,83 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         onChange={() => handleToggleTicketSelection(ticket)}
                         className="hidden"
                       />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent)]">
-                        Under review · {getStepLabel(ticket.workflowStep)}
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        CURRENT STEP • {ticket.workflowStep.toUpperCase()}
                       </p>
-                      <h3 className="text-lg font-semibold text-gray-900">{getStudentName(ticket.studentId)}</h3>
-                      <p className="text-sm text-gray-600">
-                        Teacher {ticket.assignedTeacherName || '—'} • Submitted {formatTicketTimestamp(ticket)}
-                      </p>
-                      {ticket.assignmentRange && (
-                        <p className="text-xs text-gray-500">Range: {ticket.assignmentRange}</p>
+                      <h3 className="text-2xl font-bold text-gray-900">{getStudentName(ticket.studentId)}</h3>
+                      
+                      {/* Student Info Grid */}
+                      <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                        <div>
+                          <dt className="font-semibold text-gray-700 text-sm mb-1">Assigned teacher</dt>
+                          <dd className="text-sm text-gray-900">{ticket.assignedTeacherName || '—'}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-gray-700 text-sm mb-1">Program</dt>
+                          <dd className="text-sm text-gray-900">{ticket.program || '—'}</dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-gray-700 text-sm mb-1">Range / Focus</dt>
+                          <dd className="text-sm text-gray-900">
+                            {ticket.assignmentRange || 'Not specified'}
+                            {ticket.assignmentPortion && (
+                              <span className="ml-1">
+                                • {formatAssignmentPortion(ticket.assignmentPortion as string)}
+                              </span>
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="font-semibold text-gray-700 text-sm mb-1">Portion size</dt>
+                          <dd className="text-sm text-gray-900">
+                            {ticket.assignmentPortion
+                              ? formatAssignmentPortion(ticket.assignmentPortion as string)
+                              : 'Not specified'}
+                          </dd>
+                        </div>
+                      </div>
+
+                      {/* Admin's Internal Note Section */}
+                      {(ticket as any).revisionNotes && (
+                        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                            ADMIN NOTES
+                          </h4>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {(ticket as any).revisionNotes}
+                          </p>
+                        </div>
                       )}
-                      {ticket.assignmentPortion && (
-                        <p className="text-xs text-gray-500">
-                          Portion: {formatAssignmentPortion(ticket.assignmentPortion as string)}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-500">
-                        Mistakes marked: {typeof (ticket as any).mistakeCount === 'number' ? (ticket as any).mistakeCount : 0}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Next step: {nextStepLabel}
-                      </p>
+
+                      {/* Teacher Notes Section */}
                       {ticket.progressNotes && (
-                        <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap leading-6 line-clamp-4">
-                          {ticket.progressNotes}
-                        </p>
+                        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                            TEACHER NOTES
+                          </h4>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                            {ticket.progressNotes}
+                          </p>
+                        </div>
                       )}
+
+                      {!ticket.progressNotes && !(ticket as any).revisionNotes && (
+                        <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                            TEACHER NOTES
+                          </h4>
+                          <p className="text-sm text-gray-500 italic">No notes recorded yet.</p>
+                        </div>
+                      )}
+
+                      {/* Additional Info */}
+                      <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
+                        <span>Submitted {formatTicketTimestamp(ticket)}</span>
+                        <span>•</span>
+                        <span>Mistakes: {typeof (ticket as any).mistakeCount === 'number' ? (ticket as any).mistakeCount : 0}</span>
+                        <span>•</span>
+                        <span>Next: {nextStepLabel}</span>
+                      </div>
                     </div>
                     <div className="flex flex-col gap-2 min-w-[12rem]">
                       <button
