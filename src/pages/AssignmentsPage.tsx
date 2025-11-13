@@ -322,46 +322,79 @@ const AssignmentsPage: React.FC = () => {
     const manzilTicket = relatedTickets.find((t: any) => (t.workflowStep || '').toLowerCase() === 'manzil');
     
     if (fromRecitationReviewId) {
-      // Find the recitation review
+      // Find the recitation review that was converted
       reviewData = recitationReviews.find((r: any) => 
         (r.id || (r as any)._id) === fromRecitationReviewId
       );
       
       if (reviewData) {
         console.log('📖 Found recitation review data:', reviewData);
-        console.log('🎫 Found related tickets:', relatedTickets.length);
         setRecitationReviewData(reviewData);
         
-        // Pre-fill the section that matches the review type with review notes
-        const reviewType = ((reviewData as any).recitationType || '').toLowerCase();
-        const reviewNotes = (reviewData as any).notes || '';
+        // Also find ALL recitation reviews for this student on the same day
+        // This helps pre-fill all sections if the student had multiple reviews that day
+        const assignmentDate = assignment.createdAt ? new Date(assignment.createdAt) : new Date();
+        const assignmentDateStr = assignmentDate.toISOString().split('T')[0];
         
-        // Use review notes for the matching section, existing sections, or ticket data as fallback
-        // Priority: 1. Review notes (if type matches), 2. Existing section data, 3. Ticket data, 4. Empty
-        const sabqPortion = reviewType === 'sabq' ? reviewNotes : 
+        const allReviewsForStudent = recitationReviews.filter((r: any) => {
+          const reviewStudentId = (r as any).studentId || (r as any).student?._id || (r as any).student?.id;
+          if (reviewStudentId !== studentId && reviewStudentId?.toString() !== studentId?.toString()) {
+            return false;
+          }
+          // Check if review is from the same day
+          const reviewDate = (r as any).createdAt ? new Date((r as any).createdAt) : new Date((r as any).updatedAt || new Date());
+          const reviewDateStr = reviewDate.toISOString().split('T')[0];
+          return reviewDateStr === assignmentDateStr;
+        });
+        
+        console.log(`📚 Found ${allReviewsForStudent.length} recitation reviews for student on the same day`);
+        
+        // Find reviews for each type
+        const sabqReview = allReviewsForStudent.find((r: any) => ((r as any).recitationType || '').toLowerCase() === 'sabq');
+        const sabqiReview = allReviewsForStudent.find((r: any) => ((r as any).recitationType || '').toLowerCase() === 'sabqi');
+        const manzilReview = allReviewsForStudent.find((r: any) => ((r as any).recitationType || '').toLowerCase() === 'manzil');
+        
+        // Pre-fill each section with its corresponding review data, or existing data, or ticket data
+        // Priority: 1. Review notes (if review exists for that type), 2. Existing section data, 3. Ticket data, 4. Empty
+        const sabqPortion = sabqReview ? ((sabqReview as any).notes || '') : 
           (sabqSection?.assignmentRange || sabqSection?.assignmentPortion || sabqTicket?.assignmentRange || sabqTicket?.assignmentPortion || '');
-        const sabqNotes = reviewType === 'sabq' ? reviewNotes : 
+        const sabqNotes = sabqReview ? ((sabqReview as any).notes || '') : 
           (sabqSection?.details || sabqSection?.summary || sabqTicket?.progressNotes || '');
         
-        const sabqiPortion = reviewType === 'sabqi' ? reviewNotes : 
+        const sabqiPortion = sabqiReview ? ((sabqiReview as any).notes || '') : 
           (sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || sabqiTicket?.assignmentRange || sabqiTicket?.assignmentPortion || '');
-        const sabqiNotes = reviewType === 'sabqi' ? reviewNotes : 
+        const sabqiNotes = sabqiReview ? ((sabqiReview as any).notes || '') : 
           (sabqiSection?.details || sabqiSection?.summary || sabqiTicket?.progressNotes || '');
         
-        const manzilPortion = reviewType === 'manzil' ? reviewNotes : 
+        const manzilPortion = manzilReview ? ((manzilReview as any).notes || '') : 
           (manzilSection?.assignmentRange || manzilSection?.assignmentPortion || manzilTicket?.assignmentRange || manzilTicket?.assignmentPortion || '');
-        const manzilNotes = reviewType === 'manzil' ? reviewNotes : 
+        const manzilNotes = manzilReview ? ((manzilReview as any).notes || '') : 
           (manzilSection?.details || manzilSection?.summary || manzilTicket?.progressNotes || '');
         
-        // Use review notes as final report if no existing description, or combine with existing
-        const finalReport = assignment.description || reviewNotes || 
+        // Combine all review notes for final report, or use existing description
+        const allReviewNotes = allReviewsForStudent
+          .map((r: any) => {
+            const type = ((r as any).recitationType || '').toUpperCase();
+            const notes = (r as any).notes || '';
+            return notes ? `${type}: ${notes}` : '';
+          })
+          .filter(Boolean)
+          .join('\n\n');
+        
+        const finalReport = assignment.description || allReviewNotes || 
+          (reviewData as any).notes || 
           `Recitation review for ${(reviewData as any).studentName} - ${(reviewData as any).recitationType} by ${(reviewData as any).teacherName}`;
+        
+        // Get audio link from any review (prioritize the main review)
+        const audioLink = (reviewData as any).audioLink || 
+          allReviewsForStudent.find((r: any) => (r as any).audioLink)?.(r as any).audioLink ||
+          (assignment as any).homeworkLink || '';
         
         // Initialize form with all available data
         const initialForm = {
           finalReport: finalReport,
           homework: (assignment as any).homeworkComments || assignment.homeworkSummary || '',
-          homeworkLink: (assignment as any).homeworkLink || (reviewData as any).audioLink || '',
+          homeworkLink: audioLink || (assignment as any).homeworkLink || '',
           sabq: { 
             portion: sabqPortion,
             notes: sabqNotes
@@ -376,12 +409,16 @@ const AssignmentsPage: React.FC = () => {
           },
         };
         
-        console.log('📝 Initialized form with data:', {
-          reviewType,
+        console.log('📝 Initialized form with all review data:', {
+          reviewsFound: allReviewsForStudent.length,
+          sabqReview: !!sabqReview,
+          sabqiReview: !!sabqiReview,
+          manzilReview: !!manzilReview,
           sabq: initialForm.sabq,
           sabqi: initialForm.sabqi,
           manzil: initialForm.manzil,
-          finalReport: initialForm.finalReport
+          finalReport: initialForm.finalReport,
+          audioLink: initialForm.homeworkLink
         });
         
         setEditForm(initialForm);
