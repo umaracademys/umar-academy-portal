@@ -1252,33 +1252,82 @@ app.put('/api/recitation-reviews/:id', async (req, res) => {
 
 app.post('/api/recitation-reviews/:id/convert-to-assignment', async (req, res) => {
   try {
+    console.log(`🔄 Converting recitation review to assignment: ${req.params.id}`);
     const review = await RecitationReview.findById(req.params.id);
     if (!review) {
+      console.error(`❌ Recitation review not found: ${req.params.id}`);
       return res.status(404).json({ error: 'Recitation review not found' });
     }
     
+    console.log(`📋 Review found: ${review.recitationType} for ${review.studentName}`);
+    console.log(`👤 Reviewed by: ${review.reviewedBy || 'Not reviewed yet'}`);
+    
+    // Handle assignedBy - convert to ObjectId if it exists, or use a default admin user
+    let assignedById = null;
+    if (review.reviewedBy) {
+      // If reviewedBy is a valid ObjectId string, use it
+      if (mongoose.Types.ObjectId.isValid(review.reviewedBy)) {
+        assignedById = new mongoose.Types.ObjectId(review.reviewedBy);
+      } else {
+        // If it's not a valid ObjectId, try to find an admin user
+        const adminUser = await User.findOne({ role: { $in: ['admin', 'superadmin'] } });
+        if (adminUser) {
+          assignedById = adminUser._id;
+        } else {
+          // Last resort: use the reviewer ID as string (may cause validation error, but better than undefined)
+          assignedById = review.reviewedBy;
+        }
+      }
+    } else {
+      // If review hasn't been reviewed yet, find an admin user to assign as creator
+      const adminUser = await User.findOne({ role: { $in: ['admin', 'superadmin'] } });
+      if (adminUser) {
+        assignedById = adminUser._id;
+        console.log(`⚠️ Review not reviewed yet, using admin user as creator: ${adminUser._id}`);
+      } else {
+        console.error('❌ No admin user found to assign as creator');
+        return res.status(500).json({ error: 'No admin user found. Please ensure at least one admin exists.' });
+      }
+    }
+    
     // Create assignment from review
-    const assignment = new Assignment({
+    const assignmentData = {
       title: `${review.recitationType.charAt(0).toUpperCase() + review.recitationType.slice(1)} - ${review.studentName}`,
-      description: review.notes,
+      description: review.notes || 'Recitation review converted to assignment',
       type: 'classwork',
       classworkType: review.recitationType,
-      program: review.program,
-      assignedBy: review.reviewedBy, // Admin/Super Admin who reviewed
+      program: review.program || 'Unknown Program',
+      assignedBy: assignedById,
       assignedTo: [review.studentId],
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
       status: 'pending_homework', // Needs homework to be added
-      fromRecitationReviewId: review._id.toString()
-    });
+      fromRecitationReviewId: review._id.toString(),
+      listenerName: review.teacherName, // The teacher who submitted the review
+      listenerId: review.teacherId
+    };
+    
+    console.log(`📝 Creating assignment with data:`, JSON.stringify(assignmentData, null, 2));
+    
+    const assignment = new Assignment(assignmentData);
     await assignment.save();
+    
+    console.log(`✅ Assignment created: ${assignment._id}`);
     
     // Update review status
     review.status = 'converted_to_assignment';
     review.convertedToAssignmentId = assignment._id.toString();
     await review.save();
     
+    console.log(`✅ Review status updated to converted_to_assignment`);
+    
     res.status(201).json(assignment);
   } catch (error) {
+    console.error('❌ Error converting recitation review to assignment:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
     res.status(500).json({ error: error.message });
   }
 });
