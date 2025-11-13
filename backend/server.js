@@ -175,20 +175,45 @@ const teacherSchema = new mongoose.Schema({
   fullName: String,
   email: { type: String, unique: true, sparse: true },
   contact: String,
+  phoneNumber: String, // Alias for contact
+  emergencyContact: String,
   department: String,
   specialization: [String],
   location: String,
   employmentType: String,
+  shiftType: String, // Morning, Evening, Both
+  shifts: [{
+    name: String,
+    startTime: String,
+    endTime: String
+  }],
   status: String,
   assignedStudents: [String],
+  idDocument: String, // Base64 encoded document
+  permissions: {
+    canViewAssessments: Boolean,
+    canEditAssessments: Boolean,
+    canViewEvaluations: Boolean,
+    canEditEvaluations: Boolean,
+    canViewFinancials: Boolean,
+    canManageSchedule: Boolean,
+    canContactParents: Boolean
+  },
   payroll: {
+    hourlyRate: Number,
+    dailyHours: Number,
+    daysWorking: Number,
+    monthlyHours: Number,
     monthlySalary: Number,
     currency: String,
     paymentType: String,
     bankAccount: String
   },
   schedule: {
-    workingDays: [String],
+    days: [String], // Alias for workingDays (for frontend compatibility)
+    workingDays: [String], // Main field
+    startTime: String, // Alias for workingHours.start
+    endTime: String, // Alias for workingHours.end
     workingHours: {
       start: String,
       end: String
@@ -211,6 +236,7 @@ const teacherSchema = new mongoose.Schema({
     completionRate: Number,
     attendanceRate: Number
   },
+  hireDate: Date,
   avatar: String,
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
 }, { timestamps: true });
@@ -514,6 +540,57 @@ app.patch('/api/students/:id/recitation', async (req, res) => {
   }
 });
 
+// Helper function to normalize teacher data
+const normalizeTeacherData = (teacherData) => {
+  const normalized = { ...teacherData };
+  
+  // Handle contact/phoneNumber mapping
+  if (normalized.phoneNumber && !normalized.contact) {
+    normalized.contact = normalized.phoneNumber;
+  }
+  if (normalized.contact && !normalized.phoneNumber) {
+    normalized.phoneNumber = normalized.contact;
+  }
+  
+  // Map schedule format (frontend sends days/startTime/endTime, backend expects workingDays/workingHours)
+  if (normalized.schedule) {
+    if (normalized.schedule.days && !normalized.schedule.workingDays) {
+      normalized.schedule.workingDays = normalized.schedule.days;
+    }
+    if (normalized.schedule.startTime || normalized.schedule.endTime) {
+      if (!normalized.schedule.workingHours) {
+        normalized.schedule.workingHours = {};
+      }
+      if (normalized.schedule.startTime && !normalized.schedule.workingHours.start) {
+        normalized.schedule.workingHours.start = normalized.schedule.startTime;
+      }
+      if (normalized.schedule.endTime && !normalized.schedule.workingHours.end) {
+        normalized.schedule.workingHours.end = normalized.schedule.endTime;
+      }
+    }
+  }
+  
+  // Ensure default values
+  if (!normalized.status) {
+    normalized.status = 'active';
+  }
+  if (!normalized.assignedStudents) {
+    normalized.assignedStudents = [];
+  }
+  if (!normalized.specialization) {
+    normalized.specialization = [];
+  }
+  
+  // Set hireDate if not provided
+  if (!normalized.hireDate) {
+    normalized.hireDate = new Date();
+  } else if (typeof normalized.hireDate === 'string') {
+    normalized.hireDate = new Date(normalized.hireDate);
+  }
+  
+  return normalized;
+};
+
 // Create a new teacher
 app.post('/api/teachers', async (req, res) => {
   try {
@@ -523,10 +600,67 @@ app.post('/api/teachers', async (req, res) => {
       teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
     }
     
-    const teacher = new Teacher(teacherData);
+    // Normalize the teacher data
+    const normalizedData = normalizeTeacherData(teacherData);
+    
+    const teacher = new Teacher(normalizedData);
     await teacher.save();
     res.json(teacher);
   } catch (error) {
+    console.error('Error creating teacher:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'A teacher with that email already exists.' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update teacher profile
+app.put('/api/teachers/:id', async (req, res) => {
+  try {
+    const teacherData = { ...req.body };
+    if (teacherData.userId && typeof teacherData.userId === 'string') {
+      teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
+    }
+    
+    // Normalize the teacher data
+    const normalizedData = normalizeTeacherData(teacherData);
+    
+    const updatedTeacher = await Teacher.findByIdAndUpdate(
+      req.params.id,
+      normalizedData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTeacher) {
+      // Try finding by userId or teacherId
+      const teacher = await Teacher.findOne({
+        $or: [
+          { userId: req.params.id },
+          { teacherId: req.params.id },
+          { _id: req.params.id }
+        ]
+      });
+      
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher not found' });
+      }
+      
+      const finalUpdate = await Teacher.findByIdAndUpdate(
+        teacher._id,
+        normalizedData,
+        { new: true, runValidators: true }
+      );
+      
+      return res.json(finalUpdate);
+    }
+
+    res.json(updatedTeacher);
+  } catch (error) {
+    console.error('Error updating teacher:', error);
+    if (error.code === 11000) {
+      return res.status(409).json({ error: 'A teacher with that email already exists.' });
+    }
     res.status(500).json({ error: error.message });
   }
 });

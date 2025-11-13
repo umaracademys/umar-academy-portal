@@ -650,72 +650,173 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
 
       if (!userResponse.ok) {
-        throw new Error('Failed to create user');
+        const errorText = await userResponse.text();
+        let errorMessage = 'Failed to create user';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       const newUser = await userResponse.json();
 
-      // Create teacher profile
+      // Create teacher profile with all data from the form
+      const teacherPayload = {
+        teacherId: teacher.id || `TCH${Date.now()}`,
+        userId: newUser._id || newUser.id,
+        fullName: teacher.fullName,
+        email: teacher.email,
+        phoneNumber: teacher.phoneNumber,
+        contact: teacher.phoneNumber || teacher.contact,
+        emergencyContact: teacher.emergencyContact,
+        department: teacher.department,
+        location: teacher.location,
+        employmentType: teacher.employmentType,
+        shiftType: teacher.shiftType,
+        shifts: teacher.shifts || [],
+        status: teacher.status || 'active',
+        assignedStudents: teacher.assignedStudents || [],
+        idDocument: teacher.idDocument,
+        permissions: teacher.permissions || {
+          canViewAssessments: true,
+          canEditAssessments: true,
+          canViewEvaluations: true,
+          canEditEvaluations: true,
+          canViewFinancials: false,
+          canManageSchedule: true,
+          canContactParents: true,
+        },
+        payroll: teacher.payroll || {
+          hourlyRate: 0,
+          dailyHours: 0,
+          daysWorking: 0,
+          monthlyHours: 0,
+          monthlySalary: 0,
+          currency: 'USD',
+          paymentType: 'monthly',
+        },
+        schedule: teacher.schedule || {
+          days: [],
+          workingDays: [],
+          startTime: '',
+          endTime: '',
+          workingHours: { start: '', end: '' },
+        },
+        hireDate: teacher.hireDate || new Date().toISOString(),
+        avatar: teacher.avatar,
+        specialization: [],
+      };
+
       const teacherResponse = await fetch(`${API_BASE}/teachers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          teacherId: teacher.id,
-          userId: newUser._id,
-          specialization: 'General', // Default specialization
-          experience: 0, // Default experience
-          salary: 0 // Default salary
-        }),
+        body: JSON.stringify(teacherPayload),
       });
 
       if (!teacherResponse.ok) {
         const errorText = await teacherResponse.text();
+        let errorMessage = 'Failed to create teacher profile';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
         console.error('Teacher creation failed:', errorText);
-        throw new Error(`Failed to create teacher profile: ${errorText}`);
+        throw new Error(errorMessage);
       }
 
-      // Update local state
-      setTeachers(prev => [...prev, { ...teacher, id: newUser._id }]);
+      const newTeacher = await teacherResponse.json();
       
-      // Also save to localStorage as backup
-      const updatedTeachers = [...teachers, { ...teacher, id: newUser._id }];
-      localStorage.setItem('umar_academy_teachers', JSON.stringify(updatedTeachers));
+      // Map MongoDB _id to id for consistency
+      const mappedTeacher = {
+        ...teacher,
+        id: newTeacher._id || newTeacher.id || newUser._id || newUser.id,
+        _id: newTeacher._id,
+      };
 
+      // Update local state
+      setTeachers(prev => [...prev, mappedTeacher]);
+      await refreshData();
+
+      console.log('✅ Teacher created successfully:', mappedTeacher.fullName);
     } catch (err) {
-      setError('Failed to add teacher');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add teacher';
+      setError(errorMessage);
       console.error('Error adding teacher:', err);
-      
-      // Fallback to localStorage
-      setTeachers(prev => [...prev, teacher]);
-      localStorage.setItem('umar_academy_teachers', JSON.stringify([...teachers, teacher]));
+      throw err;
     }
   };
 
   const updateTeacher = async (id: string, teacher: Partial<Teacher>) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${id}`, {
+      // Prepare update payload with proper field mapping
+      const updatePayload = {
+        ...teacher,
+        // Map phoneNumber to contact if needed
+        contact: teacher.phoneNumber || teacher.contact || undefined,
+        phoneNumber: teacher.phoneNumber || teacher.contact,
+      };
+
+      // Try updating via /api/teachers/:id first
+      let response = await fetch(`${API_BASE}/teachers/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(teacher),
+        body: JSON.stringify(updatePayload),
       });
 
+      // If that fails, try /api/users/:id as fallback
       if (!response.ok) {
-        throw new Error('Failed to update teacher');
+        response = await fetch(`${API_BASE}/users/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updatePayload),
+        });
       }
 
-      setTeachers(prev => prev.map(t => t.id === id ? { ...t, ...teacher } : t));
-      
-      // Update localStorage
-      const updatedTeachers = teachers.map(t => t.id === id ? { ...t, ...teacher } : t);
-      localStorage.setItem('umar_academy_teachers', JSON.stringify(updatedTeachers));
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update teacher';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
 
+      const updatedTeacher = await response.json();
+      
+      // Map MongoDB _id to id for consistency
+      const mappedTeacher = {
+        ...updatedTeacher,
+        id: updatedTeacher._id || updatedTeacher.id || id,
+      };
+
+      // Update local state
+      setTeachers(prev => prev.map(t => {
+        const tId = t.id || (t as any)._id;
+        return (tId === id || tId === mappedTeacher.id || tId === mappedTeacher._id) ? mappedTeacher : t;
+      }));
+      
+      await refreshData();
+
+      console.log('✅ Teacher updated successfully:', mappedTeacher.fullName);
     } catch (err) {
-      setError('Failed to update teacher');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update teacher';
+      setError(errorMessage);
       console.error('Error updating teacher:', err);
+      throw err;
     }
   };
 

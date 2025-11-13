@@ -55,6 +55,10 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     canContactParents: true,
   });
 
+  // Form submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   const allDays: ScheduleDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Get currency based on location
@@ -120,58 +124,116 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       setPersonalInfo({
         fullName: teacher.fullName || '',
         email: teacher.email || '',
-        phoneNumber: teacher.phoneNumber || '',
+        phoneNumber: teacher.phoneNumber || teacher.contact || '',
         emergencyContact: teacher.emergencyContact || '',
         department: teacher.department || '',
-        location: teacher.location || 'Local',
+        location: (teacher.location || 'Local') as TeacherLocation,
       });
-      // Add more initialization for other fields if needed
+      
+      // Initialize employment info
+      if (teacher.employmentType) {
+        setEmploymentInfo({
+          employmentType: teacher.employmentType as EmploymentType,
+          shiftType: (teacher.shiftType || 'Morning') as ShiftType,
+          scheduleDays: (teacher.schedule?.days || teacher.schedule?.workingDays || []) as ScheduleDay[],
+        });
+        
+        // Set shifts
+        if (teacher.shifts && teacher.shifts.length > 0) {
+          setShifts(teacher.shifts);
+        } else if (teacher.employmentType === 'Full Time') {
+          setShifts([
+            { name: 'Morning Shift', startTime: '08:00', endTime: '12:00' },
+            { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
+          ]);
+        }
+      }
+      
+      // Initialize payroll info
+      if (teacher.payroll) {
+        setPayrollInfo({
+          hourlyRate: teacher.payroll.hourlyRate || 25,
+          dailyHours: teacher.payroll.dailyHours || 8,
+          daysWorking: teacher.payroll.daysWorking || 22,
+        });
+      }
+      
+      // Initialize permissions
+      if (teacher.permissions) {
+        setPermissions(teacher.permissions);
+      }
+      
+      // Initialize ID document
+      if (teacher.idDocument) {
+        setIdDocument(teacher.idDocument);
+      }
     }
   }, [isEdit, teacher]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+    setIsSubmitting(true);
     
-    const newTeacher: Teacher = {
-      id: isEdit && teacher?.id ? teacher.id : `TCH${Date.now()}`,
-      fullName: personalInfo.fullName,
-      email: personalInfo.email,
-      phoneNumber: personalInfo.phoneNumber,
-      emergencyContact: personalInfo.emergencyContact,
-      department: personalInfo.department,
-      location: personalInfo.location,
-      employmentType: employmentInfo.employmentType,
-      shiftType: employmentInfo.shiftType,
-      shifts: shifts,
-      idDocument: idDocument,
-      assignedStudents: [],
-      permissions: permissions,
-      schedule: {
-        days: employmentInfo.scheduleDays,
-        startTime: shifts[0]?.startTime || '08:00',
-        endTime: shifts[shifts.length - 1]?.endTime || '17:00',
-      },
-      payroll: {
-        hourlyRate: payrollInfo.hourlyRate,
-        currency: currency,
-        dailyHours: payrollInfo.dailyHours,
-        daysWorking: payrollInfo.daysWorking,
-        monthlyHours: monthlyHours,
-        monthlySalary: monthlySalary,
-      },
-      hireDate: new Date().toISOString().split('T')[0],
-      status: 'active',
-      avatar: teacher?.avatar || `https://ui-avatars.com/api/?name=${personalInfo.fullName.replace(' ', '+')}&background=10b981&color=fff`,
-    };
+    try {
+      // Validation
+      if (!personalInfo.fullName || !personalInfo.email || !personalInfo.phoneNumber) {
+        throw new Error('Please fill in all required fields');
+      }
+      
+      if (employmentInfo.scheduleDays.length === 0) {
+        throw new Error('Please select at least one working day');
+      }
+      
+      const newTeacher: Teacher = {
+        id: isEdit && teacher?.id ? teacher.id : `TCH${Date.now()}`,
+        fullName: personalInfo.fullName,
+        email: personalInfo.email,
+        phoneNumber: personalInfo.phoneNumber,
+        emergencyContact: personalInfo.emergencyContact,
+        department: personalInfo.department,
+        location: personalInfo.location,
+        employmentType: employmentInfo.employmentType,
+        shiftType: employmentInfo.shiftType,
+        shifts: shifts,
+        idDocument: idDocument,
+        assignedStudents: isEdit ? teacher?.assignedStudents || [] : [],
+        permissions: permissions,
+        schedule: {
+          days: employmentInfo.scheduleDays,
+          startTime: shifts[0]?.startTime || '08:00',
+          endTime: shifts[shifts.length - 1]?.endTime || '17:00',
+        },
+        payroll: {
+          hourlyRate: payrollInfo.hourlyRate,
+          currency: currency,
+          dailyHours: payrollInfo.dailyHours,
+          daysWorking: payrollInfo.daysWorking,
+          monthlyHours: monthlyHours,
+          monthlySalary: monthlySalary,
+          paymentType: 'monthly',
+        },
+        hireDate: isEdit && teacher?.hireDate ? teacher.hireDate : new Date().toISOString().split('T')[0],
+        status: isEdit ? teacher?.status || 'active' : 'active',
+        avatar: teacher?.avatar || `https://ui-avatars.com/api/?name=${personalInfo.fullName.replace(' ', '+')}&background=10b981&color=fff`,
+      };
 
-    if (isEdit && teacher?.id) {
-      updateTeacher(teacher.id, newTeacher);
-      alert('Teacher updated successfully!');
-    } else {
-      addTeacher(newTeacher);
-      alert('Teacher registered successfully!');
+      if (isEdit && teacher?.id) {
+        await updateTeacher(teacher.id, newTeacher);
+        alert('Teacher updated successfully!');
+      } else {
+        await addTeacher(newTeacher);
+        alert('Teacher registered successfully!');
+      }
+      onClose();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save teacher. Please try again.';
+      setSubmitError(errorMessage);
+      console.error('Error saving teacher:', error);
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   const tabs = [
@@ -208,6 +270,11 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          {submitError && (
+            <div className="mx-6 mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">⚠️ {submitError}</p>
+            </div>
+          )}
           <div className="p-6">
             {/* Tab 1: Personal Information */}
             {currentTab === 0 && (
@@ -574,7 +641,8 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   <button
                     type="button"
                     onClick={() => setCurrentTab(currentTab - 1)}
-                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     ← Previous
                   </button>
@@ -584,16 +652,18 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   <button
                     type="button"
                     onClick={() => setCurrentTab(currentTab + 1)}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next →
                   </button>
                 ) : (
                   <button
                     type="submit"
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    ✓ Register Teacher
+                    {isSubmitting ? 'Saving...' : isEdit ? '✓ Update Teacher' : '✓ Register Teacher'}
                   </button>
                 )}
               </div>
