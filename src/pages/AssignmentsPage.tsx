@@ -294,7 +294,7 @@ const AssignmentsPage: React.FC = () => {
     
     // Check if this assignment came from a recitation review
     const fromRecitationReviewId = (assignment as any).fromRecitationReviewId;
-    let reviewData = null;
+    let reviewData: any = null;
     
     if (fromRecitationReviewId) {
       // Find the recitation review
@@ -307,8 +307,8 @@ const AssignmentsPage: React.FC = () => {
         setRecitationReviewData(reviewData);
         
         // Pre-fill the section that matches the review type
-        const reviewType = (reviewData.recitationType || '').toLowerCase();
-        const reviewNotes = reviewData.notes || '';
+        const reviewType = ((reviewData as any).recitationType || '').toLowerCase();
+        const reviewNotes = (reviewData as any).notes || '';
         
         // Initialize form with review data
         const initialForm = {
