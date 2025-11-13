@@ -193,15 +193,17 @@ const AssignmentsPage: React.FC = () => {
     return student?.fullName || 'Unknown Student';
   };
 
-  // Filter assignments - only show those from finalized tickets
+  // Filter assignments - show those from finalized tickets OR converted from recitation reviews
   const filteredAssignments = assignments.filter(assignment => {
-    // Only show assignments created from approved/finalized tickets
+    // Show assignments created from approved/finalized tickets OR converted from recitation reviews
     const hasTicketId = !!(assignment as any).fromTicketId;
+    const fromRecitationReview = !!(assignment as any).fromRecitationReviewId;
     
     const programMatch = !filterProgram || assignment.program === filterProgram;
     const typeMatch = !filterType || assignment.type === filterType;
     
-    return hasTicketId && programMatch && typeMatch;
+    // Include assignments from tickets OR from recitation reviews
+    return (hasTicketId || fromRecitationReview) && programMatch && typeMatch;
   });
 
   const assignmentsByStudent = useMemo(() => {
@@ -955,6 +957,11 @@ const AssignmentsPage: React.FC = () => {
                             <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
                               {workflowStep}
                             </span>
+                            {(latest as any).fromRecitationReviewId && (
+                              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                📖 From Recitation Review
+                              </span>
+                            )}
                             {latest.listenerName && (
                               <span className="text-sm text-gray-600">
                                 👂 Listener: {latest.listenerName}
@@ -970,6 +977,9 @@ const AssignmentsPage: React.FC = () => {
                             <span>📅 Due {formatDisplayDate(latest.dueDate as any)}</span>
                             {latest.homeworkSummary && (
                               <span>📝 Homework recorded</span>
+                            )}
+                            {(latest as any).fromRecitationReviewId && (
+                              <span className="text-purple-600">✨ Converted from review</span>
                             )}
                           </div>
                         </div>
