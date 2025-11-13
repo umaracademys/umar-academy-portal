@@ -518,13 +518,32 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
         alert('Invalid ticket - missing ID');
         return;
       }
+      
+      // Check if ticket is already in_progress to prevent duplicate updates
+      if (ticket.status === 'in_progress') {
+        console.log('⚠️ Ticket is already in progress, skipping status update');
+        // Still try to start listening session in case it wasn't started
+        await startListeningSessionForTicket(ticket);
+        setShowMushaf(true);
+        return;
+      }
+      
+      // Update ticket status to in_progress
       await updateTicket(ticketId, {
         status: 'in_progress'
       });
-      // Update ticket with new status
-      const updatedTicket = { ...ticket, status: 'in_progress' as TicketStatus };
-      setSelectedTicket(updatedTicket);
-      await startListeningSessionForTicket(updatedTicket);
+      
+      // Refresh data to get the updated ticket from backend
+      await refreshData();
+      
+      // Find the updated ticket from the refreshed list
+      const updatedTicket = tickets.find(t => (t.id || (t as any)._id) === ticketId) || ticket;
+      const ticketWithUpdatedStatus = { ...updatedTicket, status: 'in_progress' as TicketStatus };
+      setSelectedTicket(ticketWithUpdatedStatus);
+      
+      // Start listening session
+      await startListeningSessionForTicket(ticketWithUpdatedStatus);
+      
       // Use setTimeout to ensure state updates are applied
       setTimeout(() => {
         setShowMushaf(true);

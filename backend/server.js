@@ -1467,22 +1467,37 @@ app.post('/api/listening-sessions/start', async (req, res) => {
       return res.status(400).json({ error: 'ticketId, student, teacher, and workflowStep are required' });
     }
 
+    // Check if a listening session already exists for this ticket
+    // This prevents duplicate sessions from being created
     let session = await ListeningSession.findOne({ ticketId, status: 'in_progress' });
     if (!session) {
-      session = new ListeningSession({
-        ticketId,
-        studentId,
-        studentName,
-        teacherId,
-        teacherName,
-        workflowStep
-      });
+      // Also check if there's a session with the same ticketId even if status is different
+      // This ensures we don't create duplicate sessions
+      const existingSession = await ListeningSession.findOne({ ticketId });
+      if (existingSession) {
+        // Update existing session instead of creating a new one
+        session = existingSession;
+        console.log(`⚠️ Found existing session for ticket ${ticketId}, reusing instead of creating duplicate`);
+      } else {
+        // Create new session only if none exists
+        session = new ListeningSession({
+          ticketId,
+          studentId,
+          studentName,
+          teacherId,
+          teacherName,
+          workflowStep
+        });
+        console.log(`✅ Created new listening session for ticket ${ticketId}`);
+      }
     } else {
+      // Update existing session with latest data
       session.studentId = studentId;
       session.studentName = studentName;
       session.teacherId = teacherId;
       session.teacherName = teacherName;
       session.workflowStep = workflowStep;
+      console.log(`🔄 Updated existing listening session for ticket ${ticketId}`);
     }
 
     if (startedAt) {

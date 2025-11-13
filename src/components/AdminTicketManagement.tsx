@@ -475,8 +475,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     !(t.workflowStep === 'finalize' && Boolean((t as any).assignmentId))
   );
   
+  // Include both pending_review and in_progress tickets in pending view
+  // This ensures admins can see tickets that teachers are currently working on
   const pendingTickets = useMemo(
-    () => activeTickets.filter(t => t.status === 'pending_review'),
+    () => activeTickets.filter(t => t.status === 'pending_review' || t.status === 'in_progress'),
     [activeTickets]
   );
 
@@ -940,6 +942,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const getStatusColor = (status: TicketStatus) => {
     switch (status) {
       case 'pending_review': return 'bg-soft-accent text-[var(--color-accent)]';
+      case 'in_progress': return 'bg-blue-100 text-blue-700 border border-blue-300';
       case 'approved': return 'bg-soft-primary text-[var(--color-primary)]';
       case 'needs_revision': return 'bg-white border border-[rgba(var(--color-accent-rgb),0.45)] text-[var(--color-accent)]';
       case 'finalized': return 'bg-[var(--color-primary)] text-white';
@@ -1128,7 +1131,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 view === 'pending' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
               }`}
             >
-              Pending Review ({pendingTickets.length})
+              Pending & In Progress ({pendingTickets.length})
             </button>
             <button
               onClick={() => setView('all')}

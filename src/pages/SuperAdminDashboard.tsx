@@ -102,7 +102,10 @@ const SuperAdminDashboard: React.FC = () => {
   const totalTeachers = teachers.length;
   const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
   const totalAdmins = admins.length;
-  const pendingReviewTicketCount = tickets.filter((ticket) => ticket.status === 'pending_review').length;
+  // Include both pending_review and in_progress in pending count (teachers are actively working on in_progress)
+  const pendingReviewTicketCount = tickets.filter((ticket) => 
+    ticket.status === 'pending_review' || ticket.status === 'in_progress'
+  ).length;
   const assignedTicketCount = tickets.filter((ticket) => ticket.status === 'assigned').length;
   const finalizeReadyTicketCount = tickets.filter(
     (ticket) => ticket.status === 'approved' && ticket.workflowStep === 'finalize'
