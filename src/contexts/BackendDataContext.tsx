@@ -574,7 +574,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const updateStudent = async (id: string, student: Partial<Student>) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${id}`, {
+      // First try updating via /api/students/:id (preferred endpoint)
+      let response = await fetch(`${API_BASE}/students/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -582,19 +583,55 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         body: JSON.stringify(student),
       });
 
+      // If that fails, try /api/users/:id as fallback
       if (!response.ok) {
-        throw new Error('Failed to update student');
+        response = await fetch(`${API_BASE}/users/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(student),
+        });
       }
 
-      setStudents(prev => prev.map(s => s.id === id ? { ...s, ...student } : s));
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update student';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const updatedStudent = await response.json();
       
-      // Update localStorage
-      const updatedStudents = students.map(s => s.id === id ? { ...s, ...student } : s);
-      localStorage.setItem('umar_academy_students', JSON.stringify(updatedStudents));
+      // Map MongoDB _id to id for consistency
+      const mappedStudent = {
+        ...updatedStudent,
+        id: updatedStudent._id || updatedStudent.id || id,
+      };
+
+      // Update local state with the complete updated student data from backend
+      setStudents(prev => prev.map(s => {
+        const sId = s.id || (s as any)._id;
+        return (sId === id || sId === mappedStudent.id || sId === mappedStudent._id) 
+          ? { ...s, ...mappedStudent, ...student } 
+          : s;
+      }));
+      
+      // Refresh data to ensure consistency
+      await refreshData();
+
+      console.log('✅ Student updated successfully:', mappedStudent.fullName || mappedStudent.name || 'Student');
 
     } catch (err) {
-      setError('Failed to update student');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update student';
+      setError(errorMessage);
       console.error('Error updating student:', err);
+      throw err; // Re-throw to let the form handle it
     }
   };
 

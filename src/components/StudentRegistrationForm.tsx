@@ -78,8 +78,14 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (isSubmitting) return; // Prevent double submission
+    
+    setIsSubmitting(true);
 
     const recitationProfile: StudentRecitationProfile =
       (student?.recitationProfile as StudentRecitationProfile | undefined) ?? {
@@ -116,17 +122,27 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       if (isEdit) {
         const { recitationProfile: _profile, studentRecordId: _recordId, ...userUpdatePayload } = studentData;
         await updateStudent(student.id, userUpdatePayload);
-
+        
+        // Update local form state with the submitted data so it persists
+        // This ensures the form data remains visible even after update
+        console.log('✅ Student updated successfully. Form data preserved.');
+        
+        // For edit mode, keep the form open so user can see the updated data
+        // Don't close automatically - let user close manually or add another student
+        // Show success message but keep form open
+        alert('✅ Student updated successfully! You can continue editing or close the form.');
+        
       } else {
         await addStudent(studentData);
+        onClose(); // Only close for new students
       }
-
-      onClose();
     } catch (error) {
       console.error('Error saving student:', error);
       const message =
         error instanceof Error ? error.message : 'Failed to save student. Please try again.';
       alert(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -384,9 +400,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isEdit ? 'Update Student' : 'Register Student'}
+              {isSubmitting 
+                ? (isEdit ? 'Updating...' : 'Registering...') 
+                : (isEdit ? 'Update Student' : 'Register Student')}
             </button>
           </div>
         </form>
