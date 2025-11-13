@@ -392,11 +392,11 @@ const AssignmentsPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-700 rounded-2xl p-8 text-white">
+          <div className="bg-gradient-to-r from-green-600 via-green-700 to-green-800 rounded-2xl p-8 text-white">
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-4xl font-bold mb-2">📝 Finalized Assignments</h1>
-                <p className="text-purple-100 text-lg">View assignments created from approved ticket workflow</p>
+                <p className="text-green-100 text-lg">View assignments created from approved ticket workflow</p>
               </div>
                 {canCreateAssignments && (
                 <button
@@ -404,7 +404,7 @@ const AssignmentsPage: React.FC = () => {
                     console.log('🛠️ AssignmentsPage: Create New Assignment clicked');
                     setShowCreateForm(true);
                   }}
-                  className="px-8 py-4 bg-white text-purple-600 rounded-xl hover:bg-purple-50 font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center"
+                  className="px-8 py-4 bg-white text-green-600 rounded-xl hover:bg-green-50 font-bold text-lg transition-all shadow-lg hover:shadow-xl flex items-center"
                     >
                       <span className="mr-2">✨</span>
                       Create New Assignment
@@ -445,8 +445,8 @@ const AssignmentsPage: React.FC = () => {
                         onClick={() => setSelectedTicket(advanceToFinalize && nextTicket ? nextTicket : ticket)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
                           advanceToFinalize
-                            ? 'bg-purple-600 hover:bg-purple-700'
-                            : 'bg-blue-600 hover:bg-blue-700'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-green-500 hover:bg-green-600'
                         }`}
                       >
                         {advanceToFinalize ? 'Finalize & Add Homework' : 'Assign to Next Teacher'}
@@ -470,7 +470,7 @@ const AssignmentsPage: React.FC = () => {
                       {canFinalizeTickets && (
                         <button
                           onClick={() => setSelectedTicket(ticket)}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium"
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
                         >
                           Finalize & Add Homework
                         </button>
@@ -559,7 +559,7 @@ const AssignmentsPage: React.FC = () => {
                         value={selectedNextTeacherNote}
                         onChange={(event) => setSelectedNextTeacherNote(event.target.value)}
                         rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                         placeholder="Highlight focus areas, mistakes to watch for, or pacing guidance…"
                       />
                     </div>
@@ -605,7 +605,7 @@ const AssignmentsPage: React.FC = () => {
                           }
                         }}
                         disabled={!selectedNextTeacher}
-                        className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
+                        className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
                       >
                         Assign to Next Teacher
                       </button>
@@ -633,19 +633,19 @@ const AssignmentsPage: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-4">
-                        <h4 className="text-sm font-semibold text-purple-800 mb-3">
+                      <div className="rounded-2xl border border-green-200 bg-green-50/50 p-4">
+                        <h4 className="text-sm font-semibold text-green-800 mb-3">
                           Recent listening reports
                         </h4>
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
-                            <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Sabqi</p>
+                          <div className="rounded-xl border border-green-100 bg-white p-3 shadow-sm">
+                            <p className="text-xs uppercase tracking-wide text-green-600 font-semibold mb-1">Sabqi</p>
                             <p className="text-sm text-gray-700 whitespace-pre-wrap">
                               {sabqiTicket?.progressNotes?.trim() || 'No sabqi notes recorded.'}
                             </p>
                           </div>
-                          <div className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
-                            <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">Manzil</p>
+                          <div className="rounded-xl border border-green-100 bg-white p-3 shadow-sm">
+                            <p className="text-xs uppercase tracking-wide text-green-600 font-semibold mb-1">Manzil</p>
                             <p className="text-sm text-gray-700 whitespace-pre-wrap">
                               {manzilTicket?.progressNotes?.trim() || 'No manzil notes recorded.'}
                             </p>
@@ -691,8 +691,8 @@ const AssignmentsPage: React.FC = () => {
                               setFinalizeData((prev) => ({ ...prev, finalReport: event.target.value }));
                             }}
                             rows={5}
-                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
-                            placeholder="Summarize today’s sabq..."
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
+                            placeholder="Summarize today's sabq..."
                           />
                         </div>
                         <div>
@@ -706,7 +706,7 @@ const AssignmentsPage: React.FC = () => {
                               setFinalizeData((prev) => ({ ...prev, homework: event.target.value }));
                             }}
                             rows={4}
-                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-100"
+                            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                             placeholder="Homework instructions for the student..."
                           />
                         </div>
@@ -848,7 +848,7 @@ const AssignmentsPage: React.FC = () => {
                               alert('Failed to finalize ticket');
                             }
                           }}
-                          className="flex-1 rounded-xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-purple-700"
+                          className="flex-1 rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700"
                         >
                           Finalize &amp; Create Assignment
                         </button>
@@ -881,7 +881,7 @@ const AssignmentsPage: React.FC = () => {
               <select
                 value={filterProgram}
                 onChange={(e) => setFilterProgram(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 <option value="">All Programs</option>
                 {programs.map(program => (
@@ -894,7 +894,7 @@ const AssignmentsPage: React.FC = () => {
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 <option value="">All Types</option>
                 <option value="classwork">Classwork</option>
@@ -952,7 +952,7 @@ const AssignmentsPage: React.FC = () => {
                         <div className="flex-1">
                           <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h3 className="text-xl font-bold text-gray-900">{studentName}</h3>
-                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
+                            <span className="px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
                               {workflowStep}
                             </span>
                             {latest.listenerName && (
@@ -978,7 +978,7 @@ const AssignmentsPage: React.FC = () => {
                           <div className="flex flex-wrap gap-2">
                             <button
                               onClick={() => handleOpenEditModal(latest)}
-                              className="px-4 py-2 rounded-lg text-sm font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
+                              className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
                             >
                               Edit report
                             </button>
@@ -988,7 +988,7 @@ const AssignmentsPage: React.FC = () => {
                                 setShowAssignTeacherOption(true);
                                 setSelectedTeacherForAssignment('');
                               }}
-                              className="px-4 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                              className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -1023,14 +1023,14 @@ const AssignmentsPage: React.FC = () => {
                       </div>
 
                       {latest.description && (
-                        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                           <h4 className="font-semibold text-gray-900 mb-2">📋 Recitation Report</h4>
                           <p className="text-gray-700 whitespace-pre-wrap text-sm">{latest.description}</p>
                         </div>
                       )}
 
                       {mushafMarkings.length > 0 && (
-                        <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                        <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                           <div className="flex justify-between items-center mb-3">
                             <h4 className="font-semibold text-gray-900">
                               📖 Mushaf Mistake Markings ({mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''})
@@ -1047,7 +1047,7 @@ const AssignmentsPage: React.FC = () => {
                                   }
                                 }
                               }}
-                              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                             >
                               {showMushafForAssignment === latestId ? '📖 Hide Mushaf' : '📖 View Mushaf'}
                             </button>
@@ -1067,7 +1067,7 @@ const AssignmentsPage: React.FC = () => {
                                         setShowMushafForAssignment(latestId);
                                         setMushafPage(page);
                                       }}
-                                      className="px-3 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 transition-colors"
+                                      className="px-3 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
                                     >
                                       Page {page} ({mistakesOnPage})
                                     </button>
@@ -1089,7 +1089,7 @@ const AssignmentsPage: React.FC = () => {
                           </div>
 
                           {showMushafForAssignment === latestId && (
-                            <div className="mt-4 pt-4 border-t border-purple-200">
+                            <div className="mt-4 pt-4 border-t border-green-200">
                               <div className="flex justify-between items-center mb-3">
                                 <div className="text-sm text-gray-600">
                                   Page {mushafPage} • {mushafMarkings.filter((m: MushafMistake) => m.page === mushafPage).length} mistake{mushafMarkings.filter((m: MushafMistake) => m.page === mushafPage).length !== 1 ? 's' : ''} on this page
@@ -1105,8 +1105,8 @@ const AssignmentsPage: React.FC = () => {
                                           onClick={() => setMushafPage(page)}
                                           className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
                                             mushafPage === page
-                                              ? 'bg-purple-600 text-white'
-                                              : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                              ? 'bg-green-600 text-white'
+                                              : 'bg-green-100 text-green-800 hover:bg-green-200'
                                           }`}
                                         >
                                           Page {page} ({mistakesOnPage})
@@ -1139,7 +1139,7 @@ const AssignmentsPage: React.FC = () => {
                                 href={(latest as any).homeworkLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 hover:underline font-medium text-sm"
+                                className="text-green-600 hover:underline font-medium text-sm"
                               >
                                 📎 Homework Link →
                               </a>
@@ -1194,7 +1194,7 @@ const AssignmentsPage: React.FC = () => {
                                       setShowAssignTeacherOption(true);
                                       setSelectedTeacherForAssignment('');
                                     }}
-                                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-indigo-200 text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-green-200 text-green-600 hover:bg-green-50 transition-colors"
                                   >
                                     Reassign
                                   </button>
@@ -1247,7 +1247,7 @@ const AssignmentsPage: React.FC = () => {
                       setEditForm((prev) => ({ ...prev, finalReport: event.target.value }))
                     }
                     rows={6}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   />
                 </div>
                 <div>
@@ -1260,7 +1260,7 @@ const AssignmentsPage: React.FC = () => {
                       setEditForm((prev) => ({ ...prev, homework: event.target.value }))
                     }
                     rows={4}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   />
                 </div>
                 <div>
@@ -1273,7 +1273,7 @@ const AssignmentsPage: React.FC = () => {
                     onChange={(event) =>
                       setEditForm((prev) => ({ ...prev, homeworkLink: event.target.value }))
                     }
-                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                     placeholder="https://resource-link.com"
                   />
                 </div>
@@ -1283,7 +1283,7 @@ const AssignmentsPage: React.FC = () => {
                 <button
                   onClick={handleSaveAssignmentEdits}
                   disabled={isSavingEdit}
-                  className="flex-1 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSavingEdit ? 'Saving…' : 'Save changes'}
                 </button>
@@ -1349,7 +1349,7 @@ const AssignmentsPage: React.FC = () => {
                 <select
                   value={selectedTeacherForAssignment}
                   onChange={(e) => setSelectedTeacherForAssignment(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
                   <option value="">Choose a teacher...</option>
                   {teachers.map(teacher => (
@@ -1391,7 +1391,7 @@ const AssignmentsPage: React.FC = () => {
                     }
                   }}
                   disabled={!selectedTeacherForAssignment}
-                  className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Reassign
                 </button>
