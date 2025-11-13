@@ -110,8 +110,23 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         }
         const payload = await response.json();
         if (!cancelled) {
+          // Deduplicate sessions by ticketId before setting state
+          const activeSessions = payload.active ?? [];
+          const deduplicatedActive = new Map<string, ListeningSession>();
+          
+          activeSessions.forEach((session: ListeningSession) => {
+            const key = session.ticketId || session.id;
+            const existing = deduplicatedActive.get(key);
+            // Keep the most recent session
+            if (!existing || 
+                new Date(session.lastHeartbeatAt || session.startedAt).getTime() > 
+                new Date(existing.lastHeartbeatAt || existing.startedAt).getTime()) {
+              deduplicatedActive.set(key, session);
+            }
+          });
+          
           setSessions({
-            active: payload.active ?? [],
+            active: Array.from(deduplicatedActive.values()),
             recent: payload.recent ?? []
           });
           setIsConnecting(false);
