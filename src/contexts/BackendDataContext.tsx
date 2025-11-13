@@ -319,40 +319,80 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Separate users by role and map to expected format
-      const studentsData = users
-        .filter((user: any) => user.role === 'student')
-        .map((user: any) => {
-          // Find matching student record to get actual data
-          const studentRecord = studentRecords.find((sr: any) => 
-            sr.userId?._id === user._id || 
-            sr.userId?._id?.toString() === user._id?.toString() ||
-            (sr.userId && typeof sr.userId === 'object' && sr.userId._id === user._id)
-          );
+      // Use studentRecords directly if available, otherwise fall back to users
+      let studentsData: any[] = [];
+      
+      if (studentRecords && studentRecords.length > 0) {
+        // Use student records directly - they have all the student data
+        studentsData = studentRecords.map((studentRecord: any) => {
+          const userId = studentRecord.userId?._id || studentRecord.userId || studentRecord.userId?._id?.toString();
+          // Find matching user if available
+          const user = users.find((u: any) => 
+            u._id?.toString() === userId?.toString() ||
+            u._id === userId ||
+            (studentRecord.email && u.email === studentRecord.email)
+          ) || {};
           
           return {
-          id: user._id,
-        studentRecordId: studentRecord?._id || studentRecord?.id,
-            fullName: user.name || user.fullName || studentRecord?.fullName || 'Unknown',
-          email: user.email,
-          phone: user.phone || '',
-          address: user.address || '',
-          dateOfBirth: user.dateOfBirth || new Date().toISOString(),
-            enrollmentDate: user.enrollmentDate || studentRecord?.enrolledDate || new Date().toISOString(),
-            level: user.level || studentRecord?.level || 'beginner',
-            status: user.status || studentRecord?.status || 'active',
-            assignedTeacher: user.assignedTeacher || studentRecord?.assignedTeacher || '',
-            paymentStatus: user.paymentStatus || studentRecord?.paymentStatus || 'pending',
-            avatar: user.avatar || studentRecord?.avatar || '',
-          courses: user.courses || [],
-          assignments: user.assignments || [],
-          payments: user.payments || [],
-          progress: user.progress || { completed: 0, total: 0, percentage: 0 },
-          attendance: user.attendance || { present: 0, absent: 0, total: 0 },
-          grades: user.grades || [],
-        notes: user.notes || [],
-        recitationProfile: normalizeRecitationProfile(studentRecord?.recitationProfile)
+            id: studentRecord._id || studentRecord.id || userId,
+            studentRecordId: studentRecord._id || studentRecord.id,
+            fullName: studentRecord.fullName || studentRecord.name || user.name || user.fullName || 'Unknown',
+            email: studentRecord.email || user.email || '',
+            phone: studentRecord.contact || studentRecord.phone || user.phone || '',
+            address: studentRecord.address || user.address || '',
+            dateOfBirth: studentRecord.dateOfBirth || user.dateOfBirth || new Date().toISOString(),
+            enrollmentDate: studentRecord.enrolledDate || studentRecord.enrollmentDate || user.enrollmentDate || new Date().toISOString(),
+            level: studentRecord.level || user.level || 'beginner',
+            status: studentRecord.status || user.status || 'active',
+            assignedTeacher: studentRecord.assignedTeacher || studentRecord.assignedTeacherId || user.assignedTeacher || '',
+            paymentStatus: studentRecord.paymentStatus || user.paymentStatus || 'pending',
+            avatar: studentRecord.avatar || user.avatar || '',
+            courses: studentRecord.courses || user.courses || [],
+            assignments: studentRecord.assignments || user.assignments || [],
+            payments: studentRecord.payments || user.payments || [],
+            progress: studentRecord.progress || user.progress || { completed: 0, total: 0, percentage: 0 },
+            attendance: studentRecord.attendance || user.attendance || { present: 0, absent: 0, total: 0 },
+            grades: studentRecord.grades || user.grades || [],
+            notes: studentRecord.notes || user.notes || [],
+            recitationProfile: normalizeRecitationProfile(studentRecord?.recitationProfile),
+            program: studentRecord.program || user.program || '',
+            parentName: studentRecord.parentName || user.parentName || '',
+            tuitionFee: studentRecord.tuitionFee || user.tuitionFee || 0,
+            registrationAmount: studentRecord.registrationAmount || user.registrationAmount || 0,
+            schedule: studentRecord.schedule || user.schedule || {},
+            siblings: studentRecord.siblings || user.siblings || []
           };
         });
+      } else {
+        // Fallback to users with role === 'student' if no student records
+        studentsData = users
+          .filter((user: any) => user.role === 'student')
+          .map((user: any) => {
+            return {
+              id: user._id,
+              studentRecordId: user._id,
+              fullName: user.name || user.fullName || 'Unknown',
+              email: user.email || '',
+              phone: user.phone || '',
+              address: user.address || '',
+              dateOfBirth: user.dateOfBirth || new Date().toISOString(),
+              enrollmentDate: user.enrollmentDate || new Date().toISOString(),
+              level: user.level || 'beginner',
+              status: user.status || 'active',
+              assignedTeacher: user.assignedTeacher || '',
+              paymentStatus: user.paymentStatus || 'pending',
+              avatar: user.avatar || '',
+              courses: user.courses || [],
+              assignments: user.assignments || [],
+              payments: user.payments || [],
+              progress: user.progress || { completed: 0, total: 0, percentage: 0 },
+              attendance: user.attendance || { present: 0, absent: 0, total: 0 },
+              grades: user.grades || [],
+              notes: user.notes || [],
+              recitationProfile: normalizeRecitationProfile(user?.recitationProfile)
+            };
+          });
+      }
 
       const teachersData = users
         .filter((user: any) => user.role === 'teacher')
@@ -822,6 +862,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const mappedTeacher = {
         ...updatedTeacher,
         id: updatedTeacher._id || updatedTeacher.id || id,
+        fullName: updatedTeacher.fullName || updatedTeacher.name || 'Unknown Teacher'
       };
 
       // Update local state
@@ -832,7 +873,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       await refreshData();
 
-      console.log('✅ Teacher updated successfully:', mappedTeacher.fullName);
+      console.log('✅ Teacher updated successfully:', mappedTeacher.fullName || mappedTeacher.name || 'Teacher');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update teacher';
       setError(errorMessage);
