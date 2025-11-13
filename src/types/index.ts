@@ -362,12 +362,13 @@ export interface AssignmentTicket {
 
 export interface AdminNotification {
   id: string;
-  type: 'recitation_review_pending' | 'assignment_submitted' | 'student_enrolled' | 'payment_received';
+  type: 'recitation_review_pending' | 'assignment_submitted' | 'student_enrolled' | 'payment_received' | 'profile_update_request';
   title: string;
   message: string;
   recitationReviewId?: string; // If type is recitation_review_pending
   assignmentId?: string;
   studentId?: string;
+  teacherId?: string; // If type is profile_update_request
   read: boolean;
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';

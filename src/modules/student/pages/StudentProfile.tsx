@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
 import DebugPanel from '../../../components/DebugPanel';
 import { useData } from '../../../contexts/DataContext';
 import { useAuth } from '../../../contexts/AuthContext';
+import StudentProfileUpdateRequestModal from '../../../components/StudentProfileUpdateRequestModal';
 
 const StudentProfile: React.FC = () => {
   const { students, getStudentByEmail } = useData();
   const { user } = useAuth();
+  const [showUpdateRequestModal, setShowUpdateRequestModal] = useState(false);
 
   // Get current student info
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
@@ -278,7 +280,10 @@ const StudentProfile: React.FC = () => {
 
         {/* Actions */}
         <div className="mt-6 flex justify-end space-x-3">
-          <button className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium">
+          <button
+            onClick={() => setShowUpdateRequestModal(true)}
+            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+          >
             Request Information Update
           </button>
           <button className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">
@@ -286,6 +291,18 @@ const StudentProfile: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Profile Update Request Modal */}
+      {showUpdateRequestModal && currentStudent && (
+        <StudentProfileUpdateRequestModal
+          onClose={() => setShowUpdateRequestModal(false)}
+          onSuccess={() => {
+            setShowUpdateRequestModal(false);
+          }}
+          studentName={currentStudent.fullName}
+          studentId={currentStudent.id}
+        />
+      )}
       
       <DebugPanel />
     </div>

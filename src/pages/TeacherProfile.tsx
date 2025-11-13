@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from '../components/Header';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import ProfileUpdateRequestModal from '../components/ProfileUpdateRequestModal';
 
 const TeacherProfile: React.FC = () => {
   const { teachers } = useData();
   const { user } = useAuth();
+  const [showUpdateRequestModal, setShowUpdateRequestModal] = useState(false);
 
   // Get current teacher info
   const currentTeacher = teachers.find(t => t.email === user?.email) || teachers[0];
@@ -365,11 +367,27 @@ const TeacherProfile: React.FC = () => {
 
         {/* Actions */}
         <div className="mt-6 flex justify-end">
-          <button className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">
+          <button
+            onClick={() => setShowUpdateRequestModal(true)}
+            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition"
+          >
             Request Profile Update
           </button>
         </div>
       </div>
+
+      {/* Profile Update Request Modal */}
+      {showUpdateRequestModal && currentTeacher && (
+        <ProfileUpdateRequestModal
+          onClose={() => setShowUpdateRequestModal(false)}
+          onSuccess={() => {
+            // Refresh notifications if needed
+            setShowUpdateRequestModal(false);
+          }}
+          teacherName={currentTeacher.fullName}
+          teacherId={currentTeacher.id}
+        />
+      )}
       
       <DebugPanel />
     </div>

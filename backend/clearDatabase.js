@@ -185,12 +185,13 @@ const AssignmentTicket = mongoose.model('AssignmentTicket', assignmentTicketSche
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
-  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received'], required: true },
+  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request'], required: true },
   title: { type: String, required: true },
   message: { type: String, required: true },
   recitationReviewId: { type: String },
   assignmentId: { type: String },
   studentId: { type: String },
+  teacherId: { type: String }, // For profile_update_request
   read: { type: Boolean, default: false },
   priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' }
 }, { timestamps: true });

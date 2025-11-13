@@ -589,12 +589,13 @@ const StudentPersonalMushaf = mongoose.model('StudentPersonalMushaf', studentPer
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
-  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received'], required: true },
+  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request'], required: true },
   title: { type: String, required: true },
   message: { type: String, required: true },
   recitationReviewId: { type: String },
   assignmentId: { type: String },
   studentId: { type: String },
+  teacherId: { type: String }, // For profile_update_request
   read: { type: Boolean, default: false },
   priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' }
 }, { timestamps: true });
@@ -906,6 +907,16 @@ app.put('/api/admin-notifications/read-all', async (req, res) => {
   try {
     await AdminNotification.updateMany({}, { read: true });
     res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin-notifications', async (req, res) => {
+  try {
+    const notification = new AdminNotification(req.body);
+    await notification.save();
+    res.status(201).json(notification);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
