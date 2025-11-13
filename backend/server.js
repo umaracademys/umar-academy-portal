@@ -133,6 +133,29 @@ const studentSchema = new mongoose.Schema({
   paymentStatus: String,
   enrollmentDate: Date,
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
+  assignedTeacher: String, // Teacher ID or name who is assigned to this student
+  assignedTeacherId: String, // Teacher ID (for easier lookup)
+  program: String, // Program type (Full Time HQ, Part Time HQ, After School Reading)
+  fullName: String,
+  email: String,
+  contact: String,
+  parentName: String,
+  tuitionFee: Number,
+  registrationAmount: Number,
+  schedule: {
+    days: [String],
+    startTime: String,
+    endTime: String,
+    room: String
+  },
+  siblings: [{
+    id: String,
+    fullName: String,
+    program: String,
+    assignedTeacher: String
+  }],
+  status: { type: String, default: 'active' },
+  avatar: String,
   recitationProfile: {
     current: {
       sabq: { type: recitationUnitSchema, default: () => ({}) },
@@ -273,6 +296,51 @@ app.post('/api/students', async (req, res) => {
     
     const student = new Student(studentData);
     await student.save();
+    
+    // If student is assigned to a teacher, add student ID to teacher's assignedStudents array
+    if (studentData.assignedTeacher || studentData.assignedTeacherId) {
+      const teacherId = studentData.assignedTeacherId || studentData.assignedTeacher;
+      if (teacherId) {
+        let teacher = null;
+        
+        // Try to find teacher by ObjectId first (if it's a valid ObjectId)
+        if (mongoose.Types.ObjectId.isValid(teacherId)) {
+          teacher = await Teacher.findById(teacherId);
+        }
+        
+        // If not found, try other fields
+        if (!teacher) {
+          teacher = await Teacher.findOne({
+            $or: [
+              { teacherId: teacherId },
+              { email: teacherId },
+              { fullName: teacherId }
+            ]
+          });
+        }
+        
+        if (teacher) {
+          const studentId = student._id.toString();
+          // Also set assignedTeacherId on student if not already set
+          if (!student.assignedTeacherId) {
+            student.assignedTeacherId = teacher._id.toString();
+            await student.save();
+          }
+          
+          if (!teacher.assignedStudents || !Array.isArray(teacher.assignedStudents)) {
+            teacher.assignedStudents = [];
+          }
+          if (!teacher.assignedStudents.includes(studentId)) {
+            teacher.assignedStudents.push(studentId);
+            await teacher.save();
+            console.log(`✅ Added student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array`);
+          }
+        } else {
+          console.log(`⚠️ Teacher not found for ID: ${teacherId}`);
+        }
+      }
+    }
+    
     res.json(student);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -287,6 +355,11 @@ app.put('/api/students/:id', async (req, res) => {
       studentData.userId = new mongoose.Types.ObjectId(studentData.userId);
     }
 
+    // Get the old student data to check for teacher assignment changes
+    const oldStudent = await Student.findById(req.params.id);
+    const oldTeacherId = oldStudent?.assignedTeacherId || oldStudent?.assignedTeacher;
+    const newTeacherId = studentData.assignedTeacherId || studentData.assignedTeacher;
+
     const updatedStudent = await Student.findByIdAndUpdate(
       req.params.id,
       studentData,
@@ -295,6 +368,70 @@ app.put('/api/students/:id', async (req, res) => {
 
     if (!updatedStudent) {
       return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // If teacher assignment changed, update teacher's assignedStudents array
+    const studentId = updatedStudent._id.toString();
+    
+    // Remove from old teacher's assignedStudents array
+    if (oldTeacherId && oldTeacherId !== newTeacherId) {
+      let oldTeacher = null;
+      if (mongoose.Types.ObjectId.isValid(oldTeacherId)) {
+        oldTeacher = await Teacher.findById(oldTeacherId);
+      }
+      if (!oldTeacher) {
+        oldTeacher = await Teacher.findOne({
+          $or: [
+            { teacherId: oldTeacherId },
+            { email: oldTeacherId },
+            { fullName: oldTeacherId }
+          ]
+        });
+      }
+      
+      if (oldTeacher && oldTeacher.assignedStudents) {
+        oldTeacher.assignedStudents = oldTeacher.assignedStudents.filter(
+          (id: string) => id.toString() !== studentId
+        );
+        await oldTeacher.save();
+        console.log(`✅ Removed student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array`);
+      }
+    }
+    
+    // Add to new teacher's assignedStudents array
+    if (newTeacherId) {
+      let newTeacher = null;
+      if (mongoose.Types.ObjectId.isValid(newTeacherId)) {
+        newTeacher = await Teacher.findById(newTeacherId);
+      }
+      if (!newTeacher) {
+        newTeacher = await Teacher.findOne({
+          $or: [
+            { teacherId: newTeacherId },
+            { email: newTeacherId },
+            { fullName: newTeacherId }
+          ]
+        });
+      }
+      
+      if (newTeacher) {
+        // Set assignedTeacherId on student if not already set
+        if (!updatedStudent.assignedTeacherId) {
+          updatedStudent.assignedTeacherId = newTeacher._id.toString();
+          await updatedStudent.save();
+        }
+        
+        if (!newTeacher.assignedStudents || !Array.isArray(newTeacher.assignedStudents)) {
+          newTeacher.assignedStudents = [];
+        }
+        if (!newTeacher.assignedStudents.includes(studentId)) {
+          newTeacher.assignedStudents.push(studentId);
+          await newTeacher.save();
+          console.log(`✅ Added student ${studentId} to teacher ${newTeacher.fullName}'s assignedStudents array`);
+        }
+      } else {
+        console.log(`⚠️ Teacher not found for ID: ${newTeacherId}`);
+      }
     }
 
     res.json(updatedStudent);
