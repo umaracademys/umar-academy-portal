@@ -490,8 +490,10 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
                 {isEdit ? 'Update Assignment Plan' : 'Create New Assignment'}
               </h2>
               <p className="mt-3 max-w-xl text-sm text-white/80">
-                Filter by program, pick a student, and craft sabq, sabqi, manzil, and homework
-                instructions that mirror the ticket workflow output.
+                Create assignments directly for students without using the ticket workflow. 
+                Select a student, add classwork details (sabq, sabqi, manzil) with portions and notes, 
+                and specify homework instructions. The assignment will appear on the student portal 
+                in the same format as assignments created from the ticket workflow.
               </p>
             </div>
             <button
