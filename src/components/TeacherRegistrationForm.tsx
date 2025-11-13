@@ -34,6 +34,13 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
   ]);
 
+  // Schedule configuration for different day groups
+  const [dayGroupSchedules, setDayGroupSchedules] = useState({
+    monThu: { startTime: '08:00', endTime: '17:00' },
+    friday: { startTime: '08:00', endTime: '17:00' },
+    saturday: { startTime: '08:00', endTime: '17:00' },
+  });
+
   // Payroll Information
   const [payrollInfo, setPayrollInfo] = useState({
     hourlyRate: 25,
@@ -147,6 +154,29 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
             { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
           ]);
         }
+
+        // Initialize day group schedules from teacher schedule if available
+        if (teacher.schedule) {
+          // Check if dayGroupSchedules exist in schedule
+          const dayGroups = (teacher.schedule as any).dayGroupSchedules;
+          if (dayGroups) {
+            setDayGroupSchedules({
+              monThu: dayGroups.monThu || { startTime: '08:00', endTime: '17:00' },
+              friday: dayGroups.friday || { startTime: '08:00', endTime: '17:00' },
+              saturday: dayGroups.saturday || { startTime: '08:00', endTime: '17:00' },
+            });
+          } else {
+            // Fallback to existing schedule times if not specified per day group
+            const defaultStart = teacher.schedule.startTime || teacher.schedule.workingHours?.start || '08:00';
+            const defaultEnd = teacher.schedule.endTime || teacher.schedule.workingHours?.end || '17:00';
+            
+            setDayGroupSchedules({
+              monThu: { startTime: defaultStart, endTime: defaultEnd },
+              friday: { startTime: defaultStart, endTime: defaultEnd },
+              saturday: { startTime: defaultStart, endTime: defaultEnd },
+            });
+          }
+        }
       }
       
       // Initialize payroll info
@@ -201,8 +231,18 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         permissions: permissions,
         schedule: {
           days: employmentInfo.scheduleDays,
-          startTime: shifts[0]?.startTime || '08:00',
-          endTime: shifts[shifts.length - 1]?.endTime || '17:00',
+          startTime: dayGroupSchedules.monThu.startTime, // Default to Mon-Thu start time
+          endTime: dayGroupSchedules.monThu.endTime, // Default to Mon-Thu end time
+          workingHours: {
+            start: dayGroupSchedules.monThu.startTime,
+            end: dayGroupSchedules.monThu.endTime,
+          },
+          // Store day group schedules in schedule object
+          dayGroupSchedules: {
+            monThu: dayGroupSchedules.monThu,
+            friday: dayGroupSchedules.friday,
+            saturday: dayGroupSchedules.saturday,
+          } as any, // Extend Schedule type to include dayGroupSchedules
         },
         payroll: {
           hourlyRate: payrollInfo.hourlyRate,
@@ -555,6 +595,111 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         {day.substring(0, 3)}
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Day Group Schedule Configuration */}
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">Schedule by Day Groups *</label>
+                  <div className="space-y-4">
+                    {/* Monday to Thursday */}
+                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                      <h4 className="font-semibold text-gray-900 mb-3">Monday - Thursday</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={dayGroupSchedules.monThu.startTime}
+                            onChange={(e) => setDayGroupSchedules(prev => ({
+                              ...prev,
+                              monThu: { ...prev.monThu, startTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={dayGroupSchedules.monThu.endTime}
+                            onChange={(e) => setDayGroupSchedules(prev => ({
+                              ...prev,
+                              monThu: { ...prev.monThu, endTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Friday */}
+                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                      <h4 className="font-semibold text-gray-900 mb-3">Friday</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={dayGroupSchedules.friday.startTime}
+                            onChange={(e) => setDayGroupSchedules(prev => ({
+                              ...prev,
+                              friday: { ...prev.friday, startTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={dayGroupSchedules.friday.endTime}
+                            onChange={(e) => setDayGroupSchedules(prev => ({
+                              ...prev,
+                              friday: { ...prev.friday, endTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Saturday */}
+                    <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                      <h4 className="font-semibold text-gray-900 mb-3">Saturday</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Start Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={dayGroupSchedules.saturday.startTime}
+                            onChange={(e) => setDayGroupSchedules(prev => ({
+                              ...prev,
+                              saturday: { ...prev.saturday, startTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">End Time *</label>
+                          <input
+                            type="time"
+                            required
+                            value={dayGroupSchedules.saturday.endTime}
+                            onChange={(e) => setDayGroupSchedules(prev => ({
+                              ...prev,
+                              saturday: { ...prev.saturday, endTime: e.target.value }
+                            }))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
