@@ -136,38 +136,40 @@ const AdminRecitationReview: React.FC<AdminRecitationReviewProps> = ({ onClose, 
                       </div>
                     </div>
 
-                    {selectedReview?.id === review.id ? (
-                      <div className="ml-4 flex flex-col space-y-2">
+                    <div className="ml-4 flex flex-col space-y-2 min-w-[180px]">
+                      {/* Always show Convert button prominently */}
+                      <button
+                        onClick={() => handleConvertToAssignment(review)}
+                        disabled={isConverting}
+                        className="px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg text-sm font-semibold hover:from-green-700 hover:to-blue-700 disabled:opacity-50 shadow-md hover:shadow-lg transition-all"
+                      >
+                        {isConverting ? 'Converting...' : '✅ Convert to Assignment'}
+                      </button>
+                      
+                      {selectedReview?.id === review.id ? (
                         <button
                           onClick={() => setSelectedReview(null)}
-                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200"
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
                         >
                           Cancel
                         </button>
-                      </div>
-                    ) : (
-                      <div className="ml-4 flex flex-col space-y-2">
-                        <button
-                          onClick={() => handleConvertToAssignment(review)}
-                          disabled={isConverting}
-                          className="px-4 py-2 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded text-sm font-medium hover:from-green-700 hover:to-blue-700 disabled:opacity-50"
-                        >
-                          {isConverting ? 'Converting...' : '✅ Convert to Assignment'}
-                        </button>
-                        <button
-                          onClick={() => handleReview(review, 'approve')}
-                          className="px-4 py-2 bg-green-100 text-green-700 rounded text-sm font-medium hover:bg-green-200"
-                        >
-                          ✓ Approve
-                        </button>
-                        <button
-                          onClick={() => handleReview(review, 'reject')}
-                          className="px-4 py-2 bg-red-100 text-red-700 rounded text-sm font-medium hover:bg-red-200"
-                        >
-                          ✗ Reject
-                        </button>
-                      </div>
-                    )}
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleReview(review, 'approve')}
+                            className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            onClick={() => handleReview(review, 'reject')}
+                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
+                          >
+                            ✗ Reject
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
