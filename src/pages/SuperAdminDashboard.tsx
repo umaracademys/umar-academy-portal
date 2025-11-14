@@ -32,6 +32,7 @@ import DebugPanel from '../components/DebugPanel';
 import AdminRecitationReview from '../components/AdminRecitationReview';
 import AdminTicketManagement from '../components/AdminTicketManagement';
 import AssignTicketForm from '../components/AssignTicketForm';
+import StudentReports from '../components/StudentReports';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 
@@ -90,6 +91,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showTicketManagement, setShowTicketManagement] = useState(false);
   const [showAssignTicket, setShowAssignTicket] = useState(false);
+  const [showStudentReports, setShowStudentReports] = useState(false);
 
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
@@ -142,6 +144,14 @@ const SuperAdminDashboard: React.FC = () => {
       link: '/assignments',
       badge: unreadNotificationsCount,
       emphasis: 'accent-solid',
+    },
+    {
+      id: 'student-reports',
+      label: 'Student Reports',
+      description: 'View and manage student assignment history by program.',
+      onClick: () => setShowStudentReports(true),
+      badge: null,
+      emphasis: 'neutral',
     },
   ];
 
@@ -1099,6 +1109,13 @@ const SuperAdminDashboard: React.FC = () => {
             setShowAssignTicket(false);
             refreshNotifications();
           }}
+        />
+      )}
+
+      {/* Student Reports Modal */}
+      {showStudentReports && (
+        <StudentReports
+          onClose={() => setShowStudentReports(false)}
         />
       )}
 
