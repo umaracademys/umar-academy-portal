@@ -133,11 +133,10 @@ const TeacherDashboard: React.FC = () => {
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <StatCard title="Assigned Students" value={assignedStudents.length} icon="AS" />
           <StatCard title="Total Assessments" value={assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0)} icon="TA" />
           <StatCard title="Active Students" value={assignedStudents.filter(s => s.status === 'active').length} icon="WK" />
-          <StatCard title="Avg Performance" value="85%" icon="AVG" />
         </div>
 
         {/* Assigned Students List */}
@@ -186,13 +185,6 @@ const TeacherDashboard: React.FC = () => {
                             : '—'}
                         </p>
                       </div>
-                      {permissions.canViewFinancials && (
-                        <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
-                          <p className="text-xs text-primary-soft">Tuition</p>
-                          <p className="text-sm font-medium">${student.tuitionFee}/month</p>
-                          <p className="text-xs text-primary-soft">Reg: ${student.registrationAmount}</p>
-                        </div>
-                      )}
                       <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <p className="text-xs text-primary-soft">Enrolled</p>
                         <p className="text-sm font-medium">{new Date(student.enrolledDate).toLocaleDateString()}</p>
@@ -294,10 +286,10 @@ const TeacherDashboard: React.FC = () => {
                     {permissions.canContactParents && (
                       <div className="mt-3">
                         <button
-                          onClick={() => alert(`Contacting ${student.parentName} at ${student.contact}`)}
-                          className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                          disabled
+                          className="rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-400 cursor-not-allowed"
                         >
-                          Contact Parent
+                          Contact Parent - Coming Soon
                         </button>
                       </div>
                     )}
@@ -308,32 +300,6 @@ const TeacherDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Teacher Permissions Summary */}
-        <Card title="Your Permissions">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            {Object.entries(permissions).map(([key, value]) => (
-              <div
-                key={key}
-                className={`rounded-xl border px-3 py-3 ${
-                  value
-                    ? 'border-accent-soft bg-soft-primary'
-                    : 'border-[rgba(var(--color-accent-rgb),0.35)] bg-white'
-                }`}
-              >
-                <p className="text-xs font-medium text-primary">
-                  {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                </p>
-                <p
-                  className={`mt-1 text-sm font-semibold ${
-                    value ? 'text-primary' : 'text-[var(--color-accent)]'
-                  }`}
-                >
-                  {value ? 'Allowed' : 'Not allowed'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Card>
       </div>
 
       {/* Assessment Form Modal */}
