@@ -398,6 +398,12 @@ const TeacherDashboard: React.FC = () => {
               <p className="text-sm text-gray-600 mt-1">For {selectedStudent.fullName}</p>
             </div>
             
+            {saveError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-xs font-semibold text-red-700">{saveError}</p>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Assessment Type</label>
