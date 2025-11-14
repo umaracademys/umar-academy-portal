@@ -283,6 +283,23 @@ const TeacherDashboard: React.FC = () => {
     return buildActivityHistory(historyStudent);
   }, [historyStudent, backendAssignments, tickets, recitationReviews]);
 
+  // Group activities by date
+  const groupedByDate = useMemo(() => {
+    const groups: Record<string, typeof activityHistory> = {};
+    activityHistory.forEach(activity => {
+      const dateKey = activity.date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      if (!groups[dateKey]) {
+        groups[dateKey] = [];
+      }
+      groups[dateKey].push(activity);
+    });
+    return groups;
+  }, [activityHistory]);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -800,69 +817,114 @@ const TeacherDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Timeline */}
-                  <div className="relative">
-                    {/* Timeline line */}
-                    <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200" />
-                    
-                    <div className="space-y-6">
-                      {activityHistory.map((activity) => (
-                        <div key={activity.id} className="relative pl-20">
-                          {/* Timeline dot */}
-                          <div className={`absolute left-6 top-2 h-4 w-4 rounded-full border-2 border-white ${activity.color.split(' ')[0]}`} />
-                          
-                          {/* Activity card */}
-                          <div className={`rounded-xl border ${activity.color} p-4 shadow-sm hover:shadow-md transition-shadow`}>
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl">{activity.icon}</span>
-                                <div>
-                                  <h4 className="font-semibold text-gray-900">{activity.title}</h4>
-                                  <p className="text-xs text-gray-500 mt-0.5">
-                                    {activity.date.toLocaleDateString('en-US', {
-                                      month: 'short',
-                                      day: 'numeric',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </p>
-                                </div>
-                              </div>
-                              {activity.status && (
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${activity.color}`}>
-                                  {activity.status.replace('_', ' ').toUpperCase()}
-                                </span>
-                              )}
-                            </div>
-                            
-                            <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap line-clamp-3">
-                              {activity.description}
+                  {/* Grouped by Date */}
+                  <div className="space-y-6">
+                    {Object.entries(groupedByDate)
+                      .sort(([dateA], [dateB]) => {
+                        const a = new Date(dateA);
+                        const b = new Date(dateB);
+                        return b.getTime() - a.getTime();
+                      })
+                      .map(([dateKey, dayActivities]) => (
+                        <div key={dateKey} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+                          <div className="mb-4 pb-3 border-b border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-900">{dateKey}</h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {dayActivities.length} activit{dayActivities.length !== 1 ? 'ies' : 'y'} on this day
                             </p>
-                            
-                            {/* Additional info based on type */}
-                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
-                              {activity.type === 'assignment' && activity.data.assignedBy && (
-                                <span>Assigned by: {activity.data.listenerName || activity.data.assignedTeacherName || 'Admin'}</span>
-                              )}
-                              {activity.type === 'ticket' && activity.data.assignedTeacherName && (
-                                <span>Teacher: {activity.data.assignedTeacherName}</span>
-                              )}
-                              {activity.type === 'recitation_review' && activity.data.audioLink && (
-                                <a 
-                                  href={activity.data.audioLink} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:underline"
-                                >
-                                  🔊 Listen to Audio
-                                </a>
-                              )}
-                            </div>
+                          </div>
+                          
+                          <div className="space-y-4">
+                            {dayActivities.map((activity) => {
+                              const mushafMarkings = activity.type === 'assignment' && activity.data.mushafMarkings 
+                                ? (Array.isArray(activity.data.mushafMarkings) ? activity.data.mushafMarkings : [])
+                                : [];
+                              
+                              return (
+                                <div key={activity.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xl">{activity.icon}</span>
+                                      <div>
+                                        <h4 className="font-semibold text-gray-900">{activity.title}</h4>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                          {activity.date.toLocaleTimeString('en-US', {
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                          })}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {activity.status && (
+                                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${activity.color}`}>
+                                        {activity.status.replace('_', ' ').toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {activity.description && activity.description !== 'No description' && (
+                                    <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
+                                      {activity.description}
+                                    </p>
+                                  )}
+                                  
+                                  {/* Mushaf Mistakes */}
+                                  {mushafMarkings.length > 0 && (
+                                    <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                                      <h5 className="text-xs font-semibold text-orange-900 mb-2">
+                                        📖 Mushaf Mistakes ({mushafMarkings.length})
+                                      </h5>
+                                      <div className="flex flex-wrap gap-2">
+                                        {mushafMarkings.map((mistake: any, idx: number) => {
+                                          const typeLabel = mistake.type === 'memory' ? 'Memory' :
+                                                           mistake.type === 'madd' ? 'Madd' :
+                                                           mistake.type === 'ikhfa' ? 'Ikhfa' :
+                                                           mistake.type === 'holding' ? 'Holding' :
+                                                           mistake.type === 'tech' ? 'Tech' :
+                                                           mistake.type === 'other' ? 'Other' : mistake.type;
+                                          return (
+                                            <span
+                                              key={idx}
+                                              className={`px-2 py-1 rounded text-xs font-medium ${
+                                                mistake.type === 'memory' 
+                                                  ? 'bg-red-100 text-red-800' 
+                                                  : 'bg-yellow-100 text-yellow-800'
+                                              }`}
+                                            >
+                                              {typeLabel} • Page {mistake.page}
+                                              {mistake.surah && mistake.ayah && ` • ${mistake.surah}:${mistake.ayah}`}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Additional info based on type */}
+                                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
+                                    {activity.type === 'assignment' && activity.data.assignedBy && (
+                                      <span>Assigned by: {activity.data.listenerName || activity.data.assignedTeacherName || 'Admin'}</span>
+                                    )}
+                                    {activity.type === 'ticket' && activity.data.assignedTeacherName && (
+                                      <span>Teacher: {activity.data.assignedTeacherName}</span>
+                                    )}
+                                    {activity.type === 'recitation_review' && activity.data.audioLink && (
+                                      <a 
+                                        href={activity.data.audioLink} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline"
+                                      >
+                                        🔊 Listen to Audio
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}
-                    </div>
                   </div>
                 </>
               )}
