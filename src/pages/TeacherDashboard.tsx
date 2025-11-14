@@ -285,7 +285,17 @@ const TeacherDashboard: React.FC = () => {
 
   // Group activities by date
   const groupedByDate = useMemo(() => {
-    const groups: Record<string, typeof activityHistory> = {};
+    const groups: Record<string, Array<{
+      id: string;
+      type: 'assignment' | 'ticket' | 'recitation_review';
+      date: Date;
+      title: string;
+      description: string;
+      status?: string;
+      icon: string;
+      color: string;
+      data: any;
+    }>> = {};
     activityHistory.forEach(activity => {
       const dateKey = activity.date.toLocaleDateString('en-US', {
         year: 'numeric',
