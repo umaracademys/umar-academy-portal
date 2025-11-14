@@ -9,8 +9,29 @@ interface TeacherRecitationReviewProps {
 }
 
 const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClose, onSuccess }) => {
-  const { students, addRecitationReview, getStudentsByTeacher } = useData();
+  const { students, addRecitationReview, getStudentsByTeacher, teachers } = useData();
   const { user } = useAuth();
+
+  // Get current teacher and permissions
+  const currentTeacher = React.useMemo(() => {
+    if (!user?.email) return null;
+    return teachers.find((t: any) => t.email === user.email) || teachers[0];
+  }, [teachers, user?.email]);
+
+  const permissions = React.useMemo(() => {
+    return currentTeacher?.permissions || {
+      canViewAssessments: true,
+      canEditAssessments: true,
+      canViewEvaluations: true,
+      canEditEvaluations: true,
+      canViewFinancials: false,
+      canManageSchedule: true,
+      canContactParents: true,
+      canViewStudentEmail: true,
+      canViewStudentContact: true,
+      canViewStudentPersonalInfo: true,
+    };
+  }, [currentTeacher]);
   
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [formData, setFormData] = useState({

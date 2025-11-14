@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { Teacher } from '../types';
 import {
   AssignmentTicket,
   TicketStatus,
@@ -151,6 +152,27 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     updateListeningSession,
     endListeningSession
   } = useBackendData();
+
+  // Get current teacher and permissions
+  const currentTeacher = useMemo(() => {
+    if (!user?.email) return null;
+    return teachers.find(t => t.email === user.email) || teachers[0];
+  }, [teachers, user?.email]);
+
+  const permissions = useMemo(() => {
+    return currentTeacher?.permissions || {
+      canViewAssessments: true,
+      canEditAssessments: true,
+      canViewEvaluations: true,
+      canEditEvaluations: true,
+      canViewFinancials: false,
+      canManageSchedule: true,
+      canContactParents: true,
+      canViewStudentEmail: true,
+      canViewStudentContact: true,
+      canViewStudentPersonalInfo: true,
+    };
+  }, [currentTeacher]);
   
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [formData, setFormData] = useState({
