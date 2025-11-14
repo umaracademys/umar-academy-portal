@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
@@ -7,17 +7,21 @@ import DebugPanel from '../components/DebugPanel';
 import TeacherRecitationReview from '../components/TeacherRecitationReview';
 import TeacherTickets from '../components/TeacherTickets';
 import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
+  const { assignments: backendAssignments, tickets, recitationReviews } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showTickets, setShowTickets] = useState(false);
+  const [showStudentHistory, setShowStudentHistory] = useState(false);
+  const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -177,6 +181,107 @@ const TeacherDashboard: React.FC = () => {
       setIsSaving(false);
     }
   };
+
+  // Build comprehensive activity history timeline for a student
+  const buildActivityHistory = (student: Student) => {
+    const activities: Array<{
+      id: string;
+      type: 'assignment' | 'ticket' | 'recitation_review';
+      date: Date;
+      title: string;
+      description: string;
+      status?: string;
+      icon: string;
+      color: string;
+      data: any;
+    }> = [];
+
+    const studentId = student.id || (student as any)._id;
+
+    // Add assignments
+    backendAssignments
+      .filter((assignment: any) => {
+        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
+        return assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
+      })
+      .forEach((assignment: any) => {
+        activities.push({
+          id: assignment._id || assignment.id || `assignment-${Date.now()}`,
+          type: 'assignment',
+          date: assignment.createdAt ? new Date(assignment.createdAt) : new Date(assignment.updatedAt || Date.now()),
+          title: assignment.title || 'Assignment',
+          description: assignment.description || assignment.homeworkComments || 'No description',
+          status: assignment.status,
+          icon: '📝',
+          color: 'bg-green-100 text-green-800 border-green-200',
+          data: assignment,
+        });
+      });
+
+    // Add tickets
+    tickets
+      .filter((ticket: any) => {
+        const ticketStudentId = ticket.studentId || (ticket as any).student?._id || (ticket as any).student?.id;
+        return ticketStudentId === studentId || ticketStudentId?.toString() === studentId?.toString();
+      })
+      .forEach((ticket: any) => {
+        const stepLabel = ticket.workflowStep === 'sabq' ? 'Sabq (New Lesson)' :
+                         ticket.workflowStep === 'sabqi' ? 'Sabqi (Revision)' :
+                         ticket.workflowStep === 'manzil' ? 'Manzil' :
+                         ticket.workflowStep === 'finalize' ? 'Finalize' :
+                         ticket.workflowStep || 'Ticket';
+        
+        activities.push({
+          id: ticket.id || ticket._id || `ticket-${Date.now()}`,
+          type: 'ticket',
+          date: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt || Date.now()),
+          title: `${stepLabel} - ${ticket.status?.replace('_', ' ') || 'Pending'}`,
+          description: ticket.progressNotes || ticket.revisionNotes || 'No notes',
+          status: ticket.status,
+          icon: ticket.workflowStep === 'sabq' ? '✨' : ticket.workflowStep === 'sabqi' ? '🧠' : ticket.workflowStep === 'manzil' ? '🔁' : '📋',
+          color: ticket.status === 'finalized' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                 ticket.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
+                 ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          data: ticket,
+        });
+      });
+
+    // Add recitation reviews
+    recitationReviews
+      .filter((review: any) => {
+        const reviewStudentId = review.studentId || (review as any).student?._id || (review as any).student?.id;
+        return reviewStudentId === studentId || reviewStudentId?.toString() === studentId?.toString();
+      })
+      .forEach((review: any) => {
+        const typeLabel = review.recitationType === 'sabq' ? 'Sabq Review' :
+                         review.recitationType === 'sabqi' ? 'Sabqi Review' :
+                         review.recitationType === 'manzil' ? 'Manzil Review' :
+                         'Recitation Review';
+        
+        activities.push({
+          id: review.id || review._id || `review-${Date.now()}`,
+          type: 'recitation_review',
+          date: review.updatedAt ? new Date(review.updatedAt) : new Date(review.createdAt || Date.now()),
+          title: `${typeLabel} by ${review.teacherName || review.listenerName || 'Teacher'}`,
+          description: review.notes || review.comments || 'No notes',
+          status: review.status,
+          icon: '📖',
+          color: review.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
+                 review.status === 'rejected' ? 'bg-red-100 text-red-800 border-red-200' :
+                 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          data: review,
+        });
+      });
+
+    // Sort by date (most recent first)
+    return activities.sort((a, b) => b.date.getTime() - a.date.getTime());
+  };
+
+  const activityHistory = useMemo(() => {
+    if (!historyStudent) return [];
+    return buildActivityHistory(historyStudent);
+  }, [historyStudent, backendAssignments, tickets, recitationReviews]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -402,17 +507,26 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Contact Parent Button */}
-                    {permissions.canContactParents && (
-                      <div className="mt-3">
+                    {/* Action Buttons */}
+                    <div className="mt-3 flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => {
+                          setHistoryStudent(student);
+                          setShowStudentHistory(true);
+                        }}
+                        className="rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary px-4 py-2 text-xs font-semibold text-primary transition hover:bg-[rgba(var(--color-primary-rgb),0.15)]"
+                      >
+                        📜 View Activity History
+                      </button>
+                      {permissions.canContactParents && (
                         <button
                           disabled
                           className="rounded-full border border-gray-300 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-400 cursor-not-allowed"
                         >
                           Contact Parent - Coming Soon
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -619,6 +733,140 @@ const TeacherDashboard: React.FC = () => {
             <TeacherTickets
               onClose={() => setShowTickets(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Student Activity History Modal */}
+      {showStudentHistory && historyStudent && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6"
+          onClick={() => setShowStudentHistory(false)}
+        >
+          <div 
+            className="flex h-full w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-accent)] text-white px-6 py-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Activity History</h2>
+                  <p className="text-white/90 mt-1">{historyStudent.fullName}</p>
+                </div>
+                <button
+                  onClick={() => setShowStudentHistory(false)}
+                  className="rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30"
+                >
+                  ✕ Close
+                </button>
+              </div>
+            </header>
+
+            <main className="flex-1 overflow-y-auto px-6 py-6">
+              {activityHistory.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p className="text-lg">No activity history found for this student yet.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Summary Statistics */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl">📊</span>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Activities</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900">{activityHistory.length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl">📝</span>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Assignments</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900">{activityHistory.filter(a => a.type === 'assignment').length}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl">🎫</span>
+                        <div className="text-right">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tickets</p>
+                          <p className="mt-1 text-lg font-semibold text-gray-900">{activityHistory.filter(a => a.type === 'ticket').length}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200" />
+                    
+                    <div className="space-y-6">
+                      {activityHistory.map((activity) => (
+                        <div key={activity.id} className="relative pl-20">
+                          {/* Timeline dot */}
+                          <div className={`absolute left-6 top-2 h-4 w-4 rounded-full border-2 border-white ${activity.color.split(' ')[0]}`} />
+                          
+                          {/* Activity card */}
+                          <div className={`rounded-xl border ${activity.color} p-4 shadow-sm hover:shadow-md transition-shadow`}>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl">{activity.icon}</span>
+                                <div>
+                                  <h4 className="font-semibold text-gray-900">{activity.title}</h4>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    {activity.date.toLocaleDateString('en-US', {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                              {activity.status && (
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${activity.color}`}>
+                                  {activity.status.replace('_', ' ').toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap line-clamp-3">
+                              {activity.description}
+                            </p>
+                            
+                            {/* Additional info based on type */}
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
+                              {activity.type === 'assignment' && activity.data.assignedBy && (
+                                <span>Assigned by: {activity.data.listenerName || activity.data.assignedTeacherName || 'Admin'}</span>
+                              )}
+                              {activity.type === 'ticket' && activity.data.assignedTeacherName && (
+                                <span>Teacher: {activity.data.assignedTeacherName}</span>
+                              )}
+                              {activity.type === 'recitation_review' && activity.data.audioLink && (
+                                <a 
+                                  href={activity.data.audioLink} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline"
+                                >
+                                  🔊 Listen to Audio
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </main>
           </div>
         </div>
       )}
