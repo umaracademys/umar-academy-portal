@@ -6,6 +6,7 @@ import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
 import TeacherRecitationReview from '../components/TeacherRecitationReview';
 import TeacherTickets from '../components/TeacherTickets';
+import TeacherStudentReports from '../components/TeacherStudentReports';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +22,7 @@ const TeacherDashboard: React.FC = () => {
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showTickets, setShowTickets] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
+  const [showStudentReports, setShowStudentReports] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -769,6 +771,13 @@ const TeacherDashboard: React.FC = () => {
             />
           </div>
         </div>
+      )}
+
+      {/* Student Reports Modal */}
+      {showStudentReports && (
+        <TeacherStudentReports
+          onClose={() => setShowStudentReports(false)}
+        />
       )}
 
       {/* Student Activity History Modal */}
