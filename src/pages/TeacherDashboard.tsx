@@ -207,8 +207,12 @@ const TeacherDashboard: React.FC = () => {
 
     const studentId = student.id || (student as any)._id;
 
+    // Safety check: ensure tickets is an array
+    const ticketsArray = Array.isArray(tickets) ? tickets : [];
+
     // Get all finalized/completed tickets for this student to check if assignments came from tickets
-    const finalizedTickets = tickets.filter((ticket: any) => {
+    const finalizedTickets = ticketsArray.filter((ticket: any) => {
+      if (!ticket) return false;
       const ticketStudentId = ticket.studentId || (ticket as any).student?._id || (ticket as any).student?.id;
       const matchesStudent = ticketStudentId === studentId || ticketStudentId?.toString() === studentId?.toString();
       const isFinalized = ticket.status === 'finalized' || ticket.status === 'completed';
@@ -216,12 +220,16 @@ const TeacherDashboard: React.FC = () => {
     });
     const finalizedTicketIds = new Set(finalizedTickets.map((t: any) => t.id || t._id));
 
+    // Safety check: ensure backendAssignments is an array
+    const assignmentsArray = Array.isArray(backendAssignments) ? backendAssignments : [];
+
     // Only show finalized assignments:
     // 1. Published/completed assignments (not drafts)
     // 2. Assignments from finalized tickets (have fromTicketId matching a finalized ticket)
     // 3. Manual assignments (no fromTicketId, no fromRecitationReviewId)
-    backendAssignments
+    assignmentsArray
       .filter((assignment: any) => {
+        if (!assignment) return false;
         const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
         const matchesStudent = assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
         
