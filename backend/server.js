@@ -332,67 +332,89 @@ const syncTeacherAssignedStudents = async () => {
     // Build assignedStudents arrays from student assignments
     for (const student of allStudents) {
       const studentId = student._id.toString();
-      const assignedTeacherId = student.assignedTeacherId || student.assignedTeacher;
+      let assignedTeacherId = (student.assignedTeacherId || student.assignedTeacher || '').toString().trim();
       
-      console.log(`🔍 Processing student ${student.fullName || studentId}: assignedTeacherId=${assignedTeacherId}`);
+      console.log(`🔍 Processing student ${student.fullName || studentId}: assignedTeacherId="${assignedTeacherId}" (from assignedTeacherId: ${student.assignedTeacherId}, assignedTeacher: ${student.assignedTeacher})`);
       
       if (assignedTeacherId) {
         let teacher = null;
+        let teacherId = null;
         
-        // First, check if we already have this teacher in our tracking map
-        const teacherFromMap = teachersToUpdate.get(assignedTeacherId);
-        if (teacherFromMap) {
-          teacher = teacherFromMap;
-          console.log(`✅ Found teacher ${teacher.fullName} in tracking map`);
-        } else {
-          // Try to find teacher by ObjectId
-          if (mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-            teacher = await Teacher.findById(assignedTeacherId);
-            if (teacher) {
-              console.log(`✅ Found teacher ${teacher.fullName} by ObjectId`);
-            }
-          }
-          
-          // If not found, try other fields
-          if (!teacher) {
-            teacher = await Teacher.findOne({
-              $or: [
-                { teacherId: assignedTeacherId },
-                { email: assignedTeacherId },
-                { fullName: assignedTeacherId },
-                { _id: assignedTeacherId }
-              ]
-            });
-            if (teacher) {
-              console.log(`✅ Found teacher ${teacher.fullName} by other fields`);
-            }
-          }
-          
-          // If teacher was found but not in our map, add it
-          if (teacher) {
-            const teacherId = teacher._id.toString();
-            if (!teachersToUpdate.has(teacherId)) {
-              teacher.assignedStudents = teacher.assignedStudents || [];
-              teachersToUpdate.set(teacherId, teacher);
-              console.log(`➕ Added teacher ${teacher.fullName} to tracking map`);
-            }
+        // Normalize the assignedTeacherId - ensure it's a string
+        assignedTeacherId = assignedTeacherId.toString();
+        
+        // First, check if we already have this teacher in our tracking map by direct match
+        // Try matching by the assignedTeacherId as-is
+        for (const [tid, t] of teachersToUpdate.entries()) {
+          if (tid === assignedTeacherId || t._id.toString() === assignedTeacherId) {
+            teacher = t;
+            teacherId = tid;
+            console.log(`✅ Found teacher ${teacher.fullName} in tracking map by ID match`);
+            break;
           }
         }
         
-        if (teacher) {
-          const teacherId = teacher._id.toString();
+        // If not found in map, try to find teacher by ObjectId
+        if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) && assignedTeacherId.length === 24) {
+          teacher = await Teacher.findById(assignedTeacherId);
+          if (teacher) {
+            teacherId = teacher._id.toString();
+            // Make sure this teacher is in our tracking map
+            if (!teachersToUpdate.has(teacherId)) {
+              teacher.assignedStudents = teacher.assignedStudents || [];
+              teachersToUpdate.set(teacherId, teacher);
+              console.log(`➕ Added teacher ${teacher.fullName} to tracking map after ObjectId lookup`);
+            } else {
+              teacher = teachersToUpdate.get(teacherId);
+            }
+            console.log(`✅ Found teacher ${teacher.fullName} by ObjectId`);
+          }
+        }
+        
+        // If not found, try other fields (email, fullName, teacherId)
+        if (!teacher) {
+          teacher = await Teacher.findOne({
+            $or: [
+              { teacherId: assignedTeacherId },
+              { email: assignedTeacherId },
+              { fullName: assignedTeacherId },
+              { _id: new mongoose.Types.ObjectId(assignedTeacherId) }
+            ].filter(query => {
+              // Only try ObjectId query if it's valid
+              if (query._id && !mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+                return false;
+              }
+              return true;
+            })
+          });
+          if (teacher) {
+            teacherId = teacher._id.toString();
+            // Make sure this teacher is in our tracking map
+            if (!teachersToUpdate.has(teacherId)) {
+              teacher.assignedStudents = teacher.assignedStudents || [];
+              teachersToUpdate.set(teacherId, teacher);
+              console.log(`➕ Added teacher ${teacher.fullName} to tracking map after field lookup`);
+            } else {
+              teacher = teachersToUpdate.get(teacherId);
+            }
+            console.log(`✅ Found teacher ${teacher.fullName} by other fields`);
+          }
+        }
+        
+        if (teacher && teacherId) {
           const teacherToUpdate = teachersToUpdate.get(teacherId);
           
           if (!teacherToUpdate) {
-            console.error(`❌ Teacher ${teacher.fullName} (${teacherId}) not in tracking map!`);
+            console.error(`❌ Teacher ${teacher.fullName} (${teacherId}) not in tracking map after lookup!`);
             continue;
           }
           
-          // Ensure assignedTeacherId is set on student
-          if (!student.assignedTeacherId) {
+          // Ensure assignedTeacherId is set on student (normalize to teacher's _id)
+          if (!student.assignedTeacherId || student.assignedTeacherId !== teacherId) {
             student.assignedTeacherId = teacherId;
+            student.assignedTeacher = teacherId; // Also update assignedTeacher for consistency
             await student.save();
-            console.log(`✅ Set assignedTeacherId on student ${student.fullName || studentId}`);
+            console.log(`✅ Set assignedTeacherId on student ${student.fullName || studentId} to ${teacherId}`);
           }
           
           // Add student to teacher's assignedStudents array
@@ -401,13 +423,15 @@ const syncTeacherAssignedStudents = async () => {
           }
           if (!teacherToUpdate.assignedStudents.includes(studentId)) {
             teacherToUpdate.assignedStudents.push(studentId);
-            console.log(`➕ Added student ${student.fullName || studentId} to teacher ${teacherToUpdate.fullName}'s assignedStudents (now ${teacherToUpdate.assignedStudents.length} students)`);
+            console.log(`➕ Added student ${student.fullName || studentId} (${studentId}) to teacher ${teacherToUpdate.fullName}'s assignedStudents (now ${teacherToUpdate.assignedStudents.length} students)`);
+          } else {
+            console.log(`ℹ️ Student ${student.fullName || studentId} already in teacher ${teacherToUpdate.fullName}'s assignedStudents`);
           }
         } else {
           console.log(`⚠️ Teacher not found for assignedTeacherId: ${assignedTeacherId}`);
         }
       } else {
-        console.log(`⚠️ Student ${student.fullName || studentId} has no assignedTeacherId`);
+        console.log(`⚠️ Student ${student.fullName || studentId} has no assignedTeacherId or assignedTeacher`);
       }
     }
     
