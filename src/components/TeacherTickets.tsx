@@ -255,6 +255,26 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     return student?.fullName || studentId;
   }, [students]);
 
+  // Helper function to get student information based on permissions
+  const getStudentInfo = useCallback((studentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) {
+      return {
+        name: studentId,
+        email: '[Hidden]',
+        contact: '[Hidden]',
+        parentName: '[Hidden]',
+      };
+    }
+
+    return {
+      name: student.fullName,
+      email: permissions.canViewStudentEmail ? student.email : '[Hidden]',
+      contact: permissions.canViewStudentContact ? student.contact : '[Hidden]',
+      parentName: permissions.canViewStudentPersonalInfo ? student.parentName : '[Hidden]',
+    };
+  }, [students, permissions]);
+
   const studentTicketHistoryMap = useMemo(() => {
     const grouped = new Map<string, AssignmentTicket[]>();
     tickets.forEach(ticket => {
@@ -806,24 +826,43 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                         <h3 className="text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
                       </header>
 
-                      <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600">
-                        <div>
-                          <dt className="font-semibold text-gray-700">Assigned teacher</dt>
-                          <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
-                        </div>
-                        <div>
-                          <dt className="font-semibold text-gray-700">Program</dt>
-                          <dd>{selectedTicket.program || '—'}</dd>
-                        </div>
-                        <div>
-                          <dt className="font-semibold text-gray-700">Range / Focus</dt>
-                          <dd>{selectedAssignmentDetails?.summary || '—'}</dd>
-                        </div>
-                        <div>
-                          <dt className="font-semibold text-gray-700">Portion size</dt>
-                          <dd>{selectedAssignmentDetails?.portion || '—'}</dd>
-                        </div>
-                      </dl>
+                      {(() => {
+                        const studentInfo = getStudentInfo(selectedTicket.studentId);
+                        return (
+                          <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600 mb-4">
+                            {permissions.canViewStudentPersonalInfo && (
+                              <div>
+                                <dt className="font-semibold text-gray-700">Parent / Guardian</dt>
+                                <dd>{studentInfo.parentName}</dd>
+                              </div>
+                            )}
+                            <div>
+                              <dt className="font-semibold text-gray-700">Email</dt>
+                              <dd>{studentInfo.email}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-semibold text-gray-700">Contact</dt>
+                              <dd>{studentInfo.contact}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-semibold text-gray-700">Assigned teacher</dt>
+                              <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-semibold text-gray-700">Program</dt>
+                              <dd>{selectedTicket.program || '—'}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-semibold text-gray-700">Range / Focus</dt>
+                              <dd>{selectedAssignmentDetails?.summary || '—'}</dd>
+                            </div>
+                            <div>
+                              <dt className="font-semibold text-gray-700">Portion size</dt>
+                              <dd>{selectedAssignmentDetails?.portion || '—'}</dd>
+                            </div>
+                          </dl>
+                        );
+                      })()}
 
                       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                         <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Teacher notes</h4>
