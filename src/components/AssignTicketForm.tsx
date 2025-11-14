@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import {
   AssignmentTicket,
@@ -8,23 +9,13 @@ import {
   StudentRecitationProfile,
   RecitationStep
 } from '../types';
-import { InteractiveMushaf, MushafMistake } from '@umar-academy/mushaf';
-import type { ClassworkSection } from '../types/assignment';
 
 interface AssignTicketFormProps {
   onClose: () => void;
   onSuccess: () => void;
 }
 
-type RecitationSuggestion = {
-  step: RecitationStep;
-  headline: string;
-  subline?: string;
-  pageInfo?: string;
-  notes?: string;
-  isAvailable: boolean;
-  unit?: RecitationUnit;
-};
+type WizardStep = 'program' | 'student' | 'type' | 'teacher' | 'notes' | 'review';
 
 const STEP_ICONS: Record<RecitationStep, string> = {
   sabq: '✨',
@@ -33,719 +24,634 @@ const STEP_ICONS: Record<RecitationStep, string> = {
 };
 
 const STEP_TITLES: Record<RecitationStep, string> = {
-  sabq: 'Sabq',
-  sabqi: 'Sabqi',
+  sabq: 'Sabq (New Lesson)',
+  sabqi: 'Sabqi (Revision)',
   manzil: 'Manzil'
 };
 
-const formatRecitationUnit = (unit?: RecitationUnit): Omit<RecitationSuggestion, 'step' | 'isAvailable'> & { isEmpty: boolean } => {
-  if (!unit) {
-    return {
-      headline: 'No portion recorded',
-      subline: 'Update the student profile to add this step.',
-      isEmpty: true
-    };
-  }
-
-  let headline = '';
-  let subline: string | undefined;
-  let pageInfo: string | undefined;
-
-  if (unit.unitType === 'surah') {
-    const parts: string[] = [];
-    if (unit.surahNumber !== undefined) {
-      parts.push(`Surah ${unit.surahNumber}`);
-    }
-    if (unit.surahName) {
-      parts.push(unit.surahName);
-    }
-    headline = parts.join(' – ') || 'Surah selection';
-
-    if (unit.fromAyah !== undefined || unit.toAyah !== undefined) {
-      const from = unit.fromAyah ?? '?';
-      const to = unit.toAyah ?? '?';
-      subline = `Ayah ${from} – ${to}`;
-    }
-  } else if (unit.unitType === 'juz') {
-    headline = unit.juzNumber ? `Juz ${unit.juzNumber}` : 'Juz selection';
-  } else if (unit.unitType === 'pages') {
-    const from = unit.fromPage ?? '?';
-    const to = unit.toPage ?? '?';
-    headline = `Pages ${from} – ${to}`;
-  }
-
-  if (unit.pageCount) {
-    pageInfo = `${unit.pageCount} page${unit.pageCount === 1 ? '' : 's'}`;
-  }
-
-  const notes = unit.notes;
-
-  return {
-    headline: headline || 'Portion recorded',
-    subline,
-    pageInfo,
-    notes,
-    isEmpty: false
-  };
-};
-
-const buildRecitationSuggestions = (profile?: StudentRecitationProfile): RecitationSuggestion[] => {
-  return (['sabq', 'sabqi', 'manzil'] as RecitationStep[]).map((step) => {
-    const formatted = formatRecitationUnit(profile?.current?.[step]);
-    return {
-      step,
-      headline: formatted.headline,
-      subline: formatted.subline,
-      pageInfo: formatted.pageInfo,
-      notes: formatted.notes,
-      isAvailable: !formatted.isEmpty,
-      unit: profile?.current?.[step]
-    };
-  });
-};
-
-const buildAssignmentRangeText = (suggestion?: RecitationSuggestion) => {
-  if (!suggestion || !suggestion.isAvailable) {
-    return undefined;
-  }
-  const parts = [suggestion.headline, suggestion.subline, suggestion.pageInfo].filter(Boolean);
-  return parts.join(' • ');
-};
-
 const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess }) => {
-  const { students, teachers, tickets, finalizeTicket, refreshData } = useBackendData();
+  const { students: backendStudents, teachers, tickets, refreshData } = useBackendData();
+  const { students: contextStudents, getStudentsByProgram } = useData();
   const { user } = useAuth();
   
+  // Merge students from both sources
+  const allStudents = useMemo(() => {
+    const backendMap = new Map(backendStudents.map(s => [s.id || (s as any)._id, s]));
+    const contextMap = new Map(contextStudents.map(s => [s.id, s]));
+    const merged = new Map<string, any>();
+    
+    // Add backend students
+    backendMap.forEach((student, id) => {
+      const contextStudent = contextMap.get(id);
+      merged.set(id, { ...student, ...contextStudent });
+    });
+    
+    // Add context students not in backend
+    contextMap.forEach((student, id) => {
+      if (!merged.has(id)) {
+        merged.set(id, student);
+      }
+    });
+    
+    return Array.from(merged.values());
+  }, [backendStudents, contextStudents]);
+
+  // Get unique programs
+  const programs = useMemo(() => {
+    const programSet = new Set<string>();
+    allStudents.forEach(student => {
+      if (student.program) {
+        programSet.add(student.program);
+      }
+    });
+    return Array.from(programSet).sort();
+  }, [allStudents]);
+
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState<WizardStep>('program');
   const [formData, setFormData] = useState({
+    program: '',
     studentId: '',
-    assignedTeacherId: '',
-    program: 'Full Time HQ',
+    recitationType: '' as RecitationStep | '',
+    teacherId: '',
     notes: ''
   });
-  const [notesTouched, setNotesTouched] = useState(false);
-  const [assignmentPlan, setAssignmentPlan] = useState<'full-workflow' | 'single-step'>('full-workflow');
-  const [singleStep, setSingleStep] = useState<WorkflowStep>('sabqi');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [finalizeForm, setFinalizeForm] = useState({
-    sabqSummary: '',
-    homework: '',
-  });
-  const [finalizeTouched, setFinalizeTouched] = useState({
-    sabqSummary: false,
-    homework: false,
-  });
-  const [showFinalizeMushaf, setShowFinalizeMushaf] = useState(false);
-  const [finalizeMushafPage, setFinalizeMushafPage] = useState(1);
+  const [studentSearchLetter, setStudentSearchLetter] = useState<string>('ALL');
 
-  const selectedStudent = useMemo(
-    () => students.find((student) => student.id === formData.studentId),
-    [students, formData.studentId]
-  );
+  // Get students filtered by program
+  const programStudents = useMemo(() => {
+    if (!formData.program) return [];
+    return allStudents.filter(s => s.program === formData.program);
+  }, [allStudents, formData.program]);
 
-  const recitationSuggestions = useMemo(
-    () => buildRecitationSuggestions(selectedStudent?.recitationProfile),
-    [selectedStudent?.recitationProfile]
-  );
+  // Get students filtered by search letter
+  const filteredStudents = useMemo(() => {
+    if (studentSearchLetter === 'ALL') return programStudents;
+    return programStudents.filter(s => {
+      const name = (s.fullName || '').toUpperCase();
+      return name.startsWith(studentSearchLetter);
+    });
+  }, [programStudents, studentSearchLetter]);
 
-  useEffect(() => {
-    if (singleStep === 'finalize') {
-      setFormData((prev) => ({ ...prev, assignedTeacherId: '', notes: '' }));
-    }
-  }, [singleStep]);
-
-  const studentTickets = useMemo(() => {
-    if (!formData.studentId) return [] as AssignmentTicket[];
-    return tickets
-      .filter((ticket) => ticket.studentId === formData.studentId)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [formData.studentId, tickets]);
-
-  const latestSabqiTicket = useMemo(
-    () => studentTickets.find((ticket) => ticket.workflowStep === 'sabqi'),
-    [studentTickets]
-  );
-
-  const latestManzilTicket = useMemo(
-    () => studentTickets.find((ticket) => ticket.workflowStep === 'manzil'),
-    [studentTickets]
-  );
-
-  const latestFinalizeTicket = useMemo(
-    () =>
-      studentTickets.find(
-        (ticket) =>
-          ticket.workflowStep === 'finalize' &&
-          ((ticket.homework && ticket.homework.trim().length > 0) ||
-            (ticket.finalReport && ticket.finalReport.trim().length > 0))
-      ),
-    [studentTickets]
-  );
-
-  const finalizeHistoryNotes = useMemo(() => {
-    return [
-      {
-        label: 'Sabqi',
-        notes: latestSabqiTicket?.progressNotes?.trim() || '',
-        assignmentRange: latestSabqiTicket?.assignmentRange || '',
-        teacher: latestSabqiTicket?.assignedTeacherName || '',
-        updatedAt: latestSabqiTicket?.updatedAt || latestSabqiTicket?.createdAt,
-      },
-      {
-        label: 'Manzil',
-        notes: latestManzilTicket?.progressNotes?.trim() || '',
-        assignmentRange: latestManzilTicket?.assignmentRange || '',
-        teacher: latestManzilTicket?.assignedTeacherName || '',
-        updatedAt: latestManzilTicket?.updatedAt || latestManzilTicket?.createdAt,
-      },
-    ];
-  }, [latestSabqiTicket, latestManzilTicket]);
-
-  const finalizeMistakes: MushafMistake[] = useMemo(() => {
-    const mistakeSources = [latestSabqiTicket, latestManzilTicket].filter(Boolean);
-    return mistakeSources.flatMap((ticket) => ticket?.mushafMarkings || []);
-  }, [latestSabqiTicket, latestManzilTicket]);
-
-  useEffect(() => {
-    if (notesTouched) {
-      return;
-    }
-
-    const homeworkNote = latestFinalizeTicket?.homework?.trim() ?? '';
-    setFormData((prev) => {
-      if (prev.notes === homeworkNote) {
-        return prev;
+  // Get alphabet letters for student search
+  const alphabetLetters = useMemo(() => {
+    const letters = new Set<string>();
+    programStudents.forEach(s => {
+      const firstLetter = (s.fullName || '').charAt(0).toUpperCase();
+      if (firstLetter && /[A-Z]/.test(firstLetter)) {
+        letters.add(firstLetter);
       }
-      return { ...prev, notes: homeworkNote };
     });
-  }, [latestFinalizeTicket, notesTouched]);
+    return Array.from(letters).sort();
+  }, [programStudents]);
 
+  // Selected student
+  const selectedStudent = useMemo(
+    () => allStudents.find(s => s.id === formData.studentId || (s as any)._id === formData.studentId),
+    [allStudents, formData.studentId]
+  );
+
+  // Auto-select admin for Sabq, require teacher selection for Sabqi/Manzil
   useEffect(() => {
-    if (singleStep !== 'finalize') {
-      setFinalizeForm({ sabqSummary: '', homework: '' });
-      setFinalizeTouched({ sabqSummary: false, homework: false });
-      setShowFinalizeMushaf(false);
-      setFinalizeMushafPage(1);
+    if (formData.recitationType === 'sabq') {
+      // Auto-select admin (current user)
+      setFormData(prev => ({ ...prev, teacherId: user?.id || 'admin' }));
+    } else if (formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') {
+      // Clear teacher selection so user must choose
+      setFormData(prev => ({ ...prev, teacherId: '' }));
+    }
+  }, [formData.recitationType, user]);
+
+  // Get assigned teacher for student (for Sabqi/Manzil)
+  const assignedTeacher = useMemo(() => {
+    if (!selectedStudent) return null;
+    const teacherId = (selectedStudent as any).assignedTeacher || (selectedStudent as any).assignedTeacherId;
+    if (!teacherId) return null;
+    return teachers.find(t => 
+      t.id === teacherId || 
+      (t as any)._id === teacherId ||
+      (t as any).teacherId === teacherId ||
+      (t as any).userId === teacherId
+    );
+  }, [selectedStudent, teachers]);
+
+  // Auto-select assigned teacher if available for Sabqi/Manzil
+  useEffect(() => {
+    if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && assignedTeacher && !formData.teacherId) {
+      setFormData(prev => ({ ...prev, teacherId: assignedTeacher.id }));
+    }
+  }, [formData.recitationType, assignedTeacher, formData.teacherId]);
+
+  // Get selected teacher
+  const selectedTeacher = useMemo(() => {
+    if (formData.recitationType === 'sabq') {
+      return { id: user?.id || 'admin', fullName: user?.name || 'Admin' };
+    }
+    return teachers.find(t => t.id === formData.teacherId);
+  }, [formData.teacherId, formData.recitationType, teachers, user]);
+
+  // Navigation handlers
+  const handleNext = () => {
+    if (currentStep === 'program' && formData.program) {
+      setCurrentStep('student');
+    } else if (currentStep === 'student' && formData.studentId) {
+      setCurrentStep('type');
+    } else if (currentStep === 'type' && formData.recitationType) {
+      if (formData.recitationType === 'sabq') {
+        // Skip teacher selection for Sabq (auto-admin)
+        setCurrentStep('notes');
+      } else {
+        setCurrentStep('teacher');
+      }
+    } else if (currentStep === 'teacher' && formData.teacherId) {
+      setCurrentStep('notes');
+    } else if (currentStep === 'notes') {
+      setCurrentStep('review');
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep === 'review') {
+      setCurrentStep('notes');
+    } else if (currentStep === 'notes') {
+      if (formData.recitationType === 'sabq') {
+        setCurrentStep('type');
+      } else {
+        setCurrentStep('teacher');
+      }
+    } else if (currentStep === 'teacher') {
+      setCurrentStep('type');
+    } else if (currentStep === 'type') {
+      setCurrentStep('student');
+    } else if (currentStep === 'student') {
+      setCurrentStep('program');
+    }
+  };
+
+  const canProceed = useMemo(() => {
+    if (currentStep === 'program') return !!formData.program;
+    if (currentStep === 'student') return !!formData.studentId;
+    if (currentStep === 'type') return !!formData.recitationType;
+    if (currentStep === 'teacher') return !!formData.teacherId;
+    if (currentStep === 'notes') return true; // Notes are optional
+    return false;
+  }, [currentStep, formData]);
+
+  // Submit handler
+  const handleSubmit = async () => {
+    if (!formData.studentId || !formData.recitationType) {
+      alert('Please complete all required fields');
       return;
     }
 
-    const sabqDefault = latestSabqiTicket?.progressNotes?.trim() || '';
-    const homeworkDefault = latestManzilTicket?.progressNotes?.trim()
-      ? `Review: ${latestManzilTicket.progressNotes.trim()}`
-      : '';
-
-    setFinalizeForm({
-      sabqSummary: sabqDefault,
-      homework: homeworkDefault,
-    });
-    setFinalizeTouched({
-      sabqSummary: Boolean(sabqDefault),
-      homework: Boolean(homeworkDefault),
-    });
-
-    if (finalizeMistakes.length > 0) {
-      const firstPage = finalizeMistakes[0]?.page ?? 1;
-      setFinalizeMushafPage(Number.isNaN(firstPage) ? 1 : firstPage);
-      setShowFinalizeMushaf(true);
-    } else {
-      setShowFinalizeMushaf(false);
-      setFinalizeMushafPage(1);
-    }
-  }, [singleStep, latestSabqiTicket, latestManzilTicket, finalizeMistakes]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.studentId) {
-      alert('Please select a student');
-      return;
-    }
-
-    const student = students.find(s => s.id === formData.studentId);
-    if (!student) {
-      alert('Student not found');
-      return;
-    }
-
-    if (singleStep !== 'finalize' && !formData.assignedTeacherId) {
+    if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && !formData.teacherId) {
       alert('Please select a teacher');
       return;
     }
 
-    const teacher =
-      singleStep === 'finalize'
-        ? undefined
-        : teachers.find((t) => t.id === formData.assignedTeacherId);
-
-    if (singleStep !== 'finalize' && !teacher) {
-      alert('Selected teacher not found');
-      return;
-    }
-
-    if (singleStep === 'finalize' && !['admin', 'superadmin'].includes(user?.role ?? '')) {
-      alert('Only admins can finalize tickets directly.');
-      return;
-    }
-
-    if (singleStep === 'finalize') {
-      if (!finalizeForm.sabqSummary.trim() || !finalizeForm.homework.trim()) {
-        setFinalizeTouched({ sabqSummary: true, homework: true });
-        alert('Please add both sabq summary and homework instructions.');
-        return;
-      }
-    }
-
-    const stepForSuggestion: RecitationStep | undefined =
-      assignmentPlan === 'full-workflow'
-        ? 'sabq'
-        : singleStep === 'finalize'
-          ? undefined
-          : (singleStep as RecitationStep);
-    const currentStepSuggestion = stepForSuggestion
-      ? recitationSuggestions.find((suggestion) => suggestion.step === stepForSuggestion)
-      : undefined;
-
-    const assignmentRange =
-      singleStep === 'finalize'
-        ? undefined
-        : buildAssignmentRangeText(currentStepSuggestion);
-    const assignmentPortion = currentStepSuggestion?.notes || currentStepSuggestion?.pageInfo;
-
     setIsSubmitting(true);
     try {
-      const baseTicket = {
-        studentId: formData.studentId,
+      const student = selectedStudent;
+      if (!student) {
+        throw new Error('Student not found');
+      }
+
+      const ticketData = {
+        studentId: formData.studentId || (student as any)._id,
         studentName: student.fullName,
-        assignedTeacherId: singleStep === 'finalize' ? user?.id || 'admin' : formData.assignedTeacherId,
-        assignedTeacherName:
-          singleStep === 'finalize'
-            ? user?.name || 'Admin'
-            : teacher?.fullName || '',
-        status: 'assigned',
+        assignedTeacherId: formData.recitationType === 'sabq' 
+          ? (user?.id || 'admin')
+          : formData.teacherId,
+        assignedTeacherName: formData.recitationType === 'sabq'
+          ? (user?.name || 'Admin')
+          : (selectedTeacher?.fullName || ''),
+        status: 'assigned' as const,
         program: formData.program,
+        workflowStep: formData.recitationType as WorkflowStep,
         notes: formData.notes.trim() || undefined,
-        assignmentRange,
-        assignmentPortion
+        autoCreateChain: false
       };
 
-      if (assignmentPlan === 'full-workflow') {
-        const ticketData = {
-          ...baseTicket,
-          workflowStep: 'sabq' as WorkflowStep,
-          autoCreateChain: true
-        };
-
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ticketData)
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to create ticket');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ticketData)
         }
+      );
 
-        await response.json();
-        await refreshData();
-
-        const summaryMessage = `✅ Full workflow ready!\n\nSabq → Sabqi → Manzil → Finalize\n\n${teacher?.fullName || 'Assigned teacher'} will hear the student's new Sabq. The remaining steps will unlock automatically once each one is approved.`;
-
-        alert(summaryMessage);
-        onSuccess();
-        onClose();
-      } else if (singleStep === 'finalize') {
-        const finalizeTicketResponse = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...baseTicket,
-              workflowStep: 'finalize',
-              status: 'approved',
-              previousTicketId:
-                latestManzilTicket?._id || latestManzilTicket?.id || latestSabqiTicket?._id || latestSabqiTicket?.id || undefined,
-            })
-          }
-        );
-
-        if (!finalizeTicketResponse.ok) {
-          throw new Error('Failed to create finalize ticket');
-        }
-
-        const createdTicket = await finalizeTicketResponse.json();
-        const finalizeTicketId = createdTicket._id || createdTicket.id;
-
-        if (!finalizeTicketId) {
-          throw new Error('Finalize ticket ID missing');
-        }
-
-        const classworkSections: ClassworkSection[] = [];
-        if (latestSabqiTicket?.progressNotes?.trim()) {
-          classworkSections.push({
-            step: 'sabqi',
-            title: 'Sabqi Notes',
-            label: 'Sabqi Notes',
-            summary: latestSabqiTicket.progressNotes.trim(),
-            assignmentRange: latestSabqiTicket.assignmentRange || latestSabqiTicket.assignmentPortion || '',
-            order: classworkSections.length,
-          });
-        }
-        if (latestManzilTicket?.progressNotes?.trim()) {
-          classworkSections.push({
-            step: 'manzil',
-            title: 'Manzil Notes',
-            label: 'Manzil Notes',
-            summary: latestManzilTicket.progressNotes.trim(),
-            assignmentRange: latestManzilTicket.assignmentRange || latestManzilTicket.assignmentPortion || '',
-            order: classworkSections.length,
-          });
-        }
-
-        await finalizeTicket(finalizeTicketId, {
-          finalReport: finalizeForm.sabqSummary.trim(),
-          homework: finalizeForm.homework.trim(),
-          reviewedBy: user?.id || 'admin',
-          classworkSections,
-          classworkSummary: finalizeForm.sabqSummary.trim(),
-          homeworkSummary: finalizeForm.homework.trim(),
-          classworkType: 'sabq',
-        });
-
-        await refreshData();
-        alert('✅ Final report published for the student.');
-        onSuccess();
-        onClose();
-      } else {
-        const ticketData = {
-          ...baseTicket,
-          workflowStep: singleStep,
-          autoCreateChain: false
-        };
-
-        const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(ticketData)
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error('Failed to create ticket');
-        }
-
-        await response.json();
-        await refreshData();
-
-        const summaryMessage = `Ticket assigned to ${
-          teacher?.fullName || 'the selected teacher'
-        } for the ${singleStep.toUpperCase()} step.`;
-
-        alert(summaryMessage);
-        onSuccess();
-        onClose();
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create ticket');
       }
-    } catch (error) {
+
+      await response.json();
+      await refreshData();
+
+      alert(`✅ Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as RecitationStep]}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
+      
+      onSuccess();
+      onClose();
+    } catch (error: any) {
       console.error('Error creating ticket:', error);
-      alert('Failed to assign ticket');
+      alert(error.message || 'Failed to create ticket. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const steps: Array<{ key: WizardStep; label: string; icon: string }> = [
+    { key: 'program', label: 'Program', icon: '📚' },
+    { key: 'student', label: 'Student', icon: '👤' },
+    { key: 'type', label: 'Type', icon: '📝' },
+    { key: 'teacher', label: 'Teacher', icon: '👨‍🏫' },
+    { key: 'notes', label: 'Notes', icon: '📋' },
+    { key: 'review', label: 'Review', icon: '✅' }
+  ];
+
+  const currentStepIndex = steps.findIndex(s => s.key === currentStep);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">🎫 Assign New Ticket</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-2xl"
-            >
-              ✕
-            </button>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 md:p-6">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-accent)] text-white px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold">🎫 Create New Ticket</h2>
+            <p className="text-white/90 text-xs sm:text-sm mt-1">Step-by-step ticket assignment</p>
           </div>
+          <button
+            onClick={onClose}
+            className="rounded-full bg-white/20 hover:bg-white/30 p-2 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <section className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">1. Choose Student</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-gray-600">
-                    Student <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={formData.studentId}
-                    onChange={(e) => {
-                      const student = students.find(s => s.id === e.target.value);
-                      const matchingTeacher = student
-                        ? teachers.find(t => t.id === (student as any).assignedTeacher || t.fullName === (student as any).assignedTeacher)
-                        : undefined;
-                      setNotesTouched(false);
-                      setFormData(prev => ({
-                        ...prev,
-                        studentId: e.target.value,
-                        program: student?.program || prev.program,
-                        assignedTeacherId: matchingTeacher?.id || prev.assignedTeacherId,
-                        notes: ''
-                      }));
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    required
-                  >
-                    <option value="">Select student...</option>
-                    {students.map(student => (
-                      <option key={student.id} value={student.id}>
-                        {student.fullName} – {student.program}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <StudentSnapshot studentId={formData.studentId} tickets={tickets} />
-              </div>
-            </section>
+        {/* Progress Steps */}
+        <div className="px-4 sm:px-6 py-4 bg-gray-50 border-b border-gray-200 overflow-x-auto">
+          <div className="flex items-center justify-between min-w-max">
+            {steps.map((step, index) => {
+              const isActive = currentStep === step.key;
+              const isCompleted = currentStepIndex > index;
+              const isSkippable = step.key === 'teacher' && formData.recitationType === 'sabq';
 
-            <section className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">2. Select Plan</h3>
-              <div className="grid gap-3 md:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setAssignmentPlan('full-workflow')}
-                  className={`border rounded-xl p-4 text-left transition ${
-                    assignmentPlan === 'full-workflow'
-                      ? 'border-blue-500 bg-blue-50 shadow-sm'
-                      : 'border-gray-200 bg-white hover:border-blue-300'
-                  }`}
-                >
-                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <span>📖</span> Full Workflow
-                  </h4>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Create the complete chain (Sabq → Sabqi → Manzil → Finalize). Perfect for new cycles.
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAssignmentPlan('single-step')}
-                  className={`border rounded-xl p-4 text-left transition ${
-                    assignmentPlan === 'single-step'
-                      ? 'border-blue-500 bg-blue-50 shadow-sm'
-                      : 'border-gray-200 bg-white hover:border-blue-300'
-                  }`}
-                >
-                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                    <span>🎯</span> Single Step
-                  </h4>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Send a focused ticket for an individual step – ideal for makeups or spot checks.
-                  </p>
-                </button>
-              </div>
-              {assignmentPlan === 'single-step' && (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                      Which step?
-                    </label>
-                    <select
-                      value={singleStep}
-                      onChange={(e) => setSingleStep(e.target.value as WorkflowStep)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              if (isSkippable) return null;
+
+              return (
+                <React.Fragment key={step.key}>
+                  <div className="flex items-center">
+                    <div
+                      className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full text-sm sm:text-base font-semibold transition-all ${
+                        isActive
+                          ? 'bg-[var(--color-primary)] text-white scale-110 shadow-lg'
+                          : isCompleted
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-200 text-gray-500'
+                      }`}
                     >
-                      <option value="sabqi">📚 Sabqi (recent revision)</option>
-                      <option value="manzil">📿 Manzil (established review)</option>
-                      <option value="finalize">✅ Finalize (admin follow-up)</option>
-                    </select>
+                      {isCompleted ? '✓' : step.icon}
+                    </div>
+                    <div className="ml-2 hidden sm:block">
+                      <div className={`text-xs sm:text-sm font-semibold ${isActive ? 'text-[var(--color-primary)]' : 'text-gray-500'}`}>
+                        {step.label}
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-white border border-dashed border-gray-300 rounded-lg px-4 py-3 text-xs text-gray-600">
-                    {singleStep === 'sabqi' && 'Assign a revision ticket to reinforce the last few lessons.'}
-                    {singleStep === 'manzil' && 'Send a manzil ticket to keep long-term memorization fresh.'}
-                    {singleStep === 'finalize' && 'Send directly to admin review when all listening steps are completed.'}
+                  {index < steps.length - 1 && !(step.key === 'type' && formData.recitationType === 'sabq') && (
+                    <div
+                      className={`w-8 sm:w-16 h-0.5 mx-2 transition-all ${
+                        isCompleted ? 'bg-green-500' : 'bg-gray-200'
+                      }`}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+          {/* Step 1: Program Selection */}
+          {currentStep === 'program' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Program</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Choose the program to filter students</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {programs.map(program => (
+                  <button
+                    key={program}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, program, studentId: '' }))}
+                    className={`p-4 sm:p-5 rounded-xl border-2 transition-all text-left hover:scale-105 ${
+                      formData.program === program
+                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                        : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                    }`}
+                  >
+                    <div className="text-2xl sm:text-3xl mb-2">📚</div>
+                    <div className="font-semibold text-gray-900 text-sm sm:text-base">{program}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {programStudents.length} student{programStudents.length !== 1 ? 's' : ''}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Student Selection */}
+          {currentStep === 'student' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Student</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Choose a student from {formData.program}</p>
+              </div>
+
+              {/* Alphabet Filter */}
+              {alphabetLetters.length > 0 && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setStudentSearchLetter('ALL')}
+                      className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                        studentSearchLetter === 'ALL'
+                          ? 'bg-[var(--color-primary)] text-white shadow-md'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:border-[var(--color-primary)]'
+                      }`}
+                    >
+                      ALL
+                    </button>
+                    {alphabetLetters.map(letter => (
+                      <button
+                        key={letter}
+                        type="button"
+                        onClick={() => setStudentSearchLetter(letter)}
+                        className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
+                          studentSearchLetter === letter
+                            ? 'bg-[var(--color-primary)] text-white shadow-md'
+                            : 'bg-white text-gray-700 border border-gray-300 hover:border-[var(--color-primary)]'
+                        }`}
+                      >
+                        {letter}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
-            </section>
 
-            <section className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                {singleStep === 'finalize' ? '3. Finalize Report' : '3. Assign Teacher & Notes'}
-              </h3>
-
-              {singleStep !== 'finalize' ? (
-                <>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">
-                        Teacher <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={formData.assignedTeacherId}
-                        onChange={(e) => setFormData(prev => ({ ...prev, assignedTeacherId: e.target.value }))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        required
-                      >
-                        <option value="">Select teacher...</option>
-                        {teachers.map(teacher => (
-                          <option key={teacher.id} value={teacher.id}>
-                            {teacher.fullName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">
-                        Program
-                      </label>
-                      <select
-                        value={formData.program}
-                        onChange={(e) => setFormData(prev => ({ ...prev, program: e.target.value }))}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="Full Time HQ">Full Time HQ</option>
-                        <option value="Part Time HQ">Part Time HQ</option>
-                        <option value="After School Reading">After School Reading</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                      Internal note for listening teacher (optional)
-                    </label>
-                    <textarea
-                      value={formData.notes}
-                      onChange={(e) => {
-                        setNotesTouched(true);
-                        setFormData(prev => ({ ...prev, notes: e.target.value }));
-                      }}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Example: Focus on last week’s sabqi corrections, double-check Madd rules on page 132…"
-                    />
-                  </div>
-                  <AssignmentPreview
-                    plan={assignmentPlan}
-                    singleStep={singleStep}
-                    teacherName={teachers.find(t => t.id === formData.assignedTeacherId)?.fullName}
-                  />
-                </>
+              {/* Student Grid */}
+              {filteredStudents.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                  <div className="text-4xl mb-4">👤</div>
+                  <p className="text-gray-600">No students found</p>
+                </div>
               ) : (
-                <>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {finalizeHistoryNotes.map((entry) => (
-                      <div key={entry.label} className="rounded-xl border border-purple-100 bg-white p-3 shadow-sm">
-                        <p className="text-xs uppercase tracking-wide text-purple-500 font-semibold mb-1">
-                          {entry.label}
-                        </p>
-                        <p className="text-xs text-gray-600 mb-1">
-                          Teacher: <span className="font-medium text-gray-900">{entry.teacher || '—'}</span>
-                        </p>
-                        {entry.assignmentRange && (
-                          <p className="text-xs text-gray-500 mb-1">{entry.assignmentRange}</p>
-                        )}
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap min-h-[40px]">
-                          {entry.notes || 'No notes recorded yet.'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">
-                        Sabq summary <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={finalizeForm.sabqSummary}
-                        onChange={(e) => {
-                          setFinalizeTouched((prev) => ({ ...prev, sabqSummary: true }));
-                          setFinalizeForm((prev) => ({ ...prev, sabqSummary: e.target.value }));
-                        }}
-                        rows={4}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                      {finalizeTouched.sabqSummary && !finalizeForm.sabqSummary.trim() && (
-                        <p className="text-xs text-red-500 mt-1">Please add a sabq summary.</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">
-                        Homework for next lesson <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={finalizeForm.homework}
-                        onChange={(e) => {
-                          setFinalizeTouched((prev) => ({ ...prev, homework: true }));
-                          setFinalizeForm((prev) => ({ ...prev, homework: e.target.value }));
-                        }}
-                        rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                      {finalizeTouched.homework && !finalizeForm.homework.trim() && (
-                        <p className="text-xs text-red-500 mt-1">Homework instructions are required.</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h4 className="text-sm font-semibold text-gray-800">Interactive Mushaf</h4>
-                        <p className="text-xs text-gray-500">Review the pages with recorded mistakes.</p>
-                      </div>
-                      {finalizeMistakes.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowFinalizeMushaf((prev) => !prev)}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100"
-                        >
-                          {showFinalizeMushaf ? 'Hide Mushaf' : 'Show Mushaf'}
-                        </button>
-                      )}
-                    </div>
-                    {finalizeMistakes.length === 0 && (
-                      <p className="mt-3 text-xs text-gray-500">
-                        No mistakes were logged in the latest Sabqi or Manzil tickets.
-                      </p>
-                    )}
-                    {showFinalizeMushaf && finalizeMistakes.length > 0 && (
-                      <div className="mt-4 rounded-xl border border-gray-200 bg-white p-3">
-                        <InteractiveMushaf
-                          currentPage={finalizeMushafPage}
-                          onPageChange={setFinalizeMushafPage}
-                          mistakes={finalizeMistakes}
-                          historicalMistakes={[]}
-                          onMistakeMark={() => {}}
-                          mode="viewing"
-                          studentName={selectedStudent?.fullName || ''}
-                          showHistorical={false}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {filteredStudents.map(student => {
+                    const studentId = student.id || (student as any)._id;
+                    const isSelected = formData.studentId === studentId;
+                    return (
+                      <button
+                        key={studentId}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, studentId: studentId }))}
+                        className={`p-4 rounded-xl border-2 transition-all text-left hover:scale-105 ${
+                          isSelected
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-accent)] text-white flex items-center justify-center font-bold text-lg">
+                            {(student.fullName || '').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                              {student.fullName || 'Unnamed Student'}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">{student.program || 'No program'}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            </section>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Assigning...' : 'Assign Ticket'}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
-              >
-                Cancel
-              </button>
             </div>
-          </form>
+          )}
+
+          {/* Step 3: Recitation Type */}
+          {currentStep === 'type' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Recitation Type</h3>
+                <p className="text-gray-600 text-sm sm:text-base">What will the student be reciting?</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                {(['sabq', 'sabqi', 'manzil'] as RecitationStep[]).map(type => {
+                  const isSelected = formData.recitationType === type;
+                  return (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, recitationType: type }))}
+                      className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                        isSelected
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                          : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                      }`}
+                    >
+                      <div className="text-4xl mb-3">{STEP_ICONS[type]}</div>
+                      <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">{STEP_TITLES[type]}</div>
+                      <div className="text-xs text-gray-500">
+                        {type === 'sabq' && 'Auto-assigned to Admin'}
+                        {type === 'sabqi' && 'Requires teacher selection'}
+                        {type === 'manzil' && 'Requires teacher selection'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Teacher Selection (Skipped for Sabq) */}
+          {currentStep === 'teacher' && formData.recitationType !== 'sabq' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Teacher</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Assign a teacher for {STEP_TITLES[formData.recitationType as RecitationStep]}</p>
+              </div>
+              {assignedTeacher && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Suggested:</strong> {assignedTeacher.fullName} (assigned to this student)
+                  </p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {teachers.map(teacher => {
+                  const isSelected = formData.teacherId === teacher.id;
+                  return (
+                    <button
+                      key={teacher.id}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, teacherId: teacher.id }))}
+                      className={`p-4 rounded-xl border-2 transition-all text-left hover:scale-105 ${
+                        isSelected
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                          : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 text-white flex items-center justify-center font-bold text-lg">
+                          {(teacher.fullName || '').charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+                            {teacher.fullName}
+                          </div>
+                          <div className="text-xs text-gray-500">{teacher.email}</div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Notes */}
+          {currentStep === 'notes' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Notes for Teacher</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Add any special instructions (optional)</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <div className="mb-4">
+                  <div className="text-sm font-semibold text-gray-700 mb-2">
+                    Student: <span className="text-[var(--color-primary)]">{selectedStudent?.fullName}</span>
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700 mb-2">
+                    Type: <span className="text-[var(--color-primary)]">{STEP_TITLES[formData.recitationType as RecitationStep]}</span>
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700">
+                    Teacher: <span className="text-[var(--color-primary)]">
+                      {formData.recitationType === 'sabq' 
+                        ? (user?.name || 'Admin')
+                        : (selectedTeacher?.fullName || 'Not selected')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={6}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all resize-none"
+                  placeholder="Example: Focus on tajweed rules, especially madd. Double-check page 132..."
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: Review */}
+          {currentStep === 'review' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Review & Confirm</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Please review all details before creating the ticket</p>
+              </div>
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200 space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">📚</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Program</div>
+                    <div className="text-lg font-bold text-gray-900">{formData.program}</div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-300 pt-4"></div>
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">👤</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Student</div>
+                    <div className="text-lg font-bold text-gray-900">{selectedStudent?.fullName}</div>
+                    <div className="text-sm text-gray-600 mt-1">{selectedStudent?.email}</div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-300 pt-4"></div>
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">{STEP_ICONS[formData.recitationType as RecitationStep]}</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recitation Type</div>
+                    <div className="text-lg font-bold text-gray-900">{STEP_TITLES[formData.recitationType as RecitationStep]}</div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-300 pt-4"></div>
+                <div className="flex items-start gap-4">
+                  <div className="text-3xl">👨‍🏫</div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Assigned To</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      {formData.recitationType === 'sabq'
+                        ? (user?.name || 'Admin')
+                        : (selectedTeacher?.fullName || 'Not selected')}
+                    </div>
+                    {formData.recitationType !== 'sabq' && selectedTeacher?.email && (
+                      <div className="text-sm text-gray-600 mt-1">{selectedTeacher.email}</div>
+                    )}
+                  </div>
+                </div>
+                {formData.notes.trim() && (
+                  <>
+                    <div className="border-t border-gray-300 pt-4"></div>
+                    <div className="flex items-start gap-4">
+                      <div className="text-3xl">📋</div>
+                      <div className="flex-1">
+                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notes</div>
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded-lg p-3 border border-gray-200">
+                          {formData.notes}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-between">
+          <button
+            type="button"
+            onClick={currentStep === 'program' ? onClose : handleBack}
+            className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all w-full sm:w-auto"
+          >
+            {currentStep === 'program' ? 'Cancel' : '← Back'}
+          </button>
+          <button
+            type="button"
+            onClick={currentStep === 'review' ? handleSubmit : handleNext}
+            disabled={!canProceed || isSubmitting}
+            className="px-6 py-3 rounded-xl bg-[var(--color-primary)] text-white font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-lg hover:shadow-xl"
+          >
+            {isSubmitting ? 'Creating...' : currentStep === 'review' ? '✅ Create Ticket' : 'Next →'}
+          </button>
         </div>
       </div>
     </div>
@@ -753,106 +659,3 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
 };
 
 export default AssignTicketForm;
-
-const StudentSnapshot: React.FC<{ studentId: string; tickets: AssignmentTicket[] }> = ({ studentId, tickets }) => {
-  const recentTickets = useMemo(() => {
-    if (!studentId) return [];
-    return tickets
-      .filter(ticket => ticket.studentId === studentId)
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 3);
-  }, [studentId, tickets]);
-
-  if (!studentId) {
-    return (
-      <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-3 text-xs text-gray-500">
-        Select a student to see their latest ticket activity.
-      </div>
-    );
-  }
-
-  if (recentTickets.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-3 text-xs text-gray-600">
-        No previous tickets for this student yet. This will be their first workflow cycle.
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600 space-y-2">
-      <div className="font-semibold text-gray-800">Recent ticket history</div>
-      <ul className="space-y-1">
-        {recentTickets.map(ticket => (
-          <li key={ticket.id || `${ticket.studentId}-${ticket.workflowStep}-${ticket.status}`} className="flex justify-between">
-            <span className="flex items-center gap-1">
-              {workflowIcon(ticket.workflowStep)}
-              {ticket.workflowStep.toUpperCase()}
-            </span>
-            <span className="text-gray-400">
-              {ticket.status === 'finalized' ? 'Finalized' : ticket.status.replace('_', ' ')}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
-const AssignmentPreview: React.FC<{
-  plan: 'full-workflow' | 'single-step';
-  singleStep: WorkflowStep;
-  teacherName?: string;
-}> = ({ plan, singleStep, teacherName }) => {
-  const summary =
-    plan === 'full-workflow'
-      ? ['📖 Sabq (New lesson)', '📚 Sabqi (Recent revision)', '📿 Manzil (Established review)', '✅ Finalize (Admin)']
-      : [workflowLabel(singleStep)];
-
-  return (
-    <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-xs text-blue-700">
-      <div className="font-semibold text-blue-800 mb-1">This ticket will:</div>
-      <ul className="list-disc list-inside space-y-1">
-        {summary.map(item => (
-          <li key={item}>{item}</li>
-        ))}
-      </ul>
-      {teacherName && (
-        <p className="mt-2 text-[11px] text-blue-600">
-          Assigned listener: <span className="font-semibold">{teacherName}</span>
-        </p>
-      )}
-    </div>
-  );
-};
-
-const workflowLabel = (step: WorkflowStep) => {
-  switch (step) {
-    case 'sabq':
-      return '📖 Sabq (New lesson)';
-    case 'sabqi':
-      return '📚 Sabqi (Recent revision)';
-    case 'manzil':
-      return '📿 Manzil (Established review)';
-    case 'finalize':
-      return '✅ Finalize (Admin review)';
-    default:
-      return step;
-  }
-};
-
-const workflowIcon = (step: WorkflowStep) => {
-  switch (step) {
-    case 'sabq':
-      return '📖';
-    case 'sabqi':
-      return '📚';
-    case 'manzil':
-      return '📿';
-    case 'finalize':
-      return '✅';
-    default:
-      return '🎧';
-  }
-};
-

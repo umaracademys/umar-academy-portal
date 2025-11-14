@@ -824,76 +824,107 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
                   <div className="space-y-6">
-                    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
-                      <header className="space-y-1">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Current step • {getStepLabel(selectedTicket.workflowStep).replace(/^[^ ]+\s/, '')}
-                        </p>
-                        <h3 className="text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
+                    {/* Admin Notes - Prominently Displayed at Top */}
+                    {(selectedTicket.notes || selectedTicket.revisionNotes) && (
+                      <section className="rounded-xl border-2 border-[var(--color-primary)]/30 bg-gradient-to-br from-[var(--color-primary)]/5 to-[var(--color-accent)]/5 p-5 sm:p-6 shadow-lg">
+                        <div className="flex items-start gap-3 mb-4">
+                          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-lg sm:text-xl font-bold">
+                            📝
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-1">Notes from Admin</h3>
+                            <p className="text-xs sm:text-sm text-gray-600">Special instructions for this recitation</p>
+                          </div>
+                        </div>
+                        {selectedTicket.notes && (
+                          <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-[var(--color-primary)]/20 p-4 mb-3">
+                            <p className="whitespace-pre-wrap text-sm sm:text-base text-gray-800 font-medium">
+                              {selectedTicket.notes}
+                            </p>
+                          </div>
+                        )}
+                        {selectedTicket.revisionNotes && (
+                          <div className="bg-amber-50/80 backdrop-blur-sm rounded-lg border border-amber-200 p-4">
+                            <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
+                              Admin Focus Note
+                            </h4>
+                            <p className="whitespace-pre-wrap text-sm sm:text-base text-amber-900">
+                              {selectedTicket.revisionNotes}
+                            </p>
+                          </div>
+                        )}
+                      </section>
+                    )}
+
+                    <section className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                      <header className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-2xl sm:text-3xl">{getStepLabel(selectedTicket.workflowStep).split(' ')[0]}</span>
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide bg-blue-100 text-blue-700">
+                            {getStepLabel(selectedTicket.workflowStep).replace(/^[^ ]+\s/, '')}
+                          </span>
+                        </div>
+                        <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{getStudentName(selectedTicket.studentId)}</h3>
                       </header>
 
                       {(() => {
                         const studentInfo = getStudentInfo(selectedTicket.studentId);
                         return (
-                          <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600 mb-4">
+                          <dl className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 text-sm text-gray-600 mb-4 pt-4 border-t border-gray-200">
                             {studentInfo.hasParentInfo && (
                               <div>
-                                <dt className="font-semibold text-gray-700">Parent / Guardian</dt>
-                                <dd>{studentInfo.parentName}</dd>
+                                <dt className="font-semibold text-gray-700 mb-1">Parent / Guardian</dt>
+                                <dd className="text-gray-900">{studentInfo.parentName}</dd>
                               </div>
                             )}
                             {studentInfo.hasEmail && (
                               <div>
-                                <dt className="font-semibold text-gray-700">Email</dt>
-                                <dd>{studentInfo.email}</dd>
+                                <dt className="font-semibold text-gray-700 mb-1">Email</dt>
+                                <dd className="text-gray-900 break-words">{studentInfo.email}</dd>
                               </div>
                             )}
                             {studentInfo.hasContact && (
                               <div>
-                                <dt className="font-semibold text-gray-700">Contact</dt>
-                                <dd>{studentInfo.contact}</dd>
+                                <dt className="font-semibold text-gray-700 mb-1">Contact</dt>
+                                <dd className="text-gray-900">{studentInfo.contact}</dd>
                               </div>
                             )}
                             <div>
-                              <dt className="font-semibold text-gray-700">Assigned teacher</dt>
-                              <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
+                              <dt className="font-semibold text-gray-700 mb-1">Assigned Teacher</dt>
+                              <dd className="text-gray-900">{selectedTicket.assignedTeacherName || '—'}</dd>
                             </div>
                             <div>
-                              <dt className="font-semibold text-gray-700">Program</dt>
-                              <dd>{selectedTicket.program || '—'}</dd>
+                              <dt className="font-semibold text-gray-700 mb-1">Program</dt>
+                              <dd className="text-gray-900">{selectedTicket.program || '—'}</dd>
                             </div>
-                            <div>
-                              <dt className="font-semibold text-gray-700">Range / Focus</dt>
-                              <dd>{selectedAssignmentDetails?.summary || '—'}</dd>
-                            </div>
-                            <div>
-                              <dt className="font-semibold text-gray-700">Portion size</dt>
-                              <dd>{selectedAssignmentDetails?.portion || '—'}</dd>
-                            </div>
+                            {selectedAssignmentDetails?.summary && (
+                              <div className="sm:col-span-2">
+                                <dt className="font-semibold text-gray-700 mb-1">Range / Focus</dt>
+                                <dd className="text-gray-900">{selectedAssignmentDetails.summary}</dd>
+                              </div>
+                            )}
+                            {selectedAssignmentDetails?.portion && (
+                              <div>
+                                <dt className="font-semibold text-gray-700 mb-1">Portion Size</dt>
+                                <dd className="text-gray-900">{selectedAssignmentDetails.portion}</dd>
+                              </div>
+                            )}
                           </dl>
                         );
                       })()}
 
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Teacher notes</h4>
-                        <p className="whitespace-pre-wrap text-sm text-gray-700">
-                          {selectedTicket.progressNotes?.trim() || 'No notes recorded yet.'}
-                        </p>
-                      </div>
-                      {selectedTicket.revisionNotes && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                          <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-2">
-                            Admin focus note
-                          </h4>
-                          <p className="whitespace-pre-wrap text-sm text-amber-900">
-                            {selectedTicket.revisionNotes}
+                      {selectedTicket.progressNotes && (
+                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                          <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Your Progress Notes</h4>
+                          <p className="whitespace-pre-wrap text-sm text-gray-700">
+                            {selectedTicket.progressNotes.trim()}
                           </p>
                         </div>
                       )}
                     </section>
 
-                    <section className="rounded-xl border border-gray-200 bg-white p-5">
-                      <h4 className="text-lg font-bold text-gray-900 mb-4">Review & Submit</h4>
+                    <section className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+                      <h4 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Review & Submit</h4>
                       <form onSubmit={handleSubmitTicket} className="space-y-5">
                         <div className="space-y-4">
                           <div>
@@ -906,7 +937,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                             <textarea
                               value={formData.progressNotes}
                               onChange={(e) => setFormData((prev) => ({ ...prev, progressNotes: e.target.value }))}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y transition-colors"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] resize-y transition-colors text-sm sm:text-base"
                               rows={6}
                               placeholder="Enter detailed progress notes...&#10;&#10;Example:&#10;- Student recited pages 1-2 well&#10;- Needs improvement on elongation (madd) rules&#10;- Good memory retention&#10;- Practice tajweed rules for page 3..."
                               required
@@ -928,17 +959,40 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                               type="url"
                               value={formData.audioLink}
                               onChange={(e) => setFormData((prev) => ({ ...prev, audioLink: e.target.value }))}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-[var(--color-primary)] transition-colors text-sm sm:text-base"
                               placeholder="https://..."
                             />
                           </div>
                         </div>
 
-                        <div className="flex gap-3 pt-4 border-t border-gray-200">
+                        {/* Share Report with Admin Box */}
+                        <div className="rounded-xl border-2 border-[var(--color-primary)]/30 bg-gradient-to-br from-[var(--color-primary)]/5 to-[var(--color-accent)]/5 p-4 sm:p-5 mt-6">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-lg sm:text-xl">
+                              📤
+                            </div>
+                            <div className="flex-1">
+                              <h5 className="text-base sm:text-lg font-bold text-gray-900 mb-1">Share Report with Admin</h5>
+                              <p className="text-xs sm:text-sm text-gray-600">
+                                Your progress notes and Mushaf markings will be sent to the admin for review
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-white/80 backdrop-blur-sm rounded-lg border border-[var(--color-primary)]/20 p-3 mt-3">
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+                              <svg className="w-4 h-4 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>Your report will include: Progress notes, Mushaf mistakes, and audio link (if provided)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
                           <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center justify-center gap-2"
+                            className="flex-1 px-6 py-3 bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-accent)] text-white rounded-xl font-semibold hover:from-[rgba(var(--color-primary-rgb),0.85)] hover:to-[rgba(var(--color-accent-rgb),0.85)] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
                           >
                             {isSubmitting ? (
                               <>
@@ -953,7 +1007,7 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Submit for Review
+                                Submit Report to Admin
                               </>
                             )}
                           </button>
