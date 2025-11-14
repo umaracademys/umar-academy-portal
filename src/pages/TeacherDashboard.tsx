@@ -11,13 +11,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
 
 const TeacherDashboard: React.FC = () => {
-  const { teachers, getStudentsByTeacher, updateStudent } = useData();
+  const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showTickets, setShowTickets] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   // Get current teacher info
   const currentTeacher = teachers.find(t => t.email === user?.email) || teachers[0];
@@ -52,8 +55,19 @@ const TeacherDashboard: React.FC = () => {
     comments: '',
   });
 
-  const handleAddAssessment = () => {
-    if (selectedStudent && permissions.canEditAssessments) {
+  const handleAddAssessment = async () => {
+    if (!selectedStudent || !permissions.canEditAssessments) return;
+    
+    if (!assessmentData.type.trim()) {
+      setSaveError('Please enter an assessment type');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+
+    try {
       const newAssessment: Assessment = {
         id: `ASS${Date.now()}`,
         date: new Date().toISOString().split('T')[0],
@@ -65,14 +79,40 @@ const TeacherDashboard: React.FC = () => {
       };
 
       const updatedAssessments = [...(Array.isArray(selectedStudent.assessments) ? selectedStudent.assessments : []), newAssessment];
-      updateStudent(selectedStudent.id, { assessments: updatedAssessments });
+      
+      await updateStudent(selectedStudent.id, { assessments: updatedAssessments });
+      
+      // Refresh data to get updated student list
+      await refreshData();
+      
+      setSaveSuccess('Assessment added successfully!');
       setShowAssessmentForm(false);
       setAssessmentData({ type: '', score: 0, maxScore: 100, notes: '' });
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add assessment';
+      setSaveError(errorMessage);
+      console.error('Error adding assessment:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleAddEvaluation = () => {
-    if (selectedStudent && permissions.canEditEvaluations) {
+  const handleAddEvaluation = async () => {
+    if (!selectedStudent || !permissions.canEditEvaluations) return;
+    
+    if (!evaluationData.category.trim()) {
+      setSaveError('Please enter an evaluation category');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+
+    try {
       const newEvaluation: Evaluation = {
         id: `EVA${Date.now()}`,
         date: new Date().toISOString().split('T')[0],
@@ -83,9 +123,24 @@ const TeacherDashboard: React.FC = () => {
       };
 
       const updatedEvaluations = [...(Array.isArray(selectedStudent.evaluations) ? selectedStudent.evaluations : []), newEvaluation];
-      updateStudent(selectedStudent.id, { evaluations: updatedEvaluations });
+      
+      await updateStudent(selectedStudent.id, { evaluations: updatedEvaluations });
+      
+      // Refresh data to get updated student list
+      await refreshData();
+      
+      setSaveSuccess('Evaluation added successfully!');
       setShowEvaluationForm(false);
       setEvaluationData({ category: '', rating: 5, comments: '' });
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(null), 3000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add evaluation';
+      setSaveError(errorMessage);
+      console.error('Error adding evaluation:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -131,6 +186,24 @@ const TeacherDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Success/Error Messages */}
+        {saveSuccess && (
+          <div className="mb-6 rounded-2xl border border-green-200 bg-green-50 px-6 py-4">
+            <p className="text-sm font-semibold text-green-700">✅ {saveSuccess}</p>
+          </div>
+        )}
+        {saveError && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-6 py-4">
+            <p className="text-sm font-semibold text-red-700">❌ {saveError}</p>
+            <button
+              onClick={() => setSaveError(null)}
+              className="mt-2 text-xs text-red-600 underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -220,6 +293,8 @@ const TeacherDashboard: React.FC = () => {
                               onClick={() => {
                                 setSelectedStudent(student);
                                 setShowAssessmentForm(true);
+                                setSaveError(null);
+                                setSaveSuccess(null);
                               }}
                               className="rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-3 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary"
                             >
@@ -256,6 +331,8 @@ const TeacherDashboard: React.FC = () => {
                               onClick={() => {
                                 setSelectedStudent(student);
                                 setShowEvaluationForm(true);
+                                setSaveError(null);
+                                setSaveSuccess(null);
                               }}
                               className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-3 py-1 text-xs font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
                             >
@@ -376,12 +453,13 @@ const TeacherDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={handleAddAssessment}
-                  className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+                  disabled={isSaving}
+                  className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ backgroundColor: '#2E4D32' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#253d28'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
+                  onMouseEnter={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#253d28')}
+                  onMouseLeave={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#2E4D32')}
                 >
-                  Add Assessment
+                  {isSaving ? 'Saving...' : 'Add Assessment'}
                 </button>
               </div>
             </div>
@@ -407,6 +485,12 @@ const TeacherDashboard: React.FC = () => {
               <h3 className="text-2xl font-bold" style={{ color: '#E7AA39' }}>Add Evaluation</h3>
               <p className="text-sm text-gray-600 mt-1">For {selectedStudent.fullName}</p>
             </div>
+            
+            {saveError && (
+              <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-xs font-semibold text-red-700">{saveError}</p>
+              </div>
+            )}
             
             <div className="space-y-4">
               <div>
@@ -456,12 +540,13 @@ const TeacherDashboard: React.FC = () => {
                 </button>
                 <button
                   onClick={handleAddEvaluation}
-                  className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+                  disabled={isSaving}
+                  className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ backgroundColor: '#E7AA39' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d99a2f'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E7AA39'}
+                  onMouseEnter={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#d99a2f')}
+                  onMouseLeave={(e) => !isSaving && (e.currentTarget.style.backgroundColor = '#E7AA39')}
                 >
-                  Add Evaluation
+                  {isSaving ? 'Saving...' : 'Add Evaluation'}
                 </button>
               </div>
             </div>
