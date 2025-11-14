@@ -1992,6 +1992,9 @@ app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
       nextTicket.reviewedBy = reviewedBy;
       nextTicket.reviewedAt = new Date();
       await nextTicket.save();
+      
+      // End listening sessions for skipped tickets
+      await endListeningSessionsForTicket(nextTicket._id.toString());
 
       iterator = nextTicket;
     }
@@ -2425,6 +2428,14 @@ app.post('/api/tickets', async (req, res) => {
 // Update ticket (Teacher updates progress or Admin reviews)
 app.put('/api/tickets/:id', async (req, res) => {
   try {
+    const oldTicket = await AssignmentTicket.findById(req.params.id);
+    if (!oldTicket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    const wasApproved = oldTicket.status === 'approved';
+    const isBeingApproved = req.body.status === 'approved';
+    
     const ticket = await AssignmentTicket.findByIdAndUpdate(
       req.params.id,
       { $set: req.body, updatedAt: new Date() },
@@ -2433,6 +2444,32 @@ app.put('/api/tickets/:id', async (req, res) => {
     
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    // If ticket status changed to approved, end any associated listening sessions
+    if (!wasApproved && isBeingApproved) {
+      const ticketId = ticket._id.toString();
+      const activeSessions = await ListeningSession.find({
+        ticketId: ticketId,
+        status: 'in_progress'
+      });
+      
+      for (const session of activeSessions) {
+        session.status = 'completed';
+        session.endedAt = new Date();
+        session.lastHeartbeatAt = new Date();
+        
+        if (session.startedAt) {
+          session.totalListeningSeconds = Math.max(
+            0,
+            Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000)
+          );
+        }
+        
+        await session.save();
+        const serialized = serializeListeningSession(session);
+        broadcastListeningSessionEvent('session_ended', serialized);
+      }
     }
     
     // If mushafMarkings are provided, save them to student's personal Mushaf
