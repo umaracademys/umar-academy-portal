@@ -269,8 +269,12 @@ const TeacherDashboard: React.FC = () => {
                             <p className="text-sm text-primary-soft">Parent: {student.parentName}</p>
                           )}
                           <p className="text-sm text-primary-soft">
-                            {permissions.canViewStudentEmail ? `Email: ${student.email}` : 'Email: [Hidden]'}
-                            {permissions.canViewStudentContact ? ` · Phone: ${student.contact}` : ' · Phone: [Hidden]'}
+                            {permissions.canViewStudentEmail && `Email: ${student.email}`}
+                            {permissions.canViewStudentEmail && permissions.canViewStudentContact && ' · '}
+                            {permissions.canViewStudentContact && `Phone: ${student.contact}`}
+                            {!permissions.canViewStudentEmail && !permissions.canViewStudentContact && (
+                              <span className="text-gray-400">No contact information available</span>
+                            )}
                           </p>
                         </div>
                       </div>

@@ -261,17 +261,23 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
     if (!student) {
       return {
         name: studentId,
-        email: '[Hidden]',
-        contact: '[Hidden]',
-        parentName: '[Hidden]',
+        email: null,
+        contact: null,
+        parentName: null,
+        hasEmail: false,
+        hasContact: false,
+        hasParentInfo: false,
       };
     }
 
     return {
       name: student.fullName,
-      email: permissions.canViewStudentEmail ? student.email : '[Hidden]',
-      contact: permissions.canViewStudentContact ? student.contact : '[Hidden]',
-      parentName: permissions.canViewStudentPersonalInfo ? student.parentName : '[Hidden]',
+      email: permissions.canViewStudentEmail ? student.email : null,
+      contact: permissions.canViewStudentContact ? student.contact : null,
+      parentName: permissions.canViewStudentPersonalInfo ? student.parentName : null,
+      hasEmail: permissions.canViewStudentEmail,
+      hasContact: permissions.canViewStudentContact,
+      hasParentInfo: permissions.canViewStudentPersonalInfo,
     };
   }, [students, permissions]);
 
@@ -830,20 +836,24 @@ const TeacherTickets: React.FC<TeacherTicketsProps> = ({ onClose }) => {
                         const studentInfo = getStudentInfo(selectedTicket.studentId);
                         return (
                           <dl className="grid gap-4 sm:grid-cols-2 text-sm text-gray-600 mb-4">
-                            {permissions.canViewStudentPersonalInfo && (
+                            {studentInfo.hasParentInfo && (
                               <div>
                                 <dt className="font-semibold text-gray-700">Parent / Guardian</dt>
                                 <dd>{studentInfo.parentName}</dd>
                               </div>
                             )}
-                            <div>
-                              <dt className="font-semibold text-gray-700">Email</dt>
-                              <dd>{studentInfo.email}</dd>
-                            </div>
-                            <div>
-                              <dt className="font-semibold text-gray-700">Contact</dt>
-                              <dd>{studentInfo.contact}</dd>
-                            </div>
+                            {studentInfo.hasEmail && (
+                              <div>
+                                <dt className="font-semibold text-gray-700">Email</dt>
+                                <dd>{studentInfo.email}</dd>
+                              </div>
+                            )}
+                            {studentInfo.hasContact && (
+                              <div>
+                                <dt className="font-semibold text-gray-700">Contact</dt>
+                                <dd>{studentInfo.contact}</dd>
+                              </div>
+                            )}
                             <div>
                               <dt className="font-semibold text-gray-700">Assigned teacher</dt>
                               <dd>{selectedTicket.assignedTeacherName || '—'}</dd>
