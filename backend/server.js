@@ -471,15 +471,61 @@ app.get('/api/teachers', async (req, res) => {
   }
 });
 
-// Sync teacher assignedStudents arrays endpoint
+// Sync teacher assignedStudents arrays endpoint (manual trigger)
 app.post('/api/teachers/sync-assigned-students', async (req, res) => {
   try {
+    console.log('🔄 Manual sync triggered via POST /api/teachers/sync-assigned-students');
     const success = await syncTeacherAssignedStudents();
     if (success) {
-      res.json({ message: 'Successfully synced all teachers\' assignedStudents arrays' });
+      // Fetch updated teachers to verify
+      const teachers = await Teacher.find({}).lean();
+      const summary = teachers.map(t => ({
+        name: t.fullName,
+        id: t._id.toString(),
+        assignedStudentsCount: Array.isArray(t.assignedStudents) ? t.assignedStudents.length : 0,
+        assignedStudents: t.assignedStudents || []
+      }));
+      res.json({ 
+        message: 'Successfully synced all teachers\' assignedStudents arrays',
+        summary: summary
+      });
     } else {
       res.status(500).json({ error: 'Failed to sync assignedStudents arrays' });
     }
+  } catch (error) {
+    console.error('❌ Error in manual sync endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET endpoint to check current state (for debugging)
+app.get('/api/teachers/sync-status', async (req, res) => {
+  try {
+    const students = await Student.find({}).lean();
+    const teachers = await Teacher.find({}).lean();
+    
+    const studentAssignments = students.map(s => ({
+      studentName: s.fullName,
+      studentId: s._id.toString(),
+      assignedTeacherId: s.assignedTeacherId || s.assignedTeacher || 'none'
+    }));
+    
+    const teacherArrays = teachers.map(t => ({
+      teacherName: t.fullName,
+      teacherId: t._id.toString(),
+      assignedStudentsCount: Array.isArray(t.assignedStudents) ? t.assignedStudents.length : 0,
+      assignedStudents: t.assignedStudents || []
+    }));
+    
+    res.json({
+      students: studentAssignments,
+      teachers: teacherArrays,
+      summary: {
+        totalStudents: students.length,
+        totalTeachers: teachers.length,
+        studentsWithTeachers: students.filter(s => s.assignedTeacherId || s.assignedTeacher).length
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

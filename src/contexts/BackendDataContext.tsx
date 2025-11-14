@@ -241,6 +241,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (teachersResponse.ok) {
           teacherRecords = await teachersResponse.json();
           console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
+          
+          // Log assignedStudents arrays for debugging
+          teacherRecords.forEach((teacher: any) => {
+            const assignedCount = Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents.length : 0;
+            console.log(`  - ${teacher.fullName || 'Unknown'}: assignedStudents=[${(teacher.assignedStudents || []).join(', ')}] (${assignedCount} students)`);
+          });
         
         // Merge teacher data with user data
           teacherRecords.forEach((teacher: any) => {
