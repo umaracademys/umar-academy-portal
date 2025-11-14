@@ -355,7 +355,7 @@ const syncTeacherAssignedStudents = async () => {
         }
         
         // If not found in map, try to find teacher by ObjectId
-        if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) && assignedTeacherId.length === 24) {
+        if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId) && assignedTeacherId.length === 24) {
           teacher = await Teacher.findById(assignedTeacherId);
           if (teacher) {
             teacherId = teacher._id.toString();
