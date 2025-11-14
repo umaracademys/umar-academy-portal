@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
@@ -22,6 +22,13 @@ const TeacherDashboard: React.FC = () => {
   const [showTickets, setShowTickets] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Refresh data when backendAssignments changes (e.g., after deletion from admin)
+  useEffect(() => {
+    // This will force re-computation of activityHistory when assignments change
+    setRefreshKey(prev => prev + 1);
+  }, [backendAssignments.length]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -281,7 +288,7 @@ const TeacherDashboard: React.FC = () => {
   const activityHistory = useMemo(() => {
     if (!historyStudent) return [];
     return buildActivityHistory(historyStudent);
-  }, [historyStudent, backendAssignments, tickets, recitationReviews]);
+  }, [historyStudent, backendAssignments, tickets, recitationReviews, refreshKey]);
 
   // Group activities by date
   const groupedByDate = useMemo(() => {
