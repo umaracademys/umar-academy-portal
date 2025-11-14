@@ -94,6 +94,26 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// Assessment and Evaluation schemas
+const assessmentSchema = new mongoose.Schema({
+  id: String,
+  date: String,
+  type: String,
+  score: Number,
+  maxScore: Number,
+  notes: String,
+  conductedBy: String
+}, { _id: false });
+
+const evaluationSchema = new mongoose.Schema({
+  id: String,
+  date: String,
+  category: String,
+  rating: Number,
+  comments: String,
+  evaluatedBy: String
+}, { _id: false });
+
 // Recitation profile schema helpers
 const recitationUnitSchema = new mongoose.Schema({
   unitType: { type: String, enum: ['juz', 'surah', 'pages'], default: 'surah' },
@@ -156,6 +176,9 @@ const studentSchema = new mongoose.Schema({
   }],
   status: { type: String, default: 'active' },
   avatar: String,
+  assessments: { type: [assessmentSchema], default: [] },
+  evaluations: { type: [evaluationSchema], default: [] },
+  enrolledDate: { type: Date, default: Date.now },
   recitationProfile: {
     current: {
       sabq: { type: recitationUnitSchema, default: () => ({}) },
