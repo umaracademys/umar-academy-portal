@@ -3905,10 +3905,14 @@ app.listen(PORT, HOST, () => {
 // Handle uncaught exceptions and unhandled rejections to prevent crashes
 process.on('uncaughtException', (error) => {
   console.error('❌ Uncaught Exception:', error);
-  // Don't exit - log and continue
+  console.error('Stack:', error.stack);
+  // Don't exit - log and continue (allows server to keep running)
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  if (reason instanceof Error) {
+    console.error('Stack:', reason.stack);
+  }
   // Don't exit - log and continue
 });
