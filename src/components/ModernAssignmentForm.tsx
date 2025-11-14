@@ -478,8 +478,8 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="flex h-full w-full max-w-[1200px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-        <header className="bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 px-8 py-6 text-white">
+      <div className="flex h-full w-full max-w-[1200px] max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex-shrink-0 bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600 px-8 py-6 text-white">
           <div className="flex items-start justify-between gap-6">
             <div>
               <p className="text-xs uppercase tracking-[0.4em] text-white/70">
@@ -621,7 +621,7 @@ const ModernAssignmentForm: React.FC<ModernAssignmentFormProps> = ({
             </div>
           </aside>
 
-          <main className="flex-1 overflow-y-auto bg-white p-6 lg:p-8">
+          <main className="flex-1 overflow-y-auto bg-white p-6 lg:p-8 min-h-0">
             <form onSubmit={handleSubmit} className="mx-auto flex max-w-3xl flex-col gap-6">
               {!selectedStudent ? (
                 <div className="flex h-full flex-col items-center justify-center rounded-3xl border border-dashed border-gray-300 bg-gray-50/60 px-8 py-16 text-center">
