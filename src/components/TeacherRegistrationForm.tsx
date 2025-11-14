@@ -76,6 +76,9 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     canViewFinancials: false,
     canManageSchedule: true,
     canContactParents: true,
+    canViewStudentEmail: true,
+    canViewStudentContact: true,
+    canViewStudentPersonalInfo: true,
   });
 
   // Form submission state
