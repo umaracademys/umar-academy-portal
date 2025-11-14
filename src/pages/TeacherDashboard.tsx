@@ -346,6 +346,12 @@ const TeacherDashboard: React.FC = () => {
               >
                 My Tickets
               </button>
+              <button
+                onClick={() => setShowStudentReports(true)}
+                className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+              >
+                📊 Student Reports
+              </button>
               <Link
                 to="/assignments"
                 className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
