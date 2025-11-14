@@ -585,19 +585,25 @@ app.post('/api/students', async (req, res) => {
         
         if (teacher) {
           const studentId = student._id.toString();
+          const teacherMongoId = teacher._id;
+          
           // Also set assignedTeacherId on student if not already set
           if (!student.assignedTeacherId) {
             student.assignedTeacherId = teacher._id.toString();
             await student.save();
           }
           
-          if (!teacher.assignedStudents || !Array.isArray(teacher.assignedStudents)) {
-            teacher.assignedStudents = [];
-          }
-          if (!teacher.assignedStudents.includes(studentId)) {
-            teacher.assignedStudents.push(studentId);
-            await teacher.save();
-            console.log(`✅ Added student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array`);
+          // Use $addToSet to atomically add student to teacher's assignedStudents array
+          const updateResult = await Teacher.findByIdAndUpdate(
+            teacherMongoId,
+            { $addToSet: { assignedStudents: studentId } },
+            { new: true }
+          );
+          
+          if (updateResult) {
+            console.log(`✅ Added student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array using $addToSet`);
+          } else {
+            console.error(`❌ Failed to add student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array`);
           }
         } else {
           console.log(`⚠️ Teacher not found for ID: ${teacherId}`);
@@ -637,7 +643,7 @@ app.put('/api/students/:id', async (req, res) => {
     // If teacher assignment changed, update teacher's assignedStudents array
     const studentId = updatedStudent._id.toString();
     
-    // Remove from old teacher's assignedStudents array
+    // Remove from old teacher's assignedStudents array using $pull
     if (oldTeacherId && oldTeacherId !== newTeacherId) {
       let oldTeacher = null;
       if (mongoose.Types.ObjectId.isValid(oldTeacherId)) {
@@ -653,16 +659,21 @@ app.put('/api/students/:id', async (req, res) => {
         });
       }
       
-      if (oldTeacher && oldTeacher.assignedStudents) {
-        oldTeacher.assignedStudents = oldTeacher.assignedStudents.filter(
-          (id) => id.toString() !== studentId
+      if (oldTeacher) {
+        const updateResult = await Teacher.findByIdAndUpdate(
+          oldTeacher._id,
+          { $pull: { assignedStudents: studentId } },
+          { new: true }
         );
-        await oldTeacher.save();
-        console.log(`✅ Removed student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array`);
+        if (updateResult) {
+          console.log(`✅ Removed student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array using $pull`);
+        } else {
+          console.error(`❌ Failed to remove student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array`);
+        }
       }
     }
     
-    // Add to new teacher's assignedStudents array
+    // Add to new teacher's assignedStudents array using $addToSet
     if (newTeacherId) {
       let newTeacher = null;
       if (mongoose.Types.ObjectId.isValid(newTeacherId)) {
@@ -685,13 +696,17 @@ app.put('/api/students/:id', async (req, res) => {
           await updatedStudent.save();
         }
         
-        if (!newTeacher.assignedStudents || !Array.isArray(newTeacher.assignedStudents)) {
-          newTeacher.assignedStudents = [];
-        }
-        if (!newTeacher.assignedStudents.includes(studentId)) {
-          newTeacher.assignedStudents.push(studentId);
-          await newTeacher.save();
-          console.log(`✅ Added student ${studentId} to teacher ${newTeacher.fullName}'s assignedStudents array`);
+        // Use $addToSet to atomically add student to teacher's assignedStudents array
+        const updateResult = await Teacher.findByIdAndUpdate(
+          newTeacher._id,
+          { $addToSet: { assignedStudents: studentId } },
+          { new: true }
+        );
+        
+        if (updateResult) {
+          console.log(`✅ Added student ${studentId} to teacher ${newTeacher.fullName}'s assignedStudents array using $addToSet`);
+        } else {
+          console.error(`❌ Failed to add student ${studentId} to teacher ${newTeacher.fullName}'s assignedStudents array`);
         }
       } else {
         console.log(`⚠️ Teacher not found for ID: ${newTeacherId}`);
