@@ -421,17 +421,29 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                           const b = new Date(dateB);
                           return b.getTime() - a.getTime();
                         })
-                        .map(([dateKey, dayActivities]) => (
+                        .map(([dateKey, dayActivities]) => {
+                          const activities = dayActivities as Array<{
+                            id: string;
+                            type: 'assignment' | 'ticket' | 'recitation_review';
+                            date: Date;
+                            title: string;
+                            description: string;
+                            status?: string;
+                            icon: string;
+                            color: string;
+                            data: any;
+                          }>;
+                          return (
                           <div key={dateKey} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
                             <div className="mb-4 pb-3 border-b border-gray-200">
                               <h3 className="text-lg font-bold text-gray-900">{dateKey}</h3>
                               <p className="text-xs text-gray-500 mt-1">
-                                {dayActivities.length} activit{dayActivities.length !== 1 ? 'ies' : 'y'} on this day
+                                {activities.length} activit{activities.length !== 1 ? 'ies' : 'y'} on this day
                               </p>
                             </div>
                             
                             <div className="space-y-4">
-                              {dayActivities.map((activity) => {
+                              {activities.map((activity) => {
                                 const mushafMarkings = activity.type === 'assignment' && activity.data.mushafMarkings 
                                   ? (Array.isArray(activity.data.mushafMarkings) ? activity.data.mushafMarkings : [])
                                   : [];
@@ -520,7 +532,8 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                               })}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   )}
                 </SectionCard>
