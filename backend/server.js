@@ -1805,6 +1805,30 @@ app.post('/api/tickets/:id/approve-and-advance', async (req, res) => {
     currentTicket.reviewedAt = new Date();
     await currentTicket.save();
     
+    // End any associated listening sessions for this ticket
+    const ticketId = currentTicket._id.toString();
+    const activeSessions = await ListeningSession.find({
+      ticketId: ticketId,
+      status: 'in_progress'
+    });
+    
+    for (const session of activeSessions) {
+      session.status = 'completed';
+      session.endedAt = new Date();
+      session.lastHeartbeatAt = new Date();
+      
+      if (session.startedAt) {
+        session.totalListeningSeconds = Math.max(
+          0,
+          Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000)
+        );
+      }
+      
+      await session.save();
+      const serialized = serializeListeningSession(session);
+      broadcastListeningSessionEvent('session_ended', serialized);
+    }
+    
     // If not finalize step, activate and assign next ticket
     if (currentTicket.workflowStep !== 'finalize') {
       const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
