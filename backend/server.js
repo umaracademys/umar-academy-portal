@@ -1120,10 +1120,20 @@ const getActiveListeningSessions = async () => {
   });
 };
 
-const getRecentListeningSessions = async (limit = 10) => {
-  return ListeningSession.find({
+const getRecentListeningSessions = async (limit = 10, dateFilter = null) => {
+  const query = {
     status: { $in: ['completed', 'abandoned'] }
-  })
+  };
+  
+  if (dateFilter) {
+    const startOfDay = new Date(dateFilter);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(dateFilter);
+    endOfDay.setHours(23, 59, 59, 999);
+    query.endedAt = { $gte: startOfDay, $lte: endOfDay };
+  }
+  
+  return ListeningSession.find(query)
     .sort({ endedAt: -1 })
     .limit(limit);
 };
@@ -1635,6 +1645,84 @@ app.post('/api/listening-sessions/:id/end', async (req, res) => {
     res.json(serialized);
   } catch (error) {
     console.error('Error ending listening session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get historical sessions grouped by date
+app.get('/api/listening-sessions/history', async (req, res) => {
+  try {
+    const { days = 30, date } = req.query;
+    const limit = parseInt(days) * 50; // Rough estimate for sessions per day
+    
+    const sessions = await ListeningSession.find({
+      status: { $in: ['completed', 'abandoned'] },
+      ...(date ? {
+        endedAt: {
+          $gte: new Date(new Date(date).setHours(0, 0, 0, 0)),
+          $lte: new Date(new Date(date).setHours(23, 59, 59, 999))
+        }
+      } : {
+        endedAt: { $gte: new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000) }
+      })
+    })
+      .sort({ endedAt: -1 })
+      .limit(limit);
+    
+    // Group by date
+    const groupedByDate = {};
+    sessions.forEach((session) => {
+      const dateKey = session.endedAt ? new Date(session.endedAt).toISOString().split('T')[0] : 'unknown';
+      if (!groupedByDate[dateKey]) {
+        groupedByDate[dateKey] = [];
+      }
+      groupedByDate[dateKey].push(serializeListeningSession(session));
+    });
+    
+    res.json(groupedByDate);
+  } catch (error) {
+    console.error('Error fetching listening session history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete listening session(s)
+app.delete('/api/listening-sessions/:id', async (req, res) => {
+  try {
+    const session = await findListeningSessionByParam(req.params.id);
+    if (!session) {
+      return res.status(404).json({ error: 'Listening session not found' });
+    }
+    
+    await ListeningSession.findByIdAndDelete(session._id);
+    broadcastListeningSessionEvent('session_deleted', { id: session._id.toString() });
+    
+    res.json({ success: true, id: session._id.toString() });
+  } catch (error) {
+    console.error('Error deleting listening session:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete listening sessions by date
+app.delete('/api/listening-sessions/date/:date', async (req, res) => {
+  try {
+    const { date } = req.params;
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const result = await ListeningSession.deleteMany({
+      status: { $in: ['completed', 'abandoned'] },
+      endedAt: { $gte: startOfDay, $lte: endOfDay }
+    });
+    
+    broadcastListeningSessionEvent('sessions_deleted', { date, count: result.deletedCount });
+    
+    res.json({ success: true, deletedCount: result.deletedCount, date });
+  } catch (error) {
+    console.error('Error deleting listening sessions by date:', error);
     res.status(500).json({ error: error.message });
   }
 });
