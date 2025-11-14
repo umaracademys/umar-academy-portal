@@ -353,35 +353,53 @@ const syncTeacherAssignedStudents = async () => {
         continue;
       }
       
-      // Find teacher in map by direct ID match
+      // Find teacher in map by direct ID match (includes _id, userId, teacherId, email)
       let teacher = teacherMap.get(assignedTeacherId);
+      if (teacher) {
+        console.log(`✅ Found teacher ${teacher.fullName} in map by direct match: ${assignedTeacherId}`);
+      }
       
-      // If not found, try ObjectId lookup (exact match)
+      // If not found in map, try finding by userId in the array (most common case)
+      // Students often have the User's ID stored, not the Teacher document's _id
       if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-        const teacherDoc = allTeachers.find(t => {
-          const tid = t._id.toString();
-          return tid === assignedTeacherId || 
-                 tid.toLowerCase() === assignedTeacherId.toLowerCase() ||
-                 // Also check if it's similar (might be off by one character)
-                 Math.abs(tid.length - assignedTeacherId.length) <= 1;
+        const teacherByUserId = allTeachers.find(t => {
+          if (t.userId) {
+            const userIdStr = t.userId.toString();
+            return userIdStr === assignedTeacherId;
+          }
+          return false;
         });
-        if (teacherDoc) {
-          teacher = teacherDoc;
-          console.log(`✅ Found teacher ${teacher.fullName} by ObjectId lookup (exact or similar match)`);
+        if (teacherByUserId) {
+          teacher = teacherByUserId;
+          console.log(`✅ Found teacher ${teacher.fullName} by userId match: ${assignedTeacherId} matches userId ${teacher.userId.toString()}`);
         }
       }
       
-      // If still not found, try querying the database with more flexible matching
+      // If not found, try ObjectId lookup (exact match by teacher _id)
+      if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+        const teacherDoc = allTeachers.find(t => {
+          const tid = t._id.toString();
+          return tid === assignedTeacherId;
+        });
+        if (teacherDoc) {
+          teacher = teacherDoc;
+          console.log(`✅ Found teacher ${teacher.fullName} by teacher _id match: ${assignedTeacherId}`);
+        }
+      }
+      
+      // If still not found, try querying the database
       if (!teacher) {
         const queries = [];
         
         // Try ObjectId if valid
         if (mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
           queries.push({ _id: assignedTeacherId });
+          queries.push({ userId: assignedTeacherId }); // Important: also search by userId
           // Also try converting to ObjectId (in case of string mismatch)
           try {
             const objId = new mongoose.Types.ObjectId(assignedTeacherId);
             queries.push({ _id: objId });
+            queries.push({ userId: objId });
           } catch (e) {
             // Ignore conversion errors
           }
@@ -400,27 +418,14 @@ const syncTeacherAssignedStudents = async () => {
         });
         
         if (validQueries.length > 0) {
+          console.log(`🔍 Trying database query with ${validQueries.length} conditions for assignedTeacherId: ${assignedTeacherId}`);
           const teacherDoc = await Teacher.findOne({ $or: validQueries }).lean();
           if (teacherDoc) {
             teacher = teacherDoc;
             console.log(`✅ Found teacher ${teacher.fullName} by database query`);
+          } else {
+            console.log(`❌ No teacher found in database for assignedTeacherId: ${assignedTeacherId}`);
           }
-        }
-      }
-      
-      // If STILL not found, try finding by userId (students might have teacher's userId instead of teacher _id)
-      if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-        // Check if this ID matches any teacher's userId
-        const teacherByUserId = allTeachers.find(t => {
-          if (t.userId) {
-            const userIdStr = t.userId.toString();
-            return userIdStr === assignedTeacherId || userIdStr === assignedTeacherId;
-          }
-          return false;
-        });
-        if (teacherByUserId) {
-          teacher = teacherByUserId;
-          console.log(`✅ Found teacher ${teacher.fullName} by userId match`);
         }
       }
       
