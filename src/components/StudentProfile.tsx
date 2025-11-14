@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 
 interface StudentProfileProps {
   student: any;
@@ -21,6 +22,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   onCommunication,
 }) => {
   const { students, teachers, assignments } = useData();
+  const { assignments: backendAssignments, tickets, recitationReviews } = useBackendData();
   const [activeTab, setActiveTab] = useState('overview');
 
   const currentStudent = useMemo(
@@ -85,6 +87,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'history', label: 'Activity History', icon: '📜' },
     { id: 'schedule', label: 'Schedule', icon: '📅' },
     { id: 'assignments', label: 'Assignments', icon: '📝' },
     { id: 'progress', label: 'Progress', icon: '📈' },
@@ -94,6 +97,102 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     { id: 'courses', label: 'Courses', icon: '📚' },
     { id: 'family', label: 'Family', icon: '👨‍👩‍👧‍👦' },
   ];
+
+  // Build comprehensive activity history timeline
+  const activityHistory = useMemo(() => {
+    const activities: Array<{
+      id: string;
+      type: 'assignment' | 'ticket' | 'recitation_review';
+      date: Date;
+      title: string;
+      description: string;
+      status?: string;
+      icon: string;
+      color: string;
+      data: any;
+    }> = [];
+
+    const studentId = currentStudent.id || (currentStudent as any)._id;
+
+    // Add assignments
+    backendAssignments
+      .filter((assignment: any) => {
+        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
+        return assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
+      })
+      .forEach((assignment: any) => {
+        activities.push({
+          id: assignment._id || assignment.id || `assignment-${Date.now()}`,
+          type: 'assignment',
+          date: assignment.createdAt ? new Date(assignment.createdAt) : new Date(assignment.updatedAt || Date.now()),
+          title: assignment.title || 'Assignment',
+          description: assignment.description || assignment.homeworkComments || 'No description',
+          status: assignment.status,
+          icon: '📝',
+          color: 'bg-green-100 text-green-800 border-green-200',
+          data: assignment,
+        });
+      });
+
+    // Add tickets
+    tickets
+      .filter((ticket: any) => {
+        const ticketStudentId = ticket.studentId || (ticket as any).student?._id || (ticket as any).student?.id;
+        return ticketStudentId === studentId || ticketStudentId?.toString() === studentId?.toString();
+      })
+      .forEach((ticket: any) => {
+        const stepLabel = ticket.workflowStep === 'sabq' ? 'Sabq (New Lesson)' :
+                         ticket.workflowStep === 'sabqi' ? 'Sabqi (Revision)' :
+                         ticket.workflowStep === 'manzil' ? 'Manzil' :
+                         ticket.workflowStep === 'finalize' ? 'Finalize' :
+                         ticket.workflowStep || 'Ticket';
+        
+        activities.push({
+          id: ticket.id || ticket._id || `ticket-${Date.now()}`,
+          type: 'ticket',
+          date: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt || Date.now()),
+          title: `${stepLabel} - ${ticket.status?.replace('_', ' ') || 'Pending'}`,
+          description: ticket.progressNotes || ticket.revisionNotes || 'No notes',
+          status: ticket.status,
+          icon: ticket.workflowStep === 'sabq' ? '✨' : ticket.workflowStep === 'sabqi' ? '🧠' : ticket.workflowStep === 'manzil' ? '🔁' : '📋',
+          color: ticket.status === 'finalized' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                 ticket.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
+                 ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          data: ticket,
+        });
+      });
+
+    // Add recitation reviews
+    recitationReviews
+      .filter((review: any) => {
+        const reviewStudentId = review.studentId || (review as any).student?._id || (review as any).student?.id;
+        return reviewStudentId === studentId || reviewStudentId?.toString() === studentId?.toString();
+      })
+      .forEach((review: any) => {
+        const typeLabel = review.recitationType === 'sabq' ? 'Sabq Review' :
+                         review.recitationType === 'sabqi' ? 'Sabqi Review' :
+                         review.recitationType === 'manzil' ? 'Manzil Review' :
+                         'Recitation Review';
+        
+        activities.push({
+          id: review.id || review._id || `review-${Date.now()}`,
+          type: 'recitation_review',
+          date: review.updatedAt ? new Date(review.updatedAt) : new Date(review.createdAt || Date.now()),
+          title: `${typeLabel} by ${review.teacherName || review.listenerName || 'Teacher'}`,
+          description: review.notes || review.comments || 'No notes',
+          status: review.status,
+          icon: '📖',
+          color: review.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
+                 review.status === 'rejected' ? 'bg-red-100 text-red-800 border-red-200' :
+                 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          data: review,
+        });
+      });
+
+    // Sort by date (most recent first)
+    return activities.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }, [currentStudent.id, backendAssignments, tickets, recitationReviews]);
 
   const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : '—');
 
@@ -280,6 +379,101 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                   )}
                 </SectionCard>
               </>
+            )}
+
+            {activeTab === 'history' && (
+              <div className="space-y-6">
+                <SectionCard title="Activity Timeline" icon="📜">
+                  {activityHistory.length === 0 ? (
+                    <EmptyState message="No activity history found for this student yet." />
+                  ) : (
+                    <div className="relative">
+                      {/* Timeline line */}
+                      <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gray-200" />
+                      
+                      <div className="space-y-6">
+                        {activityHistory.map((activity, index) => (
+                          <div key={activity.id} className="relative pl-20">
+                            {/* Timeline dot */}
+                            <div className={`absolute left-6 top-2 h-4 w-4 rounded-full border-2 border-white ${activity.color.split(' ')[0]}`} />
+                            
+                            {/* Activity card */}
+                            <div className={`rounded-xl border ${activity.color} p-4 shadow-sm hover:shadow-md transition-shadow`}>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-2xl">{activity.icon}</span>
+                                  <div>
+                                    <h4 className="font-semibold text-gray-900">{activity.title}</h4>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                      {activity.date.toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                                {activity.status && (
+                                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${activity.color}`}>
+                                    {activity.status.replace('_', ' ').toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap line-clamp-3">
+                                {activity.description}
+                              </p>
+                              
+                              {/* Additional info based on type */}
+                              <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
+                                {activity.type === 'assignment' && activity.data.assignedBy && (
+                                  <span>Assigned by: {activity.data.listenerName || activity.data.assignedTeacherName || 'Admin'}</span>
+                                )}
+                                {activity.type === 'ticket' && activity.data.assignedTeacherName && (
+                                  <span>Teacher: {activity.data.assignedTeacherName}</span>
+                                )}
+                                {activity.type === 'recitation_review' && activity.data.audioLink && (
+                                  <a 
+                                    href={activity.data.audioLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    🔊 Listen to Audio
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </SectionCard>
+
+                {/* Summary Statistics */}
+                {activityHistory.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <StatCard
+                      label="Total Activities"
+                      value={activityHistory.length}
+                      icon="📊"
+                    />
+                    <StatCard
+                      label="Assignments"
+                      value={activityHistory.filter(a => a.type === 'assignment').length}
+                      icon="📝"
+                    />
+                    <StatCard
+                      label="Tickets"
+                      value={activityHistory.filter(a => a.type === 'ticket').length}
+                      icon="🎫"
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             {activeTab === 'schedule' && (
