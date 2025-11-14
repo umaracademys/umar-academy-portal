@@ -309,11 +309,98 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
+// Sync teacher assignedStudents arrays with actual student assignments
+const syncTeacherAssignedStudents = async () => {
+  try {
+    const allStudents = await Student.find({});
+    const allTeachers = await Teacher.find({});
+    
+    // Reset all teachers' assignedStudents arrays
+    for (const teacher of allTeachers) {
+      teacher.assignedStudents = [];
+    }
+    
+    // Build assignedStudents arrays from student assignments
+    for (const student of allStudents) {
+      const studentId = student._id.toString();
+      const assignedTeacherId = student.assignedTeacherId || student.assignedTeacher;
+      
+      if (assignedTeacherId) {
+        let teacher = null;
+        
+        // Try to find teacher by ObjectId
+        if (mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+          teacher = await Teacher.findById(assignedTeacherId);
+        }
+        
+        // If not found, try other fields
+        if (!teacher) {
+          teacher = await Teacher.findOne({
+            $or: [
+              { teacherId: assignedTeacherId },
+              { email: assignedTeacherId },
+              { fullName: assignedTeacherId },
+              { _id: assignedTeacherId }
+            ]
+          });
+        }
+        
+        if (teacher) {
+          // Ensure assignedTeacherId is set on student
+          if (!student.assignedTeacherId) {
+            student.assignedTeacherId = teacher._id.toString();
+            await student.save();
+          }
+          
+          // Add student to teacher's assignedStudents array
+          if (!teacher.assignedStudents || !Array.isArray(teacher.assignedStudents)) {
+            teacher.assignedStudents = [];
+          }
+          if (!teacher.assignedStudents.includes(studentId)) {
+            teacher.assignedStudents.push(studentId);
+          }
+        }
+      }
+    }
+    
+    // Save all teachers
+    for (const teacher of allTeachers) {
+      await teacher.save();
+    }
+    
+    console.log('✅ Synced all teachers\' assignedStudents arrays');
+    return true;
+  } catch (error) {
+    console.error('❌ Error syncing teacher assignedStudents:', error);
+    return false;
+  }
+};
+
 // Get all teachers
 app.get('/api/teachers', async (req, res) => {
   try {
+    // Sync assignedStudents arrays before returning teachers
+    const syncOnLoad = req.query.sync === 'true';
+    if (syncOnLoad) {
+      await syncTeacherAssignedStudents();
+    }
+    
     const teachers = await Teacher.find({}).populate('userId');
     res.json(teachers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Sync teacher assignedStudents arrays endpoint
+app.post('/api/teachers/sync-assigned-students', async (req, res) => {
+  try {
+    const success = await syncTeacherAssignedStudents();
+    if (success) {
+      res.json({ message: 'Successfully synced all teachers\' assignedStudents arrays' });
+    } else {
+      res.status(500).json({ error: 'Failed to sync assignedStudents arrays' });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
