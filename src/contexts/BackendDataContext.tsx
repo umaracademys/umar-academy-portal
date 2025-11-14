@@ -13,7 +13,8 @@ import {
   ListeningSession,
   ListeningSessionStartPayload,
   ListeningSessionUpdatePayload,
-  ListeningSessionEndPayload
+  ListeningSessionEndPayload,
+  TeacherPermissions
 } from '../types';
 import { ClassworkSection } from '../types/assignment';
 
