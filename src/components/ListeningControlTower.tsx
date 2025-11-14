@@ -139,7 +139,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         if (!response.ok) {
           throw new Error(`Failed to load history (${response.status})`);
         }
-        const grouped: GroupedSessions = await response.json();
+        const grouped = await response.json() as GroupedSessions;
         setHistoryByDate(grouped);
         // Auto-expand today
         const today = new Date().toISOString().split('T')[0];
@@ -283,7 +283,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         // Reload history when a session ends
         fetch(`${API_BASE}/listening-sessions/history?days=30`)
           .then(res => res.json())
-          .then(grouped => setHistoryByDate(grouped))
+          .then(grouped => setHistoryByDate(grouped as GroupedSessions))
           .catch(console.error);
       } catch (error) {
         console.error('Failed to parse session ended payload:', error);
@@ -301,7 +301,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
           // Reload history
           fetch(`${API_BASE}/listening-sessions/history?days=30`)
             .then(res => res.json())
-            .then(grouped => setHistoryByDate(grouped))
+            .then(grouped => setHistoryByDate(grouped as GroupedSessions))
             .catch(console.error);
         }
       } catch (error) {
@@ -370,7 +370,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
     const names = new Set<string>();
     sessions.active.forEach((session) => names.add(session.teacherName));
     sessions.recent.forEach((session) => names.add(session.teacherName));
-    Object.values(historyByDate).flat().forEach((session) => names.add(session.teacherName));
+    (Object.values(historyByDate).flat() as ListeningSession[]).forEach((session) => names.add(session.teacherName));
     return Array.from(names).sort();
   }, [sessions.active, sessions.recent, historyByDate]);
 
@@ -399,7 +399,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
   const filteredHistoryByDate = useMemo(() => {
     const filtered: GroupedSessions = {};
     Object.entries(historyByDate).forEach(([date, sessionsForDate]) => {
-      const filteredSessions = sessionsForDate.filter(matchesFilters);
+      const filteredSessions = (sessionsForDate as ListeningSession[]).filter(matchesFilters);
       if (filteredSessions.length > 0) {
         filtered[date] = filteredSessions;
       }
@@ -519,7 +519,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         // Reload history
         const historyResponse = await fetch(`${API_BASE}/listening-sessions/history?days=30`);
         if (historyResponse.ok) {
-          const grouped = await historyResponse.json();
+          const grouped = await historyResponse.json() as GroupedSessions;
           setHistoryByDate(grouped);
         }
       } catch (error) {
@@ -561,7 +561,7 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         // Reload history
         const historyResponse = await fetch(`${API_BASE}/listening-sessions/history?days=30`);
         if (historyResponse.ok) {
-          const grouped = await historyResponse.json();
+          const grouped = await historyResponse.json() as GroupedSessions;
           setHistoryByDate(grouped);
         }
       } catch (error) {
