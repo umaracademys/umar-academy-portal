@@ -326,6 +326,12 @@ const syncTeacherAssignedStudents = async () => {
       // Also index by other identifiers
       if (teacher.teacherId) teacherMap.set(teacher.teacherId, teacher);
       if (teacher.email) teacherMap.set(teacher.email, teacher);
+      // CRITICAL: Index by userId - students might have teacher's userId instead of teacher _id
+      if (teacher.userId) {
+        const userIdStr = teacher.userId.toString();
+        teacherMap.set(userIdStr, teacher);
+        console.log(`📌 Indexed teacher ${teacher.fullName}: userId=${userIdStr}, _id=${teacherId}`);
+      }
     });
     
     // First, reset all teachers' assignedStudents arrays
