@@ -3,6 +3,8 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment } from '../types/assignment';
+import { InteractiveMushaf } from '@umar-academy/mushaf';
+import { MushafMistake } from '@umar-academy/mushaf';
 
 interface TeacherStudentReportsProps {
   onClose: () => void;
@@ -25,6 +27,8 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
   });
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
+  const [showMushafForAssignment, setShowMushafForAssignment] = useState<string | null>(null);
+  const [mushafPage, setMushafPage] = useState<number>(1);
 
   // Get current teacher
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
