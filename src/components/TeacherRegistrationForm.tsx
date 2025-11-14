@@ -151,7 +151,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
   };
 
   // Initialize form with teacher data when in edit mode
-  React.  useEffect(() => {
+  React.useEffect(() => {
     if (isEdit && teacher) {
       console.log('🔍 Initializing TeacherRegistrationForm with teacher data:', teacher);
       console.log('🔍 Teacher permissions:', teacher.permissions);
@@ -358,13 +358,19 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       };
 
       if (isEdit && teacher?.id) {
+        console.log('💾 Updating teacher with permissions:', newTeacher.permissions);
         await updateTeacher(teacher.id, newTeacher);
+        console.log('✅ Teacher updated, refreshing data...');
         alert('Teacher updated successfully!');
+        // Don't close immediately - wait a bit for data to refresh
+        setTimeout(() => {
+          onClose();
+        }, 500);
       } else {
         await addTeacher(newTeacher);
         alert('Teacher registered successfully!');
+        onClose();
       }
-      onClose();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to save teacher. Please try again.';
       setSubmitError(errorMessage);
