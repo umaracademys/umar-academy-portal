@@ -36,14 +36,28 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   
   // Merge students from both sources
   const allStudents = useMemo(() => {
-    const backendMap = new Map(backendStudents.map(s => [s.id || (s as any)._id, s]));
-    const contextMap = new Map(contextStudents.map(s => [s.id, s]));
+    const backendMap = new Map<string, any>(
+      backendStudents.map(s => {
+        const id = s.id || (s as any)._id;
+        return [typeof id === 'string' ? id : String(id), s];
+      })
+    );
+    const contextMap = new Map<string, any>(
+      contextStudents.map(s => {
+        const id = s.id || '';
+        return [typeof id === 'string' ? id : String(id), s];
+      })
+    );
     const merged = new Map<string, any>();
     
     // Add backend students
     backendMap.forEach((student, id) => {
       const contextStudent = contextMap.get(id);
-      merged.set(id, { ...student, ...contextStudent });
+      if (contextStudent) {
+        merged.set(id, { ...student, ...contextStudent });
+      } else {
+        merged.set(id, student);
+      }
     });
     
     // Add context students not in backend
@@ -108,7 +122,10 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
 
   // Selected student
   const selectedStudent = useMemo(
-    () => allStudents.find(s => s.id === formData.studentId || (s as any)._id === formData.studentId),
+    () => allStudents.find(s => {
+      const studentId = (s.id || (s as any)._id || '').toString();
+      return studentId === formData.studentId;
+    }),
     [allStudents, formData.studentId]
   );
 
@@ -218,7 +235,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       }
 
       const ticketData = {
-        studentId: formData.studentId || (student as any)._id,
+        studentId: formData.studentId || (student.id || (student as any)._id || '').toString(),
         studentName: student.fullName,
         assignedTeacherId: formData.recitationType === 'sabq' 
           ? (user?.id || 'admin')
@@ -417,13 +434,13 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {filteredStudents.map(student => {
-                    const studentId = student.id || (student as any)._id;
+                    const studentId = (student.id || (student as any)._id || '').toString();
                     const isSelected = formData.studentId === studentId;
                     return (
                       <button
                         key={studentId}
                         type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, studentId: studentId }))}
+                        onClick={() => setFormData(prev => ({ ...prev, studentId }))}
                         className={`p-4 rounded-xl border-2 transition-all text-left hover:scale-105 ${
                           isSelected
                             ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
