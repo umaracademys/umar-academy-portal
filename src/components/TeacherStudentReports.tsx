@@ -95,21 +95,32 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
 
   const handleOpenEditModal = (assignment: any) => {
     setEditingAssignment(assignment);
+    
+    // Extract classwork sections from assignment
+    const classworkSections = Array.isArray((assignment as any).classworkSections) 
+      ? (assignment as any).classworkSections 
+      : [];
+    
+    // Find sabq, sabqi, manzil sections
+    const sabqSection = classworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabq');
+    const sabqiSection = classworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabqi');
+    const manzilSection = classworkSections.find((s: any) => (s.step || '').toLowerCase() === 'manzil');
+    
     setEditForm({
-      finalReport: assignment.description || assignment.finalReport || '',
-      homework: assignment.homeworkComments || assignment.homework || '',
+      finalReport: assignment.description || assignment.finalReport || assignment.classworkSummary || '',
+      homework: assignment.homeworkComments || assignment.homework || assignment.homeworkSummary || '',
       homeworkLink: assignment.homeworkLink || '',
       sabq: {
-        portion: assignment.sabq?.portion || '',
-        notes: assignment.sabq?.notes || ''
+        portion: sabqSection?.assignmentRange || sabqSection?.assignmentPortion || assignment.sabq?.portion || '',
+        notes: sabqSection?.summary || sabqSection?.details || assignment.sabq?.notes || ''
       },
       sabqi: {
-        portion: assignment.sabqi?.portion || '',
-        notes: assignment.sabqi?.notes || ''
+        portion: sabqiSection?.assignmentRange || sabqiSection?.assignmentPortion || assignment.sabqi?.portion || '',
+        notes: sabqiSection?.summary || sabqiSection?.details || assignment.sabqi?.notes || ''
       },
       manzil: {
-        portion: assignment.manzil?.portion || '',
-        notes: assignment.manzil?.notes || ''
+        portion: manzilSection?.assignmentRange || manzilSection?.assignmentPortion || assignment.manzil?.portion || '',
+        notes: manzilSection?.summary || manzilSection?.details || assignment.manzil?.notes || ''
       },
     });
   };
@@ -126,13 +137,52 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
 
     try {
       setIsSavingEdit(true);
+      
+      // Build classwork sections from form data (same structure as AssignmentsPage)
+      const classworkSections: any[] = [];
+      
+      // Add sabq section if it has data
+      if (editForm.sabq.portion.trim() || editForm.sabq.notes.trim()) {
+        classworkSections.push({
+          step: 'sabq',
+          title: 'Sabq (New Lesson)',
+          label: 'Sabq',
+          summary: editForm.sabq.notes.trim(),
+          assignmentRange: editForm.sabq.portion.trim(),
+          order: 0,
+        });
+      }
+      
+      // Add sabqi section if it has data
+      if (editForm.sabqi.portion.trim() || editForm.sabqi.notes.trim()) {
+        classworkSections.push({
+          step: 'sabqi',
+          title: 'Sabqi (Revision)',
+          label: 'Sabqi',
+          summary: editForm.sabqi.notes.trim(),
+          assignmentRange: editForm.sabqi.portion.trim(),
+          order: 1,
+        });
+      }
+      
+      // Add manzil section if it has data
+      if (editForm.manzil.portion.trim() || editForm.manzil.notes.trim()) {
+        classworkSections.push({
+          step: 'manzil',
+          title: 'Manzil',
+          label: 'Manzil',
+          summary: editForm.manzil.notes.trim(),
+          assignmentRange: editForm.manzil.portion.trim(),
+          order: 2,
+        });
+      }
+      
       await updateAssignment(assignmentId, {
         description: editForm.finalReport,
         homeworkComments: editForm.homework,
         homeworkLink: editForm.homeworkLink,
-        sabq: editForm.sabq,
-        sabqi: editForm.sabqi,
-        manzil: editForm.manzil,
+        classworkSections: classworkSections,
+        status: 'published', // Ensure it's published
       });
       // Force a complete data refresh to ensure all components update
       await refreshData();
@@ -248,6 +298,15 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
                                 const assignmentId = resolveAssignmentId(assignment);
                                 const mushafMarkings = Array.isArray(assignment.mushafMarkings) ? assignment.mushafMarkings : [];
                                 
+                                // Extract classwork sections
+                                const classworkSections = Array.isArray((assignment as any).classworkSections) 
+                                  ? (assignment as any).classworkSections 
+                                  : [];
+                                
+                                const sabqSection = classworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabq');
+                                const sabqiSection = classworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabqi');
+                                const manzilSection = classworkSections.find((s: any) => (s.step || '').toLowerCase() === 'manzil');
+                                
                                 return (
                                   <div key={assignmentId} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                                     <div className="flex items-start justify-between mb-3">
@@ -263,11 +322,77 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
                                             Listener: {getTeacherName(assignment.listenerName)}
                                           </p>
                                         )}
-                                        {assignment.description && (
-                                          <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
-                                            {assignment.description}
-                                          </p>
+                                        
+                                        {/* Classwork Sections - Sabq, Sabqi, Manzil */}
+                                        {(sabqSection || sabqiSection || manzilSection) && (
+                                          <div className="mt-3 rounded-lg border border-[#E7AA39]/40 bg-[#FDF7E7] p-4">
+                                            <h6 className="text-xs font-semibold text-[#2E4D32] mb-3 uppercase tracking-wide">Classwork Details</h6>
+                                            <div className="grid gap-3 md:grid-cols-3">
+                                              {/* Sabq */}
+                                              {sabqSection && (
+                                                <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-3">
+                                                  <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-2">✨ Sabq (New Lesson)</p>
+                                                  {(sabqSection.assignmentRange || sabqSection.assignmentPortion) && (
+                                                    <p className="text-xs text-gray-600 mb-1">
+                                                      <span className="font-semibold">Portion:</span> {sabqSection.assignmentRange || sabqSection.assignmentPortion}
+                                                    </p>
+                                                  )}
+                                                  {(sabqSection.summary || sabqSection.details) && (
+                                                    <p className="text-xs text-gray-700 whitespace-pre-wrap mt-2">
+                                                      {sabqSection.summary || sabqSection.details}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )}
+                                              
+                                              {/* Sabqi */}
+                                              {sabqiSection && (
+                                                <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-3">
+                                                  <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-2">🧠 Sabqi (Revision)</p>
+                                                  {(sabqiSection.assignmentRange || sabqiSection.assignmentPortion) && (
+                                                    <p className="text-xs text-gray-600 mb-1">
+                                                      <span className="font-semibold">Portion:</span> {sabqiSection.assignmentRange || sabqiSection.assignmentPortion}
+                                                    </p>
+                                                  )}
+                                                  {(sabqiSection.summary || sabqiSection.details) && (
+                                                    <p className="text-xs text-gray-700 whitespace-pre-wrap mt-2">
+                                                      {sabqiSection.summary || sabqiSection.details}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )}
+                                              
+                                              {/* Manzil */}
+                                              {manzilSection && (
+                                                <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-3">
+                                                  <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-2">🔁 Manzil</p>
+                                                  {(manzilSection.assignmentRange || manzilSection.assignmentPortion) && (
+                                                    <p className="text-xs text-gray-600 mb-1">
+                                                      <span className="font-semibold">Portion:</span> {manzilSection.assignmentRange || manzilSection.assignmentPortion}
+                                                    </p>
+                                                  )}
+                                                  {(manzilSection.summary || manzilSection.details) && (
+                                                    <p className="text-xs text-gray-700 whitespace-pre-wrap mt-2">
+                                                      {manzilSection.summary || manzilSection.details}
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
                                         )}
+                                        
+                                        {/* Final Report / Description */}
+                                        {assignment.description && (
+                                          <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3">
+                                            <h6 className="text-xs font-semibold text-green-900 mb-1">📋 Final Report / Summary</h6>
+                                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                              {assignment.description}
+                                            </p>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Homework */}
                                         {assignment.homeworkComments && (
                                           <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
                                             <h6 className="text-xs font-semibold text-yellow-900 mb-1">📝 Homework</h6>
