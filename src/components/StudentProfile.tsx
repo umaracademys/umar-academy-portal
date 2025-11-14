@@ -121,79 +121,63 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
     const studentId = currentStudent.id || (currentStudent as any)._id;
 
-    // Add assignments
+    // Get all finalized/completed tickets for this student to check if assignments came from tickets
+    const finalizedTickets = tickets.filter((ticket: any) => {
+      const ticketStudentId = ticket.studentId || (ticket as any).student?._id || (ticket as any).student?.id;
+      const matchesStudent = ticketStudentId === studentId || ticketStudentId?.toString() === studentId?.toString();
+      const isFinalized = ticket.status === 'finalized' || ticket.status === 'completed';
+      return matchesStudent && isFinalized && ticket.assignmentId;
+    });
+    const finalizedTicketIds = new Set(finalizedTickets.map((t: any) => t.id || t._id));
+
+    // Only show finalized assignments:
+    // 1. Published/completed assignments (not drafts)
+    // 2. Assignments from finalized tickets (have fromTicketId matching a finalized ticket)
+    // 3. Manual assignments (no fromTicketId, no fromRecitationReviewId)
     backendAssignments
       .filter((assignment: any) => {
         const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
-        return assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
+        const matchesStudent = assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
+        
+        if (!matchesStudent) return false;
+
+        // Filter to only finalized assignments
+        const status = assignment.status || 'published';
+        const isPublished = status === 'published' || status === 'completed';
+        const isDraft = status === 'draft' || status === 'pending_homework';
+        
+        // Show if published/completed
+        if (isPublished && !isDraft) return true;
+        
+        // Show if from a finalized ticket
+        const fromTicketId = assignment.fromTicketId;
+        if (fromTicketId && finalizedTicketIds.has(fromTicketId)) return true;
+        
+        // Show manual assignments (no ticket, no recitation review)
+        const isManual = !assignment.fromTicketId && !assignment.fromRecitationReviewId;
+        if (isManual && isPublished) return true;
+        
+        return false;
       })
       .forEach((assignment: any) => {
+        // Determine source
+        let source = 'Manual Assignment';
+        if (assignment.fromTicketId) {
+          source = 'From Ticket System';
+        } else if (assignment.fromRecitationReviewId) {
+          source = 'From Recitation Review';
+        }
+        
         activities.push({
           id: assignment._id || assignment.id || `assignment-${Date.now()}`,
           type: 'assignment',
           date: assignment.createdAt ? new Date(assignment.createdAt) : new Date(assignment.updatedAt || Date.now()),
-          title: assignment.title || 'Assignment',
+          title: `${assignment.title || 'Assignment'} (${source})`,
           description: assignment.description || assignment.homeworkComments || 'No description',
-          status: assignment.status,
+          status: assignment.status || 'published',
           icon: '📝',
           color: 'bg-green-100 text-green-800 border-green-200',
           data: assignment,
-        });
-      });
-
-    // Add tickets
-    tickets
-      .filter((ticket: any) => {
-        const ticketStudentId = ticket.studentId || (ticket as any).student?._id || (ticket as any).student?.id;
-        return ticketStudentId === studentId || ticketStudentId?.toString() === studentId?.toString();
-      })
-      .forEach((ticket: any) => {
-        const stepLabel = ticket.workflowStep === 'sabq' ? 'Sabq (New Lesson)' :
-                         ticket.workflowStep === 'sabqi' ? 'Sabqi (Revision)' :
-                         ticket.workflowStep === 'manzil' ? 'Manzil' :
-                         ticket.workflowStep === 'finalize' ? 'Finalize' :
-                         ticket.workflowStep || 'Ticket';
-        
-        activities.push({
-          id: ticket.id || ticket._id || `ticket-${Date.now()}`,
-          type: 'ticket',
-          date: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(ticket.createdAt || Date.now()),
-          title: `${stepLabel} - ${ticket.status?.replace('_', ' ') || 'Pending'}`,
-          description: ticket.progressNotes || ticket.revisionNotes || 'No notes',
-          status: ticket.status,
-          icon: ticket.workflowStep === 'sabq' ? '✨' : ticket.workflowStep === 'sabqi' ? '🧠' : ticket.workflowStep === 'manzil' ? '🔁' : '📋',
-          color: ticket.status === 'finalized' ? 'bg-purple-100 text-purple-800 border-purple-200' :
-                 ticket.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
-                 ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          data: ticket,
-        });
-      });
-
-    // Add recitation reviews
-    recitationReviews
-      .filter((review: any) => {
-        const reviewStudentId = review.studentId || (review as any).student?._id || (review as any).student?.id;
-        return reviewStudentId === studentId || reviewStudentId?.toString() === studentId?.toString();
-      })
-      .forEach((review: any) => {
-        const typeLabel = review.recitationType === 'sabq' ? 'Sabq Review' :
-                         review.recitationType === 'sabqi' ? 'Sabqi Review' :
-                         review.recitationType === 'manzil' ? 'Manzil Review' :
-                         'Recitation Review';
-        
-        activities.push({
-          id: review.id || review._id || `review-${Date.now()}`,
-          type: 'recitation_review',
-          date: review.updatedAt ? new Date(review.updatedAt) : new Date(review.createdAt || Date.now()),
-          title: `${typeLabel} by ${review.teacherName || review.listenerName || 'Teacher'}`,
-          description: review.notes || review.comments || 'No notes',
-          status: review.status,
-          icon: '📖',
-          color: review.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' :
-                 review.status === 'rejected' ? 'bg-red-100 text-red-800 border-red-200' :
-                 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          data: review,
         });
       });
 
