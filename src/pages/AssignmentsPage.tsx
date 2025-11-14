@@ -198,6 +198,32 @@ const AssignmentsPage: React.FC = () => {
     return student?.fullName || 'Unknown Student';
   };
 
+  const getStudentAssignedTeacher = (studentId: string): string => {
+    const student = students.find(s => (s as any)._id === studentId || s.id === studentId);
+    if (!student) return '—';
+    const assignedTeacherId = (student as any).assignedTeacherId || (student as any).assignedTeacher;
+    if (!assignedTeacherId) return '—';
+    
+    // Find teacher by ID
+    const teacher = teachers.find(t => 
+      t.id === assignedTeacherId || 
+      (t as any)._id === assignedTeacherId ||
+      t.teacherId === assignedTeacherId
+    );
+    return teacher?.fullName || '—';
+  };
+
+  const getTeacherName = (teacherId: string): string => {
+    if (!teacherId) return '—';
+    const teacher = teachers.find(t => 
+      t.id === teacherId || 
+      (t as any)._id === teacherId ||
+      t.teacherId === teacherId ||
+      t.email === teacherId
+    );
+    return teacher?.fullName || teacherId;
+  };
+
   // Filter assignments - show those from finalized tickets OR converted from recitation reviews
   const filteredAssignments = assignments.filter(assignment => {
     // Show assignments created from approved/finalized tickets OR converted from recitation reviews
@@ -1167,11 +1193,6 @@ const AssignmentsPage: React.FC = () => {
                                 📖 From Recitation Review
                               </span>
                             )}
-                            {latest.listenerName && (
-                              <span className="text-sm text-gray-600">
-                                👂 Listener: {latest.listenerName}
-                              </span>
-                            )}
                             <span className="text-xs font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 px-2 py-1 rounded">
                               Finalized {formatDisplayDate(latest.createdAt || latest.updatedAt)}
                             </span>
@@ -1179,6 +1200,13 @@ const AssignmentsPage: React.FC = () => {
 
                           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                             <span>📚 {latestProgram}</span>
+                            <span>👤 Assigned Teacher: <span className="font-semibold text-gray-700">{getStudentAssignedTeacher(studentId)}</span></span>
+                            {latest.listenerName && (
+                              <span>👂 Listener: <span className="font-semibold text-gray-700">{getTeacherName(latest.listenerName)}</span></span>
+                            )}
+                            {(latest as any).listenerId && (
+                              <span>👂 Listener: <span className="font-semibold text-gray-700">{getTeacherName((latest as any).listenerId)}</span></span>
+                            )}
                             <span>📅 Due {formatDisplayDate(latest.dueDate as any)}</span>
                             {latest.homeworkSummary && (
                               <span>📝 Homework recorded</span>
