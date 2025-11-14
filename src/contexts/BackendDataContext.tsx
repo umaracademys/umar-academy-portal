@@ -233,10 +233,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const users = await usersResponse.json();
       console.log('👥 Users loaded from backend:', users.length);
 
-      // Load actual teacher records from /api/teachers endpoint
+      // Load actual teacher records from /api/teachers endpoint (with sync to ensure assignedStudents arrays are up to date)
       let teacherRecords: any[] = [];
       try {
-      const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers`, {}, 10000);
+      const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 10000);
       if (teachersResponse.ok) {
           teacherRecords = await teachersResponse.json();
           console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
