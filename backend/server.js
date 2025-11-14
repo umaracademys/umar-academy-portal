@@ -466,22 +466,35 @@ app.get('/api/teachers', async (req, res) => {
     const syncOnLoad = req.query.sync === 'true';
     if (syncOnLoad) {
       console.log('🔄 GET /api/teachers called with sync=true, running sync...');
-      await syncTeacherAssignedStudents();
+      const syncResult = await syncTeacherAssignedStudents();
+      console.log(`🔄 Sync result: ${syncResult ? 'Success' : 'Failed'}`);
+      
+      // After sync, fetch fresh teacher records to ensure we have the latest data
+      // There might be a caching issue, so we'll fetch again after sync
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to ensure DB write completes
     }
     
-    const teachers = await Teacher.find({}).populate('userId');
+    const teachers = await Teacher.find({}).populate('userId').lean();
+    
+    // Convert to plain objects and ensure assignedStudents is always an array
+    const teachersWithArrays = teachers.map(teacher => ({
+      ...teacher,
+      assignedStudents: Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents : [],
+      _id: teacher._id.toString()
+    }));
     
     // Log assignedStudents arrays for debugging
     if (syncOnLoad) {
       console.log('📊 Teachers after sync:');
-      teachers.forEach(teacher => {
-        console.log(`  - ${teacher.fullName} (${teacher._id}): assignedStudents=[${(teacher.assignedStudents || []).join(', ')}]`);
+      teachersWithArrays.forEach(teacher => {
+        console.log(`  - ${teacher.fullName} (${teacher._id}): assignedStudents=[${teacher.assignedStudents.join(', ')}] (${teacher.assignedStudents.length} students)`);
       });
     }
     
-    res.json(teachers);
+    res.json(teachersWithArrays);
   } catch (error) {
     console.error('❌ Error in GET /api/teachers:', error);
+    console.error('Stack trace:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
