@@ -471,10 +471,10 @@ app.get('/api/teachers', async (req, res) => {
   }
 });
 
-// Sync teacher assignedStudents arrays endpoint (manual trigger)
-app.post('/api/teachers/sync-assigned-students', async (req, res) => {
+// Helper function for manual sync (used by both GET and POST)
+const handleManualSync = async (req, res) => {
   try {
-    console.log('🔄 Manual sync triggered via POST /api/teachers/sync-assigned-students');
+    console.log('🔄 Manual sync triggered via ' + req.method + ' /api/teachers/sync-assigned-students');
     const success = await syncTeacherAssignedStudents();
     if (success) {
       // Fetch updated teachers to verify
@@ -496,7 +496,11 @@ app.post('/api/teachers/sync-assigned-students', async (req, res) => {
     console.error('❌ Error in manual sync endpoint:', error);
     res.status(500).json({ error: error.message });
   }
-});
+};
+
+// Sync teacher assignedStudents arrays endpoint (manual trigger - supports both GET and POST)
+app.get('/api/teachers/sync-assigned-students', handleManualSync);
+app.post('/api/teachers/sync-assigned-students', handleManualSync);
 
 // GET endpoint to check current state (for debugging)
 app.get('/api/teachers/sync-status', async (req, res) => {
