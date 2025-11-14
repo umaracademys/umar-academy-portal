@@ -90,6 +90,7 @@ const AssignmentsPage: React.FC = () => {
     user?.role === 'admin' ||
     user?.role === 'teacher';
   const canFinalizeTickets = user?.role === 'superadmin' || user?.role === 'admin';
+  const canDeleteAssignments = user?.role === 'superadmin' || user?.role === 'admin';
 
   const getTicketId = (ticket?: AssignmentTicket | null) =>
     ticket ? (ticket.id || (ticket as any)._id || '') : '';
@@ -1238,13 +1239,15 @@ const AssignmentsPage: React.FC = () => {
                               </svg>
                               Reassign teacher
                             </button>
-                            <button
-                              onClick={() => handleDeleteAssignment(latest)}
-                              disabled={deletingAssignmentId === latestId}
-                              className="px-4 py-2 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {deletingAssignmentId === latestId ? 'Deleting…' : 'Delete'}
-                            </button>
+                            {canDeleteAssignments && (
+                              <button
+                                onClick={() => handleDeleteAssignment(latest)}
+                                disabled={deletingAssignmentId === latestId}
+                                className="px-4 py-2 rounded-lg text-sm font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {deletingAssignmentId === latestId ? 'Deleting…' : 'Delete'}
+                              </button>
+                            )}
                           </div>
                           {history.length > 0 && (
                             <button
@@ -1441,13 +1444,15 @@ const AssignmentsPage: React.FC = () => {
                                   >
                                     Reassign
                                   </button>
-                                  <button
-                                    onClick={() => handleDeleteAssignment(entry)}
-                                    disabled={deletingAssignmentId === entryId}
-                                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    {deletingAssignmentId === entryId ? 'Deleting…' : 'Delete'}
-                                  </button>
+                                  {canDeleteAssignments && (
+                                    <button
+                                      onClick={() => handleDeleteAssignment(entry)}
+                                      disabled={deletingAssignmentId === entryId}
+                                      className="px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {deletingAssignmentId === entryId ? 'Deleting…' : 'Delete'}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
