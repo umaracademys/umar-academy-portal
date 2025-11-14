@@ -22,17 +22,18 @@ const TeacherDashboard: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
-  // Get current teacher info
-  const currentTeacher = teachers.find(t => t.email === user?.email) || teachers[0];
+  // Get current teacher info - only when user is loaded
+  const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
   // Debug logs (commented out - uncomment for debugging)
   // console.log('🔍 TeacherDashboard - currentTeacher:', currentTeacher);
   // console.log('🔍 TeacherDashboard - user email:', user?.email);
   // console.log('🔍 TeacherDashboard - all teachers:', teachers);
-  const assignedStudents = getStudentsByTeacher(currentTeacher?.id || '');
+  // Only call getStudentsByTeacher when we have a valid teacher ID
+  const assignedStudents = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id) : [];
   // console.log('🔍 TeacherDashboard - assignedStudents:', assignedStudents);
 
-  // Get teacher permissions
-  const permissions = currentTeacher?.permissions || {
+  // Get teacher permissions - only when currentTeacher is available
+  const permissions = (currentTeacher?.permissions) || {
     canViewAssessments: true,
     canEditAssessments: true,
     canViewEvaluations: true,
@@ -240,9 +241,9 @@ const TeacherDashboard: React.FC = () => {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <StatCard title="Assigned Students" value={assignedStudents.length} icon="AS" />
-          <StatCard title="Total Assessments" value={assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0)} icon="TA" />
-          <StatCard title="Active Students" value={assignedStudents.filter(s => s.status === 'active').length} icon="WK" />
+          <StatCard title="Assigned Students" value={currentTeacher ? assignedStudents.length : 0} icon="AS" />
+          <StatCard title="Total Assessments" value={currentTeacher ? assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} icon="TA" />
+          <StatCard title="Active Students" value={currentTeacher ? assignedStudents.filter(s => s.status === 'active').length : 0} icon="WK" />
         </div>
 
         {/* Assigned Students List */}
