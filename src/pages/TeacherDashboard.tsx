@@ -171,7 +171,7 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                       <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <p className="text-xs text-primary-soft">Schedule</p>
                         <p className="text-sm font-medium">
