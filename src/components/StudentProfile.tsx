@@ -24,6 +24,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   const { students, teachers, assignments } = useData();
   const { assignments: backendAssignments, tickets, recitationReviews } = useBackendData();
   const [activeTab, setActiveTab] = useState('overview');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Refresh data when backendAssignments changes (e.g., after deletion)
+  useEffect(() => {
+    // This will force re-computation of activityHistory when assignments change
+    setRefreshKey(prev => prev + 1);
+  }, [backendAssignments.length]);
 
   const currentStudent = useMemo(
     () => students.find((entry) => entry.id === student.id) ?? student,
