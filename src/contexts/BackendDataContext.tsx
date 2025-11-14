@@ -1283,10 +1283,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error('Failed to delete assignment');
       }
       
+      // Update local state immediately for instant UI feedback
       setAssignments(prev => prev.filter(a => {
         const aId = a._id || a.id;
         return aId !== id;
       }));
+      
+      console.log('✅ Assignment deleted successfully. Local state updated.');
     } catch (error) {
       console.error('Error deleting assignment:', error);
       throw error;

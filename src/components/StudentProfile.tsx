@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 
@@ -192,7 +192,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
     // Sort by date (most recent first)
     return activities.sort((a, b) => b.date.getTime() - a.date.getTime());
-  }, [currentStudent.id, backendAssignments, tickets, recitationReviews]);
+  }, [currentStudent.id, backendAssignments, tickets, recitationReviews, refreshKey]);
 
   // Group activities by date
   const groupedByDate = useMemo(() => {

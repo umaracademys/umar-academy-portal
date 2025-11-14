@@ -90,9 +90,13 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
 
     try {
       setDeletingAssignmentId(assignmentId);
+      // Delete the assignment
       await deleteAssignment(assignmentId);
+      // Force a complete data refresh to ensure all components update
       await refreshData();
-      alert('Assignment deleted successfully!');
+      // Small delay to ensure state updates propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+      alert('Assignment deleted successfully! All dashboards will be updated.');
     } catch (error) {
       console.error('Error deleting assignment:', error);
       alert('Failed to delete assignment.');
@@ -142,9 +146,12 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
         sabqi: editForm.sabqi,
         manzil: editForm.manzil,
       });
+      // Force a complete data refresh to ensure all components update
       await refreshData();
+      // Small delay to ensure state updates propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
       setEditingAssignment(null);
-      alert('Assignment updated successfully!');
+      alert('Assignment updated successfully! All dashboards will be updated.');
     } catch (error) {
       console.error('Error updating assignment:', error);
       alert('Failed to update assignment.');
