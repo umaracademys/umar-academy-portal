@@ -3870,9 +3870,27 @@ app.get('/api/quran/pages/:pageNumber/verses', async (req, res) => {
   }
 });
 
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Backend is running' });
+// Health check - improved with database connectivity check
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    const healthStatus = {
+      status: 'OK',
+      message: 'Backend is running',
+      timestamp: new Date().toISOString(),
+      database: dbStatus,
+      uptime: process.uptime()
+    };
+    
+    // If database is not connected, still return 200 but indicate the issue
+    res.json(healthStatus);
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'ERROR', 
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Start server regardless of MongoDB connection status
