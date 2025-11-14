@@ -944,13 +944,33 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const mappedTeacher = {
         ...updatedTeacher,
         id: updatedTeacher._id || updatedTeacher.id || id,
-        fullName: updatedTeacher.fullName || updatedTeacher.name || 'Unknown Teacher'
+        fullName: updatedTeacher.fullName || updatedTeacher.name || 'Unknown Teacher',
+        // Ensure permissions are preserved from update payload if backend didn't return them
+        permissions: updatedTeacher.permissions || teacher.permissions || {
+          canViewAssessments: true,
+          canEditAssessments: true,
+          canViewEvaluations: true,
+          canEditEvaluations: true,
+          canViewFinancials: false,
+          canManageSchedule: true,
+          canContactParents: true,
+          canViewStudentEmail: true,
+          canViewStudentContact: true,
+          canViewStudentPersonalInfo: true,
+        }
       };
 
-      // Update local state
+      // Update local state - merge to preserve all fields
       setTeachers(prev => prev.map(t => {
         const tId = t.id || (t as any)._id;
-        return (tId === id || tId === mappedTeacher.id || tId === mappedTeacher._id) ? mappedTeacher : t;
+        if (tId === id || tId === mappedTeacher.id || tId === mappedTeacher._id) {
+          return {
+            ...t,
+            ...mappedTeacher,
+            permissions: mappedTeacher.permissions || t.permissions
+          };
+        }
+        return t;
       }));
       
       await refreshData();

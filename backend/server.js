@@ -614,6 +614,22 @@ const normalizeTeacherData = (teacherData) => {
     }
   }
   
+  // Ensure permissions are preserved and have all fields
+  if (normalized.permissions) {
+    normalized.permissions = {
+      canViewAssessments: normalized.permissions.canViewAssessments ?? true,
+      canEditAssessments: normalized.permissions.canEditAssessments ?? true,
+      canViewEvaluations: normalized.permissions.canViewEvaluations ?? true,
+      canEditEvaluations: normalized.permissions.canEditEvaluations ?? true,
+      canViewFinancials: normalized.permissions.canViewFinancials ?? false,
+      canManageSchedule: normalized.permissions.canManageSchedule ?? true,
+      canContactParents: normalized.permissions.canContactParents ?? true,
+      canViewStudentEmail: normalized.permissions.canViewStudentEmail ?? true,
+      canViewStudentContact: normalized.permissions.canViewStudentContact ?? true,
+      canViewStudentPersonalInfo: normalized.permissions.canViewStudentPersonalInfo ?? true,
+    };
+  }
+  
   // Ensure default values
   if (!normalized.status) {
     normalized.status = 'active';

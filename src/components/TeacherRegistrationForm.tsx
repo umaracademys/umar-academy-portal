@@ -151,8 +151,10 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
   };
 
   // Initialize form with teacher data when in edit mode
-  React.useEffect(() => {
+  React.  useEffect(() => {
     if (isEdit && teacher) {
+      console.log('🔍 Initializing TeacherRegistrationForm with teacher data:', teacher);
+      console.log('🔍 Teacher permissions:', teacher.permissions);
       setPersonalInfo({
         fullName: teacher.fullName || '',
         email: teacher.email || '',
@@ -232,9 +234,24 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         });
       }
       
-      // Initialize permissions
+      // Initialize permissions - ensure all permission fields are present
       if (teacher.permissions) {
-        setPermissions(teacher.permissions);
+        const initializedPermissions = {
+          canViewAssessments: teacher.permissions.canViewAssessments ?? true,
+          canEditAssessments: teacher.permissions.canEditAssessments ?? true,
+          canViewEvaluations: teacher.permissions.canViewEvaluations ?? true,
+          canEditEvaluations: teacher.permissions.canEditEvaluations ?? true,
+          canViewFinancials: teacher.permissions.canViewFinancials ?? false,
+          canManageSchedule: teacher.permissions.canManageSchedule ?? true,
+          canContactParents: teacher.permissions.canContactParents ?? true,
+          canViewStudentEmail: teacher.permissions.canViewStudentEmail ?? true,
+          canViewStudentContact: teacher.permissions.canViewStudentContact ?? true,
+          canViewStudentPersonalInfo: teacher.permissions.canViewStudentPersonalInfo ?? true,
+        };
+        console.log('✅ Setting permissions:', initializedPermissions);
+        setPermissions(initializedPermissions);
+      } else {
+        console.log('⚠️ No permissions found in teacher data, using defaults');
       }
       
       // Initialize ID document
@@ -281,7 +298,20 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         ] : shifts,
         idDocument: idDocument,
         assignedStudents: isEdit ? teacher?.assignedStudents || [] : [],
-        permissions: permissions,
+        permissions: {
+          ...permissions,
+          // Ensure all permission fields are included
+          canViewAssessments: permissions.canViewAssessments ?? true,
+          canEditAssessments: permissions.canEditAssessments ?? true,
+          canViewEvaluations: permissions.canViewEvaluations ?? true,
+          canEditEvaluations: permissions.canEditEvaluations ?? true,
+          canViewFinancials: permissions.canViewFinancials ?? false,
+          canManageSchedule: permissions.canManageSchedule ?? true,
+          canContactParents: permissions.canContactParents ?? true,
+          canViewStudentEmail: permissions.canViewStudentEmail ?? true,
+          canViewStudentContact: permissions.canViewStudentContact ?? true,
+          canViewStudentPersonalInfo: permissions.canViewStudentPersonalInfo ?? true,
+        },
         schedule: employmentInfo.employmentType === 'Full Time' ? {
           days: fullTimeSchedule.workingDays,
           startTime: fullTimeSchedule.morningShift.startTime,
