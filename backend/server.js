@@ -315,9 +315,13 @@ const syncTeacherAssignedStudents = async () => {
     const allStudents = await Student.find({});
     const allTeachers = await Teacher.find({});
     
+    // Track which teachers need to be saved
+    const teachersToUpdate = new Map();
+    
     // Reset all teachers' assignedStudents arrays
     for (const teacher of allTeachers) {
       teacher.assignedStudents = [];
+      teachersToUpdate.set(teacher._id.toString(), teacher);
     }
     
     // Build assignedStudents arrays from student assignments
@@ -352,23 +356,31 @@ const syncTeacherAssignedStudents = async () => {
             await student.save();
           }
           
+          // Get the teacher from our tracking map or fetch fresh
+          const teacherToUpdate = teachersToUpdate.get(teacher._id.toString()) || teacher;
+          
           // Add student to teacher's assignedStudents array
-          if (!teacher.assignedStudents || !Array.isArray(teacher.assignedStudents)) {
-            teacher.assignedStudents = [];
+          if (!teacherToUpdate.assignedStudents || !Array.isArray(teacherToUpdate.assignedStudents)) {
+            teacherToUpdate.assignedStudents = [];
           }
-          if (!teacher.assignedStudents.includes(studentId)) {
-            teacher.assignedStudents.push(studentId);
+          if (!teacherToUpdate.assignedStudents.includes(studentId)) {
+            teacherToUpdate.assignedStudents.push(studentId);
           }
+          
+          // Track this teacher for saving
+          teachersToUpdate.set(teacher._id.toString(), teacherToUpdate);
         }
       }
     }
     
-    // Save all teachers
-    for (const teacher of allTeachers) {
+    // Save all updated teachers
+    let savedCount = 0;
+    for (const teacher of teachersToUpdate.values()) {
       await teacher.save();
+      savedCount++;
     }
     
-    console.log('✅ Synced all teachers\' assignedStudents arrays');
+    console.log(`✅ Synced all teachers' assignedStudents arrays (${savedCount} teachers updated)`);
     return true;
   } catch (error) {
     console.error('❌ Error syncing teacher assignedStudents:', error);
