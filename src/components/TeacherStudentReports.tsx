@@ -417,32 +417,137 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
                                         )}
                                         {mushafMarkings.length > 0 && (
                                           <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
-                                            <h6 className="text-xs font-semibold text-orange-900 mb-2">
-                                              📖 Mushaf Mistakes ({mushafMarkings.length})
-                                            </h6>
-                                            <div className="flex flex-wrap gap-2">
-                                              {mushafMarkings.map((mistake: any, idx: number) => {
-                                                const typeLabel = mistake.type === 'memory' ? 'Memory' :
-                                                                  mistake.type === 'madd' ? 'Madd' :
-                                                                  mistake.type === 'ikhfa' ? 'Ikhfa' :
-                                                                  mistake.type === 'holding' ? 'Holding' :
-                                                                  mistake.type === 'tech' ? 'Tech' :
-                                                                  mistake.type === 'other' ? 'Other' : mistake.type;
-                                                return (
-                                                  <span
-                                                    key={idx}
-                                                    className={`px-2 py-1 rounded text-xs font-medium ${
-                                                      mistake.type === 'memory' 
-                                                        ? 'bg-red-100 text-red-800' 
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                    }`}
-                                                  >
-                                                    {typeLabel} • Page {mistake.page}
-                                                    {mistake.surah && mistake.ayah && ` • ${mistake.surah}:${mistake.ayah}`}
-                                                  </span>
-                                                );
-                                              })}
+                                            <div className="flex items-center justify-between mb-3">
+                                              <h6 className="text-xs font-semibold text-orange-900">
+                                                📖 Mushaf Mistakes ({mushafMarkings.length} mistake{mushafMarkings.length !== 1 ? 's' : ''})
+                                              </h6>
+                                              <button
+                                                onClick={() => {
+                                                  if (showMushafForAssignment === assignmentId) {
+                                                    setShowMushafForAssignment(null);
+                                                  } else {
+                                                    setShowMushafForAssignment(assignmentId);
+                                                    const firstMistake = mushafMarkings[0];
+                                                    if (firstMistake?.page) {
+                                                      setMushafPage(firstMistake.page);
+                                                    }
+                                                  }
+                                                }}
+                                                className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs font-medium"
+                                              >
+                                                {showMushafForAssignment === assignmentId ? '📖 Hide Mushaf' : '📖 View Mushaf'}
+                                              </button>
                                             </div>
+                                            
+                                            {showMushafForAssignment !== assignmentId && (
+                                              <div className="space-y-3">
+                                                {/* Mistake type summary */}
+                                                <div className="flex flex-wrap gap-2">
+                                                  {['memory', 'madd', 'ikhfa', 'holding', 'tech', 'other'].map((type) => {
+                                                    const count = mushafMarkings.filter((m: MushafMistake) => m.type === type).length;
+                                                    if (count === 0) return null;
+                                                    const typeLabel = type === 'memory' ? 'Memory' :
+                                                                      type === 'madd' ? 'Madd' :
+                                                                      type === 'ikhfa' ? 'Ikhfa' :
+                                                                      type === 'holding' ? 'Holding' :
+                                                                      type === 'tech' ? 'Tech' :
+                                                                      type === 'other' ? 'Other' : type;
+                                                    return (
+                                                      <span key={type} className="px-2 py-1 bg-white rounded text-xs font-medium text-gray-700">
+                                                        {typeLabel}: {count}
+                                                      </span>
+                                                    );
+                                                  })}
+                                                </div>
+                                                
+                                                {/* Page navigation buttons */}
+                                                <div className="flex flex-wrap gap-2">
+                                                  <span className="text-xs font-semibold text-gray-700 self-center">Navigate to pages:</span>
+                                                  {(Array.from(new Set(mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
+                                                    .sort((a: number, b: number) => a - b)
+                                                    .map((page: number) => {
+                                                      const mistakesOnPage = mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
+                                                      return (
+                                                        <button
+                                                          key={page}
+                                                          onClick={() => {
+                                                            setShowMushafForAssignment(assignmentId);
+                                                            setMushafPage(page);
+                                                          }}
+                                                          className="px-3 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
+                                                        >
+                                                          Page {page} ({mistakesOnPage})
+                                                        </button>
+                                                      );
+                                                    })}
+                                                </div>
+                                                
+                                                {/* Individual mistakes list */}
+                                                <div className="flex flex-wrap gap-2">
+                                                  {mushafMarkings.map((mistake: any, idx: number) => {
+                                                    const typeLabel = mistake.type === 'memory' ? 'Memory' :
+                                                                      mistake.type === 'madd' ? 'Madd' :
+                                                                      mistake.type === 'ikhfa' ? 'Ikhfa' :
+                                                                      mistake.type === 'holding' ? 'Holding' :
+                                                                      mistake.type === 'tech' ? 'Tech' :
+                                                                      mistake.type === 'other' ? 'Other' : mistake.type;
+                                                    return (
+                                                      <span
+                                                        key={idx}
+                                                        className={`px-2 py-1 rounded text-xs font-medium ${
+                                                          mistake.type === 'memory' 
+                                                            ? 'bg-red-100 text-red-800' 
+                                                            : 'bg-yellow-100 text-yellow-800'
+                                                        }`}
+                                                      >
+                                                        {typeLabel} • Page {mistake.page}
+                                                        {mistake.surah && mistake.ayah && ` • ${mistake.surah}:${mistake.ayah}`}
+                                                      </span>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            {showMushafForAssignment === assignmentId && (
+                                              <div className="mt-4 pt-4 border-t border-orange-200">
+                                                <div className="flex justify-between items-center mb-3">
+                                                  <div className="text-sm text-gray-600">
+                                                    Page {mushafPage} • {mushafMarkings.filter((m: MushafMistake) => m.page === mushafPage).length} mistake{mushafMarkings.filter((m: MushafMistake) => m.page === mushafPage).length !== 1 ? 's' : ''} on this page
+                                                  </div>
+                                                  <div className="flex flex-wrap gap-2">
+                                                    {(Array.from(new Set(mushafMarkings.map((m: MushafMistake) => m.page))) as number[])
+                                                      .sort((a: number, b: number) => a - b)
+                                                      .map((page: number) => {
+                                                        const mistakesOnPage = mushafMarkings.filter((m: MushafMistake) => m.page === page).length;
+                                                        return (
+                                                          <button
+                                                            key={page}
+                                                            onClick={() => setMushafPage(page)}
+                                                            className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                                                              mushafPage === page
+                                                                ? 'bg-green-600 text-white'
+                                                                : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                            }`}
+                                                          >
+                                                            Page {page} ({mistakesOnPage})
+                                                          </button>
+                                                        );
+                                                      })}
+                                                  </div>
+                                                </div>
+                                                
+                                                <InteractiveMushaf
+                                                  currentPage={mushafPage}
+                                                  onPageChange={setMushafPage}
+                                                  mistakes={mushafMarkings}
+                                                  onMistakeMark={() => {}}
+                                                  readOnly={true}
+                                                  mode="viewing"
+                                                  studentName={selectedStudent?.fullName || 'Student'}
+                                                />
+                                              </div>
+                                            )}
                                           </div>
                                         )}
                                       </div>
