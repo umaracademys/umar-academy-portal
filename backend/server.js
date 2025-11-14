@@ -1758,6 +1758,30 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
     ticket.reviewedAt = new Date();
     await ticket.save();
     
+    // End any associated listening sessions for this ticket
+    const ticketId = ticket._id.toString();
+    const activeSessions = await ListeningSession.find({
+      ticketId: ticketId,
+      status: 'in_progress'
+    });
+    
+    for (const session of activeSessions) {
+      session.status = 'completed';
+      session.endedAt = new Date();
+      session.lastHeartbeatAt = new Date();
+      
+      if (session.startedAt) {
+        session.totalListeningSeconds = Math.max(
+          0,
+          Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000)
+        );
+      }
+      
+      await session.save();
+      const serialized = serializeListeningSession(session);
+      broadcastListeningSessionEvent('session_ended', serialized);
+    }
+    
     res.json({ 
       ticket: ticket,
       message: 'Ticket approved successfully.'
@@ -1890,6 +1914,31 @@ app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
+    // Helper function to end listening sessions for a ticket
+    const endListeningSessionsForTicket = async (ticketIdStr) => {
+      const activeSessions = await ListeningSession.find({
+        ticketId: ticketIdStr,
+        status: 'in_progress'
+      });
+      
+      for (const session of activeSessions) {
+        session.status = 'completed';
+        session.endedAt = new Date();
+        session.lastHeartbeatAt = new Date();
+        
+        if (session.startedAt) {
+          session.totalListeningSeconds = Math.max(
+            0,
+            Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000)
+          );
+        }
+        
+        await session.save();
+        const serialized = serializeListeningSession(session);
+        broadcastListeningSessionEvent('session_ended', serialized);
+      }
+    };
+
     // If already at finalize step, ensure it's approved and return
     if (currentTicket.workflowStep === 'finalize') {
       if (currentTicket.status !== 'approved') {
@@ -1898,6 +1947,10 @@ app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
         currentTicket.reviewedAt = new Date();
         await currentTicket.save();
       }
+      
+      // End listening sessions for finalize ticket
+      await endListeningSessionsForTicket(currentTicket._id.toString());
+      
       return res.json({
         ticket: currentTicket,
         message: 'Finalize ticket ready for publishing.'
@@ -1911,6 +1964,9 @@ app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
       currentTicket.reviewedAt = new Date();
       await currentTicket.save();
     }
+    
+    // End listening sessions for current ticket
+    await endListeningSessionsForTicket(currentTicket._id.toString());
 
     let iterator = currentTicket;
     const visited = new Set();
@@ -2539,6 +2595,30 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
     ticket.reviewedAt = new Date();
     await ticket.save();
     
+    // End any associated listening sessions for this ticket
+    const ticketId = ticket._id.toString();
+    const activeSessions = await ListeningSession.find({
+      ticketId: ticketId,
+      status: 'in_progress'
+    });
+    
+    for (const session of activeSessions) {
+      session.status = 'completed';
+      session.endedAt = new Date();
+      session.lastHeartbeatAt = new Date();
+      
+      if (session.startedAt) {
+        session.totalListeningSeconds = Math.max(
+          0,
+          Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000)
+        );
+      }
+      
+      await session.save();
+      const serialized = serializeListeningSession(session);
+      broadcastListeningSessionEvent('session_ended', serialized);
+    }
+    
     res.json({ 
       ticket: ticket,
       message: 'Ticket approved successfully.'
@@ -2555,12 +2635,36 @@ app.post('/api/tickets/:id/approve-and-advance', async (req, res) => {
     if (!currentTicket) {
       return res.status(404).json({ error: 'Current ticket not found' });
     }
-    
+
     // Update current ticket to approved
     currentTicket.status = 'approved';
     currentTicket.reviewedBy = req.body.reviewedBy;
     currentTicket.reviewedAt = new Date();
     await currentTicket.save();
+    
+    // End any associated listening sessions for this ticket
+    const ticketId = currentTicket._id.toString();
+    const activeSessions = await ListeningSession.find({
+      ticketId: ticketId,
+      status: 'in_progress'
+    });
+    
+    for (const session of activeSessions) {
+      session.status = 'completed';
+      session.endedAt = new Date();
+      session.lastHeartbeatAt = new Date();
+      
+      if (session.startedAt) {
+        session.totalListeningSeconds = Math.max(
+          0,
+          Math.round((new Date().getTime() - session.startedAt.getTime()) / 1000)
+        );
+      }
+      
+      await session.save();
+      const serialized = serializeListeningSession(session);
+      broadcastListeningSessionEvent('session_ended', serialized);
+    }
     
     // If not finalize step, activate and assign next ticket
     if (currentTicket.workflowStep !== 'finalize') {
