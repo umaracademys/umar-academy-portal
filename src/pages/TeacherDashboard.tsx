@@ -100,6 +100,36 @@ const TeacherDashboard: React.FC = () => {
     }
   };
 
+  // Helper function to safely format date
+  const formatDate = (date: string | Date | undefined | null): string => {
+    if (!date) return 'Not set';
+    
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) {
+        return 'Not set';
+      }
+      
+      return dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Not set';
+    }
+  };
+
+  // Helper function to get enrollment date with fallbacks
+  const getEnrollmentDate = (student: Student): string | Date | undefined => {
+    return student.enrolledDate || 
+           (student as any).enrollmentDate || 
+           (student as any).createdAt || 
+           undefined;
+  };
+
   const handleAddEvaluation = async () => {
     if (!selectedStudent || !permissions.canEditEvaluations) return;
     
@@ -260,11 +290,11 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                       <div className="rounded-xl border border-accent-soft bg-white px-3 py-3">
                         <p className="text-xs text-primary-soft">Enrolled</p>
-                        <p className="text-sm font-medium">{new Date(student.enrolledDate).toLocaleDateString()}</p>
+                        <p className="text-sm font-medium">{formatDate(getEnrollmentDate(student))}</p>
                         <p className="text-xs text-primary-soft">
                           Status:{' '}
                           <span className="font-semibold text-primary">
-                            {student.status}
+                            {student.status || 'active'}
                           </span>
                         </p>
                       </div>
