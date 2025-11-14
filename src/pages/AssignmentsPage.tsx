@@ -208,7 +208,7 @@ const AssignmentsPage: React.FC = () => {
     const teacher = teachers.find(t => 
       t.id === assignedTeacherId || 
       (t as any)._id === assignedTeacherId ||
-      t.teacherId === assignedTeacherId
+      (t as any).teacherId === assignedTeacherId
     );
     return teacher?.fullName || '—';
   };
@@ -218,7 +218,7 @@ const AssignmentsPage: React.FC = () => {
     const teacher = teachers.find(t => 
       t.id === teacherId || 
       (t as any)._id === teacherId ||
-      t.teacherId === teacherId ||
+      (t as any).teacherId === teacherId ||
       t.email === teacherId
     );
     return teacher?.fullName || teacherId;
