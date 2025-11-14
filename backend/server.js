@@ -220,7 +220,10 @@ const teacherSchema = new mongoose.Schema({
     canEditEvaluations: Boolean,
     canViewFinancials: Boolean,
     canManageSchedule: Boolean,
-    canContactParents: Boolean
+    canContactParents: Boolean,
+    canViewStudentEmail: Boolean,
+    canViewStudentContact: Boolean,
+    canViewStudentPersonalInfo: Boolean
   },
   payroll: {
     hourlyRate: Number,

@@ -209,6 +209,9 @@ export interface TeacherPermissions {
   canViewFinancials: boolean;
   canManageSchedule: boolean;
   canContactParents: boolean;
+  canViewStudentEmail: boolean;
+  canViewStudentContact: boolean;
+  canViewStudentPersonalInfo: boolean;
 }
 
 export interface Teacher {

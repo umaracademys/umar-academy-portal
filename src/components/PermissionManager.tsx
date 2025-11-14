@@ -51,6 +51,11 @@ const TEACHER_PERMISSION_GROUP_METADATA: Record<
     description:
       'Control direct messaging channels with parents and guardians.',
   },
+  'Student Information': {
+    icon: '👤',
+    description:
+      'Control what personal information teachers can view about students.',
+  },
 };
 
 const ADMIN_PERMISSION_GROUP_METADATA: Record<
@@ -143,6 +148,36 @@ const TEACHER_PERMISSION_DEFINITIONS = [
     icon: '📨',
     defaultView: true,
     order: 7,
+  },
+  {
+    key: 'canViewStudentEmail',
+    label: 'View student email',
+    description: 'See student email addresses in student profiles and lists.',
+    group: 'Student Information',
+    icon: '📧',
+    defaultView: true,
+    risk: 'medium',
+    order: 8,
+  },
+  {
+    key: 'canViewStudentContact',
+    label: 'View student contact',
+    description: 'See student phone numbers and contact information.',
+    group: 'Student Information',
+    icon: '📱',
+    defaultView: true,
+    risk: 'medium',
+    order: 9,
+  },
+  {
+    key: 'canViewStudentPersonalInfo',
+    label: 'View personal information',
+    description: 'See parent names, siblings, and other personal student details.',
+    group: 'Student Information',
+    icon: '🔒',
+    defaultView: true,
+    risk: 'medium',
+    order: 10,
   },
 ] satisfies PermissionDefinition<TeacherPermissionKey>[];
 

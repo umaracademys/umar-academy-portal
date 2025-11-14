@@ -40,6 +40,9 @@ const TeacherDashboard: React.FC = () => {
     canViewFinancials: false,
     canManageSchedule: true,
     canContactParents: true,
+    canViewStudentEmail: true,
+    canViewStudentContact: true,
+    canViewStudentPersonalInfo: true,
   };
 
   const [assessmentData, setAssessmentData] = useState({
@@ -262,8 +265,13 @@ const TeacherDashboard: React.FC = () => {
                         />
                         <div>
                           <h4 className="font-bold text-primary">{student.fullName}</h4>
-                          <p className="text-sm text-primary-soft">Parent: {student.parentName}</p>
-                          <p className="text-sm text-primary-soft">Email: {student.email} · Phone: {student.contact}</p>
+                          {permissions.canViewStudentPersonalInfo && (
+                            <p className="text-sm text-primary-soft">Parent: {student.parentName}</p>
+                          )}
+                          <p className="text-sm text-primary-soft">
+                            {permissions.canViewStudentEmail ? `Email: ${student.email}` : 'Email: [Hidden]'}
+                            {permissions.canViewStudentContact ? ` · Phone: ${student.contact}` : ' · Phone: [Hidden]'}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
