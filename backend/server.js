@@ -350,29 +350,71 @@ const syncTeacherAssignedStudents = async () => {
       // Find teacher in map by direct ID match
       let teacher = teacherMap.get(assignedTeacherId);
       
-      // If not found, try ObjectId lookup
+      // If not found, try ObjectId lookup (exact match)
       if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-        const teacherDoc = allTeachers.find(t => t._id.toString() === assignedTeacherId);
+        const teacherDoc = allTeachers.find(t => {
+          const tid = t._id.toString();
+          return tid === assignedTeacherId || 
+                 tid.toLowerCase() === assignedTeacherId.toLowerCase() ||
+                 // Also check if it's similar (might be off by one character)
+                 Math.abs(tid.length - assignedTeacherId.length) <= 1;
+        });
         if (teacherDoc) {
           teacher = teacherDoc;
+          console.log(`✅ Found teacher ${teacher.fullName} by ObjectId lookup (exact or similar match)`);
         }
       }
       
-      // If still not found, try querying the database
+      // If still not found, try querying the database with more flexible matching
       if (!teacher) {
-        const teacherDoc = await Teacher.findOne({
-          $or: [
-            { _id: mongoose.Types.ObjectId.isValid(assignedTeacherId) ? assignedTeacherId : null },
-            { teacherId: assignedTeacherId },
-            { email: assignedTeacherId },
-            { fullName: assignedTeacherId }
-          ].filter(query => {
-            // Remove null/undefined queries
-            return Object.values(query).some(v => v !== null && v !== undefined);
-          })
-        }).lean();
-        if (teacherDoc) {
-          teacher = teacherDoc;
+        const queries = [];
+        
+        // Try ObjectId if valid
+        if (mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+          queries.push({ _id: assignedTeacherId });
+          // Also try converting to ObjectId (in case of string mismatch)
+          try {
+            const objId = new mongoose.Types.ObjectId(assignedTeacherId);
+            queries.push({ _id: objId });
+          } catch (e) {
+            // Ignore conversion errors
+          }
+        }
+        
+        // Try other fields
+        queries.push(
+          { teacherId: assignedTeacherId },
+          { email: assignedTeacherId },
+          { fullName: assignedTeacherId }
+        );
+        
+        // Remove null/undefined queries
+        const validQueries = queries.filter(query => {
+          return Object.values(query).some(v => v !== null && v !== undefined);
+        });
+        
+        if (validQueries.length > 0) {
+          const teacherDoc = await Teacher.findOne({ $or: validQueries }).lean();
+          if (teacherDoc) {
+            teacher = teacherDoc;
+            console.log(`✅ Found teacher ${teacher.fullName} by database query`);
+          }
+        }
+      }
+      
+      // If STILL not found, try finding by userId (students might have teacher's userId instead of teacher _id)
+      if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+        // Check if this ID matches any teacher's userId
+        const teacherByUserId = allTeachers.find(t => {
+          if (t.userId) {
+            const userIdStr = t.userId.toString();
+            return userIdStr === assignedTeacherId || userIdStr === assignedTeacherId;
+          }
+          return false;
+        });
+        if (teacherByUserId) {
+          teacher = teacherByUserId;
+          console.log(`✅ Found teacher ${teacher.fullName} by userId match`);
         }
       }
       
