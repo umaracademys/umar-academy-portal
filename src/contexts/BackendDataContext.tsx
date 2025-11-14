@@ -419,36 +419,64 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           );
           
           const teacherProfile = user.teacherProfile || teacherRecord || {};
+          
+          // Ensure permissions are properly loaded with all fields
+          const permissionsFromRecord = teacherRecord?.permissions || teacherProfile.permissions || {};
+          const permissions: TeacherPermissions = {
+            canViewAssessments: permissionsFromRecord.canViewAssessments ?? true,
+            canEditAssessments: permissionsFromRecord.canEditAssessments ?? true,
+            canViewEvaluations: permissionsFromRecord.canViewEvaluations ?? true,
+            canEditEvaluations: permissionsFromRecord.canEditEvaluations ?? true,
+            canViewFinancials: permissionsFromRecord.canViewFinancials ?? false,
+            canManageSchedule: permissionsFromRecord.canManageSchedule ?? true,
+            canContactParents: permissionsFromRecord.canContactParents ?? true,
+            canViewStudentEmail: permissionsFromRecord.canViewStudentEmail ?? true,
+            canViewStudentContact: permissionsFromRecord.canViewStudentContact ?? true,
+            canViewStudentPersonalInfo: permissionsFromRecord.canViewStudentPersonalInfo ?? true,
+          };
+          
           return {
             id: user._id,
             fullName: user.name || user.fullName || teacherProfile.fullName || teacherRecord?.fullName || 'Unknown',
             email: user.email,
+            phoneNumber: teacherProfile.phoneNumber || teacherProfile.contact || user.phone || '',
             phone: user.phone || teacherProfile.contact || '',
-            contact: user.contact || user.phone || teacherProfile.contact || '',
+            contact: user.contact || user.phone || teacherProfile.contact || teacherProfile.phoneNumber || '',
+            emergencyContact: teacherProfile.emergencyContact || user.emergencyContact || '',
             address: user.address || '',
             dateOfBirth: user.dateOfBirth || new Date().toISOString(),
-            hireDate: user.hireDate || new Date().toISOString(),
-            specialization: teacherProfile.specialization || user.specialization || 'General',
+            hireDate: teacherRecord?.hireDate || teacherProfile.hireDate || user.hireDate || new Date().toISOString(),
+            specialization: teacherProfile.specialization || user.specialization || [],
             department: user.department || teacherProfile.department || 'General',
-            experience: teacherProfile.experience || user.experience || 0,
+            experience: teacherProfile.experience || user.experience || { years: 0, previousInstitutions: [] },
             salary: teacherProfile.salary || user.salary || 0,
             status: user.status || teacherProfile.status || 'active',
             avatar: user.avatar || teacherProfile.avatar || '',
-            location: user.location || teacherProfile.location || 'Unknown',
+            location: teacherProfile.location || user.location || 'Local',
+            employmentType: teacherRecord?.employmentType || teacherProfile.employmentType || 'Full Time',
+            shiftType: teacherRecord?.shiftType || teacherProfile.shiftType || 'Morning',
+            shifts: teacherRecord?.shifts || teacherProfile.shifts || [],
             courses: user.courses || teacherProfile.courses || [],
             students: user.students || [],
             assignedStudents: teacherRecord?.assignedStudents || teacherProfile.assignedStudents || user.assignedStudents || [],
+            permissions: permissions,
+            schedule: teacherRecord?.schedule || teacherProfile.schedule || {
+              days: [],
+              startTime: '',
+              endTime: ''
+            },
             performance: user.performance || teacherProfile.performance || { rating: 0, reviews: [] },
             attendance: user.attendance || { present: 0, absent: 0, total: 0 },
             assignments: user.assignments || [],
-            payroll: user.payroll || teacherProfile.payroll || { 
-              baseSalary: 0, 
-              bonuses: 0, 
-              deductions: 0, 
-              netPay: 0,
+            payroll: teacherRecord?.payroll || teacherProfile.payroll || user.payroll || { 
+              hourlyRate: 0,
+              dailyHours: 0,
+              daysWorking: 0,
+              monthlyHours: 0,
               monthlySalary: 0,
               currency: 'USD'
-            }
+            },
+            idDocument: teacherRecord?.idDocument || teacherProfile.idDocument || ''
           };
         });
 
