@@ -96,5 +96,16 @@ export default defineConfig({
     alias: {
       '@umar-academy/mushaf': resolve(__dirname, './packages/mushaf/src')
     }
+  },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'mushaf-vendor': ['@umar-academy/mushaf']
+        }
+      }
+    }
   }
 })
