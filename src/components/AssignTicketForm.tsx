@@ -340,7 +340,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                           : 'bg-gray-200 text-gray-500'
                       }`}
                     >
-                      {isCompleted ? '✓' : (step.icon || String(currentStepIndex + 1))}
+                      {isCompleted ? '✓' : (step.icon || String(index + 1))}
                     </div>
                     <div className="ml-2 hidden sm:block">
                       <div className={`text-xs sm:text-sm font-semibold ${isActive ? 'text-[var(--color-primary)]' : 'text-gray-500'}`}>
