@@ -54,27 +54,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     isFinalizing: boolean;
   }>>({});
   
-  // Initialize form state from tickets when they load (pre-fill existing data)
-  useEffect(() => {
-    if (view === 'finalize' && finalizeTickets.length > 0) {
-      const newForms: typeof finalizeForms = {};
-      finalizeTickets.forEach(ticket => {
-        const ticketId = getTicketIdString(ticket);
-        if (ticketId && !finalizeForms[ticketId]) {
-          newForms[ticketId] = {
-            homework: ticket.homework || '',
-            homeworkLink: ticket.homeworkLink || '',
-            finalReport: ticket.finalReport || '',
-            classworkNotes: '',
-            isFinalizing: false
-          };
-        }
-      });
-      if (Object.keys(newForms).length > 0) {
-        setFinalizeForms(prev => ({ ...prev, ...newForms }));
-      }
-    }
-  }, [view, finalizeTickets.length]); // Only re-initialize when view or ticket count changes
+  const getTicketIdString = (ticket: AssignmentTicket): string =>
+    ticket.id || (ticket as any)._id || '';
   const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
   const [selectedNextTeacherNote, setSelectedNextTeacherNote] = useState('');
   const [revisionNotes, setRevisionNotes] = useState('');
@@ -541,6 +522,38 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     [activeTickets]
   );
 
+  // Initialize form state from tickets when they load (pre-fill existing data)
+  useEffect(() => {
+    if (view === 'finalize' && finalizeTickets.length > 0) {
+      setFinalizeForms(prev => {
+        const newForms: Record<string, {
+          homework: string;
+          homeworkLink: string;
+          finalReport: string;
+          classworkNotes: string;
+          isFinalizing: boolean;
+        }> = { ...prev };
+        
+        let hasNew = false;
+        finalizeTickets.forEach(ticket => {
+          const ticketId = getTicketIdString(ticket);
+          if (ticketId && !newForms[ticketId]) {
+            newForms[ticketId] = {
+              homework: ticket.homework || '',
+              homeworkLink: ticket.homeworkLink || '',
+              finalReport: ticket.finalReport || '',
+              classworkNotes: '',
+              isFinalizing: false
+            };
+            hasNew = true;
+          }
+        });
+        
+        return hasNew ? newForms : prev;
+      });
+    }
+  }, [view, finalizeTickets, getTicketIdString]);
+
   const allTickets = useMemo(
     () => [...activeTickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [activeTickets]
@@ -740,9 +753,6 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       alert(error.message || 'Failed to save Sabq feedback');
     }
   };
-
-  const getTicketIdString = (ticket: AssignmentTicket): string =>
-    ticket.id || (ticket as any)._id || '';
 
   const handleToggleTicketSelection = (ticket: AssignmentTicket) => {
     const ticketId = getTicketIdString(ticket);
@@ -2115,6 +2125,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                           
                           updateFormState({ isFinalizing: true });
                           try {
+                            // Combine classwork notes with existing reports data
+                            const combinedClassworkSummary = [
+                              ...(formState.classworkNotes.trim() ? [formState.classworkNotes.trim()] : []),
+                              ...(formState.finalReport.trim() ? [formState.finalReport.trim()] : []),
+                              ...allReports.map(r => r.progressNotes).filter(Boolean)
+                            ].join('\n\n');
+                            
                             await finalizeTicket(ticketId, {
                               finalReport: formState.finalReport.trim() || undefined,
                               homework: formState.homework.trim(),
@@ -2123,14 +2140,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                               classworkSections: allReports.map(r => ({
                                 step: r.workflowStep,
                                 title: r.workflowStep === 'sabqi' ? 'Sabqi' : r.workflowStep === 'sabq' ? 'Sabq' : 'Manzil',
-                                details: r.progressNotes || '',
+                                details: (r.progressNotes || '') + (formState.classworkNotes.trim() ? `\n\nAdmin Notes: ${formState.classworkNotes.trim()}` : ''),
                                 teacherName: r.assignedTeacherName || '',
                                 order: allReports.indexOf(r),
                                 assignmentRange: r.assignmentRange || '',
                                 assignmentPortion: r.assignmentPortion || ''
                               })),
                               classworkType: 'sabq',
-                              classworkSummary: formState.finalReport.trim() || allReports.map(r => r.progressNotes).filter(Boolean).join('\n\n'),
+                              classworkSummary: combinedClassworkSummary || allReports.map(r => r.progressNotes).filter(Boolean).join('\n\n'),
                               homeworkSummary: formState.homework.trim()
                             } as any);
                             
