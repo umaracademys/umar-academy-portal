@@ -2202,7 +2202,7 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
     const workflowFlow = { sabq: 'sabqi', sabqi: 'manzil', manzil: 'finalize' };
     const nextStep = workflowFlow[currentTicket.workflowStep];
     
-    const { assignedTeacherId, assignedTeacherName, internalNote } = req.body || {};
+    const { assignedTeacherId, assignedTeacherName, internalNote, sabqFeedback } = req.body || {};
 
     if (!assignedTeacherId || !assignedTeacherName) {
       return res.status(400).json({ error: 'Teacher ID and name are required' });
@@ -2229,7 +2229,9 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
       assignedTeacherName: req.body.assignedTeacherName,
       status: 'assigned',
       previousTicketId: currentTicket._id.toString(),
-      program: currentTicket.program
+      program: currentTicket.program,
+      notes: internalNote || sabqFeedback || undefined, // Store Sabq feedback in notes
+      revisionNotes: sabqFeedback || undefined // Also store in revisionNotes for admin feedback
     });
     await nextTicket.save();
     
@@ -2241,6 +2243,10 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
       nextTicket.assignedTeacherId = req.body.assignedTeacherId;
       nextTicket.assignedTeacherName = req.body.assignedTeacherName;
       nextTicket.status = 'assigned';
+      if (internalNote || sabqFeedback) {
+        nextTicket.notes = internalNote || sabqFeedback;
+        nextTicket.revisionNotes = sabqFeedback || undefined;
+      }
       await nextTicket.save();
     }
     
@@ -2249,6 +2255,78 @@ app.post('/api/tickets/:id/assign-next', async (req, res) => {
       message: `Next step (${nextStep}) activated and assigned to ${nextTicket.assignedTeacherName}`
     });
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create Sabq ticket after Sabqi approval (New workflow)
+app.post('/api/tickets/:id/create-sabq-ticket', async (req, res) => {
+  try {
+    const sabqiTicket = await AssignmentTicket.findById(req.params.id);
+    if (!sabqiTicket) {
+      return res.status(404).json({ error: 'Sabqi ticket not found' });
+    }
+    
+    // Ensure this is a Sabqi ticket that's approved
+    if (sabqiTicket.workflowStep !== 'sabqi') {
+      return res.status(400).json({ error: 'This endpoint is only for Sabqi tickets' });
+    }
+    
+    if (sabqiTicket.status !== 'approved') {
+      return res.status(400).json({ error: 'Sabqi ticket must be approved before creating Sabq ticket' });
+    }
+    
+    const { assignedTeacherId, assignedTeacherName, sabqFeedback, notes } = req.body || {};
+    
+    if (!assignedTeacherId || !assignedTeacherName) {
+      return res.status(400).json({ error: 'Teacher ID and name are required' });
+    }
+    
+    // Check if Sabq ticket already exists
+    if (sabqiTicket.nextTicketId) {
+      const existingSabqTicket = await AssignmentTicket.findById(sabqiTicket.nextTicketId);
+      if (existingSabqTicket && existingSabqTicket.workflowStep === 'sabq') {
+        // Update existing Sabq ticket
+        existingSabqTicket.assignedTeacherId = assignedTeacherId;
+        existingSabqTicket.assignedTeacherName = assignedTeacherName;
+        existingSabqTicket.status = 'assigned';
+        if (notes) existingSabqTicket.notes = notes;
+        if (sabqFeedback) existingSabqTicket.revisionNotes = sabqFeedback;
+        await existingSabqTicket.save();
+        return res.json({
+          ticket: existingSabqTicket,
+          message: 'Sabq ticket updated and assigned successfully'
+        });
+      }
+    }
+    
+    // Create new Sabq ticket
+    const sabqTicket = new AssignmentTicket({
+      studentId: sabqiTicket.studentId,
+      studentName: sabqiTicket.studentName,
+      workflowStep: 'sabq',
+      assignedTeacherId: assignedTeacherId,
+      assignedTeacherName: assignedTeacherName,
+      status: 'assigned',
+      previousTicketId: sabqiTicket._id.toString(),
+      program: sabqiTicket.program,
+      notes: notes || undefined,
+      revisionNotes: sabqFeedback || undefined // Store admin's Sabq feedback
+    });
+    
+    await sabqTicket.save();
+    
+    // Link Sabqi ticket to Sabq ticket
+    sabqiTicket.nextTicketId = sabqTicket._id.toString();
+    await sabqiTicket.save();
+    
+    res.json({
+      ticket: sabqTicket,
+      sabqiTicket: sabqiTicket,
+      message: `Sabq ticket created and assigned to ${assignedTeacherName}`
+    });
+  } catch (error) {
+    console.error('Error creating Sabq ticket:', error);
     res.status(500).json({ error: error.message });
   }
 });

@@ -539,8 +539,31 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         };
         const nextStep = workflowFlow[targetTicket.workflowStep as Exclude<WorkflowStep, 'finalize'>];
         
+        // Check if this is a Sabq ticket that was approved after Sabqi
+        // If so, check if Sabqi is already approved and show combined review
+        if (targetTicket.workflowStep === 'sabq' && targetTicket.previousTicketId) {
+          // Find the previous ticket (should be Sabqi)
+          const previousTicketId = targetTicket.previousTicketId;
+          const previousTicket = tickets.find(t => {
+            const tId = t.id || (t as any)._id;
+            return tId === previousTicketId || tId?.toString() === previousTicketId?.toString();
+          });
+          
+          if (previousTicket && previousTicket.workflowStep === 'sabqi' && previousTicket.status === 'approved') {
+            // Sabqi is approved, Sabq is now approved → Show Combined Review View
+            setSelectedTicket(normalizedTicket); // Keep ticket open
+            setShowRevisionForm(false);
+            // We'll show combined review in the UI (to be implemented)
+            bannerMessage = `${targetTicket.studentName}'s Sabq ticket approved. Review combined reports (Sabqi + Sabq) and finalize.`;
+          } else {
+            // Just Sabq approved, no combined review yet
+            setSelectedTicket(normalizedTicket); // Keep ticket open
+            setShowRevisionForm(false);
+            bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved.`;
+          }
+        } 
         // If next step is Sabq (after Sabqi approval), show "Assign for Sabq" modal
-        if (nextStep === 'sabq') {
+        else if (nextStep === 'sabq') {
           setApprovedTicketForNextStep(normalizedTicket);
           setNextStepData({
             assignTo: 'teacher',
@@ -557,12 +580,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           setShowRevisionForm(false);
           bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Review all reports and finalize.`;
         } else {
-          // For other steps, just approve and close (for now)
-          await approveAndAdvanceTicket(ticketId, user?.id || '');
-          const nextStepLabel = nextStep ? getStepLabel(nextStep) : 'next step';
-          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. ${nextStepLabel} ticket has been activated.`;
-          setSelectedTicket(null);
+          // For other steps, just approve and keep ticket open
+          setSelectedTicket(normalizedTicket); // Keep ticket open
           setShowRevisionForm(false);
+          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved.`;
         }
       }
 
@@ -622,58 +643,47 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
     try {
       const ticketId = getTicketIdString(approvedTicketForNextStep);
+      const teacher = nextStepData.assignTo === 'teacher' 
+        ? teachers.find(t => t.id === nextStepData.teacherId)
+        : null;
       
-      // Update the approved ticket with sabq feedback
-      // We'll store this in revisionNotes or a new field
-      await updateTicket(ticketId, {
-        revisionNotes: nextStepData.sabqFeedback.trim() || undefined
-      });
-
-      // If assigning to teacher, create and assign the Sabq ticket
-      if (nextStepData.assignTo === 'teacher' && nextStepData.teacherId) {
-        const teacher = teachers.find(t => t.id === nextStepData.teacherId);
-        if (teacher) {
-          // Create Sabq ticket
-          const sabqTicketData = {
-            studentId: approvedTicketForNextStep.studentId,
-            studentName: approvedTicketForNextStep.studentName,
-            assignedTeacherId: nextStepData.teacherId,
-            assignedTeacherName: teacher.fullName,
-            status: 'assigned' as const,
-            program: approvedTicketForNextStep.program,
-            workflowStep: 'sabq' as WorkflowStep,
-            notes: nextStepData.sabqFeedback.trim() || undefined,
-            previousTicketId: ticketId,
-            autoCreateChain: false
-          };
-
-          const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(sabqTicketData)
-            }
-          );
-
-          if (!response.ok) {
-            throw new Error('Failed to create Sabq ticket');
-          }
-
-          await refreshData();
-          setShowNextStepModal(false);
-          setApprovedTicketForNextStep(null);
-          setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
-          alert(`Sabq ticket created and assigned to ${teacher.fullName}`);
-        }
-      } else {
-        // Assign to Admin - admin will review Sabq
-        alert('Sabq feedback saved. Admin will review Sabq when assigned.');
-        setShowNextStepModal(false);
-        setApprovedTicketForNextStep(null);
+      if (nextStepData.assignTo === 'teacher' && !teacher) {
+        alert('Selected teacher not found');
+        return;
       }
 
+      // Use the new endpoint to create Sabq ticket
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets/${ticketId}/create-sabq-ticket`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedTeacherId: nextStepData.assignTo === 'teacher' 
+              ? nextStepData.teacherId 
+              : (user?.id || 'admin'),
+            assignedTeacherName: nextStepData.assignTo === 'teacher'
+              ? teacher?.fullName || 'Teacher'
+              : (user?.name || 'Admin'),
+            sabqFeedback: nextStepData.sabqFeedback.trim() || undefined,
+            notes: nextStepData.sabqFeedback.trim() || undefined
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create Sabq ticket');
+      }
+
+      const result = await response.json();
+      
       await refreshData();
+      setShowNextStepModal(false);
+      setApprovedTicketForNextStep(null);
+      setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
+      
+      alert(`Sabq ticket created and assigned to ${result.ticket.assignedTeacherName}`);
     } catch (error: any) {
       console.error('Error saving Sabq feedback:', error);
       alert(error.message || 'Failed to save Sabq feedback');
