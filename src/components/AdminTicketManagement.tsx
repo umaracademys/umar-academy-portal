@@ -38,7 +38,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   } = useBackendData();
   const { user } = useAuth();
   
-  const [view, setView] = useState<'pending' | 'all'>('pending');
+  const [view, setView] = useState<'pending' | 'all' | 'sabq'>('pending');
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [finalizeData, setFinalizeData] = useState({
     finalReport: '',
@@ -492,6 +492,13 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
       t.status === 'in_progress' || 
       t.status === 'approved'
     ),
+    [activeTickets]
+  );
+
+  // Filter all Sabq tickets (all statuses)
+  const sabqTickets = useMemo(
+    () => activeTickets.filter(t => t.workflowStep === 'sabq')
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [activeTickets]
   );
 
@@ -1090,9 +1097,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     return grouped;
   }, [tickets]);
 
-  const currentTicketList = useMemo(() => (
-    view === 'pending' ? pendingTickets : allTickets
-  ), [view, pendingTickets, allTickets]);
+  const currentTicketList = useMemo(() => {
+    if (view === 'pending') return pendingTickets;
+    if (view === 'sabq') return sabqTickets;
+    return allTickets;
+  }, [view, pendingTickets, sabqTickets, allTickets]);
 
   const availableLetters = useMemo(() => {
     const letters = new Set<string>();
@@ -1241,8 +1250,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             {actionBanner.message}
           </div>
         )}
-        <div className="hidden">
-          <div className="flex gap-2">
+        <div className="mb-4">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setView('pending')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -1252,12 +1261,20 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               Pending & In Progress ({pendingTickets.length})
             </button>
             <button
+              onClick={() => setView('sabq')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                view === 'sabq' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
+              }`}
+            >
+              All Sabq Tickets ({sabqTickets.length})
+            </button>
+            <button
               onClick={() => setView('all')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 view === 'all' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
               }`}
             >
-              All Tickets
+              All Tickets ({allTickets.length})
             </button>
           </div>
         </div>
