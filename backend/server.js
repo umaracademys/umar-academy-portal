@@ -4413,6 +4413,15 @@ app.get('/api/quran/pages/:pageNumber/verses', async (req, res) => {
   }
 });
 
+// Root route - simple health check
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Umar Academy Backend API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check - improved with database connectivity check
 app.get('/api/health', async (req, res) => {
   try {
@@ -4422,18 +4431,40 @@ app.get('/api/health', async (req, res) => {
       message: 'Backend is running',
       timestamp: new Date().toISOString(),
       database: dbStatus,
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      version: '1.0.0'
     };
     
     // If database is not connected, still return 200 but indicate the issue
     res.json(healthStatus);
   } catch (error) {
+    console.error('Health check error:', error);
     res.status(500).json({ 
       status: 'ERROR', 
       message: error.message,
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// Global error handler middleware (must be last)
+app.use((err, req, res, next) => {
+  console.error('❌ Global error handler:', err);
+  console.error('Stack:', err.stack);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: err.message,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start server regardless of MongoDB connection status
