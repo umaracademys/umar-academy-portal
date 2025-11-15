@@ -1222,7 +1222,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           <div className="space-y-1">
             <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
             <p className="text-sm text-gray-500">
-              Tickets that are currently under review. Approve each ticket to clear it from the queue.
+              {view === 'sabq' 
+                ? 'All Sabq (New Lesson) tickets. Filter and manage Sabq tickets across all statuses.'
+                : view === 'all'
+                ? 'All tickets in the system. View and manage tickets across all workflow steps.'
+                : 'Tickets that are currently under review. Approved tickets remain visible for next step assignment.'}
             </p>
           </div>
           <div className="flex items-center gap-3">
