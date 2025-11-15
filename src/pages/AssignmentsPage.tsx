@@ -315,9 +315,27 @@ const AssignmentsPage: React.FC = () => {
     
     // Initialize form with existing assignment data
     const existingClassworkSections = (assignment as any).classworkSections || [];
-    const sabqSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabq');
-    const sabqiSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'sabqi');
-    const manzilSection = existingClassworkSections.find((s: any) => (s.step || '').toLowerCase() === 'manzil');
+    
+    // Get ALL sections for each type (not just the first one)
+    const sabqSections = existingClassworkSections.filter((s: any) => (s.step || '').toLowerCase() === 'sabq');
+    const sabqiSections = existingClassworkSections.filter((s: any) => (s.step || '').toLowerCase() === 'sabqi');
+    const manzilSections = existingClassworkSections.filter((s: any) => (s.step || '').toLowerCase() === 'manzil');
+    
+    // Combine multiple entries - merge portion/ranges and notes
+    const sabqSection = sabqSections.length > 0 ? {
+      assignmentRange: sabqSections.map((s: any) => s.assignmentRange || s.assignmentPortion).filter(Boolean).join('; '),
+      details: sabqSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
+    } : null;
+    
+    const sabqiSection = sabqiSections.length > 0 ? {
+      assignmentRange: sabqiSections.map((s: any) => s.assignmentRange || s.assignmentPortion).filter(Boolean).join('; '),
+      details: sabqiSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
+    } : null;
+    
+    const manzilSection = manzilSections.length > 0 ? {
+      assignmentRange: manzilSections.map((s: any) => s.assignmentRange || s.assignmentPortion).filter(Boolean).join('; '),
+      details: manzilSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
+    } : null;
     
     // Get student ID from assignment
     const studentId = assignment.assignedTo?.[0] || (assignment as any).studentId;
@@ -512,41 +530,124 @@ const AssignmentsPage: React.FC = () => {
       setIsSavingEdit(true);
       
       // Build classwork sections from form data
+      // IMPORTANT: Preserve ALL existing sections from approved tickets (multiple sabqi/manzil entries)
+      const existingClassworkSections = (editingAssignment as any).classworkSections || [];
       const classworkSections: ClassworkSection[] = [];
+      let orderIndex = 0;
       
-      // Add sabq section if it has data
+      // Get existing sections by type
+      const existingSabqSections = existingClassworkSections.filter((s: any) => (s.step || '').toLowerCase() === 'sabq');
+      const existingSabqiSections = existingClassworkSections.filter((s: any) => (s.step || '').toLowerCase() === 'sabqi');
+      const existingManzilSections = existingClassworkSections.filter((s: any) => (s.step || '').toLowerCase() === 'manzil');
+      
+      // For Sabq: If form has data, merge with first existing section, preserve all others
       if (editForm.sabq.portion.trim() || editForm.sabq.notes.trim()) {
-        classworkSections.push({
-          step: 'sabq',
-          title: 'Sabq (New Lesson)',
-          label: 'Sabq',
-          summary: editForm.sabq.notes.trim(),
-          assignmentRange: editForm.sabq.portion.trim(),
-          order: 0,
+        if (existingSabqSections.length > 0) {
+          // Update first section with form data, preserve all others
+          existingSabqSections.forEach((section: any, index: number) => {
+            if (index === 0) {
+              classworkSections.push({
+                step: 'sabq',
+                title: section.title || (existingSabqSections.length > 1 ? 'Sabq 1' : 'Sabq'),
+                label: section.label || 'Sabq',
+                summary: editForm.sabq.notes.trim() || section.details || section.summary || '',
+                assignmentRange: editForm.sabq.portion.trim() || section.assignmentRange || section.assignmentPortion || '',
+                teacherName: section.teacherName,
+                order: orderIndex++,
+              });
+            } else {
+              // Keep all other existing sabq sections as-is
+              classworkSections.push({ ...section, order: orderIndex++ });
+            }
+          });
+        } else {
+          classworkSections.push({
+            step: 'sabq',
+            title: 'Sabq',
+            label: 'Sabq',
+            summary: editForm.sabq.notes.trim(),
+            assignmentRange: editForm.sabq.portion.trim(),
+            order: orderIndex++,
+          });
+        }
+      } else if (existingSabqSections.length > 0) {
+        // Preserve all existing sabq sections even if form is empty
+        existingSabqSections.forEach((section: any) => {
+          classworkSections.push({ ...section, order: orderIndex++ });
         });
       }
       
-      // Add sabqi section if it has data
+      // For Sabqi: Preserve ALL existing sabqi sections, merge form data with first one
       if (editForm.sabqi.portion.trim() || editForm.sabqi.notes.trim()) {
-        classworkSections.push({
-          step: 'sabqi',
-          title: 'Sabqi (Revision)',
-          label: 'Sabqi',
-          summary: editForm.sabqi.notes.trim(),
-          assignmentRange: editForm.sabqi.portion.trim(),
-          order: 1,
+        if (existingSabqiSections.length > 0) {
+          // Update first section with form data, preserve all others
+          existingSabqiSections.forEach((section: any, index: number) => {
+            if (index === 0) {
+              classworkSections.push({
+                step: 'sabqi',
+                title: section.title || (existingSabqiSections.length > 1 ? 'Sabqi 1' : 'Sabqi'),
+                label: section.label || 'Sabqi',
+                summary: editForm.sabqi.notes.trim() || section.details || section.summary || '',
+                assignmentRange: editForm.sabqi.portion.trim() || section.assignmentRange || section.assignmentPortion || '',
+                teacherName: section.teacherName,
+                order: orderIndex++,
+              });
+            } else {
+              // Keep all other existing sabqi sections as-is
+              classworkSections.push({ ...section, order: orderIndex++ });
+            }
+          });
+        } else {
+          classworkSections.push({
+            step: 'sabqi',
+            title: 'Sabqi',
+            label: 'Sabqi',
+            summary: editForm.sabqi.notes.trim(),
+            assignmentRange: editForm.sabqi.portion.trim(),
+            order: orderIndex++,
+          });
+        }
+      } else if (existingSabqiSections.length > 0) {
+        // Preserve ALL existing sabqi sections even if form is empty
+        existingSabqiSections.forEach((section: any) => {
+          classworkSections.push({ ...section, order: orderIndex++ });
         });
       }
       
-      // Add manzil section if it has data
+      // For Manzil: Preserve ALL existing manzil sections, merge form data with first one
       if (editForm.manzil.portion.trim() || editForm.manzil.notes.trim()) {
-        classworkSections.push({
-          step: 'manzil',
-          title: 'Manzil',
-          label: 'Manzil',
-          summary: editForm.manzil.notes.trim(),
-          assignmentRange: editForm.manzil.portion.trim(),
-          order: 2,
+        if (existingManzilSections.length > 0) {
+          // Update first section with form data, preserve all others
+          existingManzilSections.forEach((section: any, index: number) => {
+            if (index === 0) {
+              classworkSections.push({
+                step: 'manzil',
+                title: section.title || (existingManzilSections.length > 1 ? 'Manzil 1' : 'Manzil'),
+                label: section.label || 'Manzil',
+                summary: editForm.manzil.notes.trim() || section.details || section.summary || '',
+                assignmentRange: editForm.manzil.portion.trim() || section.assignmentRange || section.assignmentPortion || '',
+                teacherName: section.teacherName,
+                order: orderIndex++,
+              });
+            } else {
+              // Keep all other existing manzil sections as-is
+              classworkSections.push({ ...section, order: orderIndex++ });
+            }
+          });
+        } else {
+          classworkSections.push({
+            step: 'manzil',
+            title: 'Manzil',
+            label: 'Manzil',
+            summary: editForm.manzil.notes.trim(),
+            assignmentRange: editForm.manzil.portion.trim(),
+            order: orderIndex++,
+          });
+        }
+      } else if (existingManzilSections.length > 0) {
+        // Preserve ALL existing manzil sections even if form is empty
+        existingManzilSections.forEach((section: any) => {
+          classworkSections.push({ ...section, order: orderIndex++ });
         });
       }
       

@@ -3096,55 +3096,48 @@ async function saveTicketToAssignmentReport(ticket) {
     }
     
     // If ticket is approved, also add to classworkSections
+    // IMPORTANT: Always add a NEW section for each approved ticket to preserve multiple entries
     if (ticket.status === 'approved' && ['sabq', 'sabqi', 'manzil'].includes(ticket.workflowStep)) {
       const ticketIdStr = ticket._id.toString();
       
-      // Try to find existing section by matching step and checking if report exists for this ticket
-      // We'll match by step and a reasonable similarity in details/range
-      let existingSectionIndex = -1;
+      // Check if a section already exists for this specific ticket by checking reports
       const ticketReport = assignment.reports.find(r => r.ticketId === ticketIdStr);
       
-      if (ticketReport) {
-        // If report exists, try to find matching section
-        existingSectionIndex = assignment.classworkSections.findIndex(
-          s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase() &&
-               Math.abs((s.details || '').length - (ticket.progressNotes || '').length) < 20 // Similar length
-        );
-      }
-      
-      // Count existing sections of this type (before adding/updating)
-      const existingSectionsOfType = assignment.classworkSections.filter(
-        s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase()
+      // Only add if this ticket doesn't already have a section (to avoid duplicates)
+      // We'll check by looking for sections with matching details and assignmentRange
+      const sectionExists = assignment.classworkSections.some(
+        s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase() &&
+             (s.details || '').trim() === (ticket.progressNotes || '').trim() &&
+             (s.assignmentRange || '').trim() === (ticket.assignmentRange || '').trim()
       );
       
-      const stepTitle = ticket.workflowStep === 'sabq' ? 'Sabq' : 
-                       ticket.workflowStep === 'sabqi' ? 'Sabqi' : 
-                       'Manzil';
-      
-      // Determine title based on count
-      const count = existingSectionIndex >= 0 
-        ? existingSectionsOfType.length 
-        : existingSectionsOfType.length + 1;
-      const title = count > 1 ? `${stepTitle} ${count}` : stepTitle;
-      
-      const classworkSection = {
-        step: ticket.workflowStep,
-        title: title,
-        details: ticket.progressNotes || '',
-        teacherName: ticket.assignedTeacherName || '',
-        order: assignment.classworkSections.length,
-        assignmentRange: ticket.assignmentRange || '',
-        assignmentPortion: ticket.assignmentPortion || ''
-      };
-      
-      if (existingSectionIndex >= 0) {
-        // Update existing section
-        assignment.classworkSections[existingSectionIndex] = classworkSection;
-        console.log(`✅ Updated classwork section for ${ticket.workflowStep} ticket ${ticketIdStr}`);
-      } else {
-        // Add new section - always add if not found
+      if (!sectionExists) {
+        // Count existing sections of this type to determine title
+        const existingSectionsOfType = assignment.classworkSections.filter(
+          s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase()
+        );
+        const count = existingSectionsOfType.length + 1;
+        
+        const stepTitle = ticket.workflowStep === 'sabq' ? 'Sabq' : 
+                         ticket.workflowStep === 'sabqi' ? 'Sabqi' : 
+                         'Manzil';
+        const title = count > 1 ? `${stepTitle} ${count}` : stepTitle;
+        
+        const classworkSection = {
+          step: ticket.workflowStep,
+          title: title,
+          details: ticket.progressNotes || '',
+          teacherName: ticket.assignedTeacherName || '',
+          order: assignment.classworkSections.length,
+          assignmentRange: ticket.assignmentRange || '',
+          assignmentPortion: ticket.assignmentPortion || ''
+        };
+        
+        // Always add as new section to preserve multiple entries
         assignment.classworkSections.push(classworkSection);
         console.log(`✅ Added new classwork section for ${ticket.workflowStep} ticket ${ticketIdStr} (total ${ticket.workflowStep} sections: ${count})`);
+      } else {
+        console.log(`ℹ️  Classwork section already exists for ${ticket.workflowStep} ticket ${ticketIdStr}, skipping duplicate`);
       }
     }
     
