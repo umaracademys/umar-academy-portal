@@ -476,6 +476,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const quickAssignCurrentLabel = quickAssignTicket ? getStepLabel(quickAssignTicket.workflowStep) : '';
  
   // Filter out finalized/completed tickets - they should not appear in the list
+  // BUT keep approved tickets visible so admin can see next step options
   const activeTickets = tickets.filter(t => 
     t.status !== 'finalized' &&
     t.status !== 'completed' &&
@@ -483,10 +484,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     !(t.workflowStep === 'finalize' && Boolean((t as any).assignmentId))
   );
   
-  // Include both pending_review and in_progress tickets in pending view
-  // This ensures admins can see tickets that teachers are currently working on
+  // Include pending_review, in_progress, AND approved tickets in pending view
+  // Approved tickets stay visible so admin can assign next steps (e.g., Sabq after Sabqi approval)
   const pendingTickets = useMemo(
-    () => activeTickets.filter(t => t.status === 'pending_review' || t.status === 'in_progress'),
+    () => activeTickets.filter(t => 
+      t.status === 'pending_review' || 
+      t.status === 'in_progress' || 
+      t.status === 'approved'
+    ),
     [activeTickets]
   );
 
@@ -1838,7 +1843,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             )}
 
             <p className="text-sm text-gray-500">
-              Approve tickets once you have reviewed the recitation. They will disappear from this list automatically.
+              Review and approve tickets. Approved tickets remain visible so you can assign next steps in the workflow.
             </p>
 
             {filteredTickets.map(ticket => {
@@ -1877,9 +1882,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         onChange={() => handleToggleTicketSelection(ticket)}
                         className="hidden"
                       />
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        CURRENT STEP • {ticket.workflowStep.toUpperCase()}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          CURRENT STEP • {ticket.workflowStep.toUpperCase()}
+                        </p>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusColor(ticket.status)}`}>
+                          {ticket.status.replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
                       <h3 className="text-2xl font-bold text-gray-900">{getStudentName(ticket.studentId)}</h3>
                       
                       {/* Student Info Grid */}
@@ -1956,24 +1966,82 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 min-w-[12rem]">
-                      <button
-                        onClick={() => handleApprove(ticket)}
-                        disabled={isApproving}
-                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        {isApproving ? 'Approving…' : 'Approve'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setActionBanner(null);
-                          setSelectedTicket(ticket);
-                          setShowRevisionForm(false);
-                          setSelectedNextTeacher('');
-                        }}
-                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                      >
-                        View details
-                      </button>
+                      {ticket.status === 'approved' ? (
+                        <>
+                          {/* Approved tickets: Show "Assign Next" or "Finalize" button */}
+                          {ticket.workflowStep !== 'finalize' ? (
+                            <button
+                              onClick={() => {
+                                setActionBanner(null);
+                                setSelectedTicket(ticket);
+                                setShowRevisionForm(false);
+                                // If Sabqi approved, show "Assign for Sabq" modal
+                                if (ticket.workflowStep === 'sabqi') {
+                                  setApprovedTicketForNextStep(ticket);
+                                  setNextStepData({
+                                    assignTo: 'teacher',
+                                    teacherId: '',
+                                    sabqFeedback: ''
+                                  });
+                                  setShowNextStepModal(true);
+                                } else {
+                                  // For other approved tickets, allow quick assign
+                                  openQuickAssign(ticket);
+                                }
+                                setSelectedNextTeacher('');
+                              }}
+                              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                            >
+                              Assign Next
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setActionBanner(null);
+                                setSelectedTicket(ticket);
+                                setShowRevisionForm(false);
+                                setSelectedNextTeacher('');
+                              }}
+                              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                            >
+                              Finalize
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              setActionBanner(null);
+                              setSelectedTicket(ticket);
+                              setShowRevisionForm(false);
+                              setSelectedNextTeacher('');
+                            }}
+                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                          >
+                            View details
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {/* Pending/In Progress tickets: Show "Approve" button */}
+                          <button
+                            onClick={() => handleApprove(ticket)}
+                            disabled={isApproving}
+                            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
+                          >
+                            {isApproving ? 'Approving…' : 'Approve'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActionBanner(null);
+                              setSelectedTicket(ticket);
+                              setShowRevisionForm(false);
+                              setSelectedNextTeacher('');
+                            }}
+                            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                          >
+                            View details
+                          </button>
+                        </>
+                      )}
                       <button
                         onClick={() => {
                           setActionBanner(null);
