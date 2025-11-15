@@ -2351,23 +2351,27 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         </svg>
                         {isHistoryExpanded ? 'Hide History' : 'Show History'}
                       </button>
-                      <button
-                        onClick={() => handleStartEditTicket(ticket)}
-                        className="hidden px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-                      >
-                        Edit Ticket
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTicket(ticket)}
-                        disabled={ticketDeletingId === ticketId}
-                        className={`hidden px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-                          ticketDeletingId === ticketId
-                            ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
-                            : 'border-red-200 text-red-600 hover:bg-red-50'
-                        }`}
-                      >
-                        {ticketDeletingId === ticketId ? 'Deleting…' : 'Delete Ticket'}
-                      </button>
+                      {isAdminUser && (
+                        <>
+                          <button
+                            onClick={() => handleStartEditTicket(ticket)}
+                            className="px-3 py-2 text-xs font-semibold text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                          >
+                            Edit Ticket
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTicket(ticket)}
+                            disabled={ticketDeletingId === ticketId}
+                            className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                              ticketDeletingId === ticketId
+                                ? 'border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50'
+                                : 'border-red-200 text-red-600 hover:bg-red-50'
+                            }`}
+                          >
+                            {ticketDeletingId === ticketId ? 'Deleting…' : 'Delete Ticket'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                   {isHistoryExpanded && (
