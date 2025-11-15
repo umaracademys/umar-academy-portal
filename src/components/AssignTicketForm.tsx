@@ -214,14 +214,19 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     if (currentStep === 'notes') return true; // Notes are optional
     if (currentStep === 'review') {
       // Review step: ensure all required fields are filled
-      if (!formData.studentId || !formData.recitationType) return false;
+      if (!formData.program || !formData.studentId || !formData.recitationType) return false;
       // For Sabqi/Manzil, teacher must be selected
-      if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && !formData.teacherId) return false;
-      // For Sabq, teacher is auto-selected (admin)
+      if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil')) {
+        return !!formData.teacherId;
+      }
+      // For Sabq, teacher is auto-selected (admin), but we need user to be logged in
+      if (formData.recitationType === 'sabq') {
+        return !!(user?.id || user?.email); // Admin must be logged in
+      }
       return true;
     }
     return false;
-  }, [currentStep, formData]);
+  }, [currentStep, formData, user]);
 
   // Submit handler
   const handleSubmit = async (e?: React.MouseEvent<HTMLButtonElement>) => {
