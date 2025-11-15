@@ -2084,6 +2084,37 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
     ticket.reviewedAt = new Date();
     await ticket.save();
     
+    // If manzil is approved and no nextTicketId exists, create finalize ticket automatically
+    if (ticket.workflowStep === 'manzil' && !ticket.nextTicketId) {
+      // Check if finalize ticket already exists (maybe created separately)
+      const existingFinalize = await AssignmentTicket.findOne({
+        studentId: ticket.studentId,
+        workflowStep: 'finalize',
+        previousTicketId: ticket._id.toString()
+      });
+      
+      if (!existingFinalize) {
+        const finalizeTicket = new AssignmentTicket({
+          studentId: ticket.studentId,
+          studentName: ticket.studentName,
+          workflowStep: 'finalize',
+          assignedTeacherId: req.body.reviewedBy || 'admin',
+          assignedTeacherName: 'Admin',
+          status: 'pending', // Admin needs to finalize
+          previousTicketId: ticket._id.toString(),
+          program: ticket.program,
+          reviewedBy: req.body.reviewedBy,
+          reviewedAt: new Date()
+        });
+        await finalizeTicket.save();
+        
+        ticket.nextTicketId = finalizeTicket._id.toString();
+        await ticket.save();
+        
+        console.log(`✅ Auto-created finalize ticket ${finalizeTicket._id} for manzil ticket ${ticket._id}`);
+      }
+    }
+    
     // End any associated listening sessions for this ticket
     const ticketId = ticket._id.toString();
     const activeSessions = await ListeningSession.find({
@@ -2108,9 +2139,13 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
       broadcastListeningSessionEvent('session_ended', serialized);
     }
     
+    const message = ticket.workflowStep === 'manzil' && !ticket.nextTicketId 
+      ? 'Ticket approved. Finalize ticket created automatically.' 
+      : 'Ticket approved successfully.';
+    
     res.json({ 
       ticket: ticket,
-      message: 'Ticket approved successfully.'
+      message: message
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3060,6 +3095,37 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
     ticket.reviewedAt = new Date();
     await ticket.save();
     
+    // If manzil is approved and no nextTicketId exists, create finalize ticket automatically
+    if (ticket.workflowStep === 'manzil' && !ticket.nextTicketId) {
+      // Check if finalize ticket already exists (maybe created separately)
+      const existingFinalize = await AssignmentTicket.findOne({
+        studentId: ticket.studentId,
+        workflowStep: 'finalize',
+        previousTicketId: ticket._id.toString()
+      });
+      
+      if (!existingFinalize) {
+        const finalizeTicket = new AssignmentTicket({
+          studentId: ticket.studentId,
+          studentName: ticket.studentName,
+          workflowStep: 'finalize',
+          assignedTeacherId: req.body.reviewedBy || 'admin',
+          assignedTeacherName: 'Admin',
+          status: 'pending', // Admin needs to finalize
+          previousTicketId: ticket._id.toString(),
+          program: ticket.program,
+          reviewedBy: req.body.reviewedBy,
+          reviewedAt: new Date()
+        });
+        await finalizeTicket.save();
+        
+        ticket.nextTicketId = finalizeTicket._id.toString();
+        await ticket.save();
+        
+        console.log(`✅ Auto-created finalize ticket ${finalizeTicket._id} for manzil ticket ${ticket._id}`);
+      }
+    }
+    
     // End any associated listening sessions for this ticket
     const ticketId = ticket._id.toString();
     const activeSessions = await ListeningSession.find({
@@ -3084,9 +3150,13 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
       broadcastListeningSessionEvent('session_ended', serialized);
     }
     
+    const message = ticket.workflowStep === 'manzil' && !ticket.nextTicketId 
+      ? 'Ticket approved. Finalize ticket created automatically.' 
+      : 'Ticket approved successfully.';
+    
     res.json({ 
       ticket: ticket,
-      message: 'Ticket approved successfully.'
+      message: message
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -639,10 +639,12 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           setShowRevisionForm(false);
           bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabq next.`;
         } else if (nextStep === 'finalize') {
-          // If next step is finalize (after Manzil approval), show combined review
-          setSelectedTicket(normalizedTicket);
+          // If next step is finalize (after Manzil approval), refresh and show finalize tab
+          await refreshData(); // Refresh to get newly created finalize ticket
+          setSelectedTicket(null); // Clear selection to see list
+          setView('finalize'); // Switch to finalize view
           setShowRevisionForm(false);
-          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Review all reports and finalize.`;
+          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Finalize ticket created. Go to Finalize Reports tab to finalize.`;
         } else {
           // For other steps, just approve and keep ticket open
           setSelectedTicket(normalizedTicket); // Keep ticket open
