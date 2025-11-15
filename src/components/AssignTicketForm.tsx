@@ -17,9 +17,10 @@ interface AssignTicketFormProps {
 
 type WizardStep = 'program' | 'student' | 'assignment' | 'type' | 'teacher' | 'notes' | 'review';
 
-// Simplified ticket types - only Sabq and Manzil
-const STEP_TITLES: Record<'sabq' | 'manzil', string> = {
+// Ticket types - Sabq, Sabqi, and Manzil
+const STEP_TITLES: Record<'sabq' | 'sabqi' | 'manzil', string> = {
   sabq: 'Sabq',
+  sabqi: 'Sabqi',
   manzil: 'Manzil'
 };
 
@@ -81,7 +82,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     program: '',
     studentId: '',
     assignmentId: '', // NEW: Assignment selection
-    recitationType: '' as 'sabq' | 'manzil' | '', // SIMPLIFIED: Only Sabq and Manzil
+    recitationType: '' as 'sabq' | 'sabqi' | 'manzil' | '', // Sabq, Sabqi, and Manzil
     teacherId: '',
     notes: '',
     juzRange: '' // NEW: For Manzil - can specify juz range (e.g., "1-3")
@@ -147,12 +148,12 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     });
   }, [assignments, formData.assignmentId]);
 
-  // Auto-select admin for Sabq, require teacher selection for Manzil
+  // Auto-select admin for Sabq, require teacher selection for Sabqi and Manzil
   useEffect(() => {
     if (formData.recitationType === 'sabq') {
       // Auto-select admin (current user)
       setFormData(prev => ({ ...prev, teacherId: user?.id || 'admin' }));
-    } else if (formData.recitationType === 'manzil') {
+    } else if (formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') {
       // Clear teacher selection so user must choose
       setFormData(prev => ({ ...prev, teacherId: '' }));
     }
@@ -171,9 +172,9 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     );
   }, [selectedStudent, teachers]);
 
-  // Auto-select assigned teacher if available for Manzil
+  // Auto-select assigned teacher if available for Sabqi and Manzil
   useEffect(() => {
-    if (formData.recitationType === 'manzil' && assignedTeacher && !formData.teacherId) {
+    if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && assignedTeacher && !formData.teacherId) {
       setFormData(prev => ({ ...prev, teacherId: assignedTeacher.id }));
     }
   }, [formData.recitationType, assignedTeacher, formData.teacherId]);
@@ -198,7 +199,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       if (formData.recitationType === 'sabq') {
         setCurrentStep('notes'); // Skip teacher for Sabq (admin fills)
       } else {
-        setCurrentStep('teacher'); // Manzil needs teacher
+        setCurrentStep('teacher'); // Sabqi and Manzil need teacher
       }
     } else if (currentStep === 'teacher') {
       setCurrentStep('notes');
@@ -233,16 +234,16 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     if (currentStep === 'assignment') return !!formData.assignmentId;
     if (currentStep === 'type') return !!formData.recitationType;
     if (currentStep === 'teacher') {
-      // Teacher only required for Manzil (Sabq is filled by admin)
-      if (formData.recitationType === 'manzil') return !!formData.teacherId;
+      // Teacher required for Sabqi and Manzil (Sabq is filled by admin)
+      if (formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') return !!formData.teacherId;
       return true; // Skip for Sabq
     }
     if (currentStep === 'notes') return true; // Notes are optional
     if (currentStep === 'review') {
       // Review step: ensure all required fields are filled
       if (!formData.program || !formData.studentId || !formData.assignmentId || !formData.recitationType) return false;
-      // For Manzil, teacher must be selected
-      if (formData.recitationType === 'manzil') {
+      // For Sabqi and Manzil, teacher must be selected
+      if (formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') {
         return !!formData.teacherId;
       }
       // For Sabq, admin fills it (no teacher needed)
@@ -267,8 +268,8 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       return;
     }
 
-    if (formData.recitationType === 'manzil' && !formData.teacherId) {
-      alert('Please select a teacher for Manzil');
+    if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && !formData.teacherId) {
+      alert(`Please select a teacher for ${formData.recitationType === 'sabqi' ? 'Sabqi' : 'Manzil'}`);
       return;
     }
 
@@ -299,7 +300,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
         assignedTeacherName: formData.recitationType === 'sabq'
           ? (user?.name || 'Admin')
           : (selectedTeacher?.fullName || ''),
-        status: formData.recitationType === 'sabq' ? 'pending_review' as const : 'assigned' as const, // Sabq starts as pending (admin fills)
+        status: formData.recitationType === 'sabq' ? 'pending_review' as const : 'assigned' as const, // Sabq starts as pending (admin fills), Sabqi and Manzil are assigned
         program: formData.program,
         workflowStep: formData.recitationType as WorkflowStep,
         notes: formData.notes.trim() || undefined,
@@ -324,7 +325,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       await response.json();
       await refreshData();
 
-      alert(`Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as 'sabq' | 'manzil']}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
+      alert(`Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as 'sabq' | 'sabqi' | 'manzil']}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
       
       onSuccess();
       onClose();
@@ -569,14 +570,14 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
             </div>
           )}
 
-          {/* Step 4: Recitation Type (SIMPLIFIED - Only Sabq and Manzil) */}
+          {/* Step 4: Recitation Type - Sabq, Sabqi, and Manzil */}
           {currentStep === 'type' && (
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Ticket Type</h3>
                 <p className="text-gray-600 text-sm sm:text-base">What type of ticket is this?</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 {/* Sabq - Admin fills directly */}
                 <button
                   type="button"
@@ -587,8 +588,22 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                       : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
                   }`}
                 >
-                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">Sabq</div>
+                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">📖 Sabq</div>
                   <div className="text-xs text-gray-500">Admin fills out directly (no teacher assignment)</div>
+                </button>
+                
+                {/* Sabqi - Assign to teacher */}
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, recitationType: 'sabqi' }))}
+                  className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                    formData.recitationType === 'sabqi'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                  }`}
+                >
+                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">📚 Sabqi</div>
+                  <div className="text-xs text-gray-500">Assign to teacher (revision lesson)</div>
                 </button>
                 
                 {/* Manzil - Assign to teacher */}
@@ -601,7 +616,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                       : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
                   }`}
                 >
-                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">Manzil</div>
+                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">📿 Manzil</div>
                   <div className="text-xs text-gray-500">Assign to teacher (can be multiple juz)</div>
                 </button>
               </div>
@@ -625,13 +640,13 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
             </div>
           )}
 
-          {/* Step 5: Teacher Selection (Only for Manzil) */}
-          {currentStep === 'teacher' && formData.recitationType === 'manzil' && (
+          {/* Step 5: Teacher Selection (For Sabqi and Manzil) */}
+          {currentStep === 'teacher' && (formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && (
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Teacher</h3>
-                <p className="text-gray-600 text-sm sm:text-base">Assign a teacher for Manzil</p>
-                {formData.juzRange && (
+                <p className="text-gray-600 text-sm sm:text-base">Assign a teacher for {formData.recitationType === 'sabqi' ? 'Sabqi' : 'Manzil'}</p>
+                {formData.recitationType === 'manzil' && formData.juzRange && (
                   <p className="text-sm text-blue-600 mt-1">Juz Range: {formData.juzRange}</p>
                 )}
               </div>
@@ -691,8 +706,8 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                   </div>
                   <div className="text-sm font-semibold text-gray-700 mb-2">
                     Type: <span className="text-[var(--color-primary)]">
-                      {formData.recitationType === 'sabq' ? 'Sabq' : 'Manzil'}
-                      {formData.juzRange && ` (${formData.juzRange})`}
+                      {formData.recitationType === 'sabq' ? 'Sabq' : formData.recitationType === 'sabqi' ? 'Sabqi' : 'Manzil'}
+                      {formData.recitationType === 'manzil' && formData.juzRange && ` (${formData.juzRange})`}
                     </span>
                   </div>
                   <div className="text-sm font-semibold text-gray-700">
@@ -757,8 +772,8 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                   <div className="flex-1">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Ticket Type</div>
                     <div className="text-lg font-bold text-gray-900">
-                      {formData.recitationType === 'sabq' ? 'Sabq' : 'Manzil'}
-                      {formData.juzRange && ` (${formData.juzRange})`}
+                      {formData.recitationType === 'sabq' ? 'Sabq' : formData.recitationType === 'sabqi' ? 'Sabqi' : 'Manzil'}
+                      {formData.recitationType === 'manzil' && formData.juzRange && ` (${formData.juzRange})`}
                     </div>
                   </div>
                 </div>
