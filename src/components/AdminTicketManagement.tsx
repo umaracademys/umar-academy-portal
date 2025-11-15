@@ -2306,30 +2306,53 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                         <>
                           {/* Approved tickets: Show "Assign Next" or "Finalize" button */}
                           {ticket.workflowStep !== 'finalize' ? (
-                            <button
-                              onClick={() => {
-                                setActionBanner(null);
-                                setSelectedTicket(ticket);
-                                setShowRevisionForm(false);
-                                // If Sabqi approved, show "Assign for Sabq" modal
-                                if (ticket.workflowStep === 'sabqi') {
-                                  setApprovedTicketForNextStep(ticket);
-                                  setNextStepData({
-                                    assignTo: 'teacher',
-                                    teacherId: '',
-                                    sabqFeedback: ''
-                                  });
-                                  setShowNextStepModal(true);
-                                } else {
-                                  // For other approved tickets, allow quick assign
-                                  openQuickAssign(ticket);
-                                }
-                                setSelectedNextTeacher('');
-                              }}
-                              className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
-                            >
-                              Assign Next
-                            </button>
+                            <>
+                              {/* For approved manzil without nextTicketId, show "Create Finalize" button */}
+                              {ticket.workflowStep === 'manzil' && !ticket.nextTicketId ? (
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const ticketId = getTicketIdString(ticket);
+                                      await createFinalizeTicket(ticketId, user?.id);
+                                      await refreshData();
+                                      setView('finalize'); // Switch to finalize view
+                                      setActionBanner({ type: 'success', message: 'Finalize ticket created successfully. Check Finalize Reports tab.' });
+                                    } catch (error: any) {
+                                      console.error('Error creating finalize ticket:', error);
+                                      setActionBanner({ type: 'error', message: error.message || 'Failed to create finalize ticket' });
+                                    }
+                                  }}
+                                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                                >
+                                  Create Finalize Ticket
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setActionBanner(null);
+                                    setSelectedTicket(ticket);
+                                    setShowRevisionForm(false);
+                                    // If Sabqi approved, show "Assign for Sabq" modal
+                                    if (ticket.workflowStep === 'sabqi') {
+                                      setApprovedTicketForNextStep(ticket);
+                                      setNextStepData({
+                                        assignTo: 'teacher',
+                                        teacherId: '',
+                                        sabqFeedback: ''
+                                      });
+                                      setShowNextStepModal(true);
+                                    } else {
+                                      // For other approved tickets, allow quick assign
+                                      openQuickAssign(ticket);
+                                    }
+                                    setSelectedNextTeacher('');
+                                  }}
+                                  className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                                >
+                                  Assign Next
+                                </button>
+                              )}
+                            </>
                           ) : (
                             <button
                               onClick={() => {
