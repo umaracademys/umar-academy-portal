@@ -92,6 +92,7 @@ interface BackendDataContextType {
     }
   ) => Promise<any>;
   skipTicketToFinalize: (ticketId: string, reviewedBy?: string) => Promise<any>;
+  createFinalizeTicket: (ticketId: string, reviewedBy?: string) => Promise<any>;
   deleteTicket: (ticketId: string) => Promise<void>;
   deleteTickets: (ticketIds: string[]) => Promise<void>;
   // Personal Mushaf
@@ -1691,6 +1692,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const createFinalizeTicket = async (ticketId: string, reviewedBy?: string) => {
+    try {
+      const response = await fetchWithTimeout(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets/${ticketId}/create-finalize`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviewedBy: reviewedBy || '' })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create finalize ticket' }));
+        throw new Error(errorData.error || 'Failed to create finalize ticket');
+      }
+
+      const data = await response.json();
+      await loadData(); // Refresh all data
+      return data;
+    } catch (error: any) {
+      console.error('Error creating finalize ticket:', error);
+      throw error;
+    }
+  };
+
   const skipTicketToFinalize = async (ticketId: string, reviewedBy?: string) => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${ticketId}/skip-to-finalize`, {
@@ -1913,6 +1939,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     assignTicketToNext,
     approveAndAdvanceTicket,
     skipTicketToFinalize,
+    createFinalizeTicket,
     finalizeTicket,
     deleteTicket,
     deleteTickets,

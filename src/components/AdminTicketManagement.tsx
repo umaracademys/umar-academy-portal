@@ -32,6 +32,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     approveAndAdvanceTicket,
     finalizeTicket,
     skipTicketToFinalize,
+    createFinalizeTicket,
     deleteTicket,
     deleteTickets,
     refreshData

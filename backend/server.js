@@ -2366,6 +2366,75 @@ app.post('/api/tickets/:id/create-sabq-ticket', async (req, res) => {
   }
 });
 
+// Create finalize ticket for manzil ticket (if it doesn't exist)
+app.post('/api/tickets/:id/create-finalize', async (req, res) => {
+  try {
+    const currentTicket = await AssignmentTicket.findById(req.params.id);
+    if (!currentTicket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    if (currentTicket.workflowStep !== 'manzil') {
+      return res.status(400).json({ error: 'This endpoint is only for Manzil tickets' });
+    }
+    
+    // Check if finalize ticket already exists
+    const existingFinalize = await AssignmentTicket.findOne({
+      studentId: currentTicket.studentId,
+      workflowStep: 'finalize',
+      previousTicketId: currentTicket._id.toString()
+    });
+    
+    if (existingFinalize) {
+      return res.status(400).json({ 
+        error: 'Finalize ticket already exists',
+        finalizeTicket: existingFinalize
+      });
+    }
+    
+    // Check if currentTicket already has nextTicketId
+    if (currentTicket.nextTicketId) {
+      const nextTicket = await AssignmentTicket.findById(currentTicket.nextTicketId);
+      if (nextTicket && nextTicket.workflowStep === 'finalize') {
+        return res.json({
+          finalizeTicket: nextTicket,
+          message: 'Finalize ticket already linked to this manzil ticket'
+        });
+      }
+    }
+    
+    const reviewedBy = req.body.reviewedBy || currentTicket.reviewedBy || 'admin';
+    
+    const finalizeTicket = new AssignmentTicket({
+      studentId: currentTicket.studentId,
+      studentName: currentTicket.studentName,
+      workflowStep: 'finalize',
+      assignedTeacherId: reviewedBy,
+      assignedTeacherName: 'Admin',
+      status: 'pending', // Admin needs to finalize
+      previousTicketId: currentTicket._id.toString(),
+      program: currentTicket.program,
+      reviewedBy: reviewedBy,
+      reviewedAt: new Date()
+    });
+    await finalizeTicket.save();
+    
+    currentTicket.nextTicketId = finalizeTicket._id.toString();
+    await currentTicket.save();
+    
+    console.log(`✅ Created finalize ticket ${finalizeTicket._id} for manzil ticket ${currentTicket._id}`);
+    
+    res.json({
+      finalizeTicket: finalizeTicket,
+      manzilTicket: currentTicket,
+      message: 'Finalize ticket created successfully'
+    });
+  } catch (error) {
+    console.error('Error creating finalize ticket:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Skip remaining listening steps and move directly to finalize
 app.post('/api/tickets/:id/skip-to-finalize', async (req, res) => {
   try {
