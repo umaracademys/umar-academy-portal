@@ -13,13 +13,11 @@ import StudentProgress from '../components/StudentProgress';
 import StudentCommunication from '../components/StudentCommunication';
 import TeacherList from '../components/TeacherList';
 import TeacherProfile from '../components/TeacherProfile';
-import TeacherAssignments from '../components/TeacherAssignments';
 import TeacherPayroll from '../components/TeacherPayroll';
 import TeacherPerformance from '../components/TeacherPerformance';
 import TeacherAttendance from '../components/TeacherAttendance';
 import TeacherCommunication from '../components/TeacherCommunication';
 import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
-import StudentAssignments from '../pages/StudentAssignments';
 import { useData } from '../contexts/DataContext';
 
 const AdminDashboard: React.FC = () => {
@@ -37,13 +35,11 @@ const AdminDashboard: React.FC = () => {
   // Teacher Management State
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showTeacherProfile, setShowTeacherProfile] = useState(false);
-  const [showTeacherAssignments, setShowTeacherAssignments] = useState(false);
   const [showTeacherPayroll, setShowTeacherPayroll] = useState(false);
   const [showTeacherPerformance, setShowTeacherPerformance] = useState(false);
   const [showTeacherAttendance, setShowTeacherAttendance] = useState(false);
   const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
   const [showTeacherForm, setShowTeacherForm] = useState(false);
-  const [showStudentAssignments, setShowStudentAssignments] = useState(false);
 
   // Overview Section
   const OverviewSection = () => (
@@ -57,12 +53,6 @@ const AdminDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            to="/assignments"
-            className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
-          >
-            Manage Assignments
-          </Link>
           <button
             onClick={() => setActiveSection('students')}
             className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
@@ -261,37 +251,6 @@ const AdminDashboard: React.FC = () => {
     );
   };
 
-  // Student Assignments Section
-  const StudentAssignmentsSection = () => (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Student Assignments</h2>
-        <button
-          onClick={() => setShowStudentAssignments(true)}
-          className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
-          style={{ backgroundColor: '#E7AA39' }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#d99a2f'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#E7AA39'}
-        >
-          View All Assignments
-        </button>
-      </div>
-      
-      <Card>
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📚</div>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Student Assignment Management</h3>
-          <p className="text-gray-600 mb-6">View and manage student assignments, homework, and progress tracking.</p>
-          <button
-            onClick={() => setShowStudentAssignments(true)}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition"
-          >
-            Open Assignment Manager
-          </button>
-        </div>
-      </Card>
-    </div>
-  );
 
   // Courses Section
   const CoursesSection = () => (
@@ -431,7 +390,6 @@ const AdminDashboard: React.FC = () => {
       case 'overview': return <OverviewSection />;
       case 'students': return <StudentsSection />;
       case 'teachers': return <TeachersSection />;
-      case 'assignments': return <StudentAssignmentsSection />;
       case 'courses': return <CoursesSection />;
       case 'financials': return <FinancialsSection />;
       case 'reports': return <ReportsSection />;
@@ -553,10 +511,6 @@ const AdminDashboard: React.FC = () => {
             setSelectedTeacher(teacher);
             setShowTeacherProfile(true);
           }}
-          onAssignments={() => {
-            setShowTeacherProfile(false);
-            setShowTeacherAssignments(true);
-          }}
           onPayroll={() => {
             setShowTeacherProfile(false);
             setShowTeacherPayroll(true);
@@ -572,16 +526,6 @@ const AdminDashboard: React.FC = () => {
           onCommunication={() => {
             setShowTeacherProfile(false);
             setShowTeacherCommunication(true);
-          }}
-        />
-      )}
-
-      {showTeacherAssignments && selectedTeacher && (
-        <TeacherAssignments
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherAssignments(false);
-            setSelectedTeacher(null);
           }}
         />
       )}
@@ -626,27 +570,6 @@ const AdminDashboard: React.FC = () => {
         />
       )}
 
-      {/* Student Assignments Modal */}
-      {showStudentAssignments && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Student Assignments</h2>
-              <button
-                onClick={() => setShowStudentAssignments(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <StudentAssignments />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

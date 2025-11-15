@@ -20,7 +20,6 @@ import StudentAnalytics from '../components/StudentAnalytics';
 import StudentBulkOperations from '../components/StudentBulkOperations';
 import TeacherList from '../components/TeacherList';
 import TeacherProfile from '../components/TeacherProfile';
-import TeacherAssignments from '../components/TeacherAssignments';
 import TeacherPayroll from '../components/TeacherPayroll';
 import TeacherPerformance from '../components/TeacherPerformance';
 import TeacherAttendance from '../components/TeacherAttendance';
@@ -30,8 +29,6 @@ import TeacherAnalytics from '../components/TeacherAnalytics';
 import TeacherBulkOperations from '../components/TeacherBulkOperations';
 import DebugPanel from '../components/DebugPanel';
 import AdminRecitationReview from '../components/AdminRecitationReview';
-import AdminTicketManagement from '../components/AdminTicketManagement';
-import AssignTicketForm from '../components/AssignTicketForm';
 import StudentReports from '../components/StudentReports';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
@@ -49,7 +46,6 @@ const SuperAdminDashboard: React.FC = () => {
     deleteStudent,
     deleteTeacher,
   } = useData();
-  const { tickets } = useBackendData();
 
   // Debug logging (commented out - uncomment for debugging)
   // console.log('🔍 SuperAdminDashboard - Data state:', { 
@@ -80,7 +76,6 @@ const SuperAdminDashboard: React.FC = () => {
   // Teacher Management State
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showTeacherProfile, setShowTeacherProfile] = useState(false);
-  const [showTeacherAssignments, setShowTeacherAssignments] = useState(false);
   const [showTeacherPayroll, setShowTeacherPayroll] = useState(false);
   const [showTeacherPerformance, setShowTeacherPerformance] = useState(false);
   const [showTeacherAttendance, setShowTeacherAttendance] = useState(false);
@@ -89,8 +84,6 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherAnalytics, setShowTeacherAnalytics] = useState(false);
   const [showTeacherBulkOperations, setShowTeacherBulkOperations] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
-  const [showTicketManagement, setShowTicketManagement] = useState(false);
-  const [showAssignTicket, setShowAssignTicket] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
 
   // Get pending recitation reviews count
@@ -102,15 +95,6 @@ const SuperAdminDashboard: React.FC = () => {
   const totalTeachers = teachers.length;
   const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
   const totalAdmins = admins.length;
-  // Include both pending_review and in_progress in pending count (teachers are actively working on in_progress)
-  const pendingReviewTicketCount = tickets.filter((ticket) => 
-    ticket.status === 'pending_review' || ticket.status === 'in_progress'
-  ).length;
-  const assignedTicketCount = tickets.filter((ticket) => ticket.status === 'assigned').length;
-  const finalizeReadyTicketCount = tickets.filter(
-    (ticket) => ticket.status === 'approved' && ticket.workflowStep === 'finalize'
-  ).length;
-  const totalTicketCount = tickets.length;
 
   const overviewQuickActions = [
     {
@@ -120,30 +104,6 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowRecitationReview(true),
       badge: pendingReviewsCount,
       emphasis: 'neutral',
-    },
-    {
-      id: 'manage-tickets',
-      label: 'Manage Tickets',
-      description: 'Handle listening queue and finalize reports.',
-      onClick: () => setShowTicketManagement(true),
-      badge: pendingReviewTicketCount + finalizeReadyTicketCount,
-      emphasis: 'neutral',
-    },
-    {
-      id: 'assign-ticket',
-      label: 'Assign Ticket',
-      description: 'Create a sabq / sabqi / manzil ticket for a student.',
-      onClick: () => setShowAssignTicket(true),
-      badge: assignedTicketCount,
-      emphasis: 'accent',
-    },
-    {
-      id: 'view-assignments',
-      label: 'View Assignments',
-      description: 'See finalized homework and student-facing reports.',
-      link: '/assignments',
-      badge: unreadNotificationsCount,
-      emphasis: 'accent-solid',
     },
     {
       id: 'student-reports',
@@ -253,9 +213,6 @@ const SuperAdminDashboard: React.FC = () => {
               <span className="rounded-full bg-soft-primary px-3 py-1 text-primary">
                 {activeStudentCount} active students
               </span>
-              <span className="rounded-full bg-soft-accent px-3 py-1 text-[var(--color-accent)]">
-                {pendingReviewTicketCount} tickets awaiting review
-              </span>
               <span className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-3 py-1 text-primary">
                 {pendingReviewsCount} recitation reviews
               </span>
@@ -292,9 +249,6 @@ const SuperAdminDashboard: React.FC = () => {
                     </div>
                     <p className="mt-2 text-sm text-primary-soft">{action.description}</p>
                   </div>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-white/80">
-                    Go to assignments →
-                  </span>
                 </Link>
               );
             }
@@ -334,16 +288,6 @@ const SuperAdminDashboard: React.FC = () => {
           value={`${totalTeachers} • ${activeTeacherCount} active`}
           icon="TC"
         />
-        <StatCard
-          title="Tickets In Review"
-          value={`${pendingReviewTicketCount} pending • ${assignedTicketCount} assigned`}
-          icon="TK"
-        />
-        <StatCard
-          title="Finalize Queue"
-          value={`${finalizeReadyTicketCount} waiting`}
-          icon="FZ"
-        />
       </section>
 
       <section className="space-y-6">
@@ -371,23 +315,6 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-primary">Ticket Insights</h3>
-            <p className="text-sm text-primary-soft">
-              There are {totalTicketCount} tickets in the system. {pendingReviewTicketCount} are pending review and{' '}
-              {finalizeReadyTicketCount} are ready to finalize.
-            </p>
-          </div>
-          <button
-            onClick={() => setShowTicketManagement(true)}
-            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
-          >
-            Open ticket management
-          </button>
-        </div>
-      </section>
     </div>
   );
 
@@ -882,10 +809,6 @@ const SuperAdminDashboard: React.FC = () => {
             setSelectedTeacher(teacher);
             setShowTeacherForm(true);
           }}
-          onAssignments={() => {
-            setShowTeacherProfile(false);
-            setShowTeacherAssignments(true);
-          }}
           onPayroll={() => {
             setShowTeacherProfile(false);
             setShowTeacherPayroll(true);
@@ -905,15 +828,6 @@ const SuperAdminDashboard: React.FC = () => {
         />
       )}
 
-      {showTeacherAssignments && selectedTeacher && (
-        <TeacherAssignments
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherAssignments(false);
-            setSelectedTeacher(null);
-          }}
-        />
-      )}
 
       {showTeacherPayroll && selectedTeacher && (
         <TeacherPayroll
@@ -1092,25 +1006,6 @@ const SuperAdminDashboard: React.FC = () => {
         />
       )}
 
-      {/* Ticket Management Modal */}
-      {showTicketManagement && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <AdminTicketManagement
-            onClose={() => setShowTicketManagement(false)}
-          />
-        </div>
-      )}
-
-      {/* Assign Ticket Modal */}
-      {showAssignTicket && (
-        <AssignTicketForm
-          onClose={() => setShowAssignTicket(false)}
-          onSuccess={() => {
-            setShowAssignTicket(false);
-            refreshNotifications();
-          }}
-        />
-      )}
 
       {/* Student Reports Modal */}
       {showStudentReports && (

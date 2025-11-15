@@ -8,9 +8,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherProfile from './pages/TeacherProfile';
 // import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
-import AssignmentsPage from './pages/AssignmentsPage';
-import AssignmentCardsPage from './pages/AssignmentCardsPage';
-import StudentAssignments from './pages/StudentAssignments';
 import StudentRouter from './modules/student/StudentRouter';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -94,30 +91,6 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <TeacherProfile />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/assignments"
-        element={
-          <ProtectedRoute>
-            <AssignmentsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/assignment-cards"
-        element={
-          <ProtectedRoute>
-            <AssignmentCardsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/my-assignments"
-        element={
-          <ProtectedRoute>
-            <StudentAssignments />
           </ProtectedRoute>
         }
       />

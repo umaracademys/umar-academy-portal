@@ -5,7 +5,6 @@ import StatCard from '../components/StatCard';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
 import TeacherRecitationReview from '../components/TeacherRecitationReview';
-import TeacherTickets from '../components/TeacherTickets';
 import TeacherStudentReports from '../components/TeacherStudentReports';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
@@ -14,23 +13,17 @@ import { Student, Assessment, Evaluation } from '../types';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
-  const { assignments: backendAssignments, tickets, recitationReviews } = useBackendData();
+  const { recitationReviews } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
-  const [showTickets, setShowTickets] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Refresh data when backendAssignments changes (e.g., after deletion from admin)
-  useEffect(() => {
-    // This will force re-computation of activityHistory when assignments change
-    setRefreshKey(prev => prev + 1);
-  }, [backendAssignments.length]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -205,75 +198,7 @@ const TeacherDashboard: React.FC = () => {
       data: any;
     }> = [];
 
-    const studentId = student.id || (student as any)._id;
-
-    // Safety check: ensure tickets is an array
-    const ticketsArray = Array.isArray(tickets) ? tickets : [];
-
-    // Get all finalized/completed tickets for this student to check if assignments came from tickets
-    const finalizedTickets = ticketsArray.filter((ticket: any) => {
-      if (!ticket) return false;
-      const ticketStudentId = ticket.studentId || (ticket as any).student?._id || (ticket as any).student?.id;
-      const matchesStudent = ticketStudentId === studentId || ticketStudentId?.toString() === studentId?.toString();
-      const isFinalized = ticket.status === 'finalized' || ticket.status === 'completed';
-      return matchesStudent && isFinalized && ticket.assignmentId;
-    });
-    const finalizedTicketIds = new Set(finalizedTickets.map((t: any) => t.id || t._id));
-
-    // Safety check: ensure backendAssignments is an array
-    const assignmentsArray = Array.isArray(backendAssignments) ? backendAssignments : [];
-
-    // Only show finalized assignments:
-    // 1. Published/completed assignments (not drafts)
-    // 2. Assignments from finalized tickets (have fromTicketId matching a finalized ticket)
-    // 3. Manual assignments (no fromTicketId, no fromRecitationReviewId)
-    assignmentsArray
-      .filter((assignment: any) => {
-        if (!assignment) return false;
-        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
-        const matchesStudent = assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
-        
-        if (!matchesStudent) return false;
-
-        // Filter to only finalized assignments
-        const status = assignment.status || 'published';
-        const isPublished = status === 'published' || status === 'completed';
-        const isDraft = status === 'draft' || status === 'pending_homework';
-        
-        // Show if published/completed
-        if (isPublished && !isDraft) return true;
-        
-        // Show if from a finalized ticket
-        const fromTicketId = assignment.fromTicketId;
-        if (fromTicketId && finalizedTicketIds.has(fromTicketId)) return true;
-        
-        // Show manual assignments (no ticket, no recitation review)
-        const isManual = !assignment.fromTicketId && !assignment.fromRecitationReviewId;
-        if (isManual && isPublished) return true;
-        
-        return false;
-      })
-      .forEach((assignment: any) => {
-        // Determine source
-        let source = 'Manual Assignment';
-        if (assignment.fromTicketId) {
-          source = 'From Ticket System';
-        } else if (assignment.fromRecitationReviewId) {
-          source = 'From Recitation Review';
-        }
-        
-        activities.push({
-          id: assignment._id || assignment.id || `assignment-${Date.now()}`,
-          type: 'assignment',
-          date: assignment.createdAt ? new Date(assignment.createdAt) : new Date(assignment.updatedAt || Date.now()),
-          title: `${assignment.title || 'Assignment'} (${source})`,
-          description: assignment.description || assignment.homeworkComments || 'No description',
-          status: assignment.status || 'published',
-          icon: '📝',
-          color: 'bg-green-100 text-green-800 border-green-200',
-          data: assignment,
-        });
-      });
+    // Only recitation reviews are shown now (assignments and tickets removed)
 
     // Sort by date (most recent first)
     return activities.sort((a, b) => b.date.getTime() - a.date.getTime());
@@ -282,13 +207,13 @@ const TeacherDashboard: React.FC = () => {
   const activityHistory = useMemo(() => {
     if (!historyStudent) return [];
     return buildActivityHistory(historyStudent);
-  }, [historyStudent, backendAssignments, tickets, recitationReviews, refreshKey]);
+  }, [historyStudent, recitationReviews, refreshKey]);
 
   // Group activities by date
   const groupedByDate = useMemo(() => {
     const groups: Record<string, Array<{
       id: string;
-      type: 'assignment' | 'ticket' | 'recitation_review';
+      type: 'recitation_review';
       date: Date;
       title: string;
       description: string;
@@ -344,12 +269,6 @@ const TeacherDashboard: React.FC = () => {
               >
                 📊 Student Reports
               </button>
-              <Link
-                to="/assignments"
-                className="inline-flex items-center justify-center rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-accent-rgb),0.85)]"
-              >
-                Manage Assignments
-              </Link>
               <Link
                 to="/profile"
                 className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
@@ -761,15 +680,6 @@ const TeacherDashboard: React.FC = () => {
         />
       )}
 
-      {showTickets && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto">
-          <div className="w-full max-w-6xl mt-8 sm:mt-12">
-            <TeacherTickets
-              onClose={() => setShowTickets(false)}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Student Reports Modal */}
       {showStudentReports && (
