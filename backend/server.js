@@ -1205,7 +1205,7 @@ const assignmentSchema = new mongoose.Schema({
   // NEW: Reports array to store tickets for this assignment
   reports: [{
     ticketId: { type: String, required: true },
-    type: { type: String, enum: ['sabq', 'manzil'], required: true },
+    type: { type: String, enum: ['sabq', 'sabqi', 'manzil'], required: true },
     submittedBy: { type: String }, // Teacher ID or 'admin'
     submittedAt: { type: Date, default: Date.now },
     progressNotes: { type: String },
@@ -3075,7 +3075,7 @@ async function saveTicketToAssignmentReport(ticket) {
     
     const reportData = {
       ticketId: ticket._id.toString(),
-      type: ticket.workflowStep === 'sabq' ? 'sabq' : ticket.workflowStep === 'manzil' ? 'manzil' : 'manzil',
+      type: ticket.workflowStep === 'sabq' ? 'sabq' : ticket.workflowStep === 'sabqi' ? 'sabqi' : ticket.workflowStep === 'manzil' ? 'manzil' : 'manzil',
       submittedBy: ticket.completedBy || ticket.assignedTeacherId || 'admin',
       submittedAt: ticket.completedAt || ticket.updatedAt || new Date(),
       progressNotes: ticket.progressNotes || '',
@@ -3095,8 +3095,48 @@ async function saveTicketToAssignmentReport(ticket) {
       assignment.reports.push(reportData);
     }
     
+    // If ticket is approved, also add to classworkSections
+    if (ticket.status === 'approved' && ['sabq', 'sabqi', 'manzil'].includes(ticket.workflowStep)) {
+      // Check if classwork section already exists for this ticket (by checking if details match)
+      // We'll use a combination of step, teacher, and progress notes to identify duplicates
+      const existingSectionIndex = assignment.classworkSections.findIndex(
+        s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase() &&
+             (s.teacherName || '') === (ticket.assignedTeacherName || '') &&
+             (s.details || '') === (ticket.progressNotes || '')
+      );
+      
+      // Count existing sections of this type to determine title
+      const existingSectionsOfType = assignment.classworkSections.filter(
+        s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase()
+      );
+      const count = existingSectionsOfType.length + (existingSectionIndex >= 0 ? 0 : 1);
+      
+      const stepTitle = ticket.workflowStep === 'sabq' ? 'Sabq' : 
+                       ticket.workflowStep === 'sabqi' ? 'Sabqi' : 
+                       'Manzil';
+      const title = count > 1 ? `${stepTitle} ${count}` : stepTitle;
+      
+      const classworkSection = {
+        step: ticket.workflowStep,
+        title: title,
+        details: ticket.progressNotes || '',
+        teacherName: ticket.assignedTeacherName || '',
+        order: assignment.classworkSections.length,
+        assignmentRange: ticket.assignmentRange || '',
+        assignmentPortion: ticket.assignmentPortion || ''
+      };
+      
+      if (existingSectionIndex >= 0) {
+        // Update existing section
+        assignment.classworkSections[existingSectionIndex] = classworkSection;
+      } else {
+        // Add new section
+        assignment.classworkSections.push(classworkSection);
+      }
+    }
+    
     await assignment.save();
-    console.log(`✅ Saved ticket ${ticket._id} to assignment ${assignment._id} report`);
+    console.log(`✅ Saved ticket ${ticket._id} to assignment ${assignment._id} report${ticket.status === 'approved' ? ' and classwork sections' : ''}`);
   } catch (error) {
     console.error(`❌ Error saving ticket to assignment report:`, error);
   }
