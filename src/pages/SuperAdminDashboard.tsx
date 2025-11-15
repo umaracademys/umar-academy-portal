@@ -237,21 +237,6 @@ const SuperAdminDashboard: React.FC = () => {
                 </span>
               ) : null;
 
-            if (action.link) {
-              return (
-                <Link key={action.id} to={action.link} className={activeButtonClasses[action.emphasis || 'neutral']}>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-base font-semibold">
-                        {action.label}
-                        {badge}
-                      </p>
-                    </div>
-                    <p className="mt-2 text-sm text-primary-soft">{action.description}</p>
-                  </div>
-                </Link>
-              );
-            }
 
             return (
               <button
@@ -383,10 +368,6 @@ const SuperAdminDashboard: React.FC = () => {
           <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-primary px-4 py-3">
             <span className="font-semibold text-primary">Pending recitation reviews</span>
             <span className="text-sm font-semibold text-primary">{pendingReviewsCount}</span>
-          </div>
-          <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-white px-4 py-3">
-            <span className="font-semibold text-primary">Tickets ready to finalize</span>
-            <span className="text-sm font-semibold text-primary">{finalizeReadyTicketCount}</span>
           </div>
         </div>
       </Card>
