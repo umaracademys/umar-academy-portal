@@ -324,7 +324,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       await response.json();
       await refreshData();
 
-      alert(`Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as RecitationStep]}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
+      alert(`Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as 'sabq' | 'manzil']}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
       
       onSuccess();
       onClose();
