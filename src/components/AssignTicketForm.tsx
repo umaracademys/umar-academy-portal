@@ -230,6 +230,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       e.stopPropagation();
     }
 
+    // Validate required fields
     if (!formData.studentId || !formData.recitationType) {
       alert('Please complete all required fields');
       return;
@@ -242,6 +243,12 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
 
     if (isSubmitting) {
       return; // Prevent double submission
+    }
+
+    // Additional validation for Sabq
+    if (formData.recitationType === 'sabq' && !user?.id) {
+      alert('Admin user not found. Please log in again.');
+      return;
     }
 
     setIsSubmitting(true);
@@ -689,7 +696,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 handleNext();
               }
             }}
-            disabled={!canProceed || isSubmitting}
+            disabled={isSubmitting || (currentStep === 'review' && !canProceed)}
             className="px-6 py-3 rounded-xl bg-[var(--color-primary)] text-white font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-lg hover:shadow-xl"
           >
             {isSubmitting ? 'Creating...' : currentStep === 'review' ? 'Create Ticket' : 'Next'}
