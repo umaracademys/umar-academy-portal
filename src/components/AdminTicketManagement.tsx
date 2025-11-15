@@ -621,10 +621,17 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             // We'll show combined review in the UI (to be implemented)
             bannerMessage = `${targetTicket.studentName}'s Sabq ticket approved. Review combined reports (Sabqi + Sabq) and finalize.`;
           } else {
-            // Just Sabq approved, no combined review yet
+            // Just Sabq approved, show "Assign for Sabqi" modal
+            setApprovedTicketForNextStep(normalizedTicket);
+            setNextStepData({
+              assignTo: 'teacher',
+              teacherId: '',
+              sabqFeedback: ''
+            });
+            setShowNextStepModal(true);
             setSelectedTicket(normalizedTicket); // Keep ticket open
             setShowRevisionForm(false);
-            bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved.`;
+            bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabqi next.`;
           }
         } 
         // If next step is Sabq (after Sabqi approval), show "Assign for Sabq" modal
@@ -639,6 +646,19 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           setSelectedTicket(normalizedTicket); // Keep ticket open
           setShowRevisionForm(false);
           bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabq next.`;
+        } 
+        // If next step is Sabqi (after Sabq approval), show "Assign for Sabqi" modal
+        else if (nextStep === 'sabqi') {
+          setApprovedTicketForNextStep(normalizedTicket);
+          setNextStepData({
+            assignTo: 'teacher',
+            teacherId: '',
+            sabqFeedback: ''
+          });
+          setShowNextStepModal(true);
+          setSelectedTicket(normalizedTicket); // Keep ticket open
+          setShowRevisionForm(false);
+          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabqi next.`;
         } else if (nextStep === 'finalize') {
           // If next step is finalize (after Manzil approval), refresh and show finalize tab
           await refreshData(); // Refresh to get newly created finalize ticket
@@ -754,6 +774,64 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     } catch (error: any) {
       console.error('Error saving Sabq feedback:', error);
       alert(error.message || 'Failed to save Sabq feedback');
+    }
+  };
+
+  // Handler for saving Sabqi feedback after Sabq approval
+  const handleSaveSabqiFeedback = async () => {
+    if (!approvedTicketForNextStep) return;
+
+    if (nextStepData.assignTo === 'teacher' && !nextStepData.teacherId) {
+      alert('Please select a teacher or assign to Admin');
+      return;
+    }
+
+    try {
+      const ticketId = getTicketIdString(approvedTicketForNextStep);
+      const teacher = nextStepData.assignTo === 'teacher' 
+        ? teachers.find(t => t.id === nextStepData.teacherId)
+        : null;
+      
+      if (nextStepData.assignTo === 'teacher' && !teacher) {
+        alert('Selected teacher not found');
+        return;
+      }
+
+      // Use the new endpoint to create Sabqi ticket
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/tickets/${ticketId}/create-sabqi-ticket`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            assignedTeacherId: nextStepData.assignTo === 'teacher' 
+              ? nextStepData.teacherId 
+              : (user?.id || 'admin'),
+            assignedTeacherName: nextStepData.assignTo === 'teacher'
+              ? teacher?.fullName || 'Teacher'
+              : (user?.name || 'Admin'),
+            sabqiFeedback: nextStepData.sabqFeedback.trim() || undefined,
+            notes: nextStepData.sabqFeedback.trim() || undefined
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to create Sabqi ticket');
+      }
+
+      const result = await response.json();
+      
+      await refreshData();
+      setShowNextStepModal(false);
+      setApprovedTicketForNextStep(null);
+      setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
+      
+      alert(`Sabqi ticket created and assigned to ${result.ticket.assignedTeacherName}`);
+    } catch (error: any) {
+      console.error('Error saving Sabqi feedback:', error);
+      alert(error.message || 'Failed to save Sabqi feedback');
     }
   };
 
@@ -2333,7 +2411,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                                     setSelectedTicket(ticket);
                                     setShowRevisionForm(false);
                                     // If Sabqi approved, show "Assign for Sabq" modal
-                                    if (ticket.workflowStep === 'sabqi') {
+                                    // If Sabq approved, show "Assign for Sabqi" modal
+                                    if (ticket.workflowStep === 'sabqi' || ticket.workflowStep === 'sabq') {
                                       setApprovedTicketForNextStep(ticket);
                                       setNextStepData({
                                         assignTo: 'teacher',
@@ -2878,139 +2957,146 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         </div>
       )}
 
-      {/* Assign for Sabq Modal - After Sabqi Approval */}
-      {showNextStepModal && approvedTicketForNextStep && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-accent)] text-white px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold">Ticket Approved - Next Steps</h2>
-                <p className="text-white/90 text-xs sm:text-sm mt-1">
-                  {approvedTicketForNextStep.studentName} - {getStepLabel(approvedTicketForNextStep.workflowStep)} approved
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowNextStepModal(false);
-                  setApprovedTicketForNextStep(null);
-                  setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
-                }}
-                className="rounded-full bg-white/20 hover:bg-white/30 p-2 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-              <div className="mb-6 rounded-xl border-2 border-green-200 bg-green-50 p-4">
-                <p className="text-sm font-semibold text-green-900">
-                  {getStepLabel(approvedTicketForNextStep.workflowStep)} ticket approved successfully!
-                </p>
-                <p className="text-xs text-green-700 mt-1">Now assign for Sabq (New Lesson)</p>
-              </div>
-
-              <div className="space-y-6">
-                {/* Assign To Section */}
+      {/* Assign for Sabq/Sabqi Modal - After Approval */}
+      {showNextStepModal && approvedTicketForNextStep && (() => {
+        const isCreatingSabq = approvedTicketForNextStep.workflowStep === 'sabqi';
+        const isCreatingSabqi = approvedTicketForNextStep.workflowStep === 'sabq';
+        const nextStepLabel = isCreatingSabq ? 'Sabq' : isCreatingSabqi ? 'Sabqi' : '';
+        const nextStepDescription = isCreatingSabq ? 'New Lesson' : isCreatingSabqi ? 'Revision' : '';
+        
+        return (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+              {/* Header */}
+              <div className="bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-accent)] text-white px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">Assign To</label>
-                  <div className="space-y-3">
-                    <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="assignTo"
-                        value="admin"
-                        checked={nextStepData.assignTo === 'admin'}
-                        onChange={(e) => setNextStepData(prev => ({ ...prev, assignTo: 'admin', teacherId: '' }))}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900">Admin (You will review sabq)</div>
-                        <div className="text-xs text-gray-600 mt-1">Admin will listen to the new lesson directly</div>
-                      </div>
-                    </label>
-                    <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-gray-50">
-                      <input
-                        type="radio"
-                        name="assignTo"
-                        value="teacher"
-                        checked={nextStepData.assignTo === 'teacher'}
-                        onChange={(e) => setNextStepData(prev => ({ ...prev, assignTo: 'teacher' }))}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900">Teacher</div>
-                        <div className="text-xs text-gray-600 mt-1">Assign to a teacher to listen</div>
-                      </div>
-                    </label>
-                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold">Ticket Approved - Next Steps</h2>
+                  <p className="text-white/90 text-xs sm:text-sm mt-1">
+                    {approvedTicketForNextStep.studentName} - {getStepLabel(approvedTicketForNextStep.workflowStep)} approved
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowNextStepModal(false);
+                    setApprovedTicketForNextStep(null);
+                    setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
+                  }}
+                  className="rounded-full bg-white/20 hover:bg-white/30 p-2 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+                <div className="mb-6 rounded-xl border-2 border-green-200 bg-green-50 p-4">
+                  <p className="text-sm font-semibold text-green-900">
+                    {getStepLabel(approvedTicketForNextStep.workflowStep)} ticket approved successfully!
+                  </p>
+                  <p className="text-xs text-green-700 mt-1">Now assign for {nextStepLabel} ({nextStepDescription})</p>
                 </div>
 
-                {/* Teacher Selection (if teacher selected) */}
-                {nextStepData.assignTo === 'teacher' && (
+                <div className="space-y-6">
+                  {/* Assign To Section */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">Assign To</label>
+                    <div className="space-y-3">
+                      <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="assignTo"
+                          value="admin"
+                          checked={nextStepData.assignTo === 'admin'}
+                          onChange={(e) => setNextStepData(prev => ({ ...prev, assignTo: 'admin', teacherId: '' }))}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">Admin (You will review {nextStepLabel.toLowerCase()})</div>
+                          <div className="text-xs text-gray-600 mt-1">Admin will listen to the {nextStepDescription.toLowerCase()} directly</div>
+                        </div>
+                      </label>
+                      <label className="flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-gray-50">
+                        <input
+                          type="radio"
+                          name="assignTo"
+                          value="teacher"
+                          checked={nextStepData.assignTo === 'teacher'}
+                          onChange={(e) => setNextStepData(prev => ({ ...prev, assignTo: 'teacher' }))}
+                          className="mt-1"
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900">Teacher</div>
+                          <div className="text-xs text-gray-600 mt-1">Assign to a teacher to listen</div>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Teacher Selection (if teacher selected) */}
+                  {nextStepData.assignTo === 'teacher' && (
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-900 mb-2">
+                        Select Teacher <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={nextStepData.teacherId}
+                        onChange={(e) => setNextStepData(prev => ({ ...prev, teacherId: e.target.value }))}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
+                      >
+                        <option value="">Select a teacher...</option>
+                        {teachers.map(teacher => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Feedback Field */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-2">
-                      Select Teacher <span className="text-red-500">*</span>
+                      Your Feedback for {nextStepLabel} (Optional)
                     </label>
-                    <select
-                      value={nextStepData.teacherId}
-                      onChange={(e) => setNextStepData(prev => ({ ...prev, teacherId: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
-                    >
-                      <option value="">Select a teacher...</option>
-                      {teachers.map(teacher => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.fullName}
-                        </option>
-                      ))}
-                    </select>
+                    <textarea
+                      value={nextStepData.sabqFeedback}
+                      onChange={(e) => setNextStepData(prev => ({ ...prev, sabqFeedback: e.target.value }))}
+                      rows={5}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all resize-none"
+                      placeholder={`Add any specific feedback or instructions for the ${nextStepLabel} review...`}
+                    />
                   </div>
-                )}
-
-                {/* Sabq Feedback Field */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Your Feedback for Sabq (Optional)
-                  </label>
-                  <textarea
-                    value={nextStepData.sabqFeedback}
-                    onChange={(e) => setNextStepData(prev => ({ ...prev, sabqFeedback: e.target.value }))}
-                    rows={5}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all resize-none"
-                    placeholder="Add any specific feedback or instructions for the Sabq review..."
-                  />
                 </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-end">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNextStepModal(false);
-                  setApprovedTicketForNextStep(null);
-                  setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
-                }}
-                className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all w-full sm:w-auto"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveSabqFeedback}
-                disabled={nextStepData.assignTo === 'teacher' && !nextStepData.teacherId}
-                className="px-6 py-3 rounded-xl bg-[var(--color-primary)] text-white font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-lg hover:shadow-xl"
-              >
-                Save & Continue
-              </button>
+              {/* Footer */}
+              <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNextStepModal(false);
+                    setApprovedTicketForNextStep(null);
+                    setNextStepData({ assignTo: 'teacher', teacherId: '', sabqFeedback: '' });
+                  }}
+                  className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all w-full sm:w-auto"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={isCreatingSabq ? handleSaveSabqFeedback : isCreatingSabqi ? handleSaveSabqiFeedback : handleSaveSabqFeedback}
+                  disabled={nextStepData.assignTo === 'teacher' && !nextStepData.teacherId}
+                  className="px-6 py-3 rounded-xl bg-[var(--color-primary)] text-white font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-lg hover:shadow-xl"
+                >
+                  Save & Continue
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </>
   );
 };
