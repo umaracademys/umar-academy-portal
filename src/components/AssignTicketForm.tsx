@@ -212,6 +212,14 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     if (currentStep === 'type') return !!formData.recitationType;
     if (currentStep === 'teacher') return !!formData.teacherId;
     if (currentStep === 'notes') return true; // Notes are optional
+    if (currentStep === 'review') {
+      // Review step: ensure all required fields are filled
+      if (!formData.studentId || !formData.recitationType) return false;
+      // For Sabqi/Manzil, teacher must be selected
+      if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && !formData.teacherId) return false;
+      // For Sabq, teacher is auto-selected (admin)
+      return true;
+    }
     return false;
   }, [currentStep, formData]);
 
