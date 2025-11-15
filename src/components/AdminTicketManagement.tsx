@@ -38,13 +38,20 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   } = useBackendData();
   const { user } = useAuth();
   
-  const [view, setView] = useState<'pending' | 'all' | 'sabq'>('pending');
+  const [view, setView] = useState<'pending' | 'all' | 'sabq' | 'finalize'>('pending');
   const [selectedTicket, setSelectedTicket] = useState<AssignmentTicket | null>(null);
   const [finalizeData, setFinalizeData] = useState({
     finalReport: '',
     homework: '',
     homeworkLink: ''
   });
+  // State for finalize view - keyed by ticket ID
+  const [finalizeForms, setFinalizeForms] = useState<Record<string, {
+    homework: string;
+    homeworkLink: string;
+    finalReport: string;
+    isFinalizing: boolean;
+  }>>({});
   const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
   const [selectedNextTeacherNote, setSelectedNextTeacherNote] = useState('');
   const [revisionNotes, setRevisionNotes] = useState('');
@@ -499,6 +506,16 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const sabqTickets = useMemo(
     () => activeTickets.filter(t => t.workflowStep === 'sabq')
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+    [activeTickets]
+  );
+
+  // Filter tickets ready for finalization (finalize step, approved, no assignment yet)
+  const finalizeTickets = useMemo(
+    () => activeTickets.filter(t => 
+      t.workflowStep === 'finalize' && 
+      t.status === 'approved' &&
+      !(t as any).assignmentId
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [activeTickets]
   );
 
@@ -1100,8 +1117,9 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
   const currentTicketList = useMemo(() => {
     if (view === 'pending') return pendingTickets;
     if (view === 'sabq') return sabqTickets;
+    if (view === 'finalize') return finalizeTickets;
     return allTickets;
-  }, [view, pendingTickets, sabqTickets, allTickets]);
+  }, [view, pendingTickets, sabqTickets, finalizeTickets, allTickets]);
 
   const availableLetters = useMemo(() => {
     const letters = new Set<string>();
@@ -1222,7 +1240,9 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           <div className="space-y-1">
             <h2 className="text-2xl font-bold text-gray-900">Ticket Management</h2>
             <p className="text-sm text-gray-500">
-              {view === 'sabq' 
+              {view === 'finalize'
+                ? 'Review all reports from students and finalize with homework assignments.'
+                : view === 'sabq' 
                 ? 'All Sabq (New Lesson) tickets. Filter and manage Sabq tickets across all statuses.'
                 : view === 'all'
                 ? 'All tickets in the system. View and manage tickets across all workflow steps.'
@@ -1271,6 +1291,14 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
               }`}
             >
               All Sabq Tickets ({sabqTickets.length})
+            </button>
+            <button
+              onClick={() => setView('finalize')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                view === 'finalize' ? 'bg-[var(--color-primary)] text-white' : 'bg-gray-200 text-[rgba(var(--color-primary-rgb),0.7)] hover:bg-soft-primary'
+              }`}
+            >
+              Finalize Reports ({finalizeTickets.length})
             </button>
             <button
               onClick={() => setView('all')}
@@ -1864,10 +1892,218 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             )}
 
             <p className="text-sm text-gray-500">
-              Review and approve tickets. Approved tickets remain visible so you can assign next steps in the workflow.
+              {view === 'finalize'
+                ? 'Review all reports from students and finalize with homework assignments.'
+                : 'Review and approve tickets. Approved tickets remain visible so you can assign next steps in the workflow.'}
             </p>
 
-            {filteredTickets.map(ticket => {
+            {view === 'finalize' ? (
+              // Special view for finalize tab - shows all reports grouped by student
+              filteredTickets.map(finalizeTicket => {
+                const ticketKey = getTicketKey(finalizeTicket);
+                const ticketId = getTicketIdString(finalizeTicket);
+                
+                // Build ticket chain to get all reports from that day
+                const buildTicketChain = (ticket: AssignmentTicket): AssignmentTicket[] => {
+                  const chain: AssignmentTicket[] = [];
+                  const seen = new Set<string>();
+                  let current: AssignmentTicket | null | undefined = ticket;
+                  
+                  // Go backwards through previousTicketId chain
+                  while (current) {
+                    const key = current.id || (current as any)._id;
+                    if (key && seen.has(key)) break;
+                    if (key) seen.add(key);
+                    chain.unshift(current);
+                    const prevId = current.previousTicketId;
+                    if (!prevId) break;
+                    current = tickets.find((t) => {
+                      const tId = t.id || (t as any)._id;
+                      return tId === prevId || tId?.toString() === prevId?.toString();
+                    });
+                    if (!current) break;
+                  }
+                  return chain;
+                };
+                
+                const ticketChain = buildTicketChain(finalizeTicket);
+                const allReports = ticketChain.filter(t => ['sabqi', 'sabq', 'manzil'].includes(t.workflowStep));
+                
+                // Get student name
+                const studentName = getStudentName(finalizeTicket.studentId);
+                
+                // Get or initialize form state for this ticket
+                const formState = finalizeForms[ticketId] || {
+                  homework: '',
+                  homeworkLink: '',
+                  finalReport: '',
+                  isFinalizing: false
+                };
+                
+                const updateFormState = (updates: Partial<typeof formState>) => {
+                  setFinalizeForms(prev => ({
+                    ...prev,
+                    [ticketId]: { ...formState, ...updates }
+                  }));
+                };
+                
+                return (
+                  <div
+                    key={ticketKey}
+                    className="border-2 border-[var(--color-primary)]/30 rounded-xl p-6 space-y-6 bg-gradient-to-br from-white to-gray-50/50"
+                  >
+                    {/* Student Name Header */}
+                    <div className="border-b border-gray-200 pb-4">
+                      <h2 className="text-3xl font-bold text-gray-900">{studentName}</h2>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {finalizeTicket.program || 'Program not specified'} • {new Date(finalizeTicket.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    
+                    {/* All Reports from That Day */}
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">All Reports</h3>
+                      {allReports.length > 0 ? (
+                        allReports.map((reportTicket) => {
+                          const reportId = reportTicket.id || (reportTicket as any)._id;
+                          return (
+                            <div
+                              key={reportId}
+                              className="bg-white rounded-lg border border-gray-200 p-4 space-y-3"
+                            >
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-base font-semibold text-gray-900 capitalize">
+                                  {reportTicket.workflowStep === 'sabqi' ? 'Sabqi' : reportTicket.workflowStep === 'sabq' ? 'Sabq' : 'Manzil'} Report
+                                </h4>
+                                <span className="text-xs font-medium text-gray-500">
+                                  Teacher: {reportTicket.assignedTeacherName || '—'}
+                                </span>
+                              </div>
+                              
+                              {reportTicket.progressNotes && (
+                                <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                    {reportTicket.progressNotes}
+                                  </p>
+                                </div>
+                              )}
+                              
+                              {(reportTicket as any).mushafMarkings && Array.isArray((reportTicket as any).mushafMarkings) && (reportTicket as any).mushafMarkings.length > 0 && (
+                                <div className="text-xs text-gray-500">
+                                  Mistakes: {(reportTicket as any).mushafMarkings.length}
+                                </div>
+                              )}
+                              
+                              {reportTicket.assignmentRange && (
+                                <div className="text-xs text-gray-500">
+                                  Range: {reportTicket.assignmentRange}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500 italic">No reports found for this ticket.</p>
+                      )}
+                    </div>
+                    
+                    {/* Homework Fields */}
+                    <div className="border-t border-gray-200 pt-4 space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Finalize & Publish</h3>
+                      
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Final Report (Optional)
+                        </label>
+                        <textarea
+                          value={formState.finalReport}
+                          onChange={(e) => updateFormState({ finalReport: e.target.value })}
+                          rows={4}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all resize-none"
+                          placeholder="Add any final notes or summary..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Homework Instructions <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={formState.homework}
+                          onChange={(e) => updateFormState({ homework: e.target.value })}
+                          rows={4}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all resize-none"
+                          placeholder="Enter homework instructions for the student..."
+                          required
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Homework Link (Optional)
+                        </label>
+                        <input
+                          type="url"
+                          value={formState.homeworkLink}
+                          onChange={(e) => updateFormState({ homeworkLink: e.target.value })}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
+                          placeholder="https://..."
+                        />
+                      </div>
+                      
+                      <button
+                        onClick={async () => {
+                          if (!formState.homework.trim()) {
+                            alert('Homework instructions are required to finalize.');
+                            return;
+                          }
+                          
+                          updateFormState({ isFinalizing: true });
+                          try {
+                            await finalizeTicket(ticketId, {
+                              finalReport: formState.finalReport.trim() || undefined,
+                              homework: formState.homework.trim(),
+                              homeworkLink: formState.homeworkLink.trim() || undefined,
+                              reviewedBy: user?.id || '',
+                              classworkSections: allReports.map(r => ({
+                                step: r.workflowStep,
+                                title: r.workflowStep === 'sabqi' ? 'Sabqi' : r.workflowStep === 'sabq' ? 'Sabq' : 'Manzil',
+                                details: r.progressNotes || '',
+                                teacherName: r.assignedTeacherName || '',
+                                order: allReports.indexOf(r),
+                                assignmentRange: r.assignmentRange || '',
+                                assignmentPortion: r.assignmentPortion || ''
+                              })),
+                              classworkType: 'sabq',
+                              classworkSummary: formState.finalReport.trim() || allReports.map(r => r.progressNotes).filter(Boolean).join('\n\n'),
+                              homeworkSummary: formState.homework.trim()
+                            } as any);
+                            
+                            alert('Ticket finalized! Assignment created and visible to student.');
+                            updateFormState({
+                              homework: '',
+                              homeworkLink: '',
+                              finalReport: '',
+                              isFinalizing: false
+                            });
+                            await refreshData();
+                          } catch (error: any) {
+                            console.error('Error finalizing ticket:', error);
+                            alert(error.message || 'Failed to finalize ticket');
+                            updateFormState({ isFinalizing: false });
+                          }
+                        }}
+                        disabled={formState.isFinalizing || !formState.homework.trim()}
+                        className="w-full rounded-lg bg-[var(--color-primary)] px-6 py-3 text-base font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50 shadow-lg hover:shadow-xl"
+                      >
+                        {formState.isFinalizing ? 'Finalizing...' : 'Finalize & Publish to Student'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              filteredTickets.map(ticket => {
               const ticketKey = getTicketKey(ticket);
               const ticketId = getTicketIdString(ticket);
               const isSelected = !!selectedTicketsMap[ticketId];
