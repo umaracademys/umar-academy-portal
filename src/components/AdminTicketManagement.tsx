@@ -50,8 +50,31 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     homework: string;
     homeworkLink: string;
     finalReport: string;
+    classworkNotes: string; // Notes for classwork
     isFinalizing: boolean;
   }>>({});
+  
+  // Initialize form state from tickets when they load (pre-fill existing data)
+  useEffect(() => {
+    if (view === 'finalize' && finalizeTickets.length > 0) {
+      const newForms: typeof finalizeForms = {};
+      finalizeTickets.forEach(ticket => {
+        const ticketId = getTicketIdString(ticket);
+        if (ticketId && !finalizeForms[ticketId]) {
+          newForms[ticketId] = {
+            homework: ticket.homework || '',
+            homeworkLink: ticket.homeworkLink || '',
+            finalReport: ticket.finalReport || '',
+            classworkNotes: '',
+            isFinalizing: false
+          };
+        }
+      });
+      if (Object.keys(newForms).length > 0) {
+        setFinalizeForms(prev => ({ ...prev, ...newForms }));
+      }
+    }
+  }, [view, finalizeTickets.length]); // Only re-initialize when view or ticket count changes
   const [selectedNextTeacher, setSelectedNextTeacher] = useState('');
   const [selectedNextTeacherNote, setSelectedNextTeacherNote] = useState('');
   const [revisionNotes, setRevisionNotes] = useState('');
@@ -509,12 +532,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
     [activeTickets]
   );
 
-  // Filter tickets ready for finalization (finalize step, approved, no assignment yet)
+  // Filter ALL tickets at finalize step (let admin decide which to finalize)
+  // Show all finalize tickets regardless of status or whether assignment exists
   const finalizeTickets = useMemo(
     () => activeTickets.filter(t => 
-      t.workflowStep === 'finalize' && 
-      t.status === 'approved' &&
-      !(t as any).assignmentId
+      t.workflowStep === 'finalize'
     ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
     [activeTickets]
   );
@@ -1941,18 +1963,19 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 // Get student name
                 const studentName = getStudentName(ticketItem.studentId);
                 
-                // Get or initialize form state for this ticket
+                // Get or initialize form state for this ticket - pre-fill with existing data if available
                 const formState = finalizeForms[ticketId] || {
-                  homework: '',
-                  homeworkLink: '',
-                  finalReport: '',
+                  homework: ticketItem.homework || '',
+                  homeworkLink: ticketItem.homeworkLink || '',
+                  finalReport: ticketItem.finalReport || '',
+                  classworkNotes: '', // New field for classwork notes
                   isFinalizing: false
                 };
                 
                 const updateFormState = (updates: Partial<typeof formState>) => {
                   setFinalizeForms(prev => ({
                     ...prev,
-                    [ticketId]: { ...formState, ...updates }
+                    [ticketId]: { ...(prev[ticketId] || formState), ...updates }
                   }));
                 };
                 
@@ -2016,9 +2039,32 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                       )}
                     </div>
                     
-                    {/* Homework Fields */}
+                    {/* Status Badge */}
+                    {(ticketItem as any).assignmentId && (
+                      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-800">
+                        ✓ Already finalized - Assignment ID: {(ticketItem as any).assignmentId}
+                      </div>
+                    )}
+                    
+                    {/* Classwork & Homework Fields */}
                     <div className="border-t border-gray-200 pt-4 space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900">Finalize & Publish</h3>
+                      
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Classwork Notes (Optional)
+                        </label>
+                        <textarea
+                          value={formState.classworkNotes}
+                          onChange={(e) => updateFormState({ classworkNotes: e.target.value })}
+                          rows={4}
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all resize-none"
+                          placeholder="Add notes about the classwork (sabq, sabqi, manzil) for this day..."
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Add any additional notes or observations about the classwork that will be included in the assignment.
+                        </p>
+                      </div>
                       
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -2090,9 +2136,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                             
                             alert('Ticket finalized! Assignment created and visible to student.');
                             updateFormState({
-                              homework: '',
-                              homeworkLink: '',
-                              finalReport: '',
+                              homework: formState.homework.trim(), // Keep values after success
+                              homeworkLink: formState.homeworkLink.trim(),
+                              finalReport: formState.finalReport.trim(),
+                              classworkNotes: formState.classworkNotes.trim(),
                               isFinalizing: false
                             });
                             await refreshData();
