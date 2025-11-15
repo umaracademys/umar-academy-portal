@@ -596,82 +596,10 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
           normalizedTicket = normalizeTicket(result.ticket, targetTicket);
         }
 
-        // Determine next step based on workflow
-        const workflowFlow: Record<Exclude<WorkflowStep, 'finalize'>, WorkflowStep> = {
-          sabq: 'sabqi',
-          sabqi: 'manzil',
-          manzil: 'finalize',
-        };
-        const nextStep = workflowFlow[targetTicket.workflowStep as Exclude<WorkflowStep, 'finalize'>];
-        
-        // Check if this is a Sabq ticket that was approved after Sabqi
-        // If so, check if Sabqi is already approved and show combined review
-        if (targetTicket.workflowStep === 'sabq' && targetTicket.previousTicketId) {
-          // Find the previous ticket (should be Sabqi)
-          const previousTicketId = targetTicket.previousTicketId;
-          const previousTicket = tickets.find(t => {
-            const tId = t.id || (t as any)._id;
-            return tId === previousTicketId || tId?.toString() === previousTicketId?.toString();
-          });
-          
-          if (previousTicket && previousTicket.workflowStep === 'sabqi' && previousTicket.status === 'approved') {
-            // Sabqi is approved, Sabq is now approved → Show Combined Review View
-            setSelectedTicket(normalizedTicket); // Keep ticket open
-            setShowRevisionForm(false);
-            // We'll show combined review in the UI (to be implemented)
-            bannerMessage = `${targetTicket.studentName}'s Sabq ticket approved. Review combined reports (Sabqi + Sabq) and finalize.`;
-          } else {
-            // Just Sabq approved, show "Assign for Sabqi" modal
-            setApprovedTicketForNextStep(normalizedTicket);
-            setNextStepData({
-              assignTo: 'teacher',
-              teacherId: '',
-              sabqFeedback: ''
-            });
-            setShowNextStepModal(true);
-            setSelectedTicket(normalizedTicket); // Keep ticket open
-            setShowRevisionForm(false);
-            bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabqi next.`;
-          }
-        } 
-        // If next step is Sabq (after Sabqi approval), show "Assign for Sabq" modal
-        else if (nextStep === 'sabq') {
-          setApprovedTicketForNextStep(normalizedTicket);
-          setNextStepData({
-            assignTo: 'teacher',
-            teacherId: '',
-            sabqFeedback: ''
-          });
-          setShowNextStepModal(true);
-          setSelectedTicket(normalizedTicket); // Keep ticket open
-          setShowRevisionForm(false);
-          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabq next.`;
-        } 
-        // If next step is Sabqi (after Sabq approval), show "Assign for Sabqi" modal
-        else if (nextStep === 'sabqi') {
-          setApprovedTicketForNextStep(normalizedTicket);
-          setNextStepData({
-            assignTo: 'teacher',
-            teacherId: '',
-            sabqFeedback: ''
-          });
-          setShowNextStepModal(true);
-          setSelectedTicket(normalizedTicket); // Keep ticket open
-          setShowRevisionForm(false);
-          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Assign for Sabqi next.`;
-        } else if (nextStep === 'finalize') {
-          // If next step is finalize (after Manzil approval), refresh and show finalize tab
-          await refreshData(); // Refresh to get newly created finalize ticket
-          setSelectedTicket(null); // Clear selection to see list
-          setView('finalize'); // Switch to finalize view
-          setShowRevisionForm(false);
-          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. Finalize ticket created. Go to Finalize Reports tab to finalize.`;
-        } else {
-          // For other steps, just approve and keep ticket open
-          setSelectedTicket(normalizedTicket); // Keep ticket open
-          setShowRevisionForm(false);
-          bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved.`;
-        }
+        // After approval, just keep ticket open - admin can create any next ticket type
+        setSelectedTicket(normalizedTicket); // Keep ticket open
+        setShowRevisionForm(false);
+        bannerMessage = `${targetTicket.studentName}'s ${getStepLabel(targetTicket.workflowStep)} ticket is approved. You can now create any next ticket type.`;
       }
 
       setRevisionNotes('');
@@ -2410,20 +2338,8 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                                     setActionBanner(null);
                                     setSelectedTicket(ticket);
                                     setShowRevisionForm(false);
-                                    // If Sabqi approved, show "Assign for Sabq" modal
-                                    // If Sabq approved, show "Assign for Sabqi" modal
-                                    if (ticket.workflowStep === 'sabqi' || ticket.workflowStep === 'sabq') {
-                                      setApprovedTicketForNextStep(ticket);
-                                      setNextStepData({
-                                        assignTo: 'teacher',
-                                        teacherId: '',
-                                        sabqFeedback: ''
-                                      });
-                                      setShowNextStepModal(true);
-                                    } else {
-                                      // For other approved tickets, allow quick assign
-                                      openQuickAssign(ticket);
-                                    }
+                                    // Allow creating any next ticket type - show quick assign options
+                                    openQuickAssign(ticket);
                                     setSelectedNextTeacher('');
                                   }}
                                   className="rounded-lg bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
