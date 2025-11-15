@@ -31,7 +31,7 @@ const STEP_TITLES: Record<RecitationStep, string> = {
 
 const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess }) => {
   const { students: backendStudents, teachers, tickets, refreshData } = useBackendData();
-  const { students: contextStudents, getStudentsByProgram } = useData();
+  const { students: contextStudents } = useData();
   const { user } = useAuth();
   
   // Merge students from both sources
@@ -657,7 +657,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                         ? (user?.name || 'Admin')
                         : (selectedTeacher?.fullName || 'Not selected')}
                     </div>
-                    {formData.recitationType !== 'sabq' && selectedTeacher?.email && (
+                    {formData.recitationType !== 'sabq' && selectedTeacher && 'email' in selectedTeacher && selectedTeacher.email && (
                       <div className="text-sm text-gray-600 mt-1">{selectedTeacher.email}</div>
                     )}
                   </div>

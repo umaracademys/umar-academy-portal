@@ -1899,9 +1899,9 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
 
             {view === 'finalize' ? (
               // Special view for finalize tab - shows all reports grouped by student
-              filteredTickets.map(finalizeTicket => {
-                const ticketKey = getTicketKey(finalizeTicket);
-                const ticketId = getTicketIdString(finalizeTicket);
+              filteredTickets.map(ticketItem => {
+                const ticketKey = getTicketKey(ticketItem);
+                const ticketId = getTicketIdString(ticketItem);
                 
                 // Build ticket chain to get all reports from that day
                 const buildTicketChain = (ticket: AssignmentTicket): AssignmentTicket[] => {
@@ -1926,11 +1926,11 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                   return chain;
                 };
                 
-                const ticketChain = buildTicketChain(finalizeTicket);
+                const ticketChain = buildTicketChain(ticketItem);
                 const allReports = ticketChain.filter(t => ['sabqi', 'sabq', 'manzil'].includes(t.workflowStep));
                 
                 // Get student name
-                const studentName = getStudentName(finalizeTicket.studentId);
+                const studentName = getStudentName(ticketItem.studentId);
                 
                 // Get or initialize form state for this ticket
                 const formState = finalizeForms[ticketId] || {
@@ -1956,7 +1956,7 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                     <div className="border-b border-gray-200 pb-4">
                       <h2 className="text-3xl font-bold text-gray-900">{studentName}</h2>
                       <p className="text-sm text-gray-500 mt-1">
-                        {finalizeTicket.program || 'Program not specified'} • {new Date(finalizeTicket.createdAt).toLocaleDateString()}
+                        {ticketItem.program || 'Program not specified'} • {new Date(ticketItem.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                     

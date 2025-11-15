@@ -359,6 +359,7 @@ export interface AssignmentTicket {
   assignedTeacherId: string;
   assignedTeacherName: string;
   status: TicketStatus;
+  notes?: string; // Admin notes when creating ticket (for teacher)
   progressNotes?: string; // Teacher's progress notes
   audioLink?: string; // Audio link from teacher
   previousTicketId?: string; // Links to previous step
