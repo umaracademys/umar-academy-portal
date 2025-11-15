@@ -1202,6 +1202,31 @@ const assignmentSchema = new mongoose.Schema({
     assignmentRange: { type: String },
     assignmentPortion: { type: String }
   }],
+  // NEW: Reports array to store tickets for this assignment
+  reports: [{
+    ticketId: { type: String, required: true },
+    type: { type: String, enum: ['sabq', 'manzil'], required: true },
+    submittedBy: { type: String }, // Teacher ID or 'admin'
+    submittedAt: { type: Date, default: Date.now },
+    progressNotes: { type: String },
+    assignmentRange: { type: String },
+    audioLink: { type: String },
+    status: { type: String, enum: ['pending', 'approved', 'needs_revision'], default: 'pending' },
+    approvedAt: { type: Date },
+    approvedBy: { type: String }, // Admin ID
+    mushafMarkings: [{
+      id: String,
+      type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'] },
+      page: Number,
+      surah: Number,
+      ayah: Number,
+      wordIndex: Number,
+      position: { x: Number, y: Number },
+      note: String,
+      audioUrl: String,
+      timestamp: Date
+    }]
+  }]
 }, { timestamps: true });
 
 const Assignment = mongoose.model('Assignment', assignmentSchema);
@@ -2084,6 +2109,9 @@ app.post('/api/tickets/:id/approve', async (req, res) => {
     ticket.reviewedAt = new Date();
     await ticket.save();
     
+    // Save approved ticket to assignment report
+    await saveTicketToAssignmentReport(ticket);
+    
     // If manzil is approved and no nextTicketId exists, create finalize ticket automatically
     if (ticket.workflowStep === 'manzil' && !ticket.nextTicketId) {
       // Check if finalize ticket already exists (maybe created separately)
@@ -2957,6 +2985,51 @@ app.post('/api/tickets', async (req, res) => {
   }
 });
 
+// Helper function to save ticket to assignment report
+async function saveTicketToAssignmentReport(ticket) {
+  if (!ticket.assignmentId) return; // No assignment linked
+  
+  try {
+    const assignment = await Assignment.findById(ticket.assignmentId);
+    if (!assignment) {
+      console.warn(`Assignment ${ticket.assignmentId} not found for ticket ${ticket._id}`);
+      return;
+    }
+    
+    // Check if report already exists for this ticket
+    const existingReportIndex = assignment.reports.findIndex(
+      r => r.ticketId === ticket._id.toString()
+    );
+    
+    const reportData = {
+      ticketId: ticket._id.toString(),
+      type: ticket.workflowStep === 'sabq' ? 'sabq' : ticket.workflowStep === 'manzil' ? 'manzil' : 'manzil',
+      submittedBy: ticket.completedBy || ticket.assignedTeacherId || 'admin',
+      submittedAt: ticket.completedAt || ticket.updatedAt || new Date(),
+      progressNotes: ticket.progressNotes || '',
+      assignmentRange: ticket.assignmentRange || '',
+      audioLink: ticket.audioLink || '',
+      status: ticket.status === 'approved' ? 'approved' : ticket.status === 'needs_revision' ? 'needs_revision' : 'pending',
+      approvedAt: ticket.reviewedAt || undefined,
+      approvedBy: ticket.reviewedBy || undefined,
+      mushafMarkings: ticket.mushafMarkings || []
+    };
+    
+    if (existingReportIndex >= 0) {
+      // Update existing report
+      assignment.reports[existingReportIndex] = reportData;
+    } else {
+      // Add new report
+      assignment.reports.push(reportData);
+    }
+    
+    await assignment.save();
+    console.log(`✅ Saved ticket ${ticket._id} to assignment ${assignment._id} report`);
+  } catch (error) {
+    console.error(`❌ Error saving ticket to assignment report:`, error);
+  }
+}
+
 // Update ticket (Teacher updates progress or Admin reviews)
 app.put('/api/tickets/:id', async (req, res) => {
   try {
@@ -2976,6 +3049,11 @@ app.put('/api/tickets/:id', async (req, res) => {
     
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    // Save ticket to assignment report when submitted (pending_review) or approved
+    if (req.body.status === 'pending_review' || req.body.status === 'approved' || req.body.progressNotes) {
+      await saveTicketToAssignmentReport(ticket);
     }
     
     // If ticket status changed to approved, end any associated listening sessions

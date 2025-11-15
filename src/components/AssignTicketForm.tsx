@@ -15,7 +15,7 @@ interface AssignTicketFormProps {
   onSuccess: () => void;
 }
 
-type WizardStep = 'program' | 'student' | 'type' | 'teacher' | 'notes' | 'review';
+type WizardStep = 'program' | 'student' | 'assignment' | 'type' | 'teacher' | 'notes' | 'review';
 
 const STEP_ICONS: Record<RecitationStep, string> = {
   sabq: '',
@@ -30,7 +30,7 @@ const STEP_TITLES: Record<RecitationStep, string> = {
 };
 
 const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess }) => {
-  const { students: backendStudents, teachers, tickets, refreshData } = useBackendData();
+  const { students: backendStudents, teachers, tickets, assignments, refreshData } = useBackendData();
   const { students: contextStudents } = useData();
   const { user } = useAuth();
   
@@ -86,9 +86,11 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   const [formData, setFormData] = useState({
     program: '',
     studentId: '',
-    recitationType: '' as RecitationStep | '',
+    assignmentId: '', // NEW: Assignment selection
+    recitationType: '' as 'sabq' | 'manzil' | '', // SIMPLIFIED: Only Sabq and Manzil
     teacherId: '',
-    notes: ''
+    notes: '',
+    juzRange: '' // NEW: For Manzil - can specify juz range (e.g., "1-3")
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [studentSearchLetter, setStudentSearchLetter] = useState<string>('ALL');
@@ -173,15 +175,16 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     if (currentStep === 'program' && formData.program) {
       setCurrentStep('student');
     } else if (currentStep === 'student' && formData.studentId) {
+      setCurrentStep('assignment');
+    } else if (currentStep === 'assignment' && formData.assignmentId) {
       setCurrentStep('type');
     } else if (currentStep === 'type' && formData.recitationType) {
       if (formData.recitationType === 'sabq') {
-        // Skip teacher selection for Sabq (auto-admin)
-        setCurrentStep('notes');
+        setCurrentStep('notes'); // Skip teacher for Sabq (admin fills)
       } else {
-        setCurrentStep('teacher');
+        setCurrentStep('teacher'); // Manzil needs teacher
       }
-    } else if (currentStep === 'teacher' && formData.teacherId) {
+    } else if (currentStep === 'teacher') {
       setCurrentStep('notes');
     } else if (currentStep === 'notes') {
       setCurrentStep('review');
@@ -193,13 +196,15 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       setCurrentStep('notes');
     } else if (currentStep === 'notes') {
       if (formData.recitationType === 'sabq') {
-        setCurrentStep('type');
+        setCurrentStep('type'); // Skip teacher for Sabq
       } else {
         setCurrentStep('teacher');
       }
     } else if (currentStep === 'teacher') {
       setCurrentStep('type');
     } else if (currentStep === 'type') {
+      setCurrentStep('assignment');
+    } else if (currentStep === 'assignment') {
       setCurrentStep('student');
     } else if (currentStep === 'student') {
       setCurrentStep('program');
@@ -209,17 +214,22 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   const canProceed = useMemo(() => {
     if (currentStep === 'program') return !!formData.program;
     if (currentStep === 'student') return !!formData.studentId;
+    if (currentStep === 'assignment') return !!formData.assignmentId;
     if (currentStep === 'type') return !!formData.recitationType;
-    if (currentStep === 'teacher') return !!formData.teacherId;
+    if (currentStep === 'teacher') {
+      // Teacher only required for Manzil (Sabq is filled by admin)
+      if (formData.recitationType === 'manzil') return !!formData.teacherId;
+      return true; // Skip for Sabq
+    }
     if (currentStep === 'notes') return true; // Notes are optional
     if (currentStep === 'review') {
       // Review step: ensure all required fields are filled
-      if (!formData.program || !formData.studentId || !formData.recitationType) return false;
-      // For Sabqi/Manzil, teacher must be selected
-      if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil')) {
+      if (!formData.program || !formData.studentId || !formData.assignmentId || !formData.recitationType) return false;
+      // For Manzil, teacher must be selected
+      if (formData.recitationType === 'manzil') {
         return !!formData.teacherId;
       }
-      // For Sabq, teacher is auto-selected (admin), but we need user to be logged in
+      // For Sabq, admin fills it (no teacher needed)
       if (formData.recitationType === 'sabq') {
         return !!(user?.id || user?.email); // Admin must be logged in
       }
@@ -236,13 +246,13 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     }
 
     // Validate required fields
-    if (!formData.studentId || !formData.recitationType) {
+    if (!formData.studentId || !formData.assignmentId || !formData.recitationType) {
       alert('Please complete all required fields');
       return;
     }
 
-    if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && !formData.teacherId) {
-      alert('Please select a teacher');
+    if (formData.recitationType === 'manzil' && !formData.teacherId) {
+      alert('Please select a teacher for Manzil');
       return;
     }
 
@@ -266,16 +276,18 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       const ticketData = {
         studentId: formData.studentId || (student.id || (student as any)._id || '').toString(),
         studentName: student.fullName,
+        assignmentId: formData.assignmentId, // NEW: Link ticket to assignment
         assignedTeacherId: formData.recitationType === 'sabq' 
           ? (user?.id || 'admin')
           : formData.teacherId,
         assignedTeacherName: formData.recitationType === 'sabq'
           ? (user?.name || 'Admin')
           : (selectedTeacher?.fullName || ''),
-        status: 'assigned' as const,
+        status: formData.recitationType === 'sabq' ? 'pending_review' as const : 'assigned' as const, // Sabq starts as pending (admin fills)
         program: formData.program,
         workflowStep: formData.recitationType as WorkflowStep,
         notes: formData.notes.trim() || undefined,
+        assignmentRange: formData.juzRange || undefined, // For Manzil juz range
         autoCreateChain: false
       };
 
@@ -311,6 +323,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   const steps: Array<{ key: WizardStep; label: string; icon: string }> = [
     { key: 'program', label: 'Program', icon: '' },
     { key: 'student', label: 'Student', icon: '' },
+    { key: 'assignment', label: 'Assignment', icon: '' },
     { key: 'type', label: 'Type', icon: '' },
     { key: 'teacher', label: 'Teacher', icon: '' },
     { key: 'notes', label: 'Notes', icon: '' },
@@ -368,7 +381,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                       </div>
                     </div>
                   </div>
-                  {index < steps.length - 1 && !(step.key === 'type' && formData.recitationType === 'sabq') && (
+                  {index < steps.length - 1 && !(step.key === 'type' && formData.recitationType === 'sabq') && !(step.key === 'assignment' && !formData.studentId) && (
                     <div
                       className={`w-8 sm:w-16 h-0.5 mx-2 transition-all ${
                         isCompleted ? 'bg-green-500' : 'bg-gray-200'
@@ -495,47 +508,116 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
             </div>
           )}
 
-          {/* Step 3: Recitation Type */}
-          {currentStep === 'type' && (
+          {/* Step 3: Assignment Selection */}
+          {currentStep === 'assignment' && (
             <div className="space-y-6 animate-fadeIn">
               <div>
-                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Recitation Type</h3>
-                <p className="text-gray-600 text-sm sm:text-base">What will the student be reciting?</p>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Assignment</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Choose which assignment this ticket is for</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                {(['sabq', 'sabqi', 'manzil'] as RecitationStep[]).map(type => {
-                  const isSelected = formData.recitationType === type;
-                  return (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, recitationType: type }))}
-                      className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
-                        isSelected
-                          ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
-                          : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
-                      }`}
-                    >
-                      <div className="text-4xl mb-3">{STEP_ICONS[type]}</div>
-                      <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">{STEP_TITLES[type]}</div>
-                      <div className="text-xs text-gray-500">
-                        {type === 'sabq' && 'Auto-assigned to Admin'}
-                        {type === 'sabqi' && 'Requires teacher selection'}
-                        {type === 'manzil' && 'Requires teacher selection'}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              {studentAssignments.length === 0 ? (
+                <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+                  <div className="w-16 h-16 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mb-4 mx-auto"></div>
+                  <p className="text-gray-600 mb-4">No assignments found for this student</p>
+                  <p className="text-sm text-gray-500">Create an assignment first, then create a ticket for it</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {studentAssignments.map(assignment => {
+                    const assignmentId = (assignment.id || (assignment as any)._id || '').toString();
+                    const isSelected = formData.assignmentId === assignmentId;
+                    return (
+                      <button
+                        key={assignmentId}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, assignmentId }))}
+                        className={`p-4 rounded-xl border-2 transition-all text-left hover:scale-105 ${
+                          isSelected
+                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                            : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900 mb-1">{assignment.title || 'Untitled Assignment'}</div>
+                        <div className="text-xs text-gray-500">
+                          {assignment.dueDate && `Due: ${new Date(assignment.dueDate).toLocaleDateString()}`}
+                          {assignment.createdAt && ` • Created: ${new Date(assignment.createdAt).toLocaleDateString()}`}
+                        </div>
+                        {assignment.description && (
+                          <div className="text-xs text-gray-600 mt-2 line-clamp-2">{assignment.description}</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Step 4: Teacher Selection (Skipped for Sabq) */}
-          {currentStep === 'teacher' && formData.recitationType !== 'sabq' && (
+          {/* Step 4: Recitation Type (SIMPLIFIED - Only Sabq and Manzil) */}
+          {currentStep === 'type' && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Ticket Type</h3>
+                <p className="text-gray-600 text-sm sm:text-base">What type of ticket is this?</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {/* Sabq - Admin fills directly */}
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, recitationType: 'sabq', teacherId: '' }))}
+                  className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                    formData.recitationType === 'sabq'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                  }`}
+                >
+                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">Sabq</div>
+                  <div className="text-xs text-gray-500">Admin fills out directly (no teacher assignment)</div>
+                </button>
+                
+                {/* Manzil - Assign to teacher */}
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, recitationType: 'manzil' }))}
+                  className={`p-6 rounded-xl border-2 transition-all hover:scale-105 ${
+                    formData.recitationType === 'manzil'
+                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
+                  }`}
+                >
+                  <div className="font-bold text-gray-900 text-base sm:text-lg mb-2">Manzil</div>
+                  <div className="text-xs text-gray-500">Assign to teacher (can be multiple juz)</div>
+                </button>
+              </div>
+              
+              {/* Juz Range Input for Manzil */}
+              {formData.recitationType === 'manzil' && (
+                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Juz Range (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.juzRange}
+                    onChange={(e) => setFormData(prev => ({ ...prev, juzRange: e.target.value }))}
+                    placeholder="e.g., 1-3, 5-7, or just 1"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Specify juz range if reciting more than 2 juz (e.g., "1-3" or "5-7")</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 5: Teacher Selection (Only for Manzil) */}
+          {currentStep === 'teacher' && formData.recitationType === 'manzil' && (
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Select Teacher</h3>
-                <p className="text-gray-600 text-sm sm:text-base">Assign a teacher for {STEP_TITLES[formData.recitationType as RecitationStep]}</p>
+                <p className="text-gray-600 text-sm sm:text-base">Assign a teacher for Manzil</p>
+                {formData.juzRange && (
+                  <p className="text-sm text-blue-600 mt-1">Juz Range: {formData.juzRange}</p>
+                )}
               </div>
               {assignedTeacher && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -589,7 +671,13 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                     Student: <span className="text-[var(--color-primary)]">{selectedStudent?.fullName}</span>
                   </div>
                   <div className="text-sm font-semibold text-gray-700 mb-2">
-                    Type: <span className="text-[var(--color-primary)]">{STEP_TITLES[formData.recitationType as RecitationStep]}</span>
+                    Assignment: <span className="text-[var(--color-primary)]">{selectedAssignment?.title || 'N/A'}</span>
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700 mb-2">
+                    Type: <span className="text-[var(--color-primary)]">
+                      {formData.recitationType === 'sabq' ? 'Sabq' : 'Manzil'}
+                      {formData.juzRange && ` (${formData.juzRange})`}
+                    </span>
                   </div>
                   <div className="text-sm font-semibold text-gray-700">
                     Teacher: <span className="text-[var(--color-primary)]">
@@ -643,8 +731,19 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
                   <div className="flex-1">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recitation Type</div>
-                    <div className="text-lg font-bold text-gray-900">{STEP_TITLES[formData.recitationType as RecitationStep]}</div>
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Assignment</div>
+                    <div className="text-lg font-bold text-gray-900">{selectedAssignment?.title || 'N/A'}</div>
+                  </div>
+                </div>
+                <div className="border-t border-gray-300 pt-4"></div>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Ticket Type</div>
+                    <div className="text-lg font-bold text-gray-900">
+                      {formData.recitationType === 'sabq' ? 'Sabq' : 'Manzil'}
+                      {formData.juzRange && ` (${formData.juzRange})`}
+                    </div>
                   </div>
                 </div>
                 <div className="border-t border-gray-300 pt-4"></div>
