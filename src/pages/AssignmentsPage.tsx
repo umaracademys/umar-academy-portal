@@ -324,17 +324,23 @@ const AssignmentsPage: React.FC = () => {
     // Combine multiple entries - merge portion/ranges and notes
     const sabqSection = sabqSections.length > 0 ? {
       assignmentRange: sabqSections.map((s: any) => s.assignmentRange || s.assignmentPortion).filter(Boolean).join('; '),
-      details: sabqSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
+      assignmentPortion: sabqSections.map((s: any) => s.assignmentPortion).filter(Boolean).join('; '),
+      details: sabqSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n'),
+      summary: sabqSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
     } : null;
     
     const sabqiSection = sabqiSections.length > 0 ? {
       assignmentRange: sabqiSections.map((s: any) => s.assignmentRange || s.assignmentPortion).filter(Boolean).join('; '),
-      details: sabqiSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
+      assignmentPortion: sabqiSections.map((s: any) => s.assignmentPortion).filter(Boolean).join('; '),
+      details: sabqiSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n'),
+      summary: sabqiSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
     } : null;
     
     const manzilSection = manzilSections.length > 0 ? {
       assignmentRange: manzilSections.map((s: any) => s.assignmentRange || s.assignmentPortion).filter(Boolean).join('; '),
-      details: manzilSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
+      assignmentPortion: manzilSections.map((s: any) => s.assignmentPortion).filter(Boolean).join('; '),
+      details: manzilSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n'),
+      summary: manzilSections.map((s: any) => s.details || s.summary).filter(Boolean).join('\n\n')
     } : null;
     
     // Get student ID from assignment
