@@ -3097,23 +3097,34 @@ async function saveTicketToAssignmentReport(ticket) {
     
     // If ticket is approved, also add to classworkSections
     if (ticket.status === 'approved' && ['sabq', 'sabqi', 'manzil'].includes(ticket.workflowStep)) {
-      // Check if classwork section already exists for this ticket (by checking if details match)
-      // We'll use a combination of step, teacher, and progress notes to identify duplicates
-      const existingSectionIndex = assignment.classworkSections.findIndex(
-        s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase() &&
-             (s.teacherName || '') === (ticket.assignedTeacherName || '') &&
-             (s.details || '') === (ticket.progressNotes || '')
-      );
+      const ticketIdStr = ticket._id.toString();
       
-      // Count existing sections of this type to determine title
+      // Try to find existing section by matching step and checking if report exists for this ticket
+      // We'll match by step and a reasonable similarity in details/range
+      let existingSectionIndex = -1;
+      const ticketReport = assignment.reports.find(r => r.ticketId === ticketIdStr);
+      
+      if (ticketReport) {
+        // If report exists, try to find matching section
+        existingSectionIndex = assignment.classworkSections.findIndex(
+          s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase() &&
+               Math.abs((s.details || '').length - (ticket.progressNotes || '').length) < 20 // Similar length
+        );
+      }
+      
+      // Count existing sections of this type (before adding/updating)
       const existingSectionsOfType = assignment.classworkSections.filter(
         s => (s.step || '').toLowerCase() === ticket.workflowStep.toLowerCase()
       );
-      const count = existingSectionsOfType.length + (existingSectionIndex >= 0 ? 0 : 1);
       
       const stepTitle = ticket.workflowStep === 'sabq' ? 'Sabq' : 
                        ticket.workflowStep === 'sabqi' ? 'Sabqi' : 
                        'Manzil';
+      
+      // Determine title based on count
+      const count = existingSectionIndex >= 0 
+        ? existingSectionsOfType.length 
+        : existingSectionsOfType.length + 1;
       const title = count > 1 ? `${stepTitle} ${count}` : stepTitle;
       
       const classworkSection = {
@@ -3129,9 +3140,11 @@ async function saveTicketToAssignmentReport(ticket) {
       if (existingSectionIndex >= 0) {
         // Update existing section
         assignment.classworkSections[existingSectionIndex] = classworkSection;
+        console.log(`✅ Updated classwork section for ${ticket.workflowStep} ticket ${ticketIdStr}`);
       } else {
-        // Add new section
+        // Add new section - always add if not found
         assignment.classworkSections.push(classworkSection);
+        console.log(`✅ Added new classwork section for ${ticket.workflowStep} ticket ${ticketIdStr} (total ${ticket.workflowStep} sections: ${count})`);
       }
     }
     
