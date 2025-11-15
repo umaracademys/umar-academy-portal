@@ -18,9 +18,9 @@ interface AssignTicketFormProps {
 type WizardStep = 'program' | 'student' | 'type' | 'teacher' | 'notes' | 'review';
 
 const STEP_ICONS: Record<RecitationStep, string> = {
-  sabq: '✨',
-  sabqi: '🧠',
-  manzil: '🔁'
+  sabq: '',
+  sabqi: '',
+  manzil: ''
 };
 
 const STEP_TITLES: Record<RecitationStep, string> = {
@@ -216,7 +216,12 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   }, [currentStep, formData]);
 
   // Submit handler
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     if (!formData.studentId || !formData.recitationType) {
       alert('Please complete all required fields');
       return;
@@ -225,6 +230,10 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && !formData.teacherId) {
       alert('Please select a teacher');
       return;
+    }
+
+    if (isSubmitting) {
+      return; // Prevent double submission
     }
 
     setIsSubmitting(true);
@@ -267,7 +276,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
       await response.json();
       await refreshData();
 
-      alert(`✅ Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as RecitationStep]}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
+      alert(`Ticket created successfully!\n\n${student.fullName} - ${STEP_TITLES[formData.recitationType as RecitationStep]}\nAssigned to: ${formData.recitationType === 'sabq' ? (user?.name || 'Admin') : (selectedTeacher?.fullName || '')}`);
       
       onSuccess();
       onClose();
@@ -280,12 +289,12 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
   };
 
   const steps: Array<{ key: WizardStep; label: string; icon: string }> = [
-    { key: 'program', label: 'Program', icon: '📚' },
-    { key: 'student', label: 'Student', icon: '👤' },
-    { key: 'type', label: 'Type', icon: '📝' },
-    { key: 'teacher', label: 'Teacher', icon: '👨‍🏫' },
-    { key: 'notes', label: 'Notes', icon: '📋' },
-    { key: 'review', label: 'Review', icon: '✅' }
+    { key: 'program', label: 'Program', icon: '' },
+    { key: 'student', label: 'Student', icon: '' },
+    { key: 'type', label: 'Type', icon: '' },
+    { key: 'teacher', label: 'Teacher', icon: '' },
+    { key: 'notes', label: 'Notes', icon: '' },
+    { key: 'review', label: 'Review', icon: '' }
   ];
 
   const currentStepIndex = steps.findIndex(s => s.key === currentStep);
@@ -296,7 +305,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
         {/* Header */}
         <div className="bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-accent)] text-white px-4 sm:px-6 py-4 sm:py-6 flex items-center justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold">🎫 Create New Ticket</h2>
+            <h2 className="text-xl sm:text-2xl font-bold">Create New Ticket</h2>
             <p className="text-white/90 text-xs sm:text-sm mt-1">Step-by-step ticket assignment</p>
           </div>
           <button
@@ -331,7 +340,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                           : 'bg-gray-200 text-gray-500'
                       }`}
                     >
-                      {isCompleted ? '✓' : step.icon}
+                      {isCompleted ? '✓' : (step.icon || String(currentStepIndex + 1))}
                     </div>
                     <div className="ml-2 hidden sm:block">
                       <div className={`text-xs sm:text-sm font-semibold ${isActive ? 'text-[var(--color-primary)]' : 'text-gray-500'}`}>
@@ -373,7 +382,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                         : 'border-gray-200 bg-white hover:border-[var(--color-primary)]/50'
                     }`}
                   >
-                    <div className="text-2xl sm:text-3xl mb-2">📚</div>
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mb-2"></div>
                     <div className="font-semibold text-gray-900 text-sm sm:text-base">{program}</div>
                     <div className="text-xs text-gray-500 mt-1">
                       {programStudents.length} student{programStudents.length !== 1 ? 's' : ''}
@@ -428,7 +437,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
               {/* Student Grid */}
               {filteredStudents.length === 0 ? (
                 <div className="text-center py-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                  <div className="text-4xl mb-4">👤</div>
+                  <div className="w-16 h-16 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center mb-4"></div>
                   <p className="text-gray-600">No students found</p>
                 </div>
               ) : (
@@ -595,7 +604,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
               </div>
               <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200 space-y-4">
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl">📚</div>
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
                   <div className="flex-1">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Program</div>
                     <div className="text-lg font-bold text-gray-900">{formData.program}</div>
@@ -603,7 +612,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 </div>
                 <div className="border-t border-gray-300 pt-4"></div>
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl">👤</div>
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
                   <div className="flex-1">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Student</div>
                     <div className="text-lg font-bold text-gray-900">{selectedStudent?.fullName}</div>
@@ -612,7 +621,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 </div>
                 <div className="border-t border-gray-300 pt-4"></div>
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl">{STEP_ICONS[formData.recitationType as RecitationStep]}</div>
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
                   <div className="flex-1">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recitation Type</div>
                     <div className="text-lg font-bold text-gray-900">{STEP_TITLES[formData.recitationType as RecitationStep]}</div>
@@ -620,7 +629,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                 </div>
                 <div className="border-t border-gray-300 pt-4"></div>
                 <div className="flex items-start gap-4">
-                  <div className="text-3xl">👨‍🏫</div>
+                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
                   <div className="flex-1">
                     <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Assigned To</div>
                     <div className="text-lg font-bold text-gray-900">
@@ -637,7 +646,7 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
                   <>
                     <div className="border-t border-gray-300 pt-4"></div>
                     <div className="flex items-start gap-4">
-                      <div className="text-3xl">📋</div>
+                      <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0"></div>
                       <div className="flex-1">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notes</div>
                         <div className="text-sm text-gray-700 whitespace-pre-wrap bg-white rounded-lg p-3 border border-gray-200">
@@ -663,11 +672,19 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
           </button>
           <button
             type="button"
-            onClick={currentStep === 'review' ? handleSubmit : handleNext}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (currentStep === 'review') {
+                handleSubmit(e);
+              } else {
+                handleNext();
+              }
+            }}
             disabled={!canProceed || isSubmitting}
             className="px-6 py-3 rounded-xl bg-[var(--color-primary)] text-white font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto shadow-lg hover:shadow-xl"
           >
-            {isSubmitting ? 'Creating...' : currentStep === 'review' ? '✅ Create Ticket' : 'Next →'}
+            {isSubmitting ? 'Creating...' : currentStep === 'review' ? 'Create Ticket' : 'Next'}
           </button>
         </div>
       </div>
