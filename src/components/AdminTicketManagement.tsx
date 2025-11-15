@@ -1250,6 +1250,15 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {isAdminUser && filteredTickets.length > 0 && (
+              <button
+                onClick={selectedCount === 0 ? handleSelectAllVisible : clearSelectedTickets}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+                title={selectedCount === 0 ? 'Select all visible tickets' : 'Clear selection'}
+              >
+                {selectedCount === 0 ? `Select All (${filteredTickets.length})` : `Clear (${selectedCount})`}
+              </button>
+            )}
             <span className="rounded-full bg-soft-accent px-3 py-1 text-sm font-semibold text-[var(--color-accent)]">
               {pendingTickets.length} pending
             </span>
@@ -1312,21 +1321,21 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
         </div>
 
         {!selectedTicket && selectedCount > 0 && (
-          <div className="hidden mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <span>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span className="font-semibold">
               {selectedCount} ticket{selectedCount === 1 ? '' : 's'} selected
             </span>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleBulkDeleteTickets}
                 disabled={isBulkDeleting}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-75"
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-75 shadow-sm hover:shadow-md"
               >
                 {isBulkDeleting ? 'Deleting…' : 'Delete Selected'}
               </button>
               <button
                 onClick={handleSelectAllVisible}
-                className="rounded-md border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+                className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
               >
                 Select All Visible
               </button>
@@ -2133,12 +2142,15 @@ const AdminTicketManagement: React.FC<AdminTicketManagementProps> = ({ onClose }
                 >
                   <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                     <div className="flex-1 space-y-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleToggleTicketSelection(ticket)}
-                        className="hidden"
-                      />
+                      {isAdminUser && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleTicketSelection(ticket)}
+                          className="w-4 h-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                          title="Select ticket for bulk operations"
+                        />
+                      )}
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                           CURRENT STEP • {ticket.workflowStep.toUpperCase()}
