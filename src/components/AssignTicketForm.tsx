@@ -17,15 +17,9 @@ interface AssignTicketFormProps {
 
 type WizardStep = 'program' | 'student' | 'assignment' | 'type' | 'teacher' | 'notes' | 'review';
 
-const STEP_ICONS: Record<RecitationStep, string> = {
-  sabq: '',
-  sabqi: '',
-  manzil: ''
-};
-
-const STEP_TITLES: Record<RecitationStep, string> = {
-  sabq: 'Sabq (New Lesson)',
-  sabqi: 'Sabqi (Revision)',
+// Simplified ticket types - only Sabq and Manzil
+const STEP_TITLES: Record<'sabq' | 'manzil', string> = {
+  sabq: 'Sabq',
   manzil: 'Manzil'
 };
 
@@ -131,18 +125,40 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     [allStudents, formData.studentId]
   );
 
-  // Auto-select admin for Sabq, require teacher selection for Sabqi/Manzil
+  // Get assignments for selected student
+  const studentAssignments = useMemo(() => {
+    if (!formData.studentId) return [];
+    return assignments.filter(a => {
+      const assignedTo = Array.isArray(a.assignedTo) ? a.assignedTo : [a.assignedTo];
+      return assignedTo.includes(formData.studentId);
+    }).sort((a, b) => {
+      const aDate = new Date(a.createdAt || a.dueDate || 0);
+      const bDate = new Date(b.createdAt || b.dueDate || 0);
+      return bDate.getTime() - aDate.getTime();
+    });
+  }, [assignments, formData.studentId]);
+
+  // Get selected assignment
+  const selectedAssignment = useMemo(() => {
+    if (!formData.assignmentId) return null;
+    return assignments.find(a => {
+      const id = a.id || (a as any)._id;
+      return id === formData.assignmentId || String(id) === formData.assignmentId;
+    });
+  }, [assignments, formData.assignmentId]);
+
+  // Auto-select admin for Sabq, require teacher selection for Manzil
   useEffect(() => {
     if (formData.recitationType === 'sabq') {
       // Auto-select admin (current user)
       setFormData(prev => ({ ...prev, teacherId: user?.id || 'admin' }));
-    } else if (formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') {
+    } else if (formData.recitationType === 'manzil') {
       // Clear teacher selection so user must choose
       setFormData(prev => ({ ...prev, teacherId: '' }));
     }
   }, [formData.recitationType, user]);
 
-  // Get assigned teacher for student (for Sabqi/Manzil)
+  // Get assigned teacher for student (for Manzil)
   const assignedTeacher = useMemo(() => {
     if (!selectedStudent) return null;
     const teacherId = (selectedStudent as any).assignedTeacher || (selectedStudent as any).assignedTeacherId;
@@ -155,9 +171,9 @@ const AssignTicketForm: React.FC<AssignTicketFormProps> = ({ onClose, onSuccess 
     );
   }, [selectedStudent, teachers]);
 
-  // Auto-select assigned teacher if available for Sabqi/Manzil
+  // Auto-select assigned teacher if available for Manzil
   useEffect(() => {
-    if ((formData.recitationType === 'sabqi' || formData.recitationType === 'manzil') && assignedTeacher && !formData.teacherId) {
+    if (formData.recitationType === 'manzil' && assignedTeacher && !formData.teacherId) {
       setFormData(prev => ({ ...prev, teacherId: assignedTeacher.id }));
     }
   }, [formData.recitationType, assignedTeacher, formData.teacherId]);
