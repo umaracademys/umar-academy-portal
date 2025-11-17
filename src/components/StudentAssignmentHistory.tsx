@@ -1321,7 +1321,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                   const b = new Date(dateB);
                   return b.getTime() - a.getTime();
                 })
-                .map(([date, dayAssignments]) => (
+                .map(([date, dayAssignments]: [string, Assignment[]]) => (
                   <div key={date} className="border border-accent-soft rounded-2xl p-4 sm:p-6 bg-white">
                     <h3 className="text-base sm:text-lg font-semibold text-primary mb-4 pb-2 border-b border-accent-soft">
                       {date}

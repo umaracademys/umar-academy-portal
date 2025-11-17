@@ -347,7 +347,7 @@ const StudentAssignments: React.FC = () => {
                 const b = new Date(dateB);
                 return b.getTime() - a.getTime();
               })
-              .map(([date, dayAssignments]) => (
+              .map(([date, dayAssignments]: [string, any[]]) => (
                 <Card key={date} title={date}>
                   <div className="space-y-4">
                     {dayAssignments.map((assignment: any) => {

@@ -336,7 +336,7 @@ const TeacherDashboard: React.FC = () => {
         <div className="mb-8">
           <Card title={`Pending Tickets (${teacherTickets.length})`}>
             {/* Debug Info - Remove after testing */}
-            {process.env.NODE_ENV === 'development' && (
+            {import.meta.env.MODE === 'development' && (
               <div className="mb-4 p-3 bg-gray-100 rounded-lg text-xs">
                 <p><strong>Debug Info:</strong></p>
                 <p>Teacher ID: {currentTeacher?.id || 'N/A'}</p>
