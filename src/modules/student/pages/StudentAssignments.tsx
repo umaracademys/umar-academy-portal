@@ -341,13 +341,13 @@ const StudentAssignments: React.FC = () => {
           </Card>
         ) : (
             <div className="space-y-6">
-            {Object.entries(groupedAssignments)
+            {(Object.entries(groupedAssignments) as [string, any[]][])
               .sort(([dateA], [dateB]) => {
                 const a = new Date(dateA);
                 const b = new Date(dateB);
                 return b.getTime() - a.getTime();
               })
-              .map(([date, dayAssignments]: [string, any[]]) => (
+              .map(([date, dayAssignments]) => (
                 <Card key={date} title={date}>
                   <div className="space-y-4">
                     {dayAssignments.map((assignment: any) => {
