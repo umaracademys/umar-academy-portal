@@ -59,7 +59,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     () =>
       assignments.filter(
         (assignment) =>
-          Array.isArray(assignment.assignedTo) && assignment.assignedTo.includes(currentStudent.id),
+          assignment.studentId === currentStudent.id,
       ),
     [assignments, currentStudent.id],
   );
@@ -381,15 +381,15 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                           className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
                         >
                           <div className="flex flex-wrap items-center justify-between">
-                            <span className="font-semibold text-gray-900">{assignment.title}</span>
+                            <span className="font-semibold text-gray-900">Assignment</span>
                             <span className="text-xs text-gray-500">
-                              {assignment.dueDate
-                                ? new Date(assignment.dueDate).toLocaleDateString()
-                                : 'No due date'}
+                              {assignment.createdAt
+                                ? new Date(assignment.createdAt).toLocaleDateString()
+                                : 'No date'}
                             </span>
                           </div>
                           <p className="text-xs text-gray-500">
-                            {assignment.program || assignment.classworkType || 'Classwork'}
+                            {assignment.classwork?.sabq?.length ? 'Sabq' : assignment.classwork?.sabqi?.length ? 'Sabqi' : assignment.classwork?.manzil?.length ? 'Manzil' : 'Classwork'}
                           </p>
                         </li>
                       ))}
@@ -594,16 +594,16 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                       >
                         <div className="flex flex-wrap items-center justify-between">
                           <div>
-                            <p className="font-semibold text-gray-900">{assignment.title}</p>
+                            <p className="font-semibold text-gray-900">Assignment</p>
                             <p className="text-xs text-gray-500">
-                              {assignment.program || assignment.classworkType || 'Classwork'}
+                              {assignment.classwork?.sabq?.length ? 'Sabq' : assignment.classwork?.sabqi?.length ? 'Sabqi' : assignment.classwork?.manzil?.length ? 'Manzil' : 'Classwork'}
                             </p>
                           </div>
                           <div className="text-right text-xs text-gray-500">
                             <p>
-                              Due:{' '}
-                              {assignment.dueDate
-                                ? new Date(assignment.dueDate).toLocaleDateString()
+                              Created:{' '}
+                              {assignment.createdAt
+                                ? new Date(assignment.createdAt).toLocaleDateString()
                                 : 'Not set'}
                             </p>
                           </div>

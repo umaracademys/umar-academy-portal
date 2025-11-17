@@ -5,15 +5,17 @@ import StatCard from '../components/StatCard';
 import Card from '../components/Card';
 import DebugPanel from '../components/DebugPanel';
 import TeacherRecitationReview from '../components/TeacherRecitationReview';
-import TeacherStudentReports from '../components/TeacherStudentReports';
+import StudentReports from '../components/StudentReports';
+import TeacherTicketReview from '../components/TeacherTicketReview';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
+import { Ticket } from '../types/ticket';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
-  const { recitationReviews } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -23,6 +25,8 @@ const TeacherDashboard: React.FC = () => {
   const [showStudentReports, setShowStudentReports] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [showTicketReview, setShowTicketReview] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -37,6 +41,29 @@ const TeacherDashboard: React.FC = () => {
   // Only call getStudentsByTeacher when we have a valid teacher ID
   const assignedStudents = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id) : [];
   // console.log('🔍 TeacherDashboard - assignedStudents:', assignedStudents);
+
+  // Get tickets assigned to this teacher
+  const teacherTickets = useMemo(() => {
+    if (!currentTeacher?.id) {
+      console.log('🔍 No currentTeacher ID:', currentTeacher);
+      return [];
+    }
+    const tickets = getTeacherTickets(currentTeacher.id);
+    console.log('🎫 Teacher tickets found:', {
+      teacherId: currentTeacher.id,
+      teacherEmail: currentTeacher.email,
+      ticketsCount: tickets.length,
+      allTicketsCount: recitationTickets.length,
+      allTickets: recitationTickets.map(t => ({
+        id: t.id,
+        assignedTeacherId: t.assignedTeacherId,
+        status: t.status,
+        type: t.type,
+        studentName: t.studentName
+      }))
+    });
+    return tickets;
+  }, [currentTeacher?.id, getTeacherTickets, recitationTickets]);
 
   // Get teacher permissions - only when currentTeacher is available
   const permissions = (currentTeacher?.permissions) || {
@@ -213,7 +240,7 @@ const TeacherDashboard: React.FC = () => {
   const groupedByDate = useMemo(() => {
     const groups: Record<string, Array<{
       id: string;
-      type: 'recitation_review';
+      type: 'assignment' | 'ticket' | 'recitation_review';
       date: Date;
       title: string;
       description: string;
@@ -251,6 +278,12 @@ const TeacherDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <Link
+                to="/assignments"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+              >
+                Manage Assignments
+              </Link>
               <button
                 onClick={() => setShowRecitationReview(true)}
                 className="inline-flex items-center justify-center rounded-full bg-[var(--color-primary)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
@@ -292,10 +325,129 @@ const TeacherDashboard: React.FC = () => {
         )}
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard title="Assigned Students" value={currentTeacher ? assignedStudents.length : 0} icon="AS" />
           <StatCard title="Total Assessments" value={currentTeacher ? assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} icon="TA" />
           <StatCard title="Active Students" value={currentTeacher ? assignedStudents.filter(s => s.status === 'active').length : 0} icon="WK" />
+          <StatCard title="Pending Tickets" value={teacherTickets.length} icon="PT" />
+        </div>
+
+        {/* Pending Tickets Section */}
+        <div className="mb-8">
+          <Card title={`Pending Tickets (${teacherTickets.length})`}>
+            {/* Debug Info - Remove after testing */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mb-4 p-3 bg-gray-100 rounded-lg text-xs">
+                <p><strong>Debug Info:</strong></p>
+                <p>Teacher ID: {currentTeacher?.id || 'N/A'}</p>
+                <p>Teacher Email: {currentTeacher?.email || 'N/A'}</p>
+                <p>All Tickets: {recitationTickets.length}</p>
+                <p>Filtered Tickets: {teacherTickets.length}</p>
+                {recitationTickets.length > 0 && (
+                  <div className="mt-2">
+                    <p><strong>All Tickets:</strong></p>
+                    {recitationTickets.map(t => (
+                      <div key={t.id} className="ml-2">
+                        - {t.studentName} ({t.type}) - Teacher: {t.assignedTeacherId || 'N/A'} - Status: {t.status}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {teacherTickets.length === 0 ? (
+              <div className="text-center py-8 text-primary-soft">
+                <p>No pending tickets assigned to you.</p>
+                {recitationTickets.length > 0 && (
+                  <p className="text-xs mt-2">Note: {recitationTickets.length} ticket(s) exist but may be assigned to other teachers.</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {teacherTickets.map((ticket) => {
+                  const handleTicketClick = async () => {
+                    try {
+                      if (ticket.status === 'pending' || ticket.status === 'reassigned') {
+                        console.log('🎫 Starting ticket:', ticket.id);
+                        const updatedTicket = await startTicket(ticket.id);
+                        console.log('✅ Ticket started:', updatedTicket);
+                        setSelectedTicket(updatedTicket);
+                        setShowTicketReview(true);
+                        setRefreshKey(prev => prev + 1);
+                      } else if (ticket.status === 'in_progress') {
+                        setSelectedTicket(ticket);
+                        setShowTicketReview(true);
+                      }
+                    } catch (error) {
+                      console.error('Error starting ticket:', error);
+                      setSaveError('Failed to start ticket');
+                    }
+                  };
+
+                  return (
+                    <button
+                      key={ticket.id}
+                      onClick={handleTicketClick}
+                      className="w-full text-left rounded-2xl border-2 border-accent-soft bg-white p-5 shadow-sm hover:shadow-md hover:border-primary transition-all cursor-pointer"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              ticket.type === 'sabqi' 
+                                ? 'bg-blue-100 text-blue-800' 
+                                : ticket.type === 'manzil'
+                                ? 'bg-purple-100 text-purple-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {ticket.type.toUpperCase()}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              ticket.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : ticket.status === 'in_progress'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {ticket.status === 'in_progress' ? 'In Progress' : ticket.status === 'reassigned' ? 'Reassigned' : 'Pending'}
+                            </span>
+                          </div>
+                          <h4 className="text-lg font-semibold text-primary mb-1">
+                            {ticket.studentName}
+                          </h4>
+                          {ticket.teacherNotes && (
+                            <p className="text-sm text-primary-soft mb-2">
+                              <span className="font-medium">Admin Notes:</span> {ticket.teacherNotes}
+                            </p>
+                          )}
+                          {ticket.status === 'reassigned' && ticket.previousTeacherComment && (
+                            <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                              <p className="text-xs font-semibold text-orange-800 mb-1">Previous Review:</p>
+                              <p className="text-sm text-orange-700">{ticket.previousTeacherComment}</p>
+                              {ticket.reassignmentReason && (
+                                <p className="text-xs text-orange-600 mt-1">Reason: {ticket.reassignmentReason}</p>
+                              )}
+                            </div>
+                          )}
+                          <p className="text-xs text-primary-soft mt-2">
+                            Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'} at {ticket.createdAt ? new Date(ticket.createdAt).toLocaleTimeString() : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full text-sm font-semibold transition-colors whitespace-nowrap">
+                            {ticket.status === 'pending' || ticket.status === 'reassigned' 
+                              ? 'Start Review' 
+                              : 'Continue Review'}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
         </div>
 
         {/* Assigned Students List */}
@@ -677,8 +829,24 @@ const TeacherDashboard: React.FC = () => {
 
       {/* Student Reports Modal */}
       {showStudentReports && (
-        <TeacherStudentReports
+        <StudentReports
           onClose={() => setShowStudentReports(false)}
+        />
+      )}
+
+      {/* Ticket Review Modal */}
+      {showTicketReview && selectedTicket && (
+        <TeacherTicketReview
+          ticket={selectedTicket}
+          onClose={() => {
+            setShowTicketReview(false);
+            setSelectedTicket(null);
+            setRefreshKey(prev => prev + 1);
+          }}
+          onSubmit={async (ticketId, data) => {
+            await submitTicket(ticketId, data);
+            setRefreshKey(prev => prev + 1);
+          }}
         />
       )}
 

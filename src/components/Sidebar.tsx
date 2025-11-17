@@ -5,11 +5,18 @@ import { useAuth } from '../contexts/AuthContext';
 interface SidebarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle }) => {
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  
+  // Use external state if provided, otherwise use internal state
+  const isMobileOpen = externalIsMobileOpen !== undefined ? externalIsMobileOpen : internalMobileOpen;
+  const setIsMobileOpen = onMobileToggle || setInternalMobileOpen;
 
   const menuItems = [
     { id: 'overview', icon: 'OV', label: 'Overview', badge: null },
@@ -24,9 +31,21 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
   ];
 
   return (
-    <div className={`text-white transition-all duration-300 ${
-      isCollapsed ? 'w-20' : 'w-64'
-    } min-h-screen flex flex-col`} style={{ background: 'linear-gradient(to bottom, #141f15, #1d2e1f)' }}>
+    <>
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={`text-white transition-all duration-300 ${
+        isCollapsed ? 'w-20' : 'w-64'
+      } min-h-screen flex flex-col fixed lg:relative z-50 lg:z-auto ${
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`} style={{ background: 'linear-gradient(to bottom, #141f15, #1d2e1f)' }}>
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
@@ -36,12 +55,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
               <p className="text-xs text-gray-400 mt-1">Admin Portal</p>
             </div>
           )}
-          <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 hover:bg-gray-700 rounded-lg transition text-sm font-semibold"
-          >
-            {isCollapsed ? '>' : '<'}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Mobile Close Button */}
+            <button
+              onClick={() => setIsMobileOpen(false)}
+              className="lg:hidden p-2 hover:bg-gray-700 rounded-lg transition text-sm font-semibold"
+            >
+              ×
+            </button>
+            {/* Desktop Collapse Button */}
+            <button
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="hidden lg:block p-2 hover:bg-gray-700 rounded-lg transition text-sm font-semibold"
+            >
+              {isCollapsed ? '>' : '<'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -70,6 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
               {item.isLink ? (
                 <Link
                   to={item.href || '/'}
+                  onClick={() => setIsMobileOpen(false)}
                   className="w-full flex items-center justify-between p-3 rounded-lg transition-all font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
                   <div className="flex items-center space-x-3">
@@ -86,7 +116,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
                 </Link>
               ) : (
                 <button
-                  onClick={() => onSectionChange(item.id)}
+                  onClick={() => {
+                    onSectionChange(item.id);
+                    setIsMobileOpen(false);
+                  }}
                   className={`w-full flex items-center justify-between p-3 rounded-lg transition-all font-medium ${
                     activeSection === item.id
                       ? 'text-white'
@@ -143,7 +176,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange }) => 
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

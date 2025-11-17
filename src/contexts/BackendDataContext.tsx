@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import {
   Student,
   Teacher,
@@ -16,7 +16,8 @@ import {
   ListeningSessionEndPayload,
   TeacherPermissions
 } from '../types';
-import { ClassworkSection } from '../types/assignment';
+import { ClassworkSection, Assignment } from '../types/assignment';
+import { Ticket } from '../types/ticket';
 
 interface BackendDataContextType {
   students: Student[];
@@ -44,12 +45,23 @@ interface BackendDataContextType {
   loading: boolean;
   error: string | null;
   refreshData: () => Promise<void>;
-  // Assignment management
-  assignments: any[];
-  addAssignment: (assignment: any) => Promise<void>;
-  updateAssignment: (id: string, assignment: any) => Promise<void>;
+  // Assignment management (new multi-phase system)
+  assignments: Assignment[];
+  addAssignment: (assignment: Assignment) => Promise<void>;
+  updateAssignment: (id: string, assignment: Partial<Assignment>) => Promise<void>;
   deleteAssignment: (id: string) => Promise<void>;
-  addAssignmentSubmission: (assignmentId: string, submission: any) => Promise<void>;
+  getStudentAssignments: (studentId: string) => Assignment[];
+  // New Ticket System (sabq/sabqi/manzil workflow)
+  recitationTickets: Ticket[];
+  createTicket: (ticket: Partial<Ticket>) => Promise<Ticket>;
+  updateRecitationTicket: (id: string, ticket: Partial<Ticket>) => Promise<Ticket>;
+  startTicket: (id: string) => Promise<Ticket>;
+  submitTicket: (id: string, data: { teacherComment: string; mistakes: any[] }) => Promise<Ticket>;
+  approveAndSendTicket: (id: string, assignmentId: string) => Promise<Ticket>;
+  reassignTicket: (id: string, teacherId: string, teacherName: string, reason?: string) => Promise<Ticket>;
+  getTeacherTickets: (teacherId: string) => Ticket[];
+  getPendingReviewTickets: () => Ticket[];
+  getPreviousReports: (studentId: string, type: 'sabqi' | 'manzil') => Promise<Ticket[]>;
   // Recitation Review management
   recitationReviews: RecitationReview[];
   addRecitationReview: (review: RecitationReview) => Promise<void>;
@@ -95,6 +107,7 @@ interface BackendDataContextType {
   createFinalizeTicket: (ticketId: string, reviewedBy?: string) => Promise<any>;
   deleteTicket: (ticketId: string) => Promise<void>;
   deleteTickets: (ticketIds: string[]) => Promise<void>;
+  fixMissingAssignmentIds: () => Promise<{ fixed: number; total: number }>;
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
@@ -190,12 +203,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [recitationReviews, setRecitationReviews] = useState<RecitationReview[]>([]);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
   const [tickets, setTickets] = useState<AssignmentTicket[]>([]);
+  const [recitationTickets, setRecitationTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const isLoadingRef = useRef(false); // Track if data is currently loading to prevent concurrent calls
 
   // Helper function to fetch with timeout
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
@@ -220,10 +235,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Load data from backend API
   const loadData = async () => {
+    // Prevent concurrent calls
+    if (isLoadingRef.current) {
+      console.log('⏸️ Data load already in progress, skipping...');
+      return;
+    }
+    
     try {
+      isLoadingRef.current = true;
       setLoading(true);
       setError(null);
-      console.log('🔄 Loading data from backend...');
+      console.log('🔄 Loading data from backend...', new Date().toISOString());
 
       // Load users from backend with timeout
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000);
@@ -266,19 +288,51 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load assignments from backend
+      console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
       const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 10000);
+      console.log('📡 Assignments response status:', assignmentsResponse.status, assignmentsResponse.ok);
       if (assignmentsResponse.ok) {
         const assignmentsData = await assignmentsResponse.json();
         console.log('📝 Assignments loaded from backend:', assignmentsData.length);
+        if (assignmentsData.length > 0) {
+          console.log('📝 Sample assignment:', {
+            id: assignmentsData[0]._id || assignmentsData[0].id,
+            studentId: assignmentsData[0].studentId,
+            studentName: assignmentsData[0].studentName,
+            sabqCount: assignmentsData[0].classwork?.sabq?.length || 0,
+            sabqiCount: assignmentsData[0].classwork?.sabqi?.length || 0,
+            manzilCount: assignmentsData[0].classwork?.manzil?.length || 0,
+            status: assignmentsData[0].status
+          });
+          // Log all assignments
+          assignmentsData.forEach((a: any, idx: number) => {
+            console.log(`📝 Assignment ${idx + 1}:`, {
+              id: a._id || a.id,
+              studentId: a.studentId,
+              studentName: a.studentName,
+              sabq: a.classwork?.sabq?.length || 0,
+              sabqi: a.classwork?.sabqi?.length || 0,
+              manzil: a.classwork?.manzil?.length || 0
+            });
+          });
+        } else {
+          console.warn('⚠️ No assignments found in database. This could mean:');
+          console.warn('  1. No assignments have been created yet');
+          console.warn('  2. Assignments exist but query is not finding them');
+          console.warn('  3. Check backend logs when approving tickets to see if assignments are being created');
+        }
         // Map MongoDB _id to id for frontend compatibility
         const mappedAssignments = assignmentsData.map((assignment: any) => ({
           ...assignment,
           id: assignment._id || assignment.id,
-          dueDate: assignment.dueDate ? new Date(assignment.dueDate) : new Date(),
           createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
-          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
+          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+          completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
         }));
         setAssignments(mappedAssignments);
+      } else {
+        const errorText = await assignmentsResponse.text();
+        console.error('❌ Failed to load assignments:', assignmentsResponse.status, errorText);
       }
 
       // Load recitation reviews
@@ -309,7 +363,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setAdminNotifications(notificationsData);
       }
 
-      // Load tickets
+      // Load tickets (old system)
       const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 10000);
       if (ticketsResponse.ok) {
         const ticketsData = await ticketsResponse.json();
@@ -324,6 +378,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           completedAt: ticket.completedAt ? new Date(ticket.completedAt) : undefined
         }));
         setTickets(mappedTickets);
+        
+        // Also load into recitationTickets (new system) - filter for sabq/sabqi/manzil types
+        const recitationTicketsData = ticketsData
+          .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
+          .map((ticket: any) => ({
+            ...ticket,
+            id: ticket._id || ticket.id,
+            createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+            updatedAt: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(),
+            startedAt: ticket.startedAt ? new Date(ticket.startedAt) : undefined,
+            submittedAt: ticket.submittedAt ? new Date(ticket.submittedAt) : undefined,
+            approvedAt: ticket.approvedAt ? new Date(ticket.approvedAt) : undefined,
+            reassignedAt: ticket.reassignedAt ? new Date(ticket.reassignedAt) : undefined,
+            sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined
+          }));
+        setRecitationTickets(recitationTicketsData);
+        console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
       }
 
       // Load actual student records from /api/students endpoint
@@ -525,6 +596,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setAdmins(savedAdmins ? JSON.parse(savedAdmins) : []);
     } finally {
       setLoading(false);
+      isLoadingRef.current = false;
     }
   };
 
@@ -1222,12 +1294,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     return students.find(student => student.email === email);
   };
 
-  const refreshData = async () => {
+  // Memoized refreshData to prevent unnecessary re-renders and concurrent calls
+  const refreshData = useCallback(async () => {
+    if (isLoadingRef.current) {
+      console.log('⏸️ Refresh skipped - data load already in progress');
+      return;
+    }
     await loadData();
-  };
+  }, []); // Empty deps array since loadData doesn't change
 
   // Assignment management functions
-  const addAssignment = async (assignment: any) => {
+  const addAssignment = async (assignment: Assignment) => {
     try {
       const response = await fetch(`${API_BASE}/assignments`, {
         method: 'POST',
@@ -1252,7 +1329,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const updateAssignment = async (id: string, assignment: any) => {
+  const updateAssignment = async (id: string, assignment: Partial<Assignment>) => {
     try {
       const response = await fetch(`${API_BASE}/assignments/${id}`, {
         method: 'PUT',
@@ -1297,36 +1374,223 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const addAssignmentSubmission = async (assignmentId: string, submission: any) => {
+  const getStudentAssignments = (studentId: string): Assignment[] => {
+    return assignments.filter(a => a.studentId === studentId);
+  };
+
+  // New Ticket System Functions (sabq/sabqi/manzil workflow)
+  const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => {
     try {
-      if (!assignmentId) {
-        throw new Error('Assignment ID is required');
-      }
-      
-      const response = await fetch(`${API_BASE}/assignments/${assignmentId}/submissions`, {
+      const response = await fetch(`${API_BASE}/tickets`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submission)
+        body: JSON.stringify(ticket)
       });
-      
+      if (!response.ok) {
+        throw new Error('Failed to create ticket');
+      }
+      const newTicket = await response.json();
+      const mappedTicket = {
+        ...newTicket,
+        id: newTicket._id || newTicket.id,
+        createdAt: newTicket.createdAt ? new Date(newTicket.createdAt) : new Date(),
+        updatedAt: newTicket.updatedAt ? new Date(newTicket.updatedAt) : new Date()
+      };
+      setRecitationTickets(prev => [...prev, mappedTicket]);
+      await refreshData();
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error creating ticket:', error);
+      throw error;
+    }
+  };
+
+  const updateRecitationTicket = async (id: string, ticket: Partial<Ticket>): Promise<Ticket> => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ticket)
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update ticket');
+      }
+      const updatedTicket = await response.json();
+      const mappedTicket = {
+        ...updatedTicket,
+        id: updatedTicket._id || updatedTicket.id,
+        createdAt: updatedTicket.createdAt ? new Date(updatedTicket.createdAt) : new Date(),
+        updatedAt: updatedTicket.updatedAt ? new Date(updatedTicket.updatedAt) : new Date()
+      };
+      setRecitationTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
+      await refreshData();
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error updating ticket:', error);
+      throw error;
+    }
+  };
+
+  const startTicket = async (id: string): Promise<Ticket> => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${id}/start`, {
+        method: 'POST'
+      });
+      if (!response.ok) {
+        throw new Error('Failed to start ticket');
+      }
+      const ticket = await response.json();
+      const mappedTicket = {
+        ...ticket,
+        id: ticket._id || ticket.id,
+        startedAt: ticket.startedAt ? new Date(ticket.startedAt) : undefined
+      };
+      setRecitationTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error starting ticket:', error);
+      throw error;
+    }
+  };
+
+  const submitTicket = async (id: string, data: { teacherComment: string; mistakes: any[] }): Promise<Ticket> => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) {
+        throw new Error('Failed to submit ticket');
+      }
+      const ticket = await response.json();
+      const mappedTicket = {
+        ...ticket,
+        id: ticket._id || ticket.id,
+        submittedAt: ticket.submittedAt ? new Date(ticket.submittedAt) : undefined
+      };
+      setRecitationTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
+      await refreshData();
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error submitting ticket:', error);
+      throw error;
+    }
+  };
+
+  const approveAndSendTicket = async (id: string, assignmentId: string): Promise<any> => {
+    try {
+      console.log('📤 Sending approve request for ticket:', id);
+      const response = await fetch(`${API_BASE}/tickets/${id}/approve-send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignmentId })
+      });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Submission error response:', errorText);
-        throw new Error('Failed to submit assignment');
+        console.error('❌ API Error:', response.status, errorText);
+        throw new Error(`Failed to approve and send ticket: ${errorText}`);
       }
+      const result = await response.json();
+      console.log('✅ Approval response:', result);
+      console.log('✅ Response ticket:', result.ticket);
+      console.log('✅ Response assignment:', result.assignment);
       
-      const savedSubmission = await response.json();
+      const ticket = result.ticket || result;
+      console.log('✅ Ticket from response:', {
+        id: ticket._id || ticket.id,
+        sentToAssignmentId: ticket.sentToAssignmentId,
+        status: ticket.status
+      });
       
-      // Update the assignment with the new submission
-      setAssignments(prev => prev.map(a => {
-        const aId = a._id || a.id;
-        return aId === assignmentId 
-          ? { ...a, submissions: [...(a.submissions || []), savedSubmission] }
-          : a;
+      const mappedTicket = {
+        ...ticket,
+        id: ticket._id || ticket.id,
+        approvedAt: ticket.approvedAt ? new Date(ticket.approvedAt) : undefined,
+        sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined,
+        sentToAssignmentId: ticket.sentToAssignmentId // Ensure this is included
+      };
+      
+      console.log('✅ Mapped ticket before update:', {
+        id: mappedTicket.id,
+        sentToAssignmentId: mappedTicket.sentToAssignmentId,
+        status: mappedTicket.status
+      });
+      
+      setRecitationTickets(prev => {
+        const updated = prev.map(t => t.id === id ? mappedTicket : t);
+        console.log('✅ Updated tickets array. Ticket with ID', id, 'now has:', 
+          updated.find(t => t.id === id)?.sentToAssignmentId || 'N/A');
+        return updated;
+      });
+      await refreshData();
+      
+      // Return both ticket and assignment info
+      return {
+        ...mappedTicket,
+        assignment: result.assignment
+      };
+    } catch (error) {
+      console.error('Error approving ticket:', error);
+      throw error;
+    }
+  };
+
+  const reassignTicket = async (id: string, teacherId: string, teacherName: string, reason?: string): Promise<Ticket> => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/${id}/reassign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teacherId, teacherName, reason })
+      });
+      if (!response.ok) {
+        throw new Error('Failed to reassign ticket');
+      }
+      const ticket = await response.json();
+      const mappedTicket = {
+        ...ticket,
+        id: ticket._id || ticket.id,
+        reassignedAt: ticket.reassignedAt ? new Date(ticket.reassignedAt) : undefined
+      };
+      setRecitationTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
+      await refreshData();
+      return mappedTicket;
+    } catch (error) {
+      console.error('Error reassigning ticket:', error);
+      throw error;
+    }
+  };
+
+  const getTeacherTickets = (teacherId: string): Ticket[] => {
+    // Match by assignedTeacherId or reassignedToTeacherId (for reassigned tickets)
+    return recitationTickets.filter(t => {
+      const matchesTeacher = 
+        t.assignedTeacherId === teacherId || 
+        t.reassignedToTeacherId === teacherId;
+      const validStatus = ['pending', 'in_progress', 'reassigned'].includes(t.status);
+      return matchesTeacher && validStatus;
+    });
+  };
+
+  const getPendingReviewTickets = (): Ticket[] => {
+    return recitationTickets.filter(t => t.status === 'submitted');
+  };
+
+  const getPreviousReports = async (studentId: string, type: 'sabqi' | 'manzil'): Promise<Ticket[]> => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/previous-reports/${studentId}/${type}`);
+      if (!response.ok) {
+        throw new Error('Failed to get previous reports');
+      }
+      const reports = await response.json();
+      return reports.map((r: any) => ({
+        ...r,
+        id: r._id || r.id,
+        sentAt: r.sentAt ? new Date(r.sentAt) : undefined
       }));
     } catch (error) {
-      console.error('Error submitting assignment:', error);
-      throw error;
+      console.error('Error getting previous reports:', error);
+      return [];
     }
   };
 
@@ -1543,12 +1807,54 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(message || 'Failed to delete ticket');
       }
 
-      setTickets(prev => prev.filter(ticket => {
+      setRecitationTickets(prev => prev.filter(ticket => {
         const ticketId = ticket._id || ticket.id;
         return ticketId !== id;
       }));
+      await refreshData();
     } catch (error) {
       console.error('Error deleting ticket:', error);
+      throw error;
+    }
+  };
+
+  const fixMissingAssignmentIds = async (): Promise<{ fixed: number; total: number }> => {
+    try {
+      const response = await fetch(`${API_BASE}/tickets/fix-missing-assignment-ids`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fix missing assignment IDs');
+      }
+
+      const result = await response.json();
+      // Don't call refreshData() here to avoid infinite loops
+      // Instead, manually update the tickets that were fixed
+      if (result.fixed > 0) {
+        // Reload tickets only, not all data
+        try {
+          const ticketsResponse = await fetch(`${API_BASE}/tickets`);
+          if (ticketsResponse.ok) {
+            const ticketsData = await ticketsResponse.json();
+            const mappedTickets = ticketsData
+              .filter((t: any) => ['sabq', 'sabqi', 'manzil'].includes(t.type))
+              .map((t: any) => ({
+                ...t,
+                id: t._id || t.id,
+                createdAt: t.createdAt ? new Date(t.createdAt) : new Date(),
+                updatedAt: t.updatedAt ? new Date(t.updatedAt) : new Date()
+              }));
+            setRecitationTickets(mappedTickets);
+          }
+        } catch (err) {
+          console.error('Error reloading tickets after fix:', err);
+        }
+      }
+      return result;
+    } catch (error) {
+      console.error('Error fixing missing assignment IDs:', error);
       throw error;
     }
   };
@@ -1922,7 +2228,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     addAssignment,
     updateAssignment,
     deleteAssignment,
-    addAssignmentSubmission,
+    getStudentAssignments,
+    recitationTickets,
+    createTicket,
+    updateRecitationTicket,
+    startTicket,
+    submitTicket,
+    approveAndSendTicket,
+    reassignTicket,
+    getTeacherTickets,
+    getPendingReviewTickets,
+    getPreviousReports,
     recitationReviews,
     addRecitationReview,
     updateRecitationReview,
@@ -1943,6 +2259,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     finalizeTicket,
     deleteTicket,
     deleteTickets,
+    fixMissingAssignmentIds,
     getStudentPersonalMushaf,
     getStudentPersonalMushafFiltered,
     createListeningSession,

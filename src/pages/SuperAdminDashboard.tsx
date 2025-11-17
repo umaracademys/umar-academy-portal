@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
@@ -32,8 +32,11 @@ import AdminRecitationReview from '../components/AdminRecitationReview';
 import StudentReports from '../components/StudentReports';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
+import AdminTicketReview from '../components/AdminTicketReview';
+import AdminNotificationCenter from '../components/AdminNotificationCenter';
 
 const SuperAdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const {
     students,
     teachers,
@@ -46,6 +49,61 @@ const SuperAdminDashboard: React.FC = () => {
     deleteStudent,
     deleteTeacher,
   } = useData();
+
+  const { getPendingReviewTickets, recitationTickets, assignments, fixMissingAssignmentIds } = useBackendData();
+
+  // Track tickets with missing assignment IDs
+  const [ticketsWithMissingIds, setTicketsWithMissingIds] = useState<number>(0);
+  const [isFixingIds, setIsFixingIds] = useState(false);
+
+  // Debug: Log ticket statuses
+  useEffect(() => {
+    console.log('🔍 SuperAdminDashboard - All tickets:', recitationTickets.map(t => ({
+      id: t.id,
+      status: t.status,
+      type: t.type,
+      studentName: t.studentName,
+      submittedAt: t.submittedAt,
+      sentToAssignmentId: t.sentToAssignmentId,
+      sentAt: t.sentAt
+    })));
+    console.log('🔍 SuperAdminDashboard - Pending review tickets:', getPendingReviewTickets().length);
+    
+    // Check for tickets that were sent to assignment
+    const sentTickets = recitationTickets.filter(t => t.status === 'sent_to_assignment');
+    if (sentTickets.length > 0) {
+      console.log('📋 Tickets sent to assignment:', sentTickets.length);
+      const missingIds = sentTickets.filter(t => !t.sentToAssignmentId || t.sentToAssignmentId === 'N/A');
+      setTicketsWithMissingIds(missingIds.length);
+      
+      sentTickets.forEach(t => {
+        console.log('  -', t.type, 'for', t.studentName, '-> Assignment ID:', t.sentToAssignmentId || 'N/A');
+      });
+      
+      // Log if there are tickets with missing IDs
+      if (missingIds.length > 0) {
+        console.log(`⚠️ Found ${missingIds.length} tickets with missing assignment IDs. Use the "Fix Missing Assignment IDs" button to fix them.`);
+      }
+    } else {
+      setTicketsWithMissingIds(0);
+    }
+  }, [recitationTickets, getPendingReviewTickets]);
+
+  // Handle fixing missing assignment IDs
+  const handleFixMissingIds = async () => {
+    setIsFixingIds(true);
+    try {
+      const result = await fixMissingAssignmentIds();
+      console.log(`✅ Fixed ${result.fixed} out of ${result.total} tickets`);
+      alert(`Successfully fixed ${result.fixed} out of ${result.total} tickets with missing assignment IDs.`);
+      setTicketsWithMissingIds(0); // Reset count after fixing
+    } catch (error) {
+      console.error('❌ Error fixing missing assignment IDs:', error);
+      alert('Failed to fix missing assignment IDs: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setIsFixingIds(false);
+    }
+  };
 
   // Debug logging (commented out - uncomment for debugging)
   // console.log('🔍 SuperAdminDashboard - Data state:', { 
@@ -85,10 +143,23 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherBulkOperations, setShowTeacherBulkOperations] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
+  const [showTicketReview, setShowTicketReview] = useState(false);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
   const unreadNotificationsCount = adminNotifications.filter(n => !n.read).length;
+  const pendingTicketCount = getPendingReviewTickets().length;
+  
+  // Get pending homework submissions count
+  const pendingHomeworkCount = useMemo(() => {
+    return assignments.filter((assignment: any) => 
+      assignment.homework?.enabled && 
+      assignment.homework?.submission?.submitted && 
+      assignment.homework?.submission?.status === 'submitted'
+    ).length;
+  }, [assignments]);
 
   const totalStudents = students.length;
   const activeStudentCount = students.filter((student) => student.status === 'active').length;
@@ -98,6 +169,14 @@ const SuperAdminDashboard: React.FC = () => {
 
   const overviewQuickActions = [
     {
+      id: 'manage-assignments',
+      label: 'Manage Assignments',
+      description: 'Create and manage assignments with multi-phase classwork.',
+      onClick: () => navigate('/assignments'),
+      badge: null,
+      emphasis: 'primary',
+    },
+    {
       id: 'review-recitations',
       label: 'Review Recitations',
       description: 'Approve sabq, sabqi, and manzil submissions.',
@@ -106,12 +185,37 @@ const SuperAdminDashboard: React.FC = () => {
       emphasis: 'neutral',
     },
     {
+      id: 'review-tickets',
+      label: 'Review Tickets',
+      description: 'Review and approve submitted tickets from teachers.',
+      onClick: () => setShowTicketReview(true),
+      badge: pendingTicketCount,
+      emphasis: 'primary',
+    },
+    {
+      id: 'review-homework',
+      label: 'Review Homework',
+      description: 'Review and grade submitted homework assignments.',
+      onClick: () => navigate('/assignments'),
+      badge: pendingHomeworkCount,
+      emphasis: 'primary',
+    },
+    {
       id: 'student-reports',
       label: 'Student Reports',
       description: 'View and manage student assignment history by program.',
       onClick: () => setShowStudentReports(true),
       badge: null,
       emphasis: 'neutral',
+    },
+    {
+      id: 'fix-assignment-ids',
+      label: 'Fix Missing Assignment IDs',
+      description: 'Fix tickets that are missing their assignment ID references.',
+      onClick: handleFixMissingIds,
+      badge: ticketsWithMissingIds > 0 ? ticketsWithMissingIds : null,
+      emphasis: ticketsWithMissingIds > 0 ? 'accent-solid' : 'neutral',
+      disabled: ticketsWithMissingIds === 0 || isFixingIds,
     },
   ];
 
@@ -225,36 +329,42 @@ const SuperAdminDashboard: React.FC = () => {
               'flex h-full flex-col justify-between rounded-2xl border px-5 py-4 text-left shadow-sm transition';
             const activeButtonClasses = {
               primary: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.35)] bg-white hover:bg-soft-primary`,
-              neutral: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.15)] bg-white hover:bg-gray-50`,
+              neutral: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.15)] bg-white hover:bg-soft-primary`,
               accent: `${commonClasses} border-[rgba(var(--color-accent-rgb),0.35)] bg-white hover:bg-soft-accent`,
               'accent-solid': `${commonClasses} border-transparent bg-[var(--color-accent)] text-white hover:bg-[rgba(var(--color-accent-rgb),0.85)]`,
             };
 
             const badge =
-              action.badge && action.badge > 0 ? (
-                <span className="ml-auto rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-semibold text-gray-600">
+              action.badge !== null && action.badge !== undefined && action.badge > 0 ? (
+                <span className="ml-auto rounded-full bg-red-500 text-white px-2 py-0.5 text-[10px] font-semibold">
                   {action.badge}
                 </span>
               ) : null;
 
 
+            const isDisabled = (action as any).disabled;
+            const isFixing = action.id === 'fix-assignment-ids' && isFixingIds;
+            
             return (
               <button
                 key={action.id}
                 onClick={action.onClick}
-                className={activeButtonClasses[action.emphasis || 'neutral']}
+                disabled={isDisabled}
+                className={`${activeButtonClasses[action.emphasis || 'neutral']} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-base font-semibold text-primary">
-                      {action.label}
+                    <p className={`text-base font-semibold ${action.emphasis === 'accent-solid' ? 'text-white' : 'text-primary'}`}>
+                      {isFixing ? 'Fixing...' : action.label}
                       {badge}
                     </p>
                   </div>
-                  <p className="mt-2 text-sm text-primary-soft">{action.description}</p>
+                  <p className={`mt-2 text-sm ${action.emphasis === 'accent-solid' ? 'text-white/90' : 'text-primary-soft'}`}>
+                    {action.description}
+                  </p>
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
-                  Open workflow
+                <span className={`text-xs font-semibold uppercase tracking-wide ${action.emphasis === 'accent-solid' ? 'text-white/80' : 'text-primary-soft'}`}>
+                  {isFixing ? 'Processing...' : 'Open workflow'}
                 </span>
               </button>
             );
@@ -306,7 +416,7 @@ const SuperAdminDashboard: React.FC = () => {
   // System Management Section
   const SystemSection = () => (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-gray-900">🔧 System Tools</h2>
+      <h2 className="text-2xl font-bold text-primary">🔧 System Tools</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <button
           onClick={() => setShowPermissionManager(true)}
@@ -342,7 +452,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <button
           onClick={() => refreshNotifications()}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-gray-50"
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-primary"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             🔄
@@ -679,10 +789,10 @@ const SuperAdminDashboard: React.FC = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-background">
         <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header onNotificationClick={() => setShowNotificationCenter(true)} />
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               <div className="flex items-center justify-center h-64">
@@ -701,10 +811,10 @@ const SuperAdminDashboard: React.FC = () => {
   // Show error state
   if (error) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="flex h-screen bg-background">
         <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header onNotificationClick={() => setShowNotificationCenter(true)} />
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               <div className="bg-red-50 border border-red-200 rounded-md p-4">
@@ -740,11 +850,19 @@ const SuperAdminDashboard: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <Sidebar 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection}
+        isMobileOpen={isSidebarOpen}
+        onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+        <Header 
+          onNotificationClick={() => setShowNotificationCenter(true)}
+          onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        />
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto">
@@ -987,11 +1105,24 @@ const SuperAdminDashboard: React.FC = () => {
         />
       )}
 
+      {/* Ticket Review Modal */}
+      {showTicketReview && (
+        <AdminTicketReview
+          onClose={() => setShowTicketReview(false)}
+        />
+      )}
 
       {/* Student Reports Modal */}
       {showStudentReports && (
         <StudentReports
           onClose={() => setShowStudentReports(false)}
+        />
+      )}
+
+      {/* Notification Center Modal */}
+      {showNotificationCenter && (
+        <AdminNotificationCenter
+          onClose={() => setShowNotificationCenter(false)}
         />
       )}
 

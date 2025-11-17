@@ -1,29 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
-import { useData } from '../contexts/DataContext';
-import { Assignment } from '../types/assignment';
+import StudentAssignmentHistory from './StudentAssignmentHistory';
+import { useNavigate } from 'react-router-dom';
 
 interface StudentReportsProps {
   onClose: () => void;
 }
 
 const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
-  const { assignments: backendAssignments, deleteAssignment, updateAssignment, refreshData } = useBackendData();
-  const { students, teachers } = useData();
+  const { students } = useBackendData();
+  const navigate = useNavigate();
+  
+  // Don't call refreshData on mount - data should already be loaded from parent context
+  // Only refresh when explicitly needed (e.g., after actions)
   
   const [selectedProgram, setSelectedProgram] = useState<string>('');
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
-  const [editForm, setEditForm] = useState({
-    finalReport: '',
-    homework: '',
-    homeworkLink: '',
-    sabq: { portion: '', notes: '' },
-    sabqi: { portion: '', notes: '' },
-    manzil: { portion: '', notes: '' },
-  });
-  const [isSavingEdit, setIsSavingEdit] = useState(false);
-  const [deletingAssignmentId, setDeletingAssignmentId] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Get unique programs from students
   const programs = useMemo(() => {
@@ -42,157 +35,81 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
     return students.filter(student => student.program === selectedProgram);
   }, [students, selectedProgram]);
 
-  // Get assignment history for selected student
-  const studentAssignments = useMemo(() => {
-    if (!selectedStudent) return [];
-    const studentId = selectedStudent.id || (selectedStudent as any)._id;
-    
-    return backendAssignments
-      .filter((assignment: any) => {
-        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
-        return assignedTo.includes(studentId) || assignedTo.includes(studentId?.toString());
-      })
-      .sort((a: any, b: any) => {
-        const dateA = a.createdAt ? new Date(a.createdAt) : new Date(a.updatedAt || 0);
-        const dateB = b.createdAt ? new Date(b.createdAt) : new Date(b.updatedAt || 0);
-        return dateB.getTime() - dateA.getTime();
-      });
-  }, [selectedStudent, backendAssignments]);
-
-  // Group assignments by date
-  const groupedByDate = useMemo(() => {
-    const groups: Record<string, any[]> = {};
-    studentAssignments.forEach((assignment: any) => {
-      const date = assignment.createdAt ? new Date(assignment.createdAt) : new Date(assignment.updatedAt || Date.now());
-      const dateKey = date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-      if (!groups[dateKey]) {
-        groups[dateKey] = [];
-      }
-      groups[dateKey].push(assignment);
-    });
-    return groups;
-  }, [studentAssignments]);
-
-  const resolveAssignmentId = (assignment: any): string => {
-    return assignment._id || assignment.id || '';
+  const handleStudentClick = (studentId: string) => {
+    setSelectedStudent(studentId);
+    setShowHistory(true);
   };
 
-  const handleDeleteAssignment = async (assignment: any) => {
-    const assignmentId = resolveAssignmentId(assignment);
-    if (!assignmentId) return;
+  const handleCloseHistory = () => {
+    setShowHistory(false);
+    setSelectedStudent(null);
+  };
 
-    const confirmed = window.confirm('Are you sure you want to delete this assignment? This action cannot be undone.');
-    if (!confirmed) return;
+  const handleNavigateToAssignments = () => {
+    onClose();
+    navigate('/assignments');
+  };
 
-    try {
-      setDeletingAssignmentId(assignmentId);
-      // Delete the assignment
-      await deleteAssignment(assignmentId);
-      // Force a complete data refresh to ensure all components update
-      await refreshData();
-      // Small delay to ensure state updates propagate
-      await new Promise(resolve => setTimeout(resolve, 500));
-      alert('Assignment deleted successfully! All dashboards will be updated.');
-    } catch (error) {
-      console.error('Error deleting assignment:', error);
-      alert('Failed to delete assignment.');
-    } finally {
-      setDeletingAssignmentId(null);
+  // Get student initials
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
+    return name.substring(0, 2).toUpperCase();
   };
 
-  const handleOpenEditModal = (assignment: any) => {
-    setEditingAssignment(assignment);
-    setEditForm({
-      finalReport: assignment.description || assignment.finalReport || '',
-      homework: assignment.homeworkComments || assignment.homework || '',
-      homeworkLink: assignment.homeworkLink || '',
-      sabq: {
-        portion: assignment.sabq?.portion || '',
-        notes: assignment.sabq?.notes || ''
-      },
-      sabqi: {
-        portion: assignment.sabqi?.portion || '',
-        notes: assignment.sabqi?.notes || ''
-      },
-      manzil: {
-        portion: assignment.manzil?.portion || '',
-        notes: assignment.manzil?.notes || ''
-      },
-    });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingAssignment) return;
-    if (!editForm.finalReport.trim()) {
-      alert('Final report cannot be empty.');
-      return;
-    }
-
-    const assignmentId = resolveAssignmentId(editingAssignment);
-    if (!assignmentId) return;
-
-    try {
-      setIsSavingEdit(true);
-      await updateAssignment(assignmentId, {
-        description: editForm.finalReport,
-        homeworkComments: editForm.homework,
-        homeworkLink: editForm.homeworkLink,
-        sabq: editForm.sabq,
-        sabqi: editForm.sabqi,
-        manzil: editForm.manzil,
-      });
-      // Force a complete data refresh to ensure all components update
-      await refreshData();
-      // Small delay to ensure state updates propagate
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setEditingAssignment(null);
-      alert('Assignment updated successfully! All dashboards will be updated.');
-    } catch (error) {
-      console.error('Error updating assignment:', error);
-      alert('Failed to update assignment.');
-    } finally {
-      setIsSavingEdit(false);
-    }
-  };
-
-  const getTeacherName = (teacherId: string | undefined) => {
-    if (!teacherId) return 'Unknown';
-    const teacher = teachers.find(t => 
-      t.id === teacherId || 
-      (t as any)._id === teacherId ||
-      (t as any).teacherId === teacherId
+  if (showHistory && selectedStudent) {
+    return (
+      <StudentAssignmentHistory
+        studentId={selectedStudent}
+        onClose={handleCloseHistory}
+        onEditAssignment={(assignmentId) => {
+          handleCloseHistory();
+          navigate('/assignments', { state: { editAssignmentId: assignmentId } });
+        }}
+        onCreateAssignment={() => {
+          handleCloseHistory();
+          navigate('/assignments', { state: { createForStudentId: selectedStudent } });
+        }}
+      />
     );
-    return teacher?.fullName || 'Unknown Teacher';
-  };
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-primary)] to-[var(--color-accent)] text-white px-6 py-6">
-          <div className="flex items-center justify-between">
+      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        {/* Header */}
+        <header className="bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] px-6 sm:px-8 py-6 sm:py-8 border-b-4 border-accent shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold">Student Reports</h2>
-              <p className="text-white/90 mt-1">View and manage student assignment history</p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">Student Reports</h2>
+              <p className="text-white/95 mt-2 text-sm sm:text-base font-medium">View and manage student assignment history</p>
             </div>
-            <button
-              onClick={onClose}
-              className="rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/30"
-            >
-              ✕ Close
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleNavigateToAssignments}
+                className="px-5 sm:px-7 py-2.5 sm:py-3.5 bg-accent text-primary rounded-full text-sm sm:text-base font-extrabold transition-all shadow-2xl hover:scale-110 hover:bg-accent/90 border-2 border-white/40 whitespace-nowrap"
+              >
+                Manage Assignments
+              </button>
+              <button
+                onClick={onClose}
+                className="w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center bg-accent text-primary rounded-full transition-all text-2xl sm:text-3xl font-extrabold shadow-2xl hover:scale-110 hover:bg-accent/90 border-2 border-white/40"
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-6 py-6">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 bg-gradient-to-b from-background to-white">
           <div className="space-y-6">
             {/* Program Selection */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-white to-soft-primary p-5 sm:p-7 shadow-lg">
+              <label className="block text-sm sm:text-base font-extrabold text-primary mb-4">
                 Select Program
               </label>
               <select
@@ -201,7 +118,7 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
                   setSelectedProgram(e.target.value);
                   setSelectedStudent(null);
                 }}
-                className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-200"
+                className="w-full rounded-2xl border-2 border-primary/30 bg-white px-5 py-3.5 text-sm sm:text-base text-primary focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20 font-bold shadow-md transition-all hover:border-primary/50"
               >
                 <option value="">-- Select a Program --</option>
                 {programs.map(program => (
@@ -212,332 +129,62 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
 
             {/* Student List */}
             {selectedProgram && filteredStudents.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Select Student ({filteredStudents.length} students)
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="rounded-3xl border-2 border-primary/20 bg-gradient-to-br from-white to-soft-primary p-5 sm:p-7 shadow-lg">
+                <div className="flex items-center justify-between mb-6">
+                  <label className="block text-sm sm:text-base font-extrabold text-primary">
+                    Select Student
+                  </label>
+                  <span className="px-4 py-2 bg-primary text-white rounded-full text-xs sm:text-sm font-extrabold shadow-md">
+                    {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
                   {filteredStudents.map(student => (
                     <button
                       key={student.id}
-                      onClick={() => setSelectedStudent(student)}
-                      className={`rounded-lg border-2 p-3 text-left transition ${
-                        selectedStudent?.id === student.id
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 bg-white hover:border-green-300 hover:bg-green-50/50'
+                      onClick={() => handleStudentClick(student.id)}
+                      className={`rounded-3xl border-3 p-4 sm:p-5 text-center transition-all shadow-lg hover:shadow-xl transform ${
+                        selectedStudent === student.id
+                          ? 'border-primary bg-gradient-to-br from-soft-primary to-primary/10 scale-105 ring-4 ring-primary/20'
+                          : 'border-accent/40 bg-white hover:border-primary hover:bg-gradient-to-br hover:from-soft-primary hover:to-white hover:scale-102'
                       }`}
                     >
-                      <div className="font-semibold text-gray-900">{student.fullName}</div>
-                      <div className="text-xs text-gray-500 mt-1">{student.email}</div>
+                      <div className={`w-14 h-14 sm:w-18 sm:h-18 mx-auto mb-3 rounded-full flex items-center justify-center text-lg sm:text-xl font-extrabold shadow-md transition-all ${
+                        selectedStudent === student.id
+                          ? 'bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.8)] text-white scale-110'
+                          : 'bg-gradient-to-br from-accent to-[rgba(var(--color-accent-rgb),0.8)] text-primary hover:scale-105'
+                      }`}>
+                        {getInitials(student.fullName)}
+                      </div>
+                      <div className={`font-extrabold text-xs sm:text-sm truncate transition-colors ${
+                        selectedStudent === student.id ? 'text-primary' : 'text-primary'
+                      }`}>{student.fullName}</div>
+                      <div className="text-xs text-primary-soft mt-1 truncate">{student.email}</div>
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Assignment History */}
-            {selectedStudent && (
-              <div className="space-y-6">
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">
-                    Assignment History: {selectedStudent.fullName}
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {studentAssignments.length} assignment{studentAssignments.length !== 1 ? 's' : ''} found
-                  </p>
-                </div>
+            {/* Empty State */}
+            {selectedProgram && filteredStudents.length === 0 && (
+              <div className="rounded-3xl border-2 border-dashed border-accent/50 bg-gradient-to-br from-soft-accent to-white p-10 sm:p-14 text-center shadow-lg">
+                <p className="text-primary text-lg sm:text-xl font-extrabold mb-2">No students found</p>
+                <p className="text-primary-soft text-sm sm:text-base">No students are enrolled in this program yet.</p>
+              </div>
+            )}
 
-                {Object.keys(groupedByDate).length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                    <p className="text-gray-500">No assignments found for this student.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {Object.entries(groupedByDate)
-                      .sort(([dateA], [dateB]) => {
-                        const a = new Date(dateA);
-                        const b = new Date(dateB);
-                        return b.getTime() - a.getTime();
-                      })
-                      .map(([dateKey, dayAssignments]) => {
-                        const assignments = dayAssignments as any[];
-                        return (
-                          <div key={dateKey} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                            <div className="mb-4 pb-3 border-b border-gray-200">
-                              <h4 className="text-lg font-bold text-gray-900">{dateKey}</h4>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {assignments.length} assignment{assignments.length !== 1 ? 's' : ''} on this day
-                              </p>
-                            </div>
-
-                            <div className="space-y-4">
-                              {assignments.map((assignment: any) => {
-                                const assignmentId = resolveAssignmentId(assignment);
-                                const mushafMarkings = Array.isArray(assignment.mushafMarkings) ? assignment.mushafMarkings : [];
-                                
-                                return (
-                                  <div key={assignmentId} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                                    <div className="flex items-start justify-between mb-3">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <span className="text-lg">📝</span>
-                                          <h5 className="font-semibold text-gray-900">
-                                            {assignment.title || 'Assignment'}
-                                          </h5>
-                                        </div>
-                                        {assignment.listenerName && (
-                                          <p className="text-xs text-gray-600 mb-1">
-                                            Listener: {getTeacherName(assignment.listenerName)}
-                                          </p>
-                                        )}
-                                        {assignment.description && (
-                                          <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
-                                            {assignment.description}
-                                          </p>
-                                        )}
-                                        {assignment.homeworkComments && (
-                                          <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
-                                            <h6 className="text-xs font-semibold text-yellow-900 mb-1">📝 Homework</h6>
-                                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                              {assignment.homeworkComments}
-                                            </p>
-                                            {assignment.homeworkLink && (
-                                              <a
-                                                href={assignment.homeworkLink}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-green-600 hover:underline text-xs mt-2 inline-block"
-                                              >
-                                                📎 Homework Link →
-                                              </a>
-                                            )}
-                                          </div>
-                                        )}
-                                        {mushafMarkings.length > 0 && (
-                                          <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
-                                            <h6 className="text-xs font-semibold text-orange-900 mb-2">
-                                              📖 Mushaf Mistakes ({mushafMarkings.length})
-                                            </h6>
-                                            <div className="flex flex-wrap gap-2">
-                                              {mushafMarkings.map((mistake: any, idx: number) => {
-                                                const typeLabel = mistake.type === 'memory' ? 'Memory' :
-                                                                  mistake.type === 'madd' ? 'Madd' :
-                                                                  mistake.type === 'ikhfa' ? 'Ikhfa' :
-                                                                  mistake.type === 'holding' ? 'Holding' :
-                                                                  mistake.type === 'tech' ? 'Tech' :
-                                                                  mistake.type === 'other' ? 'Other' : mistake.type;
-                                                return (
-                                                  <span
-                                                    key={idx}
-                                                    className={`px-2 py-1 rounded text-xs font-medium ${
-                                                      mistake.type === 'memory' 
-                                                        ? 'bg-red-100 text-red-800' 
-                                                        : 'bg-yellow-100 text-yellow-800'
-                                                    }`}
-                                                  >
-                                                    {typeLabel} • Page {mistake.page}
-                                                    {mistake.surah && mistake.ayah && ` • ${mistake.surah}:${mistake.ayah}`}
-                                                  </span>
-                                                );
-                                              })}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="flex gap-2 ml-4">
-                                        <button
-                                          onClick={() => handleOpenEditModal(assignment)}
-                                          className="px-3 py-2 text-xs font-semibold rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
-                                        >
-                                          ✏️ Edit
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteAssignment(assignment)}
-                                          disabled={deletingAssignmentId === assignmentId}
-                                          className="px-3 py-2 text-xs font-semibold rounded-lg bg-red-50 border border-red-200 text-red-700 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                          {deletingAssignmentId === assignmentId ? 'Deleting...' : '🗑️ Delete'}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
+            {!selectedProgram && (
+              <div className="rounded-3xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-soft-primary to-white p-10 sm:p-14 text-center shadow-lg">
+                <p className="text-primary text-lg sm:text-xl font-extrabold mb-2">Select a Program</p>
+                <p className="text-primary-soft text-sm sm:text-base">Choose a program from above to view students.</p>
               </div>
             )}
           </div>
         </main>
       </div>
-
-      {/* Edit Assignment Modal */}
-      {editingAssignment && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 px-4 py-6">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Edit Assignment</h3>
-              <button
-                onClick={() => setEditingAssignment(null)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Classwork Sections */}
-              <div className="bg-[#FDF7E7] rounded-lg border border-[#E7AA39]/40 p-4">
-                <h4 className="text-sm font-semibold text-[#2E4D32] mb-4 uppercase tracking-wide">Classwork Details</h4>
-                <div className="grid gap-4 md:grid-cols-3">
-                  {/* Sabq */}
-                  <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-4">
-                    <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-3">✨ Sabq</p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Portion</label>
-                        <input
-                          type="text"
-                          value={editForm.sabq.portion}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, sabq: { ...prev.sabq, portion: e.target.value } }))}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                          placeholder="e.g., Juz 1, Page 2-5"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea
-                          value={editForm.sabq.notes}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, sabq: { ...prev.sabq, notes: e.target.value } }))}
-                          rows={3}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                          placeholder="Teacher's notes..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sabqi */}
-                  <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-4">
-                    <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-3">🧠 Sabqi</p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Portion</label>
-                        <input
-                          type="text"
-                          value={editForm.sabqi.portion}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, sabqi: { ...prev.sabqi, portion: e.target.value } }))}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                          placeholder="e.g., Juz 1, Page 1-3"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea
-                          value={editForm.sabqi.notes}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, sabqi: { ...prev.sabqi, notes: e.target.value } }))}
-                          rows={3}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                          placeholder="Teacher's notes..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Manzil */}
-                  <div className="rounded-lg border border-[#E7AA39]/20 bg-white p-4">
-                    <p className="text-xs font-semibold text-[#2E4D32]/70 uppercase tracking-wide mb-3">🔁 Manzil</p>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Portion</label>
-                        <input
-                          type="text"
-                          value={editForm.manzil.portion}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, manzil: { ...prev.manzil, portion: e.target.value } }))}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                          placeholder="e.g., Juz 1, Page 1-10"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
-                        <textarea
-                          value={editForm.manzil.notes}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, manzil: { ...prev.manzil, notes: e.target.value } }))}
-                          rows={3}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                          placeholder="Teacher's notes..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Final Report */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Final Report / Summary <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={editForm.finalReport}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, finalReport: e.target.value }))}
-                  rows={6}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
-                  placeholder="Enter the final report or summary..."
-                />
-              </div>
-
-              {/* Homework */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Homework</label>
-                <textarea
-                  value={editForm.homework}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, homework: e.target.value }))}
-                  rows={4}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
-                  placeholder="Enter homework instructions..."
-                />
-              </div>
-
-              {/* Homework Link */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Homework Link (Optional)</label>
-                <input
-                  type="url"
-                  value={editForm.homeworkLink}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, homeworkLink: e.target.value }))}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
-                  placeholder="https://..."
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 justify-end pt-4 border-t">
-                <button
-                  onClick={() => setEditingAssignment(null)}
-                  className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={isSavingEdit || !editForm.finalReport.trim()}
-                  className="px-6 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default StudentReports;
-

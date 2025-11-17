@@ -90,6 +90,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      sql.js:
+        specifier: ^1.13.0
+        version: 1.13.0
       tailwindcss:
         specifier: ^3.3.6
         version: 3.4.18(tsx@4.20.6)
@@ -103,6 +106,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.2.17
         version: 18.3.7(@types/react@18.3.26)
+      '@types/sql.js':
+        specifier: ^1.4.9
+        version: 1.4.9
       typescript:
         specifier: ^5.3.3
         version: 5.9.3

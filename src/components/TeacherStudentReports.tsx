@@ -182,12 +182,14 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
       }
       
       await updateAssignment(assignmentId, {
-        description: editForm.finalReport,
-        homeworkComments: editForm.homework,
-        homeworkLink: editForm.homeworkLink,
-        classworkSections: classworkSections,
-        status: 'published', // Ensure it's published
-      });
+        comment: editForm.finalReport,
+        homework: {
+          enabled: !!editForm.homework || !!editForm.homeworkLink,
+          content: editForm.homework || '',
+          link: editForm.homeworkLink || ''
+        },
+        status: 'active', // Set to active status
+      } as any);
       // Force a complete data refresh to ensure all components update
       await refreshData();
       // Small delay to ensure state updates propagate

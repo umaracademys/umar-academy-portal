@@ -16,7 +16,7 @@ const StudentDashboard: React.FC = () => {
   console.log('🔍 StudentDashboard - Component is starting to render');
   
   const { students, getStudentByEmail, updateStudent } = useData();
-  const { assignments: backendAssignments, addAssignmentSubmission } = useBackendData();
+  const { assignments: backendAssignments } = useBackendData();
   const { user } = useAuth();
   
   console.log('🔍 StudentDashboard - Hooks called successfully');
@@ -36,60 +36,92 @@ const StudentDashboard: React.FC = () => {
   console.log('StudentDashboard - currentStudent:', currentStudent);
   console.log('StudentDashboard - getStudentByEmail result:', getStudentByEmail(user?.email || ''));
 
-  // Get student's assignments from backend
+  // Get student's assignments from backend (new multi-phase assignment system)
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
     
+    console.log('📋 Filtering assignments for student:', currentStudent.id);
+    console.log('📋 Total assignments in backend:', backendAssignments.length);
+    
     return backendAssignments
       .filter((assignment: any) => {
-        const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
-        return assignedTo.includes(currentStudent.id) || assignedTo.includes(currentStudent.id.toString());
+        // New assignment structure uses studentId directly
+        const assignmentStudentId = assignment.studentId || assignment._id?.studentId;
+        const matches = assignmentStudentId === currentStudent.id || 
+                       assignmentStudentId === currentStudent.id.toString() ||
+                       String(assignmentStudentId) === String(currentStudent.id);
+        
+        if (matches) {
+          console.log('✅ Found assignment for student:', {
+            assignmentId: assignment._id || assignment.id,
+            studentId: assignment.studentId,
+            status: assignment.status
+          });
+        }
+        
+        return matches;
       })
       .map((assignment: any) => {
-        // Map backend assignment to dashboard format
-        const dueDate = assignment.dueDate ? new Date(assignment.dueDate) : new Date();
-        const isOverdue = dueDate < new Date() && assignment.status !== 'completed';
-        
-        // Check if student has submitted
-        const submission = assignment.submissions?.find((s: any) => 
-          s.studentId === currentStudent.id || s.studentId === currentStudent.id.toString()
-        );
-        
-        let status = assignment.status || 'pending';
-        if (submission) {
-          status = submission.status === 'graded' ? 'completed' : submission.status || 'submitted';
-        } else if (isOverdue) {
-          status = 'overdue';
-        }
-
-        // Ensure we always have _id - it's critical for API calls
+        // Map new assignment structure to dashboard format
         const assignmentId = assignment._id || assignment.id;
+        const createdAt = assignment.createdAt ? new Date(assignment.createdAt) : new Date();
+        
+        // Build title from classwork sections
+        const classworkCount = 
+          (assignment.classwork?.sabq?.length || 0) +
+          (assignment.classwork?.sabqi?.length || 0) +
+          (assignment.classwork?.manzil?.length || 0);
+        
+        let title = 'Assignment';
+        if (classworkCount > 0) {
+          const sections: string[] = [];
+          if (assignment.classwork?.sabq?.length > 0) {
+            sections.push(`${assignment.classwork.sabq.length} Sabq`);
+          }
+          if (assignment.classwork?.sabqi?.length > 0) {
+            sections.push(`${assignment.classwork.sabqi.length} Sabqi`);
+          }
+          if (assignment.classwork?.manzil?.length > 0) {
+            sections.push(`${assignment.classwork.manzil.length} Manzil`);
+          }
+          title = sections.join(', ');
+        }
+        
+        if (assignment.homework?.enabled) {
+          title += (classworkCount > 0 ? ' + ' : '') + 'Homework';
+        }
+        
+        const status = assignment.status || 'active';
         
         return {
           id: assignmentId,
-          _id: assignmentId, // Always preserve MongoDB _id for API calls
-          title: assignment.title || `${assignment.classworkType || assignment.type} Assignment`,
-          description: assignment.description || '',
-          course: assignment.program || 'General',
-          instructor: assignment.listenerName || assignment.assignedBy?.name || 'Teacher',
-          dueDate: dueDate.toISOString().split('T')[0],
-          status: status,
-          grade: submission?.grade || null,
+          _id: assignmentId,
+          title: title,
+          description: assignment.comment || '',
+          course: 'Quran Recitation',
+          instructor: assignment.assignedByName || 'Teacher',
+          dueDate: createdAt.toISOString().split('T')[0], // Use created date as reference
+          status: status === 'completed' ? 'completed' : status === 'archived' ? 'archived' : 'active',
+          grade: null,
           maxPoints: 100,
-          type: assignment.type === 'homework' ? 'homework' : assignment.classworkType || 'classwork',
+          type: 'classwork',
           studentId: currentStudent.id,
-          homeworkComments: assignment.homeworkComments,
-          homeworkLink: assignment.homeworkLink,
-          createdAt: assignment.createdAt,
-          // Store reference to original for debugging
+          createdAt: createdAt,
+          // Store full assignment data
+          classwork: assignment.classwork || { sabq: [], sabqi: [], manzil: [] },
+          homework: assignment.homework || { enabled: false, content: '', link: '' },
+          comment: assignment.comment || '',
+          mushafMistakes: assignment.mushafMistakes || [],
+          assignedByName: assignment.assignedByName,
+          assignedByRole: assignment.assignedByRole,
           originalAssignment: assignment
         };
       })
       .sort((a: any, b: any) => {
-        // Sort by due date, with overdue first
-        const dateA = new Date(a.dueDate);
-        const dateB = new Date(b.dueDate);
-        return dateA.getTime() - dateB.getTime();
+        // Sort by creation date, newest first
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
       });
   }, [backendAssignments, currentStudent]);
 
@@ -134,6 +166,7 @@ const StudentDashboard: React.FC = () => {
       const submission = {
         studentId: currentStudent.id.toString(),
         content: submissionData.content,
+        link: '', // No link field in current form
         attachments: submissionData.attachments.map((url: string) => ({
           type: 'link',
           content: url,
@@ -163,7 +196,24 @@ const StudentDashboard: React.FC = () => {
       
       console.log('✅ Submitting assignment with ID:', assignmentId);
       
-      await addAssignmentSubmission(assignmentId, submission);
+      // Submit homework using the API directly
+      const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+      const response = await fetch(`${API_BASE}/assignments/${assignmentId}/submit-homework`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: submission.content,
+          link: submission.link || '',
+          attachments: submission.attachments,
+          studentId: currentStudent.id,
+          studentName: currentStudent.fullName
+        })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to submit homework');
+      }
       
       // Success - close form and reset
       setShowSubmissionForm(false);
@@ -382,82 +432,121 @@ const StudentDashboard: React.FC = () => {
 
         {/* Recent Assignments */}
         <div className="mb-8">
-          <Card title={`📝 Recent Assignments (${studentAssignments.length})`}>
+          <Card title={`📝 My Assignments (${studentAssignments.length})`}>
             {studentAssignments.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <p>No assignments yet.</p>
+                <p>No assignments yet. Your teacher will assign work soon.</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {studentAssignments.slice(0, 5).map((assignment) => (
-                  <div key={assignment.id} className="bg-gradient-to-r from-cream-100 to-cream-200 p-4 rounded-lg border border-gold-300">
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <h4 className="font-bold text-gray-900">{assignment.title}</h4>
-                        <p className="text-sm text-gray-600 mb-2">{assignment.description}</p>
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>📅 Due: {new Date(assignment.dueDate).toLocaleDateString()}</span>
-                          <span>📚 {assignment.course}</span>
-                          <span>👨‍🏫 {assignment.instructor}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          assignment.status === 'submitted' ? 'bg-blue-100 text-blue-800' :
-                          assignment.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {assignment.status}
-                        </span>
-                        {assignment.grade && (
-                          <p className="text-sm font-bold text-primary-600 mt-1">
-                            Grade: {assignment.grade}%
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                      <div className="bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600">Max Points</p>
-                        <p className="text-sm font-medium">{assignment.maxPoints}</p>
-                      </div>
-                      <div className="bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600">Type</p>
-                        <p className="text-sm font-medium">{assignment.type}</p>
-                      </div>
-                      <div className="bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600">Status</p>
-                        <p className="text-sm font-medium text-green-600 font-semibold">{assignment.status}</p>
-                      </div>
-                    </div>
-
-                    {(assignment as any).attachments && (assignment as any).attachments.length > 0 && (
-                      <div className="mb-3 bg-white p-3 rounded">
-                        <p className="text-xs text-gray-600 mb-2">Attachments:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(assignment as any).attachments.map((file, index) => (
-                            <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                              📎 {file.name}
+                {studentAssignments.slice(0, 10).map((assignment: any) => {
+                  const classwork = assignment.classwork || { sabq: [], sabqi: [], manzil: [] };
+                  const hasClasswork = classwork.sabq.length > 0 || classwork.sabqi.length > 0 || classwork.manzil.length > 0;
+                  const hasHomework = assignment.homework?.enabled;
+                  
+                  return (
+                    <div key={assignment.id} className="bg-white rounded-2xl border-2 border-accent-soft p-4 sm:p-6 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <h4 className="text-lg sm:text-xl font-bold text-primary">{assignment.title}</h4>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                              assignment.status === 'archived' ? 'bg-gray-100 text-gray-800' :
+                              'bg-blue-100 text-blue-800'
+                            }`}>
+                              {assignment.status === 'active' ? 'Active' : assignment.status}
                             </span>
-                          ))}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3 text-sm text-primary-soft mb-2">
+                            <span>👨‍🏫 Assigned by: {assignment.assignedByName || 'Teacher'}</span>
+                            <span>📅 {assignment.createdAt ? new Date(assignment.createdAt).toLocaleDateString() : 'N/A'}</span>
+                          </div>
+                          {assignment.comment && (
+                            <p className="text-sm text-primary-soft italic mt-2">"{assignment.comment}"</p>
+                          )}
                         </div>
                       </div>
-                    )}
 
-                    <div className="flex items-center justify-between pt-3 border-t border-gold-200">
-                      {assignment.status === 'pending' && (
-                        <span className="px-4 py-2 rounded-lg bg-primary-50 text-primary-700 text-sm font-medium">
-                          In-class follow-up
-                        </span>
+                      {/* Classwork Section */}
+                      {hasClasswork && (
+                        <div className="mb-4 p-3 sm:p-4 bg-soft-primary rounded-xl border border-primary-soft">
+                          <h5 className="text-sm font-semibold text-primary mb-3">📚 Classwork</h5>
+                          <div className="space-y-2">
+                            {/* Sabq */}
+                            {classwork.sabq.length > 0 && (
+                              <div>
+                                <span className="text-xs font-medium text-primary-soft">Sabq:</span>
+                                <ul className="ml-4 mt-1 space-y-1">
+                                  {classwork.sabq.map((phase: any, idx: number) => (
+                                    <li key={idx} className="text-sm text-primary">
+                                      • {phase.assignmentRange || phase.details || 'Sabq recitation'}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Sabqi */}
+                            {classwork.sabqi.length > 0 && (
+                              <div>
+                                <span className="text-xs font-medium text-primary-soft">Sabqi:</span>
+                                <ul className="ml-4 mt-1 space-y-1">
+                                  {classwork.sabqi.map((phase: any, idx: number) => (
+                                    <li key={idx} className="text-sm text-primary">
+                                      • {phase.assignmentRange || phase.details || 'Sabqi recitation'}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            
+                            {/* Manzil */}
+                            {classwork.manzil.length > 0 && (
+                              <div>
+                                <span className="text-xs font-medium text-primary-soft">Manzil:</span>
+                                <ul className="ml-4 mt-1 space-y-1">
+                                  {classwork.manzil.map((phase: any, idx: number) => (
+                                    <li key={idx} className="text-sm text-primary">
+                                      • {phase.assignmentRange || phase.details || 'Manzil recitation'}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm">
-                        View Details
-                      </button>
+
+                      {/* Homework Section */}
+                      {hasHomework && (
+                        <div className="mb-4 p-3 sm:p-4 bg-soft-accent rounded-xl border border-accent-soft">
+                          <h5 className="text-sm font-semibold text-primary mb-2">📝 Homework</h5>
+                          {assignment.homework.content && (
+                            <p className="text-sm text-primary mb-2">{assignment.homework.content}</p>
+                          )}
+                          {assignment.homework.link && (
+                            <a 
+                              href={assignment.homework.link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              🔗 {assignment.homework.link}
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Mistakes Count */}
+                      {assignment.mushafMistakes && assignment.mushafMistakes.length > 0 && (
+                        <div className="mb-3 text-sm text-primary-soft">
+                          <span className="font-medium">Mistakes marked:</span> {assignment.mushafMistakes.length}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>

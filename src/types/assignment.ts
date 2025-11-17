@@ -1,120 +1,108 @@
-export type AssignmentPortion = 'quarter' | 'half' | 'three_quarters' | 'full' | 'custom' | 'pages' | 'surah' | 'multi';
+// New Multi-Phase Assignment System Types
 
-export interface ClassworkJuzSelection {
+export interface ClassworkPhase {
+  type: 'sabq' | 'sabqi' | 'manzil';
+  assignmentRange: string; // e.g., "Surah Al-Fatiha, Ayah 1-7"
+  details?: string; // Additional notes/details
+  fromPage?: number;
+  toPage?: number;
+  fromAyah?: number;
+  toAyah?: number;
+  surahNumber?: number;
+  surahName?: string;
+}
+
+export interface AssignmentClasswork {
+  sabq: ClassworkPhase[];
+  sabqi: ClassworkPhase[];
+  manzil: ClassworkPhase[];
+}
+
+export interface HomeworkSubmission {
+  submitted: boolean;
+  submittedAt?: Date | string;
+  submittedBy?: string; // Student ID
+  submittedByName?: string; // Student name
+  content?: string; // Student's submission content
+  link?: string; // Optional submission link
+  audioUrl?: string; // Audio recording of recitation
+  attachments?: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>;
+  feedback?: string; // Teacher/Admin feedback
+  gradedBy?: string; // User ID who graded
+  gradedByName?: string; // User name who graded
+  gradedAt?: Date | string;
+  grade?: number; // Optional grade
+  status?: 'submitted' | 'graded' | 'returned';
+}
+
+export interface AssignmentHomework {
+  enabled: boolean;
+  content: string; // Text content
+  link?: string; // Optional link
+  submission?: HomeworkSubmission;
+}
+
+export interface AssignmentMushafMistake {
   id: string;
-  juzNumber: number;
-  portion: AssignmentPortion;
-  segmentIndex?: number;
-  approxRange?: {
-    startAyah?: number;
-    endAyah?: number;
+  type?: 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other';
+  page: number;
+  surah: number;
+  ayah: number;
+  wordIndex?: number;
+  position?: {
+    x: number;
+    y: number;
   };
-  customRange?: {
-    startSurah?: string;
-    startAyah?: number;
-    endSurah?: string;
-    endAyah?: number;
-  };
-  label?: string;
-  notes?: string;
+  note?: string;
+  audioUrl?: string;
+  workflowStep?: 'sabq' | 'sabqi' | 'manzil';
+  markedBy?: string;
+  markedByName?: string;
+  timestamp?: Date | string;
 }
 
 export interface Assignment {
   id: string;
-  title: string;
-  description: string;
-  type: 'classwork' | 'homework';
-  classworkType?: 'sabq' | 'sabqi' | 'manzil';
-  classworkSections?: ClassworkSection[];
-  program: string;
-  assignedBy: string; // User ID of who assigned it
-  assignedTo: string[]; // Array of student IDs
-  dueDate: Date;
-  createdAt: Date;
-  updatedAt?: Date;
-  status: 'draft' | 'published' | 'completed' | 'pending_homework';
-  fromRecitationReviewId?: string; // Link to recitation review if converted from review
-  fromTicketId?: string; // Link to ticket if created from ticket workflow
-  listenerName?: string; // Teacher/listener name who reviewed the recitation
-  listenerId?: string; // Teacher/listener ID
-  homeworkComments?: string; // Homework instructions
-  homeworkLink?: string; // Homework link
-  mushafMarkings?: any[]; // Mushaf mistake markings from ticket workflow
-  classworkSummary?: string;
-  homeworkSummary?: string;
-  attachments?: {
-    type: 'text' | 'link';
-    content: string;
-    title?: string;
-  }[];
-  submissions: AssignmentSubmission[];
-  notifications: AssignmentNotification[];
-}
-
-export interface AssignmentSubmission {
-  id: string;
+  _id?: string;
   studentId: string;
-  assignmentId: string;
-  submittedAt: Date;
-  content: string;
-  attachments?: {
-    type: 'file' | 'link';
-    content: string;
-    title?: string;
-  }[];
-  grade?: number;
-  feedback?: string;
-  status: 'submitted' | 'graded' | 'returned';
+  studentName: string;
+  assignedBy: string; // User ID (admin, super admin, or teacher)
+  assignedByName: string; // User name
+  assignedByRole: 'admin' | 'super_admin' | 'teacher';
+  // Classwork phases - can have multiple entries of each type
+  classwork: AssignmentClasswork;
+  // Homework
+  homework: AssignmentHomework;
+  // Comment
+  comment?: string;
+  // Mushaf mistakes associated with this assignment
+  mushafMistakes?: AssignmentMushafMistake[];
+  // Status tracking
+  status?: 'active' | 'completed' | 'archived';
+  completedAt?: Date | string;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
-export interface AssignmentNotification {
-  id: string;
-  assignmentId: string;
-  studentId: string;
-  type: 'assignment_created' | 'assignment_due' | 'assignment_submitted' | 'assignment_graded';
-  message: string;
-  read: boolean;
-  createdAt: Date;
-}
-
-export interface Program {
-  id: string;
-  name: string;
-  description: string;
-  students: string[]; // Array of student IDs
-  createdAt: Date;
-  status: 'active' | 'inactive';
-}
-
-export interface AssignmentReport {
-  programId: string;
-  programName: string;
-  totalAssignments: number;
-  completedAssignments: number;
-  pendingAssignments: number;
-  studentStats: {
-    studentId: string;
-    studentName: string;
-    totalAssignments: number;
-    submittedAssignments: number;
-    averageGrade: number;
-    assignments: AssignmentSubmission[];
-  }[];
+// Legacy types (keeping for backward compatibility if needed)
+export interface AssignmentPortion {
+  surah?: number;
+  surahName?: string;
+  fromAyah?: number;
+  toAyah?: number;
+  fromPage?: number;
+  toPage?: number;
+  juz?: number;
 }
 
 export interface ClassworkSection {
-  step: 'sabq' | 'sabqi' | 'manzil' | string;
-  title?: string;
+  type: 'sabq' | 'sabqi' | 'manzil';
+  assignmentRange: string;
   details?: string;
-  teacherName?: string;
-  order?: number;
-  assignmentRange?: string;
-  assignmentPortion?: AssignmentPortion | string;
-  label?: string;
+  assignmentPortion?: AssignmentPortion;
   summary?: string;
-  juzSelections?: ClassworkJuzSelection[];
-  nextHomework?: string;
-  metadata?: Record<string, unknown>;
 }
-
-

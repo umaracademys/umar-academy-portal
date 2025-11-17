@@ -374,6 +374,7 @@ export const WordByWordPage: React.FC<{
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
   readOnly?: boolean;
   onMistakesWithWords?: (mistakesWithWords: Array<MushafMistake & { wordText?: string }>) => void;
+  onPageChange?: (page: number) => void; // For page navigation
 }> = ({
   pageNumber,
   onWordClick,
@@ -382,6 +383,7 @@ export const WordByWordPage: React.FC<{
   showHistorical = true,
   readOnly = false,
   onMistakesWithWords,
+  onPageChange,
 }) => {
   const mistakes = React.useMemo(() => mistakesProp as MushafMistake[], [mistakesProp]);
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
@@ -480,14 +482,20 @@ export const WordByWordPage: React.FC<{
     setFontFamily(defaultFontStack);
 
     const loadLayout = async () => {
+      console.log(`🔄 [PAGE ${pageNumber}] Starting layout load from local data files...`);
+      
+      // PRIMARY: Try SQLite database with local font (user's preference)
       try {
+        console.log(`🔄 [PAGE ${pageNumber}] Attempting to load from local SQLite database and font...`);
         const qpcLayout = await getQpcV1Layout(pageNumber);
         if (!cancelled && qpcLayout && qpcLayout.lines.length > 0) {
+          console.log(`✅ Successfully loaded QPC V1 layout with ${qpcLayout.lines.length} lines from SQLite`);
           setLayout(qpcLayout);
           try {
             const family = await ensureQpcV1Font(pageNumber);
             if (!cancelled && family) {
               setFontFamily(`${family}, ${defaultFontStack}`);
+              console.log(`✅ Loaded QPC V1 font for page ${pageNumber}: ${family}`);
             }
           } catch (fontError) {
             console.warn(`⚠️ Unable to load QPC V1 font for page ${pageNumber}:`, fontError);
@@ -495,22 +503,25 @@ export const WordByWordPage: React.FC<{
           }
           return;
         }
-        throw new Error(`No QPC V1 layout data for page ${pageNumber}`);
-      } catch (qpcError) {
-        console.warn(`⚠️ Falling back to API layout for page ${pageNumber}`, qpcError);
-        try {
-          const pageData = await fetchPageLines(pageNumber, 'v4');
+      } catch (sqliteError) {
+        console.warn(`⚠️ SQLite database failed for page ${pageNumber}, trying MongoDB:`, sqliteError);
+      }
+      
+      // FALLBACK 1: Try MongoDB API (if local files not available)
+      try {
+        console.log(`🔄 [PAGE ${pageNumber}] Attempting to load from MongoDB API...`);
+        const pageData = await fetchPageLines(pageNumber, 'v4');
 
-          if (!pageData || !pageData.lines) {
-            throw new Error(`No layout data found for page ${pageNumber}`);
-          }
+        if (pageData && pageData.lines && pageData.lines.length > 0) {
+          console.log(`✅ [PAGE ${pageNumber}] Successfully loaded ${pageData.lines.length} lines from MongoDB`);
 
+          // Extract words from API response
           const apiWords: Word[] = [];
           pageData.lines.forEach((line: any) => {
             if (line.words && Array.isArray(line.words)) {
               line.words.forEach((wordData: any) => {
                 apiWords.push({
-                  word_index: wordData.id || wordData.word_index || 0,
+                  word_index: wordData.id || wordData.word_index || wordData.word_id || 0,
                   surah: parseInt(wordData.surah) || 0,
                   ayah: parseInt(wordData.ayah) || 0,
                   text: wordData.text || ''
@@ -521,9 +532,10 @@ export const WordByWordPage: React.FC<{
 
           if (!cancelled && apiWords.length > 0) {
             setWordsFromApi(apiWords);
-            console.log(`✅ Extracted ${apiWords.length} words from API response`);
+            console.log(`✅ Extracted ${apiWords.length} words from MongoDB response`);
           }
 
+          // Convert MongoDB response to LayoutPage format
           const layoutJson: LayoutPage = {
             page_number: pageData.pageNumber || pageNumber,
             lines: pageData.lines.map((line: any) => ({
@@ -539,15 +551,55 @@ export const WordByWordPage: React.FC<{
 
           if (!cancelled) {
             setLayout(layoutJson);
-            setFontFamily(defaultFontStack);
-            console.log(`✅ Loaded layout for page ${pageNumber} from backend API fallback`);
-          }
-        } catch (apiError) {
-          if (!cancelled) {
-            console.error("Error fetching fallback layout:", apiError);
-            setLayout(null);
+            // Try to load QPC V1 font even when using MongoDB data
+            try {
+              const family = await ensureQpcV1Font(pageNumber);
+              if (!cancelled && family) {
+                setFontFamily(`${family}, ${defaultFontStack}`);
+                console.log(`✅ Loaded QPC V1 font for page ${pageNumber} from local files`);
+              } else {
+                setFontFamily(defaultFontStack);
+              }
+            } catch (fontError) {
+              console.warn(`⚠️ Unable to load QPC V1 font for page ${pageNumber}:`, fontError);
+              setFontFamily(defaultFontStack);
+            }
+            console.log(`✅ Loaded layout for page ${pageNumber} from MongoDB`);
+            return;
           }
         }
+      } catch (mongoError) {
+        console.warn(`⚠️ MongoDB API failed for page ${pageNumber}:`, mongoError);
+      }
+      
+      // FALLBACK 2: Try JSON file (local file)
+      try {
+        console.log(`🔄 [PAGE ${pageNumber}] Trying JSON file from local files...`);
+        const jsonLayoutRes = await fetch(`/data/layouts/page_${pageNumber}.json`);
+        if (jsonLayoutRes.ok) {
+          const contentType = jsonLayoutRes.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const layoutJson = await jsonLayoutRes.json();
+            if (!cancelled && layoutJson && layoutJson.lines && layoutJson.lines.length > 0) {
+              setLayout(layoutJson);
+              setFontFamily(defaultFontStack);
+              console.log(`✅ Loaded layout for page ${pageNumber} from JSON file`);
+              return;
+            }
+          }
+        }
+      } catch (jsonError) {
+        console.warn(`⚠️ JSON layout file not found for page ${pageNumber}:`, jsonError);
+      }
+      
+      // All methods failed
+      if (!cancelled) {
+        console.error("❌ All layout loading methods failed for page", pageNumber);
+        console.error("💡 Make sure you have:");
+        console.error("   1. MongoDB database populated with Quran page data (PRIMARY - if using MongoDB)");
+        console.error("   2. QPC V1 SQLite database at /data/layouts/qpc-v1-15-lines.db (FALLBACK)");
+        console.error("   3. JSON layout file at /data/layouts/page_" + pageNumber + ".json (FALLBACK)");
+        setLayout(null);
       }
     };
 
@@ -562,23 +614,104 @@ export const WordByWordPage: React.FC<{
   useEffect(() => {
     const availableWords = words.length > 0 ? words : wordsFromApi;
     if (availableWords.length > 0 && mistakes.length > 0 && onMistakesWithWords) {
-      const mistakesWithWordText = mistakes
-        .filter(m => m.page === pageNumber)
-        .map(m => {
-          // Find the word text for this mistake
-          const word = availableWords.find(
-            w => w.surah === m.surah && 
-                 w.ayah === m.ayah && 
-                 (m.wordIndex === undefined || m.wordIndex === null || w.word_index === m.wordIndex)
-          );
-          return {
-            ...m,
-            wordText: word ? word.text : undefined
-          };
+      // Try to load word-by-word JSON file which has complete words (not glyphs)
+      const loadWordByWordFile = async () => {
+        try {
+          const response = await fetch('/data/words/word_by_word.json');
+          if (response.ok) {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const wordByWordData = await response.json();
+              // word_by_word.json should have complete words with word_index, surah, ayah, text
+              // Use this for mistake reports instead of reconstructing from glyphs
+              if (Array.isArray(wordByWordData) && wordByWordData.length > 0) {
+                console.log(`✅ Loaded ${wordByWordData.length} complete words from word_by_word.json`);
+                return wordByWordData as Word[];
+              } else if (typeof wordByWordData === 'object') {
+                // Convert object format to array
+                const wordsArray: Word[] = Object.values(wordByWordData).map((entry: any) => ({
+                  word_index: entry.id || entry.word_index || 0,
+                  surah: parseInt(entry.surah) || 0,
+                  ayah: parseInt(entry.ayah) || 0,
+                  text: entry.text || ''
+                }));
+                console.log(`✅ Loaded ${wordsArray.length} complete words from word_by_word.json (converted from object)`);
+                return wordsArray;
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Could not load word_by_word.json, using glyph-based reconstruction:', error);
+        }
+        return null;
+      };
+      
+      loadWordByWordFile().then(wordByWordWords => {
+        // Use word-by-word file if available, otherwise fall back to glyph-based approach
+        const wordsToUse = wordByWordWords || availableWords;
+        
+        // Create a simple map for quick lookup: surah:ayah:word_index -> word text
+        const wordTextMap = new Map<string, string>();
+        wordsToUse.forEach(w => {
+          const key = `${w.surah}:${w.ayah}:${w.word_index}`;
+          wordTextMap.set(key, w.text);
         });
-      onMistakesWithWords(mistakesWithWordText);
+        
+        console.log(`📊 Built wordTextMap with ${wordTextMap.size} words for mistake lookup`);
+      
+        const mistakesWithWordText = mistakes
+          .filter(m => m.page === pageNumber)
+          .map(m => {
+            // Find the word text for this mistake
+            let wordText: string | undefined = undefined;
+            
+            if (m.wordIndex !== undefined && m.wordIndex !== null) {
+              // Try direct lookup in word-by-word file first
+              const directKey = `${m.surah}:${m.ayah}:${m.wordIndex}`;
+              wordText = wordTextMap.get(directKey);
+              
+              if (wordText) {
+                console.log(`✅ Found word from word_by_word.json:`, {
+                  surah: m.surah,
+                  ayah: m.ayah,
+                  wordIndex: m.wordIndex,
+                  wordText
+                });
+              } else {
+                // If not found, try to find the closest word in the ayah
+                const ayahWords = wordsToUse.filter(
+                  w => w.surah === m.surah && w.ayah === m.ayah
+                ).sort((a, b) => a.word_index - b.word_index);
+                
+                if (ayahWords.length > 0) {
+                  // Find the word whose word_index is closest to m.wordIndex
+                  const closestWord = ayahWords.reduce((prev, curr) => {
+                    const prevDiff = Math.abs(prev.word_index - m.wordIndex!);
+                    const currDiff = Math.abs(curr.word_index - m.wordIndex!);
+                    return currDiff < prevDiff ? curr : prev;
+                  });
+                  
+                  wordText = closestWord.text;
+                  console.log(`📝 Using closest word from word_by_word.json:`, {
+                    surah: m.surah,
+                    ayah: m.ayah,
+                    mistakeWordIndex: m.wordIndex,
+                    foundWordIndex: closestWord.word_index,
+                    wordText
+                  });
+                }
+              }
+            }
+            
+            return {
+              ...m,
+              wordText: wordText
+            };
+          });
+        onMistakesWithWords(mistakesWithWordText);
+      });
     }
-  }, [words, wordsFromApi, mistakes, pageNumber, onMistakesWithWords]);
+  }, [words, wordsFromApi, mistakes, pageNumber, onMistakesWithWords, layout]);
 
   // Function to get mistake for a word (prioritize current mistakes over historical)
   const getWordMistake = (word: Word): { mistake: MushafMistake | undefined; isHistorical: boolean } => {
@@ -712,32 +845,37 @@ export const WordByWordPage: React.FC<{
   }
 
   return (
-    <div className="relative w-full flex flex-col items-center overflow-hidden">
+    <div className="relative w-full flex flex-col items-center justify-center overflow-hidden">
       {/* Optional background image */}
       {background && (
         <img
           src={background}
           alt={`Page ${pageNumber}`}
-          className="max-w-full h-auto rounded-xl shadow-lg mb-4"
+          className="max-w-full h-auto rounded-xl shadow-lg mb-4 mx-auto"
         />
       )}
 
-      {/* Mushaf-style Arabic text container - Responsive with proper constraints */}
-      <div className="w-full max-w-full mx-auto px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
-        {/* Mushaf page container with traditional styling - Responsive padding and max-width */}
+      {/* Mushaf-style Arabic text container - Centered */}
+      <div className="w-full flex justify-center items-center">
+        {/* Mushaf page container with traditional styling - Centered, reduced padding */}
         <div 
-          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10 2xl:p-12 bg-gradient-to-br from-amber-50 to-yellow-50 mx-auto"
+          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50"
           style={{
             backgroundColor: '#fef9e7',
             fontFamily,
             minHeight: 'auto',
             direction: 'rtl',
             textAlign: 'right',
-            maxWidth: '100%',
-            width: '100%',
+            maxWidth: '600px',
+            width: 'auto',
             boxSizing: 'border-box',
             overflow: 'hidden',
-            fontFeatureSettings: '"liga" 1, "kern" 1'
+            fontFeatureSettings: '"liga" 1, "kern" 1',
+            margin: '0 auto',
+            display: 'block',
+            padding: '1.5rem 1rem',
+            paddingLeft: '0.75rem',
+            paddingRight: '0.75rem'
           }}
         >
           {/* Page number indicator */}
@@ -747,34 +885,85 @@ export const WordByWordPage: React.FC<{
             </span>
           </div>
 
-          {/* Arabic text content - Responsive font sizing for mobile to large screens */}
+          {/* Arabic text content - Matching original 15-line layout - Centered */}
           <div 
-            className="mushaf-arabic-text space-y-1 sm:space-y-2"
+            className="mushaf-arabic-text"
             style={{
-              fontSize: 'clamp(1rem, 1.5vw + 0.5rem, 2rem)',
-              lineHeight: '2',
-              letterSpacing: '0.03em',
+              fontSize: 'clamp(1.2rem, 2vw + 0.5rem, 2.2rem)',
+              lineHeight: '1.8',
+              letterSpacing: '0',
               wordSpacing: '0.15em',
               direction: 'rtl',
               textAlign: 'right',
-              fontFamily: 'inherit',
-              maxWidth: '100%'
+              fontFamily: fontFamily,
+              maxWidth: '100%',
+              fontFeatureSettings: '"liga" 1, "kern" 1',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.4em',
+              margin: '0 auto'
             }}
           >
             {layout.lines.map((line) => {
               if (line.line_type !== "ayah") {
-                // Handle surah_name and basmallah lines - Responsive sizing
+                // Handle surah_name and basmallah lines - Matching original layout, centered
                 if (line.line_type === "surah_name") {
                   const surah = chapters.find(c => c.id === line.surah_number);
+                  // Get Arabic name from surah, or fallback to FALLBACK_CHAPTERS if not found
+                  const arabicName = surah?.name_arabic || 
+                    (FALLBACK_CHAPTERS.find(fc => fc.id === line.surah_number)?.name_arabic) ||
+                    `Surah ${line.surah_number}`;
                   return (
-                    <div key={line.line_number} className="text-center font-bold text-lg sm:text-xl md:text-2xl my-3 sm:my-4">
-                      {surah ? surah.name_arabic : `Surah ${line.surah_number}`}
+                    <div 
+                      key={line.line_number} 
+                      className="mushaf-line mushaf-surah-name"
+                      style={{
+                        textAlign: 'center',
+                        fontFamily: fontFamily,
+                        fontSize: '1.5em',
+                        fontWeight: 'bold',
+                        marginBottom: '0.5em',
+                        marginTop: '0.3em',
+                        minHeight: '1.5em',
+                        lineHeight: '1.8',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%'
+                      }}
+                    >
+                      <span style={{ textAlign: 'center', display: 'block', width: '100%' }}>
+                        {arabicName}
+                      </span>
                     </div>
                   );
                 } else if (line.line_type === "basmallah") {
                   return (
-                    <div key={line.line_number} className="text-center text-xl sm:text-2xl md:text-3xl my-3 sm:my-4">
-                      ﷽
+                    <div 
+                      key={line.line_number} 
+                      className="mushaf-line mushaf-basmallah"
+                      style={{
+                        textAlign: 'center',
+                        fontFamily: fontFamily,
+                        fontSize: '1.5em',
+                        marginBottom: '0.5em',
+                        marginTop: '0.3em',
+                        minHeight: '1.5em',
+                        lineHeight: '1.8',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%'
+                      }}
+                    >
+                      <span style={{ 
+                        textAlign: 'center', 
+                        display: 'inline-block',
+                        fontSize: '1.2em',
+                        letterSpacing: '0.1em'
+                      }}>
+                        ﷽
+                      </span>
                     </div>
                   );
                 }
@@ -806,66 +995,47 @@ export const WordByWordPage: React.FC<{
                 wordsByAyah.get(ayahKey)!.push(w);
               });
 
-              // Track ayah numbers for display
-              let currentAyah = 0;
-
               return (
                 <div
                   key={line.line_number}
-                  className={`mb-1`}
+                  className="mushaf-line"
                   style={{
                     direction: 'rtl',
                     textAlign: line.is_centered ? 'center' : 'justify',
-                    textAlignLast: line.is_centered ? 'center' : 'justify'
+                    textAlignLast: line.is_centered ? 'center' : 'justify',
+                    fontFamily: fontFamily,
+                    wordSpacing: '0.15em',
+                    letterSpacing: '0',
+                    marginBottom: '0.5em',
+                    minHeight: '1.5em',
+                    lineHeight: '1.8',
+                    display: 'block',
+                    width: '100%'
                   }}
                 >
                   {lineWords.map((w, idx) => {
                     const { mistake, isHistorical } = getWordMistake(w);
                     const mistakeClass = getMistakeClass(mistake, isHistorical);
                     
-                    // Show ayah number when it changes (at start of new ayah)
-                    const showAyahNumber = w.ayah !== currentAyah;
-                    if (showAyahNumber) {
-                      currentAyah = w.ayah;
-                    }
-                    
                     // Use regular Arabic text from word data
-                    const displayText = w.text;
+                    // Note: Individual glyphs (single characters) are expected for proper mushaf rendering
+                    const displayText = w.text || '';
                     
                     return (
                       <React.Fragment key={w.word_index}>
-                        {/* Ayah number marker - show at start of each ayah - Responsive */}
-                        {showAyahNumber && w.ayah > 0 && (
-                          <span 
-                            className="inline-block mx-0.5 sm:mx-1 my-0.5 text-green-700 font-bold"
-                            style={{
-                              fontSize: 'clamp(0.65em, 1.5vw, 0.75em)',
-                              fontFamily: 'serif',
-                              verticalAlign: 'middle',
-                              direction: 'ltr',
-                              display: 'inline-block'
-                            }}
-                            title={`Ayah ${w.ayah}`}
-                            dir="ltr"
-                          >
-                            <span className="inline-flex items-center justify-center w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-green-50 border border-green-600 text-green-800 text-[10px] sm:text-xs">
-                              {w.ayah}
-                            </span>
-                          </span>
-                        )}
-                        
                         <span
                           onClick={() => onWordClick?.(w)}
                           className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group`}
                           style={{
-                            padding: '2px 3px',
+                            padding: '1px 2px',
                             display: 'inline',
-                            fontFamily: 'inherit',
+                            fontFamily: fontFamily,
                             fontSize: 'inherit',
                             lineHeight: 'inherit',
-                            borderRadius: '3px',
+                            borderRadius: '2px',
                             direction: 'rtl',
-                            unicodeBidi: 'embed'
+                            unicodeBidi: 'embed',
+                            whiteSpace: 'nowrap'
                           }}
                           dir="rtl"
                           title={
@@ -874,7 +1044,7 @@ export const WordByWordPage: React.FC<{
                               : `Surah ${w.surah}, Ayah ${w.ayah}`
                           }
                         >
-                          {displayText}{'\u2009'}
+                          {displayText}
                           {mistake && mistake.audioUrl && (
                             <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
                               <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -937,6 +1107,45 @@ export const WordByWordPage: React.FC<{
               ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
             </div>
           </div>
+
+          {/* Page Navigation Buttons - Centered */}
+          {onPageChange && (
+            <div className="mt-4 sm:mt-6 flex justify-center items-center gap-4">
+              <button
+                onClick={() => onPageChange(Math.max(1, pageNumber - 1))}
+                disabled={pageNumber <= 1}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  minWidth: '120px'
+                }}
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Previous</span>
+              </button>
+              
+              <span className="px-3 sm:px-4 py-2 text-sm sm:text-base font-semibold text-primary">
+                Page {pageNumber} / 604
+              </span>
+              
+              <button
+                onClick={() => onPageChange(Math.min(604, pageNumber + 1))}
+                disabled={pageNumber >= 604}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  minWidth: '120px'
+                }}
+              >
+                <span>Next</span>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -991,14 +1200,23 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     // Update localMistakes from mistakesWithWords (which has word text)
     const convertedMistakes: Mistake[] = mistakesWithWords
       .filter(m => m.page === currentPage)
-      .map(m => ({
-        word_index: m.wordIndex || 0,
-        surah: m.surah,
-        ayah: m.ayah,
-        text: m.wordText || `Word ${m.wordIndex || 'N/A'}`,
-        type: getMistakeTypeLabel(m.type),
-        note: m.note
-      }));
+      .map(m => {
+        // Ensure wordText is valid - if it's a single character or corrupted, try to get it from words array
+        let wordText = m.wordText;
+        if (!wordText || wordText.length <= 1 || /^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]$/.test(wordText)) {
+          // Word text is missing or appears to be a single character - try to find the word
+          // This will be handled by the WordByWordPage component providing wordText
+          wordText = m.wordText || `Word ${m.wordIndex || 'N/A'}`;
+        }
+        return {
+          word_index: m.wordIndex || 0,
+          surah: m.surah,
+          ayah: m.ayah,
+          text: wordText,
+          type: getMistakeTypeLabel(m.type),
+          note: m.note
+        };
+      });
     setLocalMistakes(convertedMistakes);
   }, [mistakesWithWords, currentPage]);
 
@@ -1060,10 +1278,32 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     onMistakeMark(newMistake);
     
     // Add to local mistakes for display with word text
-    setLocalMistakes((prev) => [
-      ...prev,
-      { ...word, type, note },
-    ]);
+    // Note: This will be replaced by mistakesWithWords when available
+    // But we add it here for immediate display
+    // Try to reconstruct the full word from glyphs
+    const wordText = word.text || `Word ${word.word_index}`;
+    
+    setLocalMistakes((prev) => {
+      // Check if this mistake already exists (avoid duplicates)
+      const exists = prev.some(m => 
+        m.surah === word.surah && 
+        m.ayah === word.ayah && 
+        m.word_index === word.word_index
+      );
+      if (exists) return prev;
+      
+      return [
+        ...prev,
+        { 
+          word_index: word.word_index,
+          surah: word.surah,
+          ayah: word.ayah,
+          text: wordText, // Will be replaced by mistakesWithWords with full word
+          type, 
+          note 
+        },
+      ];
+    });
     
     setSelectedWord(null);
   };
@@ -1270,18 +1510,18 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex-1 text-left">
-                            <div className="flex items-center gap-2">
+                          <div className="flex-1 text-right">
+                            <div className="flex items-center gap-2 justify-end">
                               <span className="text-xs font-semibold text-gray-600">
                                 {surah.id}.
                               </span>
-                              <span className={`text-xs font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`}>
-                                {surah.name_simple}
+                              <span className={`text-sm sm:text-base font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`} style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}>
+                                {surah.name_arabic || FALLBACK_CHAPTERS.find(fc => fc.id === surah.id)?.name_arabic || surah.name_simple}
                               </span>
                             </div>
-                            {surah.translated_name?.name && (
-                              <div className="text-[10px] text-gray-500 mt-0.5">
-                                {surah.translated_name.name}
+                            {surah.name_simple && surah.name_simple !== surah.name_arabic && (
+                              <div className="text-[10px] text-gray-500 mt-0.5 text-right" style={{ direction: 'ltr' }}>
+                                {surah.name_simple}
                               </div>
                             )}
                           </div>
@@ -1301,15 +1541,16 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
         {/* Mushaf Content */}
         <div className="flex-1 min-w-0 w-full overflow-hidden">
 
-        <WordByWordPage 
-          pageNumber={currentPage} 
-          onWordClick={handleWordClick}
-          mistakes={mistakes}
-          historicalMistakes={historicalMistakes}
-          showHistorical={showHistorical}
-          readOnly={readOnly}
-          onMistakesWithWords={setMistakesWithWords}
-        />
+          <WordByWordPage
+            pageNumber={currentPage}
+            onWordClick={handleWordClick}
+            mistakes={mistakes}
+            historicalMistakes={historicalMistakes}
+            showHistorical={showHistorical}
+            readOnly={readOnly}
+            onMistakesWithWords={setMistakesWithWords}
+            onPageChange={onPageChange}
+          />
 
         <MistakeModal
           word={selectedWord}
@@ -1330,7 +1571,20 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                 <div key={i} className="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-200">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <span className="font-semibold text-gray-900">{m.text}</span>
+                      <span 
+                        className="font-semibold text-gray-900"
+                        style={{
+                          fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
+                          direction: 'rtl',
+                          display: 'inline-block',
+                          whiteSpace: 'nowrap',
+                          letterSpacing: '0',
+                          wordSpacing: '0.15em',
+                          fontFeatureSettings: '"liga" 1, "kern" 1'
+                        }}
+                      >
+                        {m.text}
+                      </span>
                       <span className="text-gray-600"> — {m.type}</span>
                       <span className="text-gray-500 text-[10px] ml-2">
                         (Surah {m.surah}, Ayah {m.ayah})

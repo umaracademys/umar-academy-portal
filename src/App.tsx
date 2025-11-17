@@ -7,6 +7,7 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherProfile from './pages/TeacherProfile';
+import AssignmentManagement from './pages/AssignmentManagement';
 // import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
 import StudentRouter from './modules/student/StudentRouter';
 
@@ -91,6 +92,14 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <TeacherProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assignments"
+        element={
+          <ProtectedRoute>
+            <AssignmentManagement />
           </ProtectedRoute>
         }
       />

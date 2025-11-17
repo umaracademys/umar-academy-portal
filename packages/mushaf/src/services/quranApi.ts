@@ -52,7 +52,21 @@ export async function getQuranChapters(): Promise<Chapter[]> {
       return FALLBACK_CHAPTERS;
     }
 
-    return chapters as Chapter[];
+    // Merge API response with fallback to ensure Arabic names are always available
+    const mergedChapters = chapters.map((apiChapter: Chapter) => {
+      const fallbackChapter = FALLBACK_CHAPTERS.find(fc => fc.id === apiChapter.id);
+      if (fallbackChapter) {
+        // Use API data but ensure Arabic name from fallback if missing
+        return {
+          ...apiChapter,
+          name_arabic: apiChapter.name_arabic || fallbackChapter.name_arabic,
+          name_complex: apiChapter.name_complex || fallbackChapter.name_complex,
+        };
+      }
+      return apiChapter;
+    });
+
+    return mergedChapters as Chapter[];
   } catch (error) {
     console.error('Error fetching chapters:', error);
     return FALLBACK_CHAPTERS;

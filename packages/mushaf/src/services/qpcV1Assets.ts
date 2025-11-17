@@ -16,6 +16,7 @@ const locateFile = (file: string) => (file.endsWith('.wasm') ? `/sqljs/${file}` 
 async function getSqlJs(): Promise<SqlJsStatic> {
   if (!sqlJsPromise) {
     sqlJsPromise = (async () => {
+      console.log('🔧 Attempting to load sql.js...');
       const isTypedArray = (value: any) => ArrayBuffer.isView(value) || value instanceof ArrayBuffer;
       const pickInitFunction = (moduleNamespace: any) => {
         const visited = new Set<any>();
@@ -46,6 +47,96 @@ async function getSqlJs(): Promise<SqlJsStatic> {
         return null;
       };
 
+      // Try loading from local public folder first
+      try {
+        console.log(`📦 Trying to load sql.js from local public folder...`);
+        const script = document.createElement('script');
+        script.src = '/sqljs/sql-wasm.js';
+        script.async = true;
+        
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Timeout loading sql.js script'));
+          }, 10000);
+          
+          script.onload = () => {
+            clearTimeout(timeout);
+            console.log(`✅ sql.js script loaded from local file`);
+            // @ts-ignore - sql.js is loaded globally
+            if (typeof window.initSqlJs === 'function') {
+              resolve();
+            } else {
+              // Wait a bit for initSqlJs to be available
+              setTimeout(() => {
+                // @ts-ignore
+                if (typeof window.initSqlJs === 'function') {
+                  resolve();
+                } else {
+                  reject(new Error('initSqlJs not found after script load'));
+                }
+              }, 100);
+            }
+          };
+          script.onerror = (err) => {
+            clearTimeout(timeout);
+            reject(new Error(`Failed to load sql.js script: ${err}`));
+          };
+          document.head.appendChild(script);
+        });
+        
+        // @ts-ignore
+        const SQL = await window.initSqlJs({ locateFile });
+        console.log(`✅ sql.js initialized from local file`);
+        return SQL as SqlJsStatic;
+      } catch (localError) {
+        console.warn(`⚠️ Local file load failed, trying CDN:`, localError);
+        
+        // Fallback to CDN
+        try {
+          console.log(`📦 Trying to load sql.js from CDN...`);
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/sql.js@1.13.0/dist/sql-wasm.js';
+          script.async = true;
+          
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Timeout loading sql.js from CDN'));
+            }, 10000);
+            
+            script.onload = () => {
+              clearTimeout(timeout);
+              console.log(`✅ sql.js script loaded from CDN`);
+              // @ts-ignore
+              if (typeof window.initSqlJs === 'function') {
+                resolve();
+              } else {
+                setTimeout(() => {
+                  // @ts-ignore
+                  if (typeof window.initSqlJs === 'function') {
+                    resolve();
+                  } else {
+                    reject(new Error('initSqlJs not found after CDN load'));
+                  }
+                }, 100);
+              }
+            };
+            script.onerror = (err) => {
+              clearTimeout(timeout);
+              reject(new Error(`Failed to load sql.js from CDN: ${err}`));
+            };
+            document.head.appendChild(script);
+          });
+          
+          // @ts-ignore
+          const SQL = await window.initSqlJs({ locateFile });
+          console.log(`✅ sql.js initialized from CDN`);
+          return SQL as SqlJsStatic;
+        } catch (cdnError) {
+          console.warn(`⚠️ CDN load also failed:`, cdnError);
+        }
+      }
+
+      // Try local imports
       const specifiers = [
         'sql.js',
         'sql.js/dist/sql-wasm.js',
@@ -54,6 +145,7 @@ async function getSqlJs(): Promise<SqlJsStatic> {
 
       for (const specifier of specifiers) {
         try {
+          console.log(`📦 Trying to import ${specifier}...`);
           const module = await import(/* @vite-ignore */ specifier);
           const initSqlJs =
             module?.default?.initSqlJs ||
@@ -63,7 +155,10 @@ async function getSqlJs(): Promise<SqlJsStatic> {
             pickInitFunction(module);
 
           if (typeof initSqlJs === 'function') {
-            return initSqlJs({ locateFile }) as Promise<SqlJsStatic>;
+            console.log(`✅ Found initSqlJs function in ${specifier}`);
+            const sqlJs = await initSqlJs({ locateFile });
+            console.log(`✅ sql.js initialized successfully`);
+            return sqlJs as SqlJsStatic;
           }
 
           console.group('🧩 sql.js module shape');
@@ -75,11 +170,13 @@ async function getSqlJs(): Promise<SqlJsStatic> {
           console.log('typeof module.default.default:', typeof module?.default?.default);
           console.groupEnd();
         } catch (error) {
-          console.warn(`Failed to import ${specifier}:`, error);
+          console.warn(`⚠️ Failed to import ${specifier}:`, error);
         }
       }
 
-      throw new Error('sql.js init function not found');
+      const error = new Error('sql.js init function not found');
+      console.error('❌ sql.js initialization failed:', error);
+      throw error;
     })();
   }
   return sqlJsPromise;
@@ -87,15 +184,39 @@ async function getSqlJs(): Promise<SqlJsStatic> {
 
 async function loadDatabase(path: string, existingPromise: Promise<Database> | null): Promise<Database> {
   if (existingPromise) {
+    console.log(`♻️ Reusing existing database promise for ${path}`);
     return existingPromise;
   }
-  const SQL = await getSqlJs();
-  const response = await fetch(path);
-  if (!response.ok) {
-    throw new Error(`Failed to load database from ${path} (status ${response.status})`);
+  console.log(`📦 Loading SQLite database from ${path}`);
+  try {
+    console.log(`🔧 Getting sql.js instance...`);
+    const SQL = await getSqlJs();
+    console.log(`✅ sql.js loaded successfully, type:`, typeof SQL);
+    console.log(`📡 Fetching database file from ${path}...`);
+    const response = await fetch(path);
+    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unable to read error response');
+      console.error(`❌ HTTP error response:`, errorText.substring(0, 200));
+      throw new Error(`Failed to load database from ${path} (status ${response.status}): ${errorText.substring(0, 100)}`);
+    }
+    const buffer = await response.arrayBuffer();
+    console.log(`✅ Database file loaded, size: ${buffer.byteLength} bytes`);
+    if (buffer.byteLength === 0) {
+      throw new Error(`Database file is empty (0 bytes)`);
+    }
+    console.log(`🔧 Creating SQLite database instance...`);
+    const db = new SQL.Database(new Uint8Array(buffer));
+    console.log(`✅ SQLite database initialized successfully`);
+    return db;
+  } catch (error) {
+    console.error(`❌ Failed to load database from ${path}:`, error);
+    if (error instanceof Error) {
+      console.error(`❌ Error message:`, error.message);
+      console.error(`❌ Error stack:`, error.stack);
+    }
+    throw error;
   }
-  const buffer = await response.arrayBuffer();
-  return new SQL.Database(new Uint8Array(buffer));
 }
 
 async function getLayoutDatabase(): Promise<Database> {
@@ -113,8 +234,12 @@ async function getWordsDatabase(): Promise<Database> {
 }
 
 export async function getQpcV1Layout(pageNumber: number): Promise<LayoutPage | null> {
+  console.log(`📖 [getQpcV1Layout] START - Loading QPC V1 layout for page ${pageNumber} from ${LAYOUT_DB_PATH}`);
   try {
+    console.log(`📖 [getQpcV1Layout] Step 1: Getting layout database...`);
     const db = await getLayoutDatabase();
+    console.log(`✅ [getQpcV1Layout] Step 1: Database loaded successfully, type:`, typeof db);
+    
     const stmt = db.prepare(
       'SELECT page_number, line_number, line_type, is_centered, first_word_id, last_word_id, surah_number FROM pages WHERE page_number = ? ORDER BY line_number ASC'
     );
@@ -152,9 +277,11 @@ export async function getQpcV1Layout(pageNumber: number): Promise<LayoutPage | n
     stmt.free();
 
     if (lines.length === 0) {
+      console.warn(`⚠️ No lines found in QPC V1 database for page ${pageNumber}`);
       return null;
     }
 
+    console.log(`✅ Loaded ${lines.length} lines from QPC V1 database for page ${pageNumber}`);
     return {
       page_number: pageNumber,
       lines,
@@ -167,27 +294,112 @@ export async function getQpcV1Layout(pageNumber: number): Promise<LayoutPage | n
       },
     };
   } catch (error) {
-    console.error('Error loading QPC V1 layout:', error);
+    console.error(`❌ Error loading QPC V1 layout for page ${pageNumber}:`, error);
+    console.error(`💡 Check if ${LAYOUT_DB_PATH} exists and is accessible`);
     return null;
   }
 }
 
 async function loadAllQpcWords(): Promise<Word[]> {
   const db = await getWordsDatabase();
-  const stmt = db.prepare('SELECT id, surah, ayah, word, text FROM words ORDER BY id ASC');
+  // Keep individual glyphs for display - don't group them
+  // Grouping will be done on-the-fly when needed for mistake reports
+  // Try to get all columns to see what's available
+  const stmt = db.prepare('SELECT * FROM words LIMIT 1');
+  let sampleRow: any = null;
+  if (stmt.step()) {
+    sampleRow = stmt.getAsObject();
+    console.log('📋 Sample word row structure:', Object.keys(sampleRow));
+    console.log('📋 Sample word row values:', sampleRow);
+  }
+  stmt.free();
+  
+  // Now load all words
+  const allStmt = db.prepare('SELECT id, surah, ayah, word, text FROM words ORDER BY surah, ayah, id ASC');
   const words: Word[] = [];
+  const wordGroups = new Map<string, number>(); // Track word numbers per ayah
 
-  while (stmt.step()) {
-    const row = stmt.getAsObject();
+  while (allStmt.step()) {
+    const row = allStmt.getAsObject();
+    const surah = Number(row.surah);
+    const ayah = Number(row.ayah);
+    const ayahKey = `${surah}:${ayah}`;
+    
+    // The 'word' field might be the word number within the ayah, or it might be something else
+    // Let's try using it, but also track word numbers ourselves based on consecutive glyphs
+    const dbWordNum = Number(row.word || 0);
+    
+    // If word number is 0 or same as id, it's probably not a word number - we'll need to infer it
+    let wordNum = dbWordNum;
+    if (wordNum === 0 || wordNum === Number(row.id)) {
+      // Try to infer word number by looking at consecutive glyphs
+      // For now, we'll use a simple heuristic: group consecutive glyphs that don't have spaces
+      // But actually, let's check if the word field has any pattern
+      wordNum = dbWordNum;
+    }
+    
     words.push({
       word_index: Number(row.id),
-      surah: Number(row.surah),
-      ayah: Number(row.ayah),
+      surah: surah,
+      ayah: ayah,
       text: (row.text as string) || '',
-    });
+      // Store word number for later grouping
+      word: wordNum,
+    } as Word & { word?: number });
   }
 
-  stmt.free();
+  allStmt.free();
+  
+  // Debug: Check word number distribution for first few ayahs
+  const firstAyah = words.find(w => w.surah === 1 && w.ayah === 1);
+  if (firstAyah) {
+    const firstAyahWords = words.filter(w => w.surah === 1 && w.ayah === 1).slice(0, 20);
+    console.log('📊 First 20 glyphs of Surah 1, Ayah 1:', firstAyahWords.map(w => ({
+      word_index: w.word_index,
+      word: (w as Word & { word?: number }).word,
+      text: w.text
+    })));
+  }
+  
+  return words;
+}
+
+// Helper function to reconstruct full words from glyphs
+export function reconstructWordsFromGlyphs(glyphs: Word[]): Word[] {
+  // Group glyphs by (surah, ayah, word) to reconstruct full words
+  const wordMap = new Map<string, Array<Word & { word?: number }>>();
+  
+  glyphs.forEach(glyph => {
+    const wordNum = (glyph as Word & { word?: number }).word || 0;
+    const key = `${glyph.surah}:${glyph.ayah}:${wordNum}`;
+    if (!wordMap.has(key)) {
+      wordMap.set(key, []);
+    }
+    wordMap.get(key)!.push(glyph as Word & { word?: number });
+  });
+  
+  // Create Word objects with combined text
+  const words: Word[] = [];
+  const processedKeys = new Set<string>();
+  
+  glyphs.forEach(glyph => {
+    const wordNum = (glyph as Word & { word?: number }).word || 0;
+    const key = `${glyph.surah}:${glyph.ayah}:${wordNum}`;
+    if (!processedKeys.has(key)) {
+      processedKeys.add(key);
+      const glyphGroup = wordMap.get(key) || [];
+      const combinedText = glyphGroup.map(g => g.text).join('').trim();
+      
+      // Use the first glyph's id as the word_index
+      words.push({
+        word_index: glyph.word_index,
+        surah: glyph.surah,
+        ayah: glyph.ayah,
+        text: combinedText || glyph.text,
+      });
+    }
+  });
+  
   return words;
 }
 
@@ -206,13 +418,22 @@ export async function ensureQpcV1Font(pageNumber: number): Promise<string> {
   if (!loadedFonts.has(pageNumber)) {
     const fontFamily = `QPCV1-Page-${pageNumber}`;
     const fontPath = `/fonts/${FONT_DIR_NAME}/p${pageNumber}.woff`;
+    console.log(`🔤 Loading QPC V1 font for page ${pageNumber} from: ${fontPath}`);
     try {
       const fontFace = new FontFace(fontFamily, `url(${fontPath})`);
       const loadedFont = await fontFace.load();
       document.fonts.add(loadedFont);
       loadedFonts.set(pageNumber, fontFamily);
+      console.log(`✅ QPC V1 font loaded successfully: ${fontFamily}`);
+      
+      // Verify font is available
+      if (document.fonts.check(`16px ${fontFamily}`)) {
+        console.log(`✅ Font verified and ready to use: ${fontFamily}`);
+      } else {
+        console.warn(`⚠️ Font loaded but not yet available for use: ${fontFamily}`);
+      }
     } catch (error) {
-      console.error(`Failed to load QPC V1 font for page ${pageNumber}:`, error);
+      console.error(`❌ Failed to load QPC V1 font for page ${pageNumber} from ${fontPath}:`, error);
       loadedFonts.set(pageNumber, 'Amiri');
     }
   }

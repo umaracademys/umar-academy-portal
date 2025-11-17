@@ -53,6 +53,12 @@ const AdminDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to="/assignments"
+            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+          >
+            Manage Assignments
+          </Link>
           <button
             onClick={() => setActiveSection('students')}
             className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
@@ -162,43 +168,43 @@ const AdminDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Header with Stats */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 rounded-xl p-6 text-white">
+        <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)] rounded-xl p-6 text-white">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-3xl font-bold">Student Management</h2>
-              <p className="text-primary-100 mt-1">Comprehensive student administration and tracking</p>
+              <h2 className="text-3xl font-bold text-white">Student Management</h2>
+              <p className="text-white/90 mt-1">Comprehensive student administration and tracking</p>
             </div>
             <div className="text-right">
-              <div className="text-4xl font-bold">{students.length}</div>
-              <div className="text-primary-200">Total Students</div>
+              <div className="text-4xl font-bold text-white">{students.length}</div>
+              <div className="text-white/80">Total Students</div>
             </div>
           </div>
           
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white bg-opacity-20 rounded-lg p-4">
+            <div className="bg-white/20 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-green-300">{activeStudents}</div>
-                  <div className="text-sm text-primary-100">Active Students</div>
+                  <div className="text-2xl font-bold text-white">{activeStudents}</div>
+                  <div className="text-sm text-white/90">Active Students</div>
                 </div>
                 <div className="text-3xl">👨‍🎓</div>
               </div>
             </div>
-            <div className="bg-white bg-opacity-20 rounded-lg p-4">
+            <div className="bg-white/20 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-yellow-300">{inactiveStudents}</div>
-                  <div className="text-sm text-primary-100">Inactive Students</div>
+                  <div className="text-2xl font-bold text-white">{inactiveStudents}</div>
+                  <div className="text-sm text-white/90">Inactive Students</div>
                 </div>
                 <div className="text-3xl">⏸️</div>
               </div>
             </div>
-            <div className="bg-white bg-opacity-20 rounded-lg p-4">
+            <div className="bg-white/20 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-2xl font-bold text-gold-300">${totalRevenue.toLocaleString()}</div>
-                  <div className="text-sm text-primary-100">Total Revenue</div>
+                  <div className="text-2xl font-bold text-white">${totalRevenue.toLocaleString()}</div>
+                  <div className="text-sm text-white/90">Total Revenue</div>
                 </div>
                 <div className="text-3xl">💰</div>
               </div>
@@ -255,13 +261,13 @@ const AdminDashboard: React.FC = () => {
   // Courses Section
   const CoursesSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Courses Management</h2>
+      <h2 className="text-2xl font-bold text-primary mb-6">Courses Management</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {['Quran Recitation', 'Islamic Studies', 'Arabic Language', 'Tajweed', 'Hifz Program'].map((course, index) => (
           <Card key={index}>
-            <h3 className="font-bold text-gray-900 mb-2">{course}</h3>
-            <p className="text-sm text-gray-600 mb-4">Active students: {Math.floor(Math.random() * 50) + 10}</p>
-            <button className="w-full px-4 py-2 bg-primary-700 text-white rounded hover:bg-primary-800">
+            <h3 className="font-bold text-primary mb-2">{course}</h3>
+            <p className="text-sm text-primary-soft mb-4">Active students: {Math.floor(Math.random() * 50) + 10}</p>
+            <button className="w-full px-4 py-2 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors">
               View Details
             </button>
           </Card>
@@ -273,30 +279,30 @@ const AdminDashboard: React.FC = () => {
   // Financials Section
   const FinancialsSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Financial Overview</h2>
+      <h2 className="text-2xl font-bold text-primary mb-6">Financial Overview</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <Card>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Total Revenue</p>
-            <p className="text-3xl font-bold text-primary-600">${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}</p>
-            <p className="text-xs text-gray-500 mt-1">This month</p>
+            <p className="text-sm text-primary-soft">Total Revenue</p>
+            <p className="text-3xl font-bold text-primary">${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}</p>
+            <p className="text-xs text-primary-soft mt-1">This month</p>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Pending Payments</p>
-            <p className="text-3xl font-bold text-gold-600">$12,450</p>
-            <p className="text-xs text-gray-500 mt-1">24 students</p>
+            <p className="text-sm text-primary-soft">Pending Payments</p>
+            <p className="text-3xl font-bold text-accent">$12,450</p>
+            <p className="text-xs text-primary-soft mt-1">24 students</p>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Teacher Salaries</p>
-            <p className="text-3xl font-bold text-primary-700">
+            <p className="text-sm text-primary-soft">Teacher Salaries</p>
+            <p className="text-3xl font-bold text-primary">
               ${teachers.reduce((sum, t) => sum + t.payroll.monthlySalary, 0).toLocaleString()}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Monthly total</p>
+            <p className="text-xs text-primary-soft mt-1">Monthly total</p>
           </div>
         </Card>
       </div>
@@ -306,20 +312,20 @@ const AdminDashboard: React.FC = () => {
   // Reports Section
   const ReportsSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Reports & Analytics</h2>
+      <h2 className="text-2xl font-bold text-primary mb-6">Reports & Analytics</h2>
       <Card title="Generate Reports">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-cream-100 transition text-left">
-            <h3 className="font-semibold mb-1">📊 Student Report</h3>
-            <p className="text-sm text-gray-600">Enrollment, attendance, and performance</p>
+          <button className="p-4 border-2 border-accent-soft rounded-lg hover:border-primary hover:bg-soft-primary transition text-left">
+            <h3 className="font-semibold mb-1 text-primary">📊 Student Report</h3>
+            <p className="text-sm text-primary-soft">Enrollment, attendance, and performance</p>
           </button>
-          <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-gold-500 hover:bg-cream-100 transition text-left">
-            <h3 className="font-semibold mb-1">💰 Financial Report</h3>
-            <p className="text-sm text-gray-600">Revenue, expenses, and projections</p>
+          <button className="p-4 border-2 border-accent-soft rounded-lg hover:border-accent hover:bg-soft-accent transition text-left">
+            <h3 className="font-semibold mb-1 text-primary">💰 Financial Report</h3>
+            <p className="text-sm text-primary-soft">Revenue, expenses, and projections</p>
           </button>
-          <button className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-500 hover:bg-cream-100 transition text-left">
-            <h3 className="font-semibold mb-1">👨‍🏫 Teacher Report</h3>
-            <p className="text-sm text-gray-600">Performance and assignments</p>
+          <button className="p-4 border-2 border-accent-soft rounded-lg hover:border-primary hover:bg-soft-primary transition text-left">
+            <h3 className="font-semibold mb-1 text-primary">👨‍🏫 Teacher Report</h3>
+            <p className="text-sm text-primary-soft">Performance and assignments</p>
           </button>
         </div>
       </Card>
@@ -329,21 +335,21 @@ const AdminDashboard: React.FC = () => {
   // Activities Section
   const ActivitiesSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Recent Activities</h2>
+      <h2 className="text-2xl font-bold text-primary mb-6">Recent Activities</h2>
       <Card title="Activity Feed">
         <div className="space-y-4">
           {[
-            { type: 'student', action: 'New student enrolled', name: 'Ahmad Ali', time: '2 hours ago', icon: '👨‍🎓', color: 'blue' },
-            { type: 'payment', action: 'Payment received', name: '$500 from Fatima Hassan', time: '4 hours ago', icon: '💰', color: 'green' },
-            { type: 'teacher', action: 'Teacher registered', name: 'Dr. Ibrahim Yusuf', time: '1 day ago', icon: '👨‍🏫', color: 'purple' },
-            { type: 'course', action: 'New course created', name: 'Advanced Tajweed', time: '2 days ago', icon: '📚', color: 'orange' },
+            { type: 'student', action: 'New student enrolled', name: 'Ahmad Ali', time: '2 hours ago', icon: '👨‍🎓', borderColor: 'border-primary', bgColor: 'bg-soft-primary' },
+            { type: 'payment', action: 'Payment received', name: '$500 from Fatima Hassan', time: '4 hours ago', icon: '💰', borderColor: 'border-accent', bgColor: 'bg-soft-accent' },
+            { type: 'teacher', action: 'Teacher registered', name: 'Dr. Ibrahim Yusuf', time: '1 day ago', icon: '👨‍🏫', borderColor: 'border-primary', bgColor: 'bg-soft-primary' },
+            { type: 'course', action: 'New course created', name: 'Advanced Tajweed', time: '2 days ago', icon: '📚', borderColor: 'border-accent', bgColor: 'bg-soft-accent' },
           ].map((activity, index) => (
-            <div key={index} className={`flex items-start space-x-3 p-3 border-l-4 border-${activity.color}-500 bg-${activity.color}-50 rounded`}>
+            <div key={index} className={`flex items-start space-x-3 p-3 border-l-4 ${activity.borderColor} ${activity.bgColor} rounded`}>
               <span className="text-2xl">{activity.icon}</span>
               <div className="flex-1">
-                <p className="font-medium text-gray-900">{activity.action}</p>
-                <p className="text-sm text-gray-600">{activity.name}</p>
-                <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                <p className="font-medium text-primary">{activity.action}</p>
+                <p className="text-sm text-primary-soft">{activity.name}</p>
+                <p className="text-xs text-primary-soft mt-1">{activity.time}</p>
               </div>
             </div>
           ))}
@@ -355,17 +361,17 @@ const AdminDashboard: React.FC = () => {
   // Settings Section
   const SettingsSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
+      <h2 className="text-2xl font-bold text-primary mb-6">Settings</h2>
       <div className="space-y-6">
         <Card title="General Settings">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Academy Name</label>
-              <input type="text" defaultValue="Umar Academy" className="w-full px-4 py-2 border rounded-lg" />
+              <label className="block text-sm font-medium text-primary mb-2">Academy Name</label>
+              <input type="text" defaultValue="Umar Academy" className="w-full px-4 py-2 border border-accent-soft rounded-lg text-primary focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Contact Email</label>
-              <input type="email" defaultValue="admin@umaracademy.org" className="w-full px-4 py-2 border rounded-lg" />
+              <label className="block text-sm font-medium text-primary mb-2">Contact Email</label>
+              <input type="email" defaultValue="admin@umaracademy.org" className="w-full px-4 py-2 border border-accent-soft rounded-lg text-primary focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </div>
           </div>
         </Card>
@@ -374,8 +380,8 @@ const AdminDashboard: React.FC = () => {
           <div className="space-y-3">
             {['Email Notifications', 'SMS Alerts', 'Payment Reminders', 'Activity Updates'].map((pref, index) => (
               <label key={index} className="flex items-center space-x-3 cursor-pointer">
-                <input type="checkbox" defaultChecked className="w-4 h-4 text-primary-600 rounded" />
-                <span className="text-sm text-gray-700">{pref}</span>
+                <input type="checkbox" defaultChecked className="w-4 h-4 text-primary rounded focus:ring-primary" />
+                <span className="text-sm text-primary">{pref}</span>
               </label>
             ))}
           </div>
@@ -385,6 +391,8 @@ const AdminDashboard: React.FC = () => {
   );
 
   // Render active section
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const renderSection = () => {
     switch (activeSection) {
       case 'overview': return <OverviewSection />;
@@ -402,11 +410,16 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <Sidebar 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection}
+        isMobileOpen={isSidebarOpen}
+        onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+        <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto">

@@ -1150,6 +1150,149 @@ const recitationReviewSchema = new mongoose.Schema({
 
 const RecitationReview = mongoose.model('RecitationReview', recitationReviewSchema);
 
+// Assignment Schema - New multi-phase assignment system
+const classworkPhaseSchema = new mongoose.Schema({
+  type: { type: String, enum: ['sabq', 'sabqi', 'manzil'], required: true },
+  assignmentRange: { type: String, required: true }, // e.g., "Surah Al-Fatiha, Ayah 1-7"
+  details: { type: String, default: '' }, // Additional notes/details
+  fromPage: Number,
+  toPage: Number,
+  fromAyah: Number,
+  toAyah: Number,
+  surahNumber: Number,
+  surahName: String
+}, { _id: false });
+
+const assignmentSchema = new mongoose.Schema({
+  studentId: { type: String, required: true, index: true },
+  studentName: { type: String, required: true },
+  assignedBy: { type: String, required: true }, // User ID (admin, super admin, or teacher)
+  assignedByName: { type: String, required: true }, // User name
+  assignedByRole: { type: String, enum: ['admin', 'super_admin', 'teacher'], required: true },
+  // Classwork phases - can have multiple entries of each type
+  classwork: {
+    sabq: { type: [classworkPhaseSchema], default: [] },
+    sabqi: { type: [classworkPhaseSchema], default: [] },
+    manzil: { type: [classworkPhaseSchema], default: [] }
+  },
+  // Homework
+  homework: {
+    enabled: { type: Boolean, default: false },
+    content: { type: String, default: '' }, // Text content
+    link: { type: String, default: '' }, // Optional link
+    // Homework submission
+    submission: {
+      submitted: { type: Boolean, default: false },
+      submittedAt: Date,
+      submittedBy: String, // Student ID
+      submittedByName: String, // Student name
+      content: String, // Student's submission content
+      link: String, // Optional submission link (e.g., Google Drive, etc.)
+      audioUrl: String, // Audio recording of recitation
+      attachments: [{
+        name: String,
+        url: String,
+        type: String
+      }],
+      feedback: String, // Teacher/Admin feedback
+      gradedBy: String, // User ID who graded
+      gradedByName: String, // User name who graded
+      gradedAt: Date,
+      grade: Number, // Optional grade
+      status: { type: String, enum: ['submitted', 'graded', 'returned'], default: 'submitted' }
+    }
+  },
+  // Comment
+  comment: { type: String, default: '' },
+  // Mushaf mistakes associated with this assignment
+  mushafMistakes: [{
+    id: String,
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'] },
+    page: Number,
+    surah: Number,
+    ayah: Number,
+    wordIndex: Number,
+    position: {
+      x: Number,
+      y: Number
+    },
+    note: String,
+    audioUrl: String,
+    workflowStep: String, // sabq, sabqi, manzil
+    markedBy: String,
+    markedByName: String,
+    timestamp: { type: Date, default: Date.now }
+  }],
+  // Status tracking
+  status: { type: String, enum: ['active', 'completed', 'archived'], default: 'active' },
+  completedAt: Date
+}, { timestamps: true });
+
+assignmentSchema.index({ studentId: 1, createdAt: -1 });
+assignmentSchema.index({ assignedBy: 1, createdAt: -1 });
+
+const Assignment = mongoose.model('Assignment', assignmentSchema);
+
+// Ticket Schema - for sabq, sabqi, manzil workflow
+const ticketMistakeSchema = new mongoose.Schema({
+  id: String,
+  type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'] },
+  page: Number,
+  surah: Number,
+  ayah: Number,
+  wordIndex: Number,
+  position: {
+    x: Number,
+    y: Number
+  },
+  note: String,
+  audioUrl: String, // Optional recording for this mistake
+  timestamp: { type: Date, default: Date.now }
+}, { _id: false });
+
+const ticketSchema = new mongoose.Schema({
+  studentId: { type: String, required: true, index: true },
+  studentName: { type: String, required: true },
+  type: { type: String, enum: ['sabq', 'sabqi', 'manzil'], required: true },
+  status: { 
+    type: String, 
+    enum: ['pending', 'in_progress', 'submitted', 'approved', 'reassigned', 'sent_to_assignment'], 
+    default: 'pending' 
+  },
+  // Admin fields (for sabq or when creating sabqi/manzil)
+  createdBy: { type: String, required: true }, // Admin ID
+  createdByName: { type: String, required: true }, // Admin name
+  adminComment: { type: String, default: '' }, // Admin's comment (for sabq, or notes for teacher)
+  // Teacher assignment (for sabqi/manzil)
+  assignedTeacherId: { type: String }, // Teacher ID (for sabqi/manzil)
+  assignedTeacherName: { type: String }, // Teacher name
+  teacherNotes: { type: String, default: '' }, // Admin's notes to teacher
+  // Teacher submission
+  teacherComment: { type: String, default: '' }, // Teacher's comment after review
+  mistakes: { type: [ticketMistakeSchema], default: [] }, // Mistakes marked by teacher
+  // Reassignment tracking
+  reassignedFromTeacherId: { type: String }, // If reassigned, track previous teacher
+  reassignedFromTeacherName: { type: String },
+  reassignedToTeacherId: { type: String }, // New teacher if reassigned
+  reassignedToTeacherName: { type: String },
+  reassignmentReason: { type: String }, // Why it was reassigned
+  previousTeacherComment: { type: String }, // Previous teacher's comment (if reassigned)
+  previousMistakes: { type: [ticketMistakeSchema], default: [] }, // Previous mistakes (if reassigned)
+  // Assignment integration
+  sentToAssignmentId: { type: String }, // Assignment ID if sent to assignment page
+  sentAt: { type: Date }, // When it was sent to assignment
+  // Timestamps
+  startedAt: { type: Date }, // When teacher started
+  submittedAt: { type: Date }, // When teacher submitted
+  approvedAt: { type: Date }, // When admin approved
+  reassignedAt: { type: Date } // When it was reassigned
+}, { timestamps: true });
+
+ticketSchema.index({ studentId: 1, status: 1 });
+ticketSchema.index({ assignedTeacherId: 1, status: 1 });
+ticketSchema.index({ type: 1, status: 1 });
+
+const Ticket = mongoose.model('Ticket', ticketSchema);
 
 // Student Personal Mushaf Schema - tracks all mistakes across all recitations
 const studentPersonalMushafSchema = new mongoose.Schema({
@@ -1419,6 +1562,700 @@ app.put('/api/recitation-reviews/:id', async (req, res) => {
   }
 });
 
+// Assignment Routes
+// Get all assignments (with optional filters)
+app.get('/api/assignments', async (req, res) => {
+  try {
+    const { studentId, assignedBy, program } = req.query;
+    const query = {};
+    
+    if (studentId) query.studentId = studentId;
+    if (assignedBy) query.assignedBy = assignedBy;
+    if (program) {
+      // If program filter is provided, we need to join with students
+      const students = await Student.find({ program }).select('_id');
+      const studentIds = students.map(s => s._id.toString());
+      query.studentId = { $in: studentIds };
+    }
+    
+    console.log('📋 GET /api/assignments - Query:', query);
+    const assignments = await Assignment.find(query)
+      .sort({ createdAt: -1 })
+      .limit(1000);
+    console.log('📋 GET /api/assignments - Found:', assignments.length, 'assignments');
+    if (assignments.length > 0) {
+      console.log('📋 Sample assignment:', {
+        id: assignments[0]._id,
+        studentId: assignments[0].studentId,
+        sabqCount: assignments[0].classwork?.sabq?.length || 0,
+        sabqiCount: assignments[0].classwork?.sabqi?.length || 0,
+        manzilCount: assignments[0].classwork?.manzil?.length || 0
+      });
+    }
+    res.json(assignments);
+  } catch (error) {
+    console.error('❌ Error fetching assignments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get assignments for a specific student
+app.get('/api/assignments/student/:studentId', async (req, res) => {
+  try {
+    const assignments = await Assignment.find({ studentId: req.params.studentId })
+      .sort({ createdAt: -1 });
+    res.json(assignments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single assignment by ID
+app.get('/api/assignments/:id', async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+    res.json(assignment);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new assignment
+app.post('/api/assignments', async (req, res) => {
+  try {
+    const { ticketId, ...assignmentData } = req.body;
+    const assignment = new Assignment(assignmentData);
+    await assignment.save();
+    
+    // If this assignment was created from a sabq ticket, update the ticket's sentToAssignmentId
+    if (ticketId) {
+      try {
+        const ticket = await Ticket.findById(ticketId);
+        if (ticket && ticket.status === 'sent_to_assignment' && !ticket.sentToAssignmentId) {
+          ticket.sentToAssignmentId = assignment._id.toString();
+          ticket.sentAt = new Date();
+          await ticket.save();
+          console.log('✅ Updated ticket with assignment ID:', {
+            ticketId: ticket._id,
+            assignmentId: assignment._id.toString()
+          });
+        }
+      } catch (ticketError) {
+        console.error('⚠️ Error updating ticket with assignment ID:', ticketError);
+        // Don't fail the assignment creation if ticket update fails
+      }
+    }
+    
+    res.status(201).json(assignment);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Submit homework for an assignment (MUST be before /api/assignments/:id PUT route)
+app.post('/api/assignments/:id/submit-homework', async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    if (!assignment.homework.enabled) {
+      return res.status(400).json({ error: 'Homework is not enabled for this assignment' });
+    }
+
+    const { content, link, attachments, audioUrl, studentId, studentName } = req.body;
+
+    if (!content && !link && !audioUrl && (!attachments || attachments.length === 0)) {
+      return res.status(400).json({ error: 'Please provide homework content, link, audio recording, or attachments' });
+    }
+
+    // Initialize homework.submission if it doesn't exist
+    if (!assignment.homework.submission) {
+      assignment.homework.submission = {
+        submitted: false,
+        status: 'submitted'
+      };
+    }
+
+    // Update homework submission
+    assignment.homework.submission.submitted = true;
+    assignment.homework.submission.submittedAt = new Date();
+    assignment.homework.submission.submittedBy = studentId;
+    assignment.homework.submission.submittedByName = studentName;
+    assignment.homework.submission.content = content || '';
+    assignment.homework.submission.link = link || '';
+    assignment.homework.submission.audioUrl = audioUrl || '';
+    assignment.homework.submission.attachments = attachments || [];
+    assignment.homework.submission.status = 'submitted';
+
+    await assignment.save();
+
+    console.log('✅ Homework submitted successfully:', {
+      assignmentId: assignment._id,
+      studentId,
+      studentName,
+      hasContent: !!content,
+      hasLink: !!link,
+      hasAudio: !!audioUrl,
+      attachmentsCount: attachments?.length || 0
+    });
+
+    res.json(assignment);
+  } catch (error) {
+    console.error('Error submitting homework:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Grade homework (for teachers/admins) (MUST be before /api/assignments/:id PUT route)
+app.post('/api/assignments/:id/grade-homework', async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    if (!assignment.homework.submission || !assignment.homework.submission.submitted) {
+      return res.status(400).json({ error: 'No homework submission found' });
+    }
+
+    const { feedback, grade, gradedBy, gradedByName } = req.body;
+
+    assignment.homework.submission.feedback = feedback || '';
+    assignment.homework.submission.grade = grade;
+    assignment.homework.submission.gradedBy = gradedBy;
+    assignment.homework.submission.gradedByName = gradedByName;
+    assignment.homework.submission.gradedAt = new Date();
+    assignment.homework.submission.status = grade !== undefined && grade !== null ? 'graded' : 'returned';
+
+    await assignment.save();
+
+    console.log('✅ Homework graded successfully:', {
+      assignmentId: assignment._id,
+      gradedBy,
+      grade,
+      hasFeedback: !!feedback
+    });
+
+    res.json(assignment);
+  } catch (error) {
+    console.error('Error grading homework:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update assignment
+app.put('/api/assignments/:id', async (req, res) => {
+  try {
+    const assignment = await Assignment.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+    res.json(assignment);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete assignment
+app.delete('/api/assignments/:id', async (req, res) => {
+  try {
+    const assignment = await Assignment.findByIdAndDelete(req.params.id);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+    res.json({ message: 'Assignment deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Ticket Routes
+// Get all tickets (with filters)
+app.get('/api/tickets', async (req, res) => {
+  try {
+    const { studentId, assignedTeacherId, type, status } = req.query;
+    const query = {};
+    
+    if (studentId) query.studentId = studentId;
+    if (assignedTeacherId) query.assignedTeacherId = assignedTeacherId;
+    if (type) query.type = type;
+    if (status) query.status = status;
+    
+    const tickets = await Ticket.find(query)
+      .sort({ createdAt: -1 })
+      .limit(1000);
+    res.json(tickets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get tickets for teacher (pending and in_progress)
+app.get('/api/tickets/teacher/:teacherId', async (req, res) => {
+  try {
+    const tickets = await Ticket.find({
+      assignedTeacherId: req.params.teacherId,
+      status: { $in: ['pending', 'in_progress', 'reassigned'] }
+    })
+      .sort({ createdAt: -1 });
+    res.json(tickets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get tickets pending admin review
+app.get('/api/tickets/pending-review', async (req, res) => {
+  try {
+    const tickets = await Ticket.find({
+      status: 'submitted'
+    })
+      .sort({ submittedAt: -1 });
+    res.json(tickets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get previous reports for reminder (sabqi/manzil) - MUST come before /:id route
+app.get('/api/tickets/previous-reports/:studentId/:type', async (req, res) => {
+  try {
+    const { studentId, type } = req.params;
+    const tickets = await Ticket.find({
+      studentId,
+      type,
+      status: 'sent_to_assignment'
+    })
+      .sort({ sentAt: -1 })
+      .limit(5); // Get last 5 reports
+    
+    res.json(tickets);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single ticket by ID - MUST come after all specific routes
+app.get('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new ticket
+app.post('/api/tickets', async (req, res) => {
+  try {
+    const ticket = new Ticket(req.body);
+    await ticket.save();
+    res.status(201).json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update ticket
+app.put('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await Ticket.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Teacher starts ticket (status: pending -> in_progress)
+app.post('/api/tickets/:id/start', async (req, res) => {
+  try {
+    const ticket = await Ticket.findByIdAndUpdate(
+      req.params.id,
+      { 
+        status: 'in_progress',
+        startedAt: new Date()
+      },
+      { new: true }
+    );
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Teacher submits ticket (status: in_progress -> submitted)
+app.post('/api/tickets/:id/submit', async (req, res) => {
+  try {
+    const { teacherComment, mistakes } = req.body;
+    const ticket = await Ticket.findByIdAndUpdate(
+      req.params.id,
+      { 
+        status: 'submitted',
+        teacherComment: teacherComment || '',
+        mistakes: mistakes || [],
+        submittedAt: new Date()
+      },
+      { new: true }
+    );
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin approves and sends to assignment
+app.post('/api/tickets/:id/approve-send', async (req, res) => {
+  try {
+    const { assignmentId } = req.body;
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    // Find or create assignment for this student
+    let assignment;
+    console.log('🔍 Looking for assignment. Ticket:', {
+      ticketId: ticket._id,
+      studentId: ticket.studentId,
+      studentName: ticket.studentName,
+      type: ticket.type,
+      teacherComment: ticket.teacherComment,
+      adminComment: ticket.adminComment
+    });
+
+    if (assignmentId) {
+      assignment = await Assignment.findById(assignmentId);
+      if (!assignment) {
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+      console.log('✅ Found assignment by ID:', assignment._id);
+    } else {
+      // Find the most recent active assignment for this student
+      // Convert studentId to string to ensure proper matching
+      const studentIdStr = String(ticket.studentId);
+      console.log('🔍 Searching for assignment with studentId:', studentIdStr, '(type:', typeof studentIdStr, ')');
+      
+      assignment = await Assignment.findOne({
+        studentId: studentIdStr,
+        status: 'active'
+      }).sort({ createdAt: -1 });
+      
+      // Also try finding by ObjectId if studentId looks like an ObjectId
+      if (!assignment && /^[0-9a-fA-F]{24}$/.test(studentIdStr)) {
+        console.log('🔍 Trying to find assignment with ObjectId match...');
+        assignment = await Assignment.findOne({
+          $or: [
+            { studentId: studentIdStr },
+            { studentId: new mongoose.Types.ObjectId(studentIdStr) }
+          ],
+          status: 'active'
+        }).sort({ createdAt: -1 });
+      }
+
+      if (assignment) {
+        console.log('✅ Found existing active assignment:', assignment._id);
+        console.log('📊 Current classwork counts:', {
+          sabq: assignment.classwork.sabq.length,
+          sabqi: assignment.classwork.sabqi.length,
+          manzil: assignment.classwork.manzil.length
+        });
+      } else {
+        // If no active assignment exists, create a new one
+        console.log('📝 No active assignment found, creating new one');
+        assignment = new Assignment({
+          studentId: ticket.studentId,
+          studentName: ticket.studentName,
+          assignedBy: ticket.createdBy,
+          assignedByName: ticket.createdByName,
+          assignedByRole: 'admin', // Default to admin
+          classwork: {
+            sabq: [],
+            sabqi: [],
+            manzil: []
+          },
+          homework: {
+            enabled: false,
+            content: '',
+            link: ''
+          },
+          comment: '',
+          mushafMistakes: [],
+          status: 'active'
+        });
+        await assignment.save();
+        console.log('✅ Created new assignment:', assignment._id);
+      }
+    }
+
+    // Add ticket content to assignment based on ticket type
+    if (ticket.type === 'sabq') {
+      // Add to sabq classwork
+      assignment.classwork.sabq.push({
+        type: 'sabq',
+        assignmentRange: ticket.adminComment || 'Sabq recitation',
+        details: ticket.adminComment || '',
+        surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
+        surahName: undefined
+      });
+      // Add admin comment to main comment if it's the first sabq
+      if (assignment.comment === '' && ticket.adminComment) {
+        assignment.comment = ticket.adminComment;
+      }
+    } else if (ticket.type === 'sabqi') {
+      // Add to sabqi classwork
+      // Use teacher comment if available, otherwise use a default
+      const commentText = ticket.teacherComment || ticket.adminComment || 'Sabqi recitation review';
+      const sabqiEntry = {
+        type: 'sabqi',
+        assignmentRange: commentText,
+        details: commentText,
+        surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
+        surahName: undefined
+      };
+      console.log('📝 Adding sabqi entry to assignment:', sabqiEntry);
+      console.log('📝 Ticket data:', {
+        teacherComment: ticket.teacherComment,
+        adminComment: ticket.adminComment,
+        assignedTeacherName: ticket.assignedTeacherName
+      });
+      
+      // Ensure classwork.sabqi exists
+      if (!assignment.classwork.sabqi) {
+        assignment.classwork.sabqi = [];
+      }
+      
+      assignment.classwork.sabqi.push(sabqiEntry);
+      console.log('✅ Sabqi entries after push:', assignment.classwork.sabqi.length);
+      console.log('✅ Full sabqi array:', JSON.stringify(assignment.classwork.sabqi, null, 2));
+    } else if (ticket.type === 'manzil') {
+      // Add to manzil classwork
+      // Use teacher comment if available, otherwise use a default
+      const commentText = ticket.teacherComment || ticket.adminComment || 'Manzil recitation review';
+      const manzilEntry = {
+        type: 'manzil',
+        assignmentRange: commentText,
+        details: commentText,
+        surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
+        surahName: undefined
+      };
+      console.log('📝 Adding manzil entry to assignment:', manzilEntry);
+      console.log('📝 Ticket data:', {
+        teacherComment: ticket.teacherComment,
+        adminComment: ticket.adminComment,
+        assignedTeacherName: ticket.assignedTeacherName
+      });
+      
+      // Ensure classwork.manzil exists
+      if (!assignment.classwork.manzil) {
+        assignment.classwork.manzil = [];
+      }
+      
+      assignment.classwork.manzil.push(manzilEntry);
+      console.log('✅ Manzil entries after push:', assignment.classwork.manzil.length);
+      console.log('✅ Full manzil array:', JSON.stringify(assignment.classwork.manzil, null, 2));
+    }
+
+    // Add mistakes from ticket to assignment
+    if (ticket.mistakes && ticket.mistakes.length > 0) {
+      const assignmentMistakes = ticket.mistakes.map(m => ({
+        id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+        type: m.type,
+        page: m.page,
+        surah: m.surah,
+        ayah: m.ayah,
+        wordIndex: m.wordIndex,
+        position: m.position,
+        note: m.note,
+        audioUrl: m.audioUrl,
+        workflowStep: ticket.type,
+        markedBy: ticket.assignedTeacherId,
+        markedByName: ticket.assignedTeacherName,
+        timestamp: m.timestamp || new Date()
+      }));
+      assignment.mushafMistakes = [...(assignment.mushafMistakes || []), ...assignmentMistakes];
+    }
+
+    // Log before saving
+    console.log('💾 Saving assignment:', {
+      assignmentId: assignment._id,
+      studentId: assignment.studentId,
+      sabqCount: assignment.classwork.sabq.length,
+      sabqiCount: assignment.classwork.sabqi.length,
+      manzilCount: assignment.classwork.manzil.length,
+      mistakesCount: assignment.mushafMistakes.length
+    });
+
+    try {
+    await assignment.save();
+      console.log('✅ Assignment save() completed successfully');
+    } catch (saveError) {
+      console.error('❌ Error saving assignment:', saveError);
+      console.error('❌ Assignment data that failed to save:', {
+        studentId: assignment.studentId,
+        studentName: assignment.studentName,
+        classwork: assignment.classwork
+      });
+      throw saveError; // Re-throw to be caught by outer try-catch
+    }
+    
+    // Verify it was saved
+    try {
+      const savedAssignment = await Assignment.findById(assignment._id);
+      if (!savedAssignment) {
+        console.error('❌ CRITICAL: Assignment was not found after save!');
+        throw new Error('Assignment was not saved properly');
+      }
+      console.log('✅ Assignment saved. Verification:', {
+        assignmentId: savedAssignment._id.toString(),
+        studentId: savedAssignment.studentId,
+        sabqCount: savedAssignment.classwork.sabq.length,
+        sabqiCount: savedAssignment.classwork.sabqi.length,
+        manzilCount: savedAssignment.classwork.manzil.length,
+        sabqiEntries: savedAssignment.classwork.sabqi,
+        manzilEntries: savedAssignment.classwork.manzil
+      });
+    } catch (verifyError) {
+      console.error('❌ Error verifying assignment save:', verifyError);
+      throw verifyError;
+    }
+
+    // Update ticket
+    console.log('🔄 Updating ticket with assignment ID:', assignment._id.toString());
+    ticket.status = 'sent_to_assignment';
+    ticket.approvedAt = new Date();
+    ticket.sentToAssignmentId = assignment._id.toString();
+    ticket.sentAt = new Date();
+    
+    console.log('💾 Saving ticket with assignment ID:', {
+      ticketId: ticket._id,
+      sentToAssignmentId: ticket.sentToAssignmentId,
+      status: ticket.status
+    });
+    
+    await ticket.save();
+    
+    // Verify ticket was saved
+    const savedTicket = await Ticket.findById(ticket._id);
+    console.log('✅ Ticket saved. Verification:', {
+      ticketId: savedTicket._id.toString(),
+      sentToAssignmentId: savedTicket.sentToAssignmentId,
+      status: savedTicket.status
+    });
+
+    // Convert Mongoose documents to plain objects to ensure all fields are included
+    const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+    const assignmentObj = assignment.toObject ? assignment.toObject() : assignment;
+    
+    const responseData = {
+      ticket: ticketObj,
+      assignment: {
+        id: assignmentObj._id?.toString() || assignmentObj.id,
+        classwork: {
+          sabq: assignmentObj.classwork?.sabq?.length || 0,
+          sabqi: assignmentObj.classwork?.sabqi?.length || 0,
+          manzil: assignmentObj.classwork?.manzil?.length || 0
+        }
+      }
+    };
+    
+    console.log('📤 Sending response with ticket:', {
+      ticketId: ticketObj._id?.toString() || ticketObj.id,
+      sentToAssignmentId: ticketObj.sentToAssignmentId,
+      status: ticketObj.status
+    });
+    console.log('📤 Sending response with assignment:', {
+      assignmentId: responseData.assignment.id,
+      sabq: responseData.assignment.classwork.sabq,
+      sabqi: responseData.assignment.classwork.sabqi,
+      manzil: responseData.assignment.classwork.manzil
+    });
+    console.log('📤 Full response data:', JSON.stringify(responseData, null, 2));
+    
+    res.json(responseData);
+  } catch (error) {
+    console.error('❌ Error approving and sending ticket:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Ticket ID:', req.params.id);
+    console.error('❌ Request body:', req.body);
+    res.status(500).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// Admin reassigns ticket
+app.post('/api/tickets/:id/reassign', async (req, res) => {
+  try {
+    const { teacherId, teacherName, reason } = req.body;
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    // Save previous teacher's work
+    const previousMistakes = [...(ticket.mistakes || [])];
+    const previousComment = ticket.teacherComment || '';
+    
+    // Update ticket
+    ticket.status = 'reassigned';
+    ticket.reassignedFromTeacherId = ticket.assignedTeacherId;
+    ticket.reassignedFromTeacherName = ticket.assignedTeacherName;
+    ticket.reassignedToTeacherId = teacherId;
+    ticket.reassignedToTeacherName = teacherName;
+    ticket.reassignmentReason = reason || '';
+    ticket.previousTeacherComment = previousComment;
+    ticket.previousMistakes = previousMistakes;
+    ticket.assignedTeacherId = teacherId;
+    ticket.assignedTeacherName = teacherName;
+    ticket.teacherComment = ''; // Reset for new teacher
+    ticket.mistakes = []; // Reset mistakes for new teacher
+    ticket.reassignedAt = new Date();
+    
+    await ticket.save();
+    res.json(ticket);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete ticket
+app.delete('/api/tickets/:id', async (req, res) => {
+  try {
+    const ticket = await Ticket.findByIdAndDelete(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    res.json({ message: 'Ticket deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Admin Notification Routes
 app.get('/api/admin-notifications', async (req, res) => {
@@ -1462,6 +2299,53 @@ app.post('/api/admin-notifications', async (req, res) => {
     const notification = new AdminNotification(req.body);
     await notification.save();
     res.status(201).json(notification);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Fix tickets that are missing sentToAssignmentId
+app.post('/api/tickets/fix-missing-assignment-ids', async (req, res) => {
+  try {
+    // Find all tickets with status 'sent_to_assignment' but no sentToAssignmentId
+    const ticketsToFix = await Ticket.find({
+      status: 'sent_to_assignment',
+      $or: [
+        { sentToAssignmentId: { $exists: false } },
+        { sentToAssignmentId: null },
+        { sentToAssignmentId: '' }
+      ]
+    });
+
+    console.log(`🔧 Found ${ticketsToFix.length} tickets to fix`);
+
+    let fixedCount = 0;
+    for (const ticket of ticketsToFix) {
+      // Try to find the assignment for this student
+      const assignment = await Assignment.findOne({
+        $or: [
+          { studentId: ticket.studentId },
+          { studentId: new mongoose.Types.ObjectId(ticket.studentId) }
+        ],
+        status: 'active'
+      }).sort({ createdAt: -1 });
+
+      if (assignment) {
+        ticket.sentToAssignmentId = assignment._id.toString();
+        ticket.sentAt = ticket.sentAt || new Date();
+        await ticket.save();
+        fixedCount++;
+        console.log(`✅ Fixed ticket ${ticket._id} -> Assignment ${assignment._id}`);
+      } else {
+        console.log(`⚠️ No assignment found for ticket ${ticket._id} (student: ${ticket.studentId})`);
+      }
+    }
+
+    res.json({
+      message: `Fixed ${fixedCount} out of ${ticketsToFix.length} tickets`,
+      fixed: fixedCount,
+      total: ticketsToFix.length
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
