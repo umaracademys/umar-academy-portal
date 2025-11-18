@@ -15,7 +15,7 @@ interface StudentRegistrationFormProps {
 }
 
 const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClose, student, isEdit = false }) => {
-  const { addStudent, updateStudent, teachers } = useData();
+  const { addStudent, updateStudent, teachers, refreshData } = useData();
   const [formData, setFormData] = useState({
     fullName: student?.fullName || '',
     parentName: student?.parentName || '',
@@ -123,18 +123,26 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         const { recitationProfile: _profile, studentRecordId: _recordId, ...userUpdatePayload } = studentData;
         await updateStudent(student.id, userUpdatePayload);
         
-        // Update local form state with the submitted data so it persists
-        // This ensures the form data remains visible even after update
-        console.log('✅ Student updated successfully. Form data preserved.');
+        // Refresh data to ensure UI updates
+        if (refreshData) {
+          await refreshData();
+        }
         
-        // For edit mode, keep the form open so user can see the updated data
-        // Don't close automatically - let user close manually or add another student
-        // Show success message but keep form open
-        alert('✅ Student updated successfully! You can continue editing or close the form.');
+        console.log('✅ Student updated successfully.');
+        alert('✅ Student updated successfully!');
+        
+        // Close the form after successful update
+        onClose();
         
       } else {
         await addStudent(studentData);
-        onClose(); // Only close for new students
+        
+        // Refresh data to ensure UI updates
+        if (refreshData) {
+          await refreshData();
+        }
+        
+        onClose(); // Close for new students
       }
     } catch (error) {
       console.error('Error saving student:', error);
@@ -148,59 +156,59 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full my-8">
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-6 rounded-t-lg">
-          <h2 className="text-2xl font-bold">
+      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full my-8 border-2 border-primary">
+        <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)] p-6 rounded-t-lg">
+          <h2 className="text-2xl font-extrabold text-accent">
             {isEdit ? 'Edit Student Profile' : 'Register New Student'}
           </h2>
-          <p className="text-primary-100 text-sm mt-1">
+          <p className="text-accent/90 text-sm mt-1">
             {isEdit ? 'Update student information and enrollment details' : 'Complete student profile and enrollment information'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 max-h-[70vh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-6 max-h-[70vh] overflow-y-auto bg-white">
           {/* Basic Information */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+            <h3 className="text-lg font-extrabold text-primary mb-4">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Full Name *</label>
                 <input
                   type="text"
                   required
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Parent Name *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Parent Name *</label>
                 <input
                   type="text"
                   required
                   value={formData.parentName}
                   onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Email *</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Contact Number *</label>
                 <input
                   type="tel"
                   required
                   value={formData.contact}
                   onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                   placeholder="+1-555-0000"
                 />
               </div>
@@ -209,15 +217,15 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
           {/* Program Information */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Program Information</h3>
+            <h3 className="text-lg font-extrabold text-primary mb-4">Program Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Program *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Program *</label>
                 <select
                   required
                   value={formData.program}
                   onChange={(e) => setFormData({ ...formData, program: e.target.value as ProgramType })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 >
                   <option value="Full Time HQ">Full Time HQ</option>
                   <option value="Part Time HQ">Part Time HQ</option>
@@ -225,12 +233,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Teacher *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Assigned Teacher *</label>
                 <select
                   required
                   value={formData.assignedTeacher}
                   onChange={(e) => setFormData({ ...formData, assignedTeacher: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 >
                   <option value="">Select Teacher</option>
                   {teachers.map(teacher => (
@@ -243,10 +251,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
           {/* Financial Information */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Information</h3>
+            <h3 className="text-lg font-extrabold text-primary mb-4">Financial Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tuition Fee (Monthly) *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Tuition Fee (Monthly) *</label>
                 <input
                   type="number"
                   required
@@ -258,11 +266,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                     const numValue = value === '' ? 0 : parseFloat(value);
                     setFormData({ ...formData, tuitionFee: isNaN(numValue) ? 0 : numValue });
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Registration Amount *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Registration Amount *</label>
                 <input
                   type="number"
                   required
@@ -274,7 +282,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                     const numValue = value === '' ? 0 : parseFloat(value);
                     setFormData({ ...formData, registrationAmount: isNaN(numValue) ? 0 : numValue });
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
             </div>
@@ -282,19 +290,19 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
           {/* Schedule */}
           <div className="mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Schedule</h3>
+            <h3 className="text-lg font-extrabold text-primary mb-4">Schedule</h3>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Days *</label>
+              <label className="block text-sm font-extrabold text-primary mb-2">Days *</label>
               <div className="flex flex-wrap gap-2">
                 {allDays.map(day => (
                   <button
                     key={day}
                     type="button"
                     onClick={() => handleDayToggle(day)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    className={`px-4 py-2 rounded-lg text-sm font-extrabold transition border-2 ${
                       formData.scheduleDays.includes(day)
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-primary text-accent border-primary shadow-lg'
+                        : 'bg-soft-primary text-primary border-primary hover:bg-primary/20'
                     }`}
                   >
                     {day.substring(0, 3)}
@@ -304,23 +312,23 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Time *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">Start Time *</label>
                 <input
                   type="time"
                   required
                   value={formData.startTime}
                   onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Time *</label>
+                <label className="block text-sm font-extrabold text-primary mb-2">End Time *</label>
                 <input
                   type="time"
                   required
                   value={formData.endTime}
                   onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
             </div>
@@ -328,30 +336,30 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           {/* Siblings */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Siblings (Optional)</h3>
+              <h3 className="text-lg font-extrabold text-primary">Siblings (Optional)</h3>
               <button
                 type="button"
                 onClick={() => setShowSiblingForm(!showSiblingForm)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                className="px-4 py-2 bg-accent text-primary rounded-lg hover:bg-accent/90 text-sm font-extrabold shadow-lg"
               >
                 + Add Sibling
               </button>
             </div>
 
             {showSiblingForm && (
-              <div className="bg-green-50 p-4 rounded-lg mb-4">
+              <div className="bg-accent/10 p-4 rounded-lg mb-4 border-2 border-accent/30">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
                   <input
                     type="text"
                     placeholder="Sibling Full Name"
                     value={siblingData.fullName}
                     onChange={(e) => setSiblingData({ ...siblingData, fullName: e.target.value })}
-                    className="px-4 py-2 border border-gray-300 rounded-lg"
+                    className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
                   />
                   <select
                     value={siblingData.program}
                     onChange={(e) => setSiblingData({ ...siblingData, program: e.target.value as ProgramType })}
-                    className="px-4 py-2 border border-gray-300 rounded-lg"
+                    className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
                   >
                     <option value="Full Time HQ">Full Time HQ</option>
                     <option value="Part Time HQ">Part Time HQ</option>
@@ -360,7 +368,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                   <select
                     value={siblingData.assignedTeacher}
                     onChange={(e) => setSiblingData({ ...siblingData, assignedTeacher: e.target.value })}
-                    className="px-4 py-2 border border-gray-300 rounded-lg"
+                    className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
                   >
                     <option value="">Select Teacher</option>
                     {teachers.map(teacher => (
@@ -371,7 +379,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                 <button
                   type="button"
                   onClick={handleAddSibling}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+                  className="px-4 py-2 bg-accent text-primary rounded-lg hover:bg-accent/90 text-sm font-extrabold shadow-lg"
                 >
                   Add This Sibling
                 </button>
@@ -381,15 +389,15 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
             {siblings.length > 0 && (
               <div className="space-y-2">
                 {siblings.map((sibling, index) => (
-                  <div key={sibling.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                  <div key={sibling.id} className="flex justify-between items-center bg-soft-primary p-3 rounded-lg border-2 border-primary">
                     <div>
-                      <p className="font-medium">{sibling.fullName}</p>
-                      <p className="text-sm text-gray-600">{sibling.program}</p>
+                      <p className="font-extrabold text-primary">{sibling.fullName}</p>
+                      <p className="text-sm text-primary">{sibling.program}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setSiblings(siblings.filter((_, i) => i !== index))}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-primary hover:text-primary/70 font-extrabold"
                     >
                       Remove
                     </button>
@@ -400,18 +408,18 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className="flex justify-end space-x-3 pt-4 border-t-2 border-primary">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+              className="px-6 py-2 border-2 border-primary rounded-lg hover:bg-primary/10 font-extrabold text-primary shadow-lg"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-primary text-accent rounded-lg hover:bg-primary/90 font-extrabold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105 transition-all"
             >
               {isSubmitting 
                 ? (isEdit ? 'Updating...' : 'Registering...') 

@@ -225,7 +225,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: 'ST',
       title: 'Manage Students',
       description: 'Browse roster, open profiles, and update enrollment.',
-      action: () => setActiveSection('students'),
+      action: () => navigate('/students'),
       footer: `${totalStudents} students`,
     },
     {
@@ -302,7 +302,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   const OverviewSection = () => (
     <div className="space-y-10">
-      <section className="rounded-3xl border border-accent-soft bg-white px-6 py-6 shadow-sm sm:px-10 sm:py-8">
+      <section className="rounded-3xl border border-accent-soft bg-soft-primary px-6 py-6 shadow-sm sm:px-10 sm:py-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
@@ -328,9 +328,9 @@ const SuperAdminDashboard: React.FC = () => {
             const commonClasses =
               'flex h-full flex-col justify-between rounded-2xl border px-5 py-4 text-left shadow-sm transition';
             const activeButtonClasses = {
-              primary: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.35)] bg-white hover:bg-soft-primary`,
-              neutral: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.15)] bg-white hover:bg-soft-primary`,
-              accent: `${commonClasses} border-[rgba(var(--color-accent-rgb),0.35)] bg-white hover:bg-soft-accent`,
+              primary: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary hover:bg-primary/10`,
+              neutral: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.15)] bg-soft-primary hover:bg-primary/10`,
+              accent: `${commonClasses} border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent hover:bg-accent/20`,
               'accent-solid': `${commonClasses} border-transparent bg-[var(--color-accent)] text-white hover:bg-[rgba(var(--color-accent-rgb),0.85)]`,
             };
 
@@ -395,7 +395,7 @@ const SuperAdminDashboard: React.FC = () => {
             <button
               key={item.id}
               onClick={item.action}
-              className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
+              className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
             >
               <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
                 {item.badge}
@@ -420,7 +420,7 @@ const SuperAdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <button
           onClick={() => setShowPermissionManager(true)}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-primary"
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             PM
@@ -436,7 +436,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <button
           onClick={() => setShowDataManager(true)}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-accent"
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             DB
@@ -452,7 +452,7 @@ const SuperAdminDashboard: React.FC = () => {
 
         <button
           onClick={() => refreshNotifications()}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-white px-5 py-5 text-left shadow-sm transition hover:bg-soft-primary"
+          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             🔄
@@ -471,7 +471,7 @@ const SuperAdminDashboard: React.FC = () => {
         <div className="space-y-3 text-sm text-primary-soft">
           <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-accent px-4 py-3">
             <span className="font-semibold text-[var(--color-accent)]">Unread admin notifications</span>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
+            <span className="rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
               {unreadNotificationsCount}
             </span>
           </div>
@@ -608,7 +608,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
           ].map((item) => (
             <Card key={item.id}>
-              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-white px-4 py-5">
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-4 py-5">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
                   {item.badge}
                 </div>
@@ -735,7 +735,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
           ].map((item) => (
             <Card key={item.id}>
-              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-white px-4 py-5">
+              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-4 py-5">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
                   {item.badge}
                 </div>

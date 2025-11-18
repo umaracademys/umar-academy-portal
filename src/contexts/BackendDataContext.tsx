@@ -635,7 +635,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       const newUser = await userResponse.json();
 
-      // Create student profile
+      // Create student profile with all data
       const studentResponse = await fetch(`${API_BASE}/students`, {
         method: 'POST',
         headers: {
@@ -646,7 +646,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           userId: newUser._id,
           level: 'beginner', // Default level
           paymentStatus: 'pending', // Default payment status
-          enrollmentDate: new Date(),
+          enrollmentDate: student.enrolledDate ? new Date(student.enrolledDate) : new Date(),
+          // Include all student profile data
+          fullName: student.fullName,
+          email: student.email,
+          contact: student.contact || '',
+          parentName: student.parentName || '',
+          program: student.program || '',
+          tuitionFee: student.tuitionFee || 0,
+          registrationAmount: student.registrationAmount || 0,
+          assignedTeacher: student.assignedTeacher || '',
+          assignedTeacherId: student.assignedTeacher || '',
+          schedule: student.schedule || {
+            days: [],
+            startTime: '',
+            endTime: ''
+          },
+          siblings: student.siblings || [],
+          status: student.status || 'active',
+          avatar: student.avatar || '',
+          assessments: student.assessments || [],
+          evaluations: student.evaluations || [],
           recitationProfile: normalizeRecitationProfile(student.recitationProfile)
         }),
       });

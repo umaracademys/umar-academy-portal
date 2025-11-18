@@ -23,6 +23,21 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // Helper function to get teacher name from ID
+  const getTeacherName = (teacherId: string | undefined | null): string => {
+    if (!teacherId) return 'Unassigned';
+    
+    // Try to find teacher by various ID fields
+    const teacher = teachers.find(t => 
+      t.id === teacherId || 
+      (t as any)._id === teacherId ||
+      (t as any).teacherId === teacherId ||
+      (t as any).userId === teacherId
+    );
+    
+    return teacher?.fullName || teacherId; // Return ID if teacher not found
+  };
+
   // Get unique values for filters
   const uniqueTeachers = Array.from(new Set(students.map(s => s.assignedTeacher)));
   const uniqueStatuses = Array.from(new Set(students.map(s => s.status)));
@@ -91,14 +106,14 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      active: 'bg-green-100 text-green-800 border-green-300',
-      inactive: 'bg-gray-100 text-gray-800 border-gray-300',
-      pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      suspended: 'bg-red-100 text-red-800 border-red-300'
+      active: 'bg-primary text-white border-primary', // Keep white text on dark green for contrast
+      inactive: 'bg-soft-primary text-primary border-primary/30',
+      pending: 'bg-accent/30 text-primary border-accent/50',
+      suspended: 'bg-soft-primary text-primary border-primary/20'
     };
     
     return (
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${statusColors[status as keyof typeof statusColors] || statusColors.inactive}`}>
+      <span className={`px-2 sm:px-3 py-1 text-xs font-extrabold rounded-full border-2 ${statusColors[status as keyof typeof statusColors] || statusColors.inactive}`}>
         {status}
       </span>
     );
@@ -110,11 +125,11 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const isPending = Math.random() > 0.9;
     
     if (isOverdue) {
-      return <span className="text-red-600 text-xs font-semibold">Overdue</span>;
+      return <span className="text-primary text-xs font-extrabold">Overdue</span>;
     } else if (isPending) {
-      return <span className="text-yellow-600 text-xs font-semibold">Pending</span>;
+      return <span className="text-primary text-xs font-extrabold">Pending</span>;
     } else {
-      return <span className="text-green-600 text-xs font-semibold">Current</span>;
+      return <span className="text-primary text-xs font-extrabold">Current</span>;
     }
   };
 
@@ -174,369 +189,355 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     });
   };
 
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const active = filteredStudents.filter(s => s.status === 'active').length;
+    const inactive = filteredStudents.filter(s => s.status === 'inactive').length;
+    const totalTuition = filteredStudents.reduce((sum, s) => sum + (s.tuitionFee || 0), 0);
+    return { active, inactive, totalTuition, total: filteredStudents.length };
+  }, [filteredStudents]);
+
   return (
     <div className="space-y-6">
-      {/* Header with Actions */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Student Directory</h2>
-          <p className="text-gray-600 mt-1">Manage all registered students ({filteredStudents.length} total)</p>
-        </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={onAddStudent}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-          >
-            + Add Student
-          </button>
-          {students.length === 0 && (
+      {/* Prominent Header */}
+      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-3xl p-4 sm:p-6 md:p-8 border-b-4 border-accent shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">
+              Student Directory
+            </h2>
+            <p className="text-white/90 text-sm sm:text-base md:text-lg font-semibold">
+              Manage all registered students • {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'} found
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            {onAddStudent && (
+              <button 
+                onClick={onAddStudent}
+                className="px-6 sm:px-7 py-2.5 sm:py-3 bg-accent text-primary rounded-full font-extrabold hover:scale-110 transition-all shadow-xl hover:shadow-2xl text-sm sm:text-base md:text-lg"
+                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-primary)' }}
+              >
+                Add Student
+              </button>
+            )}
+            {students.length === 0 && (
             <button 
               onClick={addSampleStudents}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base"
             >
-              📝 Add Sample Students
+              Add Sample
             </button>
-          )}
-          <button className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition">
-            📊 Export
-          </button>
-          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-            📥 Import
-          </button>
+            )}
+            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+              Export
+            </button>
+            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+              Import
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-gradient-to-br from-soft-primary to-primary/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-primary/40">
+          <div>
+            <p className="text-primary/80 text-xs sm:text-sm font-semibold mb-1">Total Students</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-primary">{stats.total}</p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-soft-primary to-primary/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-primary/40">
+          <div>
+            <p className="text-primary/80 text-xs sm:text-sm font-semibold mb-1">Active</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-primary">{stats.active}</p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-soft-primary to-primary/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-primary/40">
+          <div>
+            <p className="text-primary/80 text-xs sm:text-sm font-semibold mb-1">Inactive</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-primary">{stats.inactive}</p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-br from-soft-accent to-accent/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-accent/40">
+          <div>
+            <p className="text-primary text-xs sm:text-sm font-semibold mb-1">Total Tuition</p>
+            <p className="text-2xl sm:text-3xl font-extrabold text-accent">${stats.totalTuition}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Enhanced Filters and Search */}
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          {/* Search */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Name, email, or ID..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
+        <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-2xl p-4 sm:p-5 md:p-6 border-2 border-primary/20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            {/* Search */}
+            <div className="sm:col-span-2 lg:col-span-2">
+              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Search Students</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, email, or ID..."
+                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base placeholder:text-primary/50"
+              />
+            </div>
 
-          {/* Teacher Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Teacher</label>
-            <select
-              value={selectedTeacher}
-              onChange={(e) => setSelectedTeacher(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">All Teachers</option>
-              {uniqueTeachers.map(teacher => (
-                <option key={teacher} value={teacher}>{teacher}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              {uniqueStatuses.map(status => (
-                <option key={status} value={status}>{status}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Payment Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Payment</label>
-            <select
-              value={selectedPaymentStatus}
-              onChange={(e) => setSelectedPaymentStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">All Payments</option>
-              <option value="current">Current</option>
-              <option value="pending">Pending</option>
-              <option value="overdue">Overdue</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Filter Actions */}
-        <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
-          <div className="flex space-x-3">
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedTeacher('all');
-                setSelectedStatus('all');
-                setSelectedPaymentStatus('all');
-              }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-            >
-              🗑️ Clear All Filters
-            </button>
-            <button
-              onClick={() => {
-                setSortBy('name');
-                setSortOrder('asc');
-              }}
-              className="px-4 py-2 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition"
-            >
-              🔄 Reset Sort
-            </button>
-          </div>
-          <div className="text-sm text-gray-600">
-            Showing {filteredStudents.length} of {students.length} students
-          </div>
-        </div>
-
-        {/* Active Filters Display */}
-        {(searchTerm || selectedTeacher !== 'all' || selectedStatus !== 'all' || selectedPaymentStatus !== 'all') && (
-          <div className="flex items-center space-x-2 p-3 bg-cream-100 border border-gold-300 rounded-lg">
-            <span className="text-sm text-primary-800 font-medium">Active Filters:</span>
-            {searchTerm && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Search: "{searchTerm}"
-              </span>
-            )}
-            {selectedTeacher !== 'all' && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Teacher: {selectedTeacher}
-              </span>
-            )}
-            {selectedStatus !== 'all' && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Status: {selectedStatus}
-              </span>
-            )}
-            {selectedPaymentStatus !== 'all' && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Payment: {selectedPaymentStatus}
-              </span>
-            )}
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedTeacher('all');
-                setSelectedStatus('all');
-                setSelectedPaymentStatus('all');
-              }}
-              className="ml-2 text-xs text-primary-600 hover:text-primary-800 underline"
-            >
-              Clear All
-            </button>
-          </div>
-        )}
-      </Card>
-
-      {/* Students Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Student</span>
-                    {sortBy === 'name' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('email')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Contact</span>
-                    {sortBy === 'email' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Schedule</th>
-                <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('tuitionFee')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Tuition</span>
-                    {sortBy === 'tuitionFee' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('enrolledDate')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Enrolled</span>
-                    {sortBy === 'enrolledDate' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {paginatedStudents.length > 0 ? (
-                paginatedStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4">
-                      <div className="flex items-center">
-                        <img 
-                          src={student.avatar} 
-                          alt={student.fullName} 
-                          className="h-10 w-10 rounded-full mr-3" 
-                        />
-                        <div>
-                          <p className="font-medium text-gray-900">{student.fullName}</p>
-                          <p className="text-sm text-gray-500">{student.parentName}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm font-mono text-gray-600">{student.id}</td>
-                    <td className="px-4 py-4 text-sm">
-                      <div>
-                        <p className="text-gray-900">{student.email}</p>
-                        <p className="text-gray-500">{student.contact}</p>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <span className="text-primary-600">📚</span>
-                        <span className="font-medium">{student.program}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-primary-600">{student.assignedTeacher}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <div className="flex items-center space-x-1">
-                        <span className="text-gray-500">📅</span>
-                        <span>{student.schedule?.days?.join(', ') || 'Not set'}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm font-semibold text-green-600">${student.tuitionFee}</td>
-                    <td className="px-4 py-4">{getPaymentStatus(student)}</td>
-                    <td className="px-4 py-4">{getStatusBadge(student.status)}</td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {new Date(student.enrolledDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => {
-                            console.log('🔍 View button clicked for student:', student);
-                            onStudentSelect(student);
-                          }}
-                          className="px-3 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 transition"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => onEditStudent(student)}
-                          className="px-3 py-1 bg-gold-500 text-white text-xs rounded hover:bg-gold-600 transition"
-                        >
-                          Edit
-                        </button>
-                        {onCredentials && (
-                          <button
-                            onClick={() => onCredentials(student)}
-                            className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition"
-                          >
-                            🔐 Credentials
-                          </button>
-                        )}
-                        {onAnalytics && (
-                          <button
-                            onClick={() => onAnalytics(student)}
-                            className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition"
-                          >
-                            📊 Analytics
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onDeleteStudent(student.id)}
-                          className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
-                    No students found matching the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-700">Show</span>
+            {/* Teacher Filter */}
+            <div>
+              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Teacher</label>
               <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                value={selectedTeacher}
+                onChange={(e) => setSelectedTeacher(e.target.value)}
+                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
               >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
+                <option value="all">All Teachers</option>
+                {uniqueTeachers.map(teacher => (
+                  <option key={teacher} value={teacher}>{teacher}</option>
+                ))}
               </select>
-              <span className="text-sm text-gray-700">per page</span>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Status</label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
               >
-                Previous
-              </button>
-              
-              <span className="text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
+                <option value="all">All Status</option>
+                {uniqueStatuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
             </div>
           </div>
-        )}
+
+          {/* Filter Actions */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4 pt-4 border-t-2 border-primary/20">
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedTeacher('all');
+                  setSelectedStatus('all');
+                  setSelectedPaymentStatus('all');
+                }}
+                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+              >
+                Clear Filters
+              </button>
+              <button
+                onClick={() => {
+                  setSortBy('name');
+                  setSortOrder('asc');
+                }}
+                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-accent text-primary rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+              >
+                Reset Sort
+              </button>
+            </div>
+            <div className="text-xs sm:text-sm font-extrabold text-primary">
+              Showing <span className="text-accent">{filteredStudents.length}</span> of <span className="text-accent">{students.length}</span> students
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          {(searchTerm || selectedTeacher !== 'all' || selectedStatus !== 'all' || selectedPaymentStatus !== 'all') && (
+            <div className="flex flex-wrap items-center gap-2 p-3 sm:p-4 bg-accent/20 border-2 border-accent/40 rounded-2xl mt-4">
+              <span className="text-xs sm:text-sm font-extrabold text-primary">Active Filters:</span>
+              {searchTerm && (
+                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                  Search: "{searchTerm}"
+                </span>
+              )}
+              {selectedTeacher !== 'all' && (
+                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                  Teacher: {selectedTeacher}
+                </span>
+              )}
+              {selectedStatus !== 'all' && (
+                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                  Status: {selectedStatus}
+                </span>
+              )}
+              {selectedPaymentStatus !== 'all' && (
+                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                  Payment: {selectedPaymentStatus}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </Card>
+
+      {/* Students Grid - Card Layout */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
+        {paginatedStudents.length > 0 ? (
+          paginatedStudents.map((student) => (
+            <div
+              key={student.id}
+              className="bg-soft-primary rounded-xl border-2 border-primary shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] overflow-hidden"
+            >
+              {/* Horizontal Layout */}
+              <div className="flex flex-col sm:flex-row">
+                {/* Left Side - Avatar and Status */}
+                <div className="bg-primary p-4 sm:p-5 flex flex-col items-center justify-center border-b-2 sm:border-b-0 sm:border-r-2 border-primary sm:w-32">
+                  <div className="relative mb-3">
+                    <img 
+                      src={student.avatar} 
+                      alt={student.fullName} 
+                      className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-accent shadow-lg" 
+                    />
+                  </div>
+                  <span className={`px-3 py-1 text-xs font-extrabold rounded ${
+                    student.status === 'active' 
+                      ? 'bg-accent text-primary' 
+                      : 'bg-soft-primary text-primary border border-primary'
+                  }`}>
+                    {student.status || 'active'}
+                  </span>
+                </div>
+
+                {/* Right Side - Info and Actions */}
+                <div className="flex-1 p-4 sm:p-5">
+                  {/* Name and Program */}
+                  <div className="mb-4">
+                    <h3 className="text-lg sm:text-xl font-extrabold text-primary mb-1">
+                      {student.fullName}
+                    </h3>
+                    <p className="text-sm text-primary font-semibold">{student.program}</p>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-soft-primary rounded p-2 border border-primary">
+                      <p className="text-xs text-primary font-semibold mb-1">Teacher</p>
+                      <p className="text-sm font-extrabold text-primary truncate">{getTeacherName(student.assignedTeacher)}</p>
+                    </div>
+                    <div className="bg-soft-primary rounded p-2 border border-primary">
+                      <p className="text-xs text-primary font-semibold mb-1">Tuition</p>
+                      <p className="text-sm font-extrabold text-primary">${student.tuitionFee}</p>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons - Horizontal */}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => onStudentSelect(student)}
+                      className="flex-1 min-w-[80px] px-4 py-2 bg-primary text-accent rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs sm:text-sm"
+                    >
+                      View
+                    </button>
+                    <button
+                      onClick={() => onEditStudent(student)}
+                      className="flex-1 min-w-[80px] px-4 py-2 bg-accent text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs sm:text-sm"
+                    >
+                      Edit
+                    </button>
+                    {onCredentials && (
+                      <button
+                        onClick={() => onCredentials(student)}
+                        className="px-3 py-2 bg-soft-primary border border-primary text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs"
+                        title="Credentials"
+                      >
+                        Credentials
+                      </button>
+                    )}
+                    {onAnalytics && (
+                      <button
+                        onClick={() => onAnalytics(student)}
+                        className="px-3 py-2 bg-soft-primary border border-primary text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs"
+                        title="Analytics"
+                      >
+                        Analytics
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onDeleteStudent(student.id)}
+                      className="px-3 py-2 bg-soft-primary border border-primary text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs"
+                      title="Delete"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="col-span-full">
+            <Card>
+              <div className="text-center py-8 sm:py-12">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-primary mb-2">No Students Found</h3>
+                <p className="text-sm sm:text-base text-primary-soft mb-4 sm:mb-6">No students match the selected filters.</p>
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedTeacher('all');
+                    setSelectedStatus('all');
+                    setSelectedPaymentStatus('all');
+                  }}
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg text-sm sm:text-base"
+                >
+                  Clear All Filters
+                </button>
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
+
+      {/* Enhanced Pagination */}
+      {totalPages > 1 && (
+        <Card>
+          <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-2xl p-4 sm:p-5 md:p-6 border-2 border-primary/20">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-xs sm:text-sm font-extrabold text-primary">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 sm:px-4 py-2 border-2 border-primary/30 rounded-full text-xs sm:text-sm font-extrabold text-primary bg-soft-primary focus:ring-2 focus:ring-primary focus:border-primary shadow-md"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-xs sm:text-sm font-extrabold text-primary">per page</span>
+              </div>
+              
+              <div className="flex items-center gap-2 sm:gap-3">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg disabled:hover:scale-100 text-xs sm:text-sm"
+                >
+                  Previous
+                </button>
+                
+                <div className="px-3 sm:px-5 py-2 sm:py-2.5 bg-accent/20 rounded-full border-2 border-accent/40">
+                  <span className="text-xs sm:text-sm font-extrabold text-primary">
+                    Page <span className="text-accent">{currentPage}</span> of <span className="text-accent">{totalPages}</span>
+                  </span>
+                </div>
+                
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg disabled:hover:scale-100 text-xs sm:text-sm"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

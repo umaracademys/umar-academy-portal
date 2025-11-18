@@ -293,7 +293,7 @@ const AssignmentManagement: React.FC = () => {
                       
                       {/* Program Badge */}
                       {student.program && (
-                        <p className="relative z-10 text-[10px] sm:text-xs font-semibold text-primary-soft text-center px-2 truncate w-full">
+                        <p className="relative z-10 text-[10px] sm:text-xs font-semibold text-primary text-center px-2 truncate w-full">
                           {student.program}
                         </p>
                       )}
@@ -333,7 +333,7 @@ const AssignmentManagement: React.FC = () => {
                           e.stopPropagation();
                           handleStudentClick(student.id);
                         }}
-                        className="w-full px-4 py-2.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 text-white text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
+                        className="w-full px-4 py-2.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 text-primary text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
                         title="View Assignments"
                       >
                         View History

@@ -216,8 +216,8 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white">
+      <div className="flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl border-2 border-primary">
+        <header className="bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.85)]">
           <div className="flex flex-col gap-6 px-8 py-8 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-5">
               <div className="relative">
@@ -229,30 +229,30 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                     )}&background=random&color=fff`
                   }
                   alt={currentStudent.fullName}
-                  className="h-24 w-24 rounded-full border-4 border-white shadow-lg"
+                  className="h-24 w-24 rounded-full border-4 border-accent shadow-lg"
                 />
                 <span
-                  className={`absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-4 border-white ${
+                  className={`absolute -bottom-2 -right-2 h-8 w-8 rounded-full border-4 border-primary ${
                     currentStudent.status === 'active'
-                      ? 'bg-green-500'
+                      ? 'bg-accent'
                       : currentStudent.status === 'inactive'
-                        ? 'bg-gray-500'
-                        : 'bg-yellow-500'
+                        ? 'bg-soft-primary'
+                        : 'bg-accent'
                   }`}
                 />
               </div>
               <div>
-                <h1 className="text-3xl font-bold leading-tight">{currentStudent.fullName}</h1>
-                <p className="text-blue-100">{currentStudent.email || 'No email on file'}</p>
+                <h1 className="text-3xl font-bold leading-tight text-accent">{currentStudent.fullName}</h1>
+                <p className="text-accent/90">{currentStudent.email || 'No email on file'}</p>
                 <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                  <span className="rounded-full bg-white/20 px-3 py-1 font-medium">
+                  <span className="rounded-full bg-accent/20 px-3 py-1 font-medium text-accent">
                     {currentStudent.program || 'No program assigned'}
                   </span>
-                  <span className="rounded-full bg-white/20 px-3 py-1 font-medium capitalize">
+                  <span className="rounded-full bg-accent/20 px-3 py-1 font-medium capitalize text-accent">
                     {currentStudent.status || 'active'}
                   </span>
                   {assignedTeacher && (
-                    <span className="rounded-full bg-white/20 px-3 py-1 font-medium">
+                    <span className="rounded-full bg-accent/20 px-3 py-1 font-medium text-accent">
                       Teacher: {assignedTeacher.fullName}
                     </span>
                   )}
@@ -262,13 +262,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => onEdit(currentStudent)}
-                className="inline-flex items-center rounded-xl border border-white/30 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/20"
+                className="inline-flex items-center rounded-xl border-2 border-accent px-5 py-3 text-sm font-extrabold text-accent transition hover:bg-accent/20 shadow-lg"
               >
                 ✏️ Edit Profile
               </button>
               <button
                 onClick={onClose}
-                className="inline-flex items-center rounded-xl bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600"
+                className="inline-flex items-center rounded-xl bg-accent px-5 py-3 text-sm font-extrabold text-primary transition hover:bg-accent/90 shadow-lg hover:scale-105"
               >
                 ✕ Close
               </button>
@@ -276,15 +276,15 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
           </div>
         </header>
 
-        <nav className="flex gap-2 overflow-x-auto border-b border-gray-200 bg-gray-50 px-6 py-3">
+        <nav className="flex gap-2 overflow-x-auto border-b-2 border-primary bg-soft-primary px-6 py-3">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`whitespace-nowrap rounded-xl px-5 py-3 text-sm font-medium transition ${
+              className={`whitespace-nowrap rounded-xl px-5 py-3 text-sm font-extrabold transition ${
                 activeTab === tab.id
-                  ? 'bg-blue-600 text-white shadow'
-                  : 'text-gray-600 hover:bg-white hover:text-blue-600'
+                  ? 'bg-primary text-accent shadow-lg'
+                  : 'text-primary hover:bg-primary/20'
               }`}
             >
               <span className="mr-2">{tab.icon}</span>
@@ -354,16 +354,16 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                   {scheduleEntries.length === 0 ? (
                     <EmptyState message="No schedule has been added for this student yet." />
                   ) : (
-                    <ul className="space-y-3 text-sm text-gray-700">
+                    <ul className="space-y-3 text-sm text-primary">
                       {scheduleEntries.map((entry, index) => (
                         <li
                           key={`${entry.day}-${index}`}
-                          className="flex flex-wrap items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                          className="flex flex-wrap items-center justify-between rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                         >
-                          <span className="font-semibold text-blue-700">{entry.day}</span>
-                          <span>{entry.time}</span>
-                          <span>{entry.teacher}</span>
-                          <span>{entry.room}</span>
+                          <span className="font-extrabold text-primary">{entry.day}</span>
+                          <span className="text-primary">{entry.time}</span>
+                          <span className="text-primary">{entry.teacher}</span>
+                          <span className="text-primary">{entry.room}</span>
                         </li>
                       ))}
                     </ul>
@@ -374,21 +374,21 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                   {studentAssignments.length === 0 ? (
                     <EmptyState message="No assignments found for this student." />
                   ) : (
-                    <ul className="space-y-3 text-sm text-gray-700">
+                    <ul className="space-y-3 text-sm text-primary">
                       {studentAssignments.slice(0, 4).map((assignment) => (
                         <li
                           key={assignment.id}
-                          className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                          className="rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                         >
                           <div className="flex flex-wrap items-center justify-between">
-                            <span className="font-semibold text-gray-900">Assignment</span>
-                            <span className="text-xs text-gray-500">
+                            <span className="font-extrabold text-primary">Assignment</span>
+                            <span className="text-xs text-primary">
                               {assignment.createdAt
                                 ? new Date(assignment.createdAt).toLocaleDateString()
                                 : 'No date'}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-primary">
                             {assignment.classwork?.sabq?.length ? 'Sabq' : assignment.classwork?.sabqi?.length ? 'Sabqi' : assignment.classwork?.manzil?.length ? 'Manzil' : 'Classwork'}
                           </p>
                         </li>
@@ -425,10 +425,10 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                             data: any;
                           }>;
                           return (
-                          <div key={dateKey} className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                            <div className="mb-4 pb-3 border-b border-gray-200">
-                              <h3 className="text-lg font-bold text-gray-900">{dateKey}</h3>
-                              <p className="text-xs text-gray-500 mt-1">
+                          <div key={dateKey} className="rounded-xl border-2 border-primary bg-soft-primary p-6 shadow-lg">
+                            <div className="mb-4 pb-3 border-b-2 border-primary">
+                              <h3 className="text-lg font-extrabold text-primary">{dateKey}</h3>
+                              <p className="text-xs text-primary mt-1">
                                 {activities.length} activit{activities.length !== 1 ? 'ies' : 'y'} on this day
                               </p>
                             </div>
@@ -440,13 +440,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                                   : [];
                                 
                                 return (
-                                  <div key={activity.id} className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                                  <div key={activity.id} className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
                                     <div className="flex items-start justify-between mb-2">
                                       <div className="flex items-center gap-3">
                                         <span className="text-xl">{activity.icon}</span>
                                         <div>
-                                          <h4 className="font-semibold text-gray-900">{activity.title}</h4>
-                                          <p className="text-xs text-gray-500 mt-0.5">
+                                          <h4 className="font-extrabold text-primary">{activity.title}</h4>
+                                          <p className="text-xs text-primary mt-0.5">
                                             {activity.date.toLocaleTimeString('en-US', {
                                               hour: '2-digit',
                                               minute: '2-digit'
@@ -455,22 +455,22 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                                         </div>
                                       </div>
                                       {activity.status && (
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${activity.color}`}>
+                                        <span className="px-2 py-1 rounded-full text-xs font-extrabold bg-primary text-accent border-2 border-primary">
                                           {activity.status.replace('_', ' ').toUpperCase()}
                                         </span>
                                       )}
                                     </div>
                                     
                                     {activity.description && activity.description !== 'No description' && (
-                                      <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">
+                                      <p className="text-sm text-primary mt-2 whitespace-pre-wrap">
                                         {activity.description}
                                       </p>
                                     )}
                                     
                                     {/* Mushaf Mistakes */}
                                     {mushafMarkings.length > 0 && (
-                                      <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
-                                        <h5 className="text-xs font-semibold text-orange-900 mb-2">
+                                      <div className="mt-3 rounded-lg border-2 border-accent/50 bg-accent/10 p-3">
+                                        <h5 className="text-xs font-extrabold text-primary mb-2">
                                           📖 Mushaf Mistakes ({mushafMarkings.length})
                                         </h5>
                                         <div className="flex flex-wrap gap-2">
@@ -484,11 +484,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                                             return (
                                               <span
                                                 key={idx}
-                                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                                  mistake.type === 'memory' 
-                                                    ? 'bg-red-100 text-red-800' 
-                                                    : 'bg-yellow-100 text-yellow-800'
-                                                }`}
+                                                className="px-2 py-1 rounded text-xs font-extrabold bg-accent/20 text-primary border border-accent/30"
                                               >
                                                 {typeLabel} • Page {mistake.page}
                                                 {mistake.surah && mistake.ayah && ` • ${mistake.surah}:${mistake.ayah}`}
@@ -500,7 +496,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                                     )}
                                     
                                     {/* Additional info based on type */}
-                                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
+                                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-primary">
                                       {activity.type === 'assignment' && activity.data.assignedBy && (
                                         <span>Assigned by: {activity.data.listenerName || activity.data.assignedTeacherName || 'Admin'}</span>
                                       )}
@@ -512,7 +508,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                                           href={activity.data.audioLink} 
                                           target="_blank" 
                                           rel="noopener noreferrer"
-                                          className="text-blue-600 hover:underline"
+                                          className="text-accent hover:underline font-extrabold"
                                         >
                                           🔊 Listen to Audio
                                         </a>
@@ -558,7 +554,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                   <EmptyState message="No schedule yet. Add days and times from the student registration form." />
                 ) : (
                   <table className="w-full table-auto text-sm">
-                    <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500">
+                    <thead className="bg-primary text-left text-xs font-extrabold text-accent">
                       <tr>
                         <th className="px-4 py-3">Day</th>
                         <th className="px-4 py-3">Time</th>
@@ -566,13 +562,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                         <th className="px-4 py-3">Room</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y-2 divide-primary">
                       {scheduleEntries.map((entry, index) => (
-                        <tr key={`${entry.day}-${index}`} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-medium text-gray-900">{entry.day}</td>
-                          <td className="px-4 py-3 text-gray-600">{entry.time}</td>
-                          <td className="px-4 py-3 text-gray-600">{entry.teacher}</td>
-                          <td className="px-4 py-3 text-gray-600">{entry.room}</td>
+                        <tr key={`${entry.day}-${index}`} className="hover:bg-primary/10">
+                          <td className="px-4 py-3 font-extrabold text-primary">{entry.day}</td>
+                          <td className="px-4 py-3 text-primary">{entry.time}</td>
+                          <td className="px-4 py-3 text-primary">{entry.teacher}</td>
+                          <td className="px-4 py-3 text-primary">{entry.room}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -586,20 +582,20 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                 {studentAssignments.length === 0 ? (
                   <EmptyState message="This student does not have any assignments yet." />
                 ) : (
-                  <ul className="space-y-3 text-sm text-gray-700">
+                  <ul className="space-y-3 text-sm text-primary">
                     {studentAssignments.map((assignment) => (
                       <li
                         key={assignment.id}
-                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        className="rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                       >
                         <div className="flex flex-wrap items-center justify-between">
                           <div>
-                            <p className="font-semibold text-gray-900">Assignment</p>
-                            <p className="text-xs text-gray-500">
+                            <p className="font-extrabold text-primary">Assignment</p>
+                            <p className="text-xs text-primary">
                               {assignment.classwork?.sabq?.length ? 'Sabq' : assignment.classwork?.sabqi?.length ? 'Sabqi' : assignment.classwork?.manzil?.length ? 'Manzil' : 'Classwork'}
                             </p>
                           </div>
-                          <div className="text-right text-xs text-gray-500">
+                          <div className="text-right text-xs text-primary">
                             <p>
                               Created:{' '}
                               {assignment.createdAt
@@ -620,13 +616,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                 {studentAssignments.length === 0 ? (
                   <EmptyState message="Assign coursework to start tracking progress." />
                 ) : (
-                  <div className="space-y-3 text-sm text-gray-700">
+                  <div className="space-y-3 text-sm text-primary">
                     <p>
-                      <span className="font-semibold">Assignments completed:</span>{' '}
+                      <span className="font-extrabold">Assignments completed:</span>{' '}
                       {gradedAssignments.length} of {studentAssignments.length}
                     </p>
                     <p>
-                      <span className="font-semibold">Average grade:</span>{' '}
+                      <span className="font-extrabold">Average grade:</span>{' '}
                       {averageGrade !== null ? `${averageGrade}%` : '—'}
                     </p>
                   </div>
@@ -639,17 +635,17 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                 {attendance.length === 0 ? (
                   <EmptyState message="No attendance records found." />
                 ) : (
-                  <ul className="space-y-3 text-sm text-gray-700">
+                  <ul className="space-y-3 text-sm text-primary">
                     {attendance.map((record: any, index: number) => (
                       <li
                         key={`${record.date}-${index}`}
-                        className="flex flex-wrap items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        className="flex flex-wrap items-center justify-between rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                       >
-                        <span className="font-semibold text-gray-900">
+                        <span className="font-extrabold text-primary">
                           {record.date ? new Date(record.date).toLocaleDateString() : '—'}
                         </span>
-                        <span className="text-xs text-gray-500">{record.status}</span>
-                        <span className="text-xs text-gray-500">{record.notes}</span>
+                        <span className="text-xs text-primary">{record.status}</span>
+                        <span className="text-xs text-primary">{record.notes}</span>
                       </li>
                     ))}
                   </ul>
@@ -662,20 +658,20 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                 {payments.length === 0 ? (
                   <EmptyState message="No payments recorded for this student." />
                 ) : (
-                  <ul className="space-y-3 text-sm text-gray-700">
+                  <ul className="space-y-3 text-sm text-primary">
                     {payments.map((payment: any, index: number) => (
                       <li
                         key={payment.id || index}
-                        className="flex flex-wrap items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        className="flex flex-wrap items-center justify-between rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                       >
                         <div>
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-extrabold text-primary">
                             ${payment.amount}{' '}
-                            <span className="text-xs text-gray-500">({payment.status})</span>
+                            <span className="text-xs text-primary">({payment.status})</span>
                           </p>
-                          <p className="text-xs text-gray-500">Method: {payment.method || '—'}</p>
+                          <p className="text-xs text-primary">Method: {payment.method || '—'}</p>
                         </div>
-                        <div className="text-right text-xs text-gray-500">
+                        <div className="text-right text-xs text-primary">
                           <p>{formatDate(payment.date)}</p>
                           {payment.reference && <p>Ref: {payment.reference}</p>}
                         </div>
@@ -691,17 +687,17 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                 {notes.length === 0 ? (
                   <EmptyState message="No notes for this student yet." />
                 ) : (
-                  <ul className="space-y-3 text-sm text-gray-700">
+                  <ul className="space-y-3 text-sm text-primary">
                     {notes.map((note: any) => (
                       <li
                         key={note.id}
-                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        className="rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                       >
-                        <div className="flex items-center justify-between text-xs text-gray-500">
+                        <div className="flex items-center justify-between text-xs text-primary">
                           <span>{note.author || 'Team member'}</span>
                           <span>{formatDate(note.date)}</span>
                         </div>
-                        <p className="mt-2 text-gray-800">{note.content}</p>
+                        <p className="mt-2 text-primary">{note.content}</p>
                       </li>
                     ))}
                   </ul>
@@ -714,11 +710,11 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                 {courses.length === 0 ? (
                   <EmptyState message="No courses assigned yet." />
                 ) : (
-                  <ul className="space-y-3 text-sm text-gray-700">
+                  <ul className="space-y-3 text-sm text-primary">
                     {courses.map((course: any, index: number) => (
                       <li
                         key={course.id || index}
-                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        className="rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                       >
                         {course.name || course}
                       </li>
@@ -730,22 +726,22 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
 
             {activeTab === 'family' && (
               <SectionCard title="Family & Emergency Contacts" icon="👨‍👩‍👧‍👦">
-                <ul className="space-y-3 text-sm text-gray-700">
-                  <li className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                    <p className="font-semibold text-gray-900">Primary Guardian</p>
-                    <p>{currentStudent.parentName || 'Not provided'}</p>
-                    <p className="text-xs text-gray-500">{currentStudent.contact || 'No phone'}</p>
+                <ul className="space-y-3 text-sm text-primary">
+                  <li className="rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md">
+                    <p className="font-extrabold text-primary">Primary Guardian</p>
+                    <p className="text-primary">{currentStudent.parentName || 'Not provided'}</p>
+                    <p className="text-xs text-primary">{currentStudent.contact || 'No phone'}</p>
                   </li>
                   {Array.isArray((currentStudent as any).familyContacts) &&
                     (currentStudent as any).familyContacts.map((contact: any, index: number) => (
                       <li
                         key={contact.id || index}
-                        className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                        className="rounded-xl border-2 border-primary bg-soft-primary px-4 py-3 shadow-md"
                       >
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-extrabold text-primary">
                           {contact.name} — {contact.relationship}
                         </p>
-                        <p className="text-xs text-gray-500">{contact.phone}</p>
+                        <p className="text-xs text-primary">{contact.phone}</p>
                       </li>
                     ))}
                 </ul>
@@ -765,12 +761,12 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ label, value, icon }) => (
-  <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+  <div className="rounded-xl border-2 border-primary bg-soft-primary p-4 shadow-lg">
     <div className="flex items-center justify-between">
       <span className="text-2xl">{icon}</span>
       <div className="text-right">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-        <p className="mt-1 text-lg font-semibold text-gray-900">{value}</p>
+        <p className="text-xs font-extrabold uppercase tracking-wide text-primary">{label}</p>
+        <p className="mt-1 text-lg font-extrabold text-primary">{value}</p>
       </div>
     </div>
   </div>
@@ -783,16 +779,16 @@ interface InfoCardProps {
 }
 
 const InfoCard: React.FC<InfoCardProps> = ({ title, icon, items }) => (
-  <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-    <h3 className="mb-4 flex items-center text-lg font-semibold text-gray-900">
+  <div className="rounded-xl border-2 border-primary bg-soft-primary p-6 shadow-lg">
+    <h3 className="mb-4 flex items-center text-lg font-extrabold text-primary">
       <span className="mr-3 text-xl">{icon}</span>
       {title}
     </h3>
-    <div className="grid grid-cols-1 gap-3 text-sm text-gray-700">
+    <div className="grid grid-cols-1 gap-3 text-sm text-primary">
       {items.map(({ label, value }) => (
         <div key={label} className="flex justify-between">
-          <span className="font-medium text-gray-500">{label}</span>
-          <span className="text-gray-900">{value ?? '—'}</span>
+          <span className="font-semibold text-primary/70">{label}</span>
+          <span className="font-extrabold text-primary">{value ?? '—'}</span>
         </div>
       ))}
     </div>
@@ -808,16 +804,16 @@ interface SectionCardProps {
 }
 
 const SectionCard: React.FC<SectionCardProps> = ({ title, icon, children, actionLabel, onAction }) => (
-  <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+  <div className="rounded-xl border-2 border-primary bg-soft-primary p-6 shadow-lg">
     <div className="mb-4 flex items-center justify-between">
-      <h3 className="flex items-center text-lg font-semibold text-gray-900">
+      <h3 className="flex items-center text-lg font-extrabold text-primary">
         <span className="mr-3 text-xl">{icon}</span>
         {title}
       </h3>
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="text-sm font-semibold text-blue-600 hover:text-blue-800 underline"
+          className="text-sm font-extrabold text-accent hover:text-accent/80 underline"
         >
           {actionLabel}
         </button>
@@ -828,7 +824,7 @@ const SectionCard: React.FC<SectionCardProps> = ({ title, icon, children, action
 );
 
 const EmptyState: React.FC<{ message: string }> = ({ message }) => (
-  <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
+  <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 px-4 py-8 text-center text-sm text-primary">
     {message}
   </div>
 );

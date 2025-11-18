@@ -1844,6 +1844,53 @@ app.get('/api/tickets/previous-reports/:studentId/:type', async (req, res) => {
   }
 });
 
+// Fix tickets that are missing sentToAssignmentId - MUST come before /:id route
+app.post('/api/tickets/fix-missing-assignment-ids', async (req, res) => {
+  try {
+    // Find all tickets with status 'sent_to_assignment' but no sentToAssignmentId
+    const ticketsToFix = await Ticket.find({
+      status: 'sent_to_assignment',
+      $or: [
+        { sentToAssignmentId: { $exists: false } },
+        { sentToAssignmentId: null },
+        { sentToAssignmentId: '' }
+      ]
+    });
+
+    console.log(`🔧 Found ${ticketsToFix.length} tickets to fix`);
+
+    let fixedCount = 0;
+    for (const ticket of ticketsToFix) {
+      // Try to find the assignment for this student
+      const assignment = await Assignment.findOne({
+        $or: [
+          { studentId: ticket.studentId },
+          { studentId: new mongoose.Types.ObjectId(ticket.studentId) }
+        ],
+        status: 'active'
+      }).sort({ createdAt: -1 });
+
+      if (assignment) {
+        ticket.sentToAssignmentId = assignment._id.toString();
+        ticket.sentAt = ticket.sentAt || new Date();
+        await ticket.save();
+        fixedCount++;
+        console.log(`✅ Fixed ticket ${ticket._id} -> Assignment ${assignment._id}`);
+      } else {
+        console.log(`⚠️ No assignment found for ticket ${ticket._id} (student: ${ticket.studentId})`);
+      }
+    }
+
+    res.json({
+      message: `Fixed ${fixedCount} out of ${ticketsToFix.length} tickets`,
+      fixed: fixedCount,
+      total: ticketsToFix.length
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single ticket by ID - MUST come after all specific routes
 app.get('/api/tickets/:id', async (req, res) => {
   try {
@@ -2303,54 +2350,6 @@ app.post('/api/admin-notifications', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// Fix tickets that are missing sentToAssignmentId
-app.post('/api/tickets/fix-missing-assignment-ids', async (req, res) => {
-  try {
-    // Find all tickets with status 'sent_to_assignment' but no sentToAssignmentId
-    const ticketsToFix = await Ticket.find({
-      status: 'sent_to_assignment',
-      $or: [
-        { sentToAssignmentId: { $exists: false } },
-        { sentToAssignmentId: null },
-        { sentToAssignmentId: '' }
-      ]
-    });
-
-    console.log(`🔧 Found ${ticketsToFix.length} tickets to fix`);
-
-    let fixedCount = 0;
-    for (const ticket of ticketsToFix) {
-      // Try to find the assignment for this student
-      const assignment = await Assignment.findOne({
-        $or: [
-          { studentId: ticket.studentId },
-          { studentId: new mongoose.Types.ObjectId(ticket.studentId) }
-        ],
-        status: 'active'
-      }).sort({ createdAt: -1 });
-
-      if (assignment) {
-        ticket.sentToAssignmentId = assignment._id.toString();
-        ticket.sentAt = ticket.sentAt || new Date();
-        await ticket.save();
-        fixedCount++;
-        console.log(`✅ Fixed ticket ${ticket._id} -> Assignment ${assignment._id}`);
-      } else {
-        console.log(`⚠️ No assignment found for ticket ${ticket._id} (student: ${ticket.studentId})`);
-      }
-    }
-
-    res.json({
-      message: `Fixed ${fixedCount} out of ${ticketsToFix.length} tickets`,
-      fixed: fixedCount,
-      total: ticketsToFix.length
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 
 // Listening Session Routes
 app.get('/api/listening-sessions/live', async (req, res) => {

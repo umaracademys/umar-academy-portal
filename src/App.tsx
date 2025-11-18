@@ -8,6 +8,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherProfile from './pages/TeacherProfile';
 import AssignmentManagement from './pages/AssignmentManagement';
+import StudentsPage from './pages/StudentsPage';
 // import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
 import StudentRouter from './modules/student/StudentRouter';
 
@@ -100,6 +101,14 @@ function AppContent() {
         element={
           <ProtectedRoute>
             <AssignmentManagement />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/students"
+        element={
+          <ProtectedRoute>
+            <StudentsPage />
           </ProtectedRoute>
         }
       />

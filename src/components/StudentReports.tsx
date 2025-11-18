@@ -159,7 +159,7 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
                       <div className={`font-extrabold text-xs sm:text-sm truncate transition-colors ${
                         selectedStudent === student.id ? 'text-primary' : 'text-primary'
                       }`}>{student.fullName}</div>
-                      <div className="text-xs text-primary-soft mt-1 truncate">{student.email}</div>
+                      <div className="text-xs text-primary mt-1 truncate">{student.email}</div>
                     </button>
                   ))}
                 </div>
