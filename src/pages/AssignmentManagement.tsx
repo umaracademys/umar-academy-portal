@@ -15,6 +15,7 @@ const AssignmentManagement: React.FC = () => {
   const [editingAssignment, setEditingAssignment] = useState<string | null>(null);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [prefillTicket, setPrefillTicket] = useState<Ticket | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Get unique programs from students
   const programs = useMemo(() => {
@@ -27,13 +28,41 @@ const AssignmentManagement: React.FC = () => {
     return Array.from(programSet);
   }, [students]);
 
-  // Filter students by program
+  // Filter students by program and search
   const filteredStudents = useMemo(() => {
-    if (selectedProgram === 'all') {
-      return students;
+    let filtered = students;
+    
+    // Filter by program
+    if (selectedProgram !== 'all') {
+      filtered = filtered.filter(student => student.program === selectedProgram);
     }
-    return students.filter(student => student.program === selectedProgram);
-  }, [students, selectedProgram]);
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(student => 
+        student.fullName.toLowerCase().includes(query) ||
+        student.email.toLowerCase().includes(query) ||
+        student.id.toLowerCase().includes(query)
+      );
+    }
+    
+    return filtered;
+  }, [students, selectedProgram, searchQuery]);
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const totalAssignments = assignments.length;
+    const studentsWithAssignments = new Set(assignments.map(a => a.studentId)).size;
+    const activeAssignments = assignments.filter(a => a.status === 'active').length;
+    
+    return {
+      totalAssignments,
+      studentsWithAssignments,
+      activeAssignments,
+      totalStudents: students.length
+    };
+  }, [assignments, students]);
 
   // Get student initials
   const getInitials = (name: string) => {
@@ -88,55 +117,147 @@ const AssignmentManagement: React.FC = () => {
       <Header />
       
       {/* Content Area */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            {/* Header */}
-            <div className="mb-6 rounded-3xl border border-accent-soft bg-white px-6 py-6 sm:px-10 sm:py-8 shadow-sm">
-              <div className="space-y-3">
-                <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Assignment System</span>
-                <h1 className="text-3xl font-semibold text-primary">Assignment Management</h1>
-                <p className="text-sm text-primary-soft max-w-xl">Manage assignments for students by program</p>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Prominent Header */}
+        <div className="mb-8 rounded-3xl border-4 border-accent bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] px-6 py-8 sm:px-10 sm:py-12 shadow-2xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white/80">Assignment Management System</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white drop-shadow-lg">Assignment Management</h1>
+              <p className="text-base sm:text-lg text-white/90 max-w-2xl font-medium">Manage assignments, tickets, and classwork for all students</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  if (filteredStudents.length > 0) {
+                    handleCreateTicket(filteredStudents[0].id);
+                    setSelectedStudent(filteredStudents[0].id);
+                  }
+                }}
+                className="px-6 py-3 bg-accent text-primary rounded-full font-extrabold shadow-xl hover:scale-105 transition-all text-sm sm:text-base"
+                disabled={filteredStudents.length === 0}
+              >
+                + Create Ticket
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-soft mb-1">Total Students</p>
+                <p className="text-3xl font-extrabold text-primary">{stats.totalStudents}</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-soft-primary flex items-center justify-center">
+                <span className="text-2xl">👥</span>
               </div>
             </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-soft mb-1">Total Assignments</p>
+                <p className="text-3xl font-extrabold text-primary">{stats.totalAssignments}</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-soft-primary flex items-center justify-center">
+                <span className="text-2xl">📝</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-soft mb-1">Active Assignments</p>
+                <p className="text-3xl font-extrabold text-primary">{stats.activeAssignments}</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-soft-accent flex items-center justify-center">
+                <span className="text-2xl">✅</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-primary-soft mb-1">Students with Assignments</p>
+                <p className="text-3xl font-extrabold text-primary">{stats.studentsWithAssignments}</p>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-soft-primary flex items-center justify-center">
+                <span className="text-2xl">📚</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
-        {/* Program Filter */}
-        <div className="rounded-3xl border border-accent-soft bg-white px-6 py-6 sm:px-10 sm:py-8 shadow-sm mb-6">
-          <label className="block text-sm font-medium text-primary mb-3">
-            Filter by Program
-          </label>
-          <select
-            value={selectedProgram}
-            onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
-            className="w-full sm:w-64 px-4 py-3 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition"
-          >
-            <option value="all">All Programs</option>
-            {programs.map(program => (
-              <option key={program} value={program}>{program}</option>
-            ))}
-          </select>
+        {/* Filters and Search */}
+        <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 sm:p-8 shadow-lg mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-extrabold text-primary mb-3">
+                🔍 Search Students
+              </label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, email, or ID..."
+                className="w-full px-4 py-3 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm font-medium"
+              />
+            </div>
+            
+            {/* Program Filter */}
+            <div>
+              <label className="block text-sm font-extrabold text-primary mb-3">
+                📋 Filter by Program
+              </label>
+              <select
+                value={selectedProgram}
+                onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
+                className="w-full px-4 py-3 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm font-medium"
+              >
+                <option value="all">All Programs</option>
+                {programs.map(program => (
+                  <option key={program} value={program}>{program}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Students Grid */}
-        <div className="rounded-3xl border border-accent-soft bg-white px-6 py-6 sm:px-10 sm:py-8 shadow-sm">
+        <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 sm:p-8 shadow-lg">
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-primary">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-primary mb-2">
                 Students
               </h2>
-              <p className="text-sm text-primary-soft mt-1">
-                {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
+              <p className="text-sm sm:text-base text-primary-soft font-medium">
+                {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} found
                 {selectedProgram !== 'all' && ` in ${selectedProgram}`}
+                {searchQuery && ` matching "${searchQuery}"`}
               </p>
             </div>
           </div>
 
           {filteredStudents.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-primary-soft">No students found for the selected program.</p>
+            <div className="text-center py-16">
+              <div className="text-6xl mb-4">📭</div>
+              <p className="text-lg font-semibold text-primary mb-2">No students found</p>
+              <p className="text-sm text-primary-soft">
+                {searchQuery ? 'Try adjusting your search query' : 'No students match the selected filters'}
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
               {filteredStudents.map(student => {
                 const studentAssignments = assignments.filter(a => a.studentId === student.id);
+                const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
                 const initials = getInitials(student.fullName);
                 
                 return (
@@ -147,10 +268,13 @@ const AssignmentManagement: React.FC = () => {
                     {/* Student Card */}
                     <button
                       onClick={() => handleStudentClick(student.id)}
-                      className="w-full aspect-square flex flex-col items-center justify-center bg-white rounded-2xl border-2 border-accent-soft hover:border-primary transition-all duration-200 shadow-sm hover:shadow-md relative"
+                      className="w-full aspect-square flex flex-col items-center justify-center bg-gradient-to-br from-white to-soft-primary rounded-2xl border-2 border-primary/20 hover:border-primary transition-all duration-300 shadow-md hover:shadow-xl relative overflow-hidden"
                     >
+                      {/* Hover gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      
                       {/* Avatar/Initials */}
-                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-soft-primary text-primary flex items-center justify-center text-lg sm:text-xl font-semibold mb-2">
+                      <div className="relative z-10 w-14 h-14 sm:w-18 sm:h-18 rounded-full bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.8)] text-white flex items-center justify-center text-lg sm:text-xl font-extrabold mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
                         {student.avatar ? (
                           <img
                             src={student.avatar}
@@ -163,39 +287,56 @@ const AssignmentManagement: React.FC = () => {
                       </div>
                       
                       {/* Name */}
-                      <p className="text-xs sm:text-sm font-medium text-primary text-center px-2 truncate w-full">
+                      <p className="relative z-10 text-xs sm:text-sm font-extrabold text-primary text-center px-2 truncate w-full mb-1">
                         {student.fullName}
                       </p>
                       
+                      {/* Program Badge */}
+                      {student.program && (
+                        <p className="relative z-10 text-[10px] sm:text-xs font-semibold text-primary-soft text-center px-2 truncate w-full">
+                          {student.program}
+                        </p>
+                      )}
+                      
                       {/* Assignment Count Badge */}
                       {studentAssignments.length > 0 && (
-                        <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 bg-accent text-primary text-xs font-bold rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center">
-                          {studentAssignments.length}
+                        <span className="absolute top-2 right-2 bg-accent text-primary text-xs font-extrabold rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center shadow-lg border-2 border-white z-10">
+                          {activeAssignments > 0 ? activeAssignments : studentAssignments.length}
                         </span>
                       )}
                     </button>
 
                     {/* Quick Actions (on hover) */}
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-2xl flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 to-[rgba(var(--color-primary-rgb),0.95)] rounded-2xl flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 p-3">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCreateTicket(student.id);
                         }}
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-medium rounded-full shadow-lg hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors whitespace-nowrap"
+                        className="w-full px-4 py-2.5 bg-accent text-primary text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
                         title="Create Ticket (Sabq/Sabqi/Manzil)"
                       >
-                        + Ticket
+                        + Create Ticket
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCreateAssignment(student.id);
                         }}
-                        className="px-2 sm:px-3 py-1 sm:py-1.5 bg-white border border-primary text-primary text-xs font-medium rounded-full shadow-lg hover:bg-soft-primary transition-colors whitespace-nowrap"
+                        className="w-full px-4 py-2.5 bg-white border-2 border-accent text-primary text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
                         title="Manual Assignment"
                       >
                         + Assignment
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStudentClick(student.id);
+                        }}
+                        className="w-full px-4 py-2.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 text-white text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
+                        title="View Assignments"
+                      >
+                        View History
                       </button>
                     </div>
                   </div>
