@@ -763,28 +763,28 @@ const StudentAssignments: React.FC = () => {
                                 </div>
                               )}
 
-                              {/* Mushaf Mistakes - Automatically show mushaf view when assignment is expanded */}
+                              {/* Mushaf Mistakes View - Always show when assignment has mistakes */}
                               {assignment.mushafMistakes && assignment.mushafMistakes.length > 0 && (
-                                <div className="mt-4 pt-4 border-t-2 border-primary/20">
+                                <div className="mt-4 pt-4 border-t-4 border-accent bg-gradient-to-br from-soft-primary to-white rounded-2xl" onClick={(e) => e.stopPropagation()}>
                                   {viewingMistakesFor && viewingMistakesFor.assignmentId === assignment.id ? (
-                                <div>
+                                    <div>
                                       <div className="flex items-center justify-between mb-4">
-                                        <h4 className="text-base sm:text-lg font-extrabold text-primary">
-                                          Mushaf View - {viewingMistakesFor.type.toUpperCase()} ({mushafMistakes.length} mistake{mushafMistakes.length !== 1 ? 's' : ''})
+                                        <h4 className="text-lg sm:text-xl font-extrabold text-primary">
+                                          📖 Mushaf View - {viewingMistakesFor.type.toUpperCase()} ({mushafMistakes.length} mistake{mushafMistakes.length !== 1 ? 's' : ''})
                                         </h4>
-                                      <button
+                                        <button
                                           onClick={() => {
                                             setViewingMistakesFor(null);
                                             if (assignment.mushafMistakes && assignment.mushafMistakes.length > 0) {
                                               setMushafPage(assignment.mushafMistakes[0].page);
                                             }
                                           }}
-                                          className="px-4 py-2 bg-primary text-white rounded-full text-sm font-extrabold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all shadow-md"
+                                          className="px-4 py-2 bg-primary text-white rounded-full text-sm font-extrabold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all shadow-lg hover:scale-105"
                                         >
                                           View All Mistakes
-                                      </button>
+                                        </button>
                                       </div>
-                                      <div className="bg-gradient-to-br from-soft-primary to-white rounded-3xl p-4 sm:p-6 border-2 border-primary/20 shadow-lg">
+                                      <div className="bg-white rounded-3xl p-4 sm:p-6 border-2 border-primary/30 shadow-xl">
                                         <InteractiveMushaf
                                           currentPage={mushafPage}
                                           onPageChange={setMushafPage}
@@ -794,59 +794,72 @@ const StudentAssignments: React.FC = () => {
                                           mode="viewing"
                                           studentName={currentStudent.fullName}
                                         />
-                                </div>
-                              </div>
+                                      </div>
+                                    </div>
                                   ) : (
                                     <div>
-                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                                        <h4 className="text-base sm:text-lg font-extrabold text-primary">
-                                          Mushaf Mistakes ({assignment.mushafMistakes.length})
+                                      <div className="flex items-center justify-between mb-4">
+                                        <h4 className="text-lg sm:text-xl font-extrabold text-primary">
+                                          📖 Your Mushaf Mistakes ({assignment.mushafMistakes.length} mistake{assignment.mushafMistakes.length !== 1 ? 's' : ''})
                                         </h4>
-                                        <button
-                                          onClick={() => {
-                                            setSelectedAssignment(assignment.id);
-                                            if (mushafMistakes.length > 0) {
-                                              const firstMistake = mushafMistakes[0];
-                                              setMushafPage(firstMistake.page);
-                                            }
-                                          }}
-                                          className="px-5 py-2.5 bg-primary text-white rounded-full text-sm font-extrabold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all shadow-lg hover:scale-105"
-                                        >
-                                          View in Mushaf
-                                        </button>
-                                      </div>
-                                      <div className="bg-gradient-to-br from-soft-primary to-white rounded-3xl p-4 sm:p-6 border-2 border-primary/20 shadow-lg">
-                              <InteractiveMushaf
-                                currentPage={mushafPage}
-                                onPageChange={setMushafPage}
-                                          mistakes={mushafMistakes}
-                                onMistakeMark={() => {}}
-                                          readOnly={true}
-                                mode="viewing"
-                                          studentName={currentStudent.fullName}
-                                        />
-                                      </div>
-                                      {/* Mistake List Summary */}
-                                      <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                                        {assignment.mushafMistakes.map((mistake: any, idx: number) => (
-                                          <div
-                                            key={mistake.id || idx}
-                                            className="p-3 bg-white rounded-xl border border-primary/20 text-sm shadow-sm"
+                                        {!isSelected && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedAssignment(assignment.id);
+                                              if (mushafMistakes.length > 0) {
+                                                const firstMistake = mushafMistakes[0];
+                                                setMushafPage(firstMistake.page);
+                                              }
+                                            }}
+                                            className="px-4 py-2 bg-accent text-primary rounded-full text-sm font-extrabold hover:scale-105 transition-all shadow-lg"
                                           >
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-extrabold">
-                                                {mistake.type || 'Mistake'}
-                                              </span>
-                                              <span className="text-primary font-medium">
-                                                Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
-                                              </span>
-                                            </div>
-                                            {mistake.note && (
-                                              <p className="text-primary-soft italic text-xs mt-1">"{mistake.note}"</p>
-                                            )}
-                                          </div>
-                                        ))}
+                                            Expand to View
+                                          </button>
+                                        )}
                                       </div>
+                                      {isSelected ? (
+                                        <>
+                                          <div className="bg-white rounded-3xl p-4 sm:p-6 border-2 border-primary/30 shadow-xl mb-4">
+                                            <InteractiveMushaf
+                                              currentPage={mushafPage}
+                                              onPageChange={setMushafPage}
+                                              mistakes={mushafMistakes}
+                                              onMistakeMark={() => {}}
+                                              readOnly={true}
+                                              mode="viewing"
+                                              studentName={currentStudent.fullName}
+                                            />
+                                          </div>
+                                          {/* Mistake List Summary */}
+                                          <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+                                            <h5 className="text-sm font-extrabold text-primary mb-2">Mistake Details:</h5>
+                                            {assignment.mushafMistakes.map((mistake: any, idx: number) => (
+                                              <div
+                                                key={mistake.id || idx}
+                                                className="p-3 bg-white rounded-xl border-2 border-primary/20 text-sm shadow-md hover:shadow-lg transition-all"
+                                              >
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-extrabold">
+                                                    {mistake.type || 'Mistake'}
+                                                  </span>
+                                                  <span className="text-primary font-semibold">
+                                                    Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                                  </span>
+                                                </div>
+                                                {mistake.note && (
+                                                  <p className="text-primary-soft italic text-xs mt-1">"{mistake.note}"</p>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div className="bg-white/50 rounded-2xl p-6 border-2 border-dashed border-primary/30 text-center">
+                                          <p className="text-primary font-medium mb-2">Click "Expand to View" or select this assignment to see your mushaf mistakes</p>
+                                          <p className="text-sm text-primary-soft">{assignment.mushafMistakes.length} mistake{assignment.mushafMistakes.length !== 1 ? 's' : ''} recorded</p>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                 </div>
