@@ -110,17 +110,17 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-4 sm:px-6 py-4 border-b border-accent-soft bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)]">
+        <div className="px-4 sm:px-6 py-4 border-b-4 border-accent bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] shadow-lg">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <div>
-              <h2 className="text-xl sm:text-2xl font-semibold text-white">Create Ticket</h2>
-              <p className="text-white/80 text-xs sm:text-sm mt-1">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-lg">Create Ticket</h2>
+              <p className="text-white mt-2 text-base sm:text-lg font-extrabold drop-shadow-md">
                 {student?.fullName || 'Student'}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-lg font-bold"
+              className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-accent text-primary rounded-full transition-all text-3xl sm:text-4xl font-extrabold shadow-2xl hover:scale-110 hover:bg-accent/90 border-2 border-accent/50"
               title="Close"
             >
               ×
@@ -189,10 +189,10 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               <button
                 type="button"
                 onClick={() => setTicketType('sabq')}
-                className={`px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border-2 font-semibold text-xs sm:text-sm transition-all ${
+                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border-2 font-extrabold text-sm sm:text-base transition-all shadow-lg hover:scale-105 ${
                   ticketType === 'sabq'
-                    ? 'border-primary bg-soft-primary text-primary'
-                    : 'border-accent-soft bg-white text-primary hover:border-primary'
+                    ? 'border-primary bg-soft-primary text-primary shadow-xl'
+                    : 'border-accent-soft bg-white text-primary hover:border-primary hover:shadow-xl'
                 }`}
               >
                 Sabq
@@ -200,10 +200,10 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               <button
                 type="button"
                 onClick={() => setTicketType('sabqi')}
-                className={`px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border-2 font-semibold text-xs sm:text-sm transition-all ${
+                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border-2 font-extrabold text-sm sm:text-base transition-all shadow-lg hover:scale-105 ${
                   ticketType === 'sabqi'
-                    ? 'border-primary bg-soft-primary text-primary'
-                    : 'border-accent-soft bg-white text-primary hover:border-primary'
+                    ? 'border-primary bg-soft-primary text-primary shadow-xl'
+                    : 'border-accent-soft bg-white text-primary hover:border-primary hover:shadow-xl'
                 }`}
               >
                 Sabqi
@@ -211,10 +211,10 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               <button
                 type="button"
                 onClick={() => setTicketType('manzil')}
-                className={`px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border-2 font-semibold text-xs sm:text-sm transition-all ${
+                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border-2 font-extrabold text-sm sm:text-base transition-all shadow-lg hover:scale-105 ${
                   ticketType === 'manzil'
-                    ? 'border-primary bg-soft-primary text-primary'
-                    : 'border-accent-soft bg-white text-primary hover:border-primary'
+                    ? 'border-primary bg-soft-primary text-primary shadow-xl'
+                    : 'border-accent-soft bg-white text-primary hover:border-primary hover:shadow-xl'
                 }`}
               >
                 Manzil
@@ -294,14 +294,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 border-2 border-accent-soft text-primary rounded-full font-bold hover:bg-soft-accent transition-colors shadow-md"
+              className="px-7 py-3 border-2 border-accent-soft text-primary rounded-full font-extrabold hover:bg-soft-accent transition-all shadow-lg hover:scale-105"
               disabled={isCreating}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-8 py-3 bg-primary text-white rounded-full font-bold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              className="px-8 py-3 bg-primary text-white rounded-full font-extrabold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:scale-110"
               disabled={isCreating}
             >
               {isCreating ? 'Creating...' : 'Create Ticket'}
