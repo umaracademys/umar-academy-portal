@@ -301,7 +301,26 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             </button>
             <button
               type="submit"
-              className="px-8 py-3 bg-primary text-white rounded-full font-extrabold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:scale-110"
+              className="px-10 py-4 text-base sm:text-lg text-white rounded-full font-extrabold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl"
+              style={{ 
+                backgroundColor: 'var(--color-primary)',
+                minWidth: '180px',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.15)'
+              }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.9)';
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                  e.currentTarget.style.boxShadow = '0 25px 30px -5px rgba(0, 0, 0, 0.3), 0 15px 15px -5px rgba(0, 0, 0, 0.2)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.15)';
+                }
+              }}
               disabled={isCreating}
             >
               {isCreating ? 'Creating...' : 'Create Ticket'}
