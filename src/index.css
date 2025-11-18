@@ -57,6 +57,13 @@ code {
     monospace;
 }
 
+/* Reset button appearance to remove default browser styling */
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* Buttons & surfaces */
 .btn-primary {
   background-color: var(--color-primary);
