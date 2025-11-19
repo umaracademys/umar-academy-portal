@@ -27,19 +27,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Load user from localStorage on component mount
   useEffect(() => {
+    console.log('🔍 AuthContext: Checking for saved user...');
     const savedUser = localStorage.getItem('umar_academy_user');
     const savedToken = localStorage.getItem('umar_academy_token');
+    
+    console.log('🔍 AuthContext: Saved user exists:', !!savedUser);
+    console.log('🔍 AuthContext: Saved token exists:', !!savedToken);
     
     if (savedUser && savedToken) {
       try {
         const parsedUser = JSON.parse(savedUser);
+        console.log('✅ AuthContext: User loaded from localStorage:', parsedUser.name, parsedUser.role);
         setUser(parsedUser);
       } catch (error) {
-        console.error('Error parsing saved user:', error);
+        console.error('❌ AuthContext: Error parsing saved user:', error);
         localStorage.removeItem('umar_academy_user');
         localStorage.removeItem('umar_academy_token');
       }
+    } else {
+      console.log('ℹ️ AuthContext: No saved user found, user needs to login');
     }
+    console.log('✅ AuthContext: Setting isLoading to false');
     setIsLoading(false);
   }, []);
 
