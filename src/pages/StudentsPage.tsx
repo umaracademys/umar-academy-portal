@@ -35,9 +35,9 @@ const StudentsPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex flex-col sm:flex-row h-screen bg-background">
       {/* Sidebar */}
-      <div className="w-80 border-r-2 border-primary/20 bg-white flex flex-col">
+      <div className="w-full sm:w-80 border-r-0 sm:border-r-2 border-b-2 sm:border-b-0 border-primary/20 bg-white flex flex-col">
         <div className="p-4 border-b-2 border-primary/20">
           <div className="relative">
             <input
@@ -98,7 +98,7 @@ const StudentsPage: React.FC = () => {
       </div>
 
       {/* Main Workspace */}
-      <div className="flex-1 p-6 overflow-auto bg-background">
+      <div className="flex-1 p-4 sm:p-6 overflow-auto bg-background">
         {!selected ? (
           <div className="text-center text-primary/60 pt-20">
             <svg

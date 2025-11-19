@@ -23,10 +23,13 @@
   font-display: swap;
 }
 
-/* Mushaf Arabic text styling */
+/* Mushaf Arabic text styling - RTL by default */
 .mushaf-arabic-text,
 .mushaf-arabic-text * {
   font-family: 'Amiri', 'Scheherazade New', 'Arabic Typesetting', 'Traditional Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: embed;
 }
 
 :root {
@@ -168,4 +171,99 @@ button {
 
 .border-accent-soft {
   border-color: rgba(var(--color-accent-rgb), 0.4);
+}
+
+/* Mobile Responsive Utilities */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Ensure buttons are touch-friendly on mobile */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better spacing on mobile */
+  .mobile-spacing {
+    padding: 1rem;
+  }
+  
+  /* Stack elements on mobile */
+  .mobile-stack {
+    flex-direction: column;
+  }
+}
+
+/* Consistent button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  border: 2px solid;
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: rgba(var(--color-primary-rgb), 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.25);
+}
+
+.btn-accent {
+  background-color: var(--color-accent);
+  color: var(--color-primary);
+  border-color: var(--color-accent);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background-color: rgba(var(--color-accent-rgb), 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--color-accent-rgb), 0.25);
+}
+
+.btn-secondary {
+  background-color: var(--color-soft-primary);
+  color: var(--color-primary);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* RTL Support for Mushaf */
+[dir="rtl"] {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .mushaf-arabic-text {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Ensure Arabic text flows right-to-left */
+.mushaf-arabic-text,
+.mushaf-arabic-text * {
+  direction: rtl;
+  unicode-bidi: embed;
 }

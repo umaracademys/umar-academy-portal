@@ -864,7 +864,7 @@ export const WordByWordPage: React.FC<{
   }
 
   return (
-    <div className="relative w-full flex flex-col items-center justify-center overflow-hidden">
+    <div className="relative w-full flex flex-col items-center justify-center overflow-hidden" dir="rtl">
       {/* Optional background image */}
       {background && (
         <img
@@ -879,6 +879,7 @@ export const WordByWordPage: React.FC<{
         {/* Mushaf page container with traditional styling - Centered, reduced padding */}
         <div 
           className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50"
+          dir="rtl"
           style={{
             backgroundColor: '#fef9e7',
             fontFamily,
@@ -1040,13 +1041,17 @@ export const WordByWordPage: React.FC<{
                     // Note: Individual glyphs (single characters) are expected for proper mushaf rendering
                     const displayText = w.text || '';
                     
-                    return (
-                      <React.Fragment key={w.word_index}>
+                  return (
+                    <React.Fragment key={w.word_index}>
                         <span
                           onClick={() => onWordClick?.(w)}
-                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group`}
+                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group inline-block`}
+                          dir="rtl"
                           style={{
                             padding: '1px 2px',
+                            direction: 'rtl',
+                            display: 'inline-block',
+                            unicodeBidi: 'embed',
                             display: 'inline',
                             fontFamily: fontFamily,
                             fontSize: 'inherit',
@@ -1381,9 +1386,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const currentJuz = getJuzFromPage(currentPage);
 
   return (
-    <div className="relative w-full overflow-x-hidden">
+    <div className="relative w-full overflow-x-hidden" dir="rtl">
       {/* Compact Controls Bar - Only show controls, no duplicate navigation - Mobile responsive */}
-      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap">
+      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap" dir="ltr">
         <div className="flex items-center gap-2">
           {/* Historical Mistakes Toggle */}
           {historicalMistakes.length > 0 && (
@@ -1436,7 +1441,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
 
-      <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full">
+      <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full" dir="rtl">
         {/* Surah Index Sidebar - Modal on mobile, sidebar on desktop */}
         {showSurahIndex && (
           <>
