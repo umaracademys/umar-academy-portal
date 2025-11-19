@@ -23,6 +23,25 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Conditional logging - disable non-critical logs in production
+const logger = {
+  log: isProduction ? () => {} : console.log,
+  info: isProduction ? () => {} : console.info,
+  warn: isProduction ? () => {} : console.warn,
+  error: console.error, // Keep errors even in production for debugging
+  debug: isProduction ? () => {} : console.debug
+};
+
+// Override console methods in production (optional - for consistency)
+if (isProduction) {
+  console.log = logger.log;
+  console.info = logger.info;
+  console.warn = logger.warn;
+  console.debug = logger.debug;
+  // Keep console.error for critical errors
+}
 
 // Trust proxy for accurate IP addresses (important for rate limiting and logging)
 app.set('trust proxy', 1);
