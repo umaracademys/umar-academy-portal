@@ -270,6 +270,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       return;
     }
     
+    // Set a maximum timeout for the entire data loading process (30 seconds)
+    const maxTimeout = setTimeout(() => {
+      if (isLoadingRef.current) {
+        console.warn('⚠️ Data loading timed out after 30 seconds, setting loading to false');
+        setLoading(false);
+        isLoadingRef.current = false;
+        setError('Data loading timed out. Please refresh the page.');
+      }
+    }, 30000);
+    
     try {
       isLoadingRef.current = true;
       setLoading(true);
@@ -623,9 +633,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setStudents(savedStudents ? JSON.parse(savedStudents) : []);
       setTeachers(savedTeachers ? JSON.parse(savedTeachers) : []);
       setAdmins(savedAdmins ? JSON.parse(savedAdmins) : []);
+    } catch (err) {
+      setError('Failed to load data from backend');
+      console.error('❌ Error loading data:', err);
+      
+      // Fallback to localStorage if backend is not available
+      console.log('🔄 Falling back to localStorage...');
+      const savedStudents = localStorage.getItem('umar_academy_students');
+      const savedTeachers = localStorage.getItem('umar_academy_teachers');
+      const savedAdmins = localStorage.getItem('umar_academy_admins');
+
+      try {
+        setStudents(savedStudents ? JSON.parse(savedStudents) : []);
+        setTeachers(savedTeachers ? JSON.parse(savedTeachers) : []);
+        setAdmins(savedAdmins ? JSON.parse(savedAdmins) : []);
+      } catch (parseError) {
+        console.error('❌ Error parsing localStorage data:', parseError);
+        setStudents([]);
+        setTeachers([]);
+        setAdmins([]);
+      }
     } finally {
+      clearTimeout(maxTimeout);
       setLoading(false);
       isLoadingRef.current = false;
+      console.log('✅ Data loading completed');
     }
   };
 
