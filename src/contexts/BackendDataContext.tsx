@@ -636,20 +636,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Student operations
   const addStudent = async (student: Student) => {
     try {
-      // Create user first
-      const userResponse = await fetch(`${API_BASE}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Create user first (requires authentication)
+      const userResponse = await fetchWithTimeout(
+        `${API_BASE}/users`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: student.fullName,
+            email: student.email,
+            role: 'student',
+            password: 'password123', // Default password for students
+            avatar: student.avatar
+          }),
         },
-        body: JSON.stringify({
-          name: student.fullName,
-          email: student.email,
-          role: 'student',
-          password: 'password123', // Default password for students
-          avatar: student.avatar
-        }),
-      });
+        10000,
+        true // requireAuth = true
+      );
 
       if (!userResponse.ok) {
         let message = 'Failed to create user';
@@ -664,13 +666,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       const newUser = await userResponse.json();
 
-      // Create student profile with all data
-      const studentResponse = await fetch(`${API_BASE}/students`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      // Create student profile with all data (may or may not require auth, but include it for consistency)
+      const studentResponse = await fetchWithTimeout(
+        `${API_BASE}/students`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
           studentId: student.id,
           userId: newUser._id,
           level: 'beginner', // Default level
@@ -698,7 +699,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           evaluations: student.evaluations || [],
           recitationProfile: normalizeRecitationProfile(student.recitationProfile)
         }),
-      });
+      },
+      10000,
+      true // requireAuth = true
+    );
 
       if (!studentResponse.ok) {
         let message = 'Failed to create student profile';
