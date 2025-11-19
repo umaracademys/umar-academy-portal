@@ -9,7 +9,7 @@ interface TeacherRegistrationFormProps {
 }
 
 const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClose, teacher, isEdit = false }) => {
-  const { addTeacher, updateTeacher } = useData();
+  const { addTeacher, updateTeacher, refreshData } = useData();
   const [currentTab, setCurrentTab] = useState(0);
   
   // Personal Information - initialize with teacher data if editing
@@ -180,6 +180,18 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
             { name: 'Morning Shift', startTime: '08:00', endTime: '12:00' },
             { name: 'Afternoon Shift', startTime: '13:00', endTime: '17:00' },
           ]);
+        } else {
+          // Part Time: Initialize shifts from day schedules if available
+          const dayScheds = (teacher.schedule as any)?.daySchedules;
+          if (dayScheds && Array.isArray(dayScheds) && dayScheds.length > 0) {
+            setShifts(dayScheds.map((ds: any) => ({
+              name: `${ds.day} Shift`,
+              startTime: ds.startTime,
+              endTime: ds.endTime
+            })));
+          } else {
+            setShifts([{ name: 'Morning Shift', startTime: '08:00', endTime: '12:00' }]);
+          }
         }
 
         // Initialize schedule based on employment type
@@ -268,8 +280,20 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     
     try {
       // Validation
-      if (!personalInfo.fullName || !personalInfo.email || !personalInfo.phoneNumber) {
-        throw new Error('Please fill in all required fields');
+      if (!personalInfo.fullName?.trim()) {
+        throw new Error('Full Name is required');
+      }
+      if (!personalInfo.email?.trim()) {
+        throw new Error('Email Address is required');
+      }
+      if (!personalInfo.phoneNumber?.trim()) {
+        throw new Error('Phone Number is required');
+      }
+      if (!personalInfo.emergencyContact?.trim()) {
+        throw new Error('Emergency Contact is required');
+      }
+      if (!personalInfo.department?.trim()) {
+        throw new Error('Department is required');
       }
       
       if (employmentInfo.employmentType === 'Full Time') {
@@ -280,6 +304,17 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         if (partTimeDaySchedules.length === 0) {
           throw new Error('Please add at least one day schedule for Part Time');
         }
+      }
+      
+      // Validate payroll info
+      if (!payrollInfo.hourlyRate || payrollInfo.hourlyRate <= 0) {
+        throw new Error('Hourly Rate must be greater than 0');
+      }
+      if (!payrollInfo.dailyHours || payrollInfo.dailyHours <= 0) {
+        throw new Error('Daily Hours must be greater than 0');
+      }
+      if (!payrollInfo.daysWorking || payrollInfo.daysWorking <= 0) {
+        throw new Error('Days Working must be greater than 0');
       }
       
       const newTeacher: Teacher = {
@@ -295,7 +330,13 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         shifts: employmentInfo.employmentType === 'Full Time' ? [
           { name: 'Morning Shift', startTime: fullTimeSchedule.morningShift.startTime, endTime: fullTimeSchedule.morningShift.endTime },
           { name: 'Evening Shift', startTime: fullTimeSchedule.eveningShift.startTime, endTime: fullTimeSchedule.eveningShift.endTime },
-        ] : shifts,
+        ] : (partTimeDaySchedules.length > 0 
+          ? partTimeDaySchedules.map(ds => ({
+              name: `${ds.day} Shift`,
+              startTime: ds.startTime,
+              endTime: ds.endTime
+            }))
+          : shifts),
         idDocument: idDocument,
         assignedStudents: isEdit ? teacher?.assignedStudents || [] : [],
         permissions: {
@@ -361,13 +402,22 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         console.log('💾 Updating teacher with permissions:', newTeacher.permissions);
         await updateTeacher(teacher.id, newTeacher);
         console.log('✅ Teacher updated, refreshing data...');
+        
+        // Refresh data to ensure UI updates
+        if (refreshData) {
+          await refreshData();
+        }
+        
         alert('Teacher updated successfully!');
-        // Don't close immediately - wait a bit for data to refresh
-        setTimeout(() => {
-          onClose();
-        }, 500);
+        onClose();
       } else {
         await addTeacher(newTeacher);
+        
+        // Refresh data to ensure UI updates
+        if (refreshData) {
+          await refreshData();
+        }
+        
         alert('Teacher registered successfully!');
         onClose();
       }
