@@ -430,62 +430,62 @@ const SuperAdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <button
           onClick={() => setShowPermissionManager(true)}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
+          className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             PM
           </div>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-primary">Permission Manager</h3>
-            <p className="mt-1 text-sm text-primary-soft">
+            <p className="mt-1 text-sm text-gray-600">
               Adjust role access for teachers, admins, and QA reviewers.
             </p>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Open manager</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Open manager</span>
         </button>
 
         <button
           onClick={() => setShowDataManager(true)}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
+          className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             DB
           </div>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-primary">Data Manager</h3>
-            <p className="mt-1 text-sm text-primary-soft">
+            <p className="mt-1 text-sm text-gray-600">
               Export student or ticket data and trigger manual backups.
             </p>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Launch data tools</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Launch data tools</span>
         </button>
 
         <button
           onClick={() => refreshNotifications()}
-          className="flex h-full flex-col gap-3 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
+          className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
         >
           <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
             🔄
           </div>
           <div className="flex-1">
             <h3 className="text-base font-semibold text-primary">Refresh Notifications</h3>
-            <p className="mt-1 text-sm text-primary-soft">
+            <p className="mt-1 text-sm text-gray-600">
               Pull the latest admin notifications and ticket alerts.
             </p>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Sync now</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sync now</span>
         </button>
       </div>
 
       <Card title="Live Signals">
-        <div className="space-y-3 text-sm text-primary-soft">
-          <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-accent px-4 py-3">
+        <div className="space-y-3 text-sm text-gray-600">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
             <span className="font-semibold text-[var(--color-accent)]">Unread admin notifications</span>
             <span className="rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
               {unreadNotificationsCount}
             </span>
           </div>
-          <div className="flex items-center justify-between rounded-xl border border-accent-soft bg-soft-primary px-4 py-3">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
             <span className="font-semibold text-primary">Pending recitation reviews</span>
             <span className="text-sm font-semibold text-primary">{pendingReviewsCount}</span>
           </div>
@@ -618,7 +618,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
           ].map((item) => (
             <Card key={item.id}>
-              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-4 py-5">
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-gray-200 bg-white px-4 py-5 shadow-sm hover:shadow-md transition">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
                   {item.badge}
                 </div>
@@ -626,13 +626,13 @@ const SuperAdminDashboard: React.FC = () => {
                   <h3 className="text-base font-semibold text-primary">{item.title}</h3>
                   <p className="mt-1 text-sm text-gray-600">{item.description}</p>
                   {item.footer && (
-                    <p className="mt-2 text-xs font-semibold text-primary-soft">{item.footer}</p>
+                    <p className="mt-2 text-xs font-semibold text-gray-500">{item.footer}</p>
                   )}
                 </div>
                 <button
                   onClick={item.action}
                   disabled={item.disabled}
-                  className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {item.button}
                 </button>
@@ -745,7 +745,7 @@ const SuperAdminDashboard: React.FC = () => {
             },
           ].map((item) => (
             <Card key={item.id}>
-              <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-4 py-5">
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-gray-200 bg-white px-4 py-5 shadow-sm hover:shadow-md transition">
                 <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
                   {item.badge}
                 </div>
@@ -756,7 +756,7 @@ const SuperAdminDashboard: React.FC = () => {
                 <button
                   onClick={item.action}
                   disabled={item.disabled}
-                  className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {item.button}
                 </button>
