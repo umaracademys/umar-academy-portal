@@ -1052,16 +1052,12 @@ export const WordByWordPage: React.FC<{
                             direction: 'rtl',
                             display: 'inline-block',
                             unicodeBidi: 'embed',
-                            display: 'inline',
                             fontFamily: fontFamily,
                             fontSize: 'inherit',
                             lineHeight: 'inherit',
                             borderRadius: '2px',
-                            direction: 'rtl',
-                            unicodeBidi: 'embed',
                             whiteSpace: 'nowrap'
                           }}
-                          dir="rtl"
                           title={
                             mistake
                               ? `${isHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${mistake.type} mistake${mistake.note ? `: ${mistake.note}` : ""}${mistake.audioUrl ? ' (Click to hear audio)' : ''}`
