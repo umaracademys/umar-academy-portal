@@ -630,19 +630,6 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const savedTeachers = localStorage.getItem('umar_academy_teachers');
       const savedAdmins = localStorage.getItem('umar_academy_admins');
 
-      setStudents(savedStudents ? JSON.parse(savedStudents) : []);
-      setTeachers(savedTeachers ? JSON.parse(savedTeachers) : []);
-      setAdmins(savedAdmins ? JSON.parse(savedAdmins) : []);
-    } catch (err) {
-      setError('Failed to load data from backend');
-      console.error('❌ Error loading data:', err);
-      
-      // Fallback to localStorage if backend is not available
-      console.log('🔄 Falling back to localStorage...');
-      const savedStudents = localStorage.getItem('umar_academy_students');
-      const savedTeachers = localStorage.getItem('umar_academy_teachers');
-      const savedAdmins = localStorage.getItem('umar_academy_admins');
-
       try {
         setStudents(savedStudents ? JSON.parse(savedStudents) : []);
         setTeachers(savedTeachers ? JSON.parse(savedTeachers) : []);
