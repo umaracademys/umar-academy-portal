@@ -44,30 +44,30 @@ const AdminDashboard: React.FC = () => {
   // Overview Section
   const OverviewSection = () => (
     <div className="space-y-8">
-      <div className="rounded-3xl border border-accent-soft bg-white px-6 py-6 sm:px-10 sm:py-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between shadow-sm">
+      <div className="rounded-xl border border-gray-200 bg-white px-6 py-6 sm:px-10 sm:py-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between shadow-md">
         <div className="space-y-3">
-          <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">Admin Control</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Admin Control</span>
           <h2 className="text-3xl font-semibold text-primary">Dashboard Overview</h2>
-          <p className="text-sm text-primary-soft max-w-xl">
+          <p className="text-sm text-gray-600 max-w-xl">
             Monitor enrollment trends, teacher coverage, and revenue performance at a glance. Use the quick actions to jump directly into the sections that need your attention.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link
             to="/assignments"
-            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+            className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
           >
             Manage Assignments
           </Link>
           <button
             onClick={() => setActiveSection('students')}
-            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+            className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
           >
             View Students
           </button>
           <button
             onClick={() => setActiveSection('teachers')}
-            className="inline-flex items-center justify-center rounded-full border border-[rgba(var(--color-primary-rgb),0.35)] px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+            className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-5 py-3 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
           >
             View Teachers
           </button>
@@ -87,7 +87,7 @@ const AdminDashboard: React.FC = () => {
             {students.slice(0, 5).map((student) => (
               <div
                 key={student.id}
-                className="flex items-center justify-between rounded-2xl border border-accent-soft bg-white px-4 py-3 transition hover:bg-soft-accent"
+                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 transition hover:bg-gray-50 hover:shadow-sm"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
@@ -95,7 +95,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-medium text-primary">{student.fullName}</p>
-                    <p className="text-xs text-primary-soft">{student.program}</p>
+                    <p className="text-xs text-gray-500">{student.program}</p>
                   </div>
                 </div>
                 <span className="text-xs font-medium text-primary-soft">

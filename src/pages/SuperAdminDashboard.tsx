@@ -312,22 +312,22 @@ const SuperAdminDashboard: React.FC = () => {
 
   const OverviewSection = () => (
     <div className="space-y-10">
-      <section className="rounded-3xl border border-accent-soft bg-soft-primary px-6 py-6 shadow-sm sm:px-10 sm:py-8">
+      <section className="rounded-xl border border-gray-200 bg-white px-6 py-6 shadow-md sm:px-10 sm:py-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">
+            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
               Super Admin Control Center
             </span>
             <h1 className="text-3xl font-semibold text-primary">Stay ahead of every workflow</h1>
-            <p className="max-w-3xl text-sm text-primary-soft">
+            <p className="max-w-3xl text-sm text-gray-600">
               Review listening submissions, create new tickets, and keep student progress moving without leaving this
               page. Each card below opens a live workflow or modal.
             </p>
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span className="rounded-full bg-soft-primary px-3 py-1 text-primary">
+              <span className="rounded-full bg-soft-primary px-3 py-1 text-primary font-semibold">
                 {activeStudentCount} active students
               </span>
-              <span className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-3 py-1 text-primary">
+              <span className="rounded-full border border-primary/30 px-3 py-1 text-primary font-semibold">
                 {pendingReviewsCount} recitation reviews
               </span>
             </div>
@@ -338,10 +338,10 @@ const SuperAdminDashboard: React.FC = () => {
             const commonClasses =
               'flex h-full flex-col justify-between rounded-2xl border px-5 py-4 text-left shadow-sm transition';
             const activeButtonClasses = {
-              primary: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.35)] bg-soft-primary hover:bg-primary/10`,
-              neutral: `${commonClasses} border-[rgba(var(--color-primary-rgb),0.15)] bg-soft-primary hover:bg-primary/10`,
-              accent: `${commonClasses} border-[rgba(var(--color-accent-rgb),0.35)] bg-soft-accent hover:bg-accent/20`,
-              'accent-solid': `${commonClasses} border-transparent bg-[var(--color-accent)] text-white hover:bg-[rgba(var(--color-accent-rgb),0.85)]`,
+              primary: `${commonClasses} border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50`,
+              neutral: `${commonClasses} border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300`,
+              accent: `${commonClasses} border-accent/30 bg-white hover:bg-soft-accent hover:border-accent/50`,
+              'accent-solid': `${commonClasses} border-transparent bg-accent text-primary hover:bg-accent/90`,
             };
 
             const badge =
@@ -364,16 +364,16 @@ const SuperAdminDashboard: React.FC = () => {
               >
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className={`text-base font-semibold ${action.emphasis === 'accent-solid' ? 'text-white' : 'text-primary'}`}>
+                    <p className={`text-base font-semibold ${action.emphasis === 'accent-solid' ? 'text-primary' : 'text-primary'}`}>
                       {isFixing ? 'Fixing...' : action.label}
                       {badge}
                     </p>
                   </div>
-                  <p className={`mt-2 text-sm ${action.emphasis === 'accent-solid' ? 'text-white/90' : 'text-primary-soft'}`}>
+                  <p className={`mt-2 text-sm ${action.emphasis === 'accent-solid' ? 'text-primary/80' : 'text-gray-600'}`}>
                     {action.description}
                   </p>
                 </div>
-                <span className={`text-xs font-semibold uppercase tracking-wide ${action.emphasis === 'accent-solid' ? 'text-white/80' : 'text-primary-soft'}`}>
+                <span className={`text-xs font-semibold uppercase tracking-wide ${action.emphasis === 'accent-solid' ? 'text-primary/70' : 'text-gray-500'}`}>
                   {isFixing ? 'Processing...' : 'Open workflow'}
                 </span>
               </button>
@@ -398,23 +398,23 @@ const SuperAdminDashboard: React.FC = () => {
       <section className="space-y-6">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold text-primary">Manage Records & Settings</h3>
-          <div className="h-px flex-1 bg-[rgba(var(--color-accent-rgb),0.3)]" />
+          <div className="h-px flex-1 bg-gray-200" />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {managementActions.map((item) => (
             <button
               key={item.id}
               onClick={item.action}
-              className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-5 py-5 text-left shadow-sm transition hover:bg-primary/10"
+              className="flex h-full flex-col gap-4 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
             >
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
                 {item.badge}
               </div>
               <div className="flex-1">
                 <h4 className="text-base font-semibold text-primary">{item.title}</h4>
-                <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+                <p className="mt-1 text-sm text-gray-600">{item.description}</p>
               </div>
-              <span className="text-xs font-semibold uppercase tracking-wide text-primary-soft">{item.footer}</span>
+              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{item.footer}</span>
             </button>
           ))}
         </div>
@@ -619,12 +619,12 @@ const SuperAdminDashboard: React.FC = () => {
           ].map((item) => (
             <Card key={item.id}>
               <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-4 py-5">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
                   {item.badge}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-base font-semibold text-primary">{item.title}</h3>
-                  <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
                   {item.footer && (
                     <p className="mt-2 text-xs font-semibold text-primary-soft">{item.footer}</p>
                   )}
@@ -746,12 +746,12 @@ const SuperAdminDashboard: React.FC = () => {
           ].map((item) => (
             <Card key={item.id}>
               <div className="flex h-full flex-col gap-4 rounded-2xl border border-accent-soft bg-soft-primary px-4 py-5">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
                   {item.badge}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-base font-semibold text-primary">{item.title}</h3>
-                  <p className="mt-1 text-sm text-primary-soft">{item.description}</p>
+                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
                 </div>
                 <button
                   onClick={item.action}
