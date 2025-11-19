@@ -598,21 +598,54 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           };
         });
 
-      const adminsData = users
-        .filter((user: any) => user.role === 'admin' || user.role === 'superadmin')
-        .map((user: any) => ({
-          id: user._id,
-          fullName: user.name || user.fullName || 'Unknown',
-          email: user.email,
-          phone: user.phone || '',
-          address: user.address || '',
-          dateOfBirth: user.dateOfBirth || new Date().toISOString(),
-          hireDate: user.hireDate || new Date().toISOString(),
-          role: user.role,
-          permissions: user.permissions || [],
-          status: user.status || 'active',
-          avatar: user.avatar || ''
-        }));
+      // Load admins from Admin collection (has admin-specific data)
+      let adminsData: Admin[] = [];
+      try {
+        const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 10000, false);
+        if (adminsResponse.ok) {
+          const adminRecords = await adminsResponse.json();
+          adminsData = adminRecords.map((adminRecord: any) => ({
+            id: adminRecord._id || adminRecord.id,
+            userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
+            fullName: adminRecord.fullName || 'Unknown',
+            email: adminRecord.email || '',
+            contact: adminRecord.contact || '',
+            permissions: adminRecord.permissions || {
+              canManageTeachers: false,
+              canManageStudents: false,
+              canManageFinancials: false,
+              canViewReports: false,
+              canManagePermissions: false
+            },
+            assignedDepartments: adminRecord.assignedDepartments || [],
+            hireDate: adminRecord.hireDate ? new Date(adminRecord.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            status: adminRecord.status || 'active',
+            avatar: adminRecord.avatar || ''
+          }));
+        }
+      } catch (adminError) {
+        console.warn('⚠️ Failed to load admins from /api/admins, falling back to users:', adminError);
+        // Fallback to users collection if Admin collection doesn't exist yet
+        adminsData = users
+          .filter((user: any) => user.role === 'admin' || user.role === 'superadmin')
+          .map((user: any) => ({
+            id: user._id,
+            fullName: user.name || user.fullName || 'Unknown',
+            email: user.email,
+            contact: user.phone || user.contact || '',
+            permissions: user.permissions || {
+              canManageTeachers: false,
+              canManageStudents: false,
+              canManageFinancials: false,
+              canViewReports: false,
+              canManagePermissions: false
+            },
+            assignedDepartments: user.assignedDepartments || [],
+            hireDate: user.hireDate || new Date().toISOString().split('T')[0],
+            status: user.status || 'active',
+            avatar: user.avatar || ''
+          }));
+      }
 
       console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
 
@@ -1189,38 +1222,79 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Admin operations
   const addAdmin = async (admin: Admin) => {
     try {
-      const response = await fetch(`${API_BASE}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Step 1: Create User account first
+      const userResponse = await fetchWithTimeout(
+        `${API_BASE}/users`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            name: admin.fullName,
+            email: admin.email,
+            role: 'admin',
+            password: 'password123', // Default password for admins
+            avatar: admin.avatar,
+            contact: admin.contact
+          }),
         },
-        body: JSON.stringify({
-          name: admin.fullName,
-          email: admin.email,
-          role: 'admin', // Default role
-          password: 'password123', // Default password for admins
-          avatar: admin.avatar
-        }),
-      });
+        15000,
+        true // requireAuth
+      );
 
-      if (!response.ok) {
-        throw new Error('Failed to create admin');
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json().catch(() => ({ error: 'Failed to create user account' }));
+        throw new Error(errorData.error || 'Failed to create user account');
       }
 
-      const newUser = await response.json();
-      setAdmins(prev => [...prev, { ...admin, id: newUser._id }]);
+      const newUser = await userResponse.json();
+
+      // Step 2: Create Admin profile with all admin-specific data
+      const adminResponse = await fetchWithTimeout(
+        `${API_BASE}/admins`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            userId: newUser._id || newUser.id,
+            fullName: admin.fullName,
+            email: admin.email,
+            contact: admin.contact,
+            permissions: admin.permissions,
+            assignedDepartments: admin.assignedDepartments,
+            hireDate: admin.hireDate,
+            status: admin.status || 'active',
+            avatar: admin.avatar
+          }),
+        },
+        15000,
+        true // requireAuth
+      );
+
+      if (!adminResponse.ok) {
+        const errorData = await adminResponse.json().catch(() => ({ error: 'Failed to create admin profile' }));
+        throw new Error(errorData.error || 'Failed to create admin profile');
+      }
+
+      const newAdminProfile = await adminResponse.json();
+      const adminWithId = { 
+        ...admin, 
+        id: newAdminProfile._id || newAdminProfile.id,
+        userId: newUser._id || newUser.id
+      };
+      
+      setAdmins(prev => [...prev, adminWithId]);
       
       // Also save to localStorage as backup
-      const updatedAdmins = [...admins, { ...admin, id: newUser._id }];
+      const updatedAdmins = [...admins, adminWithId];
       localStorage.setItem('umar_academy_admins', JSON.stringify(updatedAdmins));
 
+      console.log('✅ Admin created successfully:', admin.fullName);
+
     } catch (err) {
-      setError('Failed to add admin');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add admin';
+      setError(errorMessage);
       console.error('Error adding admin:', err);
-      
-      // Fallback to localStorage
-      setAdmins(prev => [...prev, admin]);
-      localStorage.setItem('umar_academy_admins', JSON.stringify([...admins, admin]));
+      throw err; // Re-throw so the form can handle it
     }
   };
 

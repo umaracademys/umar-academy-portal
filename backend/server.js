@@ -115,10 +115,38 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   role: String,
   password: String,
-  avatar: String
+  avatar: String,
+  loginEnabled: { type: Boolean, default: true },
+  twoFactorEnabled: { type: Boolean, default: false },
+  emailNotifications: { type: Boolean, default: true },
+  smsNotifications: { type: Boolean, default: false },
+  contact: String,
+  phoneNumber: String
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
+
+// Admin Schema
+const adminSchema = new mongoose.Schema({
+  adminId: String,
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  fullName: String,
+  email: { type: String, unique: true, sparse: true },
+  contact: String,
+  permissions: {
+    canManageTeachers: { type: Boolean, default: false },
+    canManageStudents: { type: Boolean, default: false },
+    canManageFinancials: { type: Boolean, default: false },
+    canViewReports: { type: Boolean, default: false },
+    canManagePermissions: { type: Boolean, default: false }
+  },
+  assignedDepartments: [String], // Array of programs: Full Time HQ, Part Time HQ, After School Reading
+  hireDate: { type: Date, default: Date.now },
+  status: { type: String, default: 'active' },
+  avatar: String
+}, { timestamps: true });
+
+const Admin = mongoose.model('Admin', adminSchema);
 
 // Assessment and Evaluation schemas
 const assessmentSchema = new mongoose.Schema({
@@ -1475,6 +1503,110 @@ const normalizeTeacherData = (teacherData) => {
   return normalized;
 };
 
+// Get all admins
+app.get('/api/admins', async (req, res) => {
+  try {
+    const admins = await Admin.find({}).populate('userId');
+    res.json(admins);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a new admin
+app.post('/api/admins', authenticateToken, async (req, res) => {
+  try {
+    const { userId, fullName, email, contact, permissions, assignedDepartments, hireDate, status, avatar } = req.body;
+
+    // Validate required fields
+    if (!fullName || !email) {
+      return res.status(400).json({ error: 'Full name and email are required' });
+    }
+
+    // Convert userId to ObjectId if it's a string
+    let adminUserId = userId;
+    if (adminUserId && typeof adminUserId === 'string') {
+      adminUserId = new mongoose.Types.ObjectId(adminUserId);
+    }
+
+    const adminData = {
+      adminId: `ADM${Date.now()}`,
+      userId: adminUserId,
+      fullName,
+      email,
+      contact: contact || '',
+      permissions: permissions || {
+        canManageTeachers: false,
+        canManageStudents: false,
+        canManageFinancials: false,
+        canViewReports: false,
+        canManagePermissions: false
+      },
+      assignedDepartments: assignedDepartments || [],
+      hireDate: hireDate ? new Date(hireDate) : new Date(),
+      status: status || 'active',
+      avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=1F3224&color=fff`
+    };
+
+    const admin = new Admin(adminData);
+    await admin.save();
+
+    // Log admin creation
+    await logActivity('user_created', {
+      req,
+      userId: req.user?.userId || null,
+      email: admin.email,
+      role: 'admin',
+      status: 'success',
+      details: { createdBy: req.user?.email || 'system', newAdminEmail: email }
+    });
+
+    res.json(admin);
+  } catch (error) {
+    if (error?.code === 11000) {
+      await logActivity('user_created', {
+        req,
+        userId: req.user?.userId || null,
+        status: 'failure',
+        errorMessage: 'Admin already exists',
+        details: { email: req.body.email }
+      });
+      return res.status(409).json({ error: 'An admin with that email already exists.' });
+    }
+    console.error('❌ Failed to create admin:', error);
+    await logActivity('user_created', {
+      req,
+      userId: req.user?.userId || null,
+      status: 'failure',
+      errorMessage: error.message
+    });
+    res.status(500).json({ error: error.message || 'Failed to create admin' });
+  }
+});
+
+// Update admin
+app.put('/api/admins/:id', authenticateToken, async (req, res) => {
+  try {
+    const adminData = { ...req.body };
+    if (adminData.userId && typeof adminData.userId === 'string') {
+      adminData.userId = new mongoose.Types.ObjectId(adminData.userId);
+    }
+    if (adminData.hireDate && typeof adminData.hireDate === 'string') {
+      adminData.hireDate = new Date(adminData.hireDate);
+    }
+
+    const admin = await Admin.findByIdAndUpdate(req.params.id, adminData, { new: true, runValidators: true });
+    
+    if (!admin) {
+      return res.status(404).json({ error: 'Admin not found' });
+    }
+
+    res.json(admin);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Create a new teacher
 app.post('/api/teachers', async (req, res) => {
   try {
@@ -1593,6 +1725,207 @@ app.put('/api/users/:id', async (req, res) => {
     const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
     res.json(user);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin password reset endpoint (for admin use - resets student/teacher password)
+app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const { password } = req.body;
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    // Log password reset
+    await logActivity('password_reset_success', {
+      req,
+      email: user.email,
+      userId: user._id.toString(),
+      role: user.role,
+      status: 'success',
+      details: { 
+        timestamp: new Date(),
+        resetBy: adminUser.email,
+        resetByRole: adminUser.role
+      }
+    });
+
+    res.json({ message: 'Password reset successfully', success: true });
+  } catch (error) {
+    console.error('❌ Password reset error:', error);
+    await logActivity('password_reset_failure', {
+      req,
+      status: 'failure',
+      errorMessage: error.message
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user login history from activity logs
+app.get('/api/users/:id/login-history', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const userId = req.params.id;
+    const { limit = 50, page = 1 } = req.query;
+
+    // Find login events for this user
+    const query = {
+      userId: userId,
+      eventType: { $in: ['login_attempt', 'login_success', 'login_failure'] }
+    };
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const logs = await ActivityLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .skip(skip);
+
+    const total = await ActivityLog.countDocuments(query);
+
+    // Format logs for frontend
+    const loginHistory = logs.map(log => ({
+      id: log._id.toString(),
+      date: log.timestamp.toISOString(),
+      ip: log.ipAddress || 'Unknown',
+      location: log.details?.location || 'Unknown',
+      device: log.details?.userAgent || 'Unknown',
+      status: log.eventType === 'login_success' ? 'success' : log.eventType === 'login_failure' ? 'failure' : 'attempt'
+    }));
+
+    res.json({
+      loginHistory,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(total / parseInt(limit))
+    });
+  } catch (error) {
+    console.error('❌ Get login history error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update user settings (loginEnabled, etc.)
+app.put('/api/users/:id/settings', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const { loginEnabled, twoFactorEnabled, emailNotifications, smsNotifications } = req.body;
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update user settings (add fields to schema if they don't exist)
+    if (loginEnabled !== undefined) user.loginEnabled = loginEnabled;
+    if (twoFactorEnabled !== undefined) user.twoFactorEnabled = twoFactorEnabled;
+    if (emailNotifications !== undefined) user.emailNotifications = emailNotifications;
+    if (smsNotifications !== undefined) user.smsNotifications = smsNotifications;
+
+    await user.save();
+
+    // Log user update
+    await logActivity('user_updated', {
+      req,
+      email: user.email,
+      userId: user._id.toString(),
+      role: user.role,
+      status: 'success',
+      details: {
+        timestamp: new Date(),
+        updatedBy: adminUser.email,
+        updatedFields: Object.keys(req.body)
+      }
+    });
+
+    // Return user without password
+    const userResponse = user.toObject();
+    delete userResponse.password;
+    res.json(userResponse);
+  } catch (error) {
+    console.error('❌ Update user settings error:', error);
+    await logActivity('user_updated', {
+      req,
+      status: 'failure',
+      errorMessage: error.message
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get user details including settings
+app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get last login from activity logs
+    const lastLoginLog = await ActivityLog.findOne({
+      userId: user._id.toString(),
+      eventType: 'login_success'
+    }).sort({ timestamp: -1 });
+
+    // Get password change date from activity logs
+    const lastPasswordReset = await ActivityLog.findOne({
+      userId: user._id.toString(),
+      eventType: 'password_reset_success'
+    }).sort({ timestamp: -1 });
+
+    // Return user details
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
+    res.json({
+      ...userResponse,
+      lastLogin: lastLoginLog?.timestamp || null,
+      passwordChanged: lastPasswordReset?.timestamp || null,
+      accountStatus: user.loginEnabled !== false ? 'active' : 'inactive',
+      loginEnabled: user.loginEnabled !== false,
+      twoFactorEnabled: user.twoFactorEnabled || false,
+      emailNotifications: user.emailNotifications !== false,
+      smsNotifications: user.smsNotifications || false,
+      emailVerified: !!user.email,
+      phoneVerified: !!user.contact || !!user.phoneNumber
+    });
+  } catch (error) {
+    console.error('❌ Get user details error:', error);
     res.status(500).json({ error: error.message });
   }
 });

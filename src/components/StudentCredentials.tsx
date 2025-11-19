@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from './Card';
 
 interface StudentCredentialsProps {
@@ -6,22 +6,134 @@ interface StudentCredentialsProps {
   onClose: () => void;
 }
 
+interface UserDetails {
+  id: string;
+  accountStatus: string;
+  loginEnabled: boolean;
+  lastLogin: string | null;
+  passwordChanged: string | null;
+  twoFactorEnabled: boolean;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+}
+
+interface LoginHistoryEntry {
+  id: string;
+  date: string;
+  ip: string;
+  location: string;
+  device: string;
+  status: 'success' | 'failure' | 'attempt';
+}
+
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+
+const getAuthToken = () => {
+  return localStorage.getItem('umar_academy_token') || '';
+};
+
+const getAuthHeaders = () => {
+  const token = getAuthToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  };
+};
+
 const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [accountSettings, setAccountSettings] = useState({
     loginEnabled: true,
     twoFactorEnabled: false,
     emailNotifications: true,
-    smsNotifications: false,
-    securityQuestions: [
-      { question: 'What is your mother\'s maiden name?', answer: '' },
-      { question: 'What was the name of your first pet?', answer: '' },
-      { question: 'What city were you born in?', answer: '' }
-    ]
+    smsNotifications: false
   });
+
+  // Get user ID from student (could be userId or id or _id, or userId._id if populated)
+  const getUserId = () => {
+    if (student.userId) {
+      // Handle both string and object (MongoDB populated) userId
+      return typeof student.userId === 'object' && student.userId._id 
+        ? student.userId._id 
+        : student.userId;
+    }
+    return student.id || student._id || null;
+  };
+
+  // Fetch user details on mount
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      const userId = getUserId();
+      if (!userId) {
+        setError('User ID not found for this student');
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_BASE}/users/${userId}/details`, {
+          headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user details');
+        }
+
+        const data = await response.json();
+        setUserDetails(data);
+        setAccountSettings({
+          loginEnabled: data.loginEnabled !== false,
+          twoFactorEnabled: data.twoFactorEnabled || false,
+          emailNotifications: data.emailNotifications !== false,
+          smsNotifications: data.smsNotifications || false
+        });
+      } catch (err) {
+        console.error('Error fetching user details:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch user details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserDetails();
+  }, [student]);
+
+  // Fetch login history when history tab is active
+  useEffect(() => {
+    if (activeTab === 'history') {
+      const fetchLoginHistory = async () => {
+        const userId = getUserId();
+        if (!userId) return;
+
+        try {
+          const response = await fetch(`${API_BASE}/users/${userId}/login-history`, {
+            headers: getAuthHeaders()
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch login history');
+          }
+
+          const data = await response.json();
+          setLoginHistory(data.loginHistory || []);
+        } catch (err) {
+          console.error('Error fetching login history:', err);
+          setLoginHistory([]);
+        }
+      };
+
+      fetchLoginHistory();
+    }
+  }, [activeTab, student]);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
@@ -32,19 +144,87 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
     setNewPassword(password);
   };
 
-  const resetPassword = () => {
-    if (newPassword) {
-      // In a real app, this would update the student's password
-      alert(`Password reset to: ${newPassword}`);
+  const resetPassword = async () => {
+    if (!newPassword) return;
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
+    const userId = getUserId();
+    if (!userId) {
+      setError('User ID not found');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE}/users/${userId}/password`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ password: newPassword })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reset password');
+      }
+
+      const data = await response.json();
+      alert(`✅ Password reset successfully for ${student.fullName || student.name}`);
       setShowPasswordReset(false);
       setNewPassword('');
+      
+      // Refresh user details
+      const detailsResponse = await fetch(`${API_BASE}/users/${userId}/details`, {
+        headers: getAuthHeaders()
+      });
+      if (detailsResponse.ok) {
+        const detailsData = await detailsResponse.json();
+        setUserDetails(detailsData);
+      }
+    } catch (err) {
+      console.error('Error resetting password:', err);
+      setError(err instanceof Error ? err.message : 'Failed to reset password');
+      alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to reset password'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateAccountSettings = () => {
-    // In a real app, this would update the student's account settings
-    alert('Account settings updated successfully');
-    setShowAccountSettings(false);
+  const updateAccountSettings = async () => {
+    const userId = getUserId();
+    if (!userId) {
+      setError('User ID not found');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE}/users/${userId}/settings`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(accountSettings)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update account settings');
+      }
+
+      const data = await response.json();
+      setUserDetails(prev => prev ? { ...prev, ...accountSettings } : null);
+      alert('✅ Account settings updated successfully');
+      setShowAccountSettings(false);
+    } catch (err) {
+      console.error('Error updating account settings:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update account settings');
+      alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to update account settings'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const tabs = [
@@ -55,32 +235,22 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
     { id: 'history', label: 'Login History', icon: 'LH' }
   ];
 
-  const loginHistory = [
-    {
-      id: 'login-1',
-      date: '2025-01-20 09:15:30',
-      ip: '192.168.1.100',
-      location: 'New York, NY',
-      device: 'Chrome on Windows',
-      status: 'success'
-    },
-    {
-      id: 'login-2',
-      date: '2025-01-19 14:22:15',
-      ip: '192.168.1.100',
-      location: 'New York, NY',
-      device: 'Chrome on Windows',
-      status: 'success'
-    },
-    {
-      id: 'login-3',
-      date: '2025-01-18 16:45:22',
-      ip: '192.168.1.100',
-      location: 'New York, NY',
-      device: 'Mobile Safari',
-      status: 'success'
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Never';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return dateString;
     }
-  ];
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -135,7 +305,19 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
 
         {/* Content */}
         <div className="p-6 max-h-96 overflow-y-auto">
-          {activeTab === 'overview' && (
+          {loading && !userDetails && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-gray-600">Loading user details...</div>
+            </div>
+          )}
+          
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          )}
+
+          {activeTab === 'overview' && userDetails && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
@@ -143,23 +325,31 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Account Status:</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                        Active
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        userDetails.accountStatus === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {userDetails.accountStatus === 'active' ? 'Active' : 'Inactive'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Login Enabled:</span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                        Yes
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        userDetails.loginEnabled
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {userDetails.loginEnabled ? 'Yes' : 'No'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Last Login:</span>
-                      <span className="text-gray-900">2025-01-20 09:15:30</span>
+                      <span className="text-gray-900">{formatDate(userDetails.lastLogin)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Password Changed:</span>
-                      <span className="text-gray-900">2025-01-15 14:30:00</span>
+                      <span className="text-gray-900">{formatDate(userDetails.passwordChanged)}</span>
                     </div>
                   </div>
                 </Card>
@@ -169,26 +359,38 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                   <div className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Two-Factor Auth:</span>
-                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-                        Disabled
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        userDetails.twoFactorEnabled
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {userDetails.twoFactorEnabled ? 'Enabled' : 'Disabled'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Security Questions:</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                        Set
+                      <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                        Not Available
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Email Verified:</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                        Yes
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        userDetails.emailVerified
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {userDetails.emailVerified ? 'Yes' : 'Pending'}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Phone Verified:</span>
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                        Pending
+                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                        userDetails.phoneVerified
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {userDetails.phoneVerified ? 'Yes' : 'Pending'}
                       </span>
                     </div>
                   </div>
@@ -278,9 +480,23 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       <p className="text-sm text-gray-600">Allow student to access their portal</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked />
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={accountSettings.loginEnabled}
+                        onChange={(e) => setAccountSettings(prev => ({ ...prev, loginEnabled: e.target.checked }))}
+                      />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={updateAccountSettings}
+                      disabled={loading}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Saving...' : 'Save Access Settings'}
+                    </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -318,7 +534,12 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       <p className="text-sm text-gray-600">Receive notifications via email</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked />
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={accountSettings.emailNotifications}
+                        onChange={(e) => setAccountSettings(prev => ({ ...prev, emailNotifications: e.target.checked }))}
+                      />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
                   </div>
@@ -328,9 +549,23 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       <p className="text-sm text-gray-600">Receive notifications via SMS</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" />
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={accountSettings.smsNotifications}
+                        onChange={(e) => setAccountSettings(prev => ({ ...prev, smsNotifications: e.target.checked }))}
+                      />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
+                  </div>
+                  <div className="mt-4">
+                    <button
+                      onClick={updateAccountSettings}
+                      disabled={loading}
+                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Saving...' : 'Save Notification Settings'}
+                    </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <div>
@@ -363,19 +598,33 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {loginHistory.map((login) => (
-                        <tr key={login.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.date}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.ip}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.location}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.device}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                              {login.status}
-                            </span>
+                      {loginHistory.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
+                            No login history available
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        loginHistory.map((login) => (
+                          <tr key={login.id}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(login.date)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.ip}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.location}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.device}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                login.status === 'success'
+                                  ? 'bg-green-100 text-green-800'
+                                  : login.status === 'failure'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {login.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -417,10 +666,10 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
               <div className="flex space-x-3">
                 <button
                   onClick={resetPassword}
-                  disabled={!newPassword}
+                  disabled={!newPassword || loading}
                   className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Reset password
+                  {loading ? 'Resetting...' : 'Reset password'}
                 </button>
                 <button
                   onClick={() => setShowPasswordReset(false)}
@@ -470,9 +719,10 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
               <div className="flex space-x-3">
                 <button
                   onClick={updateAccountSettings}
-                  className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                  disabled={loading}
+                  className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Save settings
+                  {loading ? 'Saving...' : 'Save settings'}
                 </button>
                 <button
                   onClick={() => setShowAccountSettings(false)}
