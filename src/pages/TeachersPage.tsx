@@ -1,267 +1,286 @@
-import React, { useState, useMemo } from 'react';
-import { useBackendData } from '../contexts/BackendDataContext';
+import React, { useState } from 'react';
+import { useData } from '../contexts/DataContext';
+import TeacherList from '../components/TeacherList';
+import TeacherProfile from '../components/TeacherProfile';
+import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
+import TeacherAnalytics from '../components/TeacherAnalytics';
+import TeacherCredentials from '../components/TeacherCredentials';
+import TeacherBulkOperations from '../components/TeacherBulkOperations';
+import TeacherPayroll from '../components/TeacherPayroll';
+import TeacherPerformance from '../components/TeacherPerformance';
+import TeacherAttendance from '../components/TeacherAttendance';
+import TeacherCommunication from '../components/TeacherCommunication';
 import Card from '../components/Card';
 
 const TeachersPage: React.FC = () => {
-  const { teachers, loading } = useBackendData();
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('overview');
+  const { teachers, deleteTeacher, refreshData } = useData();
+  const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+  const [showTeacherForm, setShowTeacherForm] = useState(false);
+  const [showTeacherProfile, setShowTeacherProfile] = useState(false);
+  const [showTeacherAnalytics, setShowTeacherAnalytics] = useState(false);
+  const [showTeacherCredentials, setShowTeacherCredentials] = useState(false);
+  const [showTeacherBulkOperations, setShowTeacherBulkOperations] = useState(false);
+  const [showTeacherPayroll, setShowTeacherPayroll] = useState(false);
+  const [showTeacherPerformance, setShowTeacherPerformance] = useState(false);
+  const [showTeacherAttendance, setShowTeacherAttendance] = useState(false);
+  const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (!search) return teachers;
-    return teachers.filter((t) =>
-      t.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-      t.email?.toLowerCase().includes(search.toLowerCase()) ||
-      t.id?.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [teachers, search]);
-
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'courses', label: 'Courses' },
-    { id: 'students', label: 'Students' },
-    { id: 'performance', label: 'Performance' },
-    { id: 'payroll', label: 'Payroll' },
-    { id: 'documents', label: 'Documents' }
-  ];
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const handleTeacherSelect = (teacher: any) => {
+    setSelectedTeacher(teacher);
+    setShowTeacherProfile(true);
   };
 
+  const handleEditTeacher = (teacher: any) => {
+    setSelectedTeacher(teacher);
+    setShowTeacherProfile(false);
+    setShowTeacherForm(true);
+  };
+
+  const handleDeleteTeacher = async (teacherId: string) => {
+    if (!teacherId) {
+      return;
+    }
+
+    const confirmed = window.confirm('Are you sure you want to delete this teacher?');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteTeacher(teacherId);
+      alert('Teacher deleted successfully.');
+      setSelectedTeacher(null);
+      setShowTeacherProfile(false);
+      if (refreshData) {
+        await refreshData();
+      }
+    } catch (err) {
+      console.error('Failed to delete teacher:', err);
+      alert('Failed to delete teacher. Please try again.');
+    }
+  };
+
+  const totalTeachers = teachers.length;
+  const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
+
   return (
-    <div className="flex flex-col sm:flex-row h-screen bg-background">
-      {/* Sidebar */}
-      <div className="w-full sm:w-80 border-r-0 sm:border-r-2 border-b-2 sm:border-b-0 border-gray-200 bg-white flex flex-col">
-        <div className="p-4 border-b border-gray-200">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search teachers..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-medium shadow-sm"
-            />
-            <svg
-              className="absolute left-3 top-3.5 h-4 w-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="p-4 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-              <p className="text-sm font-medium">Loading teachers...</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              <p className="text-sm font-medium">No teachers found</p>
-            </div>
-          ) : (
-            filtered.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => setSelected(t)}
-                className={`p-4 border-b border-gray-100 cursor-pointer transition ${
-                  selected?.id === t.id
-                    ? 'bg-soft-primary border-l-4 border-l-primary'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-sm shadow-md">
-                    {t.avatar ? (
-                      <img src={t.avatar} alt={t.fullName} className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      getInitials(t.fullName || '')
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-primary truncate">{t.fullName}</div>
-                    <div className="text-xs text-gray-500 truncate">{t.department || 'No department'}</div>
-                  </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Actions */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              id: 'teach-analytics',
+              badge: 'AN',
+              title: 'Teacher Analytics',
+              description: 'Monitor performance, coverage, and load balancing.',
+              footer: `${totalTeachers} total • ${activeTeacherCount} active`,
+              action: () => setShowTeacherAnalytics(true),
+              button: 'Open analytics',
+              disabled: false,
+            },
+            {
+              id: 'teach-credentials',
+              badge: 'CR',
+              title: 'Teacher Credentials',
+              description: 'Manage onboarding documents and access credentials.',
+              footer: `${totalTeachers} teachers`,
+              action: () => {
+                if (!selectedTeacher && teachers.length > 0) {
+                  setSelectedTeacher(teachers[0]);
+                }
+                setShowTeacherCredentials(true);
+              },
+              button: 'Manage access',
+              disabled: !selectedTeacher && teachers.length === 0,
+            },
+            {
+              id: 'teach-bulk',
+              badge: 'BL',
+              title: 'Teacher Bulk Operations',
+              description: 'Import, export, or batch update teacher rosters.',
+              footer: `${totalTeachers} teachers`,
+              action: () => setShowTeacherBulkOperations(true),
+              button: 'Run bulk action',
+              disabled: false,
+            },
+            {
+              id: 'add-teacher',
+              badge: '➕',
+              title: 'Add Teacher',
+              description: 'Register a new teacher and capture details.',
+              footer: `${totalTeachers} teachers`,
+              action: () => {
+                setSelectedTeacher(null);
+                setShowTeacherForm(true);
+              },
+              button: 'Register teacher',
+              disabled: false,
+            },
+          ].map((item) => (
+            <Card key={item.id}>
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-gray-200 bg-white px-4 py-5 shadow-sm hover:shadow-md transition">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
+                  {item.badge}
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Main Workspace */}
-      <div className="flex-1 p-4 sm:p-6 overflow-auto bg-background">
-        {!selected ? (
-          <div className="text-center text-gray-500 pt-20">
-            <svg
-              className="h-12 w-12 mx-auto mb-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <p className="text-lg font-semibold">Select a teacher to view details</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-extrabold text-primary mb-2 flex items-center gap-3">
-                <svg
-                  className="h-8 w-8 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-primary">{item.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                  {item.footer && (
+                    <p className="mt-2 text-xs font-semibold text-gray-500">{item.footer}</p>
+                  )}
+                </div>
+                <button
+                  onClick={item.action}
+                  disabled={item.disabled}
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                {selected.fullName}
-              </h1>
-              <p className="text-gray-600">{selected.email}</p>
-            </div>
+                  {item.button}
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`py-4 px-1 border-b-2 font-semibold text-sm transition ${
-                      activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-gray-500 hover:text-primary hover:border-gray-300'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            <div>
-              {activeTab === 'overview' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Teacher Information</h2>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Name:</span>
-                        <p className="text-primary font-extrabold">{selected.fullName}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Email:</span>
-                        <p className="text-primary font-extrabold">{selected.email || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Contact:</span>
-                        <p className="text-primary font-extrabold">{selected.phoneNumber || selected.contact || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Department:</span>
-                        <p className="text-primary font-extrabold">{selected.department || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Location:</span>
-                        <p className="text-primary font-extrabold">{selected.location || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Status:</span>
-                        <span className={`ml-2 px-3 py-1 rounded-full text-xs font-extrabold ${
-                          selected.status === 'active'
-                            ? 'bg-success text-white'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {selected.status || 'N/A'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Assigned Students:</span>
-                        <p className="text-primary font-extrabold">
-                          {Array.isArray(selected.assignedStudents) ? selected.assignedStudents.length : 0} students
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'courses' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Courses</h2>
-                    <p className="text-gray-600">Course assignments will be displayed here.</p>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'students' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Assigned Students</h2>
-                    <p className="text-gray-600">
-                      {Array.isArray(selected.assignedStudents) && selected.assignedStudents.length > 0
-                        ? `${selected.assignedStudents.length} students assigned`
-                        : 'No students assigned yet'}
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'performance' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Performance Metrics</h2>
-                    <p className="text-gray-600">Performance data will be displayed here.</p>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'payroll' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Payroll Information</h2>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Monthly Salary:</span>
-                        <p className="text-primary font-extrabold">
-                          {selected.payroll?.currency === 'USD' ? '$' : 'Rs'}{selected.payroll?.monthlySalary?.toLocaleString() || 'N/A'}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Employment Type:</span>
-                        <p className="text-primary font-extrabold">{selected.employmentType || 'N/A'}</p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'documents' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Documents</h2>
-                    <p className="text-gray-600">Teacher documents will be displayed here.</p>
-                  </div>
-                </Card>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Teacher List */}
+        <TeacherList
+          onTeacherSelect={handleTeacherSelect}
+          onEditTeacher={handleEditTeacher}
+          onDeleteTeacher={handleDeleteTeacher}
+          onAddTeacher={() => {
+            setSelectedTeacher(null);
+            setShowTeacherForm(true);
+          }}
+          onCredentials={(teacher) => {
+            setSelectedTeacher(teacher);
+            setShowTeacherCredentials(true);
+          }}
+          onAnalytics={(teacher) => {
+            setSelectedTeacher(teacher);
+            setShowTeacherAnalytics(true);
+          }}
+          onBulkOperations={() => setShowTeacherBulkOperations(true)}
+        />
       </div>
+
+      {/* Modals */}
+      {showTeacherForm && (
+        <TeacherRegistrationForm
+          onClose={() => {
+            setShowTeacherForm(false);
+            setSelectedTeacher(null);
+            if (refreshData) {
+              refreshData();
+            }
+          }}
+          teacher={selectedTeacher}
+          isEdit={!!selectedTeacher}
+        />
+      )}
+
+      {showTeacherProfile && selectedTeacher && (
+        <TeacherProfile
+          teacher={selectedTeacher}
+          onClose={() => {
+            setShowTeacherProfile(false);
+            setSelectedTeacher(null);
+          }}
+          onEdit={(teacher) => {
+            setSelectedTeacher(teacher);
+            setShowTeacherProfile(false);
+            setShowTeacherForm(true);
+          }}
+          onPayroll={() => {
+            setShowTeacherProfile(false);
+            setShowTeacherPayroll(true);
+          }}
+          onPerformance={() => {
+            setShowTeacherProfile(false);
+            setShowTeacherPerformance(true);
+          }}
+          onAttendance={() => {
+            setShowTeacherProfile(false);
+            setShowTeacherAttendance(true);
+          }}
+          onCommunication={() => {
+            setShowTeacherProfile(false);
+            setShowTeacherCommunication(true);
+          }}
+        />
+      )}
+
+      {showTeacherPayroll && selectedTeacher && (
+        <TeacherPayroll
+          teacher={selectedTeacher}
+          onClose={() => {
+            setShowTeacherPayroll(false);
+            setSelectedTeacher(null);
+          }}
+        />
+      )}
+
+      {showTeacherPerformance && selectedTeacher && (
+        <TeacherPerformance
+          teacher={selectedTeacher}
+          onClose={() => {
+            setShowTeacherPerformance(false);
+            setSelectedTeacher(null);
+          }}
+        />
+      )}
+
+      {showTeacherAttendance && selectedTeacher && (
+        <TeacherAttendance
+          teacher={selectedTeacher}
+          onClose={() => {
+            setShowTeacherAttendance(false);
+            setSelectedTeacher(null);
+          }}
+        />
+      )}
+
+      {showTeacherCommunication && selectedTeacher && (
+        <TeacherCommunication
+          teacher={selectedTeacher}
+          onClose={() => {
+            setShowTeacherCommunication(false);
+            setSelectedTeacher(null);
+          }}
+        />
+      )}
+
+      {showTeacherCredentials && (
+        <TeacherCredentials
+          teacher={selectedTeacher || { id: 'general', name: 'System Access Management' }}
+          onClose={() => {
+            setShowTeacherCredentials(false);
+            setSelectedTeacher(null);
+          }}
+        />
+      )}
+
+      {showTeacherAnalytics && (
+        <TeacherAnalytics
+          teacher={selectedTeacher || { id: 'general', name: 'System Analytics' }}
+          onClose={() => {
+            setShowTeacherAnalytics(false);
+            setSelectedTeacher(null);
+          }}
+        />
+      )}
+
+      {showTeacherBulkOperations && (
+        <TeacherBulkOperations
+          onClose={() => {
+            setShowTeacherBulkOperations(false);
+            if (refreshData) {
+              refreshData();
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
 
 export default TeachersPage;
-

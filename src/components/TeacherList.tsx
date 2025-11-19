@@ -133,80 +133,91 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
 
   return (
     <div className="space-y-6">
-      {/* Header with Actions */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Teacher Directory</h2>
-          <p className="text-gray-600 mt-1">Manage all registered teachers ({filteredTeachers.length} total)</p>
-        </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={onAddTeacher}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition"
-          >
-            + Add Teacher
-          </button>
-          <button className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition">
-            📊 Export
-          </button>
-          <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-            📥 Import
-          </button>
+      {/* Prominent Header */}
+      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-3xl p-4 sm:p-6 md:p-8 border-b-4 border-accent shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">
+              Teacher Directory
+            </h2>
+            <p className="text-white/90 text-sm sm:text-base md:text-lg font-semibold">
+              Manage all registered teachers • {filteredTeachers.length} {filteredTeachers.length === 1 ? 'teacher' : 'teachers'} found
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:gap-3">
+            {onAddTeacher && (
+              <button 
+                onClick={onAddTeacher}
+                className="px-6 sm:px-7 py-2.5 sm:py-3 bg-accent text-primary rounded-full font-extrabold hover:scale-110 transition-all shadow-xl hover:shadow-2xl text-sm sm:text-base md:text-lg"
+                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-primary)' }}
+              >
+                + Add Teacher
+              </button>
+            )}
+            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+              Export
+            </button>
+            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+              Import
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Enhanced Filters and Search */}
       <Card>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-          {/* Search */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Name, email, or ID..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
+        <div className="bg-white rounded-2xl p-4 sm:p-5 md:p-6 border-2 border-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            {/* Search */}
+            <div className="sm:col-span-2 lg:col-span-2">
+              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Search Teachers</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, email, or ID..."
+                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base placeholder:text-primary/50"
+              />
+            </div>
+
+            {/* Specialization Filter */}
+            <div>
+              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Specialization</label>
+              <select
+                value={selectedSpecialization}
+                onChange={(e) => setSelectedSpecialization(e.target.value)}
+                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+              >
+                <option value="all">All Specializations</option>
+                {uniqueSpecializations.map(spec => (
+                  <option key={spec} value={spec}>{spec}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div>
+              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Status</label>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+              >
+                <option value="all">All Status</option>
+                {uniqueStatuses.map(status => (
+                  <option key={status} value={status}>{status.replace('-', ' ')}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Specialization Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Specialization</label>
-            <select
-              value={selectedSpecialization}
-              onChange={(e) => setSelectedSpecialization(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">All Specializations</option>
-              {uniqueSpecializations.map(spec => (
-                <option key={spec} value={spec}>{spec}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            >
-              <option value="all">All Status</option>
-              {uniqueStatuses.map(status => (
-                <option key={status} value={status}>{status.replace('-', ' ')}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Location Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+          {/* Location Filter - Full Width */}
+          <div className="mb-4">
+            <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Location</label>
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
             >
               <option value="all">All Locations</option>
               {uniqueLocations.map(location => (
@@ -214,32 +225,9 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
               ))}
             </select>
           </div>
-        </div>
 
-        {/* Active Filters Display */}
-        {(searchTerm || selectedSpecialization !== 'all' || selectedStatus !== 'all' || selectedLocation !== 'all') && (
-          <div className="flex items-center space-x-2 p-3 bg-cream-100 border border-gold-300 rounded-lg">
-            <span className="text-sm text-primary-800 font-medium">Active Filters:</span>
-            {searchTerm && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Search: "{searchTerm}"
-              </span>
-            )}
-            {selectedSpecialization !== 'all' && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Specialization: {selectedSpecialization}
-              </span>
-            )}
-            {selectedStatus !== 'all' && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Status: {selectedStatus}
-              </span>
-            )}
-            {selectedLocation !== 'all' && (
-              <span className="px-2 py-1 bg-primary-600 text-white text-xs rounded-full">
-                Location: {selectedLocation}
-              </span>
-            )}
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 sm:gap-3">
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -247,12 +235,28 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                 setSelectedStatus('all');
                 setSelectedLocation('all');
               }}
-              className="ml-2 text-xs text-primary-600 hover:text-primary-800 underline"
+              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
             >
-              Clear All
+              Clear Filters
+            </button>
+            <button
+              onClick={() => {
+                setSortBy('name');
+                setSortOrder('asc');
+              }}
+              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-accent text-primary rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+            >
+              Reset Sort
             </button>
           </div>
-        )}
+
+          {/* Result Count */}
+          <div className="mt-4 text-right">
+            <p className="text-sm font-semibold text-gray-600">
+              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTeachers.length)} of {filteredTeachers.length} teachers
+            </p>
+          </div>
+        </div>
       </Card>
 
       {/* Teachers Table */}

@@ -189,13 +189,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     });
   };
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const active = filteredStudents.filter(s => s.status === 'active').length;
-    const inactive = filteredStudents.filter(s => s.status === 'inactive').length;
-    const totalTuition = filteredStudents.reduce((sum, s) => sum + (s.tuitionFee || 0), 0);
-    return { active, inactive, totalTuition, total: filteredStudents.length };
-  }, [filteredStudents]);
 
   return (
     <div className="space-y-6">
@@ -234,34 +227,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
             <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
               Import
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-gradient-to-br from-soft-primary to-primary/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-primary/40">
-          <div>
-            <p className="text-primary/80 text-xs sm:text-sm font-semibold mb-1">Total Students</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-primary">{stats.total}</p>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-soft-primary to-primary/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-primary/40">
-          <div>
-            <p className="text-primary/80 text-xs sm:text-sm font-semibold mb-1">Active</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-primary">{stats.active}</p>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-soft-primary to-primary/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-primary/40">
-          <div>
-            <p className="text-primary/80 text-xs sm:text-sm font-semibold mb-1">Inactive</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-primary">{stats.inactive}</p>
-          </div>
-        </div>
-        <div className="bg-gradient-to-br from-soft-accent to-accent/30 rounded-2xl p-4 sm:p-5 shadow-xl hover:shadow-2xl transition-all hover:scale-105 border-2 border-accent/40">
-          <div>
-            <p className="text-primary text-xs sm:text-sm font-semibold mb-1">Total Tuition</p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-accent">${stats.totalTuition}</p>
           </div>
         </div>
       </div>
@@ -371,173 +336,192 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         </div>
       </Card>
 
-      {/* Students Grid - Card Layout */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
-        {paginatedStudents.length > 0 ? (
-          paginatedStudents.map((student) => (
-            <div
-              key={student.id}
-              className="bg-soft-primary rounded-xl border-2 border-primary shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] overflow-hidden"
-            >
-              {/* Horizontal Layout */}
-              <div className="flex flex-col sm:flex-row">
-                {/* Left Side - Avatar and Status */}
-                <div className="bg-primary p-4 sm:p-5 flex flex-col items-center justify-center border-b-2 sm:border-b-0 sm:border-r-2 border-primary sm:w-32">
-                  <div className="relative mb-3">
-                    <img 
-                      src={student.avatar} 
-                      alt={student.fullName} 
-                      className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-accent shadow-lg" 
-                    />
-                  </div>
-                  <span className={`px-3 py-1 text-xs font-extrabold rounded ${
-                    student.status === 'active' 
-                      ? 'bg-accent text-primary' 
-                      : 'bg-soft-primary text-primary border border-primary'
-                  }`}>
-                    {student.status || 'active'}
-                  </span>
-                </div>
-
-                {/* Right Side - Info and Actions */}
-                <div className="flex-1 p-4 sm:p-5">
-                  {/* Name and Program */}
-                  <div className="mb-4">
-                    <h3 className="text-lg sm:text-xl font-extrabold text-primary mb-1">
-                      {student.fullName}
-                    </h3>
-                    <p className="text-sm text-primary font-semibold">{student.program}</p>
-                  </div>
-
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-soft-primary rounded p-2 border border-primary">
-                      <p className="text-xs text-primary font-semibold mb-1">Teacher</p>
-                      <p className="text-sm font-extrabold text-primary truncate">{getTeacherName(student.assignedTeacher)}</p>
-                    </div>
-                    <div className="bg-soft-primary rounded p-2 border border-primary">
-                      <p className="text-xs text-primary font-semibold mb-1">Tuition</p>
-                      <p className="text-sm font-extrabold text-primary">${student.tuitionFee}</p>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons - Horizontal */}
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => onStudentSelect(student)}
-                      className="flex-1 min-w-[80px] px-4 py-2 bg-primary text-accent rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs sm:text-sm"
-                    >
-                      View
-                    </button>
-                    <button
-                      onClick={() => onEditStudent(student)}
-                      className="flex-1 min-w-[80px] px-4 py-2 bg-accent text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs sm:text-sm"
-                    >
-                      Edit
-                    </button>
-                    {onCredentials && (
-                      <button
-                        onClick={() => onCredentials(student)}
-                        className="px-3 py-2 bg-soft-primary border border-primary text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs"
-                        title="Credentials"
-                      >
-                        Credentials
-                      </button>
-                    )}
-                    {onAnalytics && (
-                      <button
-                        onClick={() => onAnalytics(student)}
-                        className="px-3 py-2 bg-soft-primary border border-primary text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs"
-                        title="Analytics"
-                      >
-                        Analytics
-                      </button>
-                    )}
-                    <button
-                      onClick={() => onDeleteStudent(student.id)}
-                      className="px-3 py-2 bg-soft-primary border border-primary text-primary rounded font-extrabold hover:scale-105 transition-all shadow-md text-xs"
-                      title="Delete"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full">
-            <Card>
-              <div className="text-center py-8 sm:py-12">
-                <h3 className="text-xl sm:text-2xl font-extrabold text-primary mb-2">No Students Found</h3>
-                <p className="text-sm sm:text-base text-primary-soft mb-4 sm:mb-6">No students match the selected filters.</p>
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedTeacher('all');
-                    setSelectedStatus('all');
-                    setSelectedPaymentStatus('all');
-                  }}
-                  className="px-5 sm:px-6 py-2.5 sm:py-3 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg text-sm sm:text-base"
+      {/* Students Table */}
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('name')}
                 >
-                  Clear All Filters
-                </button>
-              </div>
-            </Card>
+                  <div className="flex items-center space-x-1">
+                    <span>Student</span>
+                    {sortBy === 'name' && (
+                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('email')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Contact</span>
+                    {sortBy === 'email' && (
+                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('tuitionFee')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Tuition</span>
+                    {sortBy === 'tuitionFee' && (
+                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {paginatedStudents.length > 0 ? (
+                paginatedStudents.map((student) => (
+                  <tr key={student.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4">
+                      <div className="flex items-center">
+                        <img 
+                          src={student.avatar || '/default-avatar.png'} 
+                          alt={student.fullName || 'Student'} 
+                          className="h-10 w-10 rounded-full mr-3" 
+                        />
+                        <div>
+                          <p className="font-medium text-gray-900">{student.fullName || 'Unknown'}</p>
+                          <p className="text-sm text-gray-500">{student.program || 'No program'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm font-mono text-gray-600">{student.id}</td>
+                    <td className="px-4 py-4 text-sm">
+                      <div>
+                        <p className="text-gray-900">{student.email || 'No email'}</p>
+                        <p className="text-gray-500">{student.contact || 'No contact'}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm">{student.program || 'N/A'}</td>
+                    <td className="px-4 py-4 text-sm">{getTeacherName(student.assignedTeacher)}</td>
+                    <td className="px-4 py-4 text-sm font-semibold">
+                      ${student.tuitionFee?.toLocaleString() || '0'}
+                    </td>
+                    <td className="px-4 py-4">{getStatusBadge(student.status || 'active')}</td>
+                    <td className="px-4 py-4">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => onStudentSelect(student)}
+                          className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => onEditStudent(student)}
+                          className="text-gold-600 hover:text-gold-800 text-sm font-medium"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDeleteStudent(student.id)}
+                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        >
+                          Delete
+                        </button>
+                        {onCredentials && (
+                          <button
+                            onClick={() => onCredentials(student)}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            Credentials
+                          </button>
+                        )}
+                        {onAnalytics && (
+                          <button
+                            onClick={() => onAnalytics(student)}
+                            className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                          >
+                            Analytics
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <p className="text-lg font-semibold mb-2">No students found</p>
+                      <p className="text-sm">No students match the selected filters.</p>
+                      <button
+                        onClick={() => {
+                          setSearchTerm('');
+                          setSelectedTeacher('all');
+                          setSelectedStatus('all');
+                          setSelectedPaymentStatus('all');
+                        }}
+                        className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-medium"
+                      >
+                        Clear All Filters
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700">Show</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span className="text-sm text-gray-700">per page</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Previous
+              </button>
+              
+              <span className="text-sm text-gray-700">
+                Page {currentPage} of {totalPages}
+              </span>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Enhanced Pagination */}
-      {totalPages > 1 && (
-        <Card>
-          <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-2xl p-4 sm:p-5 md:p-6 border-2 border-primary/20">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span className="text-xs sm:text-sm font-extrabold text-primary">Show</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-3 sm:px-4 py-2 border-2 border-primary/30 rounded-full text-xs sm:text-sm font-extrabold text-primary bg-soft-primary focus:ring-2 focus:ring-primary focus:border-primary shadow-md"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-                <span className="text-xs sm:text-sm font-extrabold text-primary">per page</span>
-              </div>
-              
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg disabled:hover:scale-100 text-xs sm:text-sm"
-                >
-                  Previous
-                </button>
-                
-                <div className="px-3 sm:px-5 py-2 sm:py-2.5 bg-accent/20 rounded-full border-2 border-accent/40">
-                  <span className="text-xs sm:text-sm font-extrabold text-primary">
-                    Page <span className="text-accent">{currentPage}</span> of <span className="text-accent">{totalPages}</span>
-                  </span>
-                </div>
-                
-                <button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 sm:px-6 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 transition-all shadow-lg disabled:hover:scale-100 text-xs sm:text-sm"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      </Card>
     </div>
   );
 };

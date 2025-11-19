@@ -1,277 +1,279 @@
-import React, { useState, useMemo } from 'react';
-import { useBackendData } from '../contexts/BackendDataContext';
+import React, { useState } from 'react';
 import { useData } from '../contexts/DataContext';
-import Card from '../components/Card';
+import StudentList from '../components/StudentList';
+import StudentProfile from '../components/StudentProfile';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
+import StudentAnalytics from '../components/StudentAnalytics';
+import StudentCredentials from '../components/StudentCredentials';
+import StudentBulkOperations from '../components/StudentBulkOperations';
+import StudentEnrollment from '../components/StudentEnrollment';
+import StudentPayments from '../components/StudentPayments';
+import StudentProgress from '../components/StudentProgress';
+import StudentCommunication from '../components/StudentCommunication';
+import Card from '../components/Card';
 
 const StudentsPage: React.FC = () => {
-  const { students, loading } = useBackendData();
-  const { refreshData } = useData();
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState('profile');
+  const { students, deleteStudent, refreshData } = useData();
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showStudentForm, setShowStudentForm] = useState(false);
+  const [showStudentProfile, setShowStudentProfile] = useState(false);
+  const [showStudentAnalytics, setShowStudentAnalytics] = useState(false);
+  const [showStudentCredentials, setShowStudentCredentials] = useState(false);
+  const [showStudentBulkOperations, setShowStudentBulkOperations] = useState(false);
+  const [showStudentEnrollment, setShowStudentEnrollment] = useState(false);
+  const [showStudentPayments, setShowStudentPayments] = useState(false);
+  const [showStudentProgress, setShowStudentProgress] = useState(false);
+  const [showStudentCommunication, setShowStudentCommunication] = useState(false);
 
-  const filtered = useMemo(() => {
-    if (!search) return students;
-    return students.filter((s) =>
-      s.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-      s.email?.toLowerCase().includes(search.toLowerCase()) ||
-      s.id?.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [students, search]);
-
-  const tabs = [
-    { id: 'profile', label: 'Profile' },
-    { id: 'enrollment', label: 'Enrollment' },
-    { id: 'payments', label: 'Payments' },
-    { id: 'progress', label: 'Progress' },
-    { id: 'communication', label: 'Communication' }
-  ];
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const handleStudentSelect = (student: any) => {
+    setSelectedStudent(student);
+    setShowStudentProfile(true);
   };
 
+  const handleEditStudent = (student: any) => {
+    setSelectedStudent(student);
+    setShowStudentProfile(false);
+    setShowStudentForm(true);
+  };
+
+  const handleDeleteStudent = async (studentId: string) => {
+    if (!studentId) {
+      return;
+    }
+
+    const confirmed = window.confirm('Are you sure you want to delete this student? This action cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteStudent(studentId);
+      alert('✅ Student deleted successfully.');
+      setSelectedStudent(null);
+      setShowStudentProfile(false);
+      if (refreshData) {
+        await refreshData();
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete student';
+      console.error('❌ Failed to delete student:', err);
+      alert(`❌ Failed to delete student: ${errorMessage}`);
+    }
+  };
+
+  const studentsCount = students.length;
+  const activeStudentsCount = students.filter((s) => s.status === 'active').length;
+
   return (
-    <div className="flex flex-col sm:flex-row h-screen bg-background">
-      {/* Sidebar */}
-      <div className="w-full sm:w-80 border-r-0 sm:border-r-2 border-b-2 sm:border-b-0 border-gray-200 bg-white flex flex-col">
-        <div className="p-4 border-b border-gray-200 space-y-3">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search students..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-4 py-2.5 pl-10 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-medium shadow-sm"
-            />
-            <svg
-              className="absolute left-3 top-3.5 h-4 w-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-          <button
-            onClick={() => setShowStudentForm(true)}
-            className="w-full px-4 py-2.5 bg-primary text-white rounded-lg font-extrabold hover:bg-primary/90 transition-all shadow-md hover:shadow-lg text-sm"
-          >
-            + Add Student
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto">
-          {loading ? (
-            <div className="p-4 text-center text-gray-500">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-              <p className="text-sm font-medium">Loading students...</p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              <p className="text-sm font-medium">No students found</p>
-            </div>
-          ) : (
-            filtered.map((s) => (
-              <div
-                key={s.id}
-                onClick={() => setSelected(s)}
-                className={`p-4 border-b border-gray-100 cursor-pointer transition ${
-                  selected?.id === s.id
-                    ? 'bg-soft-primary border-l-4 border-l-primary'
-                    : 'hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-sm shadow-lg">
-                    {s.avatar ? (
-                      <img src={s.avatar} alt={s.fullName} className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      getInitials(s.fullName || '')
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-extrabold text-primary truncate">{s.fullName}</div>
-                    <div className="text-xs text-gray-500 truncate">{s.program || 'No program'}</div>
-                  </div>
+    <div className="min-h-screen bg-background">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quick Actions */}
+        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              id: 'student-analytics',
+              badge: 'AN',
+              title: 'Student Analytics',
+              description: 'Review student performance trends and milestones.',
+              footer: `${studentsCount} total • ${activeStudentsCount} active`,
+              action: () => setShowStudentAnalytics(true),
+              button: 'Open analytics',
+              disabled: false,
+            },
+            {
+              id: 'student-credentials',
+              badge: 'CR',
+              title: 'Student Credentials',
+              description: 'Manage login credentials and portal access.',
+              footer: `${studentsCount} students`,
+              action: () => {
+                if (!selectedStudent && students.length > 0) {
+                  setSelectedStudent(students[0]);
+                }
+                setShowStudentCredentials(true);
+              },
+              button: 'Manage access',
+              disabled: !selectedStudent && students.length === 0,
+            },
+            {
+              id: 'student-bulk',
+              badge: 'BL',
+              title: 'Student Bulk Operations',
+              description: 'Manage multiple students at once.',
+              footer: `${studentsCount} students`,
+              action: () => setShowStudentBulkOperations(true),
+              button: 'Run bulk action',
+              disabled: false,
+            },
+            {
+              id: 'add-student',
+              badge: '➕',
+              title: 'Add Student',
+              description: 'Register a new student and capture program details.',
+              footer: `${studentsCount} students`,
+              action: () => {
+                setSelectedStudent(null);
+                setShowStudentForm(true);
+              },
+              button: 'Register student',
+              disabled: false,
+            },
+          ].map((item) => (
+            <Card key={item.id}>
+              <div className="flex h-full flex-col gap-4 rounded-xl border border-gray-200 bg-white px-4 py-5 shadow-sm hover:shadow-md transition">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
+                  {item.badge}
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Main Workspace */}
-      <div className="flex-1 p-4 sm:p-6 overflow-auto bg-background">
-        {!selected ? (
-          <div className="text-center text-gray-500 pt-20">
-            <svg
-              className="h-12 w-12 mx-auto mb-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <p className="text-lg font-semibold">Select a student to view details</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-extrabold text-primary mb-2 flex items-center gap-3">
-                <svg
-                  className="h-8 w-8 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <div className="flex-1">
+                  <h3 className="text-base font-semibold text-primary">{item.title}</h3>
+                  <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                  {item.footer && (
+                    <p className="mt-2 text-xs font-semibold text-gray-500">{item.footer}</p>
+                  )}
+                </div>
+                <button
+                  onClick={item.action}
+                  disabled={item.disabled}
+                  className="inline-flex items-center justify-center rounded-lg border border-primary/30 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary hover:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                </svg>
-                {selected.fullName}
-              </h1>
-              <p className="text-gray-600">{selected.email}</p>
-            </div>
+                  {item.button}
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
 
-            {/* Tabs */}
-            <div className="border-b border-gray-200">
-              <nav className="flex space-x-8">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`py-4 px-1 border-b-2 font-semibold text-sm transition ${
-                      activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-gray-500 hover:text-primary hover:border-gray-300'
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Tab Content */}
-            <div>
-              {activeTab === 'profile' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Personal Information</h2>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm font-semibold text-gray-600">Student:</span>
-                        <p className="text-primary font-extrabold">{selected.fullName}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Parent:</span>
-                        <p className="text-primary font-extrabold">{selected.parentName || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Email:</span>
-                        <p className="text-primary font-extrabold">{selected.email || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Contact:</span>
-                        <p className="text-primary font-extrabold">{selected.contact || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Program:</span>
-                        <p className="text-primary font-extrabold">{selected.program || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Status:</span>
-                        <span className={`ml-2 px-3 py-1 rounded-full text-xs font-extrabold ${
-                          selected.status === 'active'
-                            ? 'bg-primary text-white'
-                            : 'bg-soft-primary text-primary'
-                        }`}>
-                          {selected.status || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'enrollment' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Enrollment Details</h2>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Enrolled Date:</span>
-                        <p className="text-primary font-extrabold">{selected.enrolledDate || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Assigned Teacher:</span>
-                        <p className="text-primary font-extrabold">{selected.assignedTeacher || 'Unassigned'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Schedule:</span>
-                        <p className="text-primary font-extrabold">
-                          {selected.schedule
-                            ? `${selected.schedule.days?.join(', ') || 'N/A'} ${selected.schedule.startTime || ''} - ${selected.schedule.endTime || ''}`
-                            : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'payments' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Payment Information</h2>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Tuition Fee:</span>
-                        <p className="text-primary font-extrabold">${selected.tuitionFee || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className="text-sm font-semibold text-primary/70">Registration Amount:</span>
-                        <p className="text-primary font-extrabold">${selected.registrationAmount || 'N/A'}</p>
-                      </div>
-                      <p className="text-gray-600 text-sm">Payment history will be displayed here.</p>
-                    </div>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'progress' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Progress Reports</h2>
-                    <p className="text-gray-600">Progress reports and analytics will be displayed here.</p>
-                  </div>
-                </Card>
-              )}
-
-              {activeTab === 'communication' && (
-                <Card>
-                  <div className="space-y-4">
-                    <h2 className="text-xl font-extrabold text-primary mb-4">Communication Log</h2>
-                    <p className="text-gray-600">Communication history and messages will be displayed here.</p>
-                  </div>
-                </Card>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Student List */}
+        <StudentList
+          onStudentSelect={handleStudentSelect}
+          onEditStudent={handleEditStudent}
+          onDeleteStudent={handleDeleteStudent}
+          onAddStudent={() => {
+            setSelectedStudent(null);
+            setShowStudentForm(true);
+          }}
+          onCredentials={(student) => {
+            setSelectedStudent(student);
+            setShowStudentCredentials(true);
+          }}
+          onAnalytics={(student) => {
+            setSelectedStudent(student);
+            setShowStudentAnalytics(true);
+          }}
+          onBulkOperations={() => setShowStudentBulkOperations(true)}
+        />
       </div>
 
-      {/* Student Registration Form Modal */}
+      {/* Modals */}
       {showStudentForm && (
         <StudentRegistrationForm
           onClose={() => {
             setShowStudentForm(false);
+            setSelectedStudent(null);
+            if (refreshData) {
+              refreshData();
+            }
+          }}
+          student={selectedStudent}
+          isEdit={!!selectedStudent}
+        />
+      )}
+
+      {showStudentProfile && selectedStudent && (
+        <StudentProfile
+          student={selectedStudent}
+          onClose={() => {
+            setShowStudentProfile(false);
+            setSelectedStudent(null);
+          }}
+          onEdit={(student) => {
+            setSelectedStudent(student);
+            setShowStudentProfile(false);
+            setShowStudentForm(true);
+          }}
+          onEnrollment={() => {
+            setShowStudentProfile(false);
+            setShowStudentEnrollment(true);
+          }}
+          onPayments={() => {
+            setShowStudentProfile(false);
+            setShowStudentPayments(true);
+          }}
+          onProgress={() => {
+            setShowStudentProfile(false);
+            setShowStudentProgress(true);
+          }}
+          onCommunication={() => {
+            setShowStudentProfile(false);
+            setShowStudentCommunication(true);
+          }}
+        />
+      )}
+
+      {showStudentEnrollment && selectedStudent && (
+        <StudentEnrollment
+          student={selectedStudent}
+          onClose={() => {
+            setShowStudentEnrollment(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentPayments && selectedStudent && (
+        <StudentPayments
+          student={selectedStudent}
+          onClose={() => {
+            setShowStudentPayments(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentProgress && selectedStudent && (
+        <StudentProgress
+          student={selectedStudent}
+          onClose={() => {
+            setShowStudentProgress(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentCommunication && selectedStudent && (
+        <StudentCommunication
+          student={selectedStudent}
+          onClose={() => {
+            setShowStudentCommunication(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentCredentials && (
+        <StudentCredentials
+          student={selectedStudent || { id: 'general', name: 'System Access Management' }}
+          onClose={() => {
+            setShowStudentCredentials(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentAnalytics && (
+        <StudentAnalytics
+          student={selectedStudent || { id: 'general', name: 'System Analytics' }}
+          onClose={() => {
+            setShowStudentAnalytics(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentBulkOperations && (
+        <StudentBulkOperations
+          onClose={() => {
+            setShowStudentBulkOperations(false);
             if (refreshData) {
               refreshData();
             }
@@ -283,4 +285,3 @@ const StudentsPage: React.FC = () => {
 };
 
 export default StudentsPage;
-
