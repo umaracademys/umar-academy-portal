@@ -1207,7 +1207,7 @@ const assignmentSchema = new mongoose.Schema({
   // Mushaf mistakes associated with this assignment
   mushafMistakes: [{
     id: String,
-    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'] },
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee'] },
     page: Number,
     surah: Number,
     ayah: Number,
@@ -1236,7 +1236,7 @@ const Assignment = mongoose.model('Assignment', assignmentSchema);
 // Ticket Schema - for sabq, sabqi, manzil workflow
 const ticketMistakeSchema = new mongoose.Schema({
   id: String,
-  type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'] },
+  type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee'] },
   page: Number,
   surah: Number,
   ayah: Number,
@@ -1300,7 +1300,7 @@ const studentPersonalMushafSchema = new mongoose.Schema({
   studentName: { type: String, required: true },
   mistakes: [{
     id: String,
-    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other'], required: true },
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee'], required: true },
     page: { type: Number, required: true },
     surah: { type: Number, required: true },
     ayah: { type: Number, required: true },

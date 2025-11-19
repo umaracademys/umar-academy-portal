@@ -823,6 +823,12 @@ export const WordByWordPage: React.FC<{
     }
     return "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
   };
+  
+  // Function to get remark text for mistake types
+  const getMistakeRemark = (mistake: MushafMistake | undefined): string => {
+    // No remarks for default mistake types
+    return "";
+  };
 
   // Show loading state only if layout is not loaded yet
   if (!layout) {
@@ -1062,11 +1068,7 @@ export const WordByWordPage: React.FC<{
                                   </div>
                                 )}
                                 <div className="font-semibold text-gray-900 mb-1">
-                                  {mistake.type === 'memory' ? 'Memory Mistake' :
-                                   mistake.type === 'madd' ? 'Mad (Elongation) Mistake' :
-                                   mistake.type === 'holding' ? 'Holding/Fluency Mistake' :
-                                   mistake.type === 'ikhfa' ? 'Ikhfa Mistake' :
-                                   mistake.type === 'tech' ? 'Ghunna Mistake' : 'Other Mistake'}
+                                  {getMistakeTypeLabel(mistake.type)}
                                 </div>
                                 {mistake.note && (
                                   <div className="text-gray-600 mb-2">{mistake.note}</div>

@@ -48,7 +48,7 @@ export interface AssignmentHomework {
 
 export interface AssignmentMushafMistake {
   id: string;
-  type?: 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other';
+  type?: 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other' | 'letter' | 'heavy_letter' | 'no_rounding_lips' | 'heavy_h' | 'light_l' | 'atkee';
   page: number;
   surah: number;
   ayah: number;

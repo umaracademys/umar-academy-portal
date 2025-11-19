@@ -1,5 +1,5 @@
 // Mushaf (Quran) mistake marking types
-export type MistakeType = 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other';
+export type MistakeType = 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other' | 'letter' | 'heavy_letter' | 'no_rounding_lips' | 'heavy_h' | 'light_l' | 'atkee';
 
 export interface MushafMistake {
   id: string;
