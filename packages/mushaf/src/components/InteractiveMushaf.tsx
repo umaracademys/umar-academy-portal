@@ -85,6 +85,19 @@ const mistakeTypes = [
   "Other Mistake",
 ];
 
+// Function to get mistake type label (used by multiple components)
+const getMistakeTypeLabel = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    "memory": "Memory Mistake",
+    "madd": "Mad (Elongation) Mistake",
+    "ikhfa": "Ikhfa Mistake",
+    "holding": "Holding/Fluency Mistake",
+    "tech": "Ghunna Mistake",
+    "other": "Other Mistake",
+  };
+  return typeMap[type] || type;
+};
+
 export const MistakeModal: React.FC<MistakeModalProps> = ({
   word,
   onClose,
@@ -828,19 +841,6 @@ export const WordByWordPage: React.FC<{
   const getMistakeRemark = (mistake: MushafMistake | undefined): string => {
     // No remarks for default mistake types
     return "";
-  };
-
-  // Function to get mistake type label
-  const getMistakeTypeLabel = (type: string): string => {
-    const typeMap: Record<string, string> = {
-      "memory": "Memory Mistake",
-      "madd": "Mad (Elongation) Mistake",
-      "ikhfa": "Ikhfa Mistake",
-      "holding": "Holding/Fluency Mistake",
-      "tech": "Ghunna Mistake",
-      "other": "Other Mistake",
-    };
-    return typeMap[type] || type;
   };
 
   // Show loading state only if layout is not loaded yet
