@@ -19,15 +19,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
   const setIsMobileOpen = onMobileToggle || setInternalMobileOpen;
 
   const menuItems = [
-    { id: 'overview', icon: 'OV', label: 'Overview', badge: null },
-    { id: 'students', icon: 'ST', label: 'Students', badge: null },
-    { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null },
+    { id: 'overview', icon: 'OV', label: 'Overview', badge: null, isLink: false },
+    { id: 'students', icon: 'ST', label: 'Students', badge: null, isLink: true, href: '/students' },
+    { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' },
     { id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' },
-    { id: 'courses', icon: 'CR', label: 'Courses', badge: '45' },
-    { id: 'financials', icon: 'FN', label: 'Financials', badge: null },
-    { id: 'reports', icon: 'RP', label: 'Reports', badge: null },
-    { id: 'activities', icon: 'AC', label: 'Activities', badge: '12' },
-    { id: 'settings', icon: 'SE', label: 'Settings', badge: null },
+    { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
+    { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
+    { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
+    { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
+    { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false },
   ];
 
   return (
