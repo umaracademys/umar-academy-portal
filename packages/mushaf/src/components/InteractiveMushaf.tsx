@@ -830,6 +830,19 @@ export const WordByWordPage: React.FC<{
     return "";
   };
 
+  // Function to get mistake type label
+  const getMistakeTypeLabel = (type: string): string => {
+    const typeMap: Record<string, string> = {
+      "memory": "Memory Mistake",
+      "madd": "Mad (Elongation) Mistake",
+      "ikhfa": "Ikhfa Mistake",
+      "holding": "Holding/Fluency Mistake",
+      "tech": "Ghunna Mistake",
+      "other": "Other Mistake",
+    };
+    return typeMap[type] || type;
+  };
+
   // Show loading state only if layout is not loaded yet
   if (!layout) {
     return (
@@ -1221,18 +1234,6 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       });
     setLocalMistakes(convertedMistakes);
   }, [mistakesWithWords, currentPage]);
-
-  const getMistakeTypeLabel = (type: string): string => {
-    const typeMap: Record<string, string> = {
-      "memory": "Memory Mistake",
-      "madd": "Mad (Elongation) Mistake",
-      "ikhfa": "Ikhfa Mistake",
-      "holding": "Holding/Fluency Mistake",
-      "tech": "Ghunna Mistake",
-      "other": "Other Mistake",
-    };
-    return typeMap[type] || type;
-  };
 
   const handleWordClick = (word: Word) => {
     if (!readOnly && mode === 'marking') {
