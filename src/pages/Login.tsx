@@ -193,33 +193,6 @@ const Login: React.FC = () => {
                   'Sign In'
                 )}
               </button>
-
-              {/* Demo Information */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-xs text-gray-600 text-center mb-3">
-                  <span className="font-semibold text-gray-800">Available Users:</span>
-                </p>
-                <div className="text-center space-y-1">
-                  <p className="text-xs text-gray-500">
-                    <span className="font-semibold text-red-600">Super Admin:</span> sadmin@umaracademy.org
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    <span className="font-semibold text-blue-600">Admin:</span> admin@umaracademy.com
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    <span className="font-semibold text-green-600">Teacher:</span> teacher@umaracademy.com
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    <span className="font-semibold text-purple-600">Student:</span> ahmed@umaracademy.com
-                  </p>
-                </div>
-                <p className="text-xs text-gray-400 text-center mt-2">
-                  <span className="font-semibold text-green-600">✨ New users created by Super Admin are automatically available for login!</span>
-                </p>
-                <p className="text-xs text-gray-400 text-center">
-                  Use any password for demo access
-                </p>
-              </div>
             </form>
           </div>
 
