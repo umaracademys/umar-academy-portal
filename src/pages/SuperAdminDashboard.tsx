@@ -34,6 +34,7 @@ import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import AdminTicketReview from '../components/AdminTicketReview';
 import AdminNotificationCenter from '../components/AdminNotificationCenter';
+import ActivityLog from '../components/ActivityLog';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -145,6 +146,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showStudentReports, setShowStudentReports] = useState(false);
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showActivityLog, setShowActivityLog] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -207,6 +209,14 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowStudentReports(true),
       badge: null,
       emphasis: 'neutral',
+    },
+    {
+      id: 'activity-log',
+      label: 'Activity Log',
+      description: 'Monitor security events, login attempts, and user activities.',
+      onClick: () => setShowActivityLog(true),
+      badge: null,
+      emphasis: 'accent-solid',
     },
     {
       id: 'fix-assignment-ids',
@@ -1123,6 +1133,13 @@ const SuperAdminDashboard: React.FC = () => {
       {showNotificationCenter && (
         <AdminNotificationCenter
           onClose={() => setShowNotificationCenter(false)}
+        />
+      )}
+
+      {/* Activity Log Modal */}
+      {showActivityLog && (
+        <ActivityLog
+          onClose={() => setShowActivityLog(false)}
         />
       )}
 

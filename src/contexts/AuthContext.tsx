@@ -28,13 +28,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Load user from localStorage on component mount
   useEffect(() => {
     const savedUser = localStorage.getItem('umar_academy_user');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('umar_academy_token');
+    
+    if (savedUser && savedToken) {
       try {
         const parsedUser = JSON.parse(savedUser);
         setUser(parsedUser);
       } catch (error) {
         console.error('Error parsing saved user:', error);
         localStorage.removeItem('umar_academy_user');
+        localStorage.removeItem('umar_academy_token');
       }
     }
     setIsLoading(false);
@@ -44,50 +47,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setError(null);
     
     try {
-      // Fetch all users from backend (this will include newly created users)
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
-      const response = await fetch(`${API_BASE}/users`);
+      
+      // Use secure login endpoint with password verification
+      const response = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password, role }),
+      });
+
       if (!response.ok) {
-        throw new Error('Failed to fetch users');
+        const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
+        setError(errorData.error || 'Invalid credentials. Please try again.');
+        return false;
       }
+
+      const data = await response.json();
       
-      const users = await response.json();
-      console.log('🔍 Available users:', users.length);
-      console.log('📧 Looking for:', email, 'with role:', role);
-      
-      // Find user by email and role
-      const foundUser = users.find((u: any) => 
-        u.email === email && u.role === role
-      );
-      
-      if (foundUser) {
-        // For demo purposes, accept any password for existing users
-        const userData: User = {
-          id: foundUser._id,
-          name: foundUser.name || foundUser.fullName || 'Unknown',
-          email: foundUser.email,
-          role: foundUser.role,
-          avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.name || foundUser.fullName || 'User')}&background=random&color=fff`,
-        };
+      if (data.token && data.user) {
+        // Store token and user data
+        localStorage.setItem('umar_academy_token', data.token);
+        localStorage.setItem('umar_academy_user', JSON.stringify(data.user));
         
-        setUser(userData);
-        localStorage.setItem('umar_academy_user', JSON.stringify(userData));
-        console.log('✅ Login successful:', userData.name, userData.role);
+        setUser(data.user);
+        console.log('✅ Login successful:', data.user.name, data.user.role);
         return true;
       }
       
-      // If user not found, show available users for debugging
-      console.log('❌ User not found. Available users:');
-      users.forEach((u: any) => {
-        console.log(`  - ${u.email} (${u.role}) - ${u.name || u.fullName}`);
-      });
-      
-      setError(`User not found. Please check email and role. Available users: ${users.length}`);
+      setError('Invalid response from server');
       return false;
       
     } catch (err) {
       console.error('❌ Login error:', err);
-      setError('Failed to connect to server');
+      setError('Failed to connect to server. Please try again.');
       return false;
     }
   };
@@ -96,6 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
     setError(null);
     localStorage.removeItem('umar_academy_user');
+    localStorage.removeItem('umar_academy_token');
   };
 
   const value = {

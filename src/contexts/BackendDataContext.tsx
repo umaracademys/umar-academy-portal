@@ -130,6 +130,23 @@ export const useBackendData = () => {
 // API base URL - uses environment variable in production, localhost in development
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
+// Helper function to get auth token
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('umar_academy_token');
+};
+
+// Helper function to create headers with auth token
+const getAuthHeaders = (): HeadersInit => {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 const toIsoString = (value?: string | Date | null) => {
   if (!value) {
     return undefined;
@@ -212,14 +229,26 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const isLoadingRef = useRef(false); // Track if data is currently loading to prevent concurrent calls
 
-  // Helper function to fetch with timeout
-  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000) => {
+  // Helper function to fetch with timeout and auth headers
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000, requireAuth = true) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
+    
+    // Add auth headers if required
+    const headers = new Headers(options.headers as HeadersInit);
+    if (requireAuth) {
+      const authHeaders = getAuthHeaders();
+      Object.entries(authHeaders).forEach(([key, value]) => {
+        headers.set(key, value);
+      });
+    } else {
+      headers.set('Content-Type', 'application/json');
+    }
     
     try {
       const response = await fetch(url, {
         ...options,
+        headers,
         signal: controller.signal
       });
       clearTimeout(id);
@@ -247,8 +276,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setError(null);
       console.log('🔄 Loading data from backend...', new Date().toISOString());
 
-      // Load users from backend with timeout
-      const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000);
+      // Load users from backend with timeout (no auth required for backward compatibility)
+      const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000, false);
       console.log('📡 Backend response status:', usersResponse.status);
       
       if (!usersResponse.ok) {

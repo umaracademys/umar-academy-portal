@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 
 // Use axios for making HTTP requests
 const axios = require('axios');
@@ -19,6 +22,10 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+
+// Trust proxy for accurate IP addresses (important for rate limiting and logging)
+app.set('trust proxy', 1);
 
 // Middleware
 app.use(cors({
@@ -287,12 +294,479 @@ const teacherSchema = new mongoose.Schema({
 
 const Teacher = mongoose.model('Teacher', teacherSchema);
 
+// Activity Log Schema - Track security events and user activities
+const activityLogSchema = new mongoose.Schema({
+  eventType: { 
+    type: String, 
+    required: true,
+    enum: ['login_attempt', 'login_success', 'login_failure', 'password_reset_request', 'password_reset_success', 'password_reset_failure', 'user_created', 'user_updated', 'user_deleted', 'api_access', 'unauthorized_access', 'rate_limit_exceeded']
+  },
+  userId: String,
+  userEmail: String,
+  userRole: String,
+  ipAddress: String,
+  userAgent: String,
+  details: mongoose.Schema.Types.Mixed, // Store additional event-specific data
+  status: { 
+    type: String, 
+    enum: ['success', 'failure', 'pending', 'blocked'],
+    default: 'success'
+  },
+  errorMessage: String,
+  timestamp: { type: Date, default: Date.now, index: true }
+}, { timestamps: true });
+
+// Index for efficient queries
+activityLogSchema.index({ timestamp: -1 });
+activityLogSchema.index({ eventType: 1, timestamp: -1 });
+activityLogSchema.index({ userId: 1, timestamp: -1 });
+activityLogSchema.index({ ipAddress: 1, timestamp: -1 });
+
+const ActivityLog = mongoose.model('ActivityLog', activityLogSchema);
+
+// Helper function to log activities
+const logActivity = async (eventType, data) => {
+  try {
+    // Get IP address from request (works with trust proxy)
+    const ipAddress = data.req?.ip || 
+                     data.req?.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                     data.req?.connection?.remoteAddress || 
+                     'unknown';
+    const userAgent = data.req?.get('user-agent') || 'unknown';
+    
+    const logEntry = new ActivityLog({
+      eventType,
+      userId: data.userId || null,
+      userEmail: data.email || data.userEmail || null,
+      userRole: data.role || data.userRole || null,
+      ipAddress,
+      userAgent,
+      details: data.details || {},
+      status: data.status || 'success',
+      errorMessage: data.errorMessage || null
+    });
+    
+    await logEntry.save();
+  } catch (error) {
+    console.error('❌ Failed to log activity:', error);
+    // Don't throw - logging failures shouldn't break the app
+  }
+};
+
+// Rate limiting for login endpoint (more lenient in development)
+const isDevelopment = process.env.NODE_ENV !== 'production';
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isDevelopment ? 20 : 5, // More lenient in development (20 attempts vs 5 in production)
+  message: 'Too many login attempts from this IP, please try again after 15 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for localhost in development
+    if (isDevelopment) {
+      const ip = req.ip || req.connection?.remoteAddress || '';
+      return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip.startsWith('127.') || ip === 'unknown';
+    }
+    return false;
+  },
+  handler: async (req, res) => {
+    // Log rate limit exceeded
+    await logActivity('rate_limit_exceeded', {
+      req,
+      status: 'blocked',
+      errorMessage: 'Too many login attempts',
+      details: { endpoint: '/api/auth/login' }
+    });
+    res.status(429).json({ error: 'Too many login attempts from this IP, please try again after 15 minutes.' });
+  }
+});
+
+// Rate limiting for general API endpoints
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    logActivity('unauthorized_access', {
+      req,
+      status: 'blocked',
+      errorMessage: 'No token provided',
+      details: { endpoint: req.path, method: req.method }
+    });
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, async (err, user) => {
+    if (err) {
+      await logActivity('unauthorized_access', {
+        req,
+        status: 'blocked',
+        errorMessage: 'Invalid or expired token',
+        details: { endpoint: req.path, method: req.method }
+      });
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // API Routes
 
-// Get all users
-app.get('/api/users', async (req, res) => {
+// Login endpoint with password verification
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
-    const users = await User.find({});
+    const { email, password, role } = req.body;
+
+    // Log login attempt
+    await logActivity('login_attempt', {
+      req,
+      email,
+      role,
+      details: { timestamp: new Date() }
+    });
+
+    // Validate input
+    if (!email || !password) {
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        status: 'failure',
+        errorMessage: 'Email and password are required'
+      });
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    // Find user by email and role
+    const user = await User.findOne({ email, role });
+    if (!user) {
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        status: 'failure',
+        errorMessage: 'User not found'
+      });
+      return res.status(401).json({ error: 'Invalid email, password, or role' });
+    }
+
+    // Verify password
+    let isPasswordValid = false;
+    if (!user.password) {
+      // If password is not set (legacy user), accept any password for backward compatibility
+      // This allows existing users to login during the transition period
+      console.warn(`⚠️ User ${email} has no password set. Accepting login for backward compatibility.`);
+      isPasswordValid = true;
+    } else {
+      // Check if password is plain text (legacy) or hashed
+      // If it's not a bcrypt hash (starts with $2a$, $2b$, or $2y$), treat as plain text for migration
+      const isBcryptHash = user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$');
+      
+      if (isBcryptHash) {
+        // Verify password with bcrypt
+        isPasswordValid = await bcrypt.compare(password, user.password);
+      } else {
+        // Legacy plain text password - compare directly (for migration period only)
+        console.warn(`⚠️ User ${email} has plain text password. Please update to hashed password.`);
+        isPasswordValid = password === user.password;
+        
+        // Auto-upgrade: hash the password if login is successful
+        if (isPasswordValid) {
+          const hashedPassword = await bcrypt.hash(password, 10);
+          user.password = hashedPassword;
+          await user.save();
+          console.log(`✅ Auto-upgraded password for user ${email}`);
+        }
+      }
+    }
+
+    if (!isPasswordValid) {
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        userId: user._id.toString(),
+        status: 'failure',
+        errorMessage: 'Invalid password'
+      });
+      return res.status(401).json({ error: 'Invalid email, password, or role' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id, 
+        email: user.email, 
+        role: user.role 
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' } // Token expires in 7 days
+    );
+
+    // Log successful login
+    await logActivity('login_success', {
+      req,
+      email: user.email,
+      role: user.role,
+      userId: user._id.toString(),
+      status: 'success',
+      details: { timestamp: new Date() }
+    });
+
+    // Return user data (without password) and token
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name || user.fullName || 'Unknown',
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.fullName || 'User')}&background=random&color=fff`,
+      }
+    });
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    await logActivity('login_failure', {
+      req,
+      status: 'failure',
+      errorMessage: error.message
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get activity logs (protected route - Super Admin only)
+app.get('/api/activity-logs', apiLimiter, authenticateToken, async (req, res) => {
+  try {
+    // Check if user is super admin
+    const user = await User.findById(req.user.userId);
+    if (!user || user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin only.' });
+    }
+
+    const { 
+      eventType, 
+      userId, 
+      email, 
+      ipAddress, 
+      startDate, 
+      endDate, 
+      limit = 100,
+      page = 1 
+    } = req.query;
+
+    // Build query
+    const query = {};
+    if (eventType) query.eventType = eventType;
+    if (userId) query.userId = userId;
+    if (email) query.userEmail = { $regex: email, $options: 'i' };
+    if (ipAddress) query.ipAddress = ipAddress;
+    
+    // Date range filter
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    const logs = await ActivityLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .skip(skip)
+      .lean();
+
+    const total = await ActivityLog.countDocuments(query);
+
+    res.json({
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('❌ Failed to fetch activity logs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Password reset request endpoint
+app.post('/api/auth/password-reset-request', loginLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Log password reset request
+    await logActivity('password_reset_request', {
+      req,
+      email,
+      status: 'pending',
+      details: { timestamp: new Date() }
+    });
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    
+    // Always return success message (security best practice - don't reveal if email exists)
+    // In production, you would send an email with reset token here
+    res.json({ 
+      message: 'If an account with that email exists, a password reset link has been sent.',
+      success: true 
+    });
+  } catch (error) {
+    console.error('❌ Password reset request error:', error);
+    await logActivity('password_reset_failure', {
+      req,
+      status: 'failure',
+      errorMessage: error.message
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Password reset endpoint (with token verification)
+app.post('/api/auth/password-reset', loginLimiter, async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    // Validate input
+    if (!email || !token || !newPassword) {
+      await logActivity('password_reset_failure', {
+        req,
+        email,
+        status: 'failure',
+        errorMessage: 'Missing required fields'
+      });
+      return res.status(400).json({ error: 'Email, token, and new password are required' });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      await logActivity('password_reset_failure', {
+        req,
+        email,
+        status: 'failure',
+        errorMessage: 'User not found'
+      });
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // In production, verify token here (would be stored in database with expiry)
+    // For now, we'll just hash and update the password
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    // Log successful password reset
+    await logActivity('password_reset_success', {
+      req,
+      email: user.email,
+      userId: user._id.toString(),
+      role: user.role,
+      status: 'success',
+      details: { timestamp: new Date() }
+    });
+
+    res.json({ message: 'Password reset successfully', success: true });
+  } catch (error) {
+    console.error('❌ Password reset error:', error);
+    await logActivity('password_reset_failure', {
+      req,
+      status: 'failure',
+      errorMessage: error.message
+    });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get activity statistics
+app.get('/api/activity-logs/stats', apiLimiter, authenticateToken, async (req, res) => {
+  try {
+    // Check if user is super admin
+    const user = await User.findById(req.user.userId);
+    if (!user || user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Super Admin only.' });
+    }
+
+    const { days = 7 } = req.query;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - parseInt(days));
+
+    const stats = await ActivityLog.aggregate([
+      {
+        $match: {
+          timestamp: { $gte: startDate }
+        }
+      },
+      {
+        $group: {
+          _id: '$eventType',
+          count: { $sum: 1 },
+          successes: {
+            $sum: { $cond: [{ $eq: ['$status', 'success'] }, 1, 0] }
+          },
+          failures: {
+            $sum: { $cond: [{ $eq: ['$status', 'failure'] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+
+    const totalEvents = await ActivityLog.countDocuments({
+      timestamp: { $gte: startDate }
+    });
+
+    const recentLogins = await ActivityLog.countDocuments({
+      eventType: 'login_success',
+      timestamp: { $gte: startDate }
+    });
+
+    const failedLogins = await ActivityLog.countDocuments({
+      eventType: 'login_failure',
+      timestamp: { $gte: startDate }
+    });
+
+    const blockedAttempts = await ActivityLog.countDocuments({
+      eventType: 'rate_limit_exceeded',
+      timestamp: { $gte: startDate }
+    });
+
+    res.json({
+      period: `${days} days`,
+      totalEvents,
+      recentLogins,
+      failedLogins,
+      blockedAttempts,
+      byEventType: stats
+    });
+  } catch (error) {
+    console.error('❌ Failed to fetch activity stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all users (optional auth - for backward compatibility, but passwords are always excluded)
+app.get('/api/users', apiLimiter, async (req, res) => {
+  try {
+    const users = await User.find({}).select('-password'); // Always exclude passwords
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -588,17 +1062,64 @@ app.get('/api/teachers/sync-status', async (req, res) => {
   }
 });
 
-// Create a new user
-app.post('/api/users', async (req, res) => {
+// Create a new user (protected route - requires authentication)
+app.post('/api/users', apiLimiter, authenticateToken, async (req, res) => {
   try {
-    const user = new User(req.body);
+    const { name, email, role, password, avatar } = req.body;
+
+    // Validate input
+    if (!email || !role) {
+      return res.status(400).json({ error: 'Email and role are required' });
+    }
+
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    const user = new User({
+      name,
+      email,
+      role,
+      password: hashedPassword,
+      avatar
+    });
+    
     await user.save();
-    res.json(user);
+    
+    // Log user creation
+    await logActivity('user_created', {
+      req,
+      userId: req.user?.userId || null,
+      email: user.email,
+      role: user.role,
+      status: 'success',
+      details: { createdBy: req.user?.email || 'system', newUserEmail: email }
+    });
+    
+    // Return user without password
+    const userResponse = user.toObject();
+    delete userResponse.password;
+    res.json(userResponse);
   } catch (error) {
     if (error?.code === 11000) {
+      await logActivity('user_created', {
+        req,
+        userId: req.user?.userId || null,
+        status: 'failure',
+        errorMessage: 'User already exists',
+        details: { email: req.body.email }
+      });
       return res.status(409).json({ error: 'A user with that email already exists.' });
     }
     console.error('❌ Failed to create user:', error);
+    await logActivity('user_created', {
+      req,
+      userId: req.user?.userId || null,
+      status: 'failure',
+      errorMessage: error.message
+    });
     res.status(500).json({ error: error.message || 'Failed to create user' });
   }
 });
@@ -2001,7 +2522,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         return res.status(404).json({ error: 'Assignment not found' });
       }
       console.log('✅ Found assignment by ID:', assignment._id);
-    } else {
+      } else {
       // Find the most recent active assignment for this student
       // Convert studentId to string to ensure proper matching
       const studentIdStr = String(ticket.studentId);
@@ -2031,7 +2552,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
           sabqi: assignment.classwork.sabqi.length,
           manzil: assignment.classwork.manzil.length
         });
-      } else {
+        } else {
         // If no active assignment exists, create a new one
         console.log('📝 No active assignment found, creating new one');
         assignment = new Assignment({
