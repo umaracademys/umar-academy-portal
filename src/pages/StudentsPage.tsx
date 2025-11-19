@@ -1,12 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { useData } from '../contexts/DataContext';
 import Card from '../components/Card';
+import StudentRegistrationForm from '../components/StudentRegistrationForm';
 
 const StudentsPage: React.FC = () => {
   const { students, loading } = useBackendData();
+  const { refreshData } = useData();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<any>(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [showStudentForm, setShowStudentForm] = useState(false);
 
   const filtered = useMemo(() => {
     if (!search) return students;
@@ -38,7 +42,7 @@ const StudentsPage: React.FC = () => {
     <div className="flex flex-col sm:flex-row h-screen bg-background">
       {/* Sidebar */}
       <div className="w-full sm:w-80 border-r-0 sm:border-r-2 border-b-2 sm:border-b-0 border-gray-200 bg-white flex flex-col">
-        <div className="p-4 border-b border-gray-200">
+        <div className="p-4 border-b border-gray-200 space-y-3">
           <div className="relative">
             <input
               type="text"
@@ -56,6 +60,12 @@ const StudentsPage: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+          <button
+            onClick={() => setShowStudentForm(true)}
+            className="w-full px-4 py-2.5 bg-primary text-white rounded-lg font-extrabold hover:bg-primary/90 transition-all shadow-md hover:shadow-lg text-sm"
+          >
+            + Add Student
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {loading ? (
@@ -256,6 +266,18 @@ const StudentsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Student Registration Form Modal */}
+      {showStudentForm && (
+        <StudentRegistrationForm
+          onClose={() => {
+            setShowStudentForm(false);
+            if (refreshData) {
+              refreshData();
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
