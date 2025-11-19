@@ -23,20 +23,20 @@ const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   mobileFullWidth = false,
 }) => {
-  const baseClasses = 'font-extrabold transition-all duration-200 rounded-xl shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2';
+  const baseClasses = 'inline-flex items-center justify-center font-semibold transition-all duration-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-2 min-h-[44px]';
   
   const variantClasses = {
-    primary: 'bg-primary text-white hover:bg-primary/90 focus:ring-primary border-2 border-primary',
-    accent: 'bg-accent text-primary hover:bg-accent/90 focus:ring-accent border-2 border-accent',
-    secondary: 'bg-soft-primary text-primary hover:bg-primary/10 focus:ring-primary border-2 border-primary/30',
-    outline: 'bg-transparent text-primary hover:bg-soft-primary focus:ring-primary border-2 border-primary',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 border-2 border-red-600',
+    primary: 'bg-primary text-white hover:bg-primary/90 hover:shadow-md focus:ring-primary border border-primary',
+    accent: 'bg-accent text-primary hover:bg-accent/90 hover:shadow-md focus:ring-accent border border-accent',
+    secondary: 'bg-soft-primary text-primary hover:bg-primary/10 focus:ring-primary border border-primary/30',
+    outline: 'bg-transparent text-primary hover:bg-soft-primary focus:ring-primary border border-primary',
+    danger: 'bg-error text-white hover:bg-error/90 hover:shadow-md focus:ring-error border border-error',
   };
   
   const sizeClasses = {
-    sm: 'px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm',
-    md: 'px-4 py-2 text-sm sm:px-6 sm:py-2.5 sm:text-base',
-    lg: 'px-6 py-3 text-base sm:px-8 sm:py-4 sm:text-lg',
+    sm: 'px-3 py-1.5 text-sm',
+    md: 'px-4 py-2.5 text-base',
+    lg: 'px-6 py-3 text-lg',
   };
   
   const widthClasses = fullWidth 

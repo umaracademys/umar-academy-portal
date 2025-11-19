@@ -33,15 +33,15 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
   }, [adminNotifications, assignments, recitationTickets, recitationReviews]);
 
   return (
-    <header className="bg-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-3">
+    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center space-x-4">
             {/* Mobile Menu Button */}
             {onMenuClick && (
               <button
                 onClick={onMenuClick}
-                className="lg:hidden p-2 text-primary-600 hover:text-primary-800 transition-colors"
+                className="lg:hidden p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
                 title="Menu"
               >
                 <svg
@@ -60,8 +60,10 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
                 </svg>
               </button>
             )}
-            <div className="text-primary-600 text-2xl font-bold">
-              📚 Umar Academy
+            <div className="flex items-center space-x-3">
+              <div className="text-2xl font-bold text-primary">
+                📚 Umar Academy
+              </div>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -69,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
             {showNotificationBell && onNotificationClick && (
               <button
                 onClick={onNotificationClick}
-                className="relative p-2 text-primary-600 hover:text-primary-800 transition-colors"
+                className="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
                 title="Notifications"
               >
                 <svg
@@ -87,27 +89,27 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
                   />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+                  <span className="absolute top-1 right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-semibold text-white bg-error rounded-full">
                     {unreadCount > 99 ? '99+' : unreadCount}
                   </span>
                 )}
               </button>
             )}
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
               {user?.avatar && (
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className={`h-10 w-10 rounded-full ${
-                    user.role === 'superadmin' ? 'ring-2 ring-red-500' : ''
+                  className={`h-10 w-10 rounded-full border-2 ${
+                    user.role === 'superadmin' ? 'border-error' : 'border-gray-200'
                   }`}
                 />
               )}
-              <div>
-                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+              <div className="hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
                 <div className="flex items-center space-x-2">
                   {user?.role === 'superadmin' ? (
-                    <span className="text-xs font-bold text-white bg-red-600 px-2 py-0.5 rounded">
+                    <span className="text-xs font-bold text-white bg-error px-2 py-0.5 rounded">
                       👑 SUPER ADMIN
                     </span>
                   ) : (
@@ -118,11 +120,7 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
             </div>
             <button
               onClick={logout}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
-                user?.role === 'superadmin'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-primary-600 hover:bg-primary-700'
-              }`}
+              className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primary/90 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
             >
               Logout
             </button>

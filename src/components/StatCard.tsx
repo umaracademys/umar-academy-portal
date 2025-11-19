@@ -10,14 +10,16 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon }) => {
   const badgeLabel = icon?.trim() || title.slice(0, 2).toUpperCase();
 
   return (
-    <div className="rounded-2xl border border-accent-soft bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary-soft">{title}</p>
-          <p className="mt-2 text-2xl font-semibold text-primary">{value}</p>
+    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-all duration-200">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">{title}</p>
+          <p className="text-3xl font-bold text-primary">{value}</p>
         </div>
-        <div className="inline-flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-soft-primary text-sm font-semibold text-primary">
-          {badgeLabel}
+        <div className="flex-shrink-0 ml-4">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-soft-primary text-base font-bold text-primary">
+            {badgeLabel}
+          </div>
         </div>
       </div>
     </div>

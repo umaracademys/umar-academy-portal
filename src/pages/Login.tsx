@@ -49,32 +49,32 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#2E4D32' }}>
+    <div className="min-h-screen flex bg-background">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12">
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-primary">
         <div>
           <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">Umar Academy</h1>
-          <div className="w-20 h-1 mb-6" style={{ backgroundColor: '#E7AA39' }}></div>
-          <p className="text-xl text-white opacity-90 leading-relaxed">
+          <div className="w-20 h-1 mb-6 bg-accent rounded-full"></div>
+          <p className="text-xl text-white/90 leading-relaxed">
             Excellence in Education.<br />
             Empowering Students, Teachers & Administrators.
           </p>
         </div>
-        <div className="text-white text-sm opacity-75">
+        <div className="text-white/75 text-sm">
           © 2025 Umar Academy. All rights reserved.
         </div>
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-50">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2" style={{ color: '#2E4D32' }}>Umar Academy</h1>
-            <div className="w-16 h-1 mx-auto" style={{ backgroundColor: '#E7AA39' }}></div>
+            <h1 className="text-3xl font-bold mb-2 text-primary">Umar Academy</h1>
+            <div className="w-16 h-1 mx-auto bg-accent rounded-full"></div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-xl p-8">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8">
             <div className="mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Welcome Back</h2>
               <p className="text-gray-600 mt-1">Please sign in to continue</p>
@@ -82,14 +82,14 @@ const Login: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {loginError && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded">
+                <div className="bg-soft-error border border-error/30 text-error px-4 py-3 rounded-lg">
                   <p className="text-sm font-medium">{loginError}</p>
                 </div>
               )}
               
               {/* Role Selection */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
+                <label className="block text-sm font-semibold text-primary mb-3">
                   Account Type
                 </label>
                 <div className="grid grid-cols-2 gap-3">
@@ -98,12 +98,12 @@ const Login: React.FC = () => {
                       key={r}
                       type="button"
                       onClick={() => setRole(r)}
-                      className={`py-3 px-4 rounded-lg font-semibold capitalize transition-all text-sm border-2 ${
+                      className={`py-3 px-4 rounded-lg font-semibold capitalize transition-all text-sm border ${
                         role === r
                           ? 'border-transparent text-white shadow-md'
-                          : 'border-gray-200 text-gray-700 bg-white hover:border-gray-300'
+                          : 'border-gray-300 text-gray-700 bg-white hover:border-gray-400 hover:bg-gray-50'
                       }`}
-                      style={role === r ? { backgroundColor: r === 'superadmin' ? '#dc2626' : '#2E4D32' } : {}}
+                      style={role === r ? { backgroundColor: r === 'superadmin' ? '#EF4444' : '#1F3224' } : {}}
                     >
                       {r === 'superadmin' ? 'Super Admin' : r}
                     </button>
@@ -113,7 +113,7 @@ const Login: React.FC = () => {
 
               {/* Email Input */}
               <div>
-                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
+                <label htmlFor="email" className="block text-sm font-semibold text-primary mb-2">
                   Email Address
                 </label>
                 <input
@@ -121,7 +121,7 @@ const Login: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value.toLowerCase().trim())}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                   placeholder="your.email@umaracademy.com"
                   required
                   autoComplete="email"
@@ -130,7 +130,7 @@ const Login: React.FC = () => {
 
               {/* Password Input */}
               <div>
-                <label htmlFor="password" className="block text-sm font-semibold text-gray-700 mb-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-primary mb-2">
                   Password
                 </label>
                 <div className="relative">
@@ -139,7 +139,7 @@ const Login: React.FC = () => {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition"
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     placeholder="Enter your password"
                     required
                     minLength={3}
@@ -148,7 +148,7 @@ const Login: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary focus:outline-none transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -170,16 +170,7 @@ const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full text-white py-3.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                style={{ backgroundColor: '#2E4D32' }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = '#253d28';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2E4D32';
-                }}
+                className="w-full bg-primary text-white py-3.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
