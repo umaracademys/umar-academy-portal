@@ -225,10 +225,15 @@ const SuperAdminDashboard: React.FC = () => {
       label: '🎙️ Recordings Library',
       description: 'View and manage all student recitation recordings with filters.',
       onClick: () => {
+        alert('Recordings Library button clicked! Check console (F12) for logs.');
         console.log('🎙️ Recordings Library button clicked!');
         console.log('📊 Current showRecordings state:', showRecordings);
+        console.log('📊 recitationTickets count:', recitationTickets?.length || 0);
         setShowRecordings(true);
         console.log('✅ setShowRecordings(true) called');
+        setTimeout(() => {
+          console.log('⏰ After 1 second, showRecordings should be:', true);
+        }, 1000);
       },
       badge: null,
       emphasis: 'primary',
