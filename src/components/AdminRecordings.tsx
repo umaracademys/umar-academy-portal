@@ -359,7 +359,7 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
                   : 'Try adjusting your filters.'}
               </p>
               {ticketsWithRecordings.length === 0 && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-2xl mx-auto">
                   <p className="text-sm text-blue-800">
                     <strong>Info:</strong> Found {recitationTickets.length} total tickets, but none have recordings yet.
                     <br />
@@ -373,7 +373,26 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
                     • Check browser console for detailed ticket information
                     <br />
                     <br />
-                    Recordings are created automatically when teachers open and submit tickets.
+                    <strong>Sample Tickets (first 5):</strong>
+                    <div className="mt-2 space-y-1 text-xs bg-white p-2 rounded">
+                      {recitationTickets.slice(0, 5).map((t, idx) => (
+                        <div key={t.id || idx} className="border-b pb-1">
+                          <strong>Ticket {idx + 1}:</strong> {t.studentName} - {t.type} - Status: {t.status}
+                          <br />
+                          Has recording: {t.recordingUrl ? '✅ YES: ' + t.recordingUrl : '❌ NO'}
+                        </div>
+                      ))}
+                      {recitationTickets.length === 0 && (
+                        <div className="text-red-600 font-bold">
+                          ⚠️ NO TICKETS FOUND! This means either:
+                          <br />1. No tickets have been created yet
+                          <br />2. Tickets exist but aren't being loaded from the backend
+                          <br />3. Check the Network tab to see if /api/tickets is returning data
+                        </div>
+                      )}
+                    </div>
+                    <br />
+                    Recordings are created automatically when teachers open and submit tickets with the auto-recording feature.
                   </p>
                 </div>
               )}
