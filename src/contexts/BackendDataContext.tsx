@@ -1131,7 +1131,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           body: JSON.stringify(updatePayload),
         },
         10000,
-        false // Teachers endpoint doesn't require auth
+        true // Require authentication
       );
 
       // If that fails, try /api/users/:id as fallback
@@ -1143,7 +1143,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             body: JSON.stringify(updatePayload),
           },
           10000,
-          false // Users endpoint doesn't require auth for updates
+          true // Require authentication
         );
       }
 
