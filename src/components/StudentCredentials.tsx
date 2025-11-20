@@ -410,7 +410,12 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                 >
                   Account settings
                 </button>
-                <button className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                <button 
+                  onClick={() => {
+                    alert('Report generation: This would generate a credentials report for this student. API integration needed.');
+                  }}
+                  className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                >
                   Generate report
                 </button>
               </div>
@@ -451,8 +456,18 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       <p className="font-medium text-gray-900">SMS Authentication</p>
                       <p className="text-sm text-gray-600">Receive verification codes via SMS</p>
                     </div>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Enable
+                    <button 
+                      onClick={() => {
+                        setAccountSettings(prev => ({ ...prev, twoFactorEnabled: !prev.twoFactorEnabled }));
+                        alert('Two-Factor Authentication: This would enable SMS 2FA. API integration needed.');
+                      }}
+                      className={`px-4 py-2 rounded-lg transition ${
+                        accountSettings.twoFactorEnabled
+                          ? 'bg-gray-600 text-white hover:bg-gray-700'
+                          : 'bg-primary-600 text-white hover:bg-primary-700'
+                      }`}
+                    >
+                      {accountSettings.twoFactorEnabled ? 'Disable' : 'Enable'}
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
@@ -460,8 +475,18 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       <p className="font-medium text-gray-900">Email Authentication</p>
                       <p className="text-sm text-gray-600">Receive verification codes via email</p>
                     </div>
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
-                      Enable
+                    <button 
+                      onClick={() => {
+                        setAccountSettings(prev => ({ ...prev, twoFactorEnabled: !prev.twoFactorEnabled }));
+                        alert('Two-Factor Authentication: This would enable Email 2FA. API integration needed.');
+                      }}
+                      className={`px-4 py-2 rounded-lg transition ${
+                        accountSettings.twoFactorEnabled
+                          ? 'bg-gray-600 text-white hover:bg-gray-700'
+                          : 'bg-primary-600 text-white hover:bg-primary-700'
+                      }`}
+                    >
+                      {accountSettings.twoFactorEnabled ? 'Disable' : 'Enable'}
                     </button>
                   </div>
                 </div>
@@ -573,7 +598,15 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                       <p className="text-sm text-gray-600">Receive push notifications on mobile</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked />
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        defaultChecked
+                        onChange={(e) => {
+                          // Note: This would typically save to backend
+                          console.log('Push Notifications:', e.target.checked);
+                        }}
+                      />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
                   </div>
