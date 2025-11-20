@@ -683,7 +683,19 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
             )}
 
             {activeTab === 'notes' && (
-              <SectionCard title="Teacher Notes" icon="📄" actionLabel="Add Note">
+              <SectionCard 
+                title="Teacher Notes" 
+                icon="📄" 
+                actionLabel="Add Note"
+                onAction={() => {
+                  const noteContent = prompt('Enter a note for this student:');
+                  if (noteContent && noteContent.trim()) {
+                    // Note: This would typically call an API to save the note
+                    // For now, we'll just show an alert
+                    alert('Note functionality: This would save a note to the student profile. API integration needed.');
+                  }
+                }}
+              >
                 {notes.length === 0 ? (
                   <EmptyState message="No notes for this student yet." />
                 ) : (
