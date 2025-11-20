@@ -199,20 +199,20 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-lg w-96 p-6 space-y-4 max-h-[90vh] overflow-y-auto" dir="rtl">
-        <h2 className="text-lg font-semibold text-gray-800 text-right" dir="rtl">
+      <div className="bg-white rounded-xl shadow-lg w-96 p-6 space-y-4 max-h-[90vh] overflow-y-auto" dir="ltr">
+        <h2 className="text-lg font-semibold text-gray-800 text-left" dir="ltr">
           Mark Mistake – Surah {word.surah}, Ayah {word.ayah}
         </h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1 text-right" dir="rtl">
+          <label className="block text-sm font-medium text-gray-600 mb-1 text-left" dir="ltr">
             Mistake Type:
           </label>
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
             className="w-full border border-gray-300 rounded-md p-2"
-            dir="rtl"
+            dir="ltr"
           >
             <option value="">Choose...</option>
             {mistakeTypes.map((type) => (
@@ -224,35 +224,35 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1 text-right" dir="rtl">
+          <label className="block text-sm font-medium text-gray-600 mb-1 text-left" dir="ltr">
             Optional Note:
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-2 text-right"
+            className="w-full border border-gray-300 rounded-md p-2 text-left"
             placeholder="Add comment..."
             rows={3}
-            dir="rtl"
+            dir="ltr"
           />
         </div>
 
         {/* Audio Recording Section */}
-        <div className="border-t border-gray-200 pt-4" dir="rtl">
-          <label className="block text-sm font-medium text-gray-600 mb-2 text-right" dir="rtl">
+        <div className="border-t border-gray-200 pt-4" dir="ltr">
+          <label className="block text-sm font-medium text-gray-600 mb-2 text-left" dir="ltr">
             Audio Recording (Optional):
           </label>
-          <p className="text-xs text-gray-500 mb-3 text-right" dir="rtl">
+          <p className="text-xs text-gray-500 mb-3 text-left" dir="ltr">
             Record how to read this correctly for the student
           </p>
           
           {!audioUrl ? (
-            <div className="flex items-center gap-2" dir="rtl">
+            <div className="flex items-center gap-2" dir="ltr">
               {!isRecording ? (
                 <button
                   onClick={startRecording}
                   className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                  dir="rtl"
+                  dir="ltr"
                 >
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
@@ -260,11 +260,11 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
                   Record Audio
                 </button>
               ) : (
-                <div className="flex items-center gap-3" dir="rtl">
+                <div className="flex items-center gap-3" dir="ltr">
                   <button
                     onClick={stopRecording}
                     className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                    dir="rtl"
+                    dir="ltr"
                   >
                     <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
                     Stop ({formatTime(recordingTime)})
@@ -277,18 +277,18 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
               <audio controls src={audioUrl} className="w-full">
                 Your browser does not support the audio element.
               </audio>
-              <div className="flex gap-2" dir="rtl">
+              <div className="flex gap-2" dir="ltr">
                 <button
                   onClick={deleteRecording}
                   className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
-                  dir="rtl"
+                  dir="ltr"
                 >
                   Delete Recording
                 </button>
                 <button
                   onClick={startRecording}
                   className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
-                  dir="rtl"
+                  dir="ltr"
                 >
                   Record Again
                 </button>
@@ -297,7 +297,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200" dir="rtl">
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200" dir="ltr">
           <button
             onClick={() => {
               if (selectedType) {
@@ -306,15 +306,15 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
               }
             }}
             disabled={!selectedType}
-            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-right"
-            dir="rtl"
+            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-left"
+            dir="ltr"
           >
             Save
           </button>
           <button
             onClick={onClose}
-            className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300 text-right"
-            dir="rtl"
+            className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300 text-left"
+            dir="ltr"
           >
             Cancel
           </button>
