@@ -165,13 +165,28 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="mb-4 text-lg font-semibold text-primary">Quick Actions</h3>
                   <div className="space-y-3">
-                    <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                    <button 
+                      onClick={() => {
+                        alert('Generate Progress Report: This would generate a progress report for this student. API integration needed.');
+                      }}
+                      className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                    >
                       Generate progress report
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent">
+                    <button 
+                      onClick={() => {
+                        alert('Export Analytics Data: This would export analytics data for this student. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                    >
                       Export analytics data
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Schedule Parent Meeting: This would open a calendar to schedule a meeting with the parent. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Schedule parent meeting
                     </button>
                   </div>
@@ -316,13 +331,28 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement Actions</h3>
                   <div className="space-y-3">
-                    <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                    <button 
+                      onClick={() => {
+                        alert('Send Engagement Report: This would send an engagement report via email. API integration needed.');
+                      }}
+                      className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                    >
                       Send engagement report
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent">
+                    <button 
+                      onClick={() => {
+                        alert('Schedule Check-in: This would open a calendar to schedule a check-in with the student. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                    >
                       Schedule check-in
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Review Participation: This would open a detailed participation review. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Review participation
                     </button>
                   </div>
@@ -337,19 +367,44 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Generate Reports</h3>
                   <div className="space-y-3">
-                    <button className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]">
+                    <button 
+                      onClick={() => {
+                        alert('Academic Progress Report: This would generate an academic progress report. API integration needed.');
+                      }}
+                      className="w-full rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                    >
                       Academic progress report
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent">
+                    <button 
+                      onClick={() => {
+                        alert('Attendance Report: This would generate an attendance report. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                    >
                       Attendance report
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Performance Analysis: This would generate a performance analysis report. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Performance analysis
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Engagement Report: This would generate an engagement report. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Engagement report
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Comprehensive Report: This would generate a comprehensive report covering all aspects. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Comprehensive report
                     </button>
                   </div>
@@ -358,16 +413,36 @@ const StudentAnalytics: React.FC<StudentAnalyticsProps> = ({ student, onClose })
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Export Options</h3>
                   <div className="space-y-3">
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Export PDF Report: This would export the report as a PDF file. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Export PDF report
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Export Excel Spreadsheet: This would export the data as an Excel spreadsheet. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Export Excel spreadsheet
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        alert('Email Summary: This would email a summary report to the parent/guardian. API integration needed.');
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Email summary
                     </button>
-                    <button className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary">
+                    <button 
+                      onClick={() => {
+                        window.print();
+                      }}
+                      className="w-full rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
                       Print report
                     </button>
                   </div>
