@@ -1524,13 +1524,13 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                             : ''
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 text-right">
-                            <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center justify-between" dir="rtl">
+                          <div className="flex-1 text-right" dir="rtl">
+                            <div className="flex items-center gap-2 justify-start" dir="rtl">
                               <span className="text-xs font-semibold text-gray-600">
                                 {surah.id}.
                               </span>
-                              <span className={`text-sm sm:text-base font-semibold ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`} style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}>
+                              <span className={`text-sm sm:text-base font-semibold text-right ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`} style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}>
                                 {surah.name_arabic || FALLBACK_CHAPTERS.find(fc => fc.id === surah.id)?.name_arabic || surah.name_simple}
                               </span>
                             </div>
@@ -1540,7 +1540,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                               </div>
                             )}
                           </div>
-                          <div className="text-[10px] text-gray-400 ml-2">
+                          <div className="text-[10px] text-gray-400 mr-2" dir="ltr">
                             Pg {surah.pages?.[0]}
                           </div>
                         </div>
