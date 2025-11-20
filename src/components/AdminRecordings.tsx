@@ -124,13 +124,28 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   };
 
   const getRecordingUrl = (ticket: Ticket) => {
-    if (!ticket.recordingUrl) return null;
+    if (!ticket.recordingUrl) {
+      console.log('⚠️ No recordingUrl for ticket:', ticket.id, ticket.studentName);
+      return null;
+    }
+    
     const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+    console.log('🔗 Building recording URL:', {
+      originalUrl: ticket.recordingUrl,
+      apiBase: API_BASE,
+      isFullUrl: ticket.recordingUrl.startsWith('http')
+    });
+    
     // If it's already a full URL, return as is, otherwise prepend API base
     if (ticket.recordingUrl.startsWith('http')) {
       return ticket.recordingUrl;
     }
-    return `${API_BASE.replace('/api', '')}${ticket.recordingUrl}`;
+    
+    // Handle relative paths
+    const baseUrl = API_BASE.replace('/api', '');
+    const fullUrl = `${baseUrl}${ticket.recordingUrl.startsWith('/') ? '' : '/'}${ticket.recordingUrl}`;
+    console.log('✅ Final recording URL:', fullUrl);
+    return fullUrl;
   };
 
   useEffect(() => {
@@ -147,8 +162,19 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
     });
   }, [recitationTickets.length]);
 
+  console.log('🎙️ AdminRecordings: Rendering with', {
+    totalTickets: recitationTickets.length,
+    ticketsWithRecordings: ticketsWithRecordings.length,
+    filteredRecordings: filteredRecordings.length
+  });
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={(e) => {
+      if (e.target === e.currentTarget) {
+        console.log('🔙 Clicked outside modal, closing...');
+        onClose();
+      }
+    }}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden flex flex-col my-8">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-600 to-purple-800 text-white p-6">
