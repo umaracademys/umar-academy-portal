@@ -237,6 +237,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [tickets, setTickets] = useState<AssignmentTicket[]>([]);
   const [recitationTickets, setRecitationTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingStep, setLoadingStep] = useState<string>('Initializing...');
   const [error, setError] = useState<string | null>(null);
   const isLoadingRef = useRef(false); // Track if data is currently loading to prevent concurrent calls
 
@@ -664,11 +665,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           }));
       }
 
+      setLoadingStep('Processing data...');
       console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
 
       setStudents(studentsData);
       setTeachers(teachersData);
       setAdmins(adminsData);
+      
+      setLoadingStep('Complete!');
 
     } catch (err) {
       setError('Failed to load data from backend');
@@ -2404,6 +2408,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     getTeacherById,
     getStudentByEmail,
     loading,
+    loadingStep,
     error,
     refreshData,
     assignments,

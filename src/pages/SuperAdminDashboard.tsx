@@ -52,7 +52,7 @@ const SuperAdminDashboard: React.FC = () => {
     deleteTeacher,
   } = useData();
 
-  const { getPendingReviewTickets, recitationTickets, assignments, fixMissingAssignmentIds } = useBackendData();
+  const { getPendingReviewTickets, recitationTickets, assignments, fixMissingAssignmentIds, loadingStep } = useBackendData();
 
   // Track tickets with missing assignment IDs
   const [ticketsWithMissingIds, setTicketsWithMissingIds] = useState<number>(0);
@@ -816,12 +816,16 @@ const SuperAdminDashboard: React.FC = () => {
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
               <div className="flex items-center justify-center h-64">
-                <div className="text-center">
+                <div className="text-center max-w-md">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-primary font-semibold">Loading data from backend...</p>
-                  <p className="text-gray-500 text-sm mt-2">This may take a few seconds</p>
+                  <p className="text-primary font-semibold text-lg">Loading data from backend...</p>
+                  <p className="text-primary font-medium mt-3 text-base">{loadingStep || 'Initializing...'}</p>
+                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-xs mx-auto">
+                    <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-3">Please wait while we fetch your data</p>
                   {error && (
-                    <p className="text-error text-sm mt-2">Error: {error}</p>
+                    <p className="text-red-600 text-sm mt-3 font-semibold">Error: {error}</p>
                   )}
                 </div>
               </div>
