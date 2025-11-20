@@ -451,15 +451,41 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             approvedAt: ticket.approvedAt ? new Date(ticket.approvedAt) : undefined,
             reassignedAt: ticket.reassignedAt ? new Date(ticket.reassignedAt) : undefined,
             sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined,
-            recordingUrl: ticket.recordingUrl,
-            recordingFormat: ticket.recordingFormat,
-            recordingDuration: ticket.recordingDuration,
+            recordingUrl: ticket.recordingUrl || null,
+            recordingFormat: ticket.recordingFormat || null,
+            recordingDuration: ticket.recordingDuration || null,
             recordingStartedAt: ticket.recordingStartedAt ? new Date(ticket.recordingStartedAt) : undefined,
             recordingStoppedAt: ticket.recordingStoppedAt ? new Date(ticket.recordingStoppedAt) : undefined
           }));
         setRecitationTickets(recitationTicketsData);
         console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
-        console.log('🎙️ Tickets with recordings:', recitationTicketsData.filter((t: any) => t.recordingUrl).length);
+        const ticketsWithRecordings = recitationTicketsData.filter((t: any) => t.recordingUrl);
+        console.log('🎙️ Tickets with recordings:', ticketsWithRecordings.length);
+        if (ticketsWithRecordings.length > 0) {
+          console.log('📋 Sample tickets with recordings:');
+          ticketsWithRecordings.slice(0, 3).forEach((t: any) => {
+            console.log('  -', {
+              id: t.id,
+              studentName: t.studentName,
+              type: t.type,
+              recordingUrl: t.recordingUrl,
+              recordingFormat: t.recordingFormat,
+              recordingDuration: t.recordingDuration
+            });
+          });
+        } else {
+          console.log('⚠️ No tickets with recordings found. Checking all tickets:');
+          recitationTicketsData.slice(0, 5).forEach((t: any) => {
+            console.log('  -', {
+              id: t.id,
+              studentName: t.studentName,
+              type: t.type,
+              status: t.status,
+              hasRecordingUrl: !!t.recordingUrl,
+              recordingUrl: t.recordingUrl
+            });
+          });
+        }
       }
 
       // Load actual student records from /api/students endpoint

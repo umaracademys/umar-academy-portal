@@ -18,12 +18,53 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
 
   // Get all tickets with recordings
   const ticketsWithRecordings = useMemo(() => {
-    const filtered = recitationTickets.filter(ticket => ticket.recordingUrl);
-    console.log('🔍 AdminRecordings: Total tickets:', recitationTickets.length);
-    console.log('🔍 AdminRecordings: Tickets with recordings:', filtered.length);
-    filtered.forEach(t => {
-      console.log('  -', t.studentName, t.type, 'recording:', t.recordingUrl);
+    console.log('🔍 AdminRecordings: Filtering tickets...');
+    console.log('📊 Total recitationTickets:', recitationTickets.length);
+    
+    // Log all tickets to see what we have
+    if (recitationTickets.length > 0) {
+      console.log('📋 Sample tickets (first 5):');
+      recitationTickets.slice(0, 5).forEach((t, idx) => {
+        console.log(`  ${idx + 1}.`, {
+          id: t.id,
+          studentName: t.studentName,
+          type: t.type,
+          status: t.status,
+          hasRecordingUrl: !!t.recordingUrl,
+          recordingUrl: t.recordingUrl,
+          recordingFormat: t.recordingFormat,
+          recordingDuration: t.recordingDuration
+        });
+      });
+    }
+    
+    const filtered = recitationTickets.filter(ticket => {
+      const hasRecording = !!ticket.recordingUrl;
+      if (!hasRecording) {
+        console.log('❌ Ticket without recording:', {
+          id: ticket.id,
+          studentName: ticket.studentName,
+          type: ticket.type,
+          status: ticket.status
+        });
+      }
+      return hasRecording;
     });
+    
+    console.log('✅ Tickets with recordings:', filtered.length);
+    if (filtered.length > 0) {
+      console.log('📋 Tickets with recordings:');
+      filtered.forEach(t => {
+        console.log('  -', t.studentName, t.type, 'recording:', t.recordingUrl);
+      });
+    } else {
+      console.log('⚠️ No tickets with recordings found!');
+      console.log('💡 This could mean:');
+      console.log('   1. No tickets have been submitted with recordings yet');
+      console.log('   2. Recordings are not being saved when tickets are submitted');
+      console.log('   3. The recordingUrl field is not being loaded from the backend');
+    }
+    
     return filtered;
   }, [recitationTickets]);
 
@@ -290,6 +331,16 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
                 <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
                   <p className="text-sm text-blue-800">
                     <strong>Info:</strong> Found {recitationTickets.length} total tickets, but none have recordings yet.
+                    <br />
+                    <br />
+                    <strong>Debug Info:</strong>
+                    <br />
+                    • Total tickets loaded: {recitationTickets.length}
+                    <br />
+                    • Tickets with recordingUrl: {recitationTickets.filter(t => t.recordingUrl).length}
+                    <br />
+                    • Check browser console for detailed ticket information
+                    <br />
                     <br />
                     Recordings are created automatically when teachers open and submit tickets.
                   </p>
