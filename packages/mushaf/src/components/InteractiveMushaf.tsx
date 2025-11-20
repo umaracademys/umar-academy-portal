@@ -201,12 +201,12 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg w-96 p-6 space-y-4 max-h-[90vh] overflow-y-auto" dir="rtl">
         <h2 className="text-lg font-semibold text-gray-800" dir="rtl">
-          تحديد خطأ – سورة {word.surah}، آية {word.ayah}
+          Mark Mistake – Surah {word.surah}, Ayah {word.ayah}
         </h2>
 
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1" dir="rtl">
-            نوع الخطأ:
+            Mistake Type:
           </label>
           <select
             value={selectedType}
@@ -214,7 +214,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
             className="w-full border border-gray-300 rounded-md p-2"
             dir="rtl"
           >
-            <option value="">اختر...</option>
+            <option value="">Choose...</option>
             {mistakeTypes.map((type) => (
               <option key={type} value={type}>
                 {type}
@@ -225,13 +225,13 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1" dir="rtl">
-            ملاحظة اختيارية:
+            Optional Note:
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
             className="w-full border border-gray-300 rounded-md p-2"
-            placeholder="أضف تعليق..."
+            placeholder="Add comment..."
             rows={3}
             dir="rtl"
           />
@@ -240,10 +240,10 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
         {/* Audio Recording Section */}
         <div className="border-t border-gray-200 pt-4" dir="rtl">
           <label className="block text-sm font-medium text-gray-600 mb-2" dir="rtl">
-            تسجيل صوتي (اختياري):
+            Audio Recording (Optional):
           </label>
           <p className="text-xs text-gray-500 mb-3" dir="rtl">
-            سجل كيفية قراءة هذا بشكل صحيح للطالب
+            Record how to read this correctly for the student
           </p>
           
           {!audioUrl ? (
@@ -257,7 +257,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
                   </svg>
-                  تسجيل صوتي
+                  Record Audio
                 </button>
               ) : (
                 <div className="flex items-center gap-3" dir="rtl">
@@ -267,7 +267,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
                     dir="rtl"
                   >
                     <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                    إيقاف ({formatTime(recordingTime)})
+                    Stop ({formatTime(recordingTime)})
                   </button>
                 </div>
               )}
@@ -283,14 +283,14 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
                   className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
                   dir="rtl"
                 >
-                  حذف التسجيل
+                  Delete Recording
                 </button>
                 <button
                   onClick={startRecording}
                   className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
                   dir="rtl"
                 >
-                  تسجيل مرة أخرى
+                  Record Again
                 </button>
               </div>
             </div>
@@ -303,7 +303,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
             className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300"
             dir="rtl"
           >
-            إلغاء
+            Cancel
           </button>
           <button
             onClick={() => {
@@ -316,7 +316,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
             className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
             dir="rtl"
           >
-            حفظ
+            Save
           </button>
         </div>
       </div>
@@ -1420,7 +1420,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             title={showSurahIndex ? 'Hide surah index' : 'Show surah index'}
             dir="rtl"
           >
-            <span className="hidden sm:inline">سورة </span>فهرس
+            <span className="hidden sm:inline">Surah </span>Index
             {showSurahIndex && chapters.length > 0 && (
               <span className="mr-1 text-[10px] opacity-75" dir="ltr">
                 ({chapters.length})
@@ -1464,7 +1464,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   {!isIndexMinimized && (
-                    <h3 className="text-sm font-bold text-gray-900" dir="rtl">فهرس السور</h3>
+                    <h3 className="text-sm font-bold text-gray-900" dir="rtl">Surah Index</h3>
                   )}
                   <div className="flex items-center gap-1 ml-auto">
                     {/* Minimize button - desktop only */}
@@ -1498,7 +1498,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                 {!isIndexMinimized && (
                   <input
                     type="text"
-                    placeholder="البحث عن سورة..."
+                    placeholder="Search surah..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
@@ -1510,7 +1510,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                 <div className="overflow-y-auto pr-1 flex-1">
                   {filteredChapters.length === 0 ? (
                     <div className="p-4 text-center text-sm text-gray-500" dir="rtl">
-                      لم يتم العثور على سور
+                      No surahs found
                     </div>
                   ) : (
                     filteredChapters.map((surah) => (
