@@ -43,6 +43,7 @@ interface BackendDataContextType {
   getTeacherById: (id: string) => Teacher | undefined;
   getStudentByEmail: (email: string) => Student | undefined;
   loading: boolean;
+  loadingStep: string;
   error: string | null;
   refreshData: () => Promise<void>;
   // Assignment management (new multi-phase system)
