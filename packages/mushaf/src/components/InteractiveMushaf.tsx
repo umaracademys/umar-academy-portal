@@ -1132,28 +1132,9 @@ export const WordByWordPage: React.FC<{
             </div>
           </div>
 
-          {/* Page Navigation Buttons - Centered */}
+          {/* Page Navigation Buttons - Centered, RTL */}
           {onPageChange && (
-            <div className="mt-4 sm:mt-6 flex justify-center items-center gap-4">
-              <button
-                onClick={() => onPageChange(Math.max(1, pageNumber - 1))}
-                disabled={pageNumber <= 1}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  minWidth: '120px'
-                }}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>Previous</span>
-              </button>
-              
-              <span className="px-3 sm:px-4 py-2 text-sm sm:text-base font-semibold text-primary">
-                Page {pageNumber} / 604
-              </span>
-              
+            <div className="mt-4 sm:mt-6 flex justify-center items-center gap-4" dir="rtl">
               <button
                 onClick={() => onPageChange(Math.min(604, pageNumber + 1))}
                 disabled={pageNumber >= 604}
@@ -1162,8 +1143,29 @@ export const WordByWordPage: React.FC<{
                   backgroundColor: 'var(--color-primary)',
                   minWidth: '120px'
                 }}
+                dir="rtl"
               >
-                <span>Next</span>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>التالي</span>
+              </button>
+              
+              <span className="px-3 sm:px-4 py-2 text-sm sm:text-base font-semibold text-primary" dir="ltr">
+                Page {pageNumber} / 604
+              </span>
+              
+              <button
+                onClick={() => onPageChange(Math.max(1, pageNumber - 1))}
+                disabled={pageNumber <= 1}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  minWidth: '120px'
+                }}
+                dir="rtl"
+              >
+                <span>السابق</span>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
