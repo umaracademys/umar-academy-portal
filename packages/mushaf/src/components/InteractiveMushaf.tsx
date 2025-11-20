@@ -297,14 +297,7 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
           )}
         </div>
 
-        <div className="flex justify-start gap-2 pt-2 border-t border-gray-200" dir="rtl">
-          <button
-            onClick={onClose}
-            className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300"
-            dir="rtl"
-          >
-            Cancel
-          </button>
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200" dir="rtl">
           <button
             onClick={() => {
               if (selectedType) {
@@ -313,10 +306,17 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
               }
             }}
             disabled={!selectedType}
-            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-right"
             dir="rtl"
           >
             Save
+          </button>
+          <button
+            onClick={onClose}
+            className="px-3 py-1 bg-gray-200 rounded-md hover:bg-gray-300 text-right"
+            dir="rtl"
+          >
+            Cancel
           </button>
         </div>
       </div>
