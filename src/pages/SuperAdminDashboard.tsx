@@ -35,6 +35,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import AdminTicketReview from '../components/AdminTicketReview';
 import AdminNotificationCenter from '../components/AdminNotificationCenter';
 import ActivityLog from '../components/ActivityLog';
+import AdminRecordings from '../components/AdminRecordings';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -147,6 +148,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showActivityLog, setShowActivityLog] = useState(false);
+  const [showRecordings, setShowRecordings] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -215,6 +217,14 @@ const SuperAdminDashboard: React.FC = () => {
       label: 'Activity Log',
       description: 'Monitor security events, login attempts, and user activities.',
       onClick: () => setShowActivityLog(true),
+      badge: null,
+      emphasis: 'accent-solid',
+    },
+    {
+      id: 'recordings',
+      label: 'Recordings Library',
+      description: 'View and manage all student recitation recordings with filters.',
+      onClick: () => setShowRecordings(true),
       badge: null,
       emphasis: 'accent-solid',
     },
@@ -1144,6 +1154,13 @@ const SuperAdminDashboard: React.FC = () => {
       {showActivityLog && (
         <ActivityLog
           onClose={() => setShowActivityLog(false)}
+        />
+      )}
+
+      {/* Recordings Library Modal */}
+      {showRecordings && (
+        <AdminRecordings
+          onClose={() => setShowRecordings(false)}
         />
       )}
 

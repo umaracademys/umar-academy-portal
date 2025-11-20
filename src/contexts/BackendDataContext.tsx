@@ -56,7 +56,18 @@ interface BackendDataContextType {
   createTicket: (ticket: Partial<Ticket>) => Promise<Ticket>;
   updateRecitationTicket: (id: string, ticket: Partial<Ticket>) => Promise<Ticket>;
   startTicket: (id: string) => Promise<Ticket>;
-  submitTicket: (id: string, data: { teacherComment: string; mistakes: any[] }) => Promise<Ticket>;
+  submitTicket: (
+    id: string, 
+    data: { 
+      teacherComment: string; 
+      mistakes: any[];
+      recordingUrl?: string;
+      recordingFormat?: string;
+      recordingDuration?: number;
+      recordingStartedAt?: string;
+      recordingStoppedAt?: string;
+    }
+  ) => Promise<Ticket>;
   approveAndSendTicket: (id: string, assignmentId: string) => Promise<Ticket>;
   reassignTicket: (id: string, teacherId: string, teacherName: string, reason?: string) => Promise<Ticket>;
   getTeacherTickets: (teacherId: string) => Ticket[];
@@ -1607,7 +1618,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const submitTicket = async (id: string, data: { teacherComment: string; mistakes: any[] }): Promise<Ticket> => {
+  const submitTicket = async (
+    id: string, 
+    data: { 
+      teacherComment: string; 
+      mistakes: any[];
+      recordingUrl?: string;
+      recordingFormat?: string;
+      recordingDuration?: number;
+      recordingStartedAt?: string;
+      recordingStoppedAt?: string;
+    }
+  ): Promise<Ticket> => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${id}/submit`, {
         method: 'POST',

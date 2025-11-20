@@ -48,6 +48,12 @@ export interface Ticket {
   // Assignment integration
   sentToAssignmentId?: string;
   sentAt?: Date | string;
+  // Recording fields
+  recordingUrl?: string;
+  recordingFormat?: string;
+  recordingDuration?: number;
+  recordingStartedAt?: Date | string;
+  recordingStoppedAt?: Date | string;
   // Timestamps
   startedAt?: Date | string;
   submittedAt?: Date | string;

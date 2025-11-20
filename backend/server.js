@@ -52,10 +52,14 @@ app.use(cors({
   credentials: true
 }));
 
-// Create uploads directory if it doesn't exist (must be before route that uses it)
+// Create uploads directories if they don't exist (must be before route that uses it)
 const uploadsDir = path.join(__dirname, 'uploads', 'mistakes');
+const recordingsDir = path.join(__dirname, 'uploads', 'recordings');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+if (!fs.existsSync(recordingsDir)) {
+  fs.mkdirSync(recordingsDir, { recursive: true });
 }
 
 // Audio upload route - must be before json middleware to handle binary data
@@ -80,6 +84,46 @@ app.post('/api/mistakes/audio', (req, res) => {
       res.json({ audioUrl, filename: uniqueFilename });
     } catch (error) {
       console.error('Error in audio upload endpoint:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  req.on('error', (error) => {
+    console.error('Error reading request:', error);
+    res.status(500).json({ error: error.message });
+  });
+});
+
+// Recording upload route for ticket recordings - must be before json middleware
+app.post('/api/recordings/upload', (req, res) => {
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    try {
+      const buffer = Buffer.concat(chunks);
+      
+      // Get content type from headers to determine format
+      const contentType = req.headers['content-type'] || 'audio/webm';
+      const extension = contentType.includes('webm') ? 'webm' : contentType.includes('mp4') ? 'mp4' : 'webm';
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const uniqueFilename = `recording-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+      const filePath = path.join(recordingsDir, uniqueFilename);
+      
+      // Save file
+      fs.writeFileSync(filePath, buffer);
+      
+      // Return URL
+      const recordingUrl = `/uploads/recordings/${uniqueFilename}`;
+      console.log(`✅ Recording uploaded: ${recordingUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      res.json({ 
+        recordingUrl, 
+        filename: uniqueFilename,
+        size: buffer.length,
+        format: extension
+      });
+    } catch (error) {
+      console.error('Error in recording upload endpoint:', error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -2253,6 +2297,12 @@ const ticketSchema = new mongoose.Schema({
   // Assignment integration
   sentToAssignmentId: { type: String }, // Assignment ID if sent to assignment page
   sentAt: { type: Date }, // When it was sent to assignment
+  // Recording fields
+  recordingUrl: { type: String }, // URL to stored recording file
+  recordingFormat: { type: String, default: 'webm' }, // webm, mp3, etc.
+  recordingDuration: { type: Number }, // Duration in seconds
+  recordingStartedAt: { type: Date }, // When recording started
+  recordingStoppedAt: { type: Date }, // When recording stopped
   // Timestamps
   startedAt: { type: Date }, // When teacher started
   submittedAt: { type: Date }, // When teacher submitted
@@ -2927,22 +2977,52 @@ app.post('/api/tickets/:id/start', async (req, res) => {
 // Teacher submits ticket (status: in_progress -> submitted)
 app.post('/api/tickets/:id/submit', async (req, res) => {
   try {
-    const { teacherComment, mistakes } = req.body;
+    const { 
+      teacherComment, 
+      mistakes, 
+      recordingUrl, 
+      recordingFormat, 
+      recordingDuration, 
+      recordingStartedAt, 
+      recordingStoppedAt 
+    } = req.body;
+    
+    const updateData = {
+      status: 'submitted',
+      teacherComment: teacherComment || '',
+      mistakes: mistakes || [],
+      submittedAt: new Date()
+    };
+    
+    // Add recording data if provided
+    if (recordingUrl) {
+      updateData.recordingUrl = recordingUrl;
+      updateData.recordingFormat = recordingFormat || 'webm';
+      if (recordingDuration !== undefined) {
+        updateData.recordingDuration = recordingDuration;
+      }
+      if (recordingStartedAt) {
+        updateData.recordingStartedAt = new Date(recordingStartedAt);
+      }
+      if (recordingStoppedAt) {
+        updateData.recordingStoppedAt = new Date(recordingStoppedAt);
+      }
+    }
+    
     const ticket = await Ticket.findByIdAndUpdate(
       req.params.id,
-      { 
-        status: 'submitted',
-        teacherComment: teacherComment || '',
-        mistakes: mistakes || [],
-        submittedAt: new Date()
-      },
+      updateData,
       { new: true }
     );
+    
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
     res.json(ticket);
   } catch (error) {
+    console.error('❌ Error submitting ticket:', error);
     res.status(500).json({ error: error.message });
   }
 });
