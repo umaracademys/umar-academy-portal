@@ -224,7 +224,12 @@ const SuperAdminDashboard: React.FC = () => {
       id: 'recordings',
       label: '🎙️ Recordings Library',
       description: 'View and manage all student recitation recordings with filters.',
-      onClick: () => setShowRecordings(true),
+      onClick: () => {
+        console.log('🎙️ Recordings Library button clicked!');
+        console.log('📊 Current showRecordings state:', showRecordings);
+        setShowRecordings(true);
+        console.log('✅ setShowRecordings(true) called');
+      },
       badge: null,
       emphasis: 'primary',
     },
@@ -1163,12 +1168,15 @@ const SuperAdminDashboard: React.FC = () => {
 
       {/* Recordings Library Modal */}
       {showRecordings && (
-        <AdminRecordings
-          onClose={() => {
-            console.log('🔙 Closing Recordings Library');
-            setShowRecordings(false);
-          }}
-        />
+        <>
+          {console.log('🎙️ SuperAdminDashboard: Rendering AdminRecordings modal, showRecordings =', showRecordings)}
+          <AdminRecordings
+            onClose={() => {
+              console.log('🔙 Closing Recordings Library');
+              setShowRecordings(false);
+            }}
+          />
+        </>
       )}
 
       <DebugPanel />

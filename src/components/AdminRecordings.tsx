@@ -7,7 +7,11 @@ interface AdminRecordingsProps {
 }
 
 const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
+  console.log('🎙️ AdminRecordings: Component rendering!', new Date().toISOString());
+  
   const { recitationTickets, refreshData } = useBackendData();
+  console.log('🎙️ AdminRecordings: Got recitationTickets from context:', recitationTickets?.length || 0);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<string>('all');
   const [selectedListener, setSelectedListener] = useState<string>('all');
@@ -15,6 +19,8 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   const [selectedTicketType, setSelectedTicketType] = useState<string>('all');
   const [selectedRecording, setSelectedRecording] = useState<Ticket | null>(null);
   const [playingUrl, setPlayingUrl] = useState<string | null>(null);
+  
+  console.log('🎙️ AdminRecordings: State initialized');
 
   // Get all tickets with recordings
   const ticketsWithRecordings = useMemo(() => {
@@ -190,18 +196,39 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   };
 
   useEffect(() => {
-    console.log('🔄 AdminRecordings: Component mounted');
+    console.log('🔄 AdminRecordings: useEffect triggered');
     console.log('📊 Current state:', {
-      totalTickets: recitationTickets.length,
-      ticketsWithRecordings: ticketsWithRecordings.length,
-      sampleTickets: recitationTickets.slice(0, 3).map(t => ({
+      totalTickets: recitationTickets?.length || 0,
+      ticketsWithRecordings: ticketsWithRecordings?.length || 0,
+      recitationTicketsType: typeof recitationTickets,
+      isArray: Array.isArray(recitationTickets),
+      sampleTickets: recitationTickets?.slice(0, 3).map(t => ({
         id: t.id,
         studentName: t.studentName,
         recordingUrl: t.recordingUrl,
         type: t.type
-      }))
+      })) || []
     });
-  }, [recitationTickets.length]);
+    
+    // Log first few tickets in detail
+    if (recitationTickets && recitationTickets.length > 0) {
+      console.log('📋 First 3 tickets details:');
+      recitationTickets.slice(0, 3).forEach((t, idx) => {
+        console.log(`  Ticket ${idx + 1}:`, JSON.stringify({
+          id: t.id,
+          studentName: t.studentName,
+          type: t.type,
+          status: t.status,
+          recordingUrl: t.recordingUrl,
+          recordingFormat: t.recordingFormat,
+          recordingDuration: t.recordingDuration,
+          hasRecordingUrl: !!t.recordingUrl
+        }, null, 2));
+      });
+    } else {
+      console.log('⚠️ No tickets found in recitationTickets array');
+    }
+  }, [recitationTickets]);
 
   console.log('🎙️ AdminRecordings: Rendering with', {
     totalTickets: recitationTickets.length,
