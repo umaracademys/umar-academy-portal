@@ -441,10 +441,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             submittedAt: ticket.submittedAt ? new Date(ticket.submittedAt) : undefined,
             approvedAt: ticket.approvedAt ? new Date(ticket.approvedAt) : undefined,
             reassignedAt: ticket.reassignedAt ? new Date(ticket.reassignedAt) : undefined,
-            sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined
+            sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined,
+            recordingUrl: ticket.recordingUrl,
+            recordingFormat: ticket.recordingFormat,
+            recordingDuration: ticket.recordingDuration,
+            recordingStartedAt: ticket.recordingStartedAt ? new Date(ticket.recordingStartedAt) : undefined,
+            recordingStoppedAt: ticket.recordingStoppedAt ? new Date(ticket.recordingStoppedAt) : undefined
           }));
         setRecitationTickets(recitationTicketsData);
         console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
+        console.log('🎙️ Tickets with recordings:', recitationTicketsData.filter((t: any) => t.recordingUrl).length);
       }
 
       // Load actual student records from /api/students endpoint
@@ -609,33 +615,30 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           };
         });
 
-      // Load admins from Admin collection (has admin-specific data)
+      // Process admins
       let adminsData: Admin[] = [];
-      try {
-        const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 10000, false);
-        if (adminsResponse.ok) {
-          const adminRecords = await adminsResponse.json();
-          adminsData = adminRecords.map((adminRecord: any) => ({
-            id: adminRecord._id || adminRecord.id,
-            userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
-            fullName: adminRecord.fullName || 'Unknown',
-            email: adminRecord.email || '',
-            contact: adminRecord.contact || '',
-            permissions: adminRecord.permissions || {
-              canManageTeachers: false,
-              canManageStudents: false,
-              canManageFinancials: false,
-              canViewReports: false,
-              canManagePermissions: false
-            },
-            assignedDepartments: adminRecord.assignedDepartments || [],
-            hireDate: adminRecord.hireDate ? new Date(adminRecord.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            status: adminRecord.status || 'active',
-            avatar: adminRecord.avatar || ''
-          }));
-        }
-      } catch (adminError) {
-        console.warn('⚠️ Failed to load admins from /api/admins, falling back to users:', adminError);
+      if (adminsResponse.status === 'fulfilled' && adminsResponse.value.ok) {
+        const adminRecords = await adminsResponse.value.json();
+        adminsData = adminRecords.map((adminRecord: any) => ({
+          id: adminRecord._id || adminRecord.id,
+          userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
+          fullName: adminRecord.fullName || 'Unknown',
+          email: adminRecord.email || '',
+          contact: adminRecord.contact || '',
+          permissions: adminRecord.permissions || {
+            canManageTeachers: false,
+            canManageStudents: false,
+            canManageFinancials: false,
+            canViewReports: false,
+            canManagePermissions: false
+          },
+          assignedDepartments: adminRecord.assignedDepartments || [],
+          hireDate: adminRecord.hireDate ? new Date(adminRecord.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          status: adminRecord.status || 'active',
+          avatar: adminRecord.avatar || ''
+        }));
+      } else {
+        console.warn('⚠️ Failed to load admins from /api/admins, falling back to users');
         // Fallback to users collection if Admin collection doesn't exist yet
         adminsData = users
           .filter((user: any) => user.role === 'admin' || user.role === 'superadmin')
