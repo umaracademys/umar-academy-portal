@@ -711,25 +711,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoadingStep('Complete!');
 
     } catch (err) {
-      setError('Failed to load data from backend');
-      console.error('❌ Error loading data:', err);
+      setError('Failed to load data from backend. Please check your connection and try again.');
+      console.error('❌ Error loading data from MongoDB:', err);
       
-      // Fallback to localStorage if backend is not available
-      console.log('🔄 Falling back to localStorage...');
-      const savedStudents = localStorage.getItem('umar_academy_students');
-      const savedTeachers = localStorage.getItem('umar_academy_teachers');
-      const savedAdmins = localStorage.getItem('umar_academy_admins');
-
-      try {
-        setStudents(savedStudents ? JSON.parse(savedStudents) : []);
-        setTeachers(savedTeachers ? JSON.parse(savedTeachers) : []);
-        setAdmins(savedAdmins ? JSON.parse(savedAdmins) : []);
-      } catch (parseError) {
-        console.error('❌ Error parsing localStorage data:', parseError);
-        setStudents([]);
-        setTeachers([]);
-        setAdmins([]);
-      }
+      // No localStorage fallback - all data must come from MongoDB
+      setStudents([]);
+      setTeachers([]);
+      setAdmins([]);
+      setAssignments([]);
+      setRecitationReviews([]);
+      setAdminNotifications([]);
+      setTickets([]);
+      setRecitationTickets([]);
     } finally {
       clearTimeout(maxTimeout);
       setLoading(false);
@@ -835,22 +828,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
 
       setStudents(prev => [...prev, enhancedStudent]);
-      
-      // Also save to localStorage as backup
-      const updatedStudents = [...students, enhancedStudent];
-      localStorage.setItem('umar_academy_students', JSON.stringify(updatedStudents));
+      console.log('✅ Student added successfully to MongoDB:', enhancedStudent.fullName);
 
     } catch (err) {
-      setError('Failed to add student');
+      setError('Failed to add student to MongoDB');
       console.error('Error adding student:', err);
-      
-      // Fallback to localStorage
-      const fallbackStudent: Student = {
-        ...student,
-        recitationProfile: normalizeRecitationProfile(student.recitationProfile)
-      };
-      setStudents(prev => [...prev, fallbackStudent]);
-      localStorage.setItem('umar_academy_students', JSON.stringify([...students, fallbackStudent]));
+      throw err; // Re-throw to let caller handle the error
     }
   };
 
@@ -1273,14 +1256,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setTeachers(prev => prev.filter(t => t.id !== id));
-      
-      // Update localStorage
-      const updatedTeachers = teachers.filter(t => t.id !== id);
-      localStorage.setItem('umar_academy_teachers', JSON.stringify(updatedTeachers));
+      console.log('✅ Teacher deleted successfully from MongoDB');
 
     } catch (err) {
-      setError('Failed to delete teacher');
+      setError('Failed to delete teacher from MongoDB');
       console.error('Error deleting teacher:', err);
+      throw err; // Re-throw to let caller handle the error
     }
   };
 
@@ -1348,12 +1329,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
       
       setAdmins(prev => [...prev, adminWithId]);
-      
-      // Also save to localStorage as backup
-      const updatedAdmins = [...admins, adminWithId];
-      localStorage.setItem('umar_academy_admins', JSON.stringify(updatedAdmins));
-
-      console.log('✅ Admin created successfully:', admin.fullName);
+      console.log('✅ Admin created successfully in MongoDB:', admin.fullName);
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add admin';
@@ -1378,14 +1354,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setAdmins(prev => prev.map(a => a.id === id ? { ...a, ...admin } : a));
-      
-      // Update localStorage
-      const updatedAdmins = admins.map(a => a.id === id ? { ...a, ...admin } : a);
-      localStorage.setItem('umar_academy_admins', JSON.stringify(updatedAdmins));
+      console.log('✅ Admin updated successfully in MongoDB');
 
     } catch (err) {
-      setError('Failed to update admin');
+      setError('Failed to update admin in MongoDB');
       console.error('Error updating admin:', err);
+      throw err; // Re-throw to let caller handle the error
     }
   };
 
@@ -1400,14 +1374,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setAdmins(prev => prev.filter(a => a.id !== id));
-      
-      // Update localStorage
-      const updatedAdmins = admins.filter(a => a.id !== id);
-      localStorage.setItem('umar_academy_admins', JSON.stringify(updatedAdmins));
+      console.log('✅ Admin deleted successfully from MongoDB');
 
     } catch (err) {
-      setError('Failed to delete admin');
+      setError('Failed to delete admin from MongoDB');
       console.error('Error deleting admin:', err);
+      throw err; // Re-throw to let caller handle the error
     }
   };
 
