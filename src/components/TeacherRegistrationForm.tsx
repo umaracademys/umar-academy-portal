@@ -126,17 +126,37 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         { name: 'Morning Shift', startTime: '08:00', endTime: '12:00' },
         { name: 'Evening Shift', startTime: '13:00', endTime: '17:00' },
       ]);
-      setFullTimeSchedule({
-        morningShift: { startTime: '08:00', endTime: '12:00' },
-        eveningShift: { startTime: '13:00', endTime: '17:00' },
-        workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-      });
-      setPayrollInfo(prev => ({ ...prev, dailyHours: 8, daysWorking: 26 }));
+      // Preserve existing schedule if editing, otherwise use defaults
+      if (!isEdit || !fullTimeSchedule.workingDays.length) {
+        setFullTimeSchedule({
+          morningShift: { startTime: '08:00', endTime: '12:00' },
+          eveningShift: { startTime: '13:00', endTime: '17:00' },
+          workingDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+        });
+      }
+      // Only update payroll defaults if not editing or if payroll is empty
+      if (!isEdit || !payrollInfo.hourlyRate) {
+        setPayrollInfo(prev => ({ ...prev, dailyHours: 8, daysWorking: 22 }));
+      }
+      // Clear part time schedules when switching to full time
+      setPartTimeDaySchedules([]);
     } else {
       // Part time: one shift, flexible days
       setShifts([{ name: 'Morning Shift', startTime: '08:00', endTime: '12:00' }]);
-      setPartTimeDaySchedules([]);
-      setPayrollInfo(prev => ({ ...prev, dailyHours: 4, daysWorking: 22 }));
+      // Preserve existing part time schedules if editing, otherwise clear
+      if (!isEdit || partTimeDaySchedules.length === 0) {
+        setPartTimeDaySchedules([]);
+      }
+      // Only update payroll defaults if not editing or if payroll is empty
+      if (!isEdit || !payrollInfo.hourlyRate) {
+        setPayrollInfo(prev => ({ ...prev, dailyHours: 4, daysWorking: 22 }));
+      }
+      // Clear full time schedule when switching to part time
+      setFullTimeSchedule({
+        morningShift: { startTime: '08:00', endTime: '12:00' },
+        eveningShift: { startTime: '13:00', endTime: '17:00' },
+        workingDays: [],
+      });
     }
   };
 
@@ -166,9 +186,10 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       
       // Initialize employment info
       if (teacher.employmentType) {
+        const empType = teacher.employmentType as EmploymentType;
         setEmploymentInfo({
-          employmentType: teacher.employmentType as EmploymentType,
-          shiftType: (teacher.shiftType || 'Morning') as ShiftType,
+          employmentType: empType,
+          shiftType: (teacher.shiftType || (empType === 'Full Time' ? 'Both' : 'Morning')) as ShiftType,
           scheduleDays: (teacher.schedule?.days || teacher.schedule?.workingDays || []) as ScheduleDay[],
         });
         
@@ -199,31 +220,59 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
           const scheduleDays = (teacher.schedule.days || teacher.schedule.workingDays || []) as ScheduleDay[];
           
           if (teacher.employmentType === 'Full Time') {
-            // Full Time: Initialize from shifts and schedule
-            const morningShift = teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('morning')) || 
-                                teacher.shifts?.[0] || 
-                                { startTime: '08:00', endTime: '12:00' };
-            const eveningShift = teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('evening')) || 
-                                teacher.shifts?.[1] || 
-                                { startTime: '13:00', endTime: '17:00' };
-            
-            setFullTimeSchedule({
-              morningShift: {
-                startTime: morningShift.startTime || '08:00',
-                endTime: morningShift.endTime || '12:00',
-              },
-              eveningShift: {
-                startTime: eveningShift.startTime || '13:00',
-                endTime: eveningShift.endTime || '17:00',
-              },
-              workingDays: scheduleDays.length > 0 ? scheduleDays : 
-                          ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-            });
+            // Full Time: Initialize from fullTimeSchedule if available, otherwise from shifts
+            const fullTimeSched = (teacher.schedule as any)?.fullTimeSchedule;
+            if (fullTimeSched && fullTimeSched.morningShift && fullTimeSched.eveningShift) {
+              // Use stored fullTimeSchedule
+              setFullTimeSchedule({
+                morningShift: {
+                  startTime: fullTimeSched.morningShift.startTime || '08:00',
+                  endTime: fullTimeSched.morningShift.endTime || '12:00',
+                },
+                eveningShift: {
+                  startTime: fullTimeSched.eveningShift.startTime || '13:00',
+                  endTime: fullTimeSched.eveningShift.endTime || '17:00',
+                },
+                workingDays: fullTimeSched.workingDays && fullTimeSched.workingDays.length > 0 
+                  ? fullTimeSched.workingDays 
+                  : scheduleDays.length > 0 
+                    ? scheduleDays 
+                    : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+              });
+            } else {
+              // Fallback: Initialize from shifts and schedule
+              const morningShift = teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('morning')) || 
+                                  teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('morning shift')) ||
+                                  teacher.shifts?.[0] || 
+                                  { startTime: '08:00', endTime: '12:00' };
+              const eveningShift = teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('evening')) || 
+                                  teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('evening shift')) ||
+                                  teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('afternoon')) ||
+                                  teacher.shifts?.[1] || 
+                                  { startTime: '13:00', endTime: '17:00' };
+              
+              setFullTimeSchedule({
+                morningShift: {
+                  startTime: morningShift.startTime || '08:00',
+                  endTime: morningShift.endTime || '12:00',
+                },
+                eveningShift: {
+                  startTime: eveningShift.startTime || '13:00',
+                  endTime: eveningShift.endTime || '17:00',
+                },
+                workingDays: scheduleDays.length > 0 ? scheduleDays : 
+                            ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+              });
+            }
           } else {
             // Part Time: Initialize individual day schedules
-            const dayScheds = (teacher.schedule as any).daySchedules;
+            const dayScheds = (teacher.schedule as any)?.daySchedules;
             if (dayScheds && Array.isArray(dayScheds) && dayScheds.length > 0) {
-              setPartTimeDaySchedules(dayScheds);
+              setPartTimeDaySchedules(dayScheds.map((ds: any) => ({
+                day: ds.day,
+                startTime: ds.startTime || '08:00',
+                endTime: ds.endTime || '12:00',
+              })));
             } else if (scheduleDays.length > 0) {
               const defaultStart = teacher.schedule.startTime || teacher.schedule.workingHours?.start || '08:00';
               const defaultEnd = teacher.schedule.endTime || teacher.schedule.workingHours?.end || '12:00';
@@ -237,12 +286,19 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         }
       }
       
-      // Initialize payroll info
+      // Initialize payroll info - ensure all fields are loaded
       if (teacher.payroll) {
         setPayrollInfo({
-          hourlyRate: teacher.payroll.hourlyRate || 25,
-          dailyHours: teacher.payroll.dailyHours || 8,
-          daysWorking: teacher.payroll.daysWorking || 22,
+          hourlyRate: teacher.payroll.hourlyRate || teacher.payroll.hourlyRate === 0 ? 0 : 25,
+          dailyHours: teacher.payroll.dailyHours || teacher.payroll.dailyHours === 0 ? 0 : (teacher.employmentType === 'Full Time' ? 8 : 4),
+          daysWorking: teacher.payroll.daysWorking || teacher.payroll.daysWorking === 0 ? 0 : 22,
+        });
+      } else {
+        // Set defaults based on employment type if no payroll data exists
+        setPayrollInfo({
+          hourlyRate: 25,
+          dailyHours: teacher.employmentType === 'Full Time' ? 8 : 4,
+          daysWorking: 22,
         });
       }
       
@@ -398,9 +454,29 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         avatar: teacher?.avatar || `https://ui-avatars.com/api/?name=${personalInfo.fullName.replace(' ', '+')}&background=10b981&color=fff`,
       };
 
-      if (isEdit && teacher?.id) {
-        console.log('💾 Updating teacher with permissions:', newTeacher.permissions);
-        await updateTeacher(teacher.id, newTeacher);
+      if (isEdit && teacher) {
+        // Use teacher._id if available (MongoDB ID), otherwise use teacher.id
+        const teacherId = (teacher as any)._id || teacher.id;
+        console.log('💾 Updating teacher with ID:', teacherId);
+        console.log('💾 Teacher data being sent:', {
+          id: teacherId,
+          fullName: newTeacher.fullName,
+          email: newTeacher.email,
+          employmentType: newTeacher.employmentType,
+          payroll: newTeacher.payroll,
+          schedule: {
+            ...newTeacher.schedule,
+            fullTimeSchedule: (newTeacher.schedule as any).fullTimeSchedule,
+            daySchedules: (newTeacher.schedule as any).daySchedules,
+          },
+          permissions: newTeacher.permissions
+        });
+        
+        if (!teacherId) {
+          throw new Error('Teacher ID is required for update');
+        }
+        
+        await updateTeacher(teacherId, newTeacher);
         console.log('✅ Teacher updated, refreshing data...');
         
         // Refresh data to ensure UI updates
@@ -411,6 +487,17 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         alert('Teacher updated successfully!');
         onClose();
       } else {
+        console.log('💾 Creating new teacher:', {
+          fullName: newTeacher.fullName,
+          email: newTeacher.email,
+          employmentType: newTeacher.employmentType,
+          payroll: newTeacher.payroll,
+          schedule: {
+            ...newTeacher.schedule,
+            fullTimeSchedule: (newTeacher.schedule as any).fullTimeSchedule,
+            daySchedules: (newTeacher.schedule as any).daySchedules,
+          },
+        });
         await addTeacher(newTeacher);
         
         // Refresh data to ensure UI updates

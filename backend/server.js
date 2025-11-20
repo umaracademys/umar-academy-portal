@@ -1450,9 +1450,15 @@ const normalizeTeacherData = (teacherData) => {
   
   // Map schedule format (frontend sends days/startTime/endTime, backend expects workingDays/workingHours)
   if (normalized.schedule) {
+    // Ensure workingDays is set
     if (normalized.schedule.days && !normalized.schedule.workingDays) {
       normalized.schedule.workingDays = normalized.schedule.days;
     }
+    if (normalized.schedule.workingDays && !normalized.schedule.days) {
+      normalized.schedule.days = normalized.schedule.workingDays;
+    }
+    
+    // Map workingHours from startTime/endTime if needed
     if (normalized.schedule.startTime || normalized.schedule.endTime) {
       if (!normalized.schedule.workingHours) {
         normalized.schedule.workingHours = {};
@@ -1464,6 +1470,60 @@ const normalizeTeacherData = (teacherData) => {
         normalized.schedule.workingHours.end = normalized.schedule.endTime;
       }
     }
+    
+    // Preserve fullTimeSchedule if provided (for Full Time teachers)
+    if (normalized.schedule.fullTimeSchedule) {
+      // Ensure fullTimeSchedule structure is complete
+      if (!normalized.schedule.fullTimeSchedule.morningShift) {
+        normalized.schedule.fullTimeSchedule.morningShift = {
+          startTime: '08:00',
+          endTime: '12:00'
+        };
+      }
+      if (!normalized.schedule.fullTimeSchedule.eveningShift) {
+        normalized.schedule.fullTimeSchedule.eveningShift = {
+          startTime: '13:00',
+          endTime: '17:00'
+        };
+      }
+      if (!normalized.schedule.fullTimeSchedule.workingDays) {
+        normalized.schedule.fullTimeSchedule.workingDays = normalized.schedule.workingDays || [];
+      }
+    }
+    
+    // Preserve daySchedules if provided (for Part Time teachers)
+    if (normalized.schedule.daySchedules && Array.isArray(normalized.schedule.daySchedules)) {
+      // Ensure each daySchedule has required fields
+      normalized.schedule.daySchedules = normalized.schedule.daySchedules.map((ds: any) => ({
+        day: ds.day,
+        startTime: ds.startTime || '08:00',
+        endTime: ds.endTime || '12:00'
+      }));
+    }
+    
+    // Set timezone if not provided
+    if (!normalized.schedule.timezone) {
+      normalized.schedule.timezone = 'UTC';
+    }
+  }
+  
+  // Ensure payroll data is complete
+  if (normalized.payroll) {
+    // Ensure all payroll fields are present
+    normalized.payroll = {
+      hourlyRate: normalized.payroll.hourlyRate !== undefined ? normalized.payroll.hourlyRate : 0,
+      dailyHours: normalized.payroll.dailyHours !== undefined ? normalized.payroll.dailyHours : 0,
+      daysWorking: normalized.payroll.daysWorking !== undefined ? normalized.payroll.daysWorking : 0,
+      monthlyHours: normalized.payroll.monthlyHours !== undefined 
+        ? normalized.payroll.monthlyHours 
+        : (normalized.payroll.dailyHours || 0) * (normalized.payroll.daysWorking || 0),
+      monthlySalary: normalized.payroll.monthlySalary !== undefined 
+        ? normalized.payroll.monthlySalary 
+        : (normalized.payroll.hourlyRate || 0) * (normalized.payroll.dailyHours || 0) * (normalized.payroll.daysWorking || 0),
+      currency: normalized.payroll.currency || 'USD',
+      paymentType: normalized.payroll.paymentType || 'monthly',
+      bankAccount: normalized.payroll.bankAccount || undefined,
+    };
   }
   
   // Ensure permissions are preserved and have all fields
