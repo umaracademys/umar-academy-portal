@@ -36,6 +36,7 @@ import AdminTicketReview from '../components/AdminTicketReview';
 import AdminNotificationCenter from '../components/AdminNotificationCenter';
 import ActivityLog from '../components/ActivityLog';
 import AdminRecordings from '../components/AdminRecordings';
+import EmailModule from '../components/EmailModule';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -149,6 +150,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showRecordings, setShowRecordings] = useState(false);
+  const [showEmailModule, setShowEmailModule] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count

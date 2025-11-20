@@ -22,6 +22,7 @@ import { useData } from '../contexts/DataContext';
 
 const AdminDashboard: React.FC = () => {
   const { students, teachers } = useData();
+  const [showEmailModule, setShowEmailModule] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   
   // Student Management State
@@ -214,7 +215,22 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          
+          <button
+            onClick={() => setShowEmailModule(true)}
+            className="flex h-full flex-col justify-between rounded-2xl border px-5 py-4 text-left shadow-sm transition border-transparent bg-accent text-primary hover:bg-accent/90"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-base font-semibold text-primary">📧 Email Module</p>
+              </div>
+              <p className="mt-2 text-sm text-primary/80">
+                Send emails from office@umaracademy.org
+              </p>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+              Open workflow
+            </span>
+          </button>
         </div>
 
         {/* Student List */}
@@ -580,6 +596,13 @@ const AdminDashboard: React.FC = () => {
             setShowTeacherCommunication(false);
             setSelectedTeacher(null);
           }}
+        />
+      )}
+
+      {/* Email Module Modal */}
+      {showEmailModule && (
+        <EmailModule
+          onClose={() => setShowEmailModule(false)}
         />
       )}
 

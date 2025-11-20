@@ -4760,6 +4760,143 @@ app.get('/api/quran/pages/:pageNumber/verses', async (req, res) => {
   }
 });
 
+// Email Configuration
+const EMAIL_CONFIG = {
+  from: process.env.EMAIL_FROM || 'office@umaracademy.org',
+  host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.EMAIL_PORT || '587'),
+  secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
+  auth: {
+    user: process.env.EMAIL_USER || 'office@umaracademy.org',
+    pass: process.env.EMAIL_PASSWORD || '' // Should be set via environment variable
+  }
+};
+
+// Create reusable transporter
+let emailTransporter = null;
+try {
+  emailTransporter = nodemailer.createTransport({
+    host: EMAIL_CONFIG.host,
+    port: EMAIL_CONFIG.port,
+    secure: EMAIL_CONFIG.secure,
+    auth: EMAIL_CONFIG.auth.user && EMAIL_CONFIG.auth.pass ? EMAIL_CONFIG.auth : undefined,
+    tls: {
+      rejectUnauthorized: false // Allow self-signed certificates
+    }
+  });
+  
+  // Verify connection
+  emailTransporter.verify((error, success) => {
+    if (error) {
+      console.warn('⚠️ Email transporter verification failed:', error.message);
+      console.warn('   Email functionality may not work. Check EMAIL_USER and EMAIL_PASSWORD environment variables.');
+    } else {
+      console.log('✅ Email transporter ready');
+    }
+  });
+} catch (error) {
+  console.warn('⚠️ Failed to create email transporter:', error.message);
+}
+
+// Email Routes - Admin and Super Admin only
+// Send email endpoint
+app.post('/api/email/send', async (req, res) => {
+  try {
+    // Check authentication (token should be in header)
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    // Check if user is admin or superadmin
+    const user = await User.findById(decoded.userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+      return res.status(403).json({ error: 'Only admins and super admins can send emails' });
+    }
+
+    const { to, subject, text, html, cc, bcc } = req.body;
+
+    if (!to || !subject || (!text && !html)) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: to, subject, and either text or html are required' 
+      });
+    }
+
+    if (!emailTransporter) {
+      return res.status(503).json({ 
+        error: 'Email service is not configured. Please set EMAIL_USER and EMAIL_PASSWORD environment variables.' 
+      });
+    }
+
+    const mailOptions = {
+      from: EMAIL_CONFIG.from,
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject: subject,
+      text: text,
+      html: html || text?.replace(/\n/g, '<br>'),
+      cc: cc ? (Array.isArray(cc) ? cc.join(', ') : cc) : undefined,
+      bcc: bcc ? (Array.isArray(bcc) ? bcc.join(', ') : bcc) : undefined,
+    };
+
+    const info = await emailTransporter.sendMail(mailOptions);
+    
+    console.log(`✅ Email sent successfully from ${user.email}:`, {
+      to: mailOptions.to,
+      subject: mailOptions.subject,
+      messageId: info.messageId
+    });
+
+    res.json({ 
+      success: true, 
+      messageId: info.messageId,
+      message: 'Email sent successfully' 
+    });
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    res.status(500).json({ 
+      error: 'Failed to send email',
+      details: error.message 
+    });
+  }
+});
+
+// Get email configuration (for frontend display)
+app.get('/api/email/config', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'superadmin')) {
+      return res.status(403).json({ error: 'Only admins and super admins can view email config' });
+    }
+
+    res.json({
+      from: EMAIL_CONFIG.from,
+      configured: !!emailTransporter && !!EMAIL_CONFIG.auth.user && !!EMAIL_CONFIG.auth.pass
+    });
+  } catch (error) {
+    console.error('Error getting email config:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Root route - simple health check
 app.get('/', (req, res) => {
   res.json({ 
