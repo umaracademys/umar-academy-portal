@@ -134,13 +134,18 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   };
 
   useEffect(() => {
-    console.log('🔄 AdminRecordings: Component mounted, refreshing data...');
+    console.log('🔄 AdminRecordings: Component mounted');
     console.log('📊 Current state:', {
       totalTickets: recitationTickets.length,
-      ticketsWithRecordings: ticketsWithRecordings.length
+      ticketsWithRecordings: ticketsWithRecordings.length,
+      sampleTickets: recitationTickets.slice(0, 3).map(t => ({
+        id: t.id,
+        studentName: t.studentName,
+        recordingUrl: t.recordingUrl,
+        type: t.type
+      }))
     });
-    refreshData();
-  }, [refreshData, recitationTickets.length, ticketsWithRecordings.length]);
+  }, [recitationTickets.length]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">

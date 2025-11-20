@@ -1164,7 +1164,10 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Recordings Library Modal */}
       {showRecordings && (
         <AdminRecordings
-          onClose={() => setShowRecordings(false)}
+          onClose={() => {
+            console.log('🔙 Closing Recordings Library');
+            setShowRecordings(false);
+          }}
         />
       )}
 
