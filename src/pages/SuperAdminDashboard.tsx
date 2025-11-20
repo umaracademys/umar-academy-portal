@@ -222,11 +222,11 @@ const SuperAdminDashboard: React.FC = () => {
     },
     {
       id: 'recordings',
-      label: 'Recordings Library',
+      label: '🎙️ Recordings Library',
       description: 'View and manage all student recitation recordings with filters.',
       onClick: () => setShowRecordings(true),
       badge: null,
-      emphasis: 'accent-solid',
+      emphasis: 'primary',
     },
     {
       id: 'fix-assignment-ids',

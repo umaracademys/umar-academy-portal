@@ -18,7 +18,13 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
 
   // Get all tickets with recordings
   const ticketsWithRecordings = useMemo(() => {
-    return recitationTickets.filter(ticket => ticket.recordingUrl);
+    const filtered = recitationTickets.filter(ticket => ticket.recordingUrl);
+    console.log('🔍 AdminRecordings: Total tickets:', recitationTickets.length);
+    console.log('🔍 AdminRecordings: Tickets with recordings:', filtered.length);
+    filtered.forEach(t => {
+      console.log('  -', t.studentName, t.type, 'recording:', t.recordingUrl);
+    });
+    return filtered;
   }, [recitationTickets]);
 
   // Get unique students and listeners
@@ -241,9 +247,18 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
               <p className="text-gray-600 text-lg">No recordings found</p>
               <p className="text-gray-500 text-sm mt-2">
                 {ticketsWithRecordings.length === 0 
-                  ? 'No recordings have been submitted yet.' 
+                  ? 'No recordings have been submitted yet. Recordings will appear here automatically when teachers submit tickets with recordings.' 
                   : 'Try adjusting your filters.'}
               </p>
+              {ticketsWithRecordings.length === 0 && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
+                  <p className="text-sm text-blue-800">
+                    <strong>Info:</strong> Found {recitationTickets.length} total tickets, but none have recordings yet.
+                    <br />
+                    Recordings are created automatically when teachers open and submit tickets.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

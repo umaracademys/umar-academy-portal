@@ -33,6 +33,9 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   const recordingStartedAtRef = useRef<Date | null>(null);
   
   // Auto-recording hook - starts automatically when component mounts
+  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState<number>(0);
+
   const {
     isRecording,
     recordingTime,
@@ -44,6 +47,8 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     autoStart: true,
     onRecordingComplete: async (blob, duration) => {
       console.log(`✅ Recording completed: ${duration} seconds, ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+      setRecordingBlob(blob);
+      setRecordingDuration(duration);
     },
     onError: (err) => {
       console.error('Recording error:', err);
@@ -135,14 +140,16 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
-      // Upload recording if available
-      if (audioBlob) {
+      // Upload recording if available (use recordingBlob state or audioBlob from hook)
+      const blobToUpload = recordingBlob || audioBlob;
+      if (blobToUpload) {
         recordingStartedAt = recordingStartedAtRef.current;
         recordingStoppedAt = new Date();
-        recordingDuration = Math.floor((recordingStoppedAt.getTime() - (recordingStartedAt?.getTime() || Date.now())) / 1000);
+        const duration = recordingDuration || Math.floor((recordingStoppedAt.getTime() - (recordingStartedAt?.getTime() || Date.now())) / 1000);
         
-        recordingUrl = await uploadRecording(audioBlob);
+        recordingUrl = await uploadRecording(blobToUpload);
         recordingFormat = 'webm';
+        recordingDuration = duration;
         
         if (recordingUrl) {
           setRecordingUploaded(true);
@@ -150,6 +157,8 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         } else {
           console.warn('⚠️ Recording upload failed, but continuing with submission');
         }
+      } else {
+        console.log('ℹ️ No recording blob available to upload');
       }
 
       // Submit ticket with recording data

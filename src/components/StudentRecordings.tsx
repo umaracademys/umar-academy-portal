@@ -21,15 +21,40 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
 
   // Get student's tickets with recordings
   const studentRecordings = useMemo(() => {
-    if (!currentStudent?.id) return [];
+    if (!currentStudent?.id) {
+      console.log('⚠️ StudentRecordings: No currentStudent found');
+      return [];
+    }
     
-    return recitationTickets.filter(ticket => {
-      const ticketStudentId = ticket.studentId || (ticket as any)._id?.studentId;
-      const matchesStudent = ticketStudentId === currentStudent.id || 
-                            ticketStudentId === currentStudent.id.toString() ||
-                            String(ticketStudentId) === String(currentStudent.id);
-      return matchesStudent && ticket.recordingUrl;
+    console.log('🔍 StudentRecordings: Filtering tickets for student:', currentStudent.id);
+    console.log('🔍 Total tickets:', recitationTickets.length);
+    console.log('🔍 Tickets with recordings:', recitationTickets.filter(t => t.recordingUrl).length);
+    
+    const filtered = recitationTickets.filter(ticket => {
+      const ticketStudentId = ticket.studentId || (ticket as any)._id?.studentId || (ticket as any).studentId;
+      const studentIdStr = String(currentStudent.id);
+      const ticketIdStr = String(ticketStudentId || '');
+      
+      const matchesStudent = ticketIdStr === studentIdStr || 
+                            ticketIdStr === currentStudent.id.toString() ||
+                            ticket.studentName === currentStudent.fullName ||
+                            ticket.studentName === currentStudent.name;
+      
+      const hasRecording = !!ticket.recordingUrl;
+      
+      if (matchesStudent && hasRecording) {
+        console.log('✅ Found matching recording:', {
+          ticketId: ticket.id,
+          studentId: ticketStudentId,
+          recordingUrl: ticket.recordingUrl
+        });
+      }
+      
+      return matchesStudent && hasRecording;
     });
+    
+    console.log('✅ StudentRecordings: Found', filtered.length, 'recordings for student');
+    return filtered;
   }, [recitationTickets, currentStudent]);
 
   // Filter recordings
@@ -155,9 +180,30 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
               <p className="text-gray-600 text-lg">No recordings found</p>
               <p className="text-gray-500 text-sm mt-2">
                 {studentRecordings.length === 0 
-                  ? 'You don\'t have any recordings yet. Recordings will appear here after your recitation sessions are completed.' 
+                  ? 'You don\'t have any recordings yet. Recordings will appear here after your recitation sessions are completed and submitted by your teacher.' 
                   : 'Try adjusting your filters.'}
               </p>
+              {!currentStudent && (
+                <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg max-w-md mx-auto">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Debug:</strong> Could not find your student profile. Email: {user?.email || 'Not logged in'}
+                  </p>
+                </div>
+              )}
+              {currentStudent && studentRecordings.length === 0 && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto">
+                  <p className="text-sm text-blue-800">
+                    <strong>Info:</strong> Found {recitationTickets.filter(t => {
+                      const ticketStudentId = t.studentId || (t as any)._id?.studentId;
+                      const studentIdStr = String(currentStudent.id);
+                      const ticketIdStr = String(ticketStudentId || '');
+                      return ticketIdStr === studentIdStr || 
+                             ticket.studentName === currentStudent.fullName ||
+                             ticket.studentName === currentStudent.name;
+                    }).length} tickets, but none have recordings yet.
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
