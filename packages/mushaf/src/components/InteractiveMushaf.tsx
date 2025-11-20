@@ -946,7 +946,7 @@ export const WordByWordPage: React.FC<{
                       key={line.line_number} 
                       className="mushaf-line mushaf-surah-name"
                       style={{
-                        textAlign: 'right',
+                        textAlign: 'center',
                         fontFamily: fontFamily,
                         fontSize: '1.5em',
                         fontWeight: 'bold',
@@ -955,13 +955,12 @@ export const WordByWordPage: React.FC<{
                         minHeight: '1.5em',
                         lineHeight: '1.8',
                         display: 'flex',
-                        justifyContent: 'flex-end',
+                        justifyContent: 'center',
                         alignItems: 'center',
-                        width: '100%',
-                        direction: 'rtl'
+                        width: '100%'
                       }}
                     >
-                      <span style={{ textAlign: 'right', display: 'block', width: '100%' }}>
+                      <span style={{ textAlign: 'center', display: 'block', width: '100%' }}>
                         {arabicName}
                       </span>
                     </div>
