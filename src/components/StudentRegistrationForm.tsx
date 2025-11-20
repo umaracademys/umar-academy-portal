@@ -45,19 +45,35 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     if (isEdit && student) {
       console.log('🔄 Initializing StudentRegistrationForm with student data:', student);
       setFormData({
-        fullName: student.fullName || '',
+        fullName: student.fullName || student.name || '',
         parentName: student.parentName || '',
         email: student.email || '',
-        contact: student.contact || '',
+        contact: student.contact || student.phoneNumber || '',
         program: student.program || 'Full Time HQ' as ProgramType,
         tuitionFee: typeof student.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : (typeof student.tuitionFee === 'string' && student.tuitionFee ? parseFloat(student.tuitionFee) || 500 : 500),
         registrationAmount: typeof student.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : (typeof student.registrationAmount === 'string' && student.registrationAmount ? parseFloat(student.registrationAmount) || 100 : 100),
-        assignedTeacher: student.assignedTeacher || '',
-        scheduleDays: student.schedule?.days || [] as ScheduleDay[],
-        startTime: student.schedule?.startTime || '09:00',
-        endTime: student.schedule?.endTime || '12:00',
+        assignedTeacher: student.assignedTeacher || student.assignedTeacherId || '',
+        scheduleDays: (student.schedule?.days || student.schedule?.workingDays || []) as ScheduleDay[],
+        startTime: student.schedule?.startTime || student.schedule?.workingHours?.start || '09:00',
+        endTime: student.schedule?.endTime || student.schedule?.workingHours?.end || '12:00',
       });
       setSiblings(Array.isArray(student.siblings) ? student.siblings : []);
+    } else if (!isEdit) {
+      // Reset form when switching from edit to add mode
+      setFormData({
+        fullName: '',
+        parentName: '',
+        email: '',
+        contact: '',
+        program: 'Full Time HQ',
+        tuitionFee: 500,
+        registrationAmount: 100,
+        assignedTeacher: '',
+        scheduleDays: [],
+        startTime: '09:00',
+        endTime: '12:00',
+      });
+      setSiblings([]);
     }
   }, [isEdit, student]);
 
