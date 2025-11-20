@@ -1186,6 +1186,13 @@ const SuperAdminDashboard: React.FC = () => {
         </>
       )}
 
+      {/* Email Module Modal */}
+      {showEmailModule && (
+        <EmailModule
+          onClose={() => setShowEmailModule(false)}
+        />
+      )}
+
       <DebugPanel />
     </div>
   );
