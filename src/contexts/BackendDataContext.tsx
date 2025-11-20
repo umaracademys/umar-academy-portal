@@ -990,20 +990,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Teacher operations
   const addTeacher = async (teacher: Teacher) => {
     try {
-      // Create user first
-      const userResponse = await fetch(`${API_BASE}/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      // Create user first - use fetchWithTimeout with authentication
+      const userResponse = await fetchWithTimeout(
+        `${API_BASE}/users`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: teacher.fullName,
+            email: teacher.email,
+            role: 'teacher',
+            password: 'password123', // Default password for teachers
+            avatar: teacher.avatar
+          }),
         },
-        body: JSON.stringify({
-          name: teacher.fullName,
-          email: teacher.email,
-          role: 'teacher',
-          password: 'password123', // Default password for teachers
-          avatar: teacher.avatar
-        }),
-      });
+        10000,
+        true // requireAuth = true - includes Authorization header
+      );
 
       if (!userResponse.ok) {
         const errorText = await userResponse.text();
@@ -1066,13 +1068,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         specialization: [],
       };
 
-      const teacherResponse = await fetch(`${API_BASE}/teachers`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const teacherResponse = await fetchWithTimeout(
+        `${API_BASE}/teachers`,
+        {
+          method: 'POST',
+          body: JSON.stringify(teacherPayload),
         },
-        body: JSON.stringify(teacherPayload),
-      });
+        10000,
+        false // Teachers endpoint doesn't require auth
+      );
 
       if (!teacherResponse.ok) {
         const errorText = await teacherResponse.text();
@@ -1120,23 +1124,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
 
       // Try updating via /api/teachers/:id first
-      let response = await fetch(`${API_BASE}/teachers/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+      let response = await fetchWithTimeout(
+        `${API_BASE}/teachers/${id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(updatePayload),
         },
-        body: JSON.stringify(updatePayload),
-      });
+        10000,
+        false // Teachers endpoint doesn't require auth
+      );
 
       // If that fails, try /api/users/:id as fallback
       if (!response.ok) {
-        response = await fetch(`${API_BASE}/users/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
+        response = await fetchWithTimeout(
+          `${API_BASE}/users/${id}`,
+          {
+            method: 'PUT',
+            body: JSON.stringify(updatePayload),
           },
-          body: JSON.stringify(updatePayload),
-        });
+          10000,
+          false // Users endpoint doesn't require auth for updates
+        );
       }
 
       if (!response.ok) {
