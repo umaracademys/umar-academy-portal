@@ -251,6 +251,10 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
               <h2 className="text-3xl font-bold mb-1">🎙️ Recordings Library</h2>
               <p className="text-purple-100 text-sm">
                 {filteredRecordings.length} recording{filteredRecordings.length !== 1 ? 's' : ''} found
+                {' '}(Total tickets: {recitationTickets?.length || 0}, With recordings: {ticketsWithRecordings?.length || 0})
+              </p>
+              <p className="text-purple-200 text-xs mt-1">
+                DEBUG: Check browser console (F12) for detailed logs
               </p>
             </div>
             <button
