@@ -200,12 +200,12 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-lg w-96 p-6 space-y-4 max-h-[90vh] overflow-y-auto" dir="rtl">
-        <h2 className="text-lg font-semibold text-gray-800" dir="rtl">
+        <h2 className="text-lg font-semibold text-gray-800 text-right" dir="rtl">
           Mark Mistake – Surah {word.surah}, Ayah {word.ayah}
         </h2>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1" dir="rtl">
+          <label className="block text-sm font-medium text-gray-600 mb-1 text-right" dir="rtl">
             Mistake Type:
           </label>
           <select
@@ -224,13 +224,13 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-600 mb-1" dir="rtl">
+          <label className="block text-sm font-medium text-gray-600 mb-1 text-right" dir="rtl">
             Optional Note:
           </label>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            className="w-full border border-gray-300 rounded-md p-2"
+            className="w-full border border-gray-300 rounded-md p-2 text-right"
             placeholder="Add comment..."
             rows={3}
             dir="rtl"
@@ -239,10 +239,10 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
 
         {/* Audio Recording Section */}
         <div className="border-t border-gray-200 pt-4" dir="rtl">
-          <label className="block text-sm font-medium text-gray-600 mb-2" dir="rtl">
+          <label className="block text-sm font-medium text-gray-600 mb-2 text-right" dir="rtl">
             Audio Recording (Optional):
           </label>
-          <p className="text-xs text-gray-500 mb-3" dir="rtl">
+          <p className="text-xs text-gray-500 mb-3 text-right" dir="rtl">
             Record how to read this correctly for the student
           </p>
           
