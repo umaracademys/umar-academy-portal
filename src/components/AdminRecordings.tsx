@@ -25,7 +25,13 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   // Get all tickets with recordings
   const ticketsWithRecordings = useMemo(() => {
     console.log('🔍 AdminRecordings: Filtering tickets...');
-    console.log('📊 Total recitationTickets:', recitationTickets.length);
+    console.log('📊 Total recitationTickets:', recitationTickets?.length || 0);
+    console.log('📊 recitationTickets type:', typeof recitationTickets, Array.isArray(recitationTickets));
+    
+    if (!recitationTickets || !Array.isArray(recitationTickets)) {
+      console.error('❌ recitationTickets is not an array!', recitationTickets);
+      return [];
+    }
     
     // Log all tickets to see what we have
     if (recitationTickets.length > 0) {
@@ -231,10 +237,15 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   }, [recitationTickets]);
 
   console.log('🎙️ AdminRecordings: Rendering with', {
-    totalTickets: recitationTickets.length,
-    ticketsWithRecordings: ticketsWithRecordings.length,
-    filteredRecordings: filteredRecordings.length
+    totalTickets: recitationTickets?.length || 0,
+    ticketsWithRecordings: ticketsWithRecordings?.length || 0,
+    filteredRecordings: filteredRecordings?.length || 0,
+    recitationTicketsIsArray: Array.isArray(recitationTickets)
   });
+  
+  if (!recitationTickets || !Array.isArray(recitationTickets)) {
+    console.error('❌ CRITICAL: recitationTickets is not an array!', recitationTickets);
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={(e) => {
