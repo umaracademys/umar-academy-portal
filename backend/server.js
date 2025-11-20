@@ -1494,7 +1494,7 @@ const normalizeTeacherData = (teacherData) => {
     // Preserve daySchedules if provided (for Part Time teachers)
     if (normalized.schedule.daySchedules && Array.isArray(normalized.schedule.daySchedules)) {
       // Ensure each daySchedule has required fields
-      normalized.schedule.daySchedules = normalized.schedule.daySchedules.map((ds: any) => ({
+      normalized.schedule.daySchedules = normalized.schedule.daySchedules.map((ds) => ({
         day: ds.day,
         startTime: ds.startTime || '08:00',
         endTime: ds.endTime || '12:00'
