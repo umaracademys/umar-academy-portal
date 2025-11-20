@@ -80,15 +80,44 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
         ? teacher.userId._id 
         : teacher.userId;
     }
-    return teacher.id || teacher._id || null;
+    // Fallback: try to find User by email if userId is not available
+    // This will be handled in the fetchUserDetails function
+    return null;
+  };
+
+  // Get user email for fallback lookup
+  const getUserEmail = () => {
+    return teacher.email || null;
   };
 
   // Fetch user details on mount
   useEffect(() => {
     const fetchUserDetails = async () => {
-      const userId = getUserId();
+      let userId = getUserId();
+      const userEmail = getUserEmail();
+
+      // If no userId, try to find User by email
+      if (!userId && userEmail) {
+        try {
+          const usersResponse = await fetch(`${API_BASE}/users`, {
+            headers: getAuthHeaders()
+          });
+          if (usersResponse.ok) {
+            const users = await usersResponse.json();
+            const user = users.find((u: any) => u.email === userEmail);
+            if (user) {
+              userId = user._id || user.id;
+              console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to fetch users for email lookup:', err);
+        }
+      }
+
       if (!userId) {
-        setError('User ID not found for this teacher');
+        setError('User ID not found for this teacher. The teacher may not have a linked User account.');
+        setLoading(false);
         return;
       }
 
@@ -100,7 +129,13 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch user details');
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          if (response.status === 403) {
+            throw new Error('Access denied. Admin privileges required to view user details.');
+          } else if (response.status === 404) {
+            throw new Error('User not found. The teacher may not have a linked User account.');
+          }
+          throw new Error(errorData.error || 'Failed to fetch user details');
         }
 
         const data = await response.json();
