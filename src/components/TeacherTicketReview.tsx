@@ -179,41 +179,58 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         hasRecordingBlob: !!recordingBlob,
         hasAudioBlob: !!audioBlob,
         blobToUpload: !!blobToUpload,
+        blobSize: blobToUpload?.size || 0,
         isRecording,
-        recordingStartedAt: recordingStartedAtRef.current
+        recordingTime,
+        hasPermission,
+        recordingStartedAt: recordingStartedAtRef.current,
+        recordingDuration
       });
 
-      if (blobToUpload) {
+      if (blobToUpload && blobToUpload.size > 0) {
         recordingStartedAt = recordingStartedAtRef.current;
         recordingStoppedAt = new Date();
-        const duration = recordingDuration || Math.floor((recordingStoppedAt.getTime() - (recordingStartedAt?.getTime() || Date.now())) / 1000);
+        const duration = recordingDuration || recordingTime || Math.floor((recordingStoppedAt.getTime() - (recordingStartedAt?.getTime() || Date.now())) / 1000);
         
         console.log('📤 Uploading recording with metadata:', {
           duration,
-          startedAt: recordingStartedAt,
-          stoppedAt: recordingStoppedAt,
-          blobSize: blobToUpload.size
+          startedAt: recordingStartedAt?.toISOString(),
+          stoppedAt: recordingStoppedAt.toISOString(),
+          blobSize: blobToUpload.size,
+          blobType: blobToUpload.type
         });
         
-        recordingUrl = await uploadRecording(blobToUpload);
-        recordingFormat = 'webm';
-        recordingDuration = duration;
-        
-        if (recordingUrl) {
-          setRecordingUploaded(true);
-          console.log('✅ Recording uploaded successfully:', recordingUrl);
-          console.log('📊 Recording metadata:', {
-            url: recordingUrl,
-            format: recordingFormat,
-            duration: recordingDuration,
-            startedAt: recordingStartedAt?.toISOString(),
-            stoppedAt: recordingStoppedAt.toISOString()
-          });
-        } else {
-          console.warn('⚠️ Recording upload failed, but continuing with submission');
+        try {
+          recordingUrl = await uploadRecording(blobToUpload);
+          recordingFormat = blobToUpload.type.includes('webm') ? 'webm' : blobToUpload.type.includes('mp4') ? 'mp4' : 'webm';
+          recordingDuration = duration;
+          
+          if (recordingUrl) {
+            setRecordingUploaded(true);
+            console.log('✅ Recording uploaded successfully:', recordingUrl);
+            console.log('📊 Recording metadata:', {
+              url: recordingUrl,
+              format: recordingFormat,
+              duration: recordingDuration,
+              startedAt: recordingStartedAt?.toISOString(),
+              stoppedAt: recordingStoppedAt.toISOString()
+            });
+          } else {
+            console.warn('⚠️ Recording upload returned null/empty URL, but continuing with submission');
+          }
+        } catch (uploadError) {
+          console.error('❌ Recording upload error:', uploadError);
+          console.warn('⚠️ Continuing with submission without recording');
         }
       } else {
-        console.log('ℹ️ No recording blob available to upload');
+        console.warn('⚠️ No recording blob available to upload:', {
+          recordingBlob: !!recordingBlob,
+          audioBlob: !!audioBlob,
+          recordingBlobSize: recordingBlob?.size || 0,
+          audioBlobSize: audioBlob?.size || 0,
+          isRecording,
+          recordingTime
+        });
       }
 
       // Submit ticket with recording data
