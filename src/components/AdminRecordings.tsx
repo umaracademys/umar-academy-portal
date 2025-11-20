@@ -134,8 +134,13 @@ const AdminRecordings: React.FC<AdminRecordingsProps> = ({ onClose }) => {
   };
 
   useEffect(() => {
+    console.log('🔄 AdminRecordings: Component mounted, refreshing data...');
+    console.log('📊 Current state:', {
+      totalTickets: recitationTickets.length,
+      ticketsWithRecordings: ticketsWithRecordings.length
+    });
     refreshData();
-  }, [refreshData]);
+  }, [refreshData, recitationTickets.length, ticketsWithRecordings.length]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">

@@ -114,8 +114,10 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
   };
 
   useEffect(() => {
+    console.log('🔄 StudentRecordings: Component mounted, refreshing data...');
+    console.log('👤 Current user:', user?.email, 'Current student:', currentStudent?.fullName || currentStudent?.name);
     refreshData();
-  }, [refreshData]);
+  }, [refreshData, user, currentStudent]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">

@@ -36,6 +36,8 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
 
+  console.log('🎙️ TeacherTicketReview: Component mounted, ticket:', ticket.id, 'student:', ticket.studentName);
+
   const {
     isRecording,
     recordingTime,
@@ -47,14 +49,19 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     autoStart: true,
     onRecordingComplete: async (blob, duration) => {
       console.log(`✅ Recording completed: ${duration} seconds, ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+      console.log('📦 Recording blob type:', blob.type, 'size:', blob.size);
       setRecordingBlob(blob);
       setRecordingDuration(duration);
     },
     onError: (err) => {
-      console.error('Recording error:', err);
+      console.error('❌ Recording error:', err);
       setError(`Recording error: ${err.message}`);
     }
   });
+
+  useEffect(() => {
+    console.log('🎙️ Recording state changed:', { isRecording, hasPermission, recordingTime, audioBlob: !!audioBlob, recordingBlob: !!recordingBlob });
+  }, [isRecording, hasPermission, recordingTime, audioBlob, recordingBlob]);
 
   // Track when recording started
   useEffect(() => {
@@ -94,8 +101,12 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
 
   const uploadRecording = async (blob: Blob): Promise<string | null> => {
     try {
-      const formData = new FormData();
-      formData.append('recording', blob, `recording-${ticket.id}-${Date.now()}.webm`);
+      console.log('📤 Starting recording upload...', {
+        ticketId: ticket.id,
+        blobSize: blob.size,
+        blobType: blob.type,
+        uploadUrl: `${API_BASE}/recordings/upload`
+      });
       
       const response = await fetch(`${API_BASE}/recordings/upload`, {
         method: 'POST',
@@ -105,14 +116,19 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         }
       });
 
+      console.log('📡 Upload response status:', response.status, response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to upload recording');
+        const errorText = await response.text();
+        console.error('❌ Upload failed:', response.status, errorText);
+        throw new Error(`Failed to upload recording: ${response.status} ${errorText}`);
       }
 
       const data = await response.json();
+      console.log('✅ Upload successful, recording URL:', data.recordingUrl);
       return data.recordingUrl;
     } catch (err) {
-      console.error('Error uploading recording:', err);
+      console.error('❌ Error uploading recording:', err);
       return null;
     }
   };
@@ -142,10 +158,25 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
 
       // Upload recording if available (use recordingBlob state or audioBlob from hook)
       const blobToUpload = recordingBlob || audioBlob;
+      console.log('📋 Submit - Recording check:', {
+        hasRecordingBlob: !!recordingBlob,
+        hasAudioBlob: !!audioBlob,
+        blobToUpload: !!blobToUpload,
+        isRecording,
+        recordingStartedAt: recordingStartedAtRef.current
+      });
+
       if (blobToUpload) {
         recordingStartedAt = recordingStartedAtRef.current;
         recordingStoppedAt = new Date();
         const duration = recordingDuration || Math.floor((recordingStoppedAt.getTime() - (recordingStartedAt?.getTime() || Date.now())) / 1000);
+        
+        console.log('📤 Uploading recording with metadata:', {
+          duration,
+          startedAt: recordingStartedAt,
+          stoppedAt: recordingStoppedAt,
+          blobSize: blobToUpload.size
+        });
         
         recordingUrl = await uploadRecording(blobToUpload);
         recordingFormat = 'webm';
@@ -153,7 +184,14 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         
         if (recordingUrl) {
           setRecordingUploaded(true);
-          console.log('✅ Recording uploaded:', recordingUrl);
+          console.log('✅ Recording uploaded successfully:', recordingUrl);
+          console.log('📊 Recording metadata:', {
+            url: recordingUrl,
+            format: recordingFormat,
+            duration: recordingDuration,
+            startedAt: recordingStartedAt?.toISOString(),
+            stoppedAt: recordingStoppedAt.toISOString()
+          });
         } else {
           console.warn('⚠️ Recording upload failed, but continuing with submission');
         }
@@ -162,7 +200,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
       }
 
       // Submit ticket with recording data
-      await onSubmit(ticket.id, {
+      const submitData = {
         teacherComment: teacherComment.trim(),
         mistakes: mushafMistakes,
         ...(recordingUrl && {
@@ -172,7 +210,19 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
           recordingStartedAt: recordingStartedAt?.toISOString(),
           recordingStoppedAt: recordingStoppedAt?.toISOString()
         })
+      };
+      
+      console.log('📤 Submitting ticket:', {
+        ticketId: ticket.id,
+        hasRecording: !!recordingUrl,
+        recordingUrl,
+        mistakesCount: mushafMistakes.length,
+        submitData
       });
+      
+      await onSubmit(ticket.id, submitData);
+      
+      console.log('✅ Ticket submitted successfully');
       
       onClose();
     } catch (err) {
