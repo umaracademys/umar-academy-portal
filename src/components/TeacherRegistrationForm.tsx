@@ -175,8 +175,10 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     if (isEdit && teacher) {
       console.log('🔍 Initializing TeacherRegistrationForm with teacher data:', teacher);
       console.log('🔍 Teacher permissions:', teacher.permissions);
+      
+      // Initialize personal info - ensure all fields are set
       setPersonalInfo({
-        fullName: teacher.fullName || '',
+        fullName: teacher.fullName || teacher.name || '',
         email: teacher.email || '',
         phoneNumber: teacher.phoneNumber || teacher.contact || '',
         emergencyContact: teacher.emergencyContact || '',
@@ -326,6 +328,39 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       if (teacher.idDocument) {
         setIdDocument(teacher.idDocument);
       }
+    } else if (!isEdit) {
+      // Reset form when switching from edit to add mode
+      setPersonalInfo({
+        fullName: '',
+        email: '',
+        phoneNumber: '',
+        emergencyContact: '',
+        department: '',
+        location: 'Local',
+      });
+      setEmploymentInfo({
+        employmentType: 'Full Time',
+        shiftType: 'Morning',
+        scheduleDays: [],
+      });
+      setPayrollInfo({
+        hourlyRate: 25,
+        dailyHours: 8,
+        daysWorking: 22,
+      });
+      setPermissions({
+        canViewAssessments: true,
+        canEditAssessments: true,
+        canViewEvaluations: true,
+        canEditEvaluations: true,
+        canViewFinancials: false,
+        canManageSchedule: true,
+        canContactParents: true,
+        canViewStudentEmail: true,
+        canViewStudentContact: true,
+        canViewStudentPersonalInfo: true,
+      });
+      setIdDocument('');
     }
   }, [isEdit, teacher]);
 
@@ -1002,30 +1037,40 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Access Permissions</h3>
                 
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                  {Object.entries(permissions).map(([key, value]) => (
-                    <label key={key} className="flex items-center justify-between p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {key === 'canViewAssessments' && 'View student assessments and test scores'}
-                          {key === 'canEditAssessments' && 'Add and modify student assessments'}
-                          {key === 'canViewEvaluations' && 'View student behavior evaluations'}
-                          {key === 'canEditEvaluations' && 'Create and edit student evaluations'}
-                          {key === 'canViewFinancials' && 'Access student financial information'}
-                          {key === 'canManageSchedule' && 'Modify student schedules'}
-                          {key === 'canContactParents' && 'Send messages to parents'}
-                        </p>
-                      </div>
-                      <input
-                        type="checkbox"
-                        checked={value}
-                        onChange={(e) => setPermissions({ ...permissions, [key]: e.target.checked })}
-                        className="w-5 h-5 text-green-600 focus:ring-green-500 rounded"
-                      />
-                    </label>
-                  ))}
+                  {Object.entries(permissions).map(([key, value]) => {
+                    const permissionKey = key as keyof TeacherPermissions;
+                    return (
+                      <label key={key} className="flex items-center justify-between p-3 bg-white rounded-lg border cursor-pointer hover:bg-gray-50">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">
+                            {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1">
+                            {key === 'canViewAssessments' && 'View student assessments and test scores'}
+                            {key === 'canEditAssessments' && 'Add and modify student assessments'}
+                            {key === 'canViewEvaluations' && 'View student behavior evaluations'}
+                            {key === 'canEditEvaluations' && 'Create and edit student evaluations'}
+                            {key === 'canViewFinancials' && 'Access student financial information'}
+                            {key === 'canManageSchedule' && 'Modify student schedules'}
+                            {key === 'canContactParents' && 'Send messages to parents'}
+                            {key === 'canViewStudentEmail' && 'View student email addresses'}
+                            {key === 'canViewStudentContact' && 'View student contact information'}
+                            {key === 'canViewStudentPersonalInfo' && 'View student personal information'}
+                          </p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={value === true}
+                          onChange={(e) => {
+                            const newPermissions = { ...permissions, [permissionKey]: e.target.checked };
+                            console.log(`🔐 Updating permission ${key}:`, e.target.checked);
+                            setPermissions(newPermissions);
+                          }}
+                          className="w-5 h-5 text-green-600 focus:ring-green-500 rounded cursor-pointer"
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             )}
