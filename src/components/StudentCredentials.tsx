@@ -75,6 +75,33 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
     return student.email || null;
   };
 
+  // Helper function to get User ID with fallback (used by all functions that need User ID)
+  const getUserIdWithFallback = async (): Promise<string | null> => {
+    let userId = getUserId();
+    const userEmail = getUserEmail();
+
+    // If no userId, try to find User by email
+    if (!userId && userEmail) {
+      try {
+        const usersResponse = await fetch(`${API_BASE}/users`, {
+          headers: getAuthHeaders()
+        });
+        if (usersResponse.ok) {
+          const users = await usersResponse.json();
+          const user = users.find((u: any) => u.email === userEmail);
+          if (user) {
+            userId = user._id || user.id;
+            console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch users for email lookup:', err);
+      }
+    }
+
+    return userId;
+  };
+
   // Fetch user details on mount
   useEffect(() => {
     const fetchUserDetails = async () => {
@@ -146,7 +173,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   useEffect(() => {
     if (activeTab === 'history') {
       const fetchLoginHistory = async () => {
-        const userId = getUserId();
+        const userId = await getUserIdWithFallback();
         if (!userId) return;
 
         try {
@@ -186,9 +213,9 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
       return;
     }
 
-    const userId = getUserId();
+    const userId = await getUserIdWithFallback();
     if (!userId) {
-      setError('User ID not found');
+      setError('User ID not found. The student may not have a linked User account.');
       return;
     }
 
@@ -229,9 +256,9 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   };
 
   const updateAccountSettings = async () => {
-    const userId = getUserId();
+    const userId = await getUserIdWithFallback();
     if (!userId) {
-      setError('User ID not found');
+      setError('User ID not found. The student may not have a linked User account.');
       return;
     }
 
