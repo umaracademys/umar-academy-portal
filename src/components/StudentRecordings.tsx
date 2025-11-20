@@ -198,8 +198,8 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
                       const studentIdStr = String(currentStudent.id);
                       const ticketIdStr = String(ticketStudentId || '');
                       return ticketIdStr === studentIdStr || 
-                             ticket.studentName === currentStudent.fullName ||
-                             ticket.studentName === currentStudent.name;
+                             t.studentName === currentStudent.fullName ||
+                             t.studentName === currentStudent.name;
                     }).length} tickets, but none have recordings yet.
                   </p>
                 </div>
