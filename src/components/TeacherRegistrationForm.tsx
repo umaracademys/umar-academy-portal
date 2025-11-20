@@ -366,6 +366,14 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Only allow submission on the last tab (Permissions tab)
+    if (currentTab !== tabs.length - 1) {
+      // If not on last tab, just navigate to next tab instead
+      setCurrentTab(currentTab + 1);
+      return;
+    }
+    
     setSubmitError(null);
     setIsSubmitting(true);
     
@@ -611,7 +619,20 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
           ))}
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto bg-gray-50">
+        <form 
+          onSubmit={handleSubmit} 
+          onKeyDown={(e) => {
+            // Prevent Enter key from submitting form unless on last tab
+            if (e.key === 'Enter' && currentTab !== tabs.length - 1) {
+              e.preventDefault();
+              // Navigate to next tab instead
+              if (currentTab < tabs.length - 1) {
+                setCurrentTab(currentTab + 1);
+              }
+            }
+          }}
+          className="flex-1 overflow-y-auto bg-gray-50"
+        >
           {submitError && (
             <div className="mx-6 mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg shadow-sm">
               <div className="flex items-start">
@@ -1230,7 +1251,13 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                 {currentTab > 0 && (
                   <button
                     type="button"
-                    onClick={() => setCurrentTab(currentTab - 1)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!isSubmitting) {
+                        setCurrentTab(currentTab - 1);
+                      }
+                    }}
                     disabled={isSubmitting}
                     className="px-6 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 disabled:hover:scale-100"
                   >
@@ -1241,7 +1268,13 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                 {currentTab < tabs.length - 1 ? (
                   <button
                     type="button"
-                    onClick={() => setCurrentTab(currentTab + 1)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!isSubmitting) {
+                        setCurrentTab(currentTab + 1);
+                      }
+                    }}
                     disabled={isSubmitting}
                     className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
                   >
