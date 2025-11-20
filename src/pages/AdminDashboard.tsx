@@ -13,6 +13,7 @@ import StudentProgress from '../components/StudentProgress';
 import StudentCommunication from '../components/StudentCommunication';
 import TeacherList from '../components/TeacherList';
 import TeacherProfile from '../components/TeacherProfile';
+import EmailModule from '../components/EmailModule';
 import TeacherPayroll from '../components/TeacherPayroll';
 import TeacherPerformance from '../components/TeacherPerformance';
 import TeacherAttendance from '../components/TeacherAttendance';
