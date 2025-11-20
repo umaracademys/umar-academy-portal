@@ -67,8 +67,25 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   useEffect(() => {
     if (isRecording && !recordingStartedAtRef.current) {
       recordingStartedAtRef.current = new Date();
+      console.log('🎙️ Recording started at:', recordingStartedAtRef.current.toISOString());
     }
   }, [isRecording]);
+
+  // Log recording permission status
+  useEffect(() => {
+    if (!hasPermission && !isRecording) {
+      console.warn('⚠️ Microphone permission not granted! Recording may not work.');
+    } else if (hasPermission) {
+      console.log('✅ Microphone permission granted');
+    }
+  }, [hasPermission, isRecording]);
+
+  // Log recording errors
+  useEffect(() => {
+    if (recordingError) {
+      console.error('❌ Recording error detected:', recordingError);
+    }
+  }, [recordingError]);
 
   // Convert mistakes to MushafMistake format
   const mushafMistakes = useMemo(() => {
