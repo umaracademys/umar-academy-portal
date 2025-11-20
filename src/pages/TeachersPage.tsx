@@ -13,7 +13,7 @@ import TeacherCommunication from '../components/TeacherCommunication';
 import Card from '../components/Card';
 
 const TeachersPage: React.FC = () => {
-  const { teachers, deleteTeacher, refreshData } = useData();
+  const { teachers, admins, deleteTeacher, refreshData } = useData();
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showTeacherForm, setShowTeacherForm] = useState(false);
   const [showTeacherProfile, setShowTeacherProfile] = useState(false);
@@ -25,12 +25,31 @@ const TeachersPage: React.FC = () => {
   const [showTeacherAttendance, setShowTeacherAttendance] = useState(false);
   const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
 
+  // Combine teachers and admins, marking admins with a flag
+  const combinedTeachers = React.useMemo(() => {
+    const teachersList = teachers.map(t => ({ ...t, isAdmin: false }));
+    const adminsList = admins.map(a => ({
+      ...a,
+      isAdmin: true,
+      // Map admin fields to teacher-like structure for compatibility
+      department: a.assignedDepartments?.[0] || 'Administration',
+      location: 'Local' as const,
+      employmentType: 'Full Time' as const,
+    }));
+    return [...teachersList, ...adminsList];
+  }, [teachers, admins]);
+
   const handleTeacherSelect = (teacher: any) => {
     setSelectedTeacher(teacher);
     setShowTeacherProfile(true);
   };
 
   const handleEditTeacher = (teacher: any) => {
+    // Don't allow editing admins through teacher form
+    if (teacher.isAdmin) {
+      alert('Admin profiles cannot be edited through the teacher form. Please use admin management.');
+      return;
+    }
     setSelectedTeacher(teacher);
     setShowTeacherProfile(false);
     setShowTeacherForm(true);
@@ -60,15 +79,16 @@ const TeachersPage: React.FC = () => {
     }
   };
 
-  const totalTeachers = teachers.length;
-  const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
+  const totalTeachers = combinedTeachers.length;
+  const activeTeacherCount = combinedTeachers.filter((teacher) => teacher.status === 'active').length;
 
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Teacher List */}
+        {/* Teacher List (includes admins) */}
         <TeacherList
+          teachers={combinedTeachers}
           onTeacherSelect={handleTeacherSelect}
           onEditTeacher={handleEditTeacher}
           onDeleteTeacher={handleDeleteTeacher}

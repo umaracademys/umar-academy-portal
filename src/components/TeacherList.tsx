@@ -3,6 +3,7 @@ import { useData } from '../contexts/DataContext';
 import Card from './Card';
 
 interface TeacherListProps {
+  teachers?: any[]; // Optional prop to override default teachers from context
   onTeacherSelect: (teacher: any) => void;
   onEditTeacher: (teacher: any) => void;
   onDeleteTeacher: (teacherId: string) => void | Promise<void>;
@@ -12,8 +13,10 @@ interface TeacherListProps {
   onBulkOperations?: () => void;
 }
 
-const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeacher, onDeleteTeacher, onAddTeacher, onCredentials, onAnalytics, onBulkOperations }) => {
-  const { teachers, students, getStudentsByTeacher } = useData();
+const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTeacherSelect, onEditTeacher, onDeleteTeacher, onAddTeacher, onCredentials, onAnalytics, onBulkOperations }) => {
+  const { teachers: teachersFromContext, students, getStudentsByTeacher } = useData();
+  // Use prop if provided, otherwise use context
+  const teachers = teachersProp || teachersFromContext;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -141,7 +144,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
               Teacher Directory
             </h2>
             <p className="text-white/90 text-sm sm:text-base md:text-lg font-semibold">
-              Manage all registered teachers • {filteredTeachers.length} {filteredTeachers.length === 1 ? 'teacher' : 'teachers'} found
+              Manage all registered teachers and admins • {filteredTeachers.length} {filteredTeachers.length === 1 ? 'person' : 'people'} found
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3">
@@ -329,8 +332,15 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                           className="h-10 w-10 rounded-full mr-3" 
                         />
                         <div>
-                          <p className="font-medium text-gray-900">{teacher.fullName || 'Unknown'}</p>
-                          <p className="text-sm text-gray-500">{teacher.department || 'General'}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">{teacher.fullName || 'Unknown'}</p>
+                            {teacher.isAdmin && (
+                              <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 rounded-full">
+                                ADMIN
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
                         </div>
                       </div>
                     </td>
@@ -338,7 +348,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                     <td className="px-4 py-4 text-sm">
                       <div>
                         <p className="text-gray-900">{teacher.email || 'No email'}</p>
-                        <p className="text-gray-500">{teacher.phoneNumber || 'No contact'}</p>
+                        <p className="text-gray-500">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm">{teacher.department || 'General'}</td>
@@ -362,7 +372,13 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                     </td>
                     <td className="px-4 py-4">{getStatusBadge(teacher.status || 'active')}</td>
                     <td className="px-4 py-4 text-sm font-semibold">
-                      {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
+                      {teacher.isAdmin ? (
+                        <span className="text-gray-400">N/A</span>
+                      ) : (
+                        <>
+                          {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
+                        </>
+                      )}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex space-x-2">
@@ -372,12 +388,14 @@ const TeacherList: React.FC<TeacherListProps> = ({ onTeacherSelect, onEditTeache
                         >
                           View
                         </button>
-                        <button
-                          onClick={() => onEditTeacher(teacher)}
-                          className="text-gold-600 hover:text-gold-800 text-sm font-medium"
-                        >
-                          Edit
-                        </button>
+                        {!teacher.isAdmin && (
+                          <button
+                            onClick={() => onEditTeacher(teacher)}
+                            className="text-gold-600 hover:text-gold-800 text-sm font-medium"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           onClick={() => onDeleteTeacher(teacher.id)}
                           className="text-red-600 hover:text-red-800 text-sm font-medium"
