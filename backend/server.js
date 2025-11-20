@@ -1764,8 +1764,47 @@ app.put('/api/teachers/:id', async (req, res) => {
         normalizedData,
         { new: true, runValidators: true }
       );
-      
-      return res.json(updatedTeacher);
+    }
+
+    // Also update the User record if teacher has a userId
+    if (updatedTeacher && updatedTeacher.userId) {
+      try {
+        const userUpdateData = {};
+        
+        // Update name/fullName in User collection
+        if (normalizedData.fullName) {
+          userUpdateData.name = normalizedData.fullName;
+        }
+        
+        // Update email in User collection
+        if (normalizedData.email) {
+          userUpdateData.email = normalizedData.email;
+        }
+        
+        // Update contact/phoneNumber in User collection
+        if (normalizedData.phoneNumber || normalizedData.contact) {
+          userUpdateData.phoneNumber = normalizedData.phoneNumber || normalizedData.contact;
+          userUpdateData.contact = normalizedData.contact || normalizedData.phoneNumber;
+        }
+        
+        // Update avatar if provided
+        if (normalizedData.avatar) {
+          userUpdateData.avatar = normalizedData.avatar;
+        }
+        
+        // Only update if there's data to update
+        if (Object.keys(userUpdateData).length > 0) {
+          await User.findByIdAndUpdate(
+            updatedTeacher.userId,
+            userUpdateData,
+            { new: true }
+          );
+          console.log(`✅ Updated User record for teacher: ${updatedTeacher.userId.toString()}`);
+        }
+      } catch (userUpdateError) {
+        console.error('⚠️ Failed to update User record (non-fatal):', userUpdateError);
+        // Don't fail the entire request if User update fails
+      }
     }
 
     console.log(`✅ Teacher updated successfully:`, updatedTeacher._id.toString());
