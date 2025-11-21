@@ -112,21 +112,22 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         {/* Modern Header */}
         <div className="px-6 sm:px-8 py-5 sm:py-6 border-b-4 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] shadow-lg">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-2xl">🎫</span>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                <span className="text-lg font-bold text-white">TK</span>
               </div>
-              <div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">Create New Ticket</h2>
-                <p className="text-white/90 mt-1 text-base sm:text-lg font-bold">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg truncate">Create New Ticket</h2>
+                <p className="text-white/90 mt-1 text-sm sm:text-base md:text-lg font-bold truncate">
                   {student?.fullName || 'Student'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl sm:text-3xl font-bold shadow-lg border-2 border-white/30"
+              className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-xl sm:text-2xl md:text-3xl font-bold shadow-lg border-2 border-white/30 touch-target flex-shrink-0"
               title="Close"
+              aria-label="Close"
             >
               ×
             </button>
@@ -139,7 +140,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3 flex-1">
                 <div className="w-8 h-8 rounded-lg bg-yellow-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-lg font-bold">⚠️</span>
+                  <span className="text-white text-xs font-bold">!</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-extrabold text-yellow-800 mb-2 uppercase tracking-wide">

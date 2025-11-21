@@ -296,13 +296,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             <div className="space-y-1">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-2xl">🎫</span>
+                  <span className="text-lg font-bold text-white">TK</span>
                 </div>
                 <div>
-                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg">
                     {selectedTicket ? `Review Ticket` : 'Ticket Review Queue'}
                   </h2>
-                  <p className="text-white/90 text-sm sm:text-base mt-1 font-medium">
+                  <p className="text-white/90 text-xs sm:text-sm md:text-base mt-1 font-medium">
                     {selectedTicket 
                       ? `${selectedTicket.studentName} • ${selectedTicket.type.toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
                       : `${pendingTickets.length} ticket(s) awaiting your review`
@@ -313,8 +313,9 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             </div>
             <button
               onClick={onClose}
-              className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl sm:text-3xl font-bold shadow-lg border-2 border-white/30"
+              className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-xl sm:text-2xl md:text-3xl font-bold shadow-lg border-2 border-white/30 touch-target"
               title="Close"
+              aria-label="Close"
             >
               ×
             </button>
@@ -327,12 +328,12 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             // Modern Ticket List View
             <div className="space-y-4">
               {pendingTickets.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <span className="text-4xl">✓</span>
+                <div className="text-center py-12 sm:py-16">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    <span className="text-2xl sm:text-3xl font-bold text-primary">✓</span>
                   </div>
-                  <p className="text-xl font-bold text-primary mb-2">All Caught Up!</p>
-                  <p className="text-base text-primary/70">No tickets pending review</p>
+                  <p className="text-lg sm:text-xl font-bold text-primary mb-2">All Caught Up!</p>
+                  <p className="text-sm sm:text-base text-primary/70">No tickets pending review</p>
                 </div>
               ) : (
                 <>
