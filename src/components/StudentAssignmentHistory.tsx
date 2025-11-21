@@ -68,7 +68,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
     });
   };
 
-  const toggleMushaf = (assignmentId: string, type: 'sabq' | 'sabqi' | 'manzil', index: number) => {
+  const toggleMushaf = (assignmentId: string, type: 'sabq' | 'sabqi' | 'manzil', index: number, phase?: any) => {
     const key = `${assignmentId}-${type}-${index}`;
     const current = expandedMushafFor[assignmentId];
     const isCurrentlyOpen = current?.type === type && current?.index === index;
@@ -78,18 +78,28 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
       [assignmentId]: isCurrentlyOpen ? null : { type, index }
     }));
 
-    // Set page to first mistake if opening
+    // Set page when opening - prioritize phase.fromPage, then first mistake page, then default to 1
     if (!isCurrentlyOpen) {
-      const assignment = assignments.find(a => a.id === assignmentId);
-      if (assignment?.mushafMistakes) {
-        const phaseMistakes = assignment.mushafMistakes.filter(m => m.workflowStep === type);
-        if (phaseMistakes.length > 0 && phaseMistakes[0].page) {
-          setMushafPages(prev => ({
-            ...prev,
-            [key]: phaseMistakes[0].page
-          }));
+      let defaultPage = 1;
+      
+      // Try to get page from phase.fromPage
+      if (phase?.fromPage) {
+        defaultPage = phase.fromPage;
+      } else {
+        // Try to get from first mistake
+        const assignment = assignments.find(a => a.id === assignmentId);
+        if (assignment?.mushafMistakes) {
+          const phaseMistakes = assignment.mushafMistakes.filter(m => m.workflowStep === type);
+          if (phaseMistakes.length > 0 && phaseMistakes[0].page) {
+            defaultPage = phaseMistakes[0].page;
+          }
         }
       }
+      
+      setMushafPages(prev => ({
+        ...prev,
+        [key]: defaultPage
+      }));
     }
   };
 
@@ -477,7 +487,8 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const phaseMistakes = getMistakesForPhase(assignment, 'sabq', idx);
                                           const mushafKey = `${assignment.id}-sabq-${idx}`;
                                           const isMushafOpen = mushafState?.type === 'sabq' && mushafState?.index === idx;
-                                          const mushafPage = mushafPages[mushafKey] || (phaseMistakes.length > 0 ? phaseMistakes[0].page : 1);
+                                          const defaultPage = phase.fromPage || (phaseMistakes.length > 0 ? phaseMistakes[0].page : 1);
+                                          const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
                                             <div key={idx} className="bg-white rounded-lg p-4 border border-green-200">
@@ -490,22 +501,20 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                     <p className="text-xs text-primary/70 italic">{phase.details}</p>
                                                   )}
                                                 </div>
-                                                {phaseMistakes.length > 0 && (
-                                                  <button
-                                                    onClick={() => toggleMushaf(assignment.id, 'sabq', idx)}
-                                                    className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-extrabold hover:bg-green-600 transition-all shadow-md whitespace-nowrap ml-3"
-                                                  >
-                                                    {isMushafOpen ? '▲ Hide' : '📖 View'} Mushaf ({phaseMistakes.length})
-                                                  </button>
-                                                )}
+                                                <button
+                                                  onClick={() => toggleMushaf(assignment.id, 'sabq', idx, phase)}
+                                                  className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-extrabold hover:bg-green-600 transition-all shadow-md whitespace-nowrap ml-3"
+                                                >
+                                                  {isMushafOpen ? '▲ Hide' : '📖 View'} Mushaf {phaseMistakes.length > 0 && `(${phaseMistakes.length})`}
+                                                </button>
                                               </div>
                                               
-                                              {/* Inline Mushaf View */}
-                                              {isMushafOpen && phaseMistakes.length > 0 && (
+                                              {/* Inline Mushaf View - Always show when open */}
+                                              {isMushafOpen && (
                                                 <div className="mt-4 pt-4 border-t-2 border-green-300">
                                                   <div className="mb-3 flex items-center justify-between">
                                                     <h6 className="text-sm font-extrabold text-green-800">
-                                                      Mushaf View - {phaseMistakes.length} mistake{phaseMistakes.length !== 1 ? 's' : ''}
+                                                      Mushaf View {phaseMistakes.length > 0 && `- ${phaseMistakes.length} mistake${phaseMistakes.length !== 1 ? 's' : ''}`}
                                                     </h6>
                                                     <span className="text-xs text-green-700 font-semibold">
                                                       Page {mushafPage}
@@ -522,22 +531,32 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                       studentName={student?.fullName || 'Student'}
                                                     />
                                                   </div>
-                                                  {/* Mistake List */}
-                                                  <div className="mt-3 space-y-2">
-                                                    {phaseMistakes.map((mistake, mIdx) => (
-                                                      <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-green-200 text-xs">
-                                                        <span className="px-2 py-1 bg-green-500 text-white rounded-lg font-extrabold">
-                                                          {mistake.type}
-                                                        </span>
-                                                        <span className="text-primary font-semibold">
-                                                          Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
-                                                        </span>
-                                                        {mistake.note && (
-                                                          <span className="text-primary/70 italic">"{mistake.note}"</span>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
+                                                  {/* Mistake List - Only show if there are mistakes */}
+                                                  {phaseMistakes.length > 0 && (
+                                                    <div className="mt-3 space-y-2">
+                                                      <h6 className="text-xs font-extrabold text-green-800 mb-2">Mistakes:</h6>
+                                                      {phaseMistakes.map((mistake, mIdx) => (
+                                                        <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-green-200 text-xs">
+                                                          <span className="px-2 py-1 bg-green-500 text-white rounded-lg font-extrabold">
+                                                            {mistake.type}
+                                                          </span>
+                                                          <span className="text-primary font-semibold">
+                                                            Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                                          </span>
+                                                          {mistake.note && (
+                                                            <span className="text-primary/70 italic">"{mistake.note}"</span>
+                                                          )}
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {phaseMistakes.length === 0 && (
+                                                    <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                                                      <p className="text-xs text-green-700 font-semibold text-center">
+                                                        ✓ No mistakes recorded for this assignment
+                                                      </p>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               )}
                                             </div>
@@ -558,7 +577,8 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const phaseMistakes = getMistakesForPhase(assignment, 'sabqi', idx);
                                           const mushafKey = `${assignment.id}-sabqi-${idx}`;
                                           const isMushafOpen = mushafState?.type === 'sabqi' && mushafState?.index === idx;
-                                          const mushafPage = mushafPages[mushafKey] || (phaseMistakes.length > 0 ? phaseMistakes[0].page : 1);
+                                          const defaultPage = phase.fromPage || (phaseMistakes.length > 0 ? phaseMistakes[0].page : 1);
+                                          const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
                                             <div key={idx} className="bg-white rounded-lg p-4 border border-blue-200">
@@ -571,22 +591,20 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                     <p className="text-xs text-primary/70 italic">{phase.details}</p>
                                                   )}
                                                 </div>
-                                                {phaseMistakes.length > 0 && (
-                                                  <button
-                                                    onClick={() => toggleMushaf(assignment.id, 'sabqi', idx)}
-                                                    className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-extrabold hover:bg-blue-600 transition-all shadow-md whitespace-nowrap ml-3"
-                                                  >
-                                                    {isMushafOpen ? '▲ Hide' : '📖 View'} Mushaf ({phaseMistakes.length})
-                                                  </button>
-                                                )}
+                                                <button
+                                                  onClick={() => toggleMushaf(assignment.id, 'sabqi', idx, phase)}
+                                                  className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-extrabold hover:bg-blue-600 transition-all shadow-md whitespace-nowrap ml-3"
+                                                >
+                                                  {isMushafOpen ? '▲ Hide' : '📖 View'} Mushaf {phaseMistakes.length > 0 && `(${phaseMistakes.length})`}
+                                                </button>
                                               </div>
                                               
-                                              {/* Inline Mushaf View */}
-                                              {isMushafOpen && phaseMistakes.length > 0 && (
+                                              {/* Inline Mushaf View - Always show when open */}
+                                              {isMushafOpen && (
                                                 <div className="mt-4 pt-4 border-t-2 border-blue-300">
                                                   <div className="mb-3 flex items-center justify-between">
                                                     <h6 className="text-sm font-extrabold text-blue-800">
-                                                      Mushaf View - {phaseMistakes.length} mistake{phaseMistakes.length !== 1 ? 's' : ''}
+                                                      Mushaf View {phaseMistakes.length > 0 && `- ${phaseMistakes.length} mistake${phaseMistakes.length !== 1 ? 's' : ''}`}
                                                     </h6>
                                                     <span className="text-xs text-blue-700 font-semibold">
                                                       Page {mushafPage}
@@ -603,22 +621,32 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                       studentName={student?.fullName || 'Student'}
                                                     />
                                                   </div>
-                                                  {/* Mistake List */}
-                                                  <div className="mt-3 space-y-2">
-                                                    {phaseMistakes.map((mistake, mIdx) => (
-                                                      <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-blue-200 text-xs">
-                                                        <span className="px-2 py-1 bg-blue-500 text-white rounded-lg font-extrabold">
-                                                          {mistake.type}
-                                                        </span>
-                                                        <span className="text-primary font-semibold">
-                                                          Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
-                                                        </span>
-                                                        {mistake.note && (
-                                                          <span className="text-primary/70 italic">"{mistake.note}"</span>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
+                                                  {/* Mistake List - Only show if there are mistakes */}
+                                                  {phaseMistakes.length > 0 && (
+                                                    <div className="mt-3 space-y-2">
+                                                      <h6 className="text-xs font-extrabold text-blue-800 mb-2">Mistakes:</h6>
+                                                      {phaseMistakes.map((mistake, mIdx) => (
+                                                        <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-blue-200 text-xs">
+                                                          <span className="px-2 py-1 bg-blue-500 text-white rounded-lg font-extrabold">
+                                                            {mistake.type}
+                                                          </span>
+                                                          <span className="text-primary font-semibold">
+                                                            Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                                          </span>
+                                                          {mistake.note && (
+                                                            <span className="text-primary/70 italic">"{mistake.note}"</span>
+                                                          )}
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {phaseMistakes.length === 0 && (
+                                                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                      <p className="text-xs text-blue-700 font-semibold text-center">
+                                                        ✓ No mistakes recorded for this assignment
+                                                      </p>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               )}
                                             </div>
@@ -639,7 +667,8 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const phaseMistakes = getMistakesForPhase(assignment, 'manzil', idx);
                                           const mushafKey = `${assignment.id}-manzil-${idx}`;
                                           const isMushafOpen = mushafState?.type === 'manzil' && mushafState?.index === idx;
-                                          const mushafPage = mushafPages[mushafKey] || (phaseMistakes.length > 0 ? phaseMistakes[0].page : 1);
+                                          const defaultPage = phase.fromPage || (phaseMistakes.length > 0 ? phaseMistakes[0].page : 1);
+                                          const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
                                             <div key={idx} className="bg-white rounded-lg p-4 border border-purple-200">
@@ -652,22 +681,20 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                     <p className="text-xs text-primary/70 italic">{phase.details}</p>
                                                   )}
                                                 </div>
-                                                {phaseMistakes.length > 0 && (
-                                                  <button
-                                                    onClick={() => toggleMushaf(assignment.id, 'manzil', idx)}
-                                                    className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-extrabold hover:bg-purple-600 transition-all shadow-md whitespace-nowrap ml-3"
-                                                  >
-                                                    {isMushafOpen ? '▲ Hide' : '📖 View'} Mushaf ({phaseMistakes.length})
-                                                  </button>
-                                                )}
+                                                <button
+                                                  onClick={() => toggleMushaf(assignment.id, 'manzil', idx, phase)}
+                                                  className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-extrabold hover:bg-purple-600 transition-all shadow-md whitespace-nowrap ml-3"
+                                                >
+                                                  {isMushafOpen ? '▲ Hide' : '📖 View'} Mushaf {phaseMistakes.length > 0 && `(${phaseMistakes.length})`}
+                                                </button>
                                               </div>
                                               
-                                              {/* Inline Mushaf View */}
-                                              {isMushafOpen && phaseMistakes.length > 0 && (
+                                              {/* Inline Mushaf View - Always show when open */}
+                                              {isMushafOpen && (
                                                 <div className="mt-4 pt-4 border-t-2 border-purple-300">
                                                   <div className="mb-3 flex items-center justify-between">
                                                     <h6 className="text-sm font-extrabold text-purple-800">
-                                                      Mushaf View - {phaseMistakes.length} mistake{phaseMistakes.length !== 1 ? 's' : ''}
+                                                      Mushaf View {phaseMistakes.length > 0 && `- ${phaseMistakes.length} mistake${phaseMistakes.length !== 1 ? 's' : ''}`}
                                                     </h6>
                                                     <span className="text-xs text-purple-700 font-semibold">
                                                       Page {mushafPage}
@@ -684,22 +711,32 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                       studentName={student?.fullName || 'Student'}
                                                     />
                                                   </div>
-                                                  {/* Mistake List */}
-                                                  <div className="mt-3 space-y-2">
-                                                    {phaseMistakes.map((mistake, mIdx) => (
-                                                      <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-purple-200 text-xs">
-                                                        <span className="px-2 py-1 bg-purple-500 text-white rounded-lg font-extrabold">
-                                                          {mistake.type}
-                                                        </span>
-                                                        <span className="text-primary font-semibold">
-                                                          Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
-                                                        </span>
-                                                        {mistake.note && (
-                                                          <span className="text-primary/70 italic">"{mistake.note}"</span>
-                                                        )}
-                                                      </div>
-                                                    ))}
-                                                  </div>
+                                                  {/* Mistake List - Only show if there are mistakes */}
+                                                  {phaseMistakes.length > 0 && (
+                                                    <div className="mt-3 space-y-2">
+                                                      <h6 className="text-xs font-extrabold text-purple-800 mb-2">Mistakes:</h6>
+                                                      {phaseMistakes.map((mistake, mIdx) => (
+                                                        <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-purple-200 text-xs">
+                                                          <span className="px-2 py-1 bg-purple-500 text-white rounded-lg font-extrabold">
+                                                            {mistake.type}
+                                                          </span>
+                                                          <span className="text-primary font-semibold">
+                                                            Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                                          </span>
+                                                          {mistake.note && (
+                                                            <span className="text-primary/70 italic">"{mistake.note}"</span>
+                                                          )}
+                                                        </div>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {phaseMistakes.length === 0 && (
+                                                    <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                                      <p className="text-xs text-purple-700 font-semibold text-center">
+                                                        ✓ No mistakes recorded for this assignment
+                                                      </p>
+                                                    </div>
+                                                  )}
                                                 </div>
                                               )}
                                             </div>
