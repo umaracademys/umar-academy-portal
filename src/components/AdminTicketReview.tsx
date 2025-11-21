@@ -288,25 +288,32 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 border-b border-accent-soft bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)]">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-semibold text-white">
-                {selectedTicket ? `Review: ${selectedTicket.studentName}` : 'Review Submitted Tickets'}
-              </h2>
-              <p className="text-white/80 text-xs sm:text-sm mt-1">
-                {selectedTicket 
-                  ? `${selectedTicket.type.toUpperCase()} - ${selectedTicket.mistakes?.length || 0} mistake(s)`
-                  : `${pendingTickets.length} ticket(s) pending review`
-                }
-              </p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
+        {/* Modern Header with Gradient */}
+        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <span className="text-2xl">🎫</span>
+                </div>
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">
+                    {selectedTicket ? `Review Ticket` : 'Ticket Review Queue'}
+                  </h2>
+                  <p className="text-white/90 text-sm sm:text-base mt-1 font-medium">
+                    {selectedTicket 
+                      ? `${selectedTicket.studentName} • ${selectedTicket.type.toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
+                      : `${pendingTickets.length} ticket(s) awaiting your review`
+                    }
+                  </p>
+                </div>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-lg font-bold"
+              className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl sm:text-3xl font-bold shadow-lg border-2 border-white/30"
               title="Close"
             >
               ×
@@ -315,188 +322,289 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gradient-to-b from-gray-50 to-white">
           {!selectedTicket ? (
-            // Ticket List View
+            // Modern Ticket List View
             <div className="space-y-4">
               {pendingTickets.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-lg text-primary-soft">No tickets pending review</p>
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    <span className="text-4xl">✓</span>
+                  </div>
+                  <p className="text-xl font-bold text-primary mb-2">All Caught Up!</p>
+                  <p className="text-base text-primary/70">No tickets pending review</p>
                 </div>
               ) : (
                 <>
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                    <p className="text-sm font-semibold text-blue-800">
-                      Found {pendingTickets.length} ticket(s) ready for review
-                    </p>
-                  </div>
-                  {pendingTickets.map((ticket) => {
-                    const duplicates = findDuplicateTickets(ticket);
-                    const hasDuplicates = duplicates.length > 0;
-
-                    return (
-                      <div
-                        key={ticket.id}
-                        className="w-full p-4 sm:p-6 bg-white rounded-2xl border-2 border-accent-soft hover:border-primary transition-all"
-                      >
-                        {hasDuplicates && (
-                          <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                            <p className="text-xs font-semibold text-orange-800">
-                              ⚠️ {duplicates.length} duplicate ticket(s) found for this student
-                            </p>
-                          </div>
-                        )}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                          <button
-                            onClick={() => handleTicketClick(ticket.id)}
-                            className="flex-1 text-left"
-                          >
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                ticket.type === 'sabqi' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : ticket.type === 'manzil'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {ticket.type.toUpperCase()}
-                              </span>
-                              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
-                                Submitted
-                              </span>
-                            </div>
-                            <h4 className="text-lg font-semibold text-primary mb-1">
-                              {ticket.studentName}
-                            </h4>
-                            <p className="text-sm text-primary-soft mb-2">
-                              Teacher: {ticket.assignedTeacherName || 'N/A'}
-                            </p>
-                            {ticket.teacherComment && (
-                              <p className="text-sm text-primary-soft italic line-clamp-2">
-                                "{ticket.teacherComment}"
-                              </p>
-                            )}
-                            {ticket.mistakes && ticket.mistakes.length > 0 && (
-                              <p className="text-xs text-primary-soft mt-2">
-                                {ticket.mistakes.length} mistake(s) marked
-                              </p>
-                            )}
-                            <p className="text-xs text-primary-soft mt-2">
-                              Submitted: {ticket.submittedAt ? new Date(ticket.submittedAt).toLocaleString() : 'N/A'}
-                            </p>
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleTicketClick(ticket.id)}
-                              className="px-5 py-2.5 bg-primary text-white rounded-full text-sm font-bold whitespace-nowrap hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors shadow-md"
-                            >
-                              Review
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTicket(ticket.id);
-                              }}
-                              className="px-5 py-2.5 bg-red-600 text-white rounded-full text-sm font-bold whitespace-nowrap hover:bg-red-700 transition-colors shadow-md"
-                              title="Delete ticket"
-                            >
-                              🗑️ Delete
-                            </button>
-                          </div>
+                  {/* Summary Banner */}
+                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg border-2 border-blue-400/50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-2xl">📋</span>
+                        </div>
+                        <div>
+                          <p className="text-lg font-extrabold text-white">
+                            {pendingTickets.length} Ticket{pendingTickets.length !== 1 ? 's' : ''} Ready for Review
+                          </p>
+                          <p className="text-sm text-white/90">Click on any ticket to start reviewing</p>
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  </div>
+
+                  {/* Modern Ticket Cards Grid */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {pendingTickets.map((ticket) => {
+                      const duplicates = findDuplicateTickets(ticket);
+                      const hasDuplicates = duplicates.length > 0;
+                      const typeColors = {
+                        sabq: { bg: 'bg-green-500', text: 'text-green-50', border: 'border-green-400' },
+                        sabqi: { bg: 'bg-blue-500', text: 'text-blue-50', border: 'border-blue-400' },
+                        manzil: { bg: 'bg-purple-500', text: 'text-purple-50', border: 'border-purple-400' }
+                      };
+                      const colors = typeColors[ticket.type as keyof typeof typeColors] || typeColors.sabq;
+
+                      return (
+                        <div
+                          key={ticket.id}
+                          className="group relative bg-white rounded-2xl border-2 border-gray-200 hover:border-primary/50 transition-all duration-300 shadow-md hover:shadow-xl overflow-hidden"
+                        >
+                          {/* Gradient Accent Bar */}
+                          <div className={`h-1 ${colors.bg} w-full`}></div>
+                          
+                          {hasDuplicates && (
+                            <div className="mx-4 mt-4 p-2 bg-orange-50 border-l-4 border-orange-400 rounded-lg">
+                              <p className="text-xs font-bold text-orange-800">
+                                ⚠️ {duplicates.length} duplicate ticket{duplicates.length !== 1 ? 's' : ''} found
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="p-5 sm:p-6">
+                            {/* Header with Badges */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className={`px-3 py-1.5 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
+                                    {ticket.type.toUpperCase()}
+                                  </span>
+                                  <span className="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-yellow-500 text-yellow-50 shadow-md">
+                                    SUBMITTED
+                                  </span>
+                                </div>
+                                <h4 className="text-xl font-extrabold text-primary mb-1 group-hover:text-primary/80 transition-colors">
+                                  {ticket.studentName}
+                                </h4>
+                                <p className="text-sm text-primary/70 font-medium">
+                                  👨‍🏫 {ticket.assignedTeacherName || 'Unassigned'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Teacher Comment Preview */}
+                            {ticket.teacherComment && (
+                              <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                <p className="text-xs font-semibold text-primary/60 mb-1">Teacher Comment:</p>
+                                <p className="text-sm text-primary/80 italic line-clamp-2">
+                                  "{ticket.teacherComment}"
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Stats Row */}
+                            <div className="flex items-center justify-between mb-4 pt-3 border-t border-gray-200">
+                              <div className="flex items-center gap-4">
+                                {ticket.mistakes && ticket.mistakes.length > 0 && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-lg">🔴</span>
+                                    <span className="text-sm font-bold text-primary">
+                                      {ticket.mistakes.length} mistake{ticket.mistakes.length !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm">🕐</span>
+                                  <span className="text-xs text-primary/60">
+                                    {ticket.submittedAt ? new Date(ticket.submittedAt).toLocaleDateString() : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+                              <button
+                                onClick={() => handleTicketClick(ticket.id)}
+                                className="flex-1 px-5 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl text-sm font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                              >
+                                📖 Review Ticket
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTicket(ticket.id);
+                                }}
+                                className="px-4 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
+                                title="Delete ticket"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </>
               )}
             </div>
           ) : (
-            // Ticket Detail View
+            // Modern Ticket Detail View
             <div className="space-y-6">
-              {/* Ticket Details */}
-              <Card title={`Review: ${selectedTicket.studentName} - ${selectedTicket.type.toUpperCase()}`}>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Back Button */}
+              <button
+                onClick={handleBackToList}
+                className="flex items-center gap-2 text-primary hover:text-primary/80 font-bold transition-colors group"
+              >
+                <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
+                <span>Back to Ticket List</span>
+              </button>
+
+              {/* Ticket Info Card */}
+              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                <div className={`h-2 ${
+                  selectedTicket.type === 'sabq' ? 'bg-green-500' :
+                  selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
+                  'bg-purple-500'
+                }`}></div>
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-6">
                     <div>
-                      <p className="text-sm font-semibold text-primary mb-1">Student:</p>
-                      <p className="text-sm text-primary-soft">{selectedTicket.studentName}</p>
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className={`px-4 py-2 rounded-xl text-sm font-extrabold text-white shadow-md ${
+                          selectedTicket.type === 'sabq' ? 'bg-green-500' :
+                          selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
+                          'bg-purple-500'
+                        }`}>
+                          {selectedTicket.type.toUpperCase()}
+                        </span>
+                        <span className="px-4 py-2 rounded-xl text-sm font-extrabold bg-yellow-500 text-white shadow-md">
+                          SUBMITTED
+                        </span>
+                      </div>
+                      <h3 className="text-2xl font-extrabold text-primary mb-2">{selectedTicket.studentName}</h3>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-primary mb-1">Type:</p>
-                      <p className="text-sm text-primary-soft">{selectedTicket.type.toUpperCase()}</p>
+                  </div>
+
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Student</p>
+                      <p className="text-base font-bold text-primary">{selectedTicket.studentName}</p>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-primary mb-1">Teacher:</p>
-                      <p className="text-sm text-primary-soft">{selectedTicket.assignedTeacherName || 'N/A'}</p>
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Teacher</p>
+                      <p className="text-base font-bold text-primary">{selectedTicket.assignedTeacherName || 'Unassigned'}</p>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-primary mb-1">Submitted:</p>
-                      <p className="text-sm text-primary-soft">
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Submitted</p>
+                      <p className="text-base font-bold text-primary">
                         {selectedTicket.submittedAt ? new Date(selectedTicket.submittedAt).toLocaleString() : 'N/A'}
                       </p>
                     </div>
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Mistakes</p>
+                      <p className="text-base font-bold text-primary">
+                        {selectedTicket.mistakes?.length || 0} mistake{(selectedTicket.mistakes?.length || 0) !== 1 ? 's' : ''}
+                      </p>
+                    </div>
                   </div>
 
+                  {/* Admin Notes */}
                   {selectedTicket.teacherNotes && (
-                    <div>
-                      <p className="text-sm font-semibold text-primary mb-1">Admin Notes to Teacher:</p>
-                      <p className="text-sm text-primary-soft bg-blue-50 p-3 rounded-xl">{selectedTicket.teacherNotes}</p>
+                    <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-xl">
+                      <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">📝 Admin Notes to Teacher</p>
+                      <p className="text-sm text-blue-900">{selectedTicket.teacherNotes}</p>
                     </div>
                   )}
 
+                  {/* Teacher Comment */}
                   {selectedTicket.teacherComment && (
-                    <div>
-                      <p className="text-sm font-semibold text-primary mb-1">Teacher Comment:</p>
-                      <p className="text-sm text-primary-soft bg-green-50 p-3 rounded-xl">{selectedTicket.teacherComment}</p>
-                    </div>
-                  )}
-
-                  {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
-                    <div>
-                      <p className="text-sm font-semibold text-primary mb-2">
-                        Mistakes Marked: {selectedTicket.mistakes.length}
-                      </p>
+                    <div className="p-4 bg-green-50 border-l-4 border-green-500 rounded-xl">
+                      <p className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">💬 Teacher Comment</p>
+                      <p className="text-sm text-green-900 italic">"{selectedTicket.teacherComment}"</p>
                     </div>
                   )}
                 </div>
-              </Card>
+              </div>
 
               {/* Mushaf View */}
               {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
-                <Card title="Mushaf View with Mistakes">
-                  {/* Recording Status */}
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                  <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {isRecording ? (
-                          <>
-                            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                            <span className="text-sm font-semibold text-blue-800">
-                              Recording... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                            </span>
-                          </>
-                        ) : recordingBlob ? (
-                          <>
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span className="text-sm font-semibold text-green-800">
-                              Recording ready ({Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')})
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                            <span className="text-sm font-semibold text-gray-600">
-                              Recording will start automatically
-                            </span>
-                          </>
-                        )}
+                      <h3 className="text-xl font-extrabold text-primary flex items-center gap-2">
+                        <span>📖</span> Mushaf View with Mistakes
+                      </h3>
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
+                        <span className="text-sm font-bold text-primary">
+                          {selectedTicket.mistakes.length} mistake{selectedTicket.mistakes.length !== 1 ? 's' : ''} marked
+                        </span>
                       </div>
-                      {recordingError && (
-                        <span className="text-xs text-red-600">⚠️ {recordingError}</span>
-                      )}
                     </div>
                   </div>
-                  <div className="flex justify-center">
+                  
+                  {/* Recording Status */}
+                  <div className="px-6 pt-4">
+                    <div className={`p-4 rounded-xl border-2 ${
+                      isRecording ? 'bg-red-50 border-red-300' :
+                      recordingBlob ? 'bg-green-50 border-green-300' :
+                      'bg-gray-50 border-gray-300'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {isRecording ? (
+                            <>
+                              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse shadow-lg"></div>
+                              <div>
+                                <span className="text-sm font-extrabold text-red-800 block">
+                                  🎙️ Recording in Progress
+                                </span>
+                                <span className="text-xs text-red-600">
+                                  {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                                </span>
+                              </div>
+                            </>
+                          ) : recordingBlob ? (
+                            <>
+                              <div className="w-4 h-4 bg-green-500 rounded-full shadow-lg"></div>
+                              <div>
+                                <span className="text-sm font-extrabold text-green-800 block">
+                                  ✓ Recording Complete
+                                </span>
+                                <span className="text-xs text-green-600">
+                                  Duration: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
+                              <span className="text-sm font-semibold text-gray-700">
+                                Recording will start automatically when viewing Mushaf
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        {recordingError && (
+                          <span className="text-xs text-red-600 font-bold bg-red-100 px-2 py-1 rounded">⚠️ {recordingError}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 flex justify-center bg-gradient-to-b from-gray-50 to-white">
                     <InteractiveMushaf
                       currentPage={mushafPage}
                       onPageChange={setMushafPage}
@@ -506,60 +614,84 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                       studentName={selectedTicket.studentName}
                     />
                   </div>
-                </Card>
+                </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-accent-soft">
-                <button
-                  onClick={handleBackToList}
-                  className="px-6 py-3 border-2 border-accent-soft text-primary rounded-full font-bold hover:bg-soft-accent transition-colors shadow-md"
-                >
-                  Back to List
-                </button>
+              {/* Modern Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t-2 border-gray-200">
                 <button
                   onClick={() => setShowReassignModal(true)}
-                  className="px-6 py-3 bg-orange-600 text-white rounded-full font-bold hover:bg-orange-700 transition-colors shadow-lg"
+                  className="flex-1 sm:flex-none px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-extrabold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
                 >
-                  Reassign
+                  <span>🔄</span>
+                  <span>Reassign Ticket</span>
                 </button>
                 <button
                   onClick={handleApproveAndSend}
                   disabled={isProcessing}
-                  className="px-8 py-3 bg-green-600 text-white rounded-full font-bold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                  className="flex-1 sm:flex-none px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-extrabold hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
                 >
-                  {isProcessing ? 'Processing...' : '✓ Approve & Send to Assignment'}
+                  {isProcessing ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✓</span>
+                      <span>Approve & Send to Assignment</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Reassign Modal */}
+        {/* Modern Reassign Modal */}
         {showReassignModal && selectedTicket && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-6 relative">
-              <button
-                onClick={() => {
-                  setShowReassignModal(false);
-                  setSelectedTeacherId('');
-                  setReassignReason('');
-                }}
-                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors text-lg font-bold"
-                title="Close"
-              >
-                ×
-              </button>
-              <h3 className="text-lg font-semibold text-primary mb-4 pr-10">Reassign Ticket</h3>
-              <div className="space-y-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg border-4 border-accent/30 overflow-hidden">
+              {/* Modal Header */}
+              <div className="px-6 py-5 bg-gradient-to-r from-orange-500 to-orange-600 border-b-2 border-orange-400">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <span className="text-xl">🔄</span>
+                    </div>
+                    <h3 className="text-xl font-extrabold text-white">Reassign Ticket</h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowReassignModal(false);
+                      setSelectedTeacherId('');
+                      setReassignReason('');
+                    }}
+                    className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl font-bold"
+                    title="Close"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 space-y-5">
+                <div className="p-4 bg-blue-50 border-l-4 border-blue-500 rounded-xl">
+                  <p className="text-sm font-bold text-blue-800 mb-1">Current Assignment</p>
+                  <p className="text-base text-blue-900">
+                    {selectedTicket.assignedTeacherName || 'Unassigned'}
+                  </p>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Select Teacher:
+                  <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+                    Select New Teacher
                   </label>
                   <select
                     value={selectedTeacherId}
                     onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full px-3 py-2 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm"
                   >
                     <option value="">Choose a teacher...</option>
                     {teachers.map(teacher => {
@@ -577,35 +709,44 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                     })}
                   </select>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-primary mb-2">
-                    Reason (Optional):
+                  <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+                    Reason (Optional)
                   </label>
                   <textarea
                     value={reassignReason}
                     onChange={(e) => setReassignReason(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition"
+                    rows={4}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                     placeholder="Why are you reassigning this ticket?"
                   />
                 </div>
-                <div className="flex gap-3 justify-end">
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
                   <button
                     onClick={() => {
                       setShowReassignModal(false);
                       setSelectedTeacherId('');
                       setReassignReason('');
                     }}
-                    className="px-6 py-3 border-2 border-accent-soft text-primary rounded-full font-bold hover:bg-soft-accent transition-colors shadow-md"
+                    className="flex-1 px-6 py-3 border-2 border-gray-300 text-primary rounded-xl font-extrabold hover:bg-gray-50 transition-all shadow-md"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleReassign}
                     disabled={isProcessing || !selectedTeacherId}
-                    className="px-8 py-3 bg-primary text-white rounded-full font-bold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-extrabold hover:from-orange-600 hover:to-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                   >
-                    {isProcessing ? 'Reassigning...' : 'Reassign'}
+                    {isProcessing ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Reassigning...
+                      </span>
+                    ) : (
+                      'Reassign Ticket'
+                    )}
                   </button>
                 </div>
               </div>

@@ -107,20 +107,25 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 border-b-4 border-accent bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-lg">Create Ticket</h2>
-              <p className="text-white mt-2 text-base sm:text-lg font-extrabold drop-shadow-md">
-                {student?.fullName || 'Student'}
-              </p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border-4 border-accent/30">
+        {/* Modern Header */}
+        <div className="px-6 sm:px-8 py-5 sm:py-6 border-b-4 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-2xl">🎫</span>
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">Create New Ticket</h2>
+                <p className="text-white/90 mt-1 text-base sm:text-lg font-bold">
+                  {student?.fullName || 'Student'}
+                </p>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-accent text-primary rounded-full transition-all text-3xl sm:text-4xl font-extrabold shadow-2xl hover:scale-110 hover:bg-accent/90 border-2 border-accent/50"
+              className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl sm:text-3xl font-bold shadow-lg border-2 border-white/30"
               title="Close"
             >
               ×
@@ -130,104 +135,102 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
 
         {/* Reminder Alert for Previous Reports */}
         {showReminder && previousReports.length > 0 && (
-          <div className="mx-4 sm:mx-6 mt-4 p-3 sm:p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-2xl">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3 flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-yellow-800">
-                  Previous {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} Tickets Found
-                </h3>
-                <div className="mt-2 text-xs sm:text-sm text-yellow-700">
-                  <p className="font-semibold">Last {previousReports.length} approved ticket(s) for this student:</p>
-                  <ul className="list-disc list-inside mt-1 space-y-1">
-                    {previousReports.slice(0, 3).map((report, idx) => (
-                      <li key={report.id || idx} className="break-words">
-                        {report.teacherComment || report.adminComment || 'No comment'} 
-                        {report.sentAt && (
-                          <span className="text-yellow-600 ml-2">
-                            (Sent: {new Date(report.sentAt).toLocaleDateString()})
-                          </span>
-                        )}
-                        {report.submittedAt && !report.sentAt && (
-                          <span className="text-yellow-600 ml-2">
-                            (Submitted: {new Date(report.submittedAt).toLocaleDateString()})
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-2 font-medium">Please review to avoid creating duplicate tickets.</p>
-                  <p className="mt-1 text-xs italic">
-                    Note: These are tickets that were previously approved. Check the assignment page to see if they were saved.
-                  </p>
+          <div className="mx-6 mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-xl">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3 flex-1">
+                <div className="w-8 h-8 rounded-lg bg-yellow-500 flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-lg font-bold">⚠️</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-extrabold text-yellow-800 mb-2 uppercase tracking-wide">
+                    Previous {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} Tickets Found
+                  </h3>
+                  <div className="text-xs sm:text-sm text-yellow-900">
+                    <p className="font-bold mb-2">Last {previousReports.length} approved ticket(s) for this student:</p>
+                    <ul className="list-disc list-inside space-y-1 mb-3">
+                      {previousReports.slice(0, 3).map((report, idx) => (
+                        <li key={report.id || idx} className="break-words">
+                          {report.teacherComment || report.adminComment || 'No comment'} 
+                          {report.sentAt && (
+                            <span className="text-yellow-700 ml-2 font-semibold">
+                              (Sent: {new Date(report.sentAt).toLocaleDateString()})
+                            </span>
+                          )}
+                          {report.submittedAt && !report.sentAt && (
+                            <span className="text-yellow-700 ml-2 font-semibold">
+                              (Submitted: {new Date(report.submittedAt).toLocaleDateString()})
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="font-bold">Please review to avoid creating duplicate tickets.</p>
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setShowReminder(false)}
-                className="ml-2 sm:ml-4 text-yellow-600 hover:text-yellow-800 flex-shrink-0"
+                className="ml-4 text-yellow-600 hover:text-yellow-800 flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-yellow-100 transition-colors"
               >
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
+                ×
               </button>
             </div>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
           {/* Ticket Type Selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-primary mb-3">
-              Ticket Type *
+            <label className="block text-sm font-extrabold text-primary mb-4 uppercase tracking-wide">
+              Select Ticket Type <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setTicketType('sabq')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border-2 font-extrabold text-sm sm:text-base transition-all shadow-lg hover:scale-105 ${
+                className={`px-4 py-5 rounded-xl border-2 font-extrabold text-sm transition-all shadow-lg hover:scale-105 ${
                   ticketType === 'sabq'
-                    ? 'border-primary bg-soft-primary text-primary shadow-xl'
-                    : 'border-accent-soft bg-white text-primary hover:border-primary hover:shadow-xl'
+                    ? 'border-green-500 bg-green-50 text-green-700 shadow-xl ring-2 ring-green-200'
+                    : 'border-gray-300 bg-white text-primary hover:border-green-400 hover:shadow-xl'
                 }`}
               >
-                Sabq
+                <div className="text-2xl mb-1">📖</div>
+                <div>Sabq</div>
               </button>
               <button
                 type="button"
                 onClick={() => setTicketType('sabqi')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border-2 font-extrabold text-sm sm:text-base transition-all shadow-lg hover:scale-105 ${
+                className={`px-4 py-5 rounded-xl border-2 font-extrabold text-sm transition-all shadow-lg hover:scale-105 ${
                   ticketType === 'sabqi'
-                    ? 'border-primary bg-soft-primary text-primary shadow-xl'
-                    : 'border-accent-soft bg-white text-primary hover:border-primary hover:shadow-xl'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-xl ring-2 ring-blue-200'
+                    : 'border-gray-300 bg-white text-primary hover:border-blue-400 hover:shadow-xl'
                 }`}
               >
-                Sabqi
+                <div className="text-2xl mb-1">📚</div>
+                <div>Sabqi</div>
               </button>
               <button
                 type="button"
                 onClick={() => setTicketType('manzil')}
-                className={`px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border-2 font-extrabold text-sm sm:text-base transition-all shadow-lg hover:scale-105 ${
+                className={`px-4 py-5 rounded-xl border-2 font-extrabold text-sm transition-all shadow-lg hover:scale-105 ${
                   ticketType === 'manzil'
-                    ? 'border-primary bg-soft-primary text-primary shadow-xl'
-                    : 'border-accent-soft bg-white text-primary hover:border-primary hover:shadow-xl'
+                    ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-xl ring-2 ring-purple-200'
+                    : 'border-gray-300 bg-white text-primary hover:border-purple-400 hover:shadow-xl'
                 }`}
               >
-                Manzil
+                <div className="text-2xl mb-1">📿</div>
+                <div>Manzil</div>
               </button>
             </div>
             {ticketType === 'sabq' && (
-              <p className="mt-2 text-xs sm:text-sm text-primary-soft">
-                Sabq tickets go directly to assignment page (admin only, no teacher review)
+              <p className="mt-3 text-xs text-primary/70 font-medium bg-green-50 p-2 rounded-lg border border-green-200">
+                📝 Sabq tickets go directly to assignment page (admin only, no teacher review)
               </p>
             )}
             {(ticketType === 'sabqi' || ticketType === 'manzil') && (
-              <p className="mt-2 text-xs sm:text-sm text-primary-soft">
-                {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} tickets require teacher review before assignment
+              <p className="mt-3 text-xs text-primary/70 font-medium bg-blue-50 p-2 rounded-lg border border-blue-200">
+                👨‍🏫 {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} tickets require teacher review before assignment
               </p>
             )}
           </div>
@@ -235,15 +238,15 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
           {/* Admin Comment (for sabq) */}
           {ticketType === 'sabq' && (
             <div className="mb-6">
-              <label className="block text-sm font-medium text-primary mb-2">
-                Comment *
+              <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+                Comment <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={adminComment}
                 onChange={(e) => setAdminComment(e.target.value)}
                 placeholder="Enter comment for sabq assignment..."
-                rows={4}
-                className="w-full px-3 py-2 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition"
+                rows={5}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                 required
               />
             </div>
@@ -253,13 +256,13 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
           {(ticketType === 'sabqi' || ticketType === 'manzil') && (
             <>
               <div className="mb-6">
-                <label className="block text-sm font-medium text-primary mb-2">
-                  Select Teacher *
+                <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+                  Select Teacher <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm"
                   required
                 >
                   <option value="">Choose a teacher...</option>
@@ -274,15 +277,15 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm font-medium text-primary mb-2">
-                  Notes for Teacher *
+                <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+                  Notes for Teacher <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={teacherNotes}
                   onChange={(e) => setTeacherNotes(e.target.value)}
                   placeholder="Enter notes or instructions for the teacher..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition"
+                  rows={5}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                   required
                 />
               </div>
@@ -290,40 +293,31 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
           )}
 
           {/* Submit Button */}
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-accent-soft">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t-2 border-gray-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-7 py-3 border-2 border-accent-soft text-primary rounded-full font-extrabold hover:bg-soft-accent transition-all shadow-lg hover:scale-105"
+              className="px-6 py-3 border-2 border-gray-300 text-primary rounded-xl font-extrabold hover:bg-gray-50 transition-all shadow-md"
               disabled={isCreating}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-10 py-4 text-base sm:text-lg text-white rounded-full font-extrabold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl"
-              style={{ 
-                backgroundColor: 'var(--color-primary)',
-                minWidth: '180px',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.15)'
-              }}
-              onMouseEnter={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.backgroundColor = 'rgba(var(--color-primary-rgb), 0.9)';
-                  e.currentTarget.style.transform = 'scale(1.1)';
-                  e.currentTarget.style.boxShadow = '0 25px 30px -5px rgba(0, 0, 0, 0.3), 0 15px 15px -5px rgba(0, 0, 0, 0.2)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!e.currentTarget.disabled) {
-                  e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.15)';
-                }
-              }}
               disabled={isCreating}
+              className="px-8 py-4 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
             >
-              {isCreating ? 'Creating...' : 'Create Ticket'}
+              {isCreating ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <>
+                  <span>✓</span>
+                  <span>Create Ticket</span>
+                </>
+              )}
             </button>
           </div>
         </form>

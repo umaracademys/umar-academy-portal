@@ -84,21 +84,38 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     }
   };
 
+  const typeColors = {
+    sabq: { bg: 'bg-green-500', text: 'text-green-50' },
+    sabqi: { bg: 'bg-blue-500', text: 'text-blue-50' },
+    manzil: { bg: 'bg-purple-500', text: 'text-purple-50' }
+  };
+  const colors = typeColors[ticket.type as keyof typeof typeColors] || typeColors.sabq;
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-4 sm:px-6 py-4 border-b border-accent-soft bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)]">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-semibold text-white">Review Ticket</h2>
-              <p className="text-white/80 text-xs sm:text-sm mt-1">
-                {ticket.studentName} - {ticket.type.toUpperCase()}
-              </p>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
+        {/* Modern Header */}
+        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-2xl">📝</span>
+              </div>
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">Review Ticket</h2>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className={`px-3 py-1 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
+                    {ticket.type.toUpperCase()}
+                  </span>
+                  <p className="text-white/90 text-sm sm:text-base font-medium">
+                    {ticket.studentName}
+                  </p>
+                </div>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-lg font-bold"
+              className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl sm:text-3xl font-bold shadow-lg border-2 border-white/30"
               title="Close"
             >
               ×
@@ -108,27 +125,26 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
 
         {/* Admin Notes (if provided) */}
         {ticket.teacherNotes && (
-          <div className="px-4 sm:px-6 py-3 bg-blue-50 border-b border-blue-200">
-            <p className="text-sm text-blue-900">
-              <span className="font-semibold">Admin Notes:</span> {ticket.teacherNotes}
-            </p>
+          <div className="px-6 py-4 bg-blue-50 border-l-4 border-blue-500">
+            <p className="text-xs font-bold text-blue-800 mb-1 uppercase tracking-wide">📝 Admin Instructions</p>
+            <p className="text-sm text-blue-900 font-medium">{ticket.teacherNotes}</p>
           </div>
         )}
 
         {/* Previous Review (if reassigned) */}
         {ticket.status === 'reassigned' && ticket.previousTeacherComment && (
-          <div className="px-4 sm:px-6 py-3 bg-orange-50 border-b border-orange-200">
-            <p className="text-xs font-semibold text-orange-800 mb-1">Previous Review:</p>
-            <p className="text-sm text-orange-700">{ticket.previousTeacherComment}</p>
+          <div className="px-6 py-4 bg-orange-50 border-l-4 border-orange-500">
+            <p className="text-xs font-bold text-orange-800 mb-2 uppercase tracking-wide">⚠️ Previous Review</p>
+            <p className="text-sm text-orange-900 mb-2">{ticket.previousTeacherComment}</p>
             {ticket.reassignmentReason && (
-              <p className="text-xs text-orange-600 mt-1">Reason: {ticket.reassignmentReason}</p>
+              <p className="text-xs text-orange-700 font-semibold">Reason: {ticket.reassignmentReason}</p>
             )}
             {ticket.previousMistakes && ticket.previousMistakes.length > 0 && (
-              <div className="mt-2">
-                <p className="text-xs font-semibold text-orange-800 mb-1">Previous Mistakes ({ticket.previousMistakes.length}):</p>
-                <div className="flex flex-wrap gap-1">
+              <div className="mt-3 pt-3 border-t border-orange-300">
+                <p className="text-xs font-bold text-orange-800 mb-2">Previous Mistakes ({ticket.previousMistakes.length}):</p>
+                <div className="flex flex-wrap gap-2">
                   {ticket.previousMistakes.map((m, idx) => (
-                    <span key={idx} className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded">
+                    <span key={idx} className="text-xs px-2 py-1 bg-orange-100 text-orange-800 rounded-lg font-semibold border border-orange-300">
                       {m.type} (Page {m.page})
                     </span>
                   ))}
@@ -140,18 +156,30 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
 
         {/* Error Message */}
         {error && (
-          <div className="px-4 sm:px-6 py-3 bg-red-50 border-b border-red-200">
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="px-6 py-4 bg-red-50 border-l-4 border-red-500">
+            <p className="text-sm font-bold text-red-800">⚠️ {error}</p>
           </div>
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Mushaf View - Takes 2 columns */}
-            <div className="lg:col-span-2 flex justify-center items-start">
-              <div className="bg-soft-accent rounded-2xl p-3 sm:p-4 w-full flex justify-center">
-                <div className="w-full max-w-4xl">
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-extrabold text-primary flex items-center gap-2">
+                      <span>📖</span> Interactive Mushaf
+                    </h3>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
+                      <span className="text-sm font-bold text-primary">
+                        {mistakes.length} mistake{mistakes.length !== 1 ? 's' : ''} marked
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-4 bg-gradient-to-b from-gray-50 to-white">
                   <InteractiveMushaf
                     currentPage={mushafPage}
                     onPageChange={setMushafPage}
@@ -167,76 +195,90 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
 
             {/* Sidebar - Mistakes List and Comment */}
             <div className="space-y-4">
-              {/* Mistakes List */}
-              <div className="bg-white rounded-2xl border border-accent-soft p-4">
-                <h3 className="text-sm font-semibold text-primary mb-3">
-                  Marked Mistakes ({mistakes.length})
-                </h3>
-                {mistakes.length === 0 ? (
-                  <p className="text-xs text-primary-soft italic">No mistakes marked yet. Click on words in the mushaf to mark mistakes.</p>
-                ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {mistakes.map((mistake) => (
-                      <div
-                        key={mistake.id}
-                        className="flex items-start justify-between gap-2 p-2 bg-soft-accent rounded-xl"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary text-white">
-                              {mistake.type}
-                            </span>
-                            <span className="text-xs text-primary-soft">
-                              Page {mistake.page}
-                            </span>
-                          </div>
-                          {mistake.surah && mistake.ayah && (
-                            <p className="text-xs text-primary-soft">
-                              Surah {mistake.surah}, Ayah {mistake.ayah}
-                            </p>
-                          )}
-                          {mistake.note && (
-                            <p className="text-xs text-primary mt-1 italic">"{mistake.note}"</p>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleRemoveMistake(mistake.id!)}
-                          className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded-full hover:bg-red-50 transition-colors flex-shrink-0"
-                        >
-                          Remove
-                        </button>
+              {/* Mistakes List Card */}
+              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                  <h3 className="text-base font-extrabold text-primary flex items-center gap-2">
+                    <span>🔴</span> Marked Mistakes ({mistakes.length})
+                  </h3>
+                </div>
+                <div className="p-4">
+                  {mistakes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                        <span className="text-2xl">👆</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <p className="text-sm text-primary/70 font-medium">Click on words in the Mushaf to mark mistakes</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {mistakes.map((mistake) => (
+                        <div
+                          key={mistake.id}
+                          className="group flex items-start justify-between gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200 hover:border-primary/50 transition-all"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-primary text-white shadow-sm">
+                                {mistake.type}
+                              </span>
+                              <span className="text-xs text-primary/70 font-semibold">
+                                Page {mistake.page}
+                              </span>
+                            </div>
+                            {mistake.surah && mistake.ayah && (
+                              <p className="text-xs text-primary/60 mb-1">
+                                Surah {mistake.surah}, Ayah {mistake.ayah}
+                              </p>
+                            )}
+                            {mistake.note && (
+                              <p className="text-xs text-primary/80 mt-1 italic">"{mistake.note}"</p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleRemoveMistake(mistake.id!)}
+                            className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 font-bold"
+                            title="Remove mistake"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Comment Section */}
-              <div className="bg-white rounded-2xl border border-accent-soft p-4">
-                <label className="block text-sm font-semibold text-primary mb-2">
-                  Your Comment *
-                </label>
-                <textarea
-                  value={teacherComment}
-                  onChange={(e) => setTeacherComment(e.target.value)}
-                  placeholder="Enter your review comments here..."
-                  rows={6}
-                  className="w-full px-3 py-2 border border-accent-soft rounded-2xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition resize-none"
-                  required
-                />
-                <p className="text-xs text-primary-soft mt-2">
-                  This comment will be sent to the admin for review.
-                </p>
+              {/* Comment Section Card */}
+              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                  <label className="block text-base font-extrabold text-primary flex items-center gap-2">
+                    <span>💬</span> Your Review Comment <span className="text-red-500">*</span>
+                  </label>
+                </div>
+                <div className="p-4">
+                  <textarea
+                    value={teacherComment}
+                    onChange={(e) => setTeacherComment(e.target.value)}
+                    placeholder="Enter your review comments here... Describe the student's recitation, areas of improvement, and any additional notes."
+                    rows={8}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition resize-none font-medium shadow-sm"
+                    required
+                  />
+                  <p className="text-xs text-primary/60 mt-2 font-medium">
+                    This comment will be sent to the admin for review.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer - Submit Button */}
-        <div className="px-4 sm:px-6 py-4 border-t border-accent-soft bg-white flex flex-col sm:flex-row justify-end gap-3">
+        {/* Modern Footer */}
+        <div className="px-6 py-5 border-t-2 border-gray-200 bg-white flex flex-col sm:flex-row justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-6 py-3 border-2 border-accent-soft text-primary rounded-full font-bold hover:bg-soft-accent transition-colors shadow-md"
+            className="px-6 py-3 border-2 border-gray-300 text-primary rounded-xl font-extrabold hover:bg-gray-50 transition-all shadow-md"
             disabled={isSubmitting}
           >
             Cancel
@@ -244,9 +286,19 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
           <button
             onClick={handleSubmit}
             disabled={isSubmitting || !teacherComment.trim()}
-            className="px-8 py-3 bg-primary text-white rounded-full font-bold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="px-8 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
           >
-            {isSubmitting ? 'Submitting...' : 'Submit Review'}
+            {isSubmitting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <>
+                <span>✓</span>
+                <span>Submit Review</span>
+              </>
+            )}
           </button>
         </div>
       </div>

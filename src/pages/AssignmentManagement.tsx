@@ -113,18 +113,25 @@ const AssignmentManagement: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <Header />
       
       {/* Content Area */}
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {/* Prominent Header */}
-        <div className="mb-8 rounded-3xl border-4 border-accent bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] px-6 py-8 sm:px-10 sm:py-12 shadow-2xl">
+        {/* Modern Prominent Header */}
+        <div className="mb-8 rounded-3xl border-4 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] px-6 py-8 sm:px-10 sm:py-12 shadow-2xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white/80">Assignment Management System</span>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white drop-shadow-lg">Assignment Management</h1>
-              <p className="text-base sm:text-lg text-white/90 max-w-2xl font-medium">Manage assignments, tickets, and classwork for all students</p>
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <span className="text-3xl">📋</span>
+                </div>
+                <div>
+                  <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white/90">Assignment Management System</span>
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white drop-shadow-lg mt-1">Assignment Management</h1>
+                </div>
+              </div>
+              <p className="text-base sm:text-lg text-white/95 max-w-2xl font-bold">Manage assignments, tickets, and classwork for all students</p>
             </div>
             <div className="flex flex-wrap gap-3">
               <button
@@ -134,7 +141,7 @@ const AssignmentManagement: React.FC = () => {
                     setSelectedStudent(filteredStudents[0].id);
                   }
                 }}
-                className="px-6 py-3 bg-accent text-primary rounded-full font-extrabold shadow-xl hover:scale-105 transition-all text-sm sm:text-base"
+                className="px-6 py-3 bg-accent text-primary rounded-xl font-extrabold shadow-xl hover:scale-105 transition-all text-sm sm:text-base border-2 border-white/30"
                 disabled={filteredStudents.length === 0}
               >
                 + Create Ticket
