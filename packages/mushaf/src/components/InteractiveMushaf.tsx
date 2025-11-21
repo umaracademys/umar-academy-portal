@@ -63,8 +63,9 @@ interface InteractiveMushafProps {
 
 interface MistakeModalProps {
   word: Word | null;
+  letterIndex?: number; // Index of clicked letter within the word
   onClose: () => void;
-  onSave: (word: Word, type: string, note?: string, audioBlob?: Blob) => void;
+  onSave: (word: Word, type: string, note?: string, audioBlob?: Blob, letterIndex?: number) => void;
 }
 
 interface Mistake {
@@ -82,8 +83,115 @@ const mistakeTypes = [
   "Ikhfa Mistake",
   "Ghunna Mistake",
   "Holding/Fluency Mistake",
+  "Letter Mistake",
+  "Heavy Letter",
+  "No Rounding Lips",
+  "Heavy H",
+  "Light L",
+  "Atkee",
   "Other Mistake",
 ];
+
+// Letter-level mistake types that require letter selection
+const letterMistakeTypes = [
+  "Letter Mistake",
+  "Heavy Letter",
+  "No Rounding Lips",
+  "Heavy H",
+  "Light L",
+  "Atkee",
+];
+
+// Function to split Arabic text into letters properly (handles diacritics and combining characters)
+// This function should be used consistently throughout the component
+// Handles both cases: text already split into glyphs, or full words
+const splitArabicText = (text: string): string[] => {
+  if (!text || text.trim().length === 0) return [];
+  
+  // For Mushaf data, words are often already stored as individual glyphs/characters
+  // Check if text appears to be individual characters (common case)
+  const chars = Array.from(text);
+  
+  // If most characters are single Arabic letters (not combined with diacritics),
+  // treat each character as a separate letter
+  // This handles the common case where Mushaf data stores words as individual glyphs
+  let singleCharCount = 0;
+  for (const char of chars) {
+    const code = char.charCodeAt(0);
+    const isArabic = (code >= 0x0600 && code <= 0x06FF) || 
+                     (code >= 0x0750 && code <= 0x077F) || 
+                     (code >= 0x08A0 && code <= 0x08FF) || 
+                     (code >= 0xFB50 && code <= 0xFDFF) || 
+                     (code >= 0xFE70 && code <= 0xFEFF);
+    if (isArabic && char.length === 1) {
+      singleCharCount++;
+    }
+  }
+  
+  // If 80%+ of characters are single Arabic letters, treat as individual glyphs
+  if (singleCharCount >= chars.length * 0.8 && chars.length > 0) {
+    // Return all characters, filtering out only pure whitespace
+    return chars.filter(char => char.trim().length > 0 || char.charCodeAt(0) > 0x20);
+  }
+  
+  // Otherwise, try using Intl.Segmenter for proper grapheme cluster segmentation
+  try {
+    const IntlSegmenter = (Intl as any).Segmenter;
+    if (IntlSegmenter) {
+      const segmenter = new IntlSegmenter('ar', { granularity: 'grapheme' });
+      const segments = Array.from(segmenter.segment(text)) as Array<{ segment: string }>;
+      const result = segments.map(seg => seg.segment).filter(seg => seg.trim().length > 0);
+      if (result.length > 0) {
+        return result;
+      }
+    }
+  } catch (e) {
+    // Intl.Segmenter not available, will use fallback
+    console.debug('Intl.Segmenter not available, using fallback');
+  }
+  
+  // Fallback: Split by Arabic grapheme clusters manually
+  const result: string[] = [];
+  let currentLetter = '';
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const code = char.charCodeAt(0);
+    
+    const isArabicBase = (code >= 0x0600 && code <= 0x06FF) || 
+                         (code >= 0x0750 && code <= 0x077F) || 
+                         (code >= 0x08A0 && code <= 0x08FF) || 
+                         (code >= 0xFB50 && code <= 0xFDFF) || 
+                         (code >= 0xFE70 && code <= 0xFEFF);
+    
+    const isCombiningMark = (code >= 0x064B && code <= 0x065F) || 
+                            (code === 0x0651); // Shadda
+    
+    if (isArabicBase) {
+      if (currentLetter.trim().length > 0) {
+        result.push(currentLetter);
+      }
+      currentLetter = char;
+    } else if (isCombiningMark && currentLetter.length > 0) {
+      currentLetter += char;
+    } else if (currentLetter.trim().length > 0) {
+      result.push(currentLetter);
+      currentLetter = '';
+      if (char.trim().length > 0 && !isCombiningMark) {
+        result.push(char);
+      }
+    } else if (char.trim().length > 0 && !isCombiningMark) {
+      result.push(char);
+    }
+  }
+  
+  if (currentLetter.trim().length > 0) {
+    result.push(currentLetter);
+  }
+  
+  const filtered = result.filter(letter => letter.trim().length > 0);
+  return filtered.length > 0 ? filtered : chars.filter(char => char.trim().length > 0);
+};
 
 // Function to get mistake type label (used by multiple components)
 const getMistakeTypeLabel = (type: string): string => {
@@ -93,6 +201,12 @@ const getMistakeTypeLabel = (type: string): string => {
     "ikhfa": "Ikhfa Mistake",
     "holding": "Holding/Fluency Mistake",
     "tech": "Ghunna Mistake",
+    "letter": "Letter Mistake",
+    "heavy_letter": "Heavy Letter",
+    "no_rounding_lips": "No Rounding Lips",
+    "heavy_h": "Heavy H",
+    "light_l": "Light L",
+    "atkee": "Atkee",
     "other": "Other Mistake",
   };
   return typeMap[type] || type;
@@ -100,10 +214,12 @@ const getMistakeTypeLabel = (type: string): string => {
 
 export const MistakeModal: React.FC<MistakeModalProps> = ({
   word,
+  letterIndex: initialLetterIndex,
   onClose,
   onSave,
 }) => {
   const [selectedType, setSelectedType] = useState("");
+  const [selectedLetterIndex, setSelectedLetterIndex] = useState<number | undefined>(initialLetterIndex);
   const [note, setNote] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -111,6 +227,26 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordingTimer, setRecordingTimer] = useState<number | null>(null);
+
+  // Reset letter selection when word changes or initialLetterIndex changes
+  useEffect(() => {
+    if (initialLetterIndex !== undefined) {
+      setSelectedLetterIndex(initialLetterIndex);
+    } else {
+      // If no letter index provided, reset to undefined
+      setSelectedLetterIndex(undefined);
+    }
+  }, [initialLetterIndex, word]);
+
+  // Split word into letters for letter selection using the same function as rendering
+  const wordLetters = React.useMemo(() => {
+    if (!word || !word.text) return [];
+    const letters = splitArabicText(word.text);
+    // Filter out empty strings and whitespace-only letters
+    const filtered = letters.filter(letter => letter.trim().length > 0);
+    console.log(`Modal: Word "${word.text}" (length: ${word.text.length}) split into ${filtered.length} letters:`, filtered);
+    return filtered;
+  }, [word]);
 
   // Cleanup audio URL on unmount
   useEffect(() => {
@@ -210,7 +346,16 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
           </label>
           <select
             value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
+            onChange={(e) => {
+              setSelectedType(e.target.value);
+              // Reset letter selection if switching away from letter mistake types
+              if (!letterMistakeTypes.includes(e.target.value)) {
+                setSelectedLetterIndex(undefined);
+              } else if (selectedLetterIndex === undefined && wordLetters.length > 0) {
+                // Auto-select first letter if none selected and letter mistake type chosen
+                setSelectedLetterIndex(initialLetterIndex ?? 0);
+              }
+            }}
             className="w-full border border-gray-300 rounded-md p-2"
             dir="ltr"
           >
@@ -222,6 +367,57 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
             ))}
           </select>
         </div>
+
+        {/* Letter Selection - Only show for letter-level mistake types */}
+        {letterMistakeTypes.includes(selectedType) && word && (
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-2 text-left" dir="ltr">
+              Select Letter:
+              {wordLetters.length === 0 && (
+                <span className="text-red-500 text-xs ml-2">(No letters detected in word: "{word.text}")</span>
+              )}
+            </label>
+            {wordLetters.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200" dir="rtl" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                  {wordLetters.map((letter, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedLetterIndex(idx)}
+                      className={`px-3 py-2 text-lg rounded-md border-2 transition-all ${
+                        selectedLetterIndex === idx
+                          ? 'bg-blue-500 text-white border-blue-600 shadow-md scale-105'
+                          : 'bg-white text-gray-800 border-gray-300 hover:border-blue-400 hover:bg-blue-50'
+                      }`}
+                      style={{
+                        fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
+                        direction: 'rtl',
+                        minWidth: '2.5rem',
+                        minHeight: '2.5rem',
+                        fontSize: '1.5rem',
+                        lineHeight: '1.5'
+                      }}
+                      title={`Letter ${idx + 1}: ${letter} (Unicode: ${letter.charCodeAt(0).toString(16)})`}
+                    >
+                      {letter}
+                    </button>
+                  ))}
+                </div>
+                {selectedLetterIndex !== undefined && selectedLetterIndex < wordLetters.length && (
+                  <p className="text-xs text-gray-500 mt-2 text-left" dir="ltr">
+                    Selected: Letter {selectedLetterIndex + 1} of {wordLetters.length} ({wordLetters[selectedLetterIndex]})
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+                <p>Could not split word into letters. Word text: "{word.text}"</p>
+                <p className="text-xs mt-1">Length: {word.text?.length || 0} characters</p>
+                <p className="text-xs">Try clicking directly on a letter in the Mushaf instead.</p>
+              </div>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-1 text-left" dir="ltr">
@@ -301,11 +497,16 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
           <button
             onClick={() => {
               if (selectedType) {
-                onSave(word, selectedType, note, audioBlob || undefined);
+                // For letter mistake types, require letter selection
+                if (letterMistakeTypes.includes(selectedType) && selectedLetterIndex === undefined) {
+                  alert('Please select a letter for this mistake type.');
+                  return;
+                }
+                onSave(word, selectedType, note, audioBlob || undefined, selectedLetterIndex);
                 onClose();
               }
             }}
-            disabled={!selectedType}
+            disabled={!selectedType || (letterMistakeTypes.includes(selectedType) && selectedLetterIndex === undefined)}
             className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-left"
             dir="ltr"
           >
@@ -390,6 +591,7 @@ export const MushafPage: React.FC<{
 export const WordByWordPage: React.FC<{
   pageNumber: number;
   onWordClick?: (word: Word) => void;
+  onLetterClick?: (word: Word, letterIndex: number) => void; // New: handle letter clicks
   mistakes?: MushafMistake[]; // Current mistakes
   historicalMistakes?: MushafMistake[]; // Historical mistakes from student's personal Mushaf
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
@@ -399,6 +601,7 @@ export const WordByWordPage: React.FC<{
 }> = ({
   pageNumber,
   onWordClick,
+  onLetterClick,
   mistakes: mistakesProp = [],
   historicalMistakes: historicalMistakesProp = [],
   showHistorical = true,
@@ -734,9 +937,48 @@ export const WordByWordPage: React.FC<{
     }
   }, [words, wordsFromApi, mistakes, pageNumber, onMistakesWithWords, layout]);
 
+  // Function to get mistake for a specific letter in a word
+  const getLetterMistake = (word: Word, letterIndex: number): { mistake: MushafMistake | undefined; isHistorical: boolean } => {
+    // First try to find exact letter-level match in current mistakes
+    const letterMatch = mistakes.find(
+      (m) =>
+        m.page === pageNumber &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        m.letterIndex === letterIndex &&
+        m.wordIndex !== undefined &&
+        m.letterIndex !== undefined
+    );
+    
+    if (letterMatch) {
+      return { mistake: letterMatch, isHistorical: false };
+    }
+    
+    // Check historical mistakes
+    if (showHistorical && historicalMistakes.length > 0) {
+      const historicalLetterMatch = historicalMistakes.find(
+        (m) =>
+          m.page === pageNumber &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          m.wordIndex === word.word_index &&
+          m.letterIndex === letterIndex &&
+          m.wordIndex !== undefined &&
+          m.letterIndex !== undefined
+      );
+      
+      if (historicalLetterMatch) {
+        return { mistake: historicalLetterMatch, isHistorical: true };
+      }
+    }
+    
+    return { mistake: undefined, isHistorical: false };
+  };
+
   // Function to get mistake for a word (prioritize current mistakes over historical)
   const getWordMistake = (word: Word): { mistake: MushafMistake | undefined; isHistorical: boolean } => {
-    // First try to find exact match with wordIndex in current mistakes
+    // First try to find exact match with wordIndex in current mistakes (non-letter-level)
     const exactMatch = mistakes.find(
       (m) =>
         m.page === pageNumber &&
@@ -744,7 +986,8 @@ export const WordByWordPage: React.FC<{
         m.ayah === word.ayah &&
         m.wordIndex === word.word_index &&
         m.wordIndex !== undefined &&
-        m.wordIndex !== null
+        m.wordIndex !== null &&
+        (m.letterIndex === undefined || m.letterIndex === null) // Only word-level mistakes
     );
     
     if (exactMatch) {
@@ -1042,18 +1285,80 @@ export const WordByWordPage: React.FC<{
                   }}
                 >
                   {lineWords.map((w, idx) => {
-                    const { mistake, isHistorical } = getWordMistake(w);
-                    const mistakeClass = getMistakeClass(mistake, isHistorical);
+                    const { mistake: wordMistake, isHistorical: isWordHistorical } = getWordMistake(w);
+                    const wordMistakeClass = getMistakeClass(wordMistake, isWordHistorical);
                     
                     // Use regular Arabic text from word data
                     // Note: Individual glyphs (single characters) are expected for proper mushaf rendering
                     const displayText = w.text || '';
+                    const letters = splitArabicText(displayText);
+                    
+                    // Debug: Log letter splitting for troubleshooting
+                    if (letters.length !== displayText.length && letters.length > 0) {
+                      console.debug(`Word "${displayText}" split into ${letters.length} letters:`, letters);
+                    }
+                    
+                    // Check if this word has any letter-level mistakes
+                    const hasLetterMistakes = mistakes.some(m => 
+                      m.page === pageNumber &&
+                      m.surah === w.surah &&
+                      m.ayah === w.ayah &&
+                      m.wordIndex === w.word_index &&
+                      m.letterIndex !== undefined
+                    ) || (showHistorical && historicalMistakes.some(m => 
+                      m.page === pageNumber &&
+                      m.surah === w.surah &&
+                      m.ayah === w.ayah &&
+                      m.wordIndex === w.word_index &&
+                      m.letterIndex !== undefined
+                    ));
                     
                   return (
                     <React.Fragment key={w.word_index}>
                         <span
-                          onClick={() => onWordClick?.(w)}
-                          className={`cursor-pointer rounded transition-all duration-200 ${mistakeClass} relative group inline-block`}
+                          onClick={(e) => {
+                            // Detect which letter was clicked based on click position
+                            if (!readOnly && onLetterClick && letters.length > 0) {
+                              const wordSpan = e.currentTarget;
+                              const rect = wordSpan.getBoundingClientRect();
+                              const clickX = e.clientX - rect.left;
+                              
+                              // For RTL text, calculate which letter was clicked
+                              // Get all letter spans
+                              const letterSpans = wordSpan.querySelectorAll('span[data-letter-index]');
+                              let clickedLetterIndex: number | undefined = undefined;
+                              
+                              // Find which letter span contains the click
+                              letterSpans.forEach((span) => {
+                                const spanRect = span.getBoundingClientRect();
+                                const spanLeft = spanRect.left - rect.left;
+                                const spanRight = spanRect.right - rect.left;
+                                
+                                // Check if click is within this letter's bounds
+                                if (clickX >= spanLeft && clickX <= spanRight) {
+                                  const idx = parseInt(span.getAttribute('data-letter-index') || '-1');
+                                  if (idx >= 0) {
+                                    clickedLetterIndex = idx;
+                                  }
+                                }
+                              });
+                              
+                              // If we found a letter, use letter click handler, otherwise use word click
+                              if (clickedLetterIndex !== undefined) {
+                                onLetterClick(w, clickedLetterIndex);
+                              } else {
+                                // Fallback: calculate approximate letter index based on position
+                                // For RTL, rightmost is index 0
+                                const relativeX = rect.width - clickX;
+                                const approximateIndex = Math.floor((relativeX / rect.width) * letters.length);
+                                const safeIndex = Math.max(0, Math.min(letters.length - 1, approximateIndex));
+                                onLetterClick(w, safeIndex);
+                              }
+                            } else {
+                              onWordClick?.(w);
+                            }
+                          }}
+                          className={`cursor-pointer rounded transition-all duration-200 ${wordMistakeClass} relative group inline-block`}
                           dir="rtl"
                           style={{
                             padding: '1px 2px',
@@ -1067,13 +1372,48 @@ export const WordByWordPage: React.FC<{
                             whiteSpace: 'nowrap'
                           }}
                           title={
-                            mistake
-                              ? `${isHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${mistake.type} mistake${mistake.note ? `: ${mistake.note}` : ""}${mistake.audioUrl ? ' (Click to hear audio)' : ''}`
-                              : `Surah ${w.surah}, Ayah ${w.ayah}`
+                            wordMistake
+                              ? `${isWordHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${wordMistake.type} mistake${wordMistake.note ? `: ${wordMistake.note}` : ""}${wordMistake.audioUrl ? ' (Click to hear audio)' : ''}`
+                              : `Surah ${w.surah}, Ayah ${w.ayah}${hasLetterMistakes ? ' (Click letters to mark letter mistakes)' : ''}`
                           }
                         >
-                          {displayText}
-                          {mistake && mistake.audioUrl && (
+                          {/* Render word as individual letters for letter-level interaction */}
+                          {letters.map((letter, letterIdx) => {
+                            const { mistake: letterMistake, isHistorical: isLetterHistorical } = getLetterMistake(w, letterIdx);
+                            const letterMistakeClass = letterMistake ? getMistakeClass(letterMistake, isLetterHistorical) : '';
+                            
+                            return (
+                              <span
+                                key={letterIdx}
+                                data-letter-index={letterIdx}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent word click
+                                  if (!readOnly && onLetterClick) {
+                                    onLetterClick(w, letterIdx);
+                                  } else {
+                                    onWordClick?.(w);
+                                  }
+                                }}
+                                className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-all duration-200 inline-block`}
+                                style={{
+                                  padding: letterMistake ? '2px 1px' : '0',
+                                  borderRadius: '2px',
+                                  display: 'inline-block',
+                                  fontFamily: fontFamily,
+                                  fontSize: 'inherit',
+                                  lineHeight: 'inherit',
+                                }}
+                                title={
+                                  letterMistake
+                                    ? `${isLetterHistorical ? '📜 Historical ' : ''}Letter ${letterIdx + 1} - ${letterMistake.type} mistake${letterMistake.note ? `: ${letterMistake.note}` : ""}`
+                                    : `Letter ${letterIdx + 1}: ${letter}`
+                                }
+                              >
+                                {letter}
+                              </span>
+                            );
+                          })}
+                          {wordMistake && wordMistake.audioUrl && (
                             <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full flex items-center justify-center">
                               <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
@@ -1081,31 +1421,31 @@ export const WordByWordPage: React.FC<{
                             </span>
                           )}
                           {/* Mistake Details Popup */}
-                          {mistake && readOnly && (
+                          {wordMistake && readOnly && (
                             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                               <div className="text-xs">
-                                {isHistorical && (
+                                {isWordHistorical && (
                                   <div className="text-blue-600 font-semibold mb-1 text-[10px]">
                                     📜 Historical Mistake
                                   </div>
                                 )}
                                 <div className="font-semibold text-gray-900 mb-1">
-                                  {getMistakeTypeLabel(mistake.type)}
+                                  {getMistakeTypeLabel(wordMistake.type)}
                                 </div>
-                                {mistake.note && (
-                                  <div className="text-gray-600 mb-2">{mistake.note}</div>
+                                {wordMistake.note && (
+                                  <div className="text-gray-600 mb-2">{wordMistake.note}</div>
                                 )}
-                                {mistake.audioUrl && (
+                                {wordMistake.audioUrl && (
                                   <div className="mt-2">
                                     <div className="text-xs text-gray-500 mb-1">Audio correction:</div>
                                     <audio 
                                       controls 
                                       src={
-                                        mistake.audioUrl.startsWith('http') 
-                                          ? mistake.audioUrl 
+                                        wordMistake.audioUrl.startsWith('http') 
+                                          ? wordMistake.audioUrl 
                                           : `${typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE 
                                               ? (window as any).MUSHAF_API_BASE.replace('/api', '') 
-                                              : import.meta.env?.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${mistake.audioUrl}`
+                                              : import.meta.env?.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${wordMistake.audioUrl}`
                                       } 
                                       className="w-full h-8"
                                     >
@@ -1192,6 +1532,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 }) => {
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
+  const [selectedLetterIndex, setSelectedLetterIndex] = useState<number | undefined>(undefined);
   const [localMistakes, setLocalMistakes] = useState<Mistake[]>([]);
   const [showSurahIndex, setShowSurahIndex] = useState(false); // Hidden by default, user can toggle
   const [chapters, setChapters] = useState<Chapter[]>(FALLBACK_CHAPTERS);
@@ -1249,17 +1590,31 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const handleWordClick = (word: Word) => {
     if (!readOnly && mode === 'marking') {
       setSelectedWord(word);
+      setSelectedLetterIndex(undefined); // Reset letter selection for word-level mistakes
     }
   };
 
-  const handleSaveMistake = async (word: Word, type: string, note?: string, audioBlob?: Blob) => {
+  const handleLetterClick = (word: Word, letterIndex: number) => {
+    if (!readOnly && mode === 'marking') {
+      setSelectedWord(word);
+      setSelectedLetterIndex(letterIndex);
+    }
+  };
+
+  const handleSaveMistake = async (word: Word, type: string, note?: string, audioBlob?: Blob, letterIndex?: number) => {
     // Map the mistake type string to the MistakeType enum
-    const typeMap: Record<string, 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other'> = {
+    const typeMap: Record<string, 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other' | 'letter' | 'heavy_letter' | 'no_rounding_lips' | 'heavy_h' | 'light_l' | 'atkee'> = {
       "Memory Mistake": "memory",
       "Mad (Elongation) Mistake": "madd",
       "Ikhfa Mistake": "ikhfa",
       "Ghunna Mistake": "tech",
       "Holding/Fluency Mistake": "holding",
+      "Letter Mistake": "letter",
+      "Heavy Letter": "heavy_letter",
+      "No Rounding Lips": "no_rounding_lips",
+      "Heavy H": "heavy_h",
+      "Light L": "light_l",
+      "Atkee": "atkee",
       "Other Mistake": "other",
     };
 
@@ -1284,6 +1639,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       surah: word.surah,
       ayah: word.ayah,
       wordIndex: word.word_index,
+      letterIndex: letterIndex !== undefined ? letterIndex : undefined, // Include letterIndex for letter-level mistakes
       position: { x: 50, y: 50 }, // Default position for word-based mistakes
       note: note || '',
       audioUrl: audioUrl
@@ -1299,10 +1655,12 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     
     setLocalMistakes((prev) => {
       // Check if this mistake already exists (avoid duplicates)
+      // For letter mistakes, also check letterIndex
       const exists = prev.some(m => 
         m.surah === word.surah && 
         m.ayah === word.ayah && 
-        m.word_index === word.word_index
+        m.word_index === word.word_index &&
+        (letterIndex === undefined || m.type === type) // Simple check for now
       );
       if (exists) return prev;
       
@@ -1320,6 +1678,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     });
     
     setSelectedWord(null);
+    setSelectedLetterIndex(undefined);
   };
 
   // Get current surah from page number
@@ -1560,6 +1919,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           <WordByWordPage
             pageNumber={currentPage}
             onWordClick={handleWordClick}
+            onLetterClick={handleLetterClick}
             mistakes={mistakes}
             historicalMistakes={historicalMistakes}
             showHistorical={showHistorical}
@@ -1570,7 +1930,11 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
         <MistakeModal
           word={selectedWord}
-          onClose={() => setSelectedWord(null)}
+          letterIndex={selectedLetterIndex}
+          onClose={() => {
+            setSelectedWord(null);
+            setSelectedLetterIndex(undefined);
+          }}
           onSave={handleSaveMistake}
         />
 

@@ -8,6 +8,7 @@ export interface MushafMistake {
   surah: number;
   ayah: number;
   wordIndex?: number; // Index of word in ayah if applicable
+  letterIndex?: number; // Index of letter within the word (0-based) for letter-level mistakes
   position?: {
     x: number; // Relative position on page
     y: number;

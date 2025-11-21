@@ -3060,21 +3060,35 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
       const studentIdStr = String(ticket.studentId);
       console.log('🔍 Searching for assignment with studentId:', studentIdStr, '(type:', typeof studentIdStr, ')');
       
-      assignment = await Assignment.findOne({
-        studentId: studentIdStr,
-        status: 'active'
-      }).sort({ createdAt: -1 });
+      // Check if this ticket was already sent to an assignment (prevent duplicates)
+      if (ticket.sentToAssignmentId) {
+        assignment = await Assignment.findById(ticket.sentToAssignmentId);
+        if (assignment && assignment.status === 'active') {
+          console.log('✅ Found assignment linked to this ticket:', assignment._id);
+        } else {
+          console.log('⚠️ Ticket has sentToAssignmentId but assignment not found or inactive, will create/find new one');
+          ticket.sentToAssignmentId = undefined; // Clear invalid reference
+        }
+      }
       
-      // Also try finding by ObjectId if studentId looks like an ObjectId
-      if (!assignment && /^[0-9a-fA-F]{24}$/.test(studentIdStr)) {
-        console.log('🔍 Trying to find assignment with ObjectId match...');
+      // If not found via ticket reference, search for active assignment
+      if (!assignment) {
         assignment = await Assignment.findOne({
-          $or: [
-            { studentId: studentIdStr },
-            { studentId: new mongoose.Types.ObjectId(studentIdStr) }
-          ],
+          studentId: studentIdStr,
           status: 'active'
         }).sort({ createdAt: -1 });
+        
+        // Also try finding by ObjectId if studentId looks like an ObjectId
+        if (!assignment && /^[0-9a-fA-F]{24}$/.test(studentIdStr)) {
+          console.log('🔍 Trying to find assignment with ObjectId match...');
+          assignment = await Assignment.findOne({
+            $or: [
+              { studentId: studentIdStr },
+              { studentId: new mongoose.Types.ObjectId(studentIdStr) }
+            ],
+            status: 'active'
+          }).sort({ createdAt: -1 });
+        }
       }
 
       if (assignment) {
@@ -3274,6 +3288,68 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     });
     
     await ticket.save();
+    
+    // Sync mistakes to Student Personal Mushaf
+    if (ticket.mistakes && ticket.mistakes.length > 0) {
+      try {
+        let personalMushaf = await StudentPersonalMushaf.findOne({ studentId: ticket.studentId });
+        
+        if (!personalMushaf) {
+          // Create new personal Mushaf if it doesn't exist
+          personalMushaf = new StudentPersonalMushaf({
+            studentId: ticket.studentId,
+            studentName: ticket.studentName,
+            mistakes: []
+          });
+        }
+        
+        // Add mistakes from ticket to personal Mushaf (avoid duplicates)
+        const existingMistakeIds = new Set(personalMushaf.mistakes.map(m => m.id));
+        
+        ticket.mistakes.forEach(mistake => {
+          // Only add if not already exists (check by id or by page/surah/ayah/wordIndex)
+          const isDuplicate = existingMistakeIds.has(mistake.id) || 
+            personalMushaf.mistakes.some(existing => 
+              existing.page === mistake.page &&
+              existing.surah === mistake.surah &&
+              existing.ayah === mistake.ayah &&
+              existing.wordIndex === mistake.wordIndex &&
+              existing.type === mistake.type
+            );
+          
+          if (!isDuplicate) {
+            personalMushaf.mistakes.push({
+              id: mistake.id || `mistake-${Date.now()}-${Math.random()}`,
+              type: mistake.type,
+              page: mistake.page,
+              surah: mistake.surah,
+              ayah: mistake.ayah,
+              wordIndex: mistake.wordIndex,
+              position: mistake.position,
+              note: mistake.note,
+              audioUrl: mistake.audioUrl,
+              ticketId: ticket._id.toString(),
+              workflowStep: ticket.type,
+              markedBy: ticket.assignedTeacherId,
+              markedByName: ticket.assignedTeacherName,
+              timestamp: mistake.timestamp || new Date(),
+              createdAt: new Date()
+            });
+            existingMistakeIds.add(mistake.id || `mistake-${Date.now()}-${Math.random()}`);
+          }
+        });
+        
+        await personalMushaf.save();
+        console.log('✅ Synced mistakes to Personal Mushaf:', {
+          studentId: ticket.studentId,
+          mistakesAdded: ticket.mistakes.length,
+          totalMistakes: personalMushaf.mistakes.length
+        });
+      } catch (personalMushafError) {
+        console.error('⚠️ Error syncing to Personal Mushaf (non-critical):', personalMushafError);
+        // Don't fail the whole operation if Personal Mushaf sync fails
+      }
+    }
     
     // Verify ticket was saved
     const savedTicket = await Ticket.findById(ticket._id);

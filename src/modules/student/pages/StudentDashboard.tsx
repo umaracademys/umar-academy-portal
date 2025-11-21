@@ -5,6 +5,7 @@ import StatCard from '../../../components/StatCard';
 import Card from '../../../components/Card';
 import DebugPanel from '../../../components/DebugPanel';
 import StudentRecordings from '../../../components/StudentRecordings';
+import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -24,6 +25,7 @@ const StudentDashboard: React.FC = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [showRecordings, setShowRecordings] = useState(false);
+  const [showPersonalMushaf, setShowPersonalMushaf] = useState(false);
 
   // Debug logging
   console.log('StudentDashboard - user:', user);
@@ -296,6 +298,15 @@ const StudentDashboard: React.FC = () => {
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#9333EA'}
             >
               🎙️ My Recordings
+            </button>
+            <button
+              onClick={() => setShowPersonalMushaf(true)}
+              className="px-6 py-3 text-white rounded-lg font-semibold transition-all shadow-md hover:shadow-lg"
+              style={{ backgroundColor: '#2E4D32' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1e3321'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2E4D32'}
+            >
+              📖 My Personal Mushaf
             </button>
             <Link
               to="/student/profile"
@@ -639,6 +650,14 @@ const StudentDashboard: React.FC = () => {
       {showRecordings && (
         <StudentRecordings
           onClose={() => setShowRecordings(false)}
+        />
+      )}
+
+      {/* Personal Mushaf Modal */}
+      {showPersonalMushaf && currentStudent && (
+        <StudentPersonalMushaf 
+          studentId={currentStudent.id} 
+          onClose={() => setShowPersonalMushaf(false)} 
         />
       )}
       

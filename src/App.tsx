@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import Login from './pages/Login';
@@ -10,6 +10,7 @@ import TeacherProfile from './pages/TeacherProfile';
 import AssignmentManagement from './pages/AssignmentManagement';
 import StudentsPage from './pages/StudentsPage';
 import TeachersPage from './pages/TeachersPage';
+import MushafDemo from './pages/MushafDemo';
 // import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
 import StudentRouter from './modules/student/StudentRouter';
 
@@ -64,8 +65,10 @@ const DashboardRouter: React.FC = () => {
 
 function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
-  if (isLoading) {
+  // Skip auth loading for demo page
+  if (isLoading && location.pathname !== '/mushaf-demo') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -78,6 +81,10 @@ function AppContent() {
 
   return (
     <Routes>
+      <Route 
+        path="/mushaf-demo" 
+        element={<MushafDemo />} 
+      />
       <Route 
         path="/login" 
         element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} 
@@ -130,8 +137,8 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/dashboard" />} />
-      <Route path="*" element={<Navigate to="/dashboard" />} />
+      <Route path="/" element={<Navigate to="/mushaf-demo" />} />
+      <Route path="*" element={<Navigate to="/mushaf-demo" />} />
     </Routes>
   );
 }
