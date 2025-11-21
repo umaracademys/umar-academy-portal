@@ -102,13 +102,12 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
               </p>
             </div>
             <button
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-lg font-bold"
-                title="Close"
-              >
-                ×
-              </button>
-            </div>
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-lg font-bold"
+              title="Close"
+            >
+              ×
+            </button>
           </div>
         </div>
 
