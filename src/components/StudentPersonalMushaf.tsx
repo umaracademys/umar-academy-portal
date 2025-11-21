@@ -124,7 +124,7 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   // Get unique pages with mistakes
   const pagesWithMistakes = useMemo(() => {
     const pages = new Set(mistakes.map(m => m.page));
-    return Array.from(pages).sort((a, b) => a - b);
+    return Array.from(pages).sort((a: number, b: number) => a - b);
   }, [mistakes]);
 
   if (loading) {
