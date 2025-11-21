@@ -38,7 +38,7 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
       const matchesStudent = ticketIdStr === studentIdStr || 
                             ticketIdStr === currentStudent.id.toString() ||
                             ticket.studentName === currentStudent.fullName ||
-                            ticket.studentName === currentStudent.name;
+                            ticket.studentName === (currentStudent as any).name;
       
       const hasRecording = !!ticket.recordingUrl;
       
@@ -115,7 +115,7 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
 
   useEffect(() => {
     console.log('🔄 StudentRecordings: Component mounted, refreshing data...');
-    console.log('👤 Current user:', user?.email, 'Current student:', currentStudent?.fullName || currentStudent?.name);
+    console.log('👤 Current user:', user?.email, 'Current student:', currentStudent?.fullName);
     refreshData();
   }, [refreshData, user, currentStudent]);
 
@@ -201,7 +201,7 @@ const StudentRecordings: React.FC<StudentRecordingsProps> = ({ onClose }) => {
                       const ticketIdStr = String(ticketStudentId || '');
                       return ticketIdStr === studentIdStr || 
                              t.studentName === currentStudent.fullName ||
-                             t.studentName === currentStudent.name;
+                             t.studentName === currentStudent.fullName;
                     }).length} tickets, but none have recordings yet.
                   </p>
                 </div>

@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
-import { useAutoRecording } from '../hooks/useAutoRecording';
 
 interface TeacherTicketReviewProps {
   ticket: Ticket;
@@ -12,11 +11,6 @@ interface TeacherTicketReviewProps {
     data: { 
       teacherComment: string; 
       mistakes: MushafMistake[];
-      recordingUrl?: string;
-      recordingFormat?: string;
-      recordingDuration?: number;
-      recordingStartedAt?: string;
-      recordingStoppedAt?: string;
     }
   ) => Promise<void>;
 }
@@ -27,41 +21,6 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   const [teacherComment, setTeacherComment] = useState(ticket.teacherComment || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Recording state
-  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
-  const [recordingDuration, setRecordingDuration] = useState<number>(0);
-  const recordingStartedAtRef = useRef<Date | null>(null);
-  
-  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
-  
-  const {
-    isRecording,
-    recordingTime,
-    audioBlob,
-    error: recordingError,
-    hasPermission,
-    startRecording,
-    stopRecording
-  } = useAutoRecording({
-    autoStart: true,
-    onRecordingComplete: async (blob, duration) => {
-      console.log(`✅ Teacher recording completed: ${duration} seconds`);
-      setRecordingBlob(blob);
-      setRecordingDuration(duration);
-    },
-    onError: (err) => {
-      console.error('❌ Teacher recording error:', err);
-    }
-  });
-  
-  // Track when recording started
-  useEffect(() => {
-    if (isRecording && !recordingStartedAtRef.current) {
-      recordingStartedAtRef.current = new Date();
-      console.log('🎙️ Teacher recording started at:', recordingStartedAtRef.current.toISOString());
-    }
-  }, [isRecording]);
 
   // Convert mistakes to MushafMistake format
   const mushafMistakes = useMemo(() => {
@@ -91,29 +50,6 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   const handleRemoveMistake = (mistakeId: string) => {
     setMistakes(prev => prev.filter(m => m.id !== mistakeId));
   };
-  
-  // Upload recording helper
-  const uploadRecording = async (blob: Blob): Promise<string | null> => {
-    try {
-      const formData = new FormData();
-      formData.append('recording', blob, `recording-${Date.now()}.${blob.type.includes('webm') ? 'webm' : 'mp4'}`);
-      
-      const response = await fetch(`${API_BASE}/recordings/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload recording');
-      }
-      
-      const data = await response.json();
-      return data.url || null;
-    } catch (error) {
-      console.error('Error uploading recording:', error);
-      return null;
-    }
-  };
 
   const handleSubmit = async () => {
     if (!teacherComment.trim()) {
@@ -125,54 +61,14 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     setError(null);
 
     try {
-      // Stop recording if still recording
-      let recordingUrl: string | null = null;
-      let recordingFormat: string | null = null;
-      let recordingDurationFinal: number | null = null;
-      let recordingStartedAtFinal: Date | null = null;
-      let recordingStoppedAtFinal: Date | null = null;
-      
-      if (isRecording) {
-        console.log('🎙️ Stopping teacher recording before submission...');
-        stopRecording();
-        // Give a small delay for the onRecordingComplete callback to fire
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      // Upload recording if available
-      const blobToUpload = recordingBlob || audioBlob;
-      if (blobToUpload) {
-        recordingStartedAtFinal = recordingStartedAtRef.current;
-        recordingStoppedAtFinal = new Date();
-        recordingDurationFinal = recordingDuration || Math.floor((recordingStoppedAtFinal.getTime() - (recordingStartedAtFinal?.getTime() || Date.now())) / 1000);
-        
-        console.log('📤 Uploading teacher recording...');
-        recordingUrl = await uploadRecording(blobToUpload);
-        recordingFormat = blobToUpload.type.includes('webm') ? 'webm' : 'mp4';
-        
-        if (recordingUrl) {
-          console.log('✅ Teacher recording uploaded successfully:', recordingUrl);
-        } else {
-          console.warn('⚠️ Recording upload failed, but continuing with submission');
-        }
-      }
-      
-      // Submit ticket with recording data
+      // Submit ticket without recording
       const submitData = {
         teacherComment: teacherComment.trim(),
-        mistakes: mushafMistakes,
-        ...(recordingUrl && {
-          recordingUrl,
-          recordingFormat,
-          recordingDuration: recordingDurationFinal,
-          recordingStartedAt: recordingStartedAtFinal?.toISOString(),
-          recordingStoppedAt: recordingStoppedAtFinal?.toISOString()
-        })
+        mistakes: mushafMistakes
       };
       
       console.log('📤 Submitting ticket:', {
         ticketId: ticket.id,
-        hasRecording: !!recordingUrl,
         mistakesCount: mushafMistakes.length
       });
       
@@ -199,34 +95,6 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
               <p className="text-white/80 text-xs sm:text-sm mt-1">
                 {ticket.studentName} - {ticket.type.toUpperCase()}
               </p>
-            </div>
-            {/* Recording Status */}
-            <div className="flex items-center gap-3">
-              {isRecording && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500 rounded-full">
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                  <span className="text-white text-xs font-semibold">
-                    Recording: {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                  </span>
-                </div>
-              )}
-              {recordingBlob && !isRecording && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500 rounded-full">
-                  <span className="text-white text-xs font-semibold">
-                    ✓ Recording Ready ({Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')})
-                  </span>
-                </div>
-              )}
-              {recordingError && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-500 rounded-full">
-                  <span className="text-white text-xs font-semibold">⚠ Recording Error</span>
-                </div>
-              )}
-              {!hasPermission && !isRecording && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-500 rounded-full">
-                  <span className="text-white text-xs font-semibold">🎤 Microphone access needed</span>
-                </div>
-              )}
             </div>
             <button
               onClick={onClose}

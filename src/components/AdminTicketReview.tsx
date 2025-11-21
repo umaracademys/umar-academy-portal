@@ -160,17 +160,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
       
       console.log('✅ Approving ticket:', selectedTicket.id, 'Type:', selectedTicket.type);
-      const result = await approveAndSendTicket(
-        selectedTicket.id, 
-        '',
-        recordingUrl ? {
-          recordingUrl,
-          recordingFormat,
-          recordingDuration: recordingDurationFinal,
-          recordingStartedAt: recordingStartedAtFinal?.toISOString(),
-          recordingStoppedAt: recordingStoppedAtFinal?.toISOString()
-        } : undefined
-      );
+      const result = await approveAndSendTicket(selectedTicket.id, '');
       console.log('✅ Approval result:', result);
       
       // Show success message with details
