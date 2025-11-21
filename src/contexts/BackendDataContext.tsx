@@ -1672,13 +1672,32 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const approveAndSendTicket = async (id: string, assignmentId: string): Promise<any> => {
+  const approveAndSendTicket = async (
+    id: string, 
+    assignmentId: string,
+    recordingData?: {
+      recordingUrl?: string;
+      recordingFormat?: string;
+      recordingDuration?: number;
+      recordingStartedAt?: string;
+      recordingStoppedAt?: string;
+    }
+  ): Promise<any> => {
     try {
-      console.log('📤 Sending approve request for ticket:', id);
+      console.log('📤 Sending approve request for ticket:', id, 'with recording:', !!recordingData);
       const response = await fetch(`${API_BASE}/tickets/${id}/approve-send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignmentId })
+        body: JSON.stringify({ 
+          assignmentId,
+          ...(recordingData && {
+            recordingUrl: recordingData.recordingUrl,
+            recordingFormat: recordingData.recordingFormat,
+            recordingDuration: recordingData.recordingDuration,
+            recordingStartedAt: recordingData.recordingStartedAt,
+            recordingStoppedAt: recordingData.recordingStoppedAt
+          })
+        })
       });
       if (!response.ok) {
         const errorText = await response.text();

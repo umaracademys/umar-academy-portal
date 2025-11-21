@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Ticket } from '../types/ticket';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import Card from './Card';
+import { useAutoRecording } from '../hooks/useAutoRecording';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
@@ -20,6 +21,33 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [reassignReason, setReassignReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [mushafPage, setMushafPage] = useState(1);
+  
+  // Recording state
+  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState<number>(0);
+  const recordingStartedAtRef = useRef<Date | null>(null);
+  
+  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+  
+  const {
+    isRecording,
+    recordingTime,
+    audioBlob,
+    error: recordingError,
+    hasPermission,
+    startRecording,
+    stopRecording
+  } = useAutoRecording({
+    autoStart: false,
+    onRecordingComplete: async (blob, duration) => {
+      console.log(`✅ Admin recording completed: ${duration} seconds, ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+      setRecordingBlob(blob);
+      setRecordingDuration(duration);
+    },
+    onError: (err) => {
+      console.error('❌ Admin recording error:', err);
+    }
+  });
 
   // Get pending tickets
   const pendingTickets = useMemo(() => {
@@ -41,6 +69,38 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
     }
   }, [selectedTicket]);
+  
+  // Start recording when ticket is selected (Mushaf view is shown)
+  useEffect(() => {
+    if (selectedTicket && !isRecording && !recordingBlob) {
+      console.log('🎙️ Starting admin recording for ticket:', selectedTicket.id);
+      recordingStartedAtRef.current = new Date();
+      startRecording();
+    }
+  }, [selectedTicket, isRecording, recordingBlob, startRecording]);
+  
+  // Upload recording helper
+  const uploadRecording = async (blob: Blob): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      formData.append('recording', blob, `recording-${Date.now()}.${blob.type.includes('webm') ? 'webm' : 'mp4'}`);
+      
+      const response = await fetch(`${API_BASE}/recordings/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload recording');
+      }
+      
+      const data = await response.json();
+      return data.url || null;
+    } catch (error) {
+      console.error('Error uploading recording:', error);
+      return null;
+    }
+  };
 
   const handleTicketClick = (ticketId: string) => {
     console.log('🎫 Clicking ticket:', ticketId);
@@ -59,9 +119,58 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     }
 
     setIsProcessing(true);
+    
+    // Stop recording if still recording
+    let recordingUrl: string | null = null;
+    let recordingFormat: string | null = null;
+    let recordingDurationFinal: number | null = null;
+    let recordingStartedAtFinal: Date | null = null;
+    let recordingStoppedAtFinal: Date | null = null;
+    
     try {
+      if (isRecording) {
+        console.log('🎙️ Stopping admin recording before approval...');
+        stopRecording();
+        // Give a small delay for the onRecordingComplete callback to fire
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      // Upload recording if available
+      const blobToUpload = recordingBlob || audioBlob;
+      if (blobToUpload) {
+        recordingStartedAtFinal = recordingStartedAtRef.current;
+        recordingStoppedAtFinal = new Date();
+        recordingDurationFinal = recordingDuration || Math.floor((recordingStoppedAtFinal.getTime() - (recordingStartedAtFinal?.getTime() || Date.now())) / 1000);
+        
+        console.log('📤 Uploading admin recording with metadata:', {
+          duration: recordingDurationFinal,
+          startedAt: recordingStartedAtFinal?.toISOString(),
+          stoppedAt: recordingStoppedAtFinal.toISOString(),
+          blobSize: blobToUpload.size
+        });
+        
+        recordingUrl = await uploadRecording(blobToUpload);
+        recordingFormat = blobToUpload.type.includes('webm') ? 'webm' : 'mp4';
+        
+        if (recordingUrl) {
+          console.log('✅ Admin recording uploaded successfully:', recordingUrl);
+        } else {
+          console.warn('⚠️ Recording upload failed, but continuing with approval without recording URL.');
+        }
+      }
+      
       console.log('✅ Approving ticket:', selectedTicket.id, 'Type:', selectedTicket.type);
-      const result = await approveAndSendTicket(selectedTicket.id, '');
+      const result = await approveAndSendTicket(
+        selectedTicket.id, 
+        '',
+        recordingUrl ? {
+          recordingUrl,
+          recordingFormat,
+          recordingDuration: recordingDurationFinal,
+          recordingStartedAt: recordingStartedAtFinal?.toISOString(),
+          recordingStoppedAt: recordingStoppedAtFinal?.toISOString()
+        } : undefined
+      );
       console.log('✅ Approval result:', result);
       
       // Show success message with details
@@ -71,9 +180,16 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         `Classwork entries added:\n` +
         `- Sabq: ${Array.isArray(assignment?.classwork?.sabq) ? assignment.classwork.sabq.length : 0}\n` +
         `- Sabqi: ${Array.isArray(assignment?.classwork?.sabqi) ? assignment.classwork.sabqi.length : 0}\n` +
-        `- Manzil: ${Array.isArray(assignment?.classwork?.manzil) ? assignment.classwork.manzil.length : 0}`;
+        `- Manzil: ${Array.isArray(assignment?.classwork?.manzil) ? assignment.classwork.manzil.length : 0}` +
+        (recordingUrl ? `\n\n🎙️ Recording saved to library` : '');
       
       alert(message);
+      
+      // Reset recording state
+      setRecordingBlob(null);
+      setRecordingDuration(0);
+      recordingStartedAtRef.current = null;
+      
       await refreshData();
       setSelectedTicketId(null);
     } catch (error) {
@@ -358,6 +474,38 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               {/* Mushaf View */}
               {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
                 <Card title="Mushaf View with Mistakes">
+                  {/* Recording Status */}
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {isRecording ? (
+                          <>
+                            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+                            <span className="text-sm font-semibold text-blue-800">
+                              Recording... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                            </span>
+                          </>
+                        ) : recordingBlob ? (
+                          <>
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span className="text-sm font-semibold text-green-800">
+                              Recording ready ({Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                            <span className="text-sm font-semibold text-gray-600">
+                              Recording will start automatically
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      {recordingError && (
+                        <span className="text-xs text-red-600">⚠️ {recordingError}</span>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex justify-center">
                     <InteractiveMushaf
                       currentPage={mushafPage}

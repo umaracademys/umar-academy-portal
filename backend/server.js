@@ -3031,7 +3031,7 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
 // Admin approves and sends to assignment
 app.post('/api/tickets/:id/approve-send', async (req, res) => {
   try {
-    const { assignmentId } = req.body;
+    const { assignmentId, recordingUrl, recordingFormat, recordingDuration, recordingStartedAt, recordingStoppedAt } = req.body;
     const ticket = await Ticket.findById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
@@ -3250,6 +3250,22 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     ticket.approvedAt = new Date();
     ticket.sentToAssignmentId = assignment._id.toString();
     ticket.sentAt = new Date();
+    
+    // Save recording data if provided (from admin review)
+    if (recordingUrl) {
+      ticket.recordingUrl = recordingUrl;
+      ticket.recordingFormat = recordingFormat || 'webm';
+      ticket.recordingDuration = recordingDuration || null;
+      ticket.recordingStartedAt = recordingStartedAt ? new Date(recordingStartedAt) : null;
+      ticket.recordingStoppedAt = recordingStoppedAt ? new Date(recordingStoppedAt) : null;
+      console.log('🎙️ Saved recording data to ticket:', {
+        recordingUrl,
+        recordingFormat,
+        recordingDuration,
+        recordingStartedAt: ticket.recordingStartedAt,
+        recordingStoppedAt: ticket.recordingStoppedAt
+      });
+    }
     
     console.log('💾 Saving ticket with assignment ID:', {
       ticketId: ticket._id,
