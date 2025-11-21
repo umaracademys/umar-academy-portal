@@ -1558,7 +1558,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const getStudentAssignments = (studentId: string): Assignment[] => {
-    return assignments.filter(a => a.studentId === studentId);
+    if (!studentId) return [];
+    
+    // Normalize studentId to string for comparison
+    const normalizedStudentId = String(studentId);
+    
+    return assignments.filter(a => {
+      // Check both studentId formats (string and _id)
+      const assignmentStudentId = a.studentId || (a as any)._id?.studentId;
+      return String(assignmentStudentId) === normalizedStudentId ||
+             String(assignmentStudentId) === String(studentId) ||
+             assignmentStudentId === studentId ||
+             assignmentStudentId === normalizedStudentId;
+    });
   };
 
   // New Ticket System Functions (sabq/sabqi/manzil workflow)

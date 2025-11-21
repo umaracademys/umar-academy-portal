@@ -109,7 +109,14 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
 
   // Get assignment count for a student
   const getAssignmentCount = (studentId: string) => {
-    return getStudentAssignments(studentId).length;
+    if (!studentId) return 0;
+    try {
+      const studentAssignments = getStudentAssignments(studentId);
+      return studentAssignments.length;
+    } catch (error) {
+      console.error('Error getting assignment count:', error);
+      return 0;
+    }
   };
 
   if (showHistory && selectedStudent) {
