@@ -20,8 +20,6 @@ interface TeacherTicketReviewProps {
   ) => Promise<void>;
 }
 
-const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
-
 const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClose, onSubmit }) => {
   const [mushafPage, setMushafPage] = useState(1);
   const [mistakes, setMistakes] = useState<MushafMistake[]>(ticket.mistakes || []);
