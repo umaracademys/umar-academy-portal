@@ -1127,7 +1127,7 @@ export const WordByWordPage: React.FC<{
 
       {/* Mushaf-style Arabic text container - Centered */}
       <div className="w-full flex justify-center items-center">
-        {/* Mushaf page container with traditional styling - Centered, reduced padding */}
+        {/* Mushaf page container with traditional styling - Optimized spacing */}
         <div 
           className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50"
           dir="rtl"
@@ -1137,21 +1137,21 @@ export const WordByWordPage: React.FC<{
             minHeight: 'auto',
             direction: 'rtl',
             textAlign: 'right',
-            maxWidth: '600px',
-            width: 'auto',
+            maxWidth: '100%',
+            width: '100%',
             boxSizing: 'border-box',
             overflow: 'hidden',
             fontFeatureSettings: '"liga" 1, "kern" 1',
             margin: '0 auto',
             display: 'block',
-            padding: '1.5rem 1rem',
-            paddingLeft: '0.75rem',
-            paddingRight: '0.75rem'
+            padding: '0.75rem 0.5rem',
+            paddingTop: '0.5rem',
+            paddingBottom: '0.5rem'
           }}
         >
           {/* Page number indicator */}
-          <div className="text-center mb-3 sm:mb-4 pb-2 sm:pb-3 border-b border-amber-200">
-            <span className="inline-block px-2 sm:px-3 py-1 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
+          <div className="text-center mb-2 pb-1 border-b border-amber-200">
+            <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
               Page {pageNumber}
             </span>
           </div>
