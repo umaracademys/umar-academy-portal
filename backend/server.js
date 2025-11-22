@@ -1923,21 +1923,105 @@ app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper function to parse user agent and extract browser/OS info
+const parseUserAgent = (userAgent) => {
+  if (!userAgent || userAgent === 'unknown') {
+    return {
+      browser: 'Unknown',
+      browserVersion: '',
+      os: 'Unknown',
+      device: 'Unknown',
+      fullUserAgent: 'Unknown'
+    };
+  }
+
+  let browser = 'Unknown';
+  let browserVersion = '';
+  let os = 'Unknown';
+  let device = 'Desktop';
+
+  // Parse browser
+  if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+    browser = 'Chrome';
+    const match = userAgent.match(/Chrome\/(\d+)/);
+    if (match) browserVersion = match[1];
+  } else if (userAgent.includes('Firefox')) {
+    browser = 'Firefox';
+    const match = userAgent.match(/Firefox\/(\d+)/);
+    if (match) browserVersion = match[1];
+  } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+    browser = 'Safari';
+    const match = userAgent.match(/Version\/(\d+)/);
+    if (match) browserVersion = match[1];
+  } else if (userAgent.includes('Edg')) {
+    browser = 'Edge';
+    const match = userAgent.match(/Edg\/(\d+)/);
+    if (match) browserVersion = match[1];
+  } else if (userAgent.includes('Opera') || userAgent.includes('OPR')) {
+    browser = 'Opera';
+    const match = userAgent.match(/(?:Opera|OPR)\/(\d+)/);
+    if (match) browserVersion = match[1];
+  }
+
+  // Parse OS
+  if (userAgent.includes('Windows')) {
+    os = 'Windows';
+    if (userAgent.includes('Windows NT 10.0')) os = 'Windows 10/11';
+    else if (userAgent.includes('Windows NT 6.3')) os = 'Windows 8.1';
+    else if (userAgent.includes('Windows NT 6.2')) os = 'Windows 8';
+    else if (userAgent.includes('Windows NT 6.1')) os = 'Windows 7';
+  } else if (userAgent.includes('Mac OS X') || userAgent.includes('Macintosh')) {
+    os = 'macOS';
+    const match = userAgent.match(/Mac OS X (\d+)[._](\d+)/);
+    if (match) os = `macOS ${match[1]}.${match[2]}`;
+  } else if (userAgent.includes('Linux')) {
+    os = 'Linux';
+  } else if (userAgent.includes('Android')) {
+    os = 'Android';
+    device = 'Mobile';
+    const match = userAgent.match(/Android (\d+\.?\d*)/);
+    if (match) os = `Android ${match[1]}`;
+  } else if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+    os = 'iOS';
+    device = userAgent.includes('iPad') ? 'Tablet' : 'Mobile';
+    const match = userAgent.match(/OS (\d+)[._](\d+)/);
+    if (match) os = `iOS ${match[1]}.${match[2]}`;
+  }
+
+  // Detect mobile devices
+  if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+    if (device === 'Desktop') device = 'Mobile';
+  }
+
+  return {
+    browser,
+    browserVersion,
+    os,
+    device,
+    fullUserAgent: userAgent
+  };
+};
+
 // Get user login history from activity logs
 app.get('/api/users/:id/login-history', authenticateToken, async (req, res) => {
   try {
-    // Check if user has admin permissions
-    const adminUser = await User.findById(req.user.userId);
-    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
-      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    const requestingUserId = req.user.userId;
+    const targetUserId = req.params.id;
+    
+    // Check if user is viewing their own history OR is an admin
+    const requestingUser = await User.findById(requestingUserId);
+    const isAdmin = requestingUser && (requestingUser.role === 'superadmin' || requestingUser.role === 'admin');
+    const isOwnHistory = requestingUserId === targetUserId;
+
+    if (!isOwnHistory && !isAdmin) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own login history or need admin privileges.' });
     }
 
-    const userId = req.params.id;
-    const { limit = 50, page = 1 } = req.query;
+    const { limit = 100, page = 1 } = req.query;
 
     // Find login events for this user
     const query = {
-      userId: userId,
+      userId: targetUserId,
       eventType: { $in: ['login_attempt', 'login_success', 'login_failure'] }
     };
 
@@ -1950,15 +2034,27 @@ app.get('/api/users/:id/login-history', authenticateToken, async (req, res) => {
 
     const total = await ActivityLog.countDocuments(query);
 
-    // Format logs for frontend
-    const loginHistory = logs.map(log => ({
-      id: log._id.toString(),
-      date: log.timestamp.toISOString(),
-      ip: log.ipAddress || 'Unknown',
-      location: log.details?.location || 'Unknown',
-      device: log.details?.userAgent || 'Unknown',
-      status: log.eventType === 'login_success' ? 'success' : log.eventType === 'login_failure' ? 'failure' : 'attempt'
-    }));
+    // Format logs with detailed information
+    const loginHistory = logs.map(log => {
+      const userAgentInfo = parseUserAgent(log.userAgent);
+      
+      return {
+        id: log._id.toString(),
+        date: log.timestamp.toISOString(),
+        timestamp: log.timestamp,
+        ip: log.ipAddress || 'Unknown',
+        location: log.details?.location || 'Unknown',
+        userAgent: log.userAgent || 'Unknown',
+        browser: userAgentInfo.browser,
+        browserVersion: userAgentInfo.browserVersion,
+        os: userAgentInfo.os,
+        device: userAgentInfo.device,
+        status: log.eventType === 'login_success' ? 'success' : log.eventType === 'login_failure' ? 'failure' : 'attempt',
+        errorMessage: log.errorMessage || null,
+        userEmail: log.userEmail || null,
+        userRole: log.userRole || null
+      };
+    });
 
     res.json({
       loginHistory,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import { useData } from '../contexts/DataContext';
+import LoginHistory from './LoginHistory';
 
 interface TeacherCredentialsProps {
   teacher: any;
@@ -53,6 +54,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [teacherUserId, setTeacherUserId] = useState<string | null>(null);
   const [accountSettings, setAccountSettings] = useState({
     loginEnabled: true,
     twoFactorEnabled: false,
@@ -184,33 +186,14 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
     fetchUserDetails();
   }, [teacher]);
 
-  // Fetch login history when activity tab is active
+  // Get teacher user ID when component mounts or teacher changes
   useEffect(() => {
-    if (activeTab === 'activity') {
-      const fetchLoginHistory = async () => {
-        const userId = await getUserIdWithFallback();
-        if (!userId) return;
-
-        try {
-          const response = await fetch(`${API_BASE}/users/${userId}/login-history`, {
-            headers: getAuthHeaders()
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch login history');
-          }
-
-          const data = await response.json();
-          setLoginHistory(data.loginHistory || []);
-        } catch (err) {
-          console.error('Error fetching login history:', err);
-          setLoginHistory([]);
-        }
-      };
-
-      fetchLoginHistory();
-    }
-  }, [activeTab, teacher]);
+    const fetchUserId = async () => {
+      const userId = await getUserIdWithFallback();
+      setTeacherUserId(userId);
+    };
+    fetchUserId();
+  }, [teacher]);
 
   // Load permissions from teacher
   useEffect(() => {
@@ -671,40 +654,17 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
 
           {activeTab === 'activity' && (
             <div className="space-y-6">
-              <Card title="Login History">
-                {loading && loginHistory.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">Loading login history...</div>
-                ) : loginHistory.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">No login history available</div>
-                ) : (
-                  <div className="space-y-3">
-                    {loginHistory.map((entry) => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-lg">
-                            {entry.status === 'success' && '✅'}
-                            {entry.status === 'failure' && '❌'}
-                            {entry.status === 'attempt' && '🔐'}
-                          </span>
-                          <div>
-                            <span className="font-medium">
-                              {entry.status === 'success' && 'Successful Login'}
-                              {entry.status === 'failure' && 'Failed Login'}
-                              {entry.status === 'attempt' && 'Login Attempt'}
-                            </span>
-                            <div className="text-xs text-gray-500">
-                              {entry.ip} • {entry.location} • {entry.device}
-                            </div>
-                          </div>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {new Date(entry.date).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
+              {teacherUserId ? (
+                <LoginHistory 
+                  userId={teacherUserId} 
+                  userEmail={teacher?.email}
+                  userName={teacher?.fullName}
+                />
+              ) : (
+                <Card title="Login History">
+                  <div className="text-center py-8 text-gray-500">Loading user information...</div>
+                </Card>
+              )}
             </div>
           )}
         </div>

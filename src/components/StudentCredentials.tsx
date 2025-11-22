@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Card from './Card';
+import LoginHistory from './LoginHistory';
 
 interface StudentCredentialsProps {
   student: any;
@@ -50,6 +51,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   const [loading, setLoading] = useState(false);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
+  const [studentUserId, setStudentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accountSettings, setAccountSettings] = useState({
     loginEnabled: true,
@@ -169,33 +171,14 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
     fetchUserDetails();
   }, [student]);
 
-  // Fetch login history when history tab is active
+  // Get student user ID when component mounts or student changes
   useEffect(() => {
-    if (activeTab === 'history') {
-      const fetchLoginHistory = async () => {
-        const userId = await getUserIdWithFallback();
-        if (!userId) return;
-
-        try {
-          const response = await fetch(`${API_BASE}/users/${userId}/login-history`, {
-            headers: getAuthHeaders()
-          });
-
-          if (!response.ok) {
-            throw new Error('Failed to fetch login history');
-          }
-
-          const data = await response.json();
-          setLoginHistory(data.loginHistory || []);
-        } catch (err) {
-          console.error('Error fetching login history:', err);
-          setLoginHistory([]);
-        }
-      };
-
-      fetchLoginHistory();
-    }
-  }, [activeTab, student]);
+    const fetchUserId = async () => {
+      const userId = await getUserIdWithFallback();
+      setStudentUserId(userId);
+    };
+    fetchUserId();
+  }, [student]);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
@@ -679,51 +662,17 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
 
           {activeTab === 'history' && (
             <div className="space-y-6">
-              <Card>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Login History</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Device</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {loginHistory.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-6 py-4 text-center text-sm text-gray-500">
-                            No login history available
-                          </td>
-                        </tr>
-                      ) : (
-                        loginHistory.map((login) => (
-                          <tr key={login.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(login.date)}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.ip}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.location}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{login.device}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                login.status === 'success'
-                                  ? 'bg-green-100 text-green-800'
-                                  : login.status === 'failure'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
-                              }`}>
-                                {login.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
+              {studentUserId ? (
+                <LoginHistory 
+                  userId={studentUserId} 
+                  userEmail={student?.email}
+                  userName={student?.fullName}
+                />
+              ) : (
+                <Card title="Login History">
+                  <div className="text-center py-8 text-gray-500">Loading user information...</div>
+                </Card>
+              )}
             </div>
           )}
         </div>
