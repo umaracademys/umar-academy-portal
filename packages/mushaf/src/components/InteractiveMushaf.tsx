@@ -1692,10 +1692,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const navigateToSurah = (surah: Chapter) => {
     if (surah.pages && surah.pages[0]) {
       onPageChange(surah.pages[0]);
-      // Only close on mobile, keep open on desktop for quick navigation
-      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-        setShowSurahIndex(false);
-      }
+      // Always close index when selecting a surah
+      setShowSurahIndex(false);
       setSearchTerm("");
     }
   };
@@ -1938,14 +1936,50 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           onSave={handleSaveMistake}
         />
 
-        {localMistakes.length > 0 && (
-          <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Mistake Report ({localMistakes.length})
-            </h3>
+        {localMistakes.length > 0 && (() => {
+          // Categorize mistakes - check both codes and labels
+          const regularMistakes = localMistakes.filter(m => {
+            const type = m.type.toLowerCase();
+            const isAtkee = type === 'atkee' || type.includes('atkee');
+            const isTajweed = ['madd', 'ikhfa', 'holding', 'tech', 'mad (elongation) mistake', 'ikhfa mistake', 'ghunna mistake', 'holding/fluency mistake'].some(t => type.includes(t));
+            return !isAtkee && !isTajweed;
+          });
+          const atkeeMistakes = localMistakes.filter(m => {
+            const type = m.type.toLowerCase();
+            return type === 'atkee' || type.includes('atkee');
+          });
+          const tajweedMistakes = localMistakes.filter(m => {
+            const type = m.type.toLowerCase();
+            return ['madd', 'ikhfa', 'holding', 'tech', 'mad (elongation) mistake', 'ikhfa mistake', 'ghunna mistake', 'holding/fluency mistake'].some(t => type.includes(t));
+          });
+
+          return (
+            <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+              <div className="mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Mistake Report
+                </h3>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {regularMistakes.length > 0 && (
+                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded font-semibold">
+                      Mistakes: {regularMistakes.length}
+                    </span>
+                  )}
+                  {atkeeMistakes.length > 0 && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-semibold">
+                      Atkee: {atkeeMistakes.length}
+                    </span>
+                  )}
+                  {tajweedMistakes.length > 0 && (
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-semibold">
+                      Tajweed: {tajweedMistakes.length}
+                    </span>
+                  )}
+                </div>
+              </div>
             <div className="space-y-2">
               {localMistakes.map((m, i) => (
                 <div key={i} className="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-200">
@@ -1978,7 +2012,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               ))}
             </div>
           </div>
-        )}
+          );
+        })()}
         </div>
       </div>
     </div>

@@ -51,6 +51,24 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     setMistakes(prev => prev.filter(m => m.id !== mistakeId));
   };
 
+  // Categorize mistakes
+  const mistakeCategories = useMemo(() => {
+    const regularMistakes = mistakes.filter(m => {
+      const type = m.type.toLowerCase();
+      return type !== 'atkee' && !['madd', 'ikhfa', 'holding', 'tech'].includes(type);
+    });
+    const atkeeMistakes = mistakes.filter(m => m.type.toLowerCase() === 'atkee');
+    const tajweedMistakes = mistakes.filter(m => {
+      const type = m.type.toLowerCase();
+      return ['madd', 'ikhfa', 'holding', 'tech'].includes(type);
+    });
+    return {
+      mistakes: regularMistakes.length,
+      atkee: atkeeMistakes.length,
+      tajweed: tajweedMistakes.length
+    };
+  }, [mistakes]);
+
   const handleSubmit = async () => {
     if (!teacherComment.trim()) {
       setError('Please add a comment before submitting');
@@ -198,9 +216,28 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
               {/* Mistakes List Card */}
               <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
                 <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                  <h3 className="text-base font-extrabold text-primary flex items-center gap-2">
-                    <span>🔴</span> Marked Mistakes ({mistakes.length})
-                  </h3>
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-base font-extrabold text-primary flex items-center gap-2">
+                      <span>🔴</span> Marked Mistakes
+                    </h3>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {mistakeCategories.mistakes > 0 && (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded font-semibold">
+                          Mistakes: {mistakeCategories.mistakes}
+                        </span>
+                      )}
+                      {mistakeCategories.atkee > 0 && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-semibold">
+                          Atkee: {mistakeCategories.atkee}
+                        </span>
+                      )}
+                      {mistakeCategories.tajweed > 0 && (
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-semibold">
+                          Tajweed: {mistakeCategories.tajweed}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="p-4">
                   {mistakes.length === 0 ? (
