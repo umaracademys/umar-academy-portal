@@ -1279,7 +1279,7 @@ export const WordByWordPage: React.FC<{
                         }}>
                           <span style={{
                             fontFamily: "'QPC V2 Font', 'Surah Names', Amiri, 'Arabic Typesetting', 'Traditional Arabic', serif",
-                            fontSize: '1.5em',
+                            fontSize: 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
                             fontWeight: 'normal',
                             color: '#000000',
                             letterSpacing: '0.05em',
@@ -1371,7 +1371,7 @@ export const WordByWordPage: React.FC<{
                         textAlign: 'center', 
                         display: 'inline-block',
                         fontFamily: "'Scheherazade New', Amiri, 'Arabic Typesetting', 'Traditional Arabic', serif",
-                        fontSize: '1.9em',
+                        fontSize: 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
                         fontWeight: 'normal',
                         letterSpacing: '0.12em',
                         lineHeight: '2.2',
