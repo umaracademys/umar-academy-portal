@@ -1278,11 +1278,11 @@ export const WordByWordPage: React.FC<{
                           minWidth: 'fit-content'
                         }}>
                           <span style={{
-                            fontFamily: fontFamily,
+                            fontFamily: "'QPC V2 Font', 'Surah Names', Amiri, 'Arabic Typesetting', 'Traditional Arabic', serif",
                             fontSize: '1.5em',
                             fontWeight: 'normal',
                             color: '#000000',
-                            letterSpacing: '0.03em',
+                            letterSpacing: '0.05em',
                             lineHeight: '1.6',
                             display: 'block',
                             textAlign: 'center',
@@ -1370,13 +1370,14 @@ export const WordByWordPage: React.FC<{
                       <span style={{ 
                         textAlign: 'center', 
                         display: 'inline-block',
-                        fontFamily: fontFamily,
-                        fontSize: '1.8em',
+                        fontFamily: "'Scheherazade New', Amiri, 'Arabic Typesetting', 'Traditional Arabic', serif",
+                        fontSize: '1.9em',
                         fontWeight: 'normal',
-                        letterSpacing: '0.15em',
-                        lineHeight: '2',
+                        letterSpacing: '0.12em',
+                        lineHeight: '2.2',
                         color: '#000000',
-                        fontFeatureSettings: '"liga" 1, "kern" 1'
+                        fontFeatureSettings: '"liga" 1, "kern" 1',
+                        fontVariantLigatures: 'common-ligatures'
                       }}>
                         بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
                       </span>
