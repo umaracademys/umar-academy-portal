@@ -203,39 +203,39 @@ const StudentDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4">
         {/* Header Section */}
-        <div className="mb-8 rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-white to-gray-50 px-6 py-8 shadow-lg">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Student Portal</span>
-              <h1 className="text-4xl font-bold text-primary">Dashboard</h1>
-              <p className="text-base text-gray-600 max-w-2xl">
+        <div className="mb-4 rounded-xl border-2 border-gray-200 bg-gradient-to-br from-white to-gray-50 px-3 py-4 shadow-lg">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Student Portal</span>
+              <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+              <p className="text-xs text-gray-600 max-w-2xl">
                 Track your assignments, monitor progress, and access your academic resources.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 to="/student/assignments"
-                className="inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg"
+                className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg"
               >
                 View All Assignments
               </Link>
               <button
                 onClick={() => setShowRecordings(true)}
-                className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-primary-rgb),0.9)] shadow-md hover:shadow-lg"
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[rgba(var(--color-primary-rgb),0.9)] shadow-md hover:shadow-lg"
               >
                 My Recordings
               </button>
               <button
                 onClick={() => setShowPersonalMushaf(true)}
-                className="inline-flex items-center justify-center rounded-xl border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
               >
                 Personal Mushaf
               </button>
               <Link
                 to="/student/profile"
-                className="inline-flex items-center justify-center rounded-xl border-2 border-gray-300 px-6 py-3 text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg border-2 border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm"
               >
                 My Profile
               </Link>
@@ -244,7 +244,7 @@ const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Statistics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <StatCard title="Total Assignments" value={studentAssignments.length} icon="TA" />
           <StatCard title="Completed" value={completedAssignments.length} icon="CP" />
           <StatCard title="Average Grade" value={`${averageGrade}%`} icon="AG" />
@@ -252,7 +252,7 @@ const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
           {/* Profile Information - Takes 1 column */}
           <div className="lg:col-span-1">
             <Card title="Profile Information">
@@ -262,8 +262,8 @@ const StudentDashboard: React.FC = () => {
                   alt={currentStudent.fullName}
                   className="h-20 w-20 rounded-full border-4 border-gray-200 mx-auto mb-4 shadow-md"
                 />
-                <h3 className="text-xl font-bold text-primary mb-2">{currentStudent.fullName}</h3>
-                <span className="inline-block px-4 py-1.5 rounded-lg bg-soft-primary text-primary text-xs font-bold">
+                <h3 className="text-sm font-bold text-primary mb-1">{currentStudent.fullName}</h3>
+                <span className="inline-block px-2 py-1 rounded-lg bg-soft-primary text-primary text-[10px] font-bold">
                   {currentStudent.status}
                 </span>
               </div>
@@ -301,10 +301,10 @@ const StudentDashboard: React.FC = () => {
               {studentAssignments.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-gray-400">AS</span>
+                    <span className="text-lg font-bold text-gray-400">AS</span>
                   </div>
-                  <p className="text-lg font-semibold">No assignments yet</p>
-                  <p className="text-sm mt-2">Your teacher will assign work soon.</p>
+                  <p className="text-sm font-semibold">No assignments yet</p>
+                  <p className="text-xs mt-1">Your teacher will assign work soon.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -318,7 +318,7 @@ const StudentDashboard: React.FC = () => {
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
                           <div className="flex-1">
                             <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <h4 className="text-lg font-bold text-primary">{assignment.title}</h4>
+                              <h4 className="text-sm font-bold text-primary">{assignment.title}</h4>
                               <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
                                 assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
                                 assignment.status === 'archived' ? 'bg-gray-100 text-gray-800' :
@@ -421,7 +421,7 @@ const StudentDashboard: React.FC = () => {
         </div>
 
         {/* Bottom Section - Quick Actions and Progress */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
           {/* Quick Actions */}
           <Card title="Quick Actions">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -458,7 +458,7 @@ const StudentDashboard: React.FC = () => {
 
           {/* Academic Progress */}
           <Card title="Academic Progress">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <h4 className="font-bold text-gray-900 mb-4 uppercase tracking-wide text-sm">Assignment Progress</h4>
                 <div className="space-y-3">
@@ -504,17 +504,17 @@ const StudentDashboard: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Monthly Tuition</p>
-              <p className="text-2xl font-bold text-primary">${currentStudent.tuitionFee}</p>
+              <p className="text-lg font-bold text-primary">${currentStudent.tuitionFee}</p>
               <p className="text-xs text-gray-500 mt-1">per month</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Total Paid</p>
-              <p className="text-2xl font-bold text-green-600">${totalPaid}</p>
+              <p className="text-lg font-bold text-green-600">${totalPaid}</p>
               <p className="text-xs text-gray-500 mt-1">this semester</p>
             </div>
             <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Payment Status</p>
-              <p className="text-2xl font-bold text-green-600">Current</p>
+              <p className="text-lg font-bold text-green-600">Current</p>
               <p className="text-xs text-gray-500 mt-1">No payments yet</p>
             </div>
           </div>

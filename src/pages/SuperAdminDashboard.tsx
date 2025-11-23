@@ -333,32 +333,32 @@ const SuperAdminDashboard: React.FC = () => {
   ];
 
   const OverviewSection = () => (
-    <div className="space-y-10">
-      <section className="rounded-xl border border-gray-200 bg-white px-6 py-6 shadow-md sm:px-10 sm:py-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-3">
-            <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <div className="space-y-4">
+      <section className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-md sm:px-4 sm:py-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
               Super Admin Control Center
             </span>
-            <h1 className="text-3xl font-semibold text-primary">Stay ahead of every workflow</h1>
-            <p className="max-w-3xl text-sm text-gray-600">
+            <h1 className="text-xl font-semibold text-primary">Stay ahead of every workflow</h1>
+            <p className="max-w-3xl text-xs text-gray-600">
               Review listening submissions, create new tickets, and keep student progress moving without leaving this
               page. Each card below opens a live workflow or modal.
             </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span className="rounded-full bg-soft-primary px-3 py-1 text-primary font-semibold">
+            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+              <span className="rounded-full bg-soft-primary px-2 py-0.5 text-primary font-semibold">
                 {activeStudentCount} active students
               </span>
-              <span className="rounded-full border border-primary/30 px-3 py-1 text-primary font-semibold">
+              <span className="rounded-full border border-primary/30 px-2 py-0.5 text-primary font-semibold">
                 {pendingReviewsCount} recitation reviews
               </span>
             </div>
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
           {overviewQuickActions.map((action) => {
             const commonClasses =
-              'flex h-full flex-col justify-between rounded-2xl border px-5 py-4 text-left shadow-sm transition';
+              'flex h-full flex-col justify-between rounded-xl border px-3 py-2.5 text-left shadow-sm transition';
             const activeButtonClasses = {
               primary: `${commonClasses} border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50`,
               neutral: `${commonClasses} border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300`,
@@ -385,17 +385,17 @@ const SuperAdminDashboard: React.FC = () => {
                 className={`${activeButtonClasses[action.emphasis || 'neutral']} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className={`text-base font-semibold ${action.emphasis === 'accent-solid' ? 'text-primary' : 'text-primary'}`}>
+                  <div className="flex items-center gap-1.5">
+                    <p className={`text-sm font-semibold ${action.emphasis === 'accent-solid' ? 'text-primary' : 'text-primary'}`}>
                       {isFixing ? 'Fixing...' : action.label}
                       {badge}
                     </p>
                   </div>
-                  <p className={`mt-2 text-sm ${action.emphasis === 'accent-solid' ? 'text-primary/80' : 'text-gray-600'}`}>
+                  <p className={`mt-1 text-xs ${action.emphasis === 'accent-solid' ? 'text-primary/80' : 'text-gray-600'}`}>
                     {action.description}
                   </p>
                 </div>
-                <span className={`text-xs font-semibold uppercase tracking-wide ${action.emphasis === 'accent-solid' ? 'text-primary/70' : 'text-gray-500'}`}>
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${action.emphasis === 'accent-solid' ? 'text-primary/70' : 'text-gray-500'}`}>
                   {isFixing ? 'Processing...' : 'Open workflow'}
                 </span>
               </button>
@@ -404,7 +404,7 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           title="Students"
           value={`${totalStudents} • ${activeStudentCount} active`}
@@ -427,13 +427,13 @@ const SuperAdminDashboard: React.FC = () => {
             <button
               key={item.id}
               onClick={item.action}
-              className="flex h-full flex-col gap-4 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
+              className="flex h-full flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
             >
               <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
                 {item.badge}
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-semibold text-primary">{item.title}</h4>
+                <h4 className="text-sm font-semibold text-primary">{item.title}</h4>
                 <p className="mt-1 text-sm text-gray-600">{item.description}</p>
               </div>
               <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{item.footer}</span>
@@ -447,9 +447,9 @@ const SuperAdminDashboard: React.FC = () => {
 
   // System Management Section
   const SystemSection = () => (
-    <div className="space-y-8">
-      <h2 className="text-2xl font-bold text-primary">🔧 System Tools</h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="space-y-4">
+      <h2 className="text-lg font-bold text-primary">🔧 System Tools</h2>
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <button
           onClick={() => setShowPermissionManager(true)}
           className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
@@ -458,7 +458,7 @@ const SuperAdminDashboard: React.FC = () => {
             PM
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-primary">Permission Manager</h3>
+            <h3 className="text-sm font-semibold text-primary">Permission Manager</h3>
             <p className="mt-1 text-sm text-gray-600">
               Adjust role access for teachers, admins, and QA reviewers.
             </p>
@@ -474,7 +474,7 @@ const SuperAdminDashboard: React.FC = () => {
             DB
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-primary">Data Manager</h3>
+            <h3 className="text-sm font-semibold text-primary">Data Manager</h3>
             <p className="mt-1 text-sm text-gray-600">
               Export student or ticket data and trigger manual backups.
             </p>
@@ -490,7 +490,7 @@ const SuperAdminDashboard: React.FC = () => {
             🔄
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-primary">Refresh Notifications</h3>
+            <h3 className="text-sm font-semibold text-primary">Refresh Notifications</h3>
             <p className="mt-1 text-sm text-gray-600">
               Pull the latest admin notifications and ticket alerts.
             </p>
@@ -645,7 +645,7 @@ const SuperAdminDashboard: React.FC = () => {
                   {item.badge}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-primary">{item.title}</h3>
+                  <h3 className="text-sm font-semibold text-primary">{item.title}</h3>
                   <p className="mt-1 text-sm text-gray-600">{item.description}</p>
                   {item.footer && (
                     <p className="mt-2 text-xs font-semibold text-gray-500">{item.footer}</p>
@@ -772,7 +772,7 @@ const SuperAdminDashboard: React.FC = () => {
                   {item.badge}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-primary">{item.title}</h3>
+                  <h3 className="text-sm font-semibold text-primary">{item.title}</h3>
                   <p className="mt-1 text-sm text-gray-600">{item.description}</p>
                 </div>
                 <button
