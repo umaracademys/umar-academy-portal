@@ -1127,12 +1127,12 @@ export const WordByWordPage: React.FC<{
 
       {/* Mushaf-style Arabic text container - Centered */}
       <div className="w-full flex justify-center items-center">
-        {/* Mushaf page container with traditional styling - Optimized spacing */}
+        {/* Mushaf page container with traditional styling - Clean white background, thin yellow border */}
         <div 
-          className="mushaf-arabic-text rounded-xl shadow-lg border border-amber-300 bg-gradient-to-br from-amber-50 to-yellow-50"
+          className="mushaf-arabic-text"
           dir="rtl"
           style={{
-            backgroundColor: '#fef9e7',
+            backgroundColor: '#ffffff',
             fontFamily,
             minHeight: 'auto',
             direction: 'rtl',
@@ -1144,26 +1144,21 @@ export const WordByWordPage: React.FC<{
             fontFeatureSettings: '"liga" 1, "kern" 1',
             margin: '0 auto',
             display: 'block',
-            padding: '0.75rem 0.5rem',
-            paddingTop: '0.5rem',
-            paddingBottom: '0.5rem'
+            padding: '1rem',
+            border: '1px solid #fef3c7',
+            borderTop: '2px solid #fef3c7',
+            borderLeft: '2px solid #fef3c7'
           }}
         >
-          {/* Page number indicator */}
-          <div className="text-center mb-2 pb-1 border-b border-amber-200">
-            <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded-full">
-              Page {pageNumber}
-            </span>
-          </div>
 
-          {/* Arabic text content - Matching original 15-line layout - Centered */}
+          {/* Arabic text content - Traditional Quranic layout */}
           <div 
             className="mushaf-arabic-text"
             style={{
-              fontSize: 'clamp(1.2rem, 2vw + 0.5rem, 2.2rem)',
-              lineHeight: '1.8',
+              fontSize: 'clamp(1.4rem, 2.5vw + 0.5rem, 2.4rem)',
+              lineHeight: '2',
               letterSpacing: '0',
-              wordSpacing: '0.15em',
+              wordSpacing: '0.2em',
               direction: 'rtl',
               textAlign: 'right',
               fontFamily: fontFamily,
@@ -1171,8 +1166,9 @@ export const WordByWordPage: React.FC<{
               fontFeatureSettings: '"liga" 1, "kern" 1',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.4em',
-              margin: '0 auto'
+              gap: '0.3em',
+              margin: '0 auto',
+              color: '#000000'
             }}
           >
             {layout.lines.map((line) => {
@@ -1191,16 +1187,17 @@ export const WordByWordPage: React.FC<{
                       style={{
                         textAlign: 'center',
                         fontFamily: fontFamily,
-                        fontSize: '1.5em',
-                        fontWeight: 'bold',
-                        marginBottom: '0.5em',
-                        marginTop: '0.3em',
-                        minHeight: '1.5em',
-                        lineHeight: '1.8',
+                        fontSize: '1.8em',
+                        fontWeight: 'normal',
+                        marginBottom: '0.6em',
+                        marginTop: '0.4em',
+                        minHeight: '1.8em',
+                        lineHeight: '2',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        width: '100%'
+                        width: '100%',
+                        color: '#000000'
                       }}
                     >
                       <span style={{ textAlign: 'center', display: 'block', width: '100%' }}>
@@ -1216,24 +1213,26 @@ export const WordByWordPage: React.FC<{
                       style={{
                         textAlign: 'center',
                         fontFamily: fontFamily,
-                        fontSize: '1.5em',
-                        marginBottom: '0.5em',
-                        marginTop: '0.3em',
-                        minHeight: '1.5em',
-                        lineHeight: '1.8',
+                        fontSize: '2em',
+                        marginBottom: '0.8em',
+                        marginTop: '0.5em',
+                        minHeight: '2em',
+                        lineHeight: '2',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        width: '100%'
+                        width: '100%',
+                        fontWeight: 'normal'
                       }}
                     >
                       <span style={{ 
                         textAlign: 'center', 
                         display: 'inline-block',
-                        fontSize: '1.2em',
-                        letterSpacing: '0.1em'
+                        fontSize: '1.8em',
+                        letterSpacing: '0.15em',
+                        fontFamily: fontFamily
                       }}>
-                        ﷽
+                        بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
                       </span>
                     </div>
                   );
@@ -1275,13 +1274,14 @@ export const WordByWordPage: React.FC<{
                     textAlign: line.is_centered ? 'center' : 'justify',
                     textAlignLast: line.is_centered ? 'center' : 'justify',
                     fontFamily: fontFamily,
-                    wordSpacing: '0.15em',
+                    wordSpacing: '0.2em',
                     letterSpacing: '0',
-                    marginBottom: '0.5em',
-                    minHeight: '1.5em',
-                    lineHeight: '1.8',
+                    marginBottom: '0.4em',
+                    minHeight: '1.6em',
+                    lineHeight: '2',
                     display: 'block',
-                    width: '100%'
+                    width: '100%',
+                    color: '#000000'
                   }}
                 >
                   {lineWords.map((w, idx) => {
@@ -1312,6 +1312,18 @@ export const WordByWordPage: React.FC<{
                       m.wordIndex === w.word_index &&
                       m.letterIndex !== undefined
                     ));
+                    
+                    // Check if this is the last word of an ayah (verse end marker)
+                    // If next word has different ayah, or this is the last word in line, show marker
+                    const isLastWordOfAyah = idx < lineWords.length - 1 
+                      ? lineWords[idx + 1].ayah !== w.ayah
+                      : true; // Last word in line is always end of ayah
+                    
+                    // Convert ayah number to Arabic-Indic numerals
+                    const toArabicNumerals = (num: number): string => {
+                      const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                      return num.toString().split('').map(digit => arabicNumerals[parseInt(digit)]).join('');
+                    };
                     
                   return (
                     <React.Fragment key={w.word_index}>
@@ -1358,7 +1370,7 @@ export const WordByWordPage: React.FC<{
                               onWordClick?.(w);
                             }
                           }}
-                          className={`cursor-pointer rounded transition-all duration-200 ${wordMistakeClass} relative group inline-block`}
+                          className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} relative group inline-block`}
                           dir="rtl"
                           style={{
                             padding: '1px 2px',
@@ -1368,7 +1380,7 @@ export const WordByWordPage: React.FC<{
                             fontFamily: fontFamily,
                             fontSize: 'inherit',
                             lineHeight: 'inherit',
-                            borderRadius: '2px',
+                            borderRadius: '0',
                             whiteSpace: 'nowrap'
                           }}
                           title={
@@ -1397,7 +1409,7 @@ export const WordByWordPage: React.FC<{
                                 className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-all duration-200 inline-block`}
                                 style={{
                                   padding: letterMistake ? '2px 1px' : '0',
-                                  borderRadius: '2px',
+                                  borderRadius: '0',
                                   display: 'inline-block',
                                   fontFamily: fontFamily,
                                   fontSize: 'inherit',
@@ -1457,6 +1469,31 @@ export const WordByWordPage: React.FC<{
                             </div>
                           )}
                         </span>
+                        {/* Verse end marker - circular with Arabic-Indic number */}
+                        {isLastWordOfAyah && (
+                          <span 
+                            style={{
+                              display: 'inline-block',
+                              width: '1.2em',
+                              height: '1.2em',
+                              borderRadius: '50%',
+                              border: '1.5px solid #000',
+                              backgroundColor: '#fff',
+                              textAlign: 'center',
+                              lineHeight: '1.2em',
+                              fontSize: '0.85em',
+                              marginRight: '0.3em',
+                              marginLeft: '0.2em',
+                              verticalAlign: 'middle',
+                              fontFamily: 'Arial, sans-serif',
+                              fontWeight: 'normal',
+                              color: '#000'
+                            }}
+                            dir="ltr"
+                          >
+                            {toArabicNumerals(w.ayah)}
+                          </span>
+                        )}
                       </React.Fragment>
                     );
                   })}
@@ -1465,12 +1502,6 @@ export const WordByWordPage: React.FC<{
             })}
           </div>
 
-          {/* Page footer decoration - Responsive */}
-          <div className="mt-3 sm:mt-4 text-center text-gray-400 text-xs font-serif overflow-x-hidden">
-            <div className="whitespace-nowrap overflow-x-auto">
-              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            </div>
-          </div>
 
           {/* Page Navigation Buttons - Centered, RTL */}
           {onPageChange && (
