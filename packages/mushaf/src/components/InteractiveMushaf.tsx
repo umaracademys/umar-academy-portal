@@ -1173,7 +1173,7 @@ export const WordByWordPage: React.FC<{
           >
             {layout.lines.map((line) => {
               if (line.line_type !== "ayah") {
-                // Handle surah_name and basmallah lines - Matching original layout, centered
+                // Handle surah_name and basmallah lines - Traditional Quranic decorative layout
                 if (line.line_type === "surah_name") {
                   const surah = chapters.find(c => c.id === line.surah_number);
                   // Get Arabic name from surah, or fallback to FALLBACK_CHAPTERS if not found
@@ -1186,23 +1186,169 @@ export const WordByWordPage: React.FC<{
                       className="mushaf-line mushaf-surah-name"
                       style={{
                         textAlign: 'center',
-                        fontFamily: fontFamily,
-                        fontSize: '1.3em',
-                        fontWeight: 'normal',
-                        marginBottom: '0.5em',
-                        marginTop: '0.3em',
-                        minHeight: '1.5em',
-                        lineHeight: '1.8',
+                        marginBottom: '0.8em',
+                        marginTop: '0.5em',
+                        width: '100%',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        width: '100%',
-                        color: '#000000'
+                        position: 'relative'
                       }}
                     >
-                      <span style={{ textAlign: 'center', display: 'block', width: '100%' }}>
-                        {arabicName}
-                      </span>
+                      {/* Decorative panel with ornate patterns */}
+                      <div style={{
+                        width: '100%',
+                        maxWidth: '100%',
+                        height: '2.8em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                        background: 'transparent',
+                        padding: '0 0.5em'
+                      }}>
+                        {/* Left decorative pattern - ornate floral design */}
+                        <div style={{
+                          position: 'absolute',
+                          left: '0',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '20%',
+                          height: '1.2em',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-start'
+                        }}>
+                          {/* Decorative line with pattern */}
+                          <div style={{
+                            width: '100%',
+                            height: '1px',
+                            background: '#000000',
+                            opacity: 0.25,
+                            position: 'relative'
+                          }}>
+                            {/* Small decorative circles */}
+                            <div style={{
+                              position: 'absolute',
+                              left: '10%',
+                              top: '-4px',
+                              width: '8px',
+                              height: '8px',
+                              border: '1px solid #000000',
+                              borderRadius: '50%',
+                              opacity: 0.3,
+                              background: 'transparent'
+                            }} />
+                            <div style={{
+                              position: 'absolute',
+                              left: '30%',
+                              top: '-4px',
+                              width: '6px',
+                              height: '6px',
+                              border: '1px solid #000000',
+                              borderRadius: '50%',
+                              opacity: 0.25,
+                              background: 'transparent'
+                            }} />
+                            <div style={{
+                              position: 'absolute',
+                              left: '50%',
+                              top: '-4px',
+                              width: '4px',
+                              height: '4px',
+                              border: '1px solid #000000',
+                              borderRadius: '50%',
+                              opacity: 0.2,
+                              background: 'transparent'
+                            }} />
+                          </div>
+                        </div>
+                        
+                        {/* Central frame for surah name */}
+                        <div style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.35em 1.4em',
+                          border: '1px solid #000000',
+                          borderRadius: '1px',
+                          background: '#ffffff',
+                          position: 'relative',
+                          zIndex: 1,
+                          minWidth: 'fit-content'
+                        }}>
+                          <span style={{
+                            fontFamily: fontFamily,
+                            fontSize: '1.5em',
+                            fontWeight: 'normal',
+                            color: '#000000',
+                            letterSpacing: '0.03em',
+                            lineHeight: '1.6',
+                            display: 'block',
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {arabicName}
+                          </span>
+                        </div>
+                        
+                        {/* Right decorative pattern - ornate floral design */}
+                        <div style={{
+                          position: 'absolute',
+                          right: '0',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '20%',
+                          height: '1.2em',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end'
+                        }}>
+                          {/* Decorative line with pattern */}
+                          <div style={{
+                            width: '100%',
+                            height: '1px',
+                            background: '#000000',
+                            opacity: 0.25,
+                            position: 'relative'
+                          }}>
+                            {/* Small decorative circles */}
+                            <div style={{
+                              position: 'absolute',
+                              right: '10%',
+                              top: '-4px',
+                              width: '8px',
+                              height: '8px',
+                              border: '1px solid #000000',
+                              borderRadius: '50%',
+                              opacity: 0.3,
+                              background: 'transparent'
+                            }} />
+                            <div style={{
+                              position: 'absolute',
+                              right: '30%',
+                              top: '-4px',
+                              width: '6px',
+                              height: '6px',
+                              border: '1px solid #000000',
+                              borderRadius: '50%',
+                              opacity: 0.25,
+                              background: 'transparent'
+                            }} />
+                            <div style={{
+                              position: 'absolute',
+                              right: '50%',
+                              top: '-4px',
+                              width: '4px',
+                              height: '4px',
+                              border: '1px solid #000000',
+                              borderRadius: '50%',
+                              opacity: 0.2,
+                              background: 'transparent'
+                            }} />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   );
                 } else if (line.line_type === "basmallah") {
@@ -1212,25 +1358,25 @@ export const WordByWordPage: React.FC<{
                       className="mushaf-line mushaf-basmallah"
                       style={{
                         textAlign: 'center',
-                        fontFamily: fontFamily,
-                        fontSize: '1.4em',
-                        marginBottom: '0.6em',
-                        marginTop: '0.4em',
-                        minHeight: '1.6em',
-                        lineHeight: '1.8',
+                        marginBottom: '0.8em',
+                        marginTop: '0.5em',
+                        minHeight: '2em',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        width: '100%',
-                        fontWeight: 'normal'
+                        width: '100%'
                       }}
                     >
                       <span style={{ 
                         textAlign: 'center', 
                         display: 'inline-block',
-                        fontSize: '1.2em',
-                        letterSpacing: '0.1em',
-                        fontFamily: fontFamily
+                        fontFamily: fontFamily,
+                        fontSize: '1.8em',
+                        fontWeight: 'normal',
+                        letterSpacing: '0.15em',
+                        lineHeight: '2',
+                        color: '#000000',
+                        fontFeatureSettings: '"liga" 1, "kern" 1'
                       }}>
                         بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
                       </span>
