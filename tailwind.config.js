@@ -133,6 +133,7 @@ export default {
         'slow': '300ms',
       },
       fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
         arabic: ['Amiri', '"Arabic Typesetting"', '"Traditional Arabic"', 'serif'],
         surahNames: ['QPC V2 Font', 'Surah Names', 'Amiri', '"Arabic Typesetting"', '"Traditional Arabic"', 'serif'],
       },

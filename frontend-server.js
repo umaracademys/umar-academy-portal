@@ -71,7 +71,24 @@ app.get('*', (req, res) => {
     });
   }
   
-  console.log(`📄 Serving index.html for: ${req.path}`);
+  // Don't serve index.html for static file requests (js, css, wasm, etc.)
+  // These should be handled by express.static above, but if they're not found,
+  // we should return 404 instead of serving HTML (which causes MIME type errors)
+  const path = req.path.toLowerCase();
+  const isStaticFile = /\.(js|css|wasm|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/.test(path);
+  
+  if (isStaticFile) {
+    // Static file not found - return 404 instead of serving index.html
+    console.log(`❌ Static file not found: ${req.path}`);
+    return res.status(404).json({
+      error: 'File not found',
+      path: req.path,
+      message: 'The requested static file could not be found.'
+    });
+  }
+  
+  // For non-file requests (routes), serve index.html for SPA routing
+  console.log(`📄 Serving index.html for route: ${req.path}`);
   res.sendFile(indexPath, (err) => {
     if (err) {
       console.error('❌ Error serving index.html:', err);
