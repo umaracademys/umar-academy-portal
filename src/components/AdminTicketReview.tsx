@@ -291,18 +291,18 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
         {/* Modern Header with Gradient */}
-        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-lg font-bold text-white">TK</span>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <span className="text-base font-bold text-white">TK</span>
                 </div>
                 <div>
-                  <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white drop-shadow-lg">
                     {selectedTicket ? `Review Ticket` : 'Ticket Review Queue'}
                   </h2>
-                  <p className="text-white/90 text-xs sm:text-sm md:text-base mt-1 font-medium">
+                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 font-medium">
                     {selectedTicket 
                       ? `${selectedTicket.studentName} • ${selectedTicket.type.toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
                       : `${pendingTickets.length} ticket(s) awaiting your review`
@@ -313,7 +313,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             </div>
             <button
               onClick={onClose}
-              className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-xl sm:text-2xl md:text-3xl font-bold shadow-lg border-2 border-white/30 touch-target"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-lg sm:text-xl md:text-2xl font-bold shadow-lg border-2 border-white/30 touch-target"
               title="Close"
               aria-label="Close"
             >

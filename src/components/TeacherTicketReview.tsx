@@ -113,19 +113,19 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
         {/* Modern Header */}
-        <div className="px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <span className="text-2xl">📝</span>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <span className="text-xl">📝</span>
               </div>
               <div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-white drop-shadow-lg">Review Ticket</h2>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`px-3 py-1 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-lg">Review Ticket</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`px-2.5 py-0.5 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
                     {ticket.type.toUpperCase()}
                   </span>
-                  <p className="text-white/90 text-sm sm:text-base font-medium">
+                  <p className="text-white/90 text-sm font-medium">
                     {ticket.studentName}
                   </p>
                 </div>
@@ -133,7 +133,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
             </div>
             <button
               onClick={onClose}
-              className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-2xl sm:text-3xl font-bold shadow-lg border-2 border-white/30"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-xl sm:text-2xl font-bold shadow-lg border-2 border-white/30"
               title="Close"
             >
               ×

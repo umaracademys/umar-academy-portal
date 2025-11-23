@@ -193,21 +193,21 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   return (
     <div className="space-y-6">
       {/* Prominent Header */}
-      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-3xl p-4 sm:p-6 md:p-8 border-b-4 border-accent shadow-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-2xl p-3 sm:p-4 border-b-4 border-accent shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
           <div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white mb-1 drop-shadow-lg">
               Student Directory
             </h2>
-            <p className="text-white/90 text-sm sm:text-base md:text-lg font-semibold">
+            <p className="text-white/90 text-xs sm:text-sm font-semibold">
               Manage all registered students • {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'} found
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {onAddStudent && (
               <button 
                 onClick={onAddStudent}
-                className="px-6 sm:px-7 py-2.5 sm:py-3 bg-accent text-primary rounded-full font-extrabold hover:scale-110 transition-all shadow-xl hover:shadow-2xl text-sm sm:text-base md:text-lg"
+                className="px-4 sm:px-5 py-1.5 sm:py-2 bg-accent text-primary rounded-full font-bold hover:scale-105 transition-all shadow-lg text-xs sm:text-sm"
                 style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-primary)' }}
               >
                 Add Student
@@ -216,15 +216,15 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
             {students.length === 0 && (
             <button 
               onClick={addSampleStudents}
-              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs"
             >
               Add Sample
             </button>
             )}
-            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs">
               Export
             </button>
-            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs">
               Import
             </button>
           </div>
@@ -233,27 +233,27 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
       {/* Enhanced Filters and Search */}
       <Card>
-        <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-2xl p-4 sm:p-5 md:p-6 border-2 border-primary/20">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+        <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-xl p-3 sm:p-4 border-2 border-primary/20">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3">
             {/* Search */}
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Search Students</label>
+              <label className="block text-xs font-bold text-primary mb-1.5">Search Students</label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name, email, or ID..."
-                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base placeholder:text-primary/50"
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm placeholder:text-primary/50"
               />
             </div>
 
             {/* Teacher Filter */}
             <div>
-              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Teacher</label>
+              <label className="block text-xs font-bold text-primary mb-1.5">Teacher</label>
               <select
                 value={selectedTeacher}
                 onChange={(e) => setSelectedTeacher(e.target.value)}
-                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
               >
                 <option value="all">All Teachers</option>
                 {uniqueTeachers.map(teacher => (
@@ -264,11 +264,11 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
             {/* Status Filter */}
             <div>
-              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Status</label>
+              <label className="block text-xs font-bold text-primary mb-1.5">Status</label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
               >
                 <option value="all">All Status</option>
                 {uniqueStatuses.map(status => (
@@ -279,8 +279,8 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           </div>
 
           {/* Filter Actions */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mt-4 pt-4 border-t-2 border-primary/20">
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mt-3 pt-3 border-t-2 border-primary/20">
+            <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => {
                   setSearchTerm('');
@@ -288,7 +288,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                   setSelectedStatus('all');
                   setSelectedPaymentStatus('all');
                 }}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+                className="px-3 sm:px-4 py-1.5 bg-primary text-white rounded-full font-bold hover:scale-105 transition-all shadow-md hover:shadow-lg text-xs"
               >
                 Clear Filters
               </button>
@@ -297,32 +297,32 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                   setSortBy('name');
                   setSortOrder('asc');
                 }}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-accent text-primary rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+                className="px-3 sm:px-4 py-1.5 bg-accent text-primary rounded-full font-bold hover:scale-105 transition-all shadow-md hover:shadow-lg text-xs"
               >
                 Reset Sort
               </button>
             </div>
-            <div className="text-xs sm:text-sm font-extrabold text-primary">
+            <div className="text-[10px] sm:text-xs font-bold text-primary">
               Showing <span className="text-accent">{filteredStudents.length}</span> of <span className="text-accent">{students.length}</span> students
             </div>
           </div>
 
           {/* Active Filters Display */}
           {(searchTerm || selectedTeacher !== 'all' || selectedStatus !== 'all' || selectedPaymentStatus !== 'all') && (
-            <div className="flex flex-wrap items-center gap-2 p-3 sm:p-4 bg-accent/20 border-2 border-accent/40 rounded-2xl mt-4">
-              <span className="text-xs sm:text-sm font-extrabold text-primary">Active Filters:</span>
+            <div className="flex flex-wrap items-center gap-1.5 p-2 bg-accent/20 border-2 border-accent/40 rounded-lg mt-3">
+              <span className="text-[10px] font-bold text-primary">Active Filters:</span>
               {searchTerm && (
-                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full shadow-sm">
                   Search: "{searchTerm}"
                 </span>
               )}
               {selectedTeacher !== 'all' && (
-                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full shadow-sm">
                   Teacher: {selectedTeacher}
                 </span>
               )}
               {selectedStatus !== 'all' && (
-                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
+                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full shadow-sm">
                   Status: {selectedStatus}
                 </span>
               )}
@@ -343,7 +343,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
             <thead className="bg-gray-50">
               <tr>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center space-x-1">
@@ -353,9 +353,9 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('email')}
                 >
                   <div className="flex items-center space-x-1">
@@ -365,10 +365,10 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Program</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Teacher</th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('tuitionFee')}
                 >
                   <div className="flex items-center space-x-1">
@@ -378,59 +378,59 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {paginatedStudents.length > 0 ? (
                 paginatedStudents.map((student) => (
                   <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4">
+                    <td className="px-2 py-2">
                       <div className="flex items-center">
                         <img 
                           src={student.avatar || '/default-avatar.png'} 
                           alt={student.fullName || 'Student'} 
-                          className="h-10 w-10 rounded-full mr-3" 
+                          className="h-7 w-7 rounded-full mr-2" 
                         />
                         <div>
-                          <p className="font-medium text-gray-900">{student.fullName || 'Unknown'}</p>
-                          <p className="text-sm text-gray-500">{student.program || 'No program'}</p>
+                          <p className="font-medium text-gray-900 text-xs">{student.fullName || 'Unknown'}</p>
+                          <p className="text-[10px] text-gray-500">{student.program || 'No program'}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm font-mono text-gray-600">{student.id}</td>
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-2 py-2 text-[10px] font-mono text-gray-600">{student.id}</td>
+                    <td className="px-2 py-2 text-xs">
                       <div>
                         <p className="text-gray-900">{student.email || 'No email'}</p>
-                        <p className="text-gray-500">{student.contact || 'No contact'}</p>
+                        <p className="text-[10px] text-gray-500">{student.contact || 'No contact'}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm">{student.program || 'N/A'}</td>
-                    <td className="px-4 py-4 text-sm">{getTeacherName(student.assignedTeacher)}</td>
-                    <td className="px-4 py-4 text-sm font-semibold">
+                    <td className="px-2 py-2 text-xs">{student.program || 'N/A'}</td>
+                    <td className="px-2 py-2 text-xs">{getTeacherName(student.assignedTeacher)}</td>
+                    <td className="px-2 py-2 text-xs font-semibold">
                       ${student.tuitionFee?.toLocaleString() || '0'}
                     </td>
-                    <td className="px-4 py-4">{getStatusBadge(student.status || 'active')}</td>
-                    <td className="px-4 py-4">
-                      <div className="flex space-x-2">
+                    <td className="px-2 py-2">{getStatusBadge(student.status || 'active')}</td>
+                    <td className="px-2 py-2">
+                      <div className="flex space-x-1">
                         <button
                           onClick={() => onStudentSelect(student)}
-                          className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                          className="text-primary-600 hover:text-primary-800 text-xs font-medium"
                         >
                           View
                         </button>
                         <button
                           onClick={() => onEditStudent(student)}
-                          className="text-gold-600 hover:text-gold-800 text-sm font-medium"
+                          className="text-gold-600 hover:text-gold-800 text-xs font-medium"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => onDeleteStudent(student.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          className="text-red-600 hover:text-red-800 text-xs font-medium"
                         >
-                          Delete
+                          Del
                         </button>
                         {onCredentials && (
                           <button

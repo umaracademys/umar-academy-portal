@@ -286,7 +286,7 @@ const TeacherDashboard: React.FC = () => {
         )}
 
         {/* Statistics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <StatCard title="Assigned Students" value={currentTeacher ? assignedStudents.length : 0} icon="AS" />
           <StatCard title="Total Assessments" value={currentTeacher ? assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} icon="TA" />
           <StatCard title="Active Students" value={currentTeacher ? assignedStudents.filter(s => s.status === 'active').length : 0} icon="WK" />
@@ -294,7 +294,7 @@ const TeacherDashboard: React.FC = () => {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
           {/* Pending Tickets - Takes 2 columns */}
           <div className="lg:col-span-2">
             <Card title={`Pending Tickets (${teacherTickets.length})`}>
