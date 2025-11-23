@@ -1155,10 +1155,10 @@ export const WordByWordPage: React.FC<{
           <div 
             className="mushaf-arabic-text"
             style={{
-              fontSize: 'clamp(1.4rem, 2.5vw + 0.5rem, 2.4rem)',
-              lineHeight: '2',
+              fontSize: 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
+              lineHeight: '1.8',
               letterSpacing: '0',
-              wordSpacing: '0.2em',
+              wordSpacing: '0.15em',
               direction: 'rtl',
               textAlign: 'right',
               fontFamily: fontFamily,
@@ -1187,12 +1187,12 @@ export const WordByWordPage: React.FC<{
                       style={{
                         textAlign: 'center',
                         fontFamily: fontFamily,
-                        fontSize: '1.8em',
+                        fontSize: '1.3em',
                         fontWeight: 'normal',
-                        marginBottom: '0.6em',
-                        marginTop: '0.4em',
-                        minHeight: '1.8em',
-                        lineHeight: '2',
+                        marginBottom: '0.5em',
+                        marginTop: '0.3em',
+                        minHeight: '1.5em',
+                        lineHeight: '1.8',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
@@ -1213,11 +1213,11 @@ export const WordByWordPage: React.FC<{
                       style={{
                         textAlign: 'center',
                         fontFamily: fontFamily,
-                        fontSize: '2em',
-                        marginBottom: '0.8em',
-                        marginTop: '0.5em',
-                        minHeight: '2em',
-                        lineHeight: '2',
+                        fontSize: '1.4em',
+                        marginBottom: '0.6em',
+                        marginTop: '0.4em',
+                        minHeight: '1.6em',
+                        lineHeight: '1.8',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
@@ -1228,8 +1228,8 @@ export const WordByWordPage: React.FC<{
                       <span style={{ 
                         textAlign: 'center', 
                         display: 'inline-block',
-                        fontSize: '1.8em',
-                        letterSpacing: '0.15em',
+                        fontSize: '1.2em',
+                        letterSpacing: '0.1em',
                         fontFamily: fontFamily
                       }}>
                         بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ
@@ -1274,11 +1274,11 @@ export const WordByWordPage: React.FC<{
                     textAlign: line.is_centered ? 'center' : 'justify',
                     textAlignLast: line.is_centered ? 'center' : 'justify',
                     fontFamily: fontFamily,
-                    wordSpacing: '0.2em',
+                    wordSpacing: '0.15em',
                     letterSpacing: '0',
-                    marginBottom: '0.4em',
-                    minHeight: '1.6em',
-                    lineHeight: '2',
+                    marginBottom: '0.3em',
+                    minHeight: '1.4em',
+                    lineHeight: '1.8',
                     display: 'block',
                     width: '100%',
                     color: '#000000'
@@ -1312,18 +1312,6 @@ export const WordByWordPage: React.FC<{
                       m.wordIndex === w.word_index &&
                       m.letterIndex !== undefined
                     ));
-                    
-                    // Check if this is the last word of an ayah (verse end marker)
-                    // If next word has different ayah, or this is the last word in line, show marker
-                    const isLastWordOfAyah = idx < lineWords.length - 1 
-                      ? lineWords[idx + 1].ayah !== w.ayah
-                      : true; // Last word in line is always end of ayah
-                    
-                    // Convert ayah number to Arabic-Indic numerals
-                    const toArabicNumerals = (num: number): string => {
-                      const arabicNumerals = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-                      return num.toString().split('').map(digit => arabicNumerals[parseInt(digit)]).join('');
-                    };
                     
                   return (
                     <React.Fragment key={w.word_index}>
@@ -1469,31 +1457,6 @@ export const WordByWordPage: React.FC<{
                             </div>
                           )}
                         </span>
-                        {/* Verse end marker - circular with Arabic-Indic number */}
-                        {isLastWordOfAyah && (
-                          <span 
-                            style={{
-                              display: 'inline-block',
-                              width: '1.2em',
-                              height: '1.2em',
-                              borderRadius: '50%',
-                              border: '1.5px solid #000',
-                              backgroundColor: '#fff',
-                              textAlign: 'center',
-                              lineHeight: '1.2em',
-                              fontSize: '0.85em',
-                              marginRight: '0.3em',
-                              marginLeft: '0.2em',
-                              verticalAlign: 'middle',
-                              fontFamily: 'Arial, sans-serif',
-                              fontWeight: 'normal',
-                              color: '#000'
-                            }}
-                            dir="ltr"
-                          >
-                            {toArabicNumerals(w.ayah)}
-                          </span>
-                        )}
                       </React.Fragment>
                     );
                   })}
