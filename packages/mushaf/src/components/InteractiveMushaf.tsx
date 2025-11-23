@@ -1144,7 +1144,10 @@ export const WordByWordPage: React.FC<{
             fontFeatureSettings: '"liga" 1, "kern" 1',
             margin: '0 auto',
             display: 'block',
-            padding: '1rem',
+            paddingTop: '0.75rem',
+            paddingBottom: '0.75rem',
+            paddingRight: '0.5rem',
+            paddingLeft: '1.25rem',
             border: '1px solid #fef3c7',
             borderTop: '2px solid #fef3c7',
             borderLeft: '2px solid #fef3c7'
@@ -1156,7 +1159,7 @@ export const WordByWordPage: React.FC<{
             className="mushaf-arabic-text"
             style={{
               fontSize: 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
-              lineHeight: '1.8',
+              lineHeight: '1.5',
               letterSpacing: '0',
               wordSpacing: '0.15em',
               direction: 'rtl',
@@ -1166,7 +1169,7 @@ export const WordByWordPage: React.FC<{
               fontFeatureSettings: '"liga" 1, "kern" 1',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.3em',
+              gap: '0.15em',
               margin: '0 auto',
               color: '#000000'
             }}
@@ -1186,8 +1189,8 @@ export const WordByWordPage: React.FC<{
                       className="mushaf-line mushaf-surah-name"
                       style={{
                         textAlign: 'center',
-                        marginBottom: '0.8em',
-                        marginTop: '0.5em',
+                        marginBottom: '0.4em',
+                        marginTop: '0.3em',
                         width: '100%',
                         display: 'flex',
                         justifyContent: 'center',
@@ -1358,9 +1361,9 @@ export const WordByWordPage: React.FC<{
                       className="mushaf-line mushaf-basmallah"
                       style={{
                         textAlign: 'center',
-                        marginBottom: '0.8em',
-                        marginTop: '0.5em',
-                        minHeight: '2em',
+                        marginBottom: '0.4em',
+                        marginTop: '0.3em',
+                        minHeight: '1.5em',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
@@ -1374,7 +1377,7 @@ export const WordByWordPage: React.FC<{
                         fontSize: 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
                         fontWeight: 'normal',
                         letterSpacing: '0.12em',
-                        lineHeight: '2.2',
+                        lineHeight: '1.6',
                         color: '#000000',
                         fontFeatureSettings: '"liga" 1, "kern" 1',
                         fontVariantLigatures: 'common-ligatures'
@@ -1423,9 +1426,9 @@ export const WordByWordPage: React.FC<{
                     fontFamily: fontFamily,
                     wordSpacing: '0.15em',
                     letterSpacing: '0',
-                    marginBottom: '0.3em',
-                    minHeight: '1.4em',
-                    lineHeight: '1.8',
+                    marginBottom: '0.15em',
+                    minHeight: '1.2em',
+                    lineHeight: '1.5',
                     display: 'block',
                     width: '100%',
                     color: '#000000'
