@@ -80,11 +80,14 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     });
   }, [recitationTickets, user?.id]);
 
-  // Get selected ticket
+  // Get selected ticket - search in all tickets, not just pending
   const selectedTicket = useMemo(() => {
     if (!selectedTicketId) return null;
-    return pendingTickets.find(t => t.id === selectedTicketId) || null;
-  }, [selectedTicketId, pendingTickets]);
+    const ticket = recitationTickets.find(t => t.id === selectedTicketId);
+    console.log('🔍 Looking for ticket:', selectedTicketId);
+    console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
+    return ticket || null;
+  }, [selectedTicketId, recitationTickets]);
 
   // Initialize mushaf page when ticket is selected
   useEffect(() => {
@@ -130,6 +133,18 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   const handleTicketClick = (ticketId: string) => {
     console.log('🎫 Clicking ticket:', ticketId);
+    console.log('🎫 Available tickets:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
+    console.log('🎫 Pending tickets:', pendingTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
+    
+    // Find ticket in all tickets, not just pending
+    const ticket = recitationTickets.find(t => t.id === ticketId);
+    if (!ticket) {
+      console.error('❌ Ticket not found:', ticketId);
+      alert('Ticket not found. Please refresh and try again.');
+      return;
+    }
+    
+    console.log('✅ Found ticket:', ticket);
     setSelectedTicketId(ticketId);
   };
 
