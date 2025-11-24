@@ -350,148 +350,168 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Load assignments from backend
       setLoadingStep('Loading assignments...');
-      console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
-      const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 10000);
-      console.log('📡 Assignments response status:', assignmentsResponse.status, assignmentsResponse.ok);
-      if (assignmentsResponse.ok) {
-        const assignmentsData = await assignmentsResponse.json();
-        console.log('📝 Assignments loaded from backend:', assignmentsData.length);
-        if (assignmentsData.length > 0) {
-          console.log('📝 Sample assignment:', {
-            id: assignmentsData[0]._id || assignmentsData[0].id,
-            studentId: assignmentsData[0].studentId,
-            studentName: assignmentsData[0].studentName,
-            sabqCount: assignmentsData[0].classwork?.sabq?.length || 0,
-            sabqiCount: assignmentsData[0].classwork?.sabqi?.length || 0,
-            manzilCount: assignmentsData[0].classwork?.manzil?.length || 0,
-            status: assignmentsData[0].status
-          });
-          // Log all assignments
-          assignmentsData.forEach((a: any, idx: number) => {
-            console.log(`📝 Assignment ${idx + 1}:`, {
-              id: a._id || a.id,
-              studentId: a.studentId,
-              studentName: a.studentName,
-              sabq: a.classwork?.sabq?.length || 0,
-              sabqi: a.classwork?.sabqi?.length || 0,
-              manzil: a.classwork?.manzil?.length || 0
+      try {
+        console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
+        const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000); // Reduced timeout
+        console.log('📡 Assignments response status:', assignmentsResponse.status, assignmentsResponse.ok);
+        if (assignmentsResponse.ok) {
+          const assignmentsData = await assignmentsResponse.json();
+          console.log('📝 Assignments loaded from backend:', assignmentsData.length);
+          if (assignmentsData.length > 0) {
+            console.log('📝 Sample assignment:', {
+              id: assignmentsData[0]._id || assignmentsData[0].id,
+              studentId: assignmentsData[0].studentId,
+              studentName: assignmentsData[0].studentName,
+              sabqCount: assignmentsData[0].classwork?.sabq?.length || 0,
+              sabqiCount: assignmentsData[0].classwork?.sabqi?.length || 0,
+              manzilCount: assignmentsData[0].classwork?.manzil?.length || 0,
+              status: assignmentsData[0].status
             });
-          });
+            // Log first 5 assignments only to avoid console spam
+            assignmentsData.slice(0, 5).forEach((a: any, idx: number) => {
+              console.log(`📝 Assignment ${idx + 1}:`, {
+                id: a._id || a.id,
+                studentId: a.studentId,
+                studentName: a.studentName,
+                sabq: a.classwork?.sabq?.length || 0,
+                sabqi: a.classwork?.sabqi?.length || 0,
+                manzil: a.classwork?.manzil?.length || 0
+              });
+            });
+          } else {
+            console.warn('⚠️ No assignments found in database. This could mean:');
+            console.warn('  1. No assignments have been created yet');
+            console.warn('  2. Assignments exist but query is not finding them');
+            console.warn('  3. Check backend logs when approving tickets to see if assignments are being created');
+          }
+          // Map MongoDB _id to id for frontend compatibility
+          const mappedAssignments = assignmentsData.map((assignment: any) => ({
+            ...assignment,
+            id: assignment._id || assignment.id,
+            createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+            updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+            completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
+          }));
+          setAssignments(mappedAssignments);
         } else {
-          console.warn('⚠️ No assignments found in database. This could mean:');
-          console.warn('  1. No assignments have been created yet');
-          console.warn('  2. Assignments exist but query is not finding them');
-          console.warn('  3. Check backend logs when approving tickets to see if assignments are being created');
+          const errorText = await assignmentsResponse.text().catch(() => 'Unknown error');
+          console.error('❌ Failed to load assignments:', assignmentsResponse.status, errorText);
+          setAssignments([]); // Set empty array on error
         }
-        // Map MongoDB _id to id for frontend compatibility
-        const mappedAssignments = assignmentsData.map((assignment: any) => ({
-          ...assignment,
-          id: assignment._id || assignment.id,
-          createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
-          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
-          completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
-        }));
-        setAssignments(mappedAssignments);
-      } else {
-        const errorText = await assignmentsResponse.text();
-        console.error('❌ Failed to load assignments:', assignmentsResponse.status, errorText);
+      } catch (assignmentsError: any) {
+        console.error('❌ Error loading assignments:', assignmentsError?.message || assignmentsError);
+        setAssignments([]); // Set empty array on error to prevent hanging
       }
 
       // Load recitation reviews
       setLoadingStep('Loading recitation reviews...');
-      const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 10000);
-      if (reviewsResponse.ok) {
-        const reviewsData = await reviewsResponse.json();
-        console.log('📖 Recitation reviews loaded:', reviewsData.length);
-        // Normalize recitation reviews to map _id to id
-        const normalizedReviews = Array.isArray(reviewsData) ? reviewsData.map((review: any) => ({
-          ...review,
-          id: review._id || review.id,
-          studentId: review.studentId || review.student?._id || review.student?.id || '',
-          studentName: review.studentName || review.student?.fullName || review.student?.name || 'Unknown',
-          teacherId: review.teacherId || review.teacher?._id || review.teacher?.id || '',
-          teacherName: review.teacherName || review.teacher?.fullName || review.teacher?.name || 'Unknown',
-          createdAt: review.createdAt ? new Date(review.createdAt) : new Date(),
-          updatedAt: review.updatedAt ? new Date(review.updatedAt) : new Date(),
-          reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : undefined,
-        })) : [];
-        setRecitationReviews(normalizedReviews);
+      try {
+        const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000);
+        if (reviewsResponse.ok) {
+          const reviewsData = await reviewsResponse.json();
+          console.log('📖 Recitation reviews loaded:', reviewsData.length);
+          // Normalize recitation reviews to map _id to id
+          const normalizedReviews = Array.isArray(reviewsData) ? reviewsData.map((review: any) => ({
+            ...review,
+            id: review._id || review.id,
+            studentId: review.studentId || review.student?._id || review.student?.id || '',
+            studentName: review.studentName || review.student?.fullName || review.student?.name || 'Unknown',
+            teacherId: review.teacherId || review.teacher?._id || review.teacher?.id || '',
+            teacherName: review.teacherName || review.teacher?.fullName || review.teacher?.name || 'Unknown',
+            createdAt: review.createdAt ? new Date(review.createdAt) : new Date(),
+            updatedAt: review.updatedAt ? new Date(review.updatedAt) : new Date(),
+            reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : undefined,
+          })) : [];
+          setRecitationReviews(normalizedReviews);
+        } else {
+          console.warn('⚠️ Failed to load recitation reviews:', reviewsResponse.status);
+          setRecitationReviews([]);
+        }
+      } catch (reviewsError: any) {
+        console.error('❌ Error loading recitation reviews:', reviewsError?.message || reviewsError);
+        setRecitationReviews([]);
       }
 
       // Load admin notifications
       setLoadingStep('Loading notifications...');
-      const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 10000);
-      if (notificationsResponse.ok) {
-        const notificationsData = await notificationsResponse.json();
-        console.log('🔔 Admin notifications loaded:', notificationsData.length);
-        setAdminNotifications(notificationsData);
+      try {
+        const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000);
+        if (notificationsResponse.ok) {
+          const notificationsData = await notificationsResponse.json();
+          console.log('🔔 Admin notifications loaded:', notificationsData.length);
+          setAdminNotifications(notificationsData);
+        } else {
+          console.warn('⚠️ Failed to load notifications:', notificationsResponse.status);
+          setAdminNotifications([]);
+        }
+      } catch (notificationsError: any) {
+        console.error('❌ Error loading notifications:', notificationsError?.message || notificationsError);
+        setAdminNotifications([]);
       }
 
       // Load tickets (old system)
       setLoadingStep('Loading tickets...');
-      const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 10000);
-      if (ticketsResponse.ok) {
-        const ticketsData = await ticketsResponse.json();
-        console.log('🎫 Tickets loaded:', ticketsData.length);
-        // Map MongoDB _id to id for frontend compatibility
-        const mappedTickets = ticketsData.map((ticket: any) => ({
-          ...ticket,
-          id: ticket._id || ticket.id,
-          createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
-          updatedAt: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(),
-          reviewedAt: ticket.reviewedAt ? new Date(ticket.reviewedAt) : undefined,
-          completedAt: ticket.completedAt ? new Date(ticket.completedAt) : undefined
-        }));
-        setTickets(mappedTickets);
-        
-        // Also load into recitationTickets (new system) - filter for sabq/sabqi/manzil types
-        const recitationTicketsData = ticketsData
-          .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
-          .map((ticket: any) => ({
+      try {
+        const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000);
+        if (ticketsResponse.ok) {
+          const ticketsData = await ticketsResponse.json();
+          console.log('🎫 Tickets loaded:', ticketsData.length);
+          // Map MongoDB _id to id for frontend compatibility
+          const mappedTickets = ticketsData.map((ticket: any) => ({
             ...ticket,
             id: ticket._id || ticket.id,
             createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
             updatedAt: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(),
-            startedAt: ticket.startedAt ? new Date(ticket.startedAt) : undefined,
-            submittedAt: ticket.submittedAt ? new Date(ticket.submittedAt) : undefined,
-            approvedAt: ticket.approvedAt ? new Date(ticket.approvedAt) : undefined,
-            reassignedAt: ticket.reassignedAt ? new Date(ticket.reassignedAt) : undefined,
-            sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined,
-            recordingUrl: ticket.recordingUrl || null,
-            recordingFormat: ticket.recordingFormat || null,
-            recordingDuration: ticket.recordingDuration || null,
-            recordingStartedAt: ticket.recordingStartedAt ? new Date(ticket.recordingStartedAt) : undefined,
-            recordingStoppedAt: ticket.recordingStoppedAt ? new Date(ticket.recordingStoppedAt) : undefined
+            reviewedAt: ticket.reviewedAt ? new Date(ticket.reviewedAt) : undefined,
+            completedAt: ticket.completedAt ? new Date(ticket.completedAt) : undefined
           }));
-        setRecitationTickets(recitationTicketsData);
-        console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
-        const ticketsWithRecordings = recitationTicketsData.filter((t: any) => t.recordingUrl);
-        console.log('🎙️ Tickets with recordings:', ticketsWithRecordings.length);
-        if (ticketsWithRecordings.length > 0) {
-          console.log('📋 Sample tickets with recordings:');
-          ticketsWithRecordings.slice(0, 3).forEach((t: any) => {
-            console.log('  -', {
-              id: t.id,
-              studentName: t.studentName,
-              type: t.type,
-              recordingUrl: t.recordingUrl,
-              recordingFormat: t.recordingFormat,
-              recordingDuration: t.recordingDuration
+          setTickets(mappedTickets);
+          
+          // Also load into recitationTickets (new system) - filter for sabq/sabqi/manzil types
+          const recitationTicketsData = ticketsData
+            .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
+            .map((ticket: any) => ({
+              ...ticket,
+              id: ticket._id || ticket.id,
+              createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+              updatedAt: ticket.updatedAt ? new Date(ticket.updatedAt) : new Date(),
+              startedAt: ticket.startedAt ? new Date(ticket.startedAt) : undefined,
+              submittedAt: ticket.submittedAt ? new Date(ticket.submittedAt) : undefined,
+              approvedAt: ticket.approvedAt ? new Date(ticket.approvedAt) : undefined,
+              reassignedAt: ticket.reassignedAt ? new Date(ticket.reassignedAt) : undefined,
+              sentAt: ticket.sentAt ? new Date(ticket.sentAt) : undefined,
+              recordingUrl: ticket.recordingUrl || null,
+              recordingFormat: ticket.recordingFormat || null,
+              recordingDuration: ticket.recordingDuration || null,
+              recordingStartedAt: ticket.recordingStartedAt ? new Date(ticket.recordingStartedAt) : undefined,
+              recordingStoppedAt: ticket.recordingStoppedAt ? new Date(ticket.recordingStoppedAt) : undefined
+            }));
+          setRecitationTickets(recitationTicketsData);
+          console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
+          const ticketsWithRecordings = recitationTicketsData.filter((t: any) => t.recordingUrl);
+          console.log('🎙️ Tickets with recordings:', ticketsWithRecordings.length);
+          if (ticketsWithRecordings.length > 0) {
+            console.log('📋 Sample tickets with recordings:');
+            ticketsWithRecordings.slice(0, 3).forEach((t: any) => {
+              console.log('  -', {
+                id: t.id,
+                studentName: t.studentName,
+                type: t.type,
+                recordingUrl: t.recordingUrl,
+                recordingFormat: t.recordingFormat,
+                recordingDuration: t.recordingDuration
+              });
             });
-          });
+          }
         } else {
-          console.log('⚠️ No tickets with recordings found. Checking all tickets:');
-          recitationTicketsData.slice(0, 5).forEach((t: any) => {
-            console.log('  -', {
-              id: t.id,
-              studentName: t.studentName,
-              type: t.type,
-              status: t.status,
-              hasRecordingUrl: !!t.recordingUrl,
-              recordingUrl: t.recordingUrl
-            });
-          });
+          console.warn('⚠️ Failed to load tickets:', ticketsResponse.status);
+          setTickets([]);
+          setRecitationTickets([]);
         }
+      } catch (ticketsError: any) {
+        console.error('❌ Error loading tickets:', ticketsError?.message || ticketsError);
+        setTickets([]);
+        setRecitationTickets([]);
       }
 
       // Load actual student records from /api/students endpoint
