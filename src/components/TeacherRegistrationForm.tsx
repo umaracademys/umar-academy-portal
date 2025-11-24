@@ -1033,7 +1033,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                               }
                             }}
                             disabled={!!partTimeDaySchedules.find(ds => ds.day === newPartTimeDay.day) || partTimeDaySchedules.length >= 7}
-                            className="w-full px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold transition transform hover:scale-105 disabled:hover:scale-100"
+                            className="w-full px-4 py-3 bg-primary text-white rounded-lg hover:bg-[rgba(var(--color-primary-rgb),0.9)] disabled:bg-gray-300 disabled:cursor-not-allowed font-semibold transition transform hover:scale-105 disabled:hover:scale-100"
                           >
                             Add Day
                           </button>
@@ -1087,7 +1087,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                           step="0.01"
                           value={payrollInfo.hourlyRate}
                           onChange={(e) => setPayrollInfo({ ...payrollInfo, hourlyRate: parseFloat(e.target.value) || 0 })}
-                          className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                          className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           placeholder={currency === 'USD' ? '25.00' : '5000'}
                         />
                       </div>
@@ -1221,7 +1221,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                                 console.log(`🔐 Updating permission ${key}:`, e.target.checked);
                                 setPermissions(newPermissions);
                               }}
-                              className="w-6 h-6 text-green-600 focus:ring-green-500 rounded cursor-pointer border-2 border-gray-300"
+                              className="w-6 h-6 text-primary focus:ring-primary rounded cursor-pointer border-2 border-gray-300"
                             />
                           </div>
                         </label>
@@ -1273,7 +1273,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                       }
                     }}
                     disabled={isSubmitting}
-                    className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
+                    className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-[rgba(var(--color-primary-rgb),0.9)] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
                   >
                     Next →
                   </button>
@@ -1312,7 +1312,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500 shadow-sm"
+                  className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.9)] h-3 rounded-full transition-all duration-500 shadow-sm"
                   style={{ width: `${((currentTab + 1) / tabs.length) * 100}%` }}
                 ></div>
               </div>
