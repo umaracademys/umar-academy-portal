@@ -344,15 +344,19 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
           {!selectedTicket ? (
             // Modern Ticket List View
             <div className="space-y-6">
-              {/* Sent Tickets Section */}
-              {sentTickets.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg sm:text-xl font-extrabold text-primary">Sent Tickets</h3>
-                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold">
-                      {sentTickets.length} ticket{sentTickets.length !== 1 ? 's' : ''}
-                    </span>
+              {/* Sent Tickets Section - Always show */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg sm:text-xl font-extrabold text-primary">Sent Tickets</h3>
+                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold">
+                    {sentTickets.length} ticket{sentTickets.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                {sentTickets.length === 0 ? (
+                  <div className="bg-white rounded-xl border-2 border-gray-200 p-6 text-center">
+                    <p className="text-sm text-primary/70">No tickets sent yet. Create a ticket to see it here.</p>
                   </div>
+                ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {sentTickets.map((ticket) => {
                       const typeColors = {
