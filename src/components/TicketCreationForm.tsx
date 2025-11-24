@@ -7,20 +7,23 @@ interface TicketCreationFormProps {
   studentId: string;
   onClose: () => void;
   onSuccess: (ticket: Ticket) => void;
+  ticket?: Ticket; // Optional ticket for editing mode
 }
 
 const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   studentId,
   onClose,
-  onSuccess
+  onSuccess,
+  ticket: existingTicket
 }) => {
-  const { students, teachers, createTicket, getPreviousReports } = useBackendData();
+  const { students, teachers, createTicket, updateRecitationTicket, getPreviousReports } = useBackendData();
   const { user } = useAuth();
+  const isEditMode = !!existingTicket;
   const [isCreating, setIsCreating] = useState(false);
-  const [ticketType, setTicketType] = useState<TicketType | ''>('');
-  const [adminComment, setAdminComment] = useState('');
-  const [selectedTeacherId, setSelectedTeacherId] = useState('');
-  const [teacherNotes, setTeacherNotes] = useState('');
+  const [ticketType, setTicketType] = useState<TicketType | ''>(existingTicket?.type || '');
+  const [adminComment, setAdminComment] = useState(existingTicket?.adminComment || '');
+  const [selectedTeacherId, setSelectedTeacherId] = useState(existingTicket?.assignedTeacherId || '');
+  const [teacherNotes, setTeacherNotes] = useState(existingTicket?.teacherNotes || '');
   const [previousReports, setPreviousReports] = useState<Ticket[]>([]);
   const [showReminder, setShowReminder] = useState(false);
 
@@ -77,9 +80,6 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         studentId: student.id,
         studentName: student.fullName,
         type: ticketType,
-        status: ticketType === 'sabq' ? 'sent_to_assignment' : 'pending',
-        createdBy: user.id || '',
-        createdByName: user.name || user.email || 'Unknown',
         adminComment: adminComment.trim(),
         assignedTeacherId: ticketType !== 'sabq' ? selectedTeacherId : undefined,
         assignedTeacherName: ticketType !== 'sabq' 
@@ -88,19 +88,27 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         teacherNotes: ticketType !== 'sabq' ? teacherNotes.trim() : undefined
       };
 
-      const newTicket = await createTicket(ticketData);
+      let updatedTicket: Ticket;
       
-      // If sabq, immediately send to assignment (pre-fill)
-      if (ticketType === 'sabq') {
-        onSuccess(newTicket);
+      if (isEditMode && existingTicket) {
+        // Update existing ticket (preserve status unless it's pending/in_progress)
+        if (existingTicket.status === 'pending' || existingTicket.status === 'in_progress') {
+          ticketData.status = ticketType === 'sabq' ? 'sent_to_assignment' : 'pending';
+        }
+        updatedTicket = await updateRecitationTicket(existingTicket.id, ticketData);
       } else {
-        onSuccess(newTicket);
+        // Create new ticket
+        ticketData.status = ticketType === 'sabq' ? 'sent_to_assignment' : 'pending';
+        ticketData.createdBy = user.id || '';
+        ticketData.createdByName = user.name || user.email || 'Unknown';
+        updatedTicket = await createTicket(ticketData);
       }
       
+      onSuccess(updatedTicket);
       onClose();
     } catch (error) {
-      console.error('Error creating ticket:', error);
-      alert('Failed to create ticket. Please try again.');
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} ticket:`, error);
+      alert(`Failed to ${isEditMode ? 'update' : 'create'} ticket. Please try again.`);
     } finally {
       setIsCreating(false);
     }
@@ -117,7 +125,9 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                 <span className="text-lg font-bold text-white">TK</span>
               </div>
               <div className="min-w-0 flex-1">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg truncate">Create New Ticket</h2>
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg truncate">
+                  {isEditMode ? 'Edit Ticket' : 'Create New Ticket'}
+                </h2>
                 <p className="text-white/90 mt-1 text-sm sm:text-base md:text-lg font-bold truncate">
                   {student?.fullName || 'Student'}
                 </p>
@@ -311,12 +321,12 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               {isCreating ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Creating...</span>
+                  <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
                 </>
               ) : (
                 <>
                   <span>✓</span>
-                  <span>Create Ticket</span>
+                  <span>{isEditMode ? 'Update Ticket' : 'Create Ticket'}</span>
                 </>
               )}
             </button>

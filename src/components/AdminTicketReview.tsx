@@ -21,6 +21,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [reassignReason, setReassignReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [mushafPage, setMushafPage] = useState(1);
+  const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   
   // Recording state
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
@@ -439,8 +440,21 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                 onClick={() => handleTicketClick(ticket.id)}
                                 className="flex-1 px-5 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl text-sm font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                               >
-                                📖 Review Ticket
+                                Review Ticket
                               </button>
+                              {/* Edit button - only show for editable statuses */}
+                              {(ticket.status === 'pending' || ticket.status === 'in_progress' || ticket.status === 'submitted') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingTicket(ticket);
+                                  }}
+                                  className="px-4 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md hover:shadow-lg"
+                                  title="Edit ticket"
+                                >
+                                  Edit
+                                </button>
+                              )}
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -449,7 +463,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                 className="px-4 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
                                 title="Delete ticket"
                               >
-                                🗑️
+                                Delete
                               </button>
                             </div>
                           </div>
@@ -755,6 +769,27 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
           </div>
         )}
       </div>
+
+      {/* Edit Ticket Modal */}
+      {editingTicket && (
+        <TicketCreationForm
+          studentId={editingTicket.studentId}
+          ticket={editingTicket}
+          onClose={() => {
+            setEditingTicket(null);
+            refreshData();
+          }}
+          onSuccess={(updatedTicket) => {
+            setEditingTicket(null);
+            refreshData();
+            // If we were viewing this ticket, refresh the view
+            if (selectedTicketId === updatedTicket.id) {
+              setSelectedTicketId(null);
+              setTimeout(() => setSelectedTicketId(updatedTicket.id), 100);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
