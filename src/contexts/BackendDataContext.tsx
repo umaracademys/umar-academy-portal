@@ -660,40 +660,55 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Load admins from Admin collection (has admin-specific data)
       setLoadingStep('Loading admins...');
       let adminsData: Admin[] = [];
-      try {
-        console.log('📡 Fetching admins from:', `${API_BASE}/admins`);
-        const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 10000, false);
-        console.log('📡 Admins response status:', adminsResponse.status);
-        
-        if (adminsResponse.ok) {
-          const adminRecords = await adminsResponse.json();
-          console.log('👨‍💼 Admin records loaded:', adminRecords.length);
-          adminsData = adminRecords.map((adminRecord: any) => ({
-            id: adminRecord._id || adminRecord.id,
-            userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
-            fullName: adminRecord.fullName || 'Unknown',
-            email: adminRecord.email || '',
-            contact: adminRecord.contact || '',
-            permissions: adminRecord.permissions || {
-              canManageTeachers: false,
-              canManageStudents: false,
-              canManageFinancials: false,
-              canViewReports: false,
-              canManagePermissions: false
-            },
-            assignedDepartments: adminRecord.assignedDepartments || [],
-            hireDate: adminRecord.hireDate ? new Date(adminRecord.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-            status: adminRecord.status || 'active',
-            avatar: adminRecord.avatar || ''
-          }));
-          console.log('✅ Admins processed:', adminsData.length);
-        } else {
-          console.warn('⚠️ Admins endpoint returned non-OK status:', adminsResponse.status);
-          throw new Error(`Admins endpoint returned ${adminsResponse.status}`);
+      
+      // Use Promise.race to ensure we don't hang - fallback after 5 seconds
+      const adminsPromise = (async () => {
+        try {
+          console.log('📡 Fetching admins from:', `${API_BASE}/admins`);
+          const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 5000, false); // Reduced timeout to 5 seconds
+          console.log('📡 Admins response status:', adminsResponse.status);
+          
+          if (adminsResponse.ok) {
+            const adminRecords = await adminsResponse.json();
+            console.log('👨‍💼 Admin records loaded:', adminRecords.length);
+            return adminRecords.map((adminRecord: any) => ({
+              id: adminRecord._id || adminRecord.id,
+              userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
+              fullName: adminRecord.fullName || 'Unknown',
+              email: adminRecord.email || '',
+              contact: adminRecord.contact || '',
+              permissions: adminRecord.permissions || {
+                canManageTeachers: false,
+                canManageStudents: false,
+                canManageFinancials: false,
+                canViewReports: false,
+                canManagePermissions: false
+              },
+              assignedDepartments: adminRecord.assignedDepartments || [],
+              hireDate: adminRecord.hireDate ? new Date(adminRecord.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+              status: adminRecord.status || 'active',
+              avatar: adminRecord.avatar || ''
+            }));
+          } else {
+            console.warn('⚠️ Admins endpoint returned non-OK status:', adminsResponse.status);
+            throw new Error(`Admins endpoint returned ${adminsResponse.status}`);
+          }
+        } catch (error: any) {
+          console.warn('⚠️ Failed to load admins from /api/admins:', error?.message || error);
+          throw error;
         }
+      })();
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Admins loading timeout')), 5000);
+      });
+      
+      try {
+        adminsData = await Promise.race([adminsPromise, timeoutPromise]);
+        console.log('✅ Admins processed:', adminsData.length);
       } catch (adminError: any) {
-        console.warn('⚠️ Failed to load admins from /api/admins, falling back to users:', adminError?.message || adminError);
-        // Fallback to users collection if Admin collection doesn't exist yet
+        console.warn('⚠️ Admins loading failed or timed out, falling back to users:', adminError?.message || adminError);
+        // Fallback to users collection if Admin collection doesn't exist yet or request times out
         adminsData = users
           .filter((user: any) => user.role === 'admin' || user.role === 'superadmin')
           .map((user: any) => ({
