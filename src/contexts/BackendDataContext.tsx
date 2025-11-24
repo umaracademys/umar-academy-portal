@@ -303,11 +303,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       isLoadingRef.current = true;
       setLoading(true);
       setError(null);
-      setLoadingStep('Bismillah, connecting to server...');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       console.log('🔄 Loading data from backend...', new Date().toISOString());
 
       // Load users from backend with timeout (no auth required for backward compatibility)
-      setLoadingStep('Bismillah, loading users...');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000, false);
       console.log('📡 Backend response status:', usersResponse.status);
       
@@ -318,7 +318,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('👥 Users loaded from backend:', users.length);
 
       // Load actual teacher records from /api/teachers endpoint (with sync to ensure assignedStudents arrays are up to date)
-      setLoadingStep('Loading teachers... Sallallahu Alaihi Wasallam');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       let teacherRecords: any[] = [];
       try {
       const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 10000);
@@ -349,7 +349,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load assignments from backend
-      setLoadingStep('Loading assignments... Barakallahu Feek');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       try {
         console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
         const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000); // Reduced timeout
@@ -404,7 +404,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load recitation reviews
-      setLoadingStep('Loading recitation reviews... Sallallahu Alaihi Wasallam');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       try {
         const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000);
         if (reviewsResponse.ok) {
@@ -433,7 +433,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load admin notifications
-      setLoadingStep('Loading notifications... Insha\'Allah');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       try {
         const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000);
         if (notificationsResponse.ok) {
@@ -450,7 +450,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load tickets (old system)
-      setLoadingStep('Loading tickets... Barakallahu Feek');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       try {
         const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000);
         if (ticketsResponse.ok) {
@@ -515,7 +515,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load actual student records from /api/students endpoint
-      setLoadingStep('Loading students... Sallallahu Alaihi Wasallam');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       let studentRecords: any[] = [];
       try {
         const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 10000);
@@ -678,7 +678,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         });
 
       // Load admins from Admin collection (has admin-specific data)
-      setLoadingStep('Loading admins... Barakallahu Feek');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       let adminsData: Admin[] = [];
       
       // Use Promise.race to ensure we don't hang - fallback after 5 seconds
@@ -751,14 +751,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log('✅ Fallback admins from users:', adminsData.length);
       }
 
-      setLoadingStep('Processing data... Insha\'Allah');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
 
       setStudents(studentsData);
       setTeachers(teachersData);
       setAdmins(adminsData);
       
-      setLoadingStep('Alhamdulillah! Complete');
+      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       console.log('✅ All data loaded successfully');
 
     } catch (err) {
