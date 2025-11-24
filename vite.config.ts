@@ -99,6 +99,13 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: false, // Keep console logs in production
+        drop_debugger: false
+      }
+    },
     rollupOptions: {
       output: {
         manualChunks: {
