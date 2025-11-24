@@ -470,7 +470,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                               {/* Classwork Section */}
                               <div>
                                 <h4 className="text-base font-extrabold text-primary mb-3 flex items-center gap-2">
-                                  <span>📖</span> Classwork
+                                  <span>Classwork</span>
                                 </h4>
                                 <div className="space-y-4">
                                   {/* Sabq */}
