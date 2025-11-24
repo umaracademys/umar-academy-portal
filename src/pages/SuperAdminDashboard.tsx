@@ -830,12 +830,13 @@ const SuperAdminDashboard: React.FC = () => {
               <div className="flex items-center justify-center h-64">
                 <div className="text-center max-w-md">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-primary font-semibold text-lg">Loading data from backend...</p>
-                  <p className="text-primary font-medium mt-3 text-base">{loadingStep || 'Initializing...'}</p>
+                  <p className="text-primary font-semibold text-lg">بِسْمِ اللَّهِ</p>
+                  <p className="text-primary font-medium mt-2 text-base">Bismillah</p>
+                  <p className="text-primary font-medium mt-3 text-sm">{loadingStep || 'Bismillah, initializing...'}</p>
                   <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-xs mx-auto">
                     <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                   </div>
-                  <p className="text-gray-500 text-xs mt-3">Please wait while we fetch your data</p>
+                  <p className="text-gray-500 text-xs mt-3">Sallallahu Alaihi Wasallam • Please wait...</p>
                   {error && (
                     <p className="text-red-600 text-sm mt-3 font-semibold">Error: {error}</p>
                   )}

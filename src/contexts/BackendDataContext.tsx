@@ -238,7 +238,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [tickets, setTickets] = useState<AssignmentTicket[]>([]);
   const [recitationTickets, setRecitationTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingStep, setLoadingStep] = useState<string>('Initializing...');
+  const [loadingStep, setLoadingStep] = useState<string>('Bismillah, initializing...');
   const [error, setError] = useState<string | null>(null);
   const isLoadingRef = useRef(false); // Track if data is currently loading to prevent concurrent calls
 
@@ -303,11 +303,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       isLoadingRef.current = true;
       setLoading(true);
       setError(null);
-      setLoadingStep('Connecting to server...');
       console.log('🔄 Loading data from backend...', new Date().toISOString());
 
       // Load users from backend with timeout (no auth required for backward compatibility)
-      setLoadingStep('Loading users...');
+      setLoadingStep('Bismillah, loading users...');
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000, false);
       console.log('📡 Backend response status:', usersResponse.status);
       
@@ -318,7 +317,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('👥 Users loaded from backend:', users.length);
 
       // Load actual teacher records from /api/teachers endpoint (with sync to ensure assignedStudents arrays are up to date)
-      setLoadingStep('Loading teachers...');
+      setLoadingStep('Loading teachers... Sallallahu Alaihi Wasallam');
       let teacherRecords: any[] = [];
       try {
       const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 10000);
@@ -349,7 +348,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load assignments from backend
-      setLoadingStep('Loading assignments...');
+      setLoadingStep('Loading assignments... Barakallahu Feek');
       try {
         console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
         const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000); // Reduced timeout
@@ -404,7 +403,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load recitation reviews
-      setLoadingStep('Loading recitation reviews...');
+      setLoadingStep('Loading recitation reviews... Sallallahu Alaihi Wasallam');
       try {
         const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000);
         if (reviewsResponse.ok) {
@@ -433,7 +432,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load admin notifications
-      setLoadingStep('Loading notifications...');
+      setLoadingStep('Loading notifications... Insha\'Allah');
       try {
         const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000);
         if (notificationsResponse.ok) {
@@ -450,7 +449,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load tickets (old system)
-      setLoadingStep('Loading tickets...');
+      setLoadingStep('Loading tickets... Barakallahu Feek');
       try {
         const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000);
         if (ticketsResponse.ok) {
@@ -515,7 +514,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load actual student records from /api/students endpoint
-      setLoadingStep('Loading students...');
+      setLoadingStep('Loading students... Sallallahu Alaihi Wasallam');
       let studentRecords: any[] = [];
       try {
         const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 10000);
@@ -678,7 +677,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         });
 
       // Load admins from Admin collection (has admin-specific data)
-      setLoadingStep('Loading admins...');
+      setLoadingStep('Loading admins... Barakallahu Feek');
       let adminsData: Admin[] = [];
       
       // Use Promise.race to ensure we don't hang - fallback after 5 seconds
@@ -751,14 +750,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log('✅ Fallback admins from users:', adminsData.length);
       }
 
-      setLoadingStep('Processing data...');
+      setLoadingStep('Processing data... Insha\'Allah');
       console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
 
       setStudents(studentsData);
       setTeachers(teachersData);
       setAdmins(adminsData);
       
-      setLoadingStep('Complete!');
+      setLoadingStep('Alhamdulillah! Complete');
       console.log('✅ All data loaded successfully');
 
     } catch (err) {
