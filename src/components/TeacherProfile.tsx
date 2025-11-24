@@ -425,14 +425,14 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                 <Card>
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">Attendance Rate</p>
-                    <p className="text-3xl font-bold text-green-600">98%</p>
+                    <p className="text-3xl font-bold text-primary">98%</p>
                     <p className="text-xs text-gray-500 mt-1">Last 30 days</p>
                   </div>
                 </Card>
                 <Card>
                   <div className="text-center">
                     <p className="text-sm text-gray-600 mb-1">Student Retention</p>
-                    <p className="text-3xl font-bold text-blue-600">92%</p>
+                    <p className="text-3xl font-bold text-primary">92%</p>
                     <p className="text-xs text-gray-500 mt-1">This semester</p>
                   </div>
                 </Card>
