@@ -413,7 +413,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                         {onAnalytics && (
                           <button
                             onClick={() => onAnalytics(teacher)}
-                            className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                            className="text-purple-600 hover:text-purple-800 text-[10px] font-medium"
                           >
                             Analytics
                           </button>
