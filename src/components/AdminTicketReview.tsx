@@ -337,8 +337,109 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gradient-to-b from-gray-50 to-white">
           {!selectedTicket ? (
             // Modern Ticket List View
-            <div className="space-y-4">
-              {pendingTickets.length === 0 ? (
+            <div className="space-y-6">
+              {/* Sent Tickets Section */}
+              {sentTickets.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg sm:text-xl font-extrabold text-primary">Sent Tickets</h3>
+                    <span className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold">
+                      {sentTickets.length} ticket{sentTickets.length !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {sentTickets.map((ticket) => {
+                      const typeColors = {
+                        sabq: { bg: 'bg-green-500', text: 'text-green-50', border: 'border-green-400' },
+                        sabqi: { bg: 'bg-blue-500', text: 'text-blue-50', border: 'border-blue-400' },
+                        manzil: { bg: 'bg-purple-500', text: 'text-purple-50', border: 'border-purple-400' }
+                      };
+                      const colors = typeColors[ticket.type as keyof typeof typeColors] || typeColors.sabq;
+
+                      return (
+                        <div
+                          key={ticket.id}
+                          className="group relative bg-white rounded-2xl border-2 border-gray-200 hover:border-primary/50 transition-all duration-300 shadow-md hover:shadow-xl overflow-hidden"
+                        >
+                          {/* Gradient Accent Bar */}
+                          <div className={`h-1 ${colors.bg} w-full`}></div>
+                          
+                          <div className="p-5 sm:p-6">
+                            {/* Header with Badges */}
+                            <div className="flex items-start justify-between mb-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <span className={`px-3 py-1.5 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
+                                    {ticket.type.toUpperCase()}
+                                  </span>
+                                  <span className={`px-3 py-1.5 rounded-lg text-xs font-extrabold ${
+                                    ticket.status === 'sent_to_assignment' 
+                                      ? 'bg-green-500 text-green-50' 
+                                      : 'bg-yellow-500 text-yellow-50'
+                                  } shadow-md`}>
+                                    {ticket.status === 'sent_to_assignment' ? 'SENT' : 'PENDING'}
+                                  </span>
+                                </div>
+                                <h4 className="text-xl font-extrabold text-primary mb-1 group-hover:text-primary/80 transition-colors">
+                                  {ticket.studentName}
+                                </h4>
+                                {ticket.assignedTeacherName && (
+                                  <p className="text-sm text-primary/70 font-medium">
+                                    Teacher: {ticket.assignedTeacherName}
+                                  </p>
+                                )}
+                                {ticket.adminComment && (
+                                  <p className="text-xs text-primary/60 mt-2 line-clamp-2">
+                                    {ticket.adminComment}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Stats Row */}
+                            <div className="flex items-center justify-between mb-4 pt-3 border-t border-gray-200">
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs text-primary/60">
+                                    Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTicket(ticket);
+                                }}
+                                className="flex-1 px-4 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md hover:shadow-lg"
+                                title="Edit ticket"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteTicket(ticket.id);
+                                }}
+                                className="px-4 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
+                                title="Delete ticket"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Pending Tickets Section */}
+              {pendingTickets.length === 0 && sentTickets.length === 0 ? (
                 <div className="text-center py-12 sm:py-16">
                   <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                     <span className="text-2xl sm:text-3xl font-bold text-primary">✓</span>
