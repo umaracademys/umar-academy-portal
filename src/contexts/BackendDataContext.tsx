@@ -781,11 +781,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       isLoadingRef.current = false;
       console.log('✅ Data loading completed - loading state:', false);
     }
-  };
+  }, []); // Empty deps - loadData should only be created once
 
+  // Only load data once on mount
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      console.log('🚀 Initial data load triggered');
+      loadData();
+    } else {
+      console.log('⏸️ Data already loaded, skipping initial load');
+    }
+  }, [loadData]);
 
   // Student operations
   const addStudent = async (student: Student) => {
