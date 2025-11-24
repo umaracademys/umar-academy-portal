@@ -12,7 +12,7 @@ interface AdminTicketReviewProps {
 }
 
 const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
-  const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshData, updateRecitationTicket } = useBackendData();
+  const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshData, updateRecitationTicket, loading } = useBackendData();
   const { user } = useAuth();
   
   // Refresh data when component mounts to ensure tickets are loaded
@@ -621,7 +621,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                 </>
               )}
             </div>
-          ) : (
+          ) : selectedTicket ? (
             // Modern Ticket Detail View
             <div className="space-y-6">
               {/* Back Button */}
@@ -804,6 +804,23 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                       <span>Approve & Send to Assignment</span>
                     </>
                   )}
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Loading or error state
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p className="text-lg font-bold text-primary mb-2">Loading ticket...</p>
+                <p className="text-sm text-primary/70">Please wait</p>
+                <button
+                  onClick={handleBackToList}
+                  className="mt-4 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all"
+                >
+                  Back to List
                 </button>
               </div>
             </div>
