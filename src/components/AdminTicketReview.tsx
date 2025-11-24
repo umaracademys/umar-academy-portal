@@ -445,8 +445,8 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                       );
                     })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Pending Tickets Section */}
               {pendingTickets.length === 0 ? (
