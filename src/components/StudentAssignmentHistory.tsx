@@ -508,9 +508,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               
                                               {/* Inline Mushaf View - Always show when open */}
                                               {isMushafOpen && (
-                                                <div className="mt-4 pt-4 border-t-2 border-green-300">
+                                                <div className="mt-4 pt-4 border-t-2 border-primary/30">
                                                   <div className="mb-3 flex items-center justify-between">
-                                                    <h6 className="text-sm font-extrabold text-green-800">
+                                                    <h6 className="text-sm font-extrabold text-primary">
                                                       Mushaf View {phaseMistakes.length > 0 && `- ${phaseMistakes.length} mistake${phaseMistakes.length !== 1 ? 's' : ''}`}
                                                     </h6>
                                                     <span className="text-xs text-primary font-semibold">
@@ -598,9 +598,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               
                                               {/* Inline Mushaf View - Always show when open */}
                                               {isMushafOpen && (
-                                                <div className="mt-4 pt-4 border-t-2 border-blue-300">
+                                                <div className="mt-4 pt-4 border-t-2 border-accent/30">
                                                   <div className="mb-3 flex items-center justify-between">
-                                                    <h6 className="text-sm font-extrabold text-blue-800">
+                                                    <h6 className="text-sm font-extrabold text-accent">
                                                       Mushaf View {phaseMistakes.length > 0 && `- ${phaseMistakes.length} mistake${phaseMistakes.length !== 1 ? 's' : ''}`}
                                                     </h6>
                                                     <span className="text-xs text-accent font-semibold">
@@ -655,9 +655,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                   
                                   {/* Manzil */}
                                   {assignment.classwork.manzil.length > 0 && (
-                                    <div className="bg-purple-50 border-l-4 border-purple-500 rounded-xl p-4">
-                                      <h5 className="text-sm font-extrabold text-purple-800 mb-3 uppercase tracking-wide">
-                                        📿 Manzil ({assignment.classwork.manzil.length})
+                                    <div className="bg-accent/10 border-l-4 border-accent rounded-xl p-4">
+                                      <h5 className="text-sm font-extrabold text-accent mb-3 uppercase tracking-wide">
+ Manzil ({assignment.classwork.manzil.length})
                                       </h5>
                                       <div className="space-y-3">
                                         {assignment.classwork.manzil.map((phase, idx) => {
@@ -690,7 +690,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               {isMushafOpen && (
                                                 <div className="mt-4 pt-4 border-t-2 border-purple-300">
                                                   <div className="mb-3 flex items-center justify-between">
-                                                    <h6 className="text-sm font-extrabold text-purple-800">
+                                                    <h6 className="text-sm font-extrabold text-accent">
                                                       Mushaf View {phaseMistakes.length > 0 && `- ${phaseMistakes.length} mistake${phaseMistakes.length !== 1 ? 's' : ''}`}
                                                     </h6>
                                                     <span className="text-xs text-purple-700 font-semibold">
@@ -711,7 +711,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                   {/* Mistake List - Only show if there are mistakes */}
                                                   {phaseMistakes.length > 0 && (
                                                     <div className="mt-3 space-y-2">
-                                                      <h6 className="text-xs font-extrabold text-purple-800 mb-2">Mistakes:</h6>
+                                                      <h6 className="text-xs font-extrabold text-accent mb-2">Mistakes:</h6>
                                                       {phaseMistakes.map((mistake, mIdx) => (
                                                         <div key={mistake.id || mIdx} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-purple-200 text-xs">
                                                           <span className="px-2 py-1 bg-purple-500 text-white rounded-lg font-extrabold">
@@ -755,7 +755,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                               {assignment.homework.enabled && (
                                 <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-xl p-4">
                                   <h4 className="text-base font-extrabold text-yellow-800 mb-3 flex items-center gap-2">
-                                    <span>📝</span> Homework
+                                    <span></span> Homework
                                   </h4>
                                   {assignment.homework.content && (
                                     <p className="text-sm text-primary mb-3 bg-white p-3 rounded-lg border border-yellow-200">
@@ -780,10 +780,10 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                         <h5 className="text-sm font-extrabold text-primary">Student Submission</h5>
                                         <span className={`px-3 py-1 rounded-lg text-xs font-extrabold text-white ${
                                           assignment.homework.submission.status === 'graded' 
-                                            ? 'bg-green-500'
+                                            ? 'bg-primary'
                                             : assignment.homework.submission.status === 'returned'
                                             ? 'bg-orange-500'
-                                            : 'bg-blue-500'
+                                            : 'bg-accent'
                                         }`}>
                                           {assignment.homework.submission.status === 'graded' 
                                             ? '✓ Graded' 
@@ -860,9 +860,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                       )}
                                       
                                       {assignment.homework.submission.grade !== undefined && assignment.homework.submission.grade !== null && (
-                                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div className="mt-3 p-3 bg-accent/10 rounded-lg border border-accent/30">
                                           <span className="text-sm font-extrabold text-primary">Grade: </span>
-                                          <span className="text-2xl font-extrabold text-blue-600">{assignment.homework.submission.grade}</span>
+                                          <span className="text-2xl font-extrabold text-accent">{assignment.homework.submission.grade}</span>
                                         </div>
                                       )}
                                       
@@ -907,7 +907,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                 <button
                                                   onClick={() => handleGradeHomework(assignment.id)}
                                                   disabled={isGrading}
-                                                  className="px-6 py-3 bg-green-500 text-white rounded-xl font-extrabold hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                                                  className="px-6 py-3 bg-primary text-white rounded-xl font-extrabold hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                                                 >
                                                   {isGrading ? 'Grading...' : 'Submit Grade'}
                                                 </button>
@@ -941,7 +941,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                               {assignment.comment && (
                                 <div className="bg-gray-50 border-l-4 border-gray-400 rounded-xl p-4">
                                   <h4 className="text-base font-extrabold text-primary mb-2 flex items-center gap-2">
-                                    <span>💬</span> Comment
+                                    <span></span> Comment
                                   </h4>
                                   <p className="text-sm text-primary bg-white p-3 rounded-lg border border-gray-200">{assignment.comment}</p>
                                 </div>
