@@ -1040,7 +1040,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         </div>
                       </div>
                       {partTimeDaySchedules.find(ds => ds.day === newPartTimeDay.day) && (
-                        <p className="text-xs text-red-600 mt-3 font-medium">⚠️ This day is already added</p>
+                        <p className="text-xs text-red-600 mt-3 font-medium">This day is already added</p>
                       )}
                       {partTimeDaySchedules.length === 0 && (
                         <p className="text-xs text-gray-600 mt-3">Add at least one day schedule for Part Time employment</p>
