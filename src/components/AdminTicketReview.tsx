@@ -51,10 +51,19 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     }
   });
 
-  // Get pending tickets
+  // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
     return recitationTickets.filter(t => t.status === 'submitted');
   }, [recitationTickets]);
+
+  // Get sent tickets (sent by admin, excluding reassigned ones)
+  const sentTickets = useMemo(() => {
+    return recitationTickets.filter(t => 
+      (t.status === 'pending' || t.status === 'sent_to_assignment') && 
+      t.status !== 'reassigned' &&
+      t.createdBy === user?.id // Only show tickets created by current admin
+    );
+  }, [recitationTickets, user?.id]);
 
   // Get selected ticket
   const selectedTicket = useMemo(() => {
@@ -340,11 +349,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               ) : (
                 <>
                   {/* Summary Banner */}
-                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg border-2 border-blue-400/50">
+                  <div className="mb-6 p-4 bg-gradient-to-r from-primary to-primary/90 rounded-2xl shadow-lg border-2 border-primary/50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                          <span className="text-2xl">📋</span>
+                          <span className="text-xl font-bold text-white">TK</span>
                         </div>
                         <div>
                           <p className="text-lg font-extrabold text-white">
