@@ -665,7 +665,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         required
                         value={personalInfo.fullName}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, fullName: e.target.value })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="e.g., Dr. Ahmed Ali"
                       />
                     </div>
@@ -679,7 +679,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         required
                         value={personalInfo.email}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, email: e.target.value })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="teacher@umaracademy.org"
                       />
                     </div>
@@ -693,7 +693,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         required
                         value={personalInfo.phoneNumber}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, phoneNumber: e.target.value })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="+1-555-0000"
                       />
                     </div>
@@ -707,7 +707,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         required
                         value={personalInfo.emergencyContact}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, emergencyContact: e.target.value })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="+1-555-0000"
                       />
                     </div>
@@ -721,7 +721,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         required
                         value={personalInfo.department}
                         onChange={(e) => setPersonalInfo({ ...personalInfo, department: e.target.value })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="e.g., Islamic Studies, Mathematics, Science"
                       />
                     </div>
@@ -739,7 +739,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                       onClick={() => setPersonalInfo({ ...personalInfo, location: 'Local' })}
                       className={`py-6 px-6 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                         personalInfo.location === 'Local'
-                          ? 'bg-green-600 text-white shadow-xl ring-4 ring-green-200'
+                          ? 'bg-primary text-white shadow-xl ring-4 ring-primary/30'
                           : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
                       }`}
                     >
@@ -752,7 +752,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                       onClick={() => setPersonalInfo({ ...personalInfo, location: 'Overseas Pakistan' })}
                       className={`py-6 px-6 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                         personalInfo.location === 'Overseas Pakistan'
-                          ? 'bg-green-600 text-white shadow-xl ring-4 ring-green-200'
+                          ? 'bg-primary text-white shadow-xl ring-4 ring-primary/30'
                           : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
                       }`}
                     >
@@ -1104,7 +1104,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         max="24"
                         value={payrollInfo.dailyHours}
                         onChange={(e) => setPayrollInfo({ ...payrollInfo, dailyHours: parseInt(e.target.value) || 0 })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="8"
                       />
                     </div>
@@ -1120,7 +1120,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                         max="31"
                         value={payrollInfo.daysWorking}
                         onChange={(e) => setPayrollInfo({ ...payrollInfo, daysWorking: parseInt(e.target.value) || 0 })}
-                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                         placeholder="22"
                       />
                     </div>
