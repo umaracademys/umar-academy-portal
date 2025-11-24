@@ -281,8 +281,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Load data from backend API
-  const loadData = async () => {
+  // Load data from backend API - wrapped in useCallback to prevent recreation
+  const loadData = useCallback(async () => {
     // Prevent concurrent calls
     if (isLoadingRef.current) {
       console.log('⏸️ Data load already in progress, skipping...');
