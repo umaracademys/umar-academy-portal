@@ -105,7 +105,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-800 text-white p-3">
+        <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.9)] text-white p-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
@@ -113,7 +113,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
               </div>
               <div>
                 <h2 className="text-lg font-bold">Teacher Analytics Dashboard</h2>
-                <p className="text-green-100 text-xs">
+                <p className="text-white/90 text-xs">
                   {teacher?.fullName ?? teacher?.name ?? teacher?.email ?? 'All Teachers'}
                 </p>
               </div>
@@ -143,7 +143,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-2 px-2 border-b-2 font-medium text-xs transition-colors ${
                   activeTab === tab.id
-                    ? 'border-green-500 text-green-600'
+                    ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -163,7 +163,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                 <Card>
                   <div className="text-center p-2">
                     <div className="text-xl mb-1">👨‍🎓</div>
-                    <div className="text-lg font-bold text-blue-600">{analyticsData.overview.totalStudents}</div>
+                    <div className="text-lg font-bold text-primary">{analyticsData.overview.totalStudents}</div>
                     <div className="text-xs text-gray-600">Total Students</div>
                   </div>
                 </Card>
@@ -177,14 +177,14 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                 <Card>
                   <div className="text-center p-2">
                     <div className="text-xl mb-1">📝</div>
-                    <div className="text-lg font-bold text-green-600">{analyticsData.overview.assignmentsCreated}</div>
+                    <div className="text-lg font-bold text-primary">{analyticsData.overview.assignmentsCreated}</div>
                     <div className="text-xs text-gray-600">Assignments Created</div>
                   </div>
                 </Card>
                 <Card>
                   <div className="text-center p-2">
                     <div className="text-xl mb-1">⏰</div>
-                    <div className="text-lg font-bold text-green-600">{analyticsData.overview.hoursTeaching}</div>
+                    <div className="text-lg font-bold text-primary">{analyticsData.overview.hoursTeaching}</div>
                     <div className="text-xs text-gray-600">Teaching Hours</div>
                   </div>
                 </Card>
@@ -250,7 +250,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-blue-600 h-2 rounded-full" 
+                          className="bg-primary h-2 rounded-full" 
                           style={{ width: `${subject.rating * 20}%` }}
                         ></div>
                       </div>
@@ -290,7 +290,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                           <div className="text-xs text-gray-600 mb-0.5">Completion Rate</div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
-                              className="bg-blue-600 h-2 rounded-full" 
+                              className="bg-primary h-2 rounded-full" 
                               style={{ width: `${assessment.completion}%` }}
                             ></div>
                           </div>
@@ -308,14 +308,14 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
               {/* Communication Metrics */}
               <Card title="Communication Engagement">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-                  <div className="text-center p-2 bg-blue-50 rounded-lg">
+                  <div className="text-center p-2 bg-soft-primary rounded-lg">
                     <div className="text-lg mb-1">💬</div>
-                    <div className="text-base font-bold text-blue-600">{analyticsData.engagement.communication.messagesSent}</div>
+                    <div className="text-base font-bold text-primary">{analyticsData.engagement.communication.messagesSent}</div>
                     <div className="text-sm text-gray-600">Messages Sent</div>
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl mb-2">📧</div>
-                    <div className="text-xl font-bold text-green-600">{analyticsData.engagement.communication.emailsSent}</div>
+                  <div className="text-center p-2 bg-accent/10 rounded-lg">
+                    <div className="text-lg mb-1">📧</div>
+                    <div className="text-base font-bold text-accent">{analyticsData.engagement.communication.emailsSent}</div>
                     <div className="text-sm text-gray-600">Emails Sent</div>
                   </div>
                   <div className="text-center p-4 bg-purple-50 rounded-lg">
@@ -343,11 +343,11 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                       </div>
                       <div className="flex justify-between">
                         <span>Attendance Rate:</span>
-                        <span className="font-semibold text-green-600">{analyticsData.engagement.teaching.attendanceRate}%</span>
+                        <span className="font-semibold text-primary">{analyticsData.engagement.teaching.attendanceRate}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Punctuality Rate:</span>
-                        <span className="font-semibold text-blue-600">{analyticsData.engagement.teaching.punctualityRate}%</span>
+                        <span className="font-semibold text-primary">{analyticsData.engagement.teaching.punctualityRate}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Avg Prep Time:</span>
@@ -361,11 +361,11 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span>Student Participation</span>
-                        <span className="text-green-600 font-semibold">↗ +12%</span>
+                        <span className="text-primary font-semibold">↗ +12%</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Assignment Completion</span>
-                        <span className="text-green-600 font-semibold">↗ +8%</span>
+                        <span className="text-primary font-semibold">↗ +8%</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span>Parent Satisfaction</span>
