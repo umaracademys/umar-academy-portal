@@ -847,10 +847,10 @@ const SuperAdminDashboard: React.FC = () => {
                   </div>
 
                   {/* Main Arabic Text - Beautiful Typography */}
-                  <div className="mb-6 relative">
+                  <div className="mb-8 relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent blur-xl"></div>
                     <p 
-                      className="relative text-primary font-bold text-4xl sm:text-5xl md:text-6xl mb-3 leading-relaxed" 
+                      className="relative text-primary font-bold text-5xl sm:text-6xl md:text-7xl leading-relaxed" 
                       dir="rtl" 
                       style={{ 
                         fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
@@ -861,18 +861,7 @@ const SuperAdminDashboard: React.FC = () => {
                       اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ
                     </p>
                     {/* Decorative Underline */}
-                    <div className="mx-auto w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent rounded-full mt-2"></div>
-                  </div>
-
-                  {/* Loading Step Text */}
-                  <div className="mb-6">
-                    <p 
-                      className="text-primary/80 font-medium text-base sm:text-lg" 
-                      dir="rtl" 
-                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}
-                    >
-                      {loadingStep || 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ'}
-                    </p>
+                    <div className="mx-auto w-40 h-1 bg-gradient-to-r from-transparent via-primary to-transparent rounded-full mt-4"></div>
                   </div>
 
                   {/* Progress Bar - Elegant Design */}
