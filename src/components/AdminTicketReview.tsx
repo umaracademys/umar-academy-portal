@@ -767,14 +767,20 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   </div>
 
                   <div className="p-6 flex justify-center bg-gradient-to-b from-gray-50 to-white">
-                    <InteractiveMushaf
-                      currentPage={mushafPage}
-                      onPageChange={setMushafPage}
-                      mistakes={getMushafMistakes(selectedTicket)}
-                      readOnly={true}
-                      mode="viewing"
-                      studentName={selectedTicket.studentName}
-                    />
+                    {selectedTicket ? (
+                      <InteractiveMushaf
+                        currentPage={mushafPage}
+                        onPageChange={setMushafPage}
+                        mistakes={getMushafMistakes(selectedTicket) || []}
+                        readOnly={true}
+                        mode="viewing"
+                        studentName={selectedTicket.studentName}
+                      />
+                    ) : (
+                      <div className="text-center py-12">
+                        <p className="text-primary font-bold">Loading Mushaf...</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
