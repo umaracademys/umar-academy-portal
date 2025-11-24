@@ -303,6 +303,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       isLoadingRef.current = true;
       setLoading(true);
       setError(null);
+      setLoadingStep('Bismillah, connecting to server...');
       console.log('🔄 Loading data from backend...', new Date().toISOString());
 
       // Load users from backend with timeout (no auth required for backward compatibility)
