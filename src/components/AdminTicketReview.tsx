@@ -53,7 +53,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
-    return recitationTickets.filter(t => t.status === 'submitted');
+    const filtered = recitationTickets.filter(t => t.status === 'submitted');
+    console.log('📋 AdminTicketReview: Total tickets:', recitationTickets.length);
+    console.log('📋 AdminTicketReview: Pending tickets (submitted):', filtered.length);
+    console.log('📋 AdminTicketReview: All ticket statuses:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
+    return filtered;
   }, [recitationTickets]);
 
   // Get sent tickets (sent by admin, excluding reassigned ones)
@@ -322,7 +326,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   <p className="text-white/90 text-xs sm:text-sm mt-0.5 font-medium">
                     {selectedTicket 
                       ? `${selectedTicket.studentName} • ${selectedTicket.type.toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
-                      : `${pendingTickets.length} ticket(s) awaiting your review`
+                      : `${pendingTickets.length} ticket${pendingTickets.length !== 1 ? 's' : ''} awaiting your review${sentTickets.length > 0 ? ` • ${sentTickets.length} sent ticket${sentTickets.length !== 1 ? 's' : ''}` : ''}`
                     }
                   </p>
                 </div>
