@@ -759,6 +759,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setAdmins(adminsData);
       
       setLoadingStep('Complete!');
+      console.log('✅ All data loaded successfully');
 
     } catch (err) {
       setError('Failed to load data from backend. Please check your connection and try again.');
@@ -775,9 +776,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setRecitationTickets([]);
     } finally {
       clearTimeout(maxTimeout);
+      console.log('🔄 Setting loading to false...');
       setLoading(false);
       isLoadingRef.current = false;
-      console.log('✅ Data loading completed');
+      console.log('✅ Data loading completed - loading state:', false);
     }
   };
 
