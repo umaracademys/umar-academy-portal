@@ -565,25 +565,25 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
   };
 
   const tabs = [
-    { name: 'Personal Info', icon: '👤' },
-    { name: 'Employment & Schedule', icon: '📅' },
-    { name: 'Payroll', icon: '💰' },
-    { name: 'Permissions', icon: '🔐' },
+    { name: 'Personal Info', icon: '' },
+    { name: 'Employment & Schedule', icon: '' },
+    { name: 'Payroll', icon: '' },
+    { name: 'Permissions', icon: '' },
   ];
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[95vh] overflow-hidden flex flex-col my-8 border border-gray-200">
         {/* Modern Header */}
-        <div className="bg-gradient-to-br from-green-600 via-green-700 to-green-800 text-white p-6 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.9)] text-white p-6 relative overflow-hidden">
           <div className="absolute inset-0 opacity-20" style={{
             backgroundImage: `url("${headerPattern}")`
           }}></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold mb-1">{isEdit ? '✏️ Edit Teacher Profile' : '👨‍🏫 Register New Teacher'}</h2>
-                <p className="text-green-100 text-sm">Complete teacher profile with payroll and scheduling</p>
+                <h2 className="text-3xl font-bold mb-1">{isEdit ? 'Edit Teacher Profile' : 'Register New Teacher'}</h2>
+                <p className="text-white/90 text-sm">Complete teacher profile with payroll and scheduling</p>
               </div>
               <button
                 onClick={onClose}
@@ -607,16 +607,15 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
               type="button"
               className={`flex-1 py-4 px-4 font-semibold transition-all relative ${
                 currentTab === index
-                  ? 'text-green-600 bg-green-50'
+                  ? 'text-primary bg-soft-primary'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
               <div className="flex items-center justify-center gap-2">
-                <span className="text-xl">{tab.icon}</span>
                 <span className="text-sm hidden sm:inline">{tab.name}</span>
               </div>
               {currentTab === index && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
               )}
             </button>
           ))}
@@ -757,14 +756,14 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                           : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
                       }`}
                     >
-                      <div className="text-4xl mb-2">🇵🇰</div>
+                      <div className="text-lg font-semibold mb-2">PK</div>
                       <div className="text-lg">Overseas Pakistan</div>
                       <div className="text-xs mt-2 opacity-80">Salary in PKR (Rs)</div>
                     </button>
                   </div>
-                  <div className="mt-4 p-4 bg-green-50 border-l-4 border-green-500 rounded-lg">
-                    <p className="text-sm text-green-800 font-medium">
-                      💡 <strong>Selected:</strong> {personalInfo.location} • Currency: <strong>{currency}</strong> ({currencySymbol})
+                  <div className="mt-4 p-4 bg-soft-primary border-l-4 border-primary rounded-lg">
+                    <p className="text-sm text-primary font-medium">
+                      <strong>Selected:</strong> {personalInfo.location} • Currency: <strong>{currency}</strong> ({currencySymbol})
                     </p>
                   </div>
                 </div>
@@ -774,7 +773,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Upload ID Document <span className="text-gray-500 font-normal">(PNG/PDF - Optional)</span>
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-green-500 transition">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition">
                     <input
                       type="file"
                       accept="image/png,image/jpeg,application/pdf"
@@ -796,11 +795,11 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                     </label>
                   </div>
                   {idDocument && (
-                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center">
-                      <svg className="w-5 h-5 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <div className="mt-3 p-3 bg-soft-primary border border-primary/30 rounded-lg flex items-center">
+                      <svg className="w-5 h-5 text-primary mr-2" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      <p className="text-sm text-green-800 font-medium">Document uploaded successfully</p>
+                      <p className="text-sm text-primary font-medium">Document uploaded successfully</p>
                     </div>
                   )}
                 </div>
@@ -826,11 +825,10 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                       onClick={() => handleEmploymentTypeChange('Full Time')}
                       className={`py-5 px-6 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                         employmentInfo.employmentType === 'Full Time'
-                          ? 'bg-green-600 text-white shadow-xl ring-4 ring-green-200'
+                          ? 'bg-primary text-white shadow-xl ring-4 ring-primary/30'
                           : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
                       }`}
                     >
-                      <div className="text-xl mb-1">⏰</div>
                       <div className="text-lg">Full Time</div>
                       <div className="text-xs mt-1 opacity-80">8 hours/day, Mon-Sat</div>
                     </button>
@@ -839,11 +837,10 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                       onClick={() => handleEmploymentTypeChange('Part Time')}
                       className={`py-5 px-6 rounded-xl font-semibold transition-all transform hover:scale-105 ${
                         employmentInfo.employmentType === 'Part Time'
-                          ? 'bg-green-600 text-white shadow-xl ring-4 ring-green-200'
+                          ? 'bg-primary text-white shadow-xl ring-4 ring-primary/30'
                           : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-2 border-gray-200'
                       }`}
                     >
-                      <div className="text-xl mb-1">📅</div>
                       <div className="text-lg">Part Time</div>
                       <div className="text-xs mt-1 opacity-80">Flexible schedule</div>
                     </button>
@@ -858,9 +855,8 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                     </label>
                     
                     {/* Morning Shift */}
-                    <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-5 rounded-xl border-2 border-blue-200 mb-4">
+                    <div className="bg-gradient-to-r from-soft-primary to-soft-primary p-5 rounded-xl border-2 border-primary/30 mb-4">
                       <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <span className="text-2xl">🌅</span>
                         <span>Morning Shift</span>
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
@@ -874,7 +870,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                               ...prev,
                               morningShift: { ...prev.morningShift, startTime: e.target.value }
                             }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           />
                         </div>
                         <div>
@@ -887,16 +883,15 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                               ...prev,
                               morningShift: { ...prev.morningShift, endTime: e.target.value }
                             }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           />
                         </div>
                       </div>
                     </div>
 
                     {/* Evening Shift */}
-                    <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-5 rounded-xl border-2 border-purple-200 mb-4">
+                    <div className="bg-gradient-to-r from-accent/10 to-accent/20 p-5 rounded-xl border-2 border-accent/30 mb-4">
                       <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <span className="text-2xl">🌙</span>
                         <span>Evening Shift</span>
                       </h4>
                       <div className="grid grid-cols-2 gap-4">
@@ -910,7 +905,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                               ...prev,
                               eveningShift: { ...prev.eveningShift, startTime: e.target.value }
                             }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           />
                         </div>
                         <div>
@@ -923,7 +918,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                               ...prev,
                               eveningShift: { ...prev.eveningShift, endTime: e.target.value }
                             }))}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           />
                         </div>
                       </div>
@@ -948,7 +943,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                             }}
                             className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all transform hover:scale-105 ${
                               fullTimeSchedule.workingDays.includes(day as ScheduleDay)
-                                ? 'bg-green-600 text-white shadow-lg ring-2 ring-green-300'
+                                ? 'bg-primary text-white shadow-lg ring-2 ring-primary/30'
                                 : 'bg-white text-gray-700 border-2 border-gray-300 hover:bg-gray-50 hover:border-gray-400'
                             }`}
                           >
@@ -969,7 +964,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                     {partTimeDaySchedules.length > 0 && (
                       <div className="mb-6 space-y-3">
                         {partTimeDaySchedules.map((daySchedule, index) => (
-                          <div key={index} className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl border-2 border-green-200 flex items-center justify-between">
+                          <div key={index} className="bg-gradient-to-r from-soft-primary to-soft-primary p-4 rounded-xl border-2 border-primary/30 flex items-center justify-between">
                             <div className="flex-1">
                               <span className="font-bold text-gray-900 text-lg">{daySchedule.day}</span>
                               <span className="ml-4 text-sm font-semibold text-gray-700">
@@ -999,7 +994,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                           <select
                             value={newPartTimeDay.day}
                             onChange={(e) => setNewPartTimeDay({ ...newPartTimeDay, day: e.target.value as ScheduleDay })}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           >
                             {allDays.filter(day => !partTimeDaySchedules.find(ds => ds.day === day)).map(day => (
                               <option key={day} value={day}>{day}</option>
@@ -1012,7 +1007,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                             type="time"
                             value={newPartTimeDay.startTime}
                             onChange={(e) => setNewPartTimeDay({ ...newPartTimeDay, startTime: e.target.value })}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           />
                         </div>
                         <div>
@@ -1021,7 +1016,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                             type="time"
                             value={newPartTimeDay.endTime}
                             onChange={(e) => setNewPartTimeDay({ ...newPartTimeDay, endTime: e.target.value })}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition"
                           />
                         </div>
                         <div className="flex items-end">
@@ -1133,31 +1128,30 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                 </div>
 
                 {/* Auto-calculated fields */}
-                <div className="bg-gradient-to-br from-green-50 via-green-100 to-green-50 p-8 rounded-xl border-2 border-green-300 shadow-lg">
+                <div className="bg-gradient-to-br from-soft-primary via-soft-primary to-soft-primary p-8 rounded-xl border-2 border-primary/30 shadow-lg">
                   <h4 className="font-bold text-gray-900 mb-6 text-xl flex items-center gap-2">
-                    <span className="text-2xl">💰</span>
                     <span>Calculated Compensation ({currency})</span>
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-6 rounded-xl shadow-md border-2 border-green-200">
+                    <div className="bg-white p-6 rounded-xl shadow-md border-2 border-primary/30">
                       <p className="text-sm text-gray-600 mb-2 font-medium">Monthly Hours</p>
-                      <p className="text-4xl font-bold text-green-600 mb-2">{monthlyHours}</p>
+                      <p className="text-4xl font-bold text-primary mb-2">{monthlyHours}</p>
                       <p className="text-xs text-gray-500">
                         {payrollInfo.dailyHours} hrs × {payrollInfo.daysWorking} days
                       </p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl shadow-md border-2 border-green-200">
+                    <div className="bg-white p-6 rounded-xl shadow-md border-2 border-primary/30">
                       <p className="text-sm text-gray-600 mb-2 font-medium">Monthly Salary ({currency})</p>
-                      <p className="text-4xl font-bold text-green-600 mb-2">{currencySymbol}{monthlySalary.toLocaleString()}</p>
+                      <p className="text-4xl font-bold text-primary mb-2">{currencySymbol}{monthlySalary.toLocaleString()}</p>
                       <p className="text-xs text-gray-500">
                         {currencySymbol}{payrollInfo.hourlyRate}/hr × {monthlyHours} hrs
                       </p>
                     </div>
                   </div>
                   {currency === 'PKR' && (
-                    <div className="mt-4 p-4 bg-green-200 rounded-lg border border-green-300">
-                      <p className="text-sm text-green-900 font-semibold">
-                        💵 Pakistani Rupee (PKR) salary for overseas teachers
+                    <div className="mt-4 p-4 bg-accent/20 rounded-lg border border-accent/30">
+                      <p className="text-sm text-primary font-semibold">
+                        Pakistani Rupee (PKR) salary for overseas teachers
                       </p>
                     </div>
                   )}
@@ -1206,7 +1200,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                           key={key} 
                           className={`flex items-start justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
                             value === true
-                              ? 'bg-green-50 border-green-300 hover:bg-green-100'
+                              ? 'bg-soft-primary border-primary/30 hover:bg-soft-primary'
                               : 'bg-white border-gray-200 hover:bg-gray-50'
                           }`}
                         >
@@ -1287,7 +1281,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 font-bold disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
+                    className="px-8 py-3 bg-primary text-white rounded-xl hover:bg-[rgba(var(--color-primary-rgb),0.9)] font-bold disabled:opacity-50 disabled:cursor-not-allowed transition transform hover:scale-105 disabled:hover:scale-100 shadow-lg"
                   >
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
