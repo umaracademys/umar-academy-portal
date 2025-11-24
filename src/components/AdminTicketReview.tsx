@@ -439,14 +439,16 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               )}
 
               {/* Pending Tickets Section */}
-              {pendingTickets.length === 0 && sentTickets.length === 0 ? (
-                <div className="text-center py-12 sm:py-16">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                    <span className="text-2xl sm:text-3xl font-bold text-primary">✓</span>
+              {pendingTickets.length === 0 ? (
+                sentTickets.length === 0 ? (
+                  <div className="text-center py-12 sm:py-16">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                      <span className="text-2xl sm:text-3xl font-bold text-primary">✓</span>
+                    </div>
+                    <p className="text-lg sm:text-xl font-bold text-primary mb-2">All Caught Up!</p>
+                    <p className="text-sm sm:text-base text-primary/70">No tickets pending review</p>
                   </div>
-                  <p className="text-lg sm:text-xl font-bold text-primary mb-2">All Caught Up!</p>
-                  <p className="text-sm sm:text-base text-primary/70">No tickets pending review</p>
-                </div>
+                ) : null
               ) : (
                 <>
                   {/* Summary Banner */}
