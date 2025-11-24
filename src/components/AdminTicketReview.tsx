@@ -58,11 +58,17 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   // Get sent tickets (sent by admin, excluding reassigned ones)
   const sentTickets = useMemo(() => {
-    return recitationTickets.filter(t => 
-      (t.status === 'pending' || t.status === 'sent_to_assignment') && 
-      t.status !== 'reassigned' &&
-      t.createdBy === user?.id // Only show tickets created by current admin
-    );
+    if (!user?.id) return [];
+    return recitationTickets.filter(t => {
+      // Show tickets that are pending or sent_to_assignment
+      // Exclude tickets that have been reassigned (status === 'reassigned')
+      // Only show tickets created by current admin
+      return (
+        (t.status === 'pending' || t.status === 'sent_to_assignment') && 
+        t.status !== 'reassigned' &&
+        t.createdBy === user.id
+      );
+    });
   }, [recitationTickets, user?.id]);
 
   // Get selected ticket
