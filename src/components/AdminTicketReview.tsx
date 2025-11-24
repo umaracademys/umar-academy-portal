@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import Card from './Card';
 import { useAutoRecording } from '../hooks/useAutoRecording';
+import TicketCreationForm from './TicketCreationForm';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
