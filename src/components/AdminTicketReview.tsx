@@ -15,6 +15,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshData, updateRecitationTicket } = useBackendData();
   const { user } = useAuth();
   
+  // Refresh data when component mounts to ensure tickets are loaded
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+  
   // Simple state management
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [showReassignModal, setShowReassignModal] = useState(false);
