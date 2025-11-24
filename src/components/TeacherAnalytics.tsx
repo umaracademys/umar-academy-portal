@@ -105,15 +105,15 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-green-800 text-white p-6">
+        <div className="bg-gradient-to-r from-green-600 to-green-800 text-white p-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <span className="text-2xl">📊</span>
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                <span className="text-lg">📊</span>
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Teacher Analytics Dashboard</h2>
-                <p className="text-green-100">
+                <h2 className="text-lg font-bold">Teacher Analytics Dashboard</h2>
+                <p className="text-green-100 text-xs">
                   {teacher?.fullName ?? teacher?.name ?? teacher?.email ?? 'All Teachers'}
                 </p>
               </div>
@@ -122,7 +122,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
               onClick={onClose}
               className="text-white hover:text-gray-200 transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -131,7 +131,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
 
         {/* Navigation Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex space-x-4 px-3">
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'performance', label: 'Performance', icon: '📈' },
@@ -141,13 +141,13 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs transition-colors ${
                   activeTab === tab.id
                     ? 'border-green-500 text-green-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
+                <span className="mr-1">{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -155,55 +155,55 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
         </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[calc(90vh-200px)] overflow-y-auto">
+        <div className="p-3 max-h-[calc(90vh-200px)] overflow-y-auto">
           {activeTab === 'overview' && (
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Key Metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
                 <Card>
-                  <div className="text-center p-4">
-                    <div className="text-3xl mb-2">👨‍🎓</div>
-                    <div className="text-2xl font-bold text-blue-600">{analyticsData.overview.totalStudents}</div>
-                    <div className="text-sm text-gray-600">Total Students</div>
+                  <div className="text-center p-2">
+                    <div className="text-xl mb-1">👨‍🎓</div>
+                    <div className="text-lg font-bold text-blue-600">{analyticsData.overview.totalStudents}</div>
+                    <div className="text-xs text-gray-600">Total Students</div>
                   </div>
                 </Card>
                 <Card>
-                  <div className="text-center p-4">
-                    <div className="text-3xl mb-2">⭐</div>
-                    <div className="text-2xl font-bold text-yellow-600">{analyticsData.overview.averageRating}</div>
-                    <div className="text-sm text-gray-600">Average Rating</div>
+                  <div className="text-center p-2">
+                    <div className="text-xl mb-1">⭐</div>
+                    <div className="text-lg font-bold text-yellow-600">{analyticsData.overview.averageRating}</div>
+                    <div className="text-xs text-gray-600">Average Rating</div>
                   </div>
                 </Card>
                 <Card>
-                  <div className="text-center p-4">
-                    <div className="text-3xl mb-2">📝</div>
-                    <div className="text-2xl font-bold text-green-600">{analyticsData.overview.assignmentsCreated}</div>
-                    <div className="text-sm text-gray-600">Assignments Created</div>
+                  <div className="text-center p-2">
+                    <div className="text-xl mb-1">📝</div>
+                    <div className="text-lg font-bold text-green-600">{analyticsData.overview.assignmentsCreated}</div>
+                    <div className="text-xs text-gray-600">Assignments Created</div>
                   </div>
                 </Card>
                 <Card>
-                  <div className="text-center p-4">
-                    <div className="text-3xl mb-2">⏰</div>
-                    <div className="text-2xl font-bold text-green-600">{analyticsData.overview.hoursTeaching}</div>
-                    <div className="text-sm text-gray-600">Teaching Hours</div>
+                  <div className="text-center p-2">
+                    <div className="text-xl mb-1">⏰</div>
+                    <div className="text-lg font-bold text-green-600">{analyticsData.overview.hoursTeaching}</div>
+                    <div className="text-xs text-gray-600">Teaching Hours</div>
                   </div>
                 </Card>
               </div>
 
               {/* Teaching Performance Chart */}
               <Card title="Teaching Performance">
-                <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+                <div className="h-48 flex items-center justify-center bg-gray-50 rounded-lg">
                   <div className="text-center">
-                    <div className="text-4xl mb-2">📊</div>
-                    <p className="text-gray-600">Performance chart would be displayed here</p>
-                    <p className="text-sm text-gray-500">Integration with charting library needed</p>
+                    <div className="text-2xl mb-1">📊</div>
+                    <p className="text-gray-600 text-xs">Performance chart would be displayed here</p>
+                    <p className="text-[10px] text-gray-500">Integration with charting library needed</p>
                   </div>
                 </div>
               </Card>
 
               {/* Recent Activity */}
               <Card title="Recent Teaching Activity">
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {[
                     { action: 'Graded 15 assignments', time: '2 hours ago', type: 'grading' },
                     { action: 'Created new lesson plan', time: '4 hours ago', type: 'planning' },
@@ -213,7 +213,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                   ].map((activity, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <span className="text-lg">
+                        <span className="text-sm">
                           {activity.type === 'grading' && '📊'}
                           {activity.type === 'planning' && '📝'}
                           {activity.type === 'teaching' && '👨‍🏫'}
@@ -237,11 +237,11 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                 <div className="space-y-4">
                   {analyticsData.performance.subjects.map((subject, index) => (
                     <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1">
                         <h4 className="font-semibold">{subject.name}</h4>
                         <div className="flex items-center space-x-2">
                           <span className="text-sm text-gray-600">{subject.students} students</span>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                             subject.trend === 'up' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {subject.trend === 'up' ? '↗' : '↘'} {subject.rating}
@@ -264,21 +264,21 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                 <div className="space-y-4">
                   {analyticsData.performance.assessments.map((assessment, index) => (
                     <div key={index} className="p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1">
                         <h4 className="font-semibold">{assessment.name}</h4>
                         <div className="flex items-center space-x-4">
                           <span className="text-sm text-gray-600">Avg: {assessment.average}%</span>
                           <span className="text-sm text-gray-600">Completion: {assessment.completion}%</span>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                             assessment.trend === 'up' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                           }`}>
                             {assessment.trend === 'up' ? '↗' : '↘'}
                           </span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <div className="text-sm text-gray-600 mb-1">Average Score</div>
+                          <div className="text-xs text-gray-600 mb-0.5">Average Score</div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-green-600 h-2 rounded-full" 
@@ -287,7 +287,7 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
                           </div>
                         </div>
                         <div>
-                          <div className="text-sm text-gray-600 mb-1">Completion Rate</div>
+                          <div className="text-xs text-gray-600 mb-0.5">Completion Rate</div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div 
                               className="bg-blue-600 h-2 rounded-full" 
@@ -304,13 +304,13 @@ const TeacherAnalytics: React.FC<TeacherAnalyticsProps> = ({ teacher, onClose })
           )}
 
           {activeTab === 'engagement' && (
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Communication Metrics */}
               <Card title="Communication Engagement">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl mb-2">💬</div>
-                    <div className="text-xl font-bold text-blue-600">{analyticsData.engagement.communication.messagesSent}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                  <div className="text-center p-2 bg-blue-50 rounded-lg">
+                    <div className="text-lg mb-1">💬</div>
+                    <div className="text-base font-bold text-blue-600">{analyticsData.engagement.communication.messagesSent}</div>
                     <div className="text-sm text-gray-600">Messages Sent</div>
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">

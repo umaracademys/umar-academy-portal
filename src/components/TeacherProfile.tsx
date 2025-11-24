@@ -89,40 +89,40 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-6">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white p-3">
           <div className="flex justify-between items-start">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
               <img 
                 src={teacher.avatar} 
                 alt={teacher.fullName} 
-                className="h-16 w-16 rounded-full border-4 border-white" 
+                className="h-10 w-10 rounded-full border-2 border-white" 
               />
               <div>
-                <h2 className="text-2xl font-bold">{teacher.fullName}</h2>
-                <p className="text-primary-100">Teacher ID: {teacher.id}</p>
-                <div className="flex items-center space-x-4 mt-2">
-                  <span className={`px-3 py-1 text-sm font-semibold rounded-full border ${getStatusColor(teacher.status || 'active')}`}>
+                <h2 className="text-lg font-bold">{teacher.fullName}</h2>
+                <p className="text-primary-100 text-xs">Teacher ID: {teacher.id}</p>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${getStatusColor(teacher.status || 'active')}`}>
                     {teacher.status || 'active'}
                   </span>
-                  <span className="text-sm text-primary-100">
+                  <span className="text-xs text-primary-100">
                     {getLocationFlag(teacher.location)} {teacher.location}
                   </span>
-                  <span className="text-sm text-primary-100">
+                  <span className="text-xs text-primary-100">
                     {assignedStudents.length} students
                   </span>
                 </div>
               </div>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-1.5">
               <button
                 onClick={() => onEdit(teacher)}
-                className="px-4 py-2 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition"
+                className="px-3 py-1.5 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition text-xs font-semibold"
               >
                 Edit Profile
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                className="px-3 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-xs font-semibold"
               >
                 Close
               </button>
@@ -132,22 +132,22 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
 
         {/* Navigation Tabs */}
         <div className="bg-gray-50 border-b border-gray-200">
-          <div className="flex space-x-1 px-6">
+          <div className="flex space-x-1 px-3">
             <button
               onClick={() => onAssignments && onAssignments()}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-white rounded-t-lg transition"
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-primary-600 hover:bg-white rounded-t-lg transition"
             >
               📚 Assignments
             </button>
             <button
               onClick={() => onPayroll && onPayroll()}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-white rounded-t-lg transition"
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-primary-600 hover:bg-white rounded-t-lg transition"
             >
               💰 Payroll
             </button>
             <button
               onClick={() => onPerformance && onPerformance()}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-white rounded-t-lg transition"
+              className="px-3 py-1.5 text-xs font-medium text-gray-700 hover:text-primary-600 hover:bg-white rounded-t-lg transition"
             >
               📈 Performance
             </button>
@@ -187,16 +187,16 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-3 overflow-y-auto max-h-[60vh]">
           {activeTab === 'overview' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {/* Personal Information */}
               <Card title="Personal Information">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Full Name</label>
-                      <p className="text-gray-900 font-semibold">{teacher.fullName}</p>
+                      <label className="text-xs font-medium text-gray-500">Full Name</label>
+                      <p className="text-gray-900 font-semibold text-xs">{teacher.fullName}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Email</label>
@@ -224,29 +224,29 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
 
               {/* Teaching Information */}
               <Card title="Teaching Information">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Assigned Students</label>
-                      <p className="text-2xl font-bold text-primary-600">{assignedStudents.length}</p>
+                      <label className="text-xs font-medium text-gray-500">Assigned Students</label>
+                      <p className="text-lg font-bold text-primary-600">{assignedStudents.length}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Performance Rating</label>
-                      <p className="text-2xl font-bold text-gold-600">4.8/5</p>
+                      <p className="text-lg font-bold text-gold-600">4.8/5</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Classes This Week</label>
-                      <p className="text-2xl font-bold text-blue-600">12</p>
+                      <p className="text-lg font-bold text-blue-600">12</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-500">Attendance Rate</label>
-                      <p className="text-2xl font-bold text-green-600">98%</p>
+                      <p className="text-lg font-bold text-green-600">98%</p>
                     </div>
                   </div>
                   
                   <div className="pt-4 border-t border-gray-200">
-                    <h4 className="font-semibold text-gray-900 mb-2">Teaching Schedule</h4>
-                    <div className="space-y-2">
+                    <h4 className="font-semibold text-gray-900 mb-1 text-sm">Teaching Schedule</h4>
+                    <div className="space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">Monday - Friday</span>
                         <span className="font-medium">9:00 AM - 5:00 PM</span>

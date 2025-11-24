@@ -321,15 +321,15 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <span className="text-2xl">👨‍🏫</span>
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                <span className="text-lg">👨‍🏫</span>
               </div>
               <div>
-                <h2 className="text-2xl font-bold">Teacher Credentials Management</h2>
-                <p className="text-blue-100">
+                <h2 className="text-lg font-bold">Teacher Credentials Management</h2>
+                <p className="text-blue-100 text-xs">
                   {teacher?.fullName ?? teacher?.name ?? teacher?.email ?? 'this teacher'}
                 </p>
               </div>
@@ -338,7 +338,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
               onClick={onClose}
               className="text-white hover:text-gray-200 transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -347,7 +347,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
 
         {/* Navigation Tabs */}
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex space-x-4 px-3">
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'security', label: 'Security', icon: '🔐' },
@@ -357,13 +357,13 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
+                className={`py-2 px-2 border-b-2 font-medium text-xs transition-colors ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
+                <span className="mr-1">{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
@@ -372,20 +372,20 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
 
         {/* Error Display */}
         {error && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-800">⚠️ {error}</p>
+          <div className="mx-3 mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-xs text-red-800">⚠️ {error}</p>
           </div>
         )}
 
         {/* Content */}
-        <div className="p-6 max-h-96 overflow-y-auto">
+        <div className="p-3 max-h-96 overflow-y-auto">
           {activeTab === 'overview' && (
-            <div className="space-y-6">
+            <div className="space-y-3">
               <Card title="Teacher Account Overview">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Account Information</h4>
-                    <div className="space-y-2">
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm">Account Information</h4>
+                    <div className="space-y-1">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Teacher ID:</span>
                         <span className="font-medium">{teacher?.id || teacher?._id || teacher?.teacherId || 'N/A'}</span>
@@ -396,11 +396,11 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Role:</span>
-                        <span className="font-medium bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">Teacher</span>
+                        <span className="font-medium bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full text-xs">Teacher</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Status:</span>
-                        <span className={`font-medium px-2 py-1 rounded-full text-sm ${
+                        <span className={`font-medium px-1.5 py-0.5 rounded-full text-xs ${
                           userDetails?.accountStatus === 'active' || !userDetails
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
@@ -420,8 +420,8 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                   </div>
                   
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-3">Security Status</h4>
-                    <div className="space-y-2">
+                    <h4 className="font-semibold text-gray-900 mb-2 text-sm">Security Status</h4>
+                    <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">Password Changed:</span>
                         <span className="font-medium">
@@ -432,7 +432,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">2FA Enabled:</span>
-                        <span className={`font-medium px-2 py-1 rounded-full text-sm ${
+                        <span className={`font-medium px-1.5 py-0.5 rounded-full text-xs ${
                           userDetails?.twoFactorEnabled
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
@@ -442,7 +442,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">Email Verified:</span>
-                        <span className={`font-medium px-2 py-1 rounded-full text-sm ${
+                        <span className={`font-medium px-1.5 py-0.5 rounded-full text-xs ${
                           userDetails?.emailVerified
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
@@ -452,7 +452,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600">Login Enabled:</span>
-                        <span className={`font-medium px-2 py-1 rounded-full text-sm ${
+                        <span className={`font-medium px-1.5 py-0.5 rounded-full text-xs ${
                           userDetails?.loginEnabled !== false
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
@@ -479,14 +479,14 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                   onClick={() => setShowAccountSettings(true)}
                   className="p-4 border-2 border-green-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition text-left"
                 >
-                  <div className="text-2xl mb-2">⚙️</div>
-                  <h3 className="font-semibold mb-1">Account Settings</h3>
+                  <div className="text-lg mb-1">⚙️</div>
+                  <h3 className="font-semibold mb-0.5 text-sm">Account Settings</h3>
                   <p className="text-sm text-gray-600">Manage preferences</p>
                 </button>
                 
                 <button className="p-4 border-2 border-purple-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition text-left">
-                  <div className="text-2xl mb-2">📧</div>
-                  <h3 className="font-semibold mb-1">Send Email</h3>
+                  <div className="text-lg mb-1">📧</div>
+                  <h3 className="font-semibold mb-0.5 text-sm">Send Email</h3>
                   <p className="text-sm text-gray-600">Contact teacher</p>
                 </button>
               </div>
@@ -504,7 +504,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                     </div>
                     <button
                       onClick={() => setShowPasswordReset(true)}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-xs font-semibold"
                     >
                       Reset Password
                     </button>
@@ -515,7 +515,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                       <h4 className="font-semibold text-blue-800">Two-Factor Authentication</h4>
                       <p className="text-sm text-blue-600">Enable 2FA for enhanced security</p>
                     </div>
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <button className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-semibold">
                       Enable 2FA
                     </button>
                   </div>
@@ -525,7 +525,7 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                       <h4 className="font-semibold text-yellow-800">Account Lock</h4>
                       <p className="text-sm text-yellow-600">Temporarily disable teacher access</p>
                     </div>
-                    <button className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition">
+                    <button className="px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-xs font-semibold">
                       Lock Account
                     </button>
                   </div>
