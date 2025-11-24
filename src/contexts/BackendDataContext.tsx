@@ -238,7 +238,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [tickets, setTickets] = useState<AssignmentTicket[]>([]);
   const [recitationTickets, setRecitationTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingStep, setLoadingStep] = useState<string>('Bismillah, initializing...');
+  const [loadingStep, setLoadingStep] = useState<string>('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
   const [error, setError] = useState<string | null>(null);
   const isLoadingRef = useRef(false); // Track if data is currently loading to prevent concurrent calls
 

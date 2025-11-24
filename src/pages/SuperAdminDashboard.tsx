@@ -831,7 +831,7 @@ const SuperAdminDashboard: React.FC = () => {
                 <div className="text-center max-w-md">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                   <p className="text-primary font-semibold text-2xl mb-2" dir="rtl" style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}>اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ</p>
-                  <p className="text-primary font-medium mt-3 text-sm">{loadingStep || 'Initializing...'}</p>
+                  <p className="text-primary font-medium mt-3 text-sm" dir="rtl" style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}>{loadingStep || 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ'}</p>
                   <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-xs mx-auto">
                     <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
                   </div>
