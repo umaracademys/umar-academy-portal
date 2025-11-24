@@ -99,13 +99,7 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1000,
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false, // Keep console logs in production
-        drop_debugger: false
-      }
-    },
+    minify: 'esbuild', // Use esbuild instead of terser (faster and doesn't require extra dependency)
     rollupOptions: {
       output: {
         manualChunks: {
@@ -114,5 +108,9 @@ export default defineConfig({
         }
       }
     }
+  },
+  esbuild: {
+    // Keep console logs in production
+    drop: [] // Don't drop console or debugger
   }
 })
