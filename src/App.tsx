@@ -137,8 +137,8 @@ function AppContent() {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/mushaf-demo" />} />
-      <Route path="*" element={<Navigate to="/mushaf-demo" />} />
+      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
