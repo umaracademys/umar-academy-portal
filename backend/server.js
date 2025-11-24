@@ -62,7 +62,10 @@ app.use(cors({
       process.env.FRONTEND_URL
     ].filter(Boolean); // Remove undefined values
     
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+    // In development, allow all localhost origins
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
