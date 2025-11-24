@@ -488,7 +488,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
-                                            <div key={idx} className="bg-white rounded-lg p-4 border border-green-200">
+                                            <div key={idx} className="bg-white rounded-lg p-4 border border-primary/30">
                                               <div className="flex items-start justify-between mb-2">
                                                 <div className="flex-1">
                                                   <p className="text-sm font-bold text-primary mb-1">
