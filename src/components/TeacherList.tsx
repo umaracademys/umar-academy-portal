@@ -135,32 +135,32 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Prominent Header */}
-      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-3xl p-4 sm:p-6 md:p-8 border-b-4 border-accent shadow-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-3xl p-3 sm:p-4 border-b-4 border-accent shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white mb-1 drop-shadow-lg">
               Teacher Directory
             </h2>
-            <p className="text-white/90 text-sm sm:text-base md:text-lg font-semibold">
+            <p className="text-white/90 text-xs sm:text-sm font-semibold">
               Manage all registered teachers and admins • {filteredTeachers.length} {filteredTeachers.length === 1 ? 'person' : 'people'} found
             </p>
           </div>
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {onAddTeacher && (
               <button 
                 onClick={onAddTeacher}
-                className="px-6 sm:px-7 py-2.5 sm:py-3 bg-accent text-primary rounded-full font-extrabold hover:scale-110 transition-all shadow-xl hover:shadow-2xl text-sm sm:text-base md:text-lg"
+                className="px-4 sm:px-5 py-2 bg-accent text-primary rounded-full font-extrabold hover:scale-110 transition-all shadow-xl hover:shadow-2xl text-xs sm:text-sm"
                 style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-primary)' }}
               >
                 + Add Teacher
               </button>
             )}
-            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+            <button className="px-3 sm:px-4 py-1.5 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-[10px] sm:text-xs">
               Export
             </button>
-            <button className="px-4 sm:px-6 py-2.5 sm:py-3 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-xs sm:text-sm md:text-base">
+            <button className="px-3 sm:px-4 py-1.5 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-[10px] sm:text-xs">
               Import
             </button>
           </div>
@@ -169,27 +169,27 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
 
       {/* Enhanced Filters and Search */}
       <Card>
-        <div className="bg-white rounded-2xl p-4 sm:p-5 md:p-6 border-2 border-gray-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+        <div className="bg-white rounded-xl p-3 sm:p-4 border-2 border-gray-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3">
             {/* Search */}
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Search Teachers</label>
+              <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Search Teachers</label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name, email, or ID..."
-                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base placeholder:text-primary/50"
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm placeholder:text-primary/50"
               />
             </div>
 
             {/* Specialization Filter */}
             <div>
-              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Specialization</label>
+              <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Specialization</label>
               <select
                 value={selectedSpecialization}
                 onChange={(e) => setSelectedSpecialization(e.target.value)}
-                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
               >
                 <option value="all">All Specializations</option>
                 {uniqueSpecializations.map(spec => (
@@ -200,11 +200,11 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
 
             {/* Status Filter */}
             <div>
-              <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Status</label>
+              <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Status</label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
               >
                 <option value="all">All Status</option>
                 {uniqueStatuses.map(status => (
@@ -215,12 +215,12 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
           </div>
 
           {/* Location Filter - Full Width */}
-          <div className="mb-4">
-            <label className="block text-xs sm:text-sm font-extrabold text-primary mb-2">Location</label>
+          <div className="mb-3">
+            <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Location</label>
             <select
               value={selectedLocation}
               onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full px-4 sm:px-5 py-3 sm:py-3.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-extrabold shadow-lg text-sm sm:text-base"
+              className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
             >
               <option value="all">All Locations</option>
               {uniqueLocations.map(location => (
@@ -230,7 +230,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             <button
               onClick={() => {
                 setSearchTerm('');
@@ -238,7 +238,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                 setSelectedStatus('all');
                 setSelectedLocation('all');
               }}
-              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+              className="px-3 sm:px-4 py-1.5 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs"
             >
               Clear Filters
             </button>
@@ -247,15 +247,15 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                 setSortBy('name');
                 setSortOrder('asc');
               }}
-              className="px-4 sm:px-5 py-2 sm:py-2.5 bg-accent text-primary rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs sm:text-sm"
+              className="px-3 sm:px-4 py-1.5 bg-accent text-primary rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs"
             >
               Reset Sort
             </button>
           </div>
 
           {/* Result Count */}
-          <div className="mt-4 text-right">
-            <p className="text-sm font-semibold text-gray-600">
+          <div className="mt-3 text-right">
+            <p className="text-[10px] sm:text-xs font-semibold text-gray-600">
               Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTeachers.length)} of {filteredTeachers.length} teachers
             </p>
           </div>
@@ -269,7 +269,7 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
             <thead className="bg-gray-50">
               <tr>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('name')}
                 >
                   <div className="flex items-center space-x-1">
@@ -279,9 +279,9 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('email')}
                 >
                   <div className="flex items-center space-x-1">
@@ -291,10 +291,10 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Specialization</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Specialization</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Location</th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('students')}
                 >
                   <div className="flex items-center space-x-1">
@@ -304,10 +304,10 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Performance</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Performance</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</th>
                 <th 
-                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSort('salary')}
                 >
                   <div className="flex items-center space-x-1">
@@ -317,61 +317,61 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                     )}
                   </div>
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {paginatedTeachers.length > 0 ? (
                 paginatedTeachers.map((teacher) => (
                   <tr key={teacher.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4">
+                    <td className="px-2 py-2">
                       <div className="flex items-center">
                         <img 
                           src={teacher.avatar || '/default-avatar.png'} 
                           alt={teacher.fullName || 'Teacher'} 
-                          className="h-10 w-10 rounded-full mr-3" 
+                          className="h-7 w-7 rounded-full mr-2" 
                         />
                         <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900">{teacher.fullName || 'Unknown'}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-gray-900 text-xs">{teacher.fullName || 'Unknown'}</p>
                             {teacher.isAdmin && (
-                              <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 rounded-full">
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 rounded-full">
                                 ADMIN
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-500">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+                          <p className="text-[10px] text-gray-500">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm font-mono text-gray-600">{teacher.id}</td>
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-2 py-2 text-[10px] font-mono text-gray-600">{teacher.id}</td>
+                    <td className="px-2 py-2 text-[10px]">
                       <div>
                         <p className="text-gray-900">{teacher.email || 'No email'}</p>
                         <p className="text-gray-500">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm">{teacher.department || 'General'}</td>
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-2 py-2 text-[10px]">{teacher.department || 'General'}</td>
+                    <td className="px-2 py-2 text-[10px]">
                       <div className="flex items-center space-x-1">
                         <span>{getLocationFlag(teacher.location || 'Unknown')}</span>
                         <span>{teacher.location || 'Unknown'}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm">
-                      <div className="flex items-center space-x-2">
+                    <td className="px-2 py-2 text-[10px]">
+                      <div className="flex items-center space-x-1.5">
                         <span className="font-semibold text-primary-600">{getAssignedStudentsCount(teacher)}</span>
                         <span className="text-gray-500">students</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm">
+                    <td className="px-2 py-2 text-[10px]">
                       <div className="flex items-center space-x-1">
                         <span className="text-gold-600">⭐</span>
                         <span className="font-semibold">{getPerformanceRating(teacher)}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4">{getStatusBadge(teacher.status || 'active')}</td>
-                    <td className="px-4 py-4 text-sm font-semibold">
+                    <td className="px-2 py-2">{getStatusBadge(teacher.status || 'active')}</td>
+                    <td className="px-2 py-2 text-[10px] font-semibold">
                       {teacher.isAdmin ? (
                         <span className="text-gray-400">N/A</span>
                       ) : (
@@ -380,32 +380,32 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                         </>
                       )}
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex space-x-2">
+                    <td className="px-2 py-2">
+                      <div className="flex space-x-1.5">
                         <button
                           onClick={() => onTeacherSelect(teacher)}
-                          className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                          className="text-primary-600 hover:text-primary-800 text-[10px] font-medium"
                         >
                           View
                         </button>
                         {!teacher.isAdmin && (
                           <button
                             onClick={() => onEditTeacher(teacher)}
-                            className="text-gold-600 hover:text-gold-800 text-sm font-medium"
+                            className="text-accent-600 hover:text-accent-800 text-[10px] font-medium"
                           >
                             Edit
                           </button>
                         )}
                         <button
                           onClick={() => onDeleteTeacher(teacher.id)}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          className="text-red-600 hover:text-red-800 text-[10px] font-medium"
                         >
-                          Delete
+                          Del
                         </button>
                         {onCredentials && (
                           <button
                             onClick={() => onCredentials(teacher)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            className="text-blue-600 hover:text-blue-800 text-[10px] font-medium"
                           >
                             Credentials
                           </button>
