@@ -118,7 +118,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
     const duplicates = findDuplicates(assignment);
     let confirmMessage = `Are you sure you want to delete this assignment?`;
     if (duplicates.length > 0) {
-      confirmMessage += `\n\n⚠️ Warning: There ${duplicates.length === 1 ? 'is' : 'are'} ${duplicates.length} similar assignment(s) that might be duplicates.`;
+      confirmMessage += `\n\nWarning: There ${duplicates.length === 1 ? 'is' : 'are'} ${duplicates.length} similar assignment(s) that might be duplicates.`;
     }
     confirmMessage += '\n\nThis action cannot be undone.';
 
