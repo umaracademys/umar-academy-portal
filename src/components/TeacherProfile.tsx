@@ -59,7 +59,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
       active: 'bg-green-100 text-green-800 border-green-300',
       inactive: 'bg-gray-100 text-gray-800 border-gray-300',
       'on-leave': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      probation: 'bg-blue-100 text-blue-800 border-blue-300',
+      probation: 'bg-soft-primary text-primary border-primary/30',
       suspended: 'bg-red-100 text-red-800 border-red-300'
     };
     return colors[status as keyof typeof colors] || colors.inactive;
@@ -281,11 +281,11 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">October 2025</span>
-                        <span className="font-medium text-green-600">Paid</span>
+                        <span className="font-medium text-primary">Paid</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-600">September 2025</span>
-                        <span className="font-medium text-green-600">Paid</span>
+                        <span className="font-medium text-primary">Paid</span>
                       </div>
                     </div>
                   </div>
@@ -358,7 +358,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                       <p className="text-sm text-gray-600 mb-2">Basic to Advanced levels</p>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-500">Students: 8</span>
-                        <button className="text-xs bg-primary-600 text-white px-2 py-1 rounded">View Details</button>
+                        <button className="text-xs bg-primary text-white px-2 py-1 rounded">View Details</button>
                       </div>
                     </div>
                     
@@ -367,7 +367,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                       <p className="text-sm text-gray-600 mb-2">Fundamentals and Advanced</p>
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-500">Students: 5</span>
-                        <button className="text-xs bg-primary-600 text-white px-2 py-1 rounded">View Details</button>
+                        <button className="text-xs bg-primary text-white px-2 py-1 rounded">View Details</button>
                       </div>
                     </div>
                   </div>
@@ -397,7 +397,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                         <div className="text-right">
                           <span className="text-sm text-gray-600">Progress</span>
                           <div className="w-20 bg-gray-200 rounded-full h-2 mt-1">
-                            <div className="bg-primary-600 h-2 rounded-full" style={{ width: '75%' }}></div>
+                            <div className="bg-primary h-2 rounded-full" style={{ width: '75%' }}></div>
                           </div>
                         </div>
                       </div>
@@ -504,7 +504,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                         <p className="font-semibold text-gray-900">
                           {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{payment.amount.toLocaleString()}
                         </p>
-                        <span className="text-xs text-green-600 font-semibold">{payment.status}</span>
+                        <span className="text-xs text-primary font-semibold">{payment.status}</span>
                       </div>
                     </div>
                   ))}
@@ -548,7 +548,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                   </div>
                   
                   <div className="pt-4 border-t border-gray-200">
-                    <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition">
+                    <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition">
                       + Upload Document
                     </button>
                   </div>
@@ -596,7 +596,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                 <button
                   onClick={resetPassword}
                   disabled={!newPassword}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Reset Password
                 </button>
