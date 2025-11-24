@@ -655,9 +655,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoadingStep('Loading admins...');
       let adminsData: Admin[] = [];
       try {
+        console.log('📡 Fetching admins from:', `${API_BASE}/admins`);
         const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 10000, false);
+        console.log('📡 Admins response status:', adminsResponse.status);
+        
         if (adminsResponse.ok) {
           const adminRecords = await adminsResponse.json();
+          console.log('👨‍💼 Admin records loaded:', adminRecords.length);
           adminsData = adminRecords.map((adminRecord: any) => ({
             id: adminRecord._id || adminRecord.id,
             userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
@@ -676,9 +680,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             status: adminRecord.status || 'active',
             avatar: adminRecord.avatar || ''
           }));
+          console.log('✅ Admins processed:', adminsData.length);
+        } else {
+          console.warn('⚠️ Admins endpoint returned non-OK status:', adminsResponse.status);
+          throw new Error(`Admins endpoint returned ${adminsResponse.status}`);
         }
-      } catch (adminError) {
-        console.warn('⚠️ Failed to load admins from /api/admins, falling back to users:', adminError);
+      } catch (adminError: any) {
+        console.warn('⚠️ Failed to load admins from /api/admins, falling back to users:', adminError?.message || adminError);
         // Fallback to users collection if Admin collection doesn't exist yet
         adminsData = users
           .filter((user: any) => user.role === 'admin' || user.role === 'superadmin')
@@ -699,6 +707,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             status: user.status || 'active',
             avatar: user.avatar || ''
           }));
+        console.log('✅ Fallback admins from users:', adminsData.length);
       }
 
       setLoadingStep('Processing data...');
