@@ -821,23 +821,89 @@ const SuperAdminDashboard: React.FC = () => {
   // Show loading state
   if (loading) {
     return (
-      <div className="flex h-screen bg-background">
+      <div className="flex h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
         <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onNotificationClick={() => setShowNotificationCenter(true)} />
           <main className="flex-1 overflow-y-auto">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center max-w-md">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-primary font-semibold text-2xl mb-2" dir="rtl" style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}>اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ</p>
-                  <p className="text-primary font-medium mt-3 text-sm" dir="rtl" style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}>{loadingStep || 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ'}</p>
-                  <div className="mt-4 w-full bg-gray-200 rounded-full h-2 max-w-xs mx-auto">
-                    <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+              <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center max-w-lg w-full">
+                  {/* Decorative Top Element */}
+                  <div className="relative mb-8">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 blur-2xl animate-pulse"></div>
+                    </div>
+                    <div className="relative">
+                      {/* Spinning Circle with Islamic Pattern */}
+                      <div className="relative mx-auto w-24 h-24 mb-6">
+                        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary border-r-accent animate-spin"></div>
+                        <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-primary border-l-accent animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent shadow-lg"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-gray-500 text-xs mt-3">Please wait while we fetch your data</p>
+
+                  {/* Main Arabic Text - Beautiful Typography */}
+                  <div className="mb-6 relative">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent blur-xl"></div>
+                    <p 
+                      className="relative text-primary font-bold text-4xl sm:text-5xl md:text-6xl mb-3 leading-relaxed" 
+                      dir="rtl" 
+                      style={{ 
+                        fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
+                        textShadow: '0 2px 10px rgba(46, 77, 50, 0.2)',
+                        letterSpacing: '0.05em'
+                      }}
+                    >
+                      اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ
+                    </p>
+                    {/* Decorative Underline */}
+                    <div className="mx-auto w-32 h-1 bg-gradient-to-r from-transparent via-primary to-transparent rounded-full mt-2"></div>
+                  </div>
+
+                  {/* Loading Step Text */}
+                  <div className="mb-6">
+                    <p 
+                      className="text-primary/80 font-medium text-base sm:text-lg" 
+                      dir="rtl" 
+                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}
+                    >
+                      {loadingStep || 'اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ'}
+                    </p>
+                  </div>
+
+                  {/* Progress Bar - Elegant Design */}
+                  <div className="mb-6">
+                    <div className="relative w-full max-w-md mx-auto h-2 bg-gray-200/50 rounded-full overflow-hidden backdrop-blur-sm">
+                      <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 animate-pulse"></div>
+                      <div 
+                        className="relative h-full bg-gradient-to-r from-primary via-accent to-primary rounded-full animate-pulse shadow-lg"
+                        style={{ 
+                          width: '60%',
+                          boxShadow: '0 0 20px rgba(46, 77, 50, 0.4)'
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Subtitle */}
+                  <p className="text-gray-600 text-sm font-medium mb-2">Please wait while we fetch your data</p>
+                  
+                  {/* Decorative Bottom Element */}
+                  <div className="mt-8 flex items-center justify-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                  </div>
+
+                  {/* Error Message */}
                   {error && (
-                    <p className="text-red-600 text-sm mt-3 font-semibold">Error: {error}</p>
+                    <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                      <p className="text-red-600 text-sm font-semibold">Error: {error}</p>
+                    </div>
                   )}
                 </div>
               </div>
