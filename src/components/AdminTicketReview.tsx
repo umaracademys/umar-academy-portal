@@ -17,8 +17,15 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   
   // Refresh data when component mounts to ensure tickets are loaded
   useEffect(() => {
-    refreshData();
-  }, [refreshData]);
+    // Only refresh if we don't have tickets yet
+    if (recitationTickets.length === 0) {
+      console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
+      refreshData();
+    } else {
+      console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
   
   // Simple state management
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
