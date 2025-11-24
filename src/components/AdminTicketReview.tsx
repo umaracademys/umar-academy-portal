@@ -72,16 +72,18 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     return filtered;
   }, [recitationTickets]);
 
-  // Get sent tickets (sent by admin, excluding reassigned ones)
+  // Get sent tickets (sent by admin, excluding reassigned and approved ones)
   const sentTickets = useMemo(() => {
     if (!user?.id) return [];
     return recitationTickets.filter(t => {
-      // Show tickets that are pending or sent_to_assignment
+      // Show tickets that are pending (not yet approved)
       // Exclude tickets that have been reassigned (status === 'reassigned')
+      // Exclude tickets that have been approved (have sentToAssignmentId)
       // Only show tickets created by current admin
       return (
-        (t.status === 'pending' || t.status === 'sent_to_assignment') && 
+        t.status === 'pending' && 
         t.status !== 'reassigned' &&
+        !t.sentToAssignmentId && // Exclude approved tickets
         t.createdBy === user.id
       );
     });
@@ -292,13 +294,22 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     );
   };
 
-  // Delete ticket
+  // Delete ticket - search in all tickets, not just pending
   const handleDeleteTicket = async (ticketId: string) => {
-    const ticket = pendingTickets.find(t => t.id === ticketId);
-    if (!ticket) return;
+    const ticket = recitationTickets.find(t => t.id === ticketId);
+    if (!ticket) {
+      console.error('❌ Ticket not found for deletion:', ticketId);
+      alert('Ticket not found. Please refresh and try again.');
+      return;
+    }
 
-    // Check for duplicates
-    const duplicates = findDuplicateTickets(ticket);
+    // Check for duplicates (only in pending tickets)
+    const duplicates = pendingTickets.filter(t => 
+      t.id !== ticket.id && 
+      t.studentId === ticket.studentId && 
+      t.type === ticket.type && 
+      t.status === 'submitted'
+    );
     const hasDuplicates = duplicates.length > 0;
 
     let confirmMessage = `Are you sure you want to delete this ${ticket.type.toUpperCase()} ticket for ${ticket.studentName}?`;
@@ -319,7 +330,8 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete ticket');
+        const errorText = await response.text();
+        throw new Error(`Failed to delete ticket: ${response.status} ${errorText}`);
       }
 
       alert('Ticket deleted successfully!');
@@ -339,18 +351,18 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
         {/* Modern Header with Gradient */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="space-y-0.5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-base font-bold text-white">TK</span>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <span className="text-sm font-bold text-white">TK</span>
                 </div>
                 <div>
-                  <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-white drop-shadow-lg">
+                  <h2 className="text-base sm:text-lg font-extrabold text-white drop-shadow-lg">
                     {selectedTicket ? `Review Ticket` : 'Ticket Review Queue'}
                   </h2>
-                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 font-medium">
+                  <p className="text-white/90 text-[10px] sm:text-xs mt-0.5 font-medium">
                     {selectedTicket 
                       ? `${selectedTicket.studentName} • ${selectedTicket.type.toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
                       : `${pendingTickets.length} ticket${pendingTickets.length !== 1 ? 's' : ''} awaiting your review${sentTickets.length > 0 ? ` • ${sentTickets.length} sent ticket${sentTickets.length !== 1 ? 's' : ''}` : ''}`
@@ -361,7 +373,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             </div>
             <button
               onClick={onClose}
-              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-lg sm:text-xl md:text-2xl font-bold shadow-lg border-2 border-white/30 touch-target"
+              className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-base sm:text-lg font-bold shadow-lg border-2 border-white/30 touch-target"
               title="Close"
               aria-label="Close"
             >
@@ -371,24 +383,24 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gradient-to-b from-gray-50 to-white">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gradient-to-b from-gray-50 to-white">
           {!selectedTicket ? (
             // Modern Ticket List View
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Sent Tickets Section - Always show */}
-              <div className="space-y-4">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg sm:text-xl font-extrabold text-primary">Sent Tickets</h3>
-                  <span className="px-3 py-1 bg-primary/10 text-primary rounded-lg text-xs font-bold">
+                  <h3 className="text-sm sm:text-base font-extrabold text-primary">Sent Tickets</h3>
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-lg text-[10px] font-bold">
                     {sentTickets.length} ticket{sentTickets.length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 {sentTickets.length === 0 ? (
-                  <div className="bg-white rounded-xl border-2 border-gray-200 p-6 text-center">
-                    <p className="text-sm text-primary/70">No tickets sent yet. Create a ticket to see it here.</p>
+                  <div className="bg-white rounded-xl border-2 border-gray-200 p-3 text-center">
+                    <p className="text-xs text-primary/70">No tickets sent yet. Create a ticket to see it here.</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                     {sentTickets.map((ticket) => {
                       const typeColors = {
                         sabq: { bg: 'bg-green-500', text: 'text-green-50', border: 'border-green-400' },
@@ -405,15 +417,15 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                           {/* Gradient Accent Bar */}
                           <div className={`h-1 ${colors.bg} w-full`}></div>
                           
-                          <div className="p-5 sm:p-6">
+                          <div className="p-3 sm:p-4">
                             {/* Header with Badges */}
-                            <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-3">
-                                  <span className={`px-3 py-1.5 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
                                     {ticket.type.toUpperCase()}
                                   </span>
-                                  <span className={`px-3 py-1.5 rounded-lg text-xs font-extrabold ${
+                                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
                                     ticket.status === 'sent_to_assignment' 
                                       ? 'bg-green-500 text-green-50' 
                                       : 'bg-yellow-500 text-yellow-50'
@@ -421,16 +433,16 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                     {ticket.status === 'sent_to_assignment' ? 'SENT' : 'PENDING'}
                                   </span>
                                 </div>
-                                <h4 className="text-xl font-extrabold text-primary mb-1 group-hover:text-primary/80 transition-colors">
+                                <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
                                   {ticket.studentName}
                                 </h4>
                                 {ticket.assignedTeacherName && (
-                                  <p className="text-sm text-primary/70 font-medium">
+                                  <p className="text-xs text-primary/70 font-medium">
                                     Teacher: {ticket.assignedTeacherName}
                                   </p>
                                 )}
                                 {ticket.adminComment && (
-                                  <p className="text-xs text-primary/60 mt-2 line-clamp-2">
+                                  <p className="text-[10px] text-primary/60 mt-1 line-clamp-2">
                                     {ticket.adminComment}
                                   </p>
                                 )}
@@ -438,10 +450,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                             </div>
 
                             {/* Stats Row */}
-                            <div className="flex items-center justify-between mb-4 pt-3 border-t border-gray-200">
-                              <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs text-primary/60">
+                            <div className="flex items-center justify-between mb-2 pt-2 border-t border-gray-200">
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-primary/60">
                                     Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'}
                                   </span>
                                 </div>
@@ -449,13 +461,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+                            <div className="flex items-center gap-1.5 pt-2 border-t border-gray-200">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingTicket(ticket);
                                 }}
-                                className="flex-1 px-4 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md hover:shadow-lg"
+                                className="flex-1 px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md hover:shadow-lg"
                                 title="Edit ticket"
                               >
                                 Edit
@@ -465,7 +477,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                   e.stopPropagation();
                                   handleDeleteTicket(ticket.id);
                                 }}
-                                className="px-4 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
+                                className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
                                 title="Delete ticket"
                               >
                                 Delete
@@ -493,24 +505,24 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               ) : (
                 <>
                   {/* Summary Banner */}
-                  <div className="mb-6 p-4 bg-gradient-to-r from-primary to-primary/90 rounded-2xl shadow-lg border-2 border-primary/50">
+                  <div className="mb-3 p-3 bg-gradient-to-r from-primary to-primary/90 rounded-xl shadow-lg border-2 border-primary/50">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                          <span className="text-xl font-bold text-white">TK</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-sm font-bold text-white">TK</span>
                         </div>
                         <div>
-                          <p className="text-lg font-extrabold text-white">
+                          <p className="text-sm font-extrabold text-white">
                             {pendingTickets.length} Ticket{pendingTickets.length !== 1 ? 's' : ''} Ready for Review
                           </p>
-                          <p className="text-sm text-white/90">Click on any ticket to start reviewing</p>
+                          <p className="text-xs text-white/90">Click on any ticket to start reviewing</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Modern Ticket Cards Grid */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                     {pendingTickets.map((ticket) => {
                       const duplicates = findDuplicateTickets(ticket);
                       const hasDuplicates = duplicates.length > 0;
@@ -530,29 +542,29 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                           <div className={`h-1 ${colors.bg} w-full`}></div>
                           
                           {hasDuplicates && (
-                            <div className="mx-4 mt-4 p-2 bg-orange-50 border-l-4 border-orange-400 rounded-lg">
-                              <p className="text-xs font-bold text-orange-800">
+                            <div className="mx-3 mt-3 p-1.5 bg-orange-50 border-l-4 border-orange-400 rounded-lg">
+                              <p className="text-[10px] font-bold text-orange-800">
                                 ⚠️ {duplicates.length} duplicate ticket{duplicates.length !== 1 ? 's' : ''} found
                               </p>
                             </div>
                           )}
 
-                          <div className="p-5 sm:p-6">
+                          <div className="p-3 sm:p-4">
                             {/* Header with Badges */}
-                            <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-3">
-                                  <span className={`px-3 py-1.5 rounded-lg text-xs font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
                                     {ticket.type.toUpperCase()}
                                   </span>
-                                  <span className="px-3 py-1.5 rounded-lg text-xs font-extrabold bg-yellow-500 text-yellow-50 shadow-md">
+                                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-yellow-500 text-yellow-50 shadow-md">
                                     SUBMITTED
                                   </span>
                                 </div>
-                                <h4 className="text-xl font-extrabold text-primary mb-1 group-hover:text-primary/80 transition-colors">
+                                <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
                                   {ticket.studentName}
                                 </h4>
-                                <p className="text-sm text-primary/70 font-medium">
+                                <p className="text-xs text-primary/70 font-medium">
                                   👨‍🏫 {ticket.assignedTeacherName || 'Unassigned'}
                                 </p>
                               </div>
@@ -560,28 +572,28 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
                             {/* Teacher Comment Preview */}
                             {ticket.teacherComment && (
-                              <div className="mb-4 p-3 bg-gray-50 rounded-xl border border-gray-200">
-                                <p className="text-xs font-semibold text-primary/60 mb-1">Teacher Comment:</p>
-                                <p className="text-sm text-primary/80 italic line-clamp-2">
+                              <div className="mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                                <p className="text-[10px] font-semibold text-primary/60 mb-0.5">Teacher Comment:</p>
+                                <p className="text-xs text-primary/80 italic line-clamp-2">
                                   "{ticket.teacherComment}"
                                 </p>
                               </div>
                             )}
 
                             {/* Stats Row */}
-                            <div className="flex items-center justify-between mb-4 pt-3 border-t border-gray-200">
-                              <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-between mb-2 pt-2 border-t border-gray-200">
+                              <div className="flex items-center gap-2">
                                 {ticket.mistakes && ticket.mistakes.length > 0 && (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-lg">🔴</span>
-                                    <span className="text-sm font-bold text-primary">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm">🔴</span>
+                                    <span className="text-xs font-bold text-primary">
                                       {ticket.mistakes.length} mistake{ticket.mistakes.length !== 1 ? 's' : ''}
                                     </span>
                                   </div>
                                 )}
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-sm">🕐</span>
-                                  <span className="text-xs text-primary/60">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs">🕐</span>
+                                  <span className="text-[10px] text-primary/60">
                                     {ticket.submittedAt ? new Date(ticket.submittedAt).toLocaleDateString() : 'N/A'}
                                   </span>
                                 </div>
@@ -589,10 +601,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200">
+                            <div className="flex items-center gap-1.5 pt-2 border-t border-gray-200">
                               <button
                                 onClick={() => handleTicketClick(ticket.id)}
-                                className="flex-1 px-5 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl text-sm font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                                className="flex-1 px-3 py-1.5 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg text-xs font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                               >
                                 Review Ticket
                               </button>
@@ -603,7 +615,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                     e.stopPropagation();
                                     setEditingTicket(ticket);
                                   }}
-                                  className="px-4 py-3 bg-primary text-white rounded-xl text-sm font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md hover:shadow-lg"
+                                  className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-all shadow-md hover:shadow-lg"
                                   title="Edit ticket"
                                 >
                                   Edit
@@ -614,7 +626,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                   e.stopPropagation();
                                   handleDeleteTicket(ticket.id);
                                 }}
-                                className="px-4 py-3 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
+                                className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 transition-all shadow-md hover:shadow-lg"
                                 title="Delete ticket"
                               >
                                 Delete
@@ -630,61 +642,61 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             </div>
           ) : selectedTicket ? (
             // Modern Ticket Detail View
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Back Button */}
               <button
                 onClick={handleBackToList}
-                className="flex items-center gap-2 text-primary hover:text-primary/80 font-bold transition-colors group"
+                className="flex items-center gap-1.5 text-primary hover:text-primary/80 font-bold transition-colors group text-sm"
               >
-                <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
+                <span className="text-base group-hover:-translate-x-1 transition-transform">←</span>
                 <span>Back to Ticket List</span>
               </button>
 
               {/* Ticket Info Card */}
-              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                <div className={`h-2 ${
+              <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                <div className={`h-1 ${
                   selectedTicket.type === 'sabq' ? 'bg-green-500' :
                   selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
                   'bg-purple-500'
                 }`}></div>
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-6">
+                <div className="p-3">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="flex items-center gap-3 mb-3">
-                        <span className={`px-4 py-2 rounded-xl text-sm font-extrabold text-white shadow-md ${
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`px-2 py-1 rounded-lg text-[10px] font-extrabold text-white shadow-md ${
                           selectedTicket.type === 'sabq' ? 'bg-green-500' :
                           selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
                           'bg-purple-500'
                         }`}>
                           {selectedTicket.type.toUpperCase()}
                         </span>
-                        <span className="px-4 py-2 rounded-xl text-sm font-extrabold bg-yellow-500 text-white shadow-md">
+                        <span className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-yellow-500 text-white shadow-md">
                           SUBMITTED
                         </span>
                       </div>
-                      <h3 className="text-2xl font-extrabold text-primary mb-2">{selectedTicket.studentName}</h3>
+                      <h3 className="text-base font-extrabold text-primary mb-1">{selectedTicket.studentName}</h3>
                     </div>
                   </div>
 
                   {/* Info Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Student</p>
-                      <p className="text-base font-bold text-primary">{selectedTicket.studentName}</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Student</p>
+                      <p className="text-xs font-bold text-primary">{selectedTicket.studentName}</p>
                     </div>
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Teacher</p>
-                      <p className="text-base font-bold text-primary">{selectedTicket.assignedTeacherName || 'Unassigned'}</p>
+                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Teacher</p>
+                      <p className="text-xs font-bold text-primary">{selectedTicket.assignedTeacherName || 'Unassigned'}</p>
                     </div>
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Submitted</p>
-                      <p className="text-base font-bold text-primary">
+                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Submitted</p>
+                      <p className="text-xs font-bold text-primary">
                         {selectedTicket.submittedAt ? new Date(selectedTicket.submittedAt).toLocaleString() : 'N/A'}
                       </p>
                     </div>
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                      <p className="text-xs font-bold text-primary/60 mb-1 uppercase tracking-wide">Mistakes</p>
-                      <p className="text-base font-bold text-primary">
+                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Mistakes</p>
+                      <p className="text-xs font-bold text-primary">
                         {selectedTicket.mistakes?.length || 0} mistake{(selectedTicket.mistakes?.length || 0) !== 1 ? 's' : ''}
                       </p>
                     </div>
@@ -692,17 +704,17 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
                   {/* Admin Notes */}
                   {selectedTicket.teacherNotes && (
-                    <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-xl">
-                      <p className="text-xs font-bold text-blue-800 mb-2 uppercase tracking-wide">📝 Admin Notes to Teacher</p>
-                      <p className="text-sm text-blue-900">{selectedTicket.teacherNotes}</p>
+                    <div className="mb-2 p-2 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                      <p className="text-[10px] font-bold text-blue-800 mb-1 uppercase tracking-wide">📝 Admin Notes to Teacher</p>
+                      <p className="text-xs text-blue-900">{selectedTicket.teacherNotes}</p>
                     </div>
                   )}
 
                   {/* Teacher Comment */}
                   {selectedTicket.teacherComment && (
-                    <div className="p-4 bg-green-50 border-l-4 border-green-500 rounded-xl">
-                      <p className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wide">💬 Teacher Comment</p>
-                      <p className="text-sm text-green-900 italic">"{selectedTicket.teacherComment}"</p>
+                    <div className="p-2 bg-green-50 border-l-4 border-green-500 rounded-lg">
+                      <p className="text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wide">💬 Teacher Comment</p>
+                      <p className="text-xs text-green-900 italic">"{selectedTicket.teacherComment}"</p>
                     </div>
                   )}
                 </div>
@@ -710,14 +722,14 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
               {/* Mushaf View */}
               {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
-                <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                  <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                  <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-xl font-extrabold text-primary flex items-center gap-2">
+                      <h3 className="text-sm font-extrabold text-primary flex items-center gap-1.5">
                         <span>📖</span> Mushaf View with Mistakes
                       </h3>
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
-                        <span className="text-sm font-bold text-primary">
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-lg">
+                        <span className="text-xs font-bold text-primary">
                           {selectedTicket.mistakes.length} mistake{selectedTicket.mistakes.length !== 1 ? 's' : ''} marked
                         </span>
                       </div>
@@ -725,55 +737,55 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   </div>
                   
                   {/* Recording Status */}
-                  <div className="px-6 pt-4">
-                    <div className={`p-4 rounded-xl border-2 ${
+                  <div className="px-3 pt-2">
+                    <div className={`p-2 rounded-lg border-2 ${
                       isRecording ? 'bg-red-50 border-red-300' :
                       recordingBlob ? 'bg-green-50 border-green-300' :
                       'bg-gray-50 border-gray-300'
                     }`}>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {isRecording ? (
                             <>
-                              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse shadow-lg"></div>
+                              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg"></div>
                               <div>
-                                <span className="text-sm font-extrabold text-red-800 block">
+                                <span className="text-xs font-extrabold text-red-800 block">
                                   🎙️ Recording in Progress
                                 </span>
-                                <span className="text-xs text-red-600">
+                                <span className="text-[10px] text-red-600">
                                   {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
                                 </span>
                               </div>
                             </>
                           ) : recordingBlob ? (
                             <>
-                              <div className="w-4 h-4 bg-green-500 rounded-full shadow-lg"></div>
+                              <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
                               <div>
-                                <span className="text-sm font-extrabold text-green-800 block">
+                                <span className="text-xs font-extrabold text-green-800 block">
                                   ✓ Recording Complete
                                 </span>
-                                <span className="text-xs text-green-600">
+                                <span className="text-[10px] text-green-600">
                                   Duration: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
                                 </span>
                               </div>
                             </>
                           ) : (
                             <>
-                              <div className="w-4 h-4 bg-gray-400 rounded-full"></div>
-                              <span className="text-sm font-semibold text-gray-700">
+                              <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                              <span className="text-xs font-semibold text-gray-700">
                                 Recording will start automatically when viewing Mushaf
                               </span>
                             </>
                           )}
                         </div>
                         {recordingError && (
-                          <span className="text-xs text-red-600 font-bold bg-red-100 px-2 py-1 rounded">⚠️ {recordingError}</span>
+                          <span className="text-[10px] text-red-600 font-bold bg-red-100 px-1.5 py-0.5 rounded">⚠️ {recordingError}</span>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-6 flex justify-center bg-gradient-to-b from-gray-50 to-white">
+                  <div className="p-3 flex justify-center bg-gradient-to-b from-gray-50 to-white">
                     {selectedTicket ? (
                       <InteractiveMushaf
                         currentPage={mushafPage}
@@ -793,10 +805,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               )}
 
               {/* Modern Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t-2 border-gray-200">
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t-2 border-gray-200">
                 <button
                   onClick={() => setShowReassignModal(true)}
-                  className="flex-1 sm:flex-none px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-extrabold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-xs font-extrabold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-1.5"
                 >
                   <span>🔄</span>
                   <span>Reassign Ticket</span>
@@ -804,11 +816,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                 <button
                   onClick={handleApproveAndSend}
                   disabled={isProcessing}
-                  className="flex-1 sm:flex-none px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-extrabold hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-xs font-extrabold hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-1.5"
                 >
                   {isProcessing ? (
                     <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       <span>Processing...</span>
                     </>
                   ) : (
