@@ -32,9 +32,19 @@ if (!distExists) {
   console.log(`📁 Serving from: ${distPath}`);
 }
 
-// Serve static files from the dist directory
+// Serve static files from the dist directory with proper MIME types
 app.use(express.static(distPath, {
-  index: false // Don't serve index.html for directories
+  index: false, // Don't serve index.html for directories
+  setHeaders: (res, filePath) => {
+    // Ensure JavaScript modules are served with correct MIME type
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    } else if (filePath.endsWith('.mjs')) {
+      res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    } else if (filePath.endsWith('.wasm')) {
+      res.setHeader('Content-Type', 'application/wasm');
+    }
+  }
 }));
 
 // Health check endpoint
