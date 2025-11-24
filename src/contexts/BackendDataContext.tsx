@@ -245,7 +245,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Helper function to fetch with timeout and auth headers
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000, requireAuth = true) => {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), timeout);
+    const id = setTimeout(() => {
+      console.warn(`⏱️ Request timeout for ${url} after ${timeout}ms`);
+      controller.abort();
+    }, timeout);
     
     // Add auth headers if required
     const headers = new Headers(options.headers as HeadersInit);
@@ -259,17 +262,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     try {
+      console.log(`📡 Fetching: ${url} (timeout: ${timeout}ms)`);
       const response = await fetch(url, {
         ...options,
         headers,
         signal: controller.signal
       });
       clearTimeout(id);
+      console.log(`✅ Response received for ${url}:`, response.status);
       return response;
     } catch (error: any) {
       clearTimeout(id);
-      if (error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${timeout}ms`);
+      console.error(`❌ Error fetching ${url}:`, error?.message || error);
+      if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        throw new Error(`Request timeout after ${timeout}ms for ${url}`);
       }
       throw error;
     }
