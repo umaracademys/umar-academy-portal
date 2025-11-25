@@ -5213,8 +5213,8 @@ app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => 
 
     // Students can only see tests posted to them
     if (userRole === 'student') {
-      // Find the student record to verify ownership
-      const student = await Student.findOne({ id: studentId });
+      // Find the student record to verify ownership (studentId is the MongoDB _id)
+      const student = await Student.findById(studentId);
       if (!student) {
         return res.status(404).json({ error: 'Student not found' });
       }
@@ -5230,8 +5230,8 @@ app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => 
       const teacher = await Teacher.findOne({ userId: userId });
       if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
       
-      // Check if the student is assigned to this teacher
-      const student = await Student.findOne({ id: studentId, assignedTeacher: teacher.id });
+      // Check if the student is assigned to this teacher (studentId is the MongoDB _id)
+      const student = await Student.findById(studentId);
       if (!student) {
         // Also allow if the teacher created the test
         const createdTests = await TestResult.find({ teacherId: userId.toString(), studentId });
