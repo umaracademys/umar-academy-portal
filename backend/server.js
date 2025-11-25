@@ -5207,13 +5207,13 @@ app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => 
   try {
     const { studentId } = req.params;
     const userRole = req.user.role;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     let query = { studentId };
 
     // Students can only see tests posted to them
     if (userRole === 'student') {
-      if (studentId !== userId) { // Ensure student is requesting their own tests
+      if (studentId !== userId.toString()) { // Ensure student is requesting their own tests
         return res.status(403).json({ error: 'Access denied' });
       }
       query.postedToStudent = true;
@@ -5228,7 +5228,7 @@ app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => 
       const student = await Student.findOne({ id: studentId, assignedTeacher: teacher.id });
       if (!student) {
         // Also allow if the teacher created the test
-        const createdTests = await TestResult.find({ teacherId: teacher.id, studentId });
+        const createdTests = await TestResult.find({ teacherId: userId.toString(), studentId });
         if (createdTests.length === 0) {
           return res.status(403).json({ error: 'Access denied: Student not assigned to teacher and teacher did not create test' });
         }
@@ -5286,7 +5286,7 @@ app.put('/api/tests/:id', authenticateToken, async (req, res) => {
     }
 
     // Only the teacher who created the test or an admin/superadmin can update
-    if (req.user.role === 'teacher' && test.teacherId !== req.user.id) {
+    if (req.user.role === 'teacher' && test.teacherId !== req.user.userId.toString()) {
       return res.status(403).json({ error: 'Access denied: Only the creator can update this test' });
     }
     if (req.user.role === 'student') {
@@ -5315,7 +5315,7 @@ app.post('/api/tests/:id/post', authenticateToken, async (req, res) => {
     }
 
     // Only the teacher who created the test or an admin/superadmin can post
-    if (req.user.role === 'teacher' && test.teacherId !== req.user.id) {
+    if (req.user.role === 'teacher' && test.teacherId !== req.user.userId.toString()) {
       return res.status(403).json({ error: 'Access denied: Only the creator can post this test' });
     }
     if (req.user.role === 'student') {
@@ -5343,7 +5343,7 @@ app.delete('/api/tests/:id', authenticateToken, async (req, res) => {
     }
 
     // Only the teacher who created the test or an admin/superadmin can delete
-    if (req.user.role === 'teacher' && test.teacherId !== req.user.id) {
+    if (req.user.role === 'teacher' && test.teacherId !== req.user.userId.toString()) {
       return res.status(403).json({ error: 'Access denied: Only the creator can delete this test' });
     }
     if (req.user.role === 'student') {
