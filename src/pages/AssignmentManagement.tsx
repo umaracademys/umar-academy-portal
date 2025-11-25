@@ -117,23 +117,23 @@ const AssignmentManagement: React.FC = () => {
       <Header />
       
       {/* Content Area */}
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 lg:px-8">
         {/* Modern Prominent Header */}
-        <div className="mb-8 rounded-3xl border-4 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] px-6 py-8 sm:px-10 sm:py-12 shadow-2xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-3xl">📋</span>
+        <div className="mb-4 rounded-xl border-2 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] px-3 py-3 sm:px-4 sm:py-4 shadow-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <span className="text-lg">📋</span>
                 </div>
                 <div>
-                  <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white/90">Assignment Management System</span>
-                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white drop-shadow-lg mt-1">Assignment Management</h1>
+                  <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-white/90">Assignment Management System</span>
+                  <h1 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-lg mt-0.5">Assignment Management</h1>
                 </div>
               </div>
-              <p className="text-base sm:text-lg text-white/95 max-w-2xl font-bold">Manage assignments, tickets, and classwork for all students</p>
+              <p className="text-xs sm:text-sm text-white/95 max-w-2xl font-bold">Manage assignments, tickets, and classwork for all students</p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
                   if (filteredStudents.length > 0) {
@@ -141,7 +141,7 @@ const AssignmentManagement: React.FC = () => {
                     setSelectedStudent(filteredStudents[0].id);
                   }
                 }}
-                className="px-6 py-3 bg-accent text-primary rounded-xl font-extrabold shadow-xl hover:scale-105 transition-all text-sm sm:text-base border-2 border-white/30"
+                className="px-3 py-1.5 bg-accent text-primary rounded-lg font-extrabold shadow-lg hover:scale-105 transition-all text-xs border-2 border-white/30"
                 disabled={filteredStudents.length === 0}
               >
                 + Create Ticket
@@ -151,62 +151,62 @@ const AssignmentManagement: React.FC = () => {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4">
+          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-primary-soft mb-1">Total Students</p>
-                <p className="text-3xl font-extrabold text-primary">{stats.totalStudents}</p>
+                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Total Students</p>
+                <p className="text-lg font-extrabold text-primary">{stats.totalStudents}</p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-soft-primary flex items-center justify-center">
-                <span className="text-2xl">👥</span>
+              <div className="w-8 h-8 rounded-full bg-soft-primary flex items-center justify-center">
+                <span className="text-sm">👥</span>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-primary-soft mb-1">Total Assignments</p>
-                <p className="text-3xl font-extrabold text-primary">{stats.totalAssignments}</p>
+                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Total Assignments</p>
+                <p className="text-lg font-extrabold text-primary">{stats.totalAssignments}</p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-soft-primary flex items-center justify-center">
-                <span className="text-2xl">📝</span>
+              <div className="w-8 h-8 rounded-full bg-soft-primary flex items-center justify-center">
+                <span className="text-sm">📝</span>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-primary-soft mb-1">Active Assignments</p>
-                <p className="text-3xl font-extrabold text-primary">{stats.activeAssignments}</p>
+                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Active Assignments</p>
+                <p className="text-lg font-extrabold text-primary">{stats.activeAssignments}</p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-soft-accent flex items-center justify-center">
-                <span className="text-2xl">✅</span>
+              <div className="w-8 h-8 rounded-full bg-soft-accent flex items-center justify-center">
+                <span className="text-sm">✅</span>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 shadow-lg hover:shadow-xl transition-all">
+          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-primary-soft mb-1">Students with Assignments</p>
-                <p className="text-3xl font-extrabold text-primary">{stats.studentsWithAssignments}</p>
+                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Students with Assignments</p>
+                <p className="text-lg font-extrabold text-primary">{stats.studentsWithAssignments}</p>
               </div>
-              <div className="w-12 h-12 rounded-full bg-soft-primary flex items-center justify-center">
-                <span className="text-2xl">📚</span>
+              <div className="w-8 h-8 rounded-full bg-soft-primary flex items-center justify-center">
+                <span className="text-sm">📚</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 sm:p-8 shadow-lg mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl border-2 border-primary/20 p-3 sm:p-4 shadow-md mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
             {/* Search */}
             <div>
-              <label className="block text-sm font-extrabold text-primary mb-3">
+              <label className="block text-xs font-extrabold text-primary mb-1.5">
                 🔍 Search Students
               </label>
               <input
@@ -214,19 +214,19 @@ const AssignmentManagement: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, email, or ID..."
-                className="w-full px-4 py-3 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm font-medium"
+                className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg bg-white text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition shadow-sm text-xs font-medium"
               />
             </div>
             
             {/* Program Filter */}
             <div>
-              <label className="block text-sm font-extrabold text-primary mb-3">
+              <label className="block text-xs font-extrabold text-primary mb-1.5">
                 📋 Filter by Program
               </label>
               <select
                 value={selectedProgram}
                 onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
-                className="w-full px-4 py-3 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm font-medium"
+                className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg bg-white text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition shadow-sm text-xs font-medium"
               >
                 <option value="all">All Programs</option>
                 {programs.map(program => (
@@ -238,13 +238,13 @@ const AssignmentManagement: React.FC = () => {
         </div>
 
         {/* Students Grid */}
-        <div className="bg-white rounded-2xl border-2 border-primary/20 p-6 sm:p-8 shadow-lg">
-          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border-2 border-primary/20 p-3 sm:p-4 shadow-md">
+          <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-primary mb-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-primary mb-1">
                 Students
               </h2>
-              <p className="text-sm sm:text-base text-primary-soft font-medium">
+              <p className="text-xs text-primary-soft font-medium">
                 {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} found
                 {selectedProgram !== 'all' && ` in ${selectedProgram}`}
                 {searchQuery && ` matching "${searchQuery}"`}
@@ -253,15 +253,15 @@ const AssignmentManagement: React.FC = () => {
           </div>
 
           {filteredStudents.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">📭</div>
-              <p className="text-lg font-semibold text-primary mb-2">No students found</p>
-              <p className="text-sm text-primary-soft">
+            <div className="text-center py-8">
+              <div className="text-4xl mb-2">📭</div>
+              <p className="text-sm font-semibold text-primary mb-1">No students found</p>
+              <p className="text-xs text-primary-soft">
                 {searchQuery ? 'Try adjusting your search query' : 'No students match the selected filters'}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
               {filteredStudents.map(student => {
                 const studentAssignments = assignments.filter(a => a.studentId === student.id);
                 const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
@@ -275,13 +275,13 @@ const AssignmentManagement: React.FC = () => {
                     {/* Student Card */}
                     <button
                       onClick={() => handleStudentClick(student.id)}
-                      className="w-full aspect-square flex flex-col items-center justify-center bg-gradient-to-br from-white to-soft-primary rounded-2xl border-2 border-primary/20 hover:border-primary transition-all duration-300 shadow-md hover:shadow-xl relative overflow-hidden"
+                      className="w-full aspect-square flex flex-col items-center justify-center bg-gradient-to-br from-white to-soft-primary rounded-xl border-2 border-primary/20 hover:border-primary transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden"
                     >
                       {/* Hover gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       
                       {/* Avatar/Initials */}
-                      <div className="relative z-10 w-14 h-14 sm:w-18 sm:h-18 rounded-full bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.8)] text-white flex items-center justify-center text-lg sm:text-xl font-extrabold mb-3 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                      <div className="relative z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.8)] text-white flex items-center justify-center text-sm sm:text-base font-extrabold mb-2 shadow-md group-hover:scale-110 transition-transform duration-300">
                         {student.avatar ? (
                           <img
                             src={student.avatar}
@@ -294,33 +294,33 @@ const AssignmentManagement: React.FC = () => {
                       </div>
                       
                       {/* Name */}
-                      <p className="relative z-10 text-xs sm:text-sm font-extrabold text-primary text-center px-2 truncate w-full mb-1">
+                      <p className="relative z-10 text-[10px] sm:text-xs font-extrabold text-primary text-center px-1 truncate w-full mb-0.5">
                         {student.fullName}
                       </p>
                       
                       {/* Program Badge */}
                       {student.program && (
-                        <p className="relative z-10 text-[10px] sm:text-xs font-semibold text-primary text-center px-2 truncate w-full">
+                        <p className="relative z-10 text-[9px] font-semibold text-primary text-center px-1 truncate w-full">
                           {student.program}
                         </p>
                       )}
                       
                       {/* Assignment Count Badge */}
                       {studentAssignments.length > 0 && (
-                        <span className="absolute top-2 right-2 bg-accent text-primary text-xs font-extrabold rounded-full w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center shadow-lg border-2 border-white z-10">
+                        <span className="absolute top-1.5 right-1.5 bg-accent text-primary text-[10px] font-extrabold rounded-full w-5 h-5 flex items-center justify-center shadow-md border-2 border-white z-10">
                           {activeAssignments > 0 ? activeAssignments : studentAssignments.length}
                         </span>
                       )}
                     </button>
 
                     {/* Quick Actions (on hover) */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 to-[rgba(var(--color-primary-rgb),0.95)] rounded-2xl flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 p-3">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 to-[rgba(var(--color-primary-rgb),0.95)] rounded-xl flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 p-2">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCreateTicket(student.id);
                         }}
-                        className="w-full px-4 py-2.5 bg-accent text-primary text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
+                        className="w-full px-2 py-1.5 bg-accent text-primary text-[10px] font-extrabold rounded-lg shadow-lg hover:scale-105 transition-all whitespace-nowrap"
                         title="Create Ticket (Sabq/Sabqi/Manzil)"
                       >
                         + Create Ticket
@@ -330,7 +330,7 @@ const AssignmentManagement: React.FC = () => {
                           e.stopPropagation();
                           handleCreateAssignment(student.id);
                         }}
-                        className="w-full px-4 py-2.5 bg-white border-2 border-accent text-primary text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
+                        className="w-full px-2 py-1.5 bg-white border-2 border-accent text-primary text-[10px] font-extrabold rounded-lg shadow-lg hover:scale-105 transition-all whitespace-nowrap"
                         title="Manual Assignment"
                       >
                         + Assignment
@@ -340,7 +340,7 @@ const AssignmentManagement: React.FC = () => {
                           e.stopPropagation();
                           handleStudentClick(student.id);
                         }}
-                        className="w-full px-4 py-2.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 text-primary text-xs sm:text-sm font-extrabold rounded-full shadow-xl hover:scale-105 transition-all whitespace-nowrap"
+                        className="w-full px-2 py-1.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 text-primary text-[10px] font-extrabold rounded-lg shadow-lg hover:scale-105 transition-all whitespace-nowrap"
                         title="View Assignments"
                       >
                         View History
