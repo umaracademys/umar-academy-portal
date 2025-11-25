@@ -5233,6 +5233,10 @@ app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => 
       // Check if the student is assigned to this teacher (studentId is the MongoDB _id)
       const student = await Student.findById(studentId);
       if (!student) {
+        return res.status(404).json({ error: 'Student not found' });
+      }
+      // Check if student is assigned to this teacher
+      if (student.assignedTeacher !== teacher.id && student.assignedTeacherId !== teacher.id) {
         // Also allow if the teacher created the test
         const createdTests = await TestResult.find({ teacherId: userId.toString(), studentId });
         if (createdTests.length === 0) {
