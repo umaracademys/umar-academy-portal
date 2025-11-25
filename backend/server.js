@@ -5213,8 +5213,14 @@ app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => 
 
     // Students can only see tests posted to them
     if (userRole === 'student') {
-      if (studentId !== userId.toString()) { // Ensure student is requesting their own tests
-        return res.status(403).json({ error: 'Access denied' });
+      // Find the student record to verify ownership
+      const student = await Student.findOne({ id: studentId });
+      if (!student) {
+        return res.status(404).json({ error: 'Student not found' });
+      }
+      // Check if the student's userId matches the authenticated user's userId
+      if (student.userId && student.userId.toString() !== userId.toString()) {
+        return res.status(403).json({ error: 'Access denied: You can only view your own test results' });
       }
       query.postedToStudent = true;
     }
