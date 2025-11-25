@@ -615,7 +615,7 @@ export const WordByWordPage: React.FC<{
   readOnly = false,
   onMistakesWithWords,
   onPageChange,
-  selectedVerses = []
+  selectedVerses = [] as Array<{ surah: number; ayah: number }> as Array<{ surah: number; ayah: number }>
 }) => {
   const mistakes = React.useMemo(() => mistakesProp as MushafMistake[], [mistakesProp]);
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
@@ -1697,7 +1697,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   onBack,
   showHistorical: showHistoricalProp = true,
   onVerseSelect,
-  selectedVerses = []
+  selectedVerses = [] as Array<{ surah: number; ayah: number }>
 }) => {
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
