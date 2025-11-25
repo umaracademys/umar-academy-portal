@@ -7,6 +7,7 @@ import { MushafMistake } from '@umar-academy/mushaf';
 import { getQuranChapters } from '@umar-academy/mushaf';
 
 interface TestQuestion {
+  id?: string;
   surah: number;
   ayah: number;
   page: number;
