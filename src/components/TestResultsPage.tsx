@@ -161,13 +161,31 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('umar_academy_token');
+      
+      // Prepare the update payload - only send fields that can be updated
+      const updatePayload = {
+        title: editingTest.title,
+        questions: editingTest.questions.map(q => ({
+          id: q.id || `q-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          surah: q.surah,
+          ayah: q.ayah,
+          page: q.page,
+          memoryScore: q.memoryScore,
+          tajweedScore: q.tajweedScore,
+          fluencyScore: q.fluencyScore,
+          mistakes: q.mistakes || [],
+          notes: q.notes || ''
+        })),
+        feedback: editingTest.feedback || ''
+      };
+
       const response = await fetch(`${API_BASE}/tests/${selectedTestId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editingTest)
+        body: JSON.stringify(updatePayload)
       });
 
       if (response.ok) {
@@ -175,15 +193,33 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
         setTestResults(testResults.map(t => 
           (t.id === selectedTestId || t._id === selectedTestId) ? updated : t
         ));
+        // Update selectedTest if it's the one being edited
+        if (selectedTest && (selectedTest.id === selectedTestId || selectedTest._id === selectedTestId)) {
+          setSelectedTestId(selectedTestId); // This will trigger a refresh
+        }
         setIsEditing(false);
         setEditingTest(null);
         alert('Test updated successfully!');
+        // Reload test results to get updated data
+        if (selectedStudentId) {
+          const reloadResponse = await fetch(`${API_BASE}/tests/student/${selectedStudentId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (reloadResponse.ok) {
+            const reloadedTests = await reloadResponse.json();
+            setTestResults(reloadedTests);
+          }
+        }
       } else {
-        throw new Error('Failed to update test');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to update test' }));
+        throw new Error(errorData.error || 'Failed to update test');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating test:', error);
-      alert('Failed to update test. Please try again.');
+      alert(`Failed to update test: ${error.message || 'Please try again.'}`);
     }
   };
 
@@ -618,11 +654,136 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
                 </div>
               ) : editingTest ? (
                 <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md">
-                  <h4 className="text-sm font-extrabold text-primary mb-2">Edit Test</h4>
-                  <p className="text-xs text-primary/70 mb-3">
-                    Editing mode - modify scores, notes, and feedback
-                  </p>
-                  {/* Edit form would go here - simplified for now */}
+                  <h4 className="text-sm font-extrabold text-primary mb-3">Edit Test</h4>
+                  
+                  {/* Test Title */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-bold text-primary mb-1">Test Title</label>
+                    <input
+                      type="text"
+                      value={editingTest.title}
+                      onChange={(e) => setEditingTest({ ...editingTest, title: e.target.value })}
+                      className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    />
+                  </div>
+
+                  {/* Questions Edit */}
+                  <div className="space-y-3 mb-3">
+                    <h5 className="text-xs font-bold text-primary">Questions</h5>
+                    {editingTest.questions.map((question, index) => (
+                      <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-bold text-primary">
+                            Q{index + 1}:
+                          </span>
+                          <span 
+                            className="text-sm font-semibold text-gray-900"
+                            style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}
+                            dir="rtl"
+                          >
+                            {getSurahArabicName(question.surah) || `Surah ${question.surah}`}
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            ({question.surah}:{question.ayah})
+                          </span>
+                        </div>
+                        
+                        {/* Scores Input */}
+                        <div className="grid grid-cols-3 gap-2 mb-2">
+                          <div>
+                            <label className="block text-[9px] font-bold text-blue-800 mb-0.5">Memory</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={question.memoryScore || ''}
+                              onChange={(e) => {
+                                const updatedQuestions = [...editingTest.questions];
+                                updatedQuestions[index] = {
+                                  ...question,
+                                  memoryScore: e.target.value ? parseInt(e.target.value) : undefined
+                                };
+                                setEditingTest({ ...editingTest, questions: updatedQuestions });
+                              }}
+                              className="w-full px-2 py-1 border border-blue-300 rounded text-xs focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+                              placeholder="1-10"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold text-green-800 mb-0.5">Tajweed</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={question.tajweedScore || ''}
+                              onChange={(e) => {
+                                const updatedQuestions = [...editingTest.questions];
+                                updatedQuestions[index] = {
+                                  ...question,
+                                  tajweedScore: e.target.value ? parseInt(e.target.value) : undefined
+                                };
+                                setEditingTest({ ...editingTest, questions: updatedQuestions });
+                              }}
+                              className="w-full px-2 py-1 border border-green-300 rounded text-xs focus:ring-2 focus:ring-green-200 focus:border-green-500"
+                              placeholder="1-10"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] font-bold text-purple-800 mb-0.5">Fluency</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={question.fluencyScore || ''}
+                              onChange={(e) => {
+                                const updatedQuestions = [...editingTest.questions];
+                                updatedQuestions[index] = {
+                                  ...question,
+                                  fluencyScore: e.target.value ? parseInt(e.target.value) : undefined
+                                };
+                                setEditingTest({ ...editingTest, questions: updatedQuestions });
+                              }}
+                              className="w-full px-2 py-1 border border-purple-300 rounded text-xs focus:ring-2 focus:ring-purple-200 focus:border-purple-500"
+                              placeholder="1-10"
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Notes Input */}
+                        <div>
+                          <label className="block text-[9px] font-bold text-primary mb-0.5">Notes</label>
+                          <textarea
+                            value={question.notes || ''}
+                            onChange={(e) => {
+                              const updatedQuestions = [...editingTest.questions];
+                              updatedQuestions[index] = {
+                                ...question,
+                                notes: e.target.value
+                              };
+                              setEditingTest({ ...editingTest, questions: updatedQuestions });
+                            }}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                            rows={2}
+                            placeholder="Add notes for this question..."
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Overall Feedback */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-bold text-primary mb-1">Overall Feedback</label>
+                    <textarea
+                      value={editingTest.feedback || ''}
+                      onChange={(e) => setEditingTest({ ...editingTest, feedback: e.target.value })}
+                      className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      rows={4}
+                      placeholder="Add overall feedback for the student..."
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={handleSaveEdit}
