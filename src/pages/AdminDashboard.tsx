@@ -14,6 +14,8 @@ import StudentCommunication from '../components/StudentCommunication';
 import TeacherList from '../components/TeacherList';
 import TeacherProfile from '../components/TeacherProfile';
 import EmailModule from '../components/EmailModule';
+import StudentTestingModule from '../components/StudentTestingModule';
+import TestResultsPage from '../components/TestResultsPage';
 import TeacherPayroll from '../components/TeacherPayroll';
 import TeacherPerformance from '../components/TeacherPerformance';
 import TeacherAttendance from '../components/TeacherAttendance';
@@ -24,6 +26,8 @@ import { useData } from '../contexts/DataContext';
 const AdminDashboard: React.FC = () => {
   const { students, teachers } = useData();
   const [showEmailModule, setShowEmailModule] = useState(false);
+  const [showTestingModule, setShowTestingModule] = useState(false);
+  const [showTestResults, setShowTestResults] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   
   // Student Management State
@@ -226,6 +230,38 @@ const AdminDashboard: React.FC = () => {
               </p>
             </div>
             <span className="text-[10px] font-bold uppercase tracking-wide text-primary/70 mt-1">
+              Open workflow
+            </span>
+          </button>
+          <button
+            onClick={() => setShowTestingModule(true)}
+            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-transparent bg-primary text-white hover:bg-[rgba(var(--color-primary-rgb),0.9)] touch-target"
+          >
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs sm:text-sm font-bold text-white">Student Testing</p>
+              </div>
+              <p className="mt-1 text-[10px] sm:text-xs text-white/90">
+                Test students on Memory, Tajweed, and Fluency
+              </p>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-white/70 mt-1">
+              Open workflow
+            </span>
+          </button>
+          <button
+            onClick={() => setShowTestResults(true)}
+            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 touch-target"
+          >
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs sm:text-sm font-bold text-primary">Test Results</p>
+              </div>
+              <p className="mt-1 text-[10px] sm:text-xs text-gray-600">
+                View, edit, and manage student test results
+              </p>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mt-1">
               Open workflow
             </span>
           </button>
@@ -601,6 +637,20 @@ const AdminDashboard: React.FC = () => {
       {showEmailModule && (
         <EmailModule
           onClose={() => setShowEmailModule(false)}
+        />
+      )}
+
+      {/* Student Testing Module Modal */}
+      {showTestingModule && (
+        <StudentTestingModule
+          onClose={() => setShowTestingModule(false)}
+        />
+      )}
+
+      {/* Test Results Page Modal */}
+      {showTestResults && (
+        <TestResultsPage
+          onClose={() => setShowTestResults(false)}
         />
       )}
 

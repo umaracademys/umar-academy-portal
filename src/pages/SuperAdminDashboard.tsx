@@ -37,6 +37,8 @@ import AdminNotificationCenter from '../components/AdminNotificationCenter';
 import ActivityLog from '../components/ActivityLog';
 import AdminRecordings from '../components/AdminRecordings';
 import EmailModule from '../components/EmailModule';
+import StudentTestingModule from '../components/StudentTestingModule';
+import TestResultsPage from '../components/TestResultsPage';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -151,6 +153,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showRecordings, setShowRecordings] = useState(false);
   const [showEmailModule, setShowEmailModule] = useState(false);
+  const [showTestingModule, setShowTestingModule] = useState(false);
+  const [showTestResults, setShowTestResults] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -248,6 +252,22 @@ const SuperAdminDashboard: React.FC = () => {
       badge: ticketsWithMissingIds > 0 ? ticketsWithMissingIds : null,
       emphasis: ticketsWithMissingIds > 0 ? 'accent-solid' : 'neutral',
       disabled: ticketsWithMissingIds === 0 || isFixingIds,
+    },
+    {
+      id: 'student-testing',
+      label: 'Student Testing',
+      description: 'Test students on Memory, Tajweed, and Fluency with Mushaf integration.',
+      onClick: () => setShowTestingModule(true),
+      badge: null,
+      emphasis: 'primary',
+    },
+    {
+      id: 'test-results',
+      label: 'Test Results',
+      description: 'View, edit, and manage student test results.',
+      onClick: () => setShowTestResults(true),
+      badge: null,
+      emphasis: 'neutral',
     },
   ];
 
@@ -1245,6 +1265,20 @@ const SuperAdminDashboard: React.FC = () => {
       {showEmailModule && (
         <EmailModule
           onClose={() => setShowEmailModule(false)}
+        />
+      )}
+
+      {/* Student Testing Module Modal */}
+      {showTestingModule && (
+        <StudentTestingModule
+          onClose={() => setShowTestingModule(false)}
+        />
+      )}
+
+      {/* Test Results Page Modal */}
+      {showTestResults && (
+        <TestResultsPage
+          onClose={() => setShowTestResults(false)}
         />
       )}
 

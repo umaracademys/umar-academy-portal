@@ -6,6 +6,7 @@ import Card from '../../../components/Card';
 import DebugPanel from '../../../components/DebugPanel';
 import StudentRecordings from '../../../components/StudentRecordings';
 import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
+import StudentTestResults from '../../../components/StudentTestResults';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -20,6 +21,7 @@ const StudentDashboard: React.FC = () => {
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
   const [showRecordings, setShowRecordings] = useState(false);
   const [showPersonalMushaf, setShowPersonalMushaf] = useState(false);
+  const [showTestResults, setShowTestResults] = useState(false);
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
 
@@ -232,6 +234,12 @@ const StudentDashboard: React.FC = () => {
                 className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
               >
                 Personal Mushaf
+              </button>
+              <button
+                onClick={() => setShowTestResults(true)}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+              >
+                Test Results
               </button>
               <Link
                 to="/student/profile"
@@ -533,6 +541,13 @@ const StudentDashboard: React.FC = () => {
         <StudentPersonalMushaf 
           studentId={currentStudent.id} 
           onClose={() => setShowPersonalMushaf(false)} 
+        />
+      )}
+
+      {/* Test Results Modal */}
+      {showTestResults && (
+        <StudentTestResults
+          onClose={() => setShowTestResults(false)}
         />
       )}
       

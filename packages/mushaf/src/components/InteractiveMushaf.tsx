@@ -59,6 +59,8 @@ interface InteractiveMushafProps {
   studentName?: string;
   onBack?: () => void;
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
+  onVerseSelect?: (surah: number, ayah: number, page: number) => void; // Callback when a verse is clicked for question selection
+  selectedVerses?: Array<{ surah: number; ayah: number }>; // Array of verses that are selected as questions
 }
 
 interface MistakeModalProps {
@@ -244,7 +246,11 @@ export const MistakeModal: React.FC<MistakeModalProps> = ({
     const letters = splitArabicText(word.text);
     // Filter out empty strings and whitespace-only letters
     const filtered = letters.filter(letter => letter.trim().length > 0);
-    console.log(`Modal: Word "${word.text}" (length: ${word.text.length}) split into ${filtered.length} letters:`, filtered);
+    // Only log in development mode and for debugging purposes
+    // Check if we're in development mode (Vite sets import.meta.env.DEV)
+    if (import.meta.env?.DEV && filtered.length === 0 && word.text.trim().length > 0) {
+      console.warn(`Modal: Word "${word.text}" could not be split into letters`);
+    }
     return filtered;
   }, [word]);
 
@@ -598,6 +604,7 @@ export const WordByWordPage: React.FC<{
   readOnly?: boolean;
   onMistakesWithWords?: (mistakesWithWords: Array<MushafMistake & { wordText?: string }>) => void;
   onPageChange?: (page: number) => void; // For page navigation
+  selectedVerses?: Array<{ surah: number; ayah: number }>; // Verses selected as questions
 }> = ({
   pageNumber,
   onWordClick,
@@ -608,6 +615,7 @@ export const WordByWordPage: React.FC<{
   readOnly = false,
   onMistakesWithWords,
   onPageChange,
+  selectedVerses = []
 }) => {
   const mistakes = React.useMemo(() => mistakesProp as MushafMistake[], [mistakesProp]);
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
@@ -733,11 +741,15 @@ export const WordByWordPage: React.FC<{
       
       // FALLBACK 1: Try MongoDB API (if local files not available)
       try {
-        console.log(`🔄 [PAGE ${pageNumber}] Attempting to load from MongoDB API...`);
+        if (import.meta.env?.DEV) {
+          console.log(`🔄 [PAGE ${pageNumber}] Attempting to load from MongoDB API...`);
+        }
         const pageData = await fetchPageLines(pageNumber, 'v4');
 
         if (pageData && pageData.lines && pageData.lines.length > 0) {
-          console.log(`✅ [PAGE ${pageNumber}] Successfully loaded ${pageData.lines.length} lines from MongoDB`);
+          if (import.meta.env?.DEV) {
+            console.log(`✅ [PAGE ${pageNumber}] Successfully loaded ${pageData.lines.length} lines from MongoDB`);
+          }
 
           // Extract words from API response
           const apiWords: Word[] = [];
@@ -756,7 +768,9 @@ export const WordByWordPage: React.FC<{
 
           if (!cancelled && apiWords.length > 0) {
             setWordsFromApi(apiWords);
-            console.log(`✅ Extracted ${apiWords.length} words from MongoDB response`);
+            if (import.meta.env?.DEV) {
+              console.log(`✅ Extracted ${apiWords.length} words from MongoDB response`);
+            }
           }
 
           // Convert MongoDB response to LayoutPage format
@@ -788,7 +802,9 @@ export const WordByWordPage: React.FC<{
               console.warn(`⚠️ Unable to load QPC V1 font for page ${pageNumber}:`, fontError);
               setFontFamily(defaultFontStack);
             }
-            console.log(`✅ Loaded layout for page ${pageNumber} from MongoDB`);
+            if (import.meta.env?.DEV) {
+              console.log(`✅ Loaded layout for page ${pageNumber} from MongoDB`);
+            }
             return;
           }
         }
@@ -798,7 +814,9 @@ export const WordByWordPage: React.FC<{
       
       // FALLBACK 2: Try JSON file (local file)
       try {
-        console.log(`🔄 [PAGE ${pageNumber}] Trying JSON file from local files...`);
+        if (import.meta.env?.DEV) {
+          console.log(`🔄 [PAGE ${pageNumber}] Trying JSON file from local files...`);
+        }
         const jsonLayoutRes = await fetch(`/data/layouts/page_${pageNumber}.json`);
         if (jsonLayoutRes.ok) {
           const contentType = jsonLayoutRes.headers.get('content-type');
@@ -1437,15 +1455,18 @@ export const WordByWordPage: React.FC<{
                   {lineWords.map((w, idx) => {
                     const { mistake: wordMistake, isHistorical: isWordHistorical } = getWordMistake(w);
                     const wordMistakeClass = getMistakeClass(wordMistake, isWordHistorical);
+                    // Check if this verse is selected as a question
+                    const isVerseSelected = selectedVerses.some(v => v.surah === w.surah && v.ayah === w.ayah);
+                    const verseSelectedClass = isVerseSelected ? 'ring-2 ring-blue-400 ring-offset-1 bg-blue-50/50' : '';
                     
                     // Use regular Arabic text from word data
                     // Note: Individual glyphs (single characters) are expected for proper mushaf rendering
                     const displayText = w.text || '';
                     const letters = splitArabicText(displayText);
                     
-                    // Debug: Log letter splitting for troubleshooting
-                    if (letters.length !== displayText.length && letters.length > 0) {
-                      console.debug(`Word "${displayText}" split into ${letters.length} letters:`, letters);
+                    // Debug: Only log in development mode for troubleshooting unusual cases
+                    if (import.meta.env?.DEV && letters.length === 0 && displayText.trim().length > 0) {
+                      console.warn(`Word "${displayText}" could not be split into letters`);
                     }
                     
                     // Check if this word has any letter-level mistakes
@@ -1508,8 +1529,15 @@ export const WordByWordPage: React.FC<{
                               onWordClick?.(w);
                             }
                           }}
-                          className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} relative group inline-block`}
+                          className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
                           dir="rtl"
+                          title={
+                            isVerseSelected 
+                              ? `Selected as Question - Surah ${w.surah}, Ayah ${w.ayah}`
+                              : wordMistake
+                                ? `${isWordHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${wordMistake.type} mistake${wordMistake.note ? `: ${wordMistake.note}` : ""}${wordMistake.audioUrl ? ' (Click to hear audio)' : ''}`
+                                : `Surah ${w.surah}, Ayah ${w.ayah}${hasLetterMistakes ? ' (Click letters to mark letter mistakes)' : ''}`
+                          }
                           style={{
                             padding: '1px 2px',
                             direction: 'rtl',
@@ -1521,11 +1549,6 @@ export const WordByWordPage: React.FC<{
                             borderRadius: '0',
                             whiteSpace: 'nowrap'
                           }}
-                          title={
-                            wordMistake
-                              ? `${isWordHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${wordMistake.type} mistake${wordMistake.note ? `: ${wordMistake.note}` : ""}${wordMistake.audioUrl ? ' (Click to hear audio)' : ''}`
-                              : `Surah ${w.surah}, Ayah ${w.ayah}${hasLetterMistakes ? ' (Click letters to mark letter mistakes)' : ''}`
-                          }
                         >
                           {/* Render word as individual letters for letter-level interaction */}
                           {letters.map((letter, letterIdx) => {
@@ -1672,7 +1695,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   mode = 'marking',
   studentName,
   onBack,
-  showHistorical: showHistoricalProp = true
+  showHistorical: showHistoricalProp = true,
+  onVerseSelect,
+  selectedVerses = []
 }) => {
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
@@ -1733,6 +1758,12 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
   const handleWordClick = (word: Word) => {
     if (!readOnly && mode === 'marking') {
+      // If onVerseSelect is provided, call it for verse selection (testing mode)
+      if (onVerseSelect) {
+        onVerseSelect(word.surah, word.ayah, currentPage);
+        return; // Don't open mistake modal in verse selection mode
+      }
+      // Otherwise, handle as mistake marking
       setSelectedWord(word);
       setSelectedLetterIndex(undefined); // Reset letter selection for word-level mistakes
     }
@@ -2065,9 +2096,10 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             mistakes={mistakes}
             historicalMistakes={historicalMistakes}
             showHistorical={showHistorical}
-            readOnly={readOnly}
+            readOnly={readOnly || !!onVerseSelect} // Read-only if verse selection mode
             onMistakesWithWords={setMistakesWithWords}
             onPageChange={onPageChange}
+            selectedVerses={selectedVerses}
           />
 
         <MistakeModal

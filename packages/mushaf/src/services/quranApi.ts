@@ -89,7 +89,9 @@ export async function fetchPageLines(pageNumber: number, version: 'nastaleeq' | 
       },
     });
 
-    console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+    if (import.meta.env?.DEV) {
+      console.log(`📡 Response status: ${response.status} ${response.statusText}`);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -103,12 +105,14 @@ export async function fetchPageLines(pageNumber: number, version: 'nastaleeq' | 
     }
 
     const data = await response.json();
-    console.log(`✅ Received data for page ${pageNumber}:`, {
-      pageNumber: data.pageNumber,
-      surahId: data.surahId,
-      version: data.version,
-      linesCount: data.lines?.length || 0
-    });
+    if (import.meta.env?.DEV) {
+      console.log(`✅ Received data for page ${pageNumber}:`, {
+        pageNumber: data.pageNumber,
+        surahId: data.surahId,
+        version: data.version,
+        linesCount: data.lines?.length || 0
+      });
+    }
     
     return data;
   } catch (error) {

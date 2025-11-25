@@ -2462,6 +2462,51 @@ const studentPersonalMushafSchema = new mongoose.Schema({
 
 const StudentPersonalMushaf = mongoose.model('StudentPersonalMushaf', studentPersonalMushafSchema);
 
+// Test Result Schema - for student testing module
+const testQuestionSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  surah: { type: Number, required: true },
+  ayah: { type: Number, required: true },
+  page: { type: Number, required: true },
+  memoryScore: { type: Number, min: 1, max: 10 },
+  tajweedScore: { type: Number, min: 1, max: 10 },
+  fluencyScore: { type: Number, min: 1, max: 10 },
+  mistakes: [{
+    id: String,
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee'], required: true },
+    page: { type: Number, required: true },
+    surah: { type: Number, required: true },
+    ayah: { type: Number, required: true },
+    wordIndex: Number,
+    letterIndex: Number,
+    position: {
+      x: Number,
+      y: Number
+    },
+    note: String,
+    audioUrl: String,
+    timestamp: Date
+  }],
+  notes: String
+}, { _id: false });
+
+const testResultSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true }, // Frontend generated ID
+  studentId: { type: String, required: true, index: true },
+  studentName: { type: String, required: true },
+  teacherId: { type: String, required: true },
+  teacherName: { type: String, required: true },
+  program: String,
+  title: { type: String, default: 'Student Test' },
+  questions: [testQuestionSchema],
+  feedback: String,
+  createdBy: { type: String, required: true },
+  postedToStudent: { type: Boolean, default: false },
+  postedAt: Date
+}, { timestamps: true });
+
+const TestResult = mongoose.model('TestResult', testResultSchema);
+
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
   type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request'], required: true },
@@ -5107,6 +5152,414 @@ app.get('/api/email/config', async (req, res) => {
   }
 });
 
+// ============================================
+// TEST RESULTS API ENDPOINTS
+// ============================================
+
+// Create a new test result
+app.post('/api/tests', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, studentName, title, questions, feedback, program } = req.body;
+    
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+    
+    // Get user details from database to get name
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = req.user.userId.toString();
+    const userName = user.name || user.email || 'Unknown Teacher';
+    
+    // Ensure each question has an ID
+    const questionsWithIds = questions.map((q, index) => ({
+      ...q,
+      id: q.id || `q-${Date.now()}-${index}-${Math.random().toString(36).substring(7)}`
+    }));
+    
+    const newTest = new TestResult({
+      id: `test-${Date.now()}-${Math.random().toString(36).substring(7)}`, // Generate unique ID
+      studentId,
+      studentName,
+      teacherId: userId, // Ensure teacherId comes from authenticated user
+      teacherName: userName,
+      program: program || null,
+      title: title || `Test - ${new Date().toLocaleDateString()}`,
+      questions: questionsWithIds,
+      feedback: feedback || '',
+      postedToStudent: false, // Default to not posted
+      createdBy: userId
+    });
+    await newTest.save();
+    console.log('✅ New test created:', newTest.id);
+    res.status(201).json(newTest);
+  } catch (error) {
+    console.error('❌ Error creating test:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all tests for a specific student (only posted ones for students)
+app.get('/api/tests/student/:studentId', authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const userRole = req.user.role;
+    const userId = req.user.id;
+
+    let query = { studentId };
+
+    // Students can only see tests posted to them
+    if (userRole === 'student') {
+      if (studentId !== userId) { // Ensure student is requesting their own tests
+        return res.status(403).json({ error: 'Access denied' });
+      }
+      query.postedToStudent = true;
+    }
+    // Admins/SuperAdmins/Teachers can see all tests for a student
+    // Teachers can only see tests they created or are assigned to their students
+    if (userRole === 'teacher') {
+      const teacher = await Teacher.findOne({ userId: userId });
+      if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+      
+      // Check if the student is assigned to this teacher
+      const student = await Student.findOne({ id: studentId, assignedTeacher: teacher.id });
+      if (!student) {
+        // Also allow if the teacher created the test
+        const createdTests = await TestResult.find({ teacherId: teacher.id, studentId });
+        if (createdTests.length === 0) {
+          return res.status(403).json({ error: 'Access denied: Student not assigned to teacher and teacher did not create test' });
+        }
+      }
+    }
+
+    const tests = await TestResult.find(query).sort({ createdAt: -1 });
+    res.json(tests);
+  } catch (error) {
+    console.error('❌ Error fetching student tests:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get a single test result by ID
+app.get('/api/tests/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const test = await TestResult.findOne({ id });
+    if (!test) {
+      return res.status(404).json({ error: 'Test result not found' });
+    }
+
+    // Authorization check
+    const userRole = req.user.role;
+    const userId = req.user.userId;
+
+    if (userRole === 'student' && (test.studentId !== userId.toString() || !test.postedToStudent)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (userRole === 'teacher') {
+      const teacher = await Teacher.findOne({ userId: userId });
+      if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+      if (test.teacherId !== userId.toString() && test.studentId !== teacher.assignedStudents.find(s => s === test.studentId)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    res.json(test);
+  } catch (error) {
+    console.error('❌ Error fetching test by ID:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a test result
+app.put('/api/tests/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, questions, feedback } = req.body;
+
+    const test = await TestResult.findOne({ id });
+    if (!test) {
+      return res.status(404).json({ error: 'Test result not found' });
+    }
+
+    // Only the teacher who created the test or an admin/superadmin can update
+    if (req.user.role === 'teacher' && test.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied: Only the creator can update this test' });
+    }
+    if (req.user.role === 'student') {
+      return res.status(403).json({ error: 'Access denied: Students cannot update tests' });
+    }
+
+    test.title = title || test.title;
+    test.questions = questions || test.questions;
+    test.feedback = feedback || test.feedback;
+    await test.save();
+    console.log('✅ Test updated:', test.id);
+    res.json(test);
+  } catch (error) {
+    console.error('❌ Error updating test:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Post test to student portal
+app.post('/api/tests/:id/post', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const test = await TestResult.findOne({ id });
+    if (!test) {
+      return res.status(404).json({ error: 'Test result not found' });
+    }
+
+    // Only the teacher who created the test or an admin/superadmin can post
+    if (req.user.role === 'teacher' && test.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied: Only the creator can post this test' });
+    }
+    if (req.user.role === 'student') {
+      return res.status(403).json({ error: 'Access denied: Students cannot post tests' });
+    }
+
+    test.postedToStudent = true;
+    test.postedAt = new Date();
+    await test.save();
+    console.log('✅ Test posted to student portal:', test.id);
+    res.json(test);
+  } catch (error) {
+    console.error('❌ Error posting test to student portal:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a test result
+app.delete('/api/tests/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const test = await TestResult.findOne({ id });
+    if (!test) {
+      return res.status(404).json({ error: 'Test result not found' });
+    }
+
+    // Only the teacher who created the test or an admin/superadmin can delete
+    if (req.user.role === 'teacher' && test.teacherId !== req.user.id) {
+      return res.status(403).json({ error: 'Access denied: Only the creator can delete this test' });
+    }
+    if (req.user.role === 'student') {
+      return res.status(403).json({ error: 'Access denied: Students cannot delete tests' });
+    }
+
+    await TestResult.deleteOne({ id });
+    console.log('✅ Test deleted:', id);
+    res.status(204).send(); // No content
+  } catch (error) {
+    console.error('❌ Error deleting test:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PDF generation endpoint
+app.get('/api/tests/:id/pdf', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const test = await TestResult.findOne({ id });
+    if (!test) {
+      return res.status(404).json({ error: 'Test result not found' });
+    }
+
+    // Authorization check (same as get single test)
+    const userRole = req.user.role;
+    const userId = req.user.userId;
+
+    if (userRole === 'student' && (test.studentId !== userId.toString() || !test.postedToStudent)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (userRole === 'teacher') {
+      const teacher = await Teacher.findOne({ userId: userId });
+      if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+      if (test.teacherId !== userId.toString() && test.studentId !== teacher.assignedStudents.find(s => s === test.studentId)) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    // Fetch Quran chapters to get Arabic surah names
+    let chapters = [];
+    try {
+      const chaptersResponse = await axios.get(`${req.protocol}://${req.get('host')}/api/quran/chapters`);
+      if (chaptersResponse.data && chaptersResponse.data.chapters) {
+        chapters = chaptersResponse.data.chapters;
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not fetch chapters for PDF, using fallback');
+    }
+
+    // Helper function to get surah Arabic name
+    const getSurahArabicName = (surahNumber) => {
+      const chapter = chapters.find(c => c.id === surahNumber);
+      return chapter?.name_arabic || '';
+    };
+
+    // Import PDFKit dynamically
+    const PDFDocument = require('pdfkit');
+    
+    // Create PDF document
+    const doc = new PDFDocument({
+      size: 'LETTER',
+      margins: { top: 50, bottom: 50, left: 50, right: 50 }
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Test-${test.studentName}-${test.title.replace(/\s+/g, '-')}.pdf"`);
+
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('Test Results', { align: 'center' });
+    doc.moveDown();
+
+    // Test Information
+    doc.fontSize(14).font('Helvetica-Bold').text('Test Information:', { underline: true });
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Title: ${test.title || 'Student Test'}`);
+    doc.text(`Student: ${test.studentName}`);
+    doc.text(`Teacher: ${test.teacherName || 'Unknown'}`);
+    if (test.program) {
+      doc.text(`Program: ${test.program}`);
+    }
+    doc.text(`Date: ${new Date(test.createdAt).toLocaleDateString()}`);
+    doc.moveDown();
+
+    // Questions Summary
+    doc.fontSize(14).font('Helvetica-Bold').text('Questions Summary:', { underline: true });
+    doc.moveDown(0.5);
+    
+    // Calculate averages
+    let totalMemory = 0, totalTajweed = 0, totalFluency = 0;
+    let scoredQuestions = 0;
+    
+    test.questions.forEach((q, index) => {
+      if (q.memoryScore && q.tajweedScore && q.fluencyScore) {
+        totalMemory += q.memoryScore;
+        totalTajweed += q.tajweedScore;
+        totalFluency += q.fluencyScore;
+        scoredQuestions++;
+      }
+    });
+
+    const avgMemory = scoredQuestions > 0 ? (totalMemory / scoredQuestions).toFixed(1) : 'N/A';
+    const avgTajweed = scoredQuestions > 0 ? (totalTajweed / scoredQuestions).toFixed(1) : 'N/A';
+    const avgFluency = scoredQuestions > 0 ? (totalFluency / scoredQuestions).toFixed(1) : 'N/A';
+    const overallAvg = scoredQuestions > 0 ? ((totalMemory + totalTajweed + totalFluency) / (scoredQuestions * 3)).toFixed(1) : 'N/A';
+
+    doc.fontSize(12).font('Helvetica');
+    doc.text(`Total Questions: ${test.questions.length}`);
+    doc.text(`Average Memory Score: ${avgMemory}/10`);
+    doc.text(`Average Tajweed Score: ${avgTajweed}/10`);
+    doc.text(`Average Fluency Score: ${avgFluency}/10`);
+    doc.text(`Overall Average: ${overallAvg}/10`);
+    doc.moveDown();
+
+    // Questions Details
+    doc.fontSize(14).font('Helvetica-Bold').text('Questions Details:', { underline: true });
+    doc.moveDown(0.5);
+
+    test.questions.forEach((question, index) => {
+      const surahArabicName = getSurahArabicName(question.surah);
+      
+      // Create a box/panel for the surah info - Beautiful formatting
+      const startY = doc.y;
+      const boxHeight = surahArabicName ? 40 : 25;
+      
+      // Draw a subtle background box with border
+      doc.rect(50, startY, 500, boxHeight)
+         .fillOpacity(0.08)
+         .fill('#2E4D32')
+         .fillOpacity(1)
+         .strokeColor('#2E4D32')
+         .lineWidth(1)
+         .stroke();
+      
+      // Question number
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.fillColor('#2E4D32');
+      doc.text(`Q${index + 1}:`, 55, startY + 5);
+      doc.fillColor('black');
+      
+      // Arabic surah name - Larger, bold, right-aligned
+      if (surahArabicName) {
+        doc.fontSize(18).font('Helvetica-Bold');
+        doc.fillColor('#2E4D32'); // Primary color
+        // Position Arabic text on the right side
+        const arabicTextWidth = doc.widthOfString(surahArabicName);
+        doc.text(surahArabicName, 550 - arabicTextWidth, startY + 5);
+        doc.fillColor('black'); // Reset to black
+      }
+      
+      // English surah and ayah info - Below Arabic name
+      doc.fontSize(11).font('Helvetica');
+      doc.text(`Surah ${question.surah}, Ayah ${question.ayah}`, 55, startY + (surahArabicName ? 25 : 10));
+      
+      // Move down after the box
+      doc.y = startY + boxHeight + 8;
+      
+      // Scores
+      doc.fontSize(11).font('Helvetica');
+      if (question.memoryScore) {
+        doc.text(`  Memory: ${question.memoryScore}/10`, { indent: 20 });
+      }
+      if (question.tajweedScore) {
+        doc.text(`  Tajweed: ${question.tajweedScore}/10`, { indent: 20 });
+      }
+      if (question.fluencyScore) {
+        doc.text(`  Fluency: ${question.fluencyScore}/10`, { indent: 20 });
+      }
+      
+      // Calculate average for this question
+      if (question.memoryScore && question.tajweedScore && question.fluencyScore) {
+        const qAvg = ((question.memoryScore + question.tajweedScore + question.fluencyScore) / 3).toFixed(1);
+        doc.font('Helvetica-Bold').text(`  Average: ${qAvg}/10`, { indent: 20 });
+      }
+      
+      // Mistakes count
+      if (question.mistakes && question.mistakes.length > 0) {
+        doc.text(`  Mistakes: ${question.mistakes.length}`, { indent: 20 });
+      }
+      
+      // Notes
+      if (question.notes) {
+        doc.text(`  Notes: ${question.notes}`, { indent: 20 });
+      }
+      
+      doc.moveDown(0.5);
+    });
+
+    // Feedback
+    if (test.feedback) {
+      doc.moveDown();
+      doc.fontSize(14).font('Helvetica-Bold').text('Teacher Feedback:', { underline: true });
+      doc.fontSize(12).font('Helvetica');
+      doc.text(test.feedback, { align: 'left' });
+    }
+
+    // Footer
+    doc.moveDown(2);
+    doc.fontSize(10).font('Helvetica').text(
+      `Generated on ${new Date().toLocaleString()}`,
+      { align: 'center' }
+    );
+
+    // Finalize PDF
+    doc.end();
+
+  } catch (error) {
+    console.error('❌ Error generating PDF:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Root route - simple health check
 app.get('/', (req, res) => {
   res.json({ 
@@ -5164,6 +5617,9 @@ app.use((err, req, res, next) => {
 // Start server regardless of MongoDB connection status
 // Bind to 0.0.0.0 for deployment platforms (Render, Heroku, etc.)
 const HOST = process.env.HOST || '0.0.0.0';
+// Test Results Routes
+// Create test result
+
 app.listen(PORT, HOST, () => {
   console.log(`🚀 Backend server running on ${HOST}:${PORT}`);
   console.log(`📊 MongoDB URI: ${MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`); // Hide credentials in logs
