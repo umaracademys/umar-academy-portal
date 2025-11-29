@@ -6165,7 +6165,8 @@ app.get('/api/evaluation-results', authenticateToken, async (req, res) => {
         evaluation: evaluation ? {
           id: evaluation.id,
           title: evaluation.title,
-          description: evaluation.description
+          description: evaluation.description,
+          questions: evaluation.questions || []
         } : null,
         answers,
         totalQuestions: evaluation ? evaluation.questions.length : 0,

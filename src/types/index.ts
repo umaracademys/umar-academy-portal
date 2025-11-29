@@ -422,7 +422,7 @@ export interface EvaluationPeriod {
   endDate?: string | Date;
 }
 
-export interface Evaluation {
+export interface TeacherEvaluation {
   id: string;
   title: string;
   description?: string;
@@ -488,6 +488,7 @@ export interface EvaluationResult {
     id: string;
     title: string;
     description?: string;
+    questions?: EvaluationQuestion[];
   } | null;
   answers: EvaluationAnswer[];
   totalQuestions: number;

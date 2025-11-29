@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
-import { Evaluation, EvaluationQuestion, QuestionType } from '../types';
+import { TeacherEvaluation, EvaluationQuestion, QuestionType } from '../types';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
@@ -121,7 +121,7 @@ const SearchableSelect: React.FC<{
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLButtonElement>(null);
 
   const filteredOptions = options.filter(opt =>
     opt.label.toLowerCase().includes(searchTerm.toLowerCase())
@@ -220,8 +220,8 @@ const SearchableSelect: React.FC<{
 const TeacherEvaluationManagement: React.FC<TeacherEvaluationManagementProps> = ({ onClose }) => {
   const { user } = useAuth();
   const { teachers } = useBackendData();
-  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-  const [selectedEvaluation, setSelectedEvaluation] = useState<Evaluation | null>(null);
+  const [evaluations, setEvaluations] = useState<TeacherEvaluation[]>([]);
+  const [selectedEvaluation, setSelectedEvaluation] = useState<TeacherEvaluation | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -290,7 +290,7 @@ const TeacherEvaluationManagement: React.FC<TeacherEvaluationManagementProps> = 
     setSelectedEvaluation(null);
   };
 
-  const handleEditEvaluation = (evaluation: Evaluation) => {
+  const handleEditEvaluation = (evaluation: TeacherEvaluation) => {
     setIsCreating(false);
     setShowForm(true);
     setSelectedEvaluation(evaluation);

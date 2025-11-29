@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { EvaluationAssignment, Evaluation, EvaluationQuestion, EvaluationAnswer } from '../types';
+import { EvaluationAssignment, TeacherEvaluation, EvaluationQuestion, EvaluationAnswer } from '../types';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
@@ -13,7 +13,7 @@ interface TeacherEvaluationFlowProps {
 const TeacherEvaluationFlow: React.FC<TeacherEvaluationFlowProps> = ({ assignmentId, onComplete, onClose }) => {
   const { user } = useAuth();
   const [assignment, setAssignment] = useState<EvaluationAssignment | null>(null);
-  const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [evaluation, setEvaluation] = useState<TeacherEvaluation | null>(null);
   const [answers, setAnswers] = useState<EvaluationAnswer[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +29,7 @@ const TeacherEvaluationFlow: React.FC<TeacherEvaluationFlowProps> = ({ assignmen
   const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
 
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimerRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -45,7 +45,7 @@ const TeacherEvaluationFlow: React.FC<TeacherEvaluationFlowProps> = ({ assignmen
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
-      autoSaveTimerRef.current = setTimeout(() => {
+      autoSaveTimerRef.current = window.setTimeout(() => {
         handleSaveAnswer(true);
       }, 2000);
     }

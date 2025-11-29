@@ -81,8 +81,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       // Exclude tickets that have been approved (have sentToAssignmentId)
       // Only show tickets created by current admin
       return (
-        t.status === 'pending' && 
-        t.status !== 'reassigned' &&
+        t.status === 'pending' &&
         !t.sentToAssignmentId && // Exclude approved tickets
         t.createdBy === user.id
       );
