@@ -1589,12 +1589,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           '- isAssignedById:', isAssignedById,
           '- hasAssignedTeacherId:', hasAssignedTeacherId,
           '- hasAssignedTeacherName:', hasAssignedTeacherName);
+        }
       }
       
       return matches;
     });
     
-    console.log('🔍 Filtered students for teacher:', filteredStudents.length, filteredStudents.map(s => s.fullName || (s as any).fullName));
+    if (import.meta.env.DEV) {
+      console.log('🔍 Filtered students for teacher:', filteredStudents.length, filteredStudents.map(s => s.fullName || (s as any).fullName));
+    }
     return filteredStudents;
   };
 
