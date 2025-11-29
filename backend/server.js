@@ -1435,6 +1435,47 @@ app.put('/api/students/:id', async (req, res) => {
       }
     }
 
+    // Also update the User record if student has a userId
+    if (updatedStudent && updatedStudent.userId) {
+      try {
+        const userUpdateData = {};
+        
+        // Update name/fullName in User collection
+        if (updatedStudent.fullName) {
+          userUpdateData.name = updatedStudent.fullName;
+        }
+        
+        // Update email in User collection
+        if (updatedStudent.email) {
+          userUpdateData.email = updatedStudent.email;
+        }
+        
+        // Update contact/phoneNumber in User collection
+        if (updatedStudent.contact) {
+          userUpdateData.contact = updatedStudent.contact;
+          userUpdateData.phoneNumber = updatedStudent.contact;
+        }
+        
+        // Update avatar if provided
+        if (updatedStudent.avatar) {
+          userUpdateData.avatar = updatedStudent.avatar;
+        }
+        
+        // Only update if there's data to update
+        if (Object.keys(userUpdateData).length > 0) {
+          await User.findByIdAndUpdate(
+            updatedStudent.userId,
+            userUpdateData,
+            { new: true }
+          );
+          console.log(`✅ Updated User record for student: ${updatedStudent.userId.toString()}`);
+        }
+      } catch (userUpdateError) {
+        console.error('⚠️ Failed to update User record (non-fatal):', userUpdateError);
+        // Don't fail the entire request if User update fails
+      }
+    }
+
     res.json(updatedStudent);
   } catch (error) {
     res.status(500).json({ error: error.message });
