@@ -776,10 +776,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setRecitationTickets([]);
     } finally {
       clearTimeout(maxTimeout);
-      console.log('🔄 Setting loading to false...');
+      if (import.meta.env.DEV) {
+        console.log('🔄 Setting loading to false...');
+        console.log('✅ Data loading completed - loading state:', false);
+      }
       setLoading(false);
       isLoadingRef.current = false;
-      console.log('✅ Data loading completed - loading state:', false);
     }
   }, []); // Empty deps - loadData should only be created once
 

@@ -136,7 +136,9 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
             const user = users.find((u: any) => u.email === userEmail);
             if (user) {
               userId = user._id || user.id;
-              console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
+              if (import.meta.env.DEV) {
+                console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
+              }
             }
           }
         } catch (err) {
