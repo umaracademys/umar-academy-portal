@@ -262,14 +262,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     try {
-      console.log(`📡 Fetching: ${url} (timeout: ${timeout}ms)`);
+      if (import.meta.env.DEV) {
+        console.log(`📡 Fetching: ${url} (timeout: ${timeout}ms)`);
+      }
       const response = await fetch(url, {
         ...options,
         headers,
         signal: controller.signal
       });
       clearTimeout(id);
-      console.log(`✅ Response received for ${url}:`, response.status);
+      if (import.meta.env.DEV) {
+        console.log(`✅ Response received for ${url}:`, response.status);
+      }
       return response;
     } catch (error: any) {
       clearTimeout(id);
@@ -285,7 +289,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const loadData = useCallback(async () => {
     // Prevent concurrent calls
     if (isLoadingRef.current) {
-      console.log('⏸️ Data load already in progress, skipping...');
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Data load already in progress, skipping...');
+      }
       return;
     }
     
@@ -304,18 +310,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoading(true);
       setError(null);
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      console.log('🔄 Loading data from backend...', new Date().toISOString());
+      if (import.meta.env.DEV) {
+        console.log('🔄 Loading data from backend...', new Date().toISOString());
+      }
 
       // Load users from backend with timeout (no auth required for backward compatibility)
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000, false);
-      console.log('📡 Backend response status:', usersResponse.status);
+      if (import.meta.env.DEV) {
+        console.log('📡 Backend response status:', usersResponse.status);
+      }
       
       if (!usersResponse.ok) {
         throw new Error(`Failed to fetch users: ${usersResponse.status}`);
       }
       const users = await usersResponse.json();
-      console.log('👥 Users loaded from backend:', users.length);
+      if (import.meta.env.DEV) {
+        console.log('👥 Users loaded from backend:', users.length);
+      }
 
       // Load actual teacher records from /api/teachers endpoint (with sync to ensure assignedStudents arrays are up to date)
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
@@ -324,13 +336,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 10000);
       if (teachersResponse.ok) {
           teacherRecords = await teachersResponse.json();
-          console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
-          
-          // Log assignedStudents arrays for debugging
-          teacherRecords.forEach((teacher: any) => {
-            const assignedCount = Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents.length : 0;
-            console.log(`  - ${teacher.fullName || 'Unknown'}: assignedStudents=[${(teacher.assignedStudents || []).join(', ')}] (${assignedCount} students)`);
-          });
+          if (import.meta.env.DEV) {
+            console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
+            
+            // Log assignedStudents arrays for debugging
+            teacherRecords.forEach((teacher: any) => {
+              const assignedCount = Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents.length : 0;
+              console.log(`  - ${teacher.fullName || 'Unknown'}: assignedStudents=[${(teacher.assignedStudents || []).join(', ')}] (${assignedCount} students)`);
+            });
+          }
         
         // Merge teacher data with user data
           teacherRecords.forEach((teacher: any) => {
@@ -351,33 +365,39 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Load assignments from backend
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       try {
-        console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
+        if (import.meta.env.DEV) {
+          console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
+        }
         const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000); // Reduced timeout
-        console.log('📡 Assignments response status:', assignmentsResponse.status, assignmentsResponse.ok);
+        if (import.meta.env.DEV) {
+          console.log('📡 Assignments response status:', assignmentsResponse.status, assignmentsResponse.ok);
+        }
         if (assignmentsResponse.ok) {
           const assignmentsData = await assignmentsResponse.json();
-          console.log('📝 Assignments loaded from backend:', assignmentsData.length);
-          if (assignmentsData.length > 0) {
-            console.log('📝 Sample assignment:', {
-              id: assignmentsData[0]._id || assignmentsData[0].id,
-              studentId: assignmentsData[0].studentId,
-              studentName: assignmentsData[0].studentName,
-              sabqCount: assignmentsData[0].classwork?.sabq?.length || 0,
-              sabqiCount: assignmentsData[0].classwork?.sabqi?.length || 0,
-              manzilCount: assignmentsData[0].classwork?.manzil?.length || 0,
-              status: assignmentsData[0].status
-            });
-            // Log first 5 assignments only to avoid console spam
-            assignmentsData.slice(0, 5).forEach((a: any, idx: number) => {
-              console.log(`📝 Assignment ${idx + 1}:`, {
-                id: a._id || a.id,
-                studentId: a.studentId,
-                studentName: a.studentName,
-                sabq: a.classwork?.sabq?.length || 0,
-                sabqi: a.classwork?.sabqi?.length || 0,
-                manzil: a.classwork?.manzil?.length || 0
+          if (import.meta.env.DEV) {
+            console.log('📝 Assignments loaded from backend:', assignmentsData.length);
+            if (assignmentsData.length > 0) {
+              console.log('📝 Sample assignment:', {
+                id: assignmentsData[0]._id || assignmentsData[0].id,
+                studentId: assignmentsData[0].studentId,
+                studentName: assignmentsData[0].studentName,
+                sabqCount: assignmentsData[0].classwork?.sabq?.length || 0,
+                sabqiCount: assignmentsData[0].classwork?.sabqi?.length || 0,
+                manzilCount: assignmentsData[0].classwork?.manzil?.length || 0,
+                status: assignmentsData[0].status
               });
-            });
+              // Log first 5 assignments only to avoid console spam
+              assignmentsData.slice(0, 5).forEach((a: any, idx: number) => {
+                console.log(`📝 Assignment ${idx + 1}:`, {
+                  id: a._id || a.id,
+                  studentId: a.studentId,
+                  studentName: a.studentName,
+                  sabq: a.classwork?.sabq?.length || 0,
+                  sabqi: a.classwork?.sabqi?.length || 0,
+                  manzil: a.classwork?.manzil?.length || 0
+                });
+              });
+            }
           } else {
             console.warn('⚠️ No assignments found in database. This could mean:');
             console.warn('  1. No assignments have been created yet');
@@ -409,7 +429,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000);
         if (reviewsResponse.ok) {
           const reviewsData = await reviewsResponse.json();
-          console.log('📖 Recitation reviews loaded:', reviewsData.length);
+          if (import.meta.env.DEV) {
+            console.log('📖 Recitation reviews loaded:', reviewsData.length);
+          }
           // Normalize recitation reviews to map _id to id
           const normalizedReviews = Array.isArray(reviewsData) ? reviewsData.map((review: any) => ({
             ...review,
@@ -438,7 +460,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000);
         if (notificationsResponse.ok) {
           const notificationsData = await notificationsResponse.json();
-          console.log('🔔 Admin notifications loaded:', notificationsData.length);
+          if (import.meta.env.DEV) {
+            console.log('🔔 Admin notifications loaded:', notificationsData.length);
+          }
           setAdminNotifications(notificationsData);
         } else {
           console.warn('⚠️ Failed to load notifications:', notificationsResponse.status);
@@ -455,7 +479,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000);
         if (ticketsResponse.ok) {
           const ticketsData = await ticketsResponse.json();
-          console.log('🎫 Tickets loaded:', ticketsData.length);
+          if (import.meta.env.DEV) {
+            console.log('🎫 Tickets loaded:', ticketsData.length);
+          }
           // Map MongoDB _id to id for frontend compatibility
           const mappedTickets = ticketsData.map((ticket: any) => ({
             ...ticket,
@@ -487,7 +513,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               recordingStoppedAt: ticket.recordingStoppedAt ? new Date(ticket.recordingStoppedAt) : undefined
             }));
           setRecitationTickets(recitationTicketsData);
-          console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
+          if (import.meta.env.DEV) {
+            console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
+          }
           const ticketsWithRecordings = recitationTicketsData.filter((t: any) => t.recordingUrl);
           console.log('🎙️ Tickets with recordings:', ticketsWithRecordings.length);
           if (ticketsWithRecordings.length > 0) {
@@ -521,7 +549,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 10000);
         if (studentsResponse.ok) {
           studentRecords = await studentsResponse.json();
-          console.log('📚 Student records loaded from /api/students:', studentRecords.length);
+          if (import.meta.env.DEV) {
+            console.log('📚 Student records loaded from /api/students:', studentRecords.length);
+          }
         }
       } catch (err) {
         console.warn('⚠️ Could not load student records:', err);
@@ -684,13 +714,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Use Promise.race to ensure we don't hang - fallback after 5 seconds
       const adminsPromise = (async () => {
         try {
-          console.log('📡 Fetching admins from:', `${API_BASE}/admins`);
+          if (import.meta.env.DEV) {
+            console.log('📡 Fetching admins from:', `${API_BASE}/admins`);
+          }
           const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 5000, false); // Reduced timeout to 5 seconds
-          console.log('📡 Admins response status:', adminsResponse.status);
+          if (import.meta.env.DEV) {
+            console.log('📡 Admins response status:', adminsResponse.status);
+          }
           
           if (adminsResponse.ok) {
             const adminRecords = await adminsResponse.json();
-            console.log('👨‍💼 Admin records loaded:', adminRecords.length);
+            if (import.meta.env.DEV) {
+              console.log('👨‍💼 Admin records loaded:', adminRecords.length);
+            }
             return adminRecords.map((adminRecord: any) => ({
               id: adminRecord._id || adminRecord.id,
               userId: adminRecord.userId?._id || adminRecord.userId || adminRecord.userId?._id,
@@ -725,7 +761,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       try {
         adminsData = await Promise.race([adminsPromise, timeoutPromise]);
-        console.log('✅ Admins processed:', adminsData.length);
+        if (import.meta.env.DEV) {
+          console.log('✅ Admins processed:', adminsData.length);
+        }
       } catch (adminError: any) {
         console.warn('⚠️ Admins loading failed or timed out, falling back to users:', adminError?.message || adminError);
         // Fallback to users collection if Admin collection doesn't exist yet or request times out
@@ -748,18 +786,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             status: user.status || 'active',
             avatar: user.avatar || ''
           }));
-        console.log('✅ Fallback admins from users:', adminsData.length);
+        if (import.meta.env.DEV) {
+          console.log('✅ Fallback admins from users:', adminsData.length);
+        }
       }
 
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
+      if (import.meta.env.DEV) {
+        console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
+      }
 
       setStudents(studentsData);
       setTeachers(teachersData);
       setAdmins(adminsData);
       
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      console.log('✅ All data loaded successfully');
+      if (import.meta.env.DEV) {
+        console.log('✅ All data loaded successfully');
+      }
 
     } catch (err) {
       setError('Failed to load data from backend. Please check your connection and try again.');
@@ -790,10 +834,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
-      console.log('🚀 Initial data load triggered');
+      if (import.meta.env.DEV) {
+        console.log('🚀 Initial data load triggered');
+      }
       loadData();
     } else {
-      console.log('⏸️ Data already loaded, skipping initial load');
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Data already loaded, skipping initial load');
+      }
     }
   }, [loadData]);
 
@@ -890,7 +938,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
 
       setStudents(prev => [...prev, enhancedStudent]);
-      console.log('✅ Student added successfully to MongoDB:', enhancedStudent.fullName);
+      if (import.meta.env.DEV) {
+        console.log('✅ Student added successfully to MongoDB:', enhancedStudent.fullName);
+      }
 
     } catch (err) {
       setError('Failed to add student to MongoDB');
@@ -952,7 +1002,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Refresh data to ensure consistency
       await refreshData();
 
-      console.log('✅ Student updated successfully:', mappedStudent.fullName || mappedStudent.name || 'Student');
+      if (import.meta.env.DEV) {
+        console.log('✅ Student updated successfully:', mappedStudent.fullName || mappedStudent.name || 'Student');
+      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update student';
@@ -1079,7 +1131,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Refresh data from backend to ensure consistency
       await refreshData();
 
-      console.log('✅ Student deleted successfully');
+      if (import.meta.env.DEV) {
+        console.log('✅ Student deleted successfully');
+      }
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete student';
@@ -1206,7 +1260,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setTeachers(prev => [...prev, mappedTeacher]);
       await refreshData();
 
-      console.log('✅ Teacher created successfully:', mappedTeacher.fullName);
+      if (import.meta.env.DEV) {
+        console.log('✅ Teacher created successfully:', mappedTeacher.fullName);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add teacher';
       setError(errorMessage);
@@ -1298,7 +1354,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       await refreshData();
 
-      console.log('✅ Teacher updated successfully:', mappedTeacher.fullName || mappedTeacher.name || 'Teacher');
+      if (import.meta.env.DEV) {
+        console.log('✅ Teacher updated successfully:', mappedTeacher.fullName || mappedTeacher.name || 'Teacher');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update teacher';
       setError(errorMessage);
@@ -1318,7 +1376,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setTeachers(prev => prev.filter(t => t.id !== id));
-      console.log('✅ Teacher deleted successfully from MongoDB');
+      if (import.meta.env.DEV) {
+        console.log('✅ Teacher deleted successfully from MongoDB');
+      }
 
     } catch (err) {
       setError('Failed to delete teacher from MongoDB');
@@ -1391,7 +1451,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
       
       setAdmins(prev => [...prev, adminWithId]);
-      console.log('✅ Admin created successfully in MongoDB:', admin.fullName);
+      if (import.meta.env.DEV) {
+        console.log('✅ Admin created successfully in MongoDB:', admin.fullName);
+      }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add admin';
@@ -1416,7 +1478,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setAdmins(prev => prev.map(a => a.id === id ? { ...a, ...admin } : a));
-      console.log('✅ Admin updated successfully in MongoDB');
+      if (import.meta.env.DEV) {
+        console.log('✅ Admin updated successfully in MongoDB');
+      }
 
     } catch (err) {
       setError('Failed to update admin in MongoDB');
@@ -1436,7 +1500,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setAdmins(prev => prev.filter(a => a.id !== id));
-      console.log('✅ Admin deleted successfully from MongoDB');
+      if (import.meta.env.DEV) {
+        console.log('✅ Admin deleted successfully from MongoDB');
+      }
 
     } catch (err) {
       setError('Failed to delete admin from MongoDB');
@@ -1514,7 +1580,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const matches = isAssignedById || hasAssignedTeacherId || hasAssignedTeacherName;
       
       if (matches) {
-        console.log('✅ Student matched:', student.fullName || (student as any).fullName, 
+        if (import.meta.env.DEV) {
+          console.log('✅ Student matched:', student.fullName || (student as any).fullName, 
           '- assignedTeacher:', assignedTeacher,
           '- studentId:', studentId,
           '- teacherId (normalized):', normalizedTeacherId,
