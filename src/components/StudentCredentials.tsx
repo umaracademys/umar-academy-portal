@@ -91,10 +91,12 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
         if (usersResponse.ok) {
           const users = await usersResponse.json();
           const user = users.find((u: any) => u.email === userEmail);
-          if (user) {
-            userId = user._id || user.id;
-            console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
-          }
+            if (user) {
+              userId = user._id || user.id;
+              if (import.meta.env.DEV) {
+                console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
+              }
+            }
         }
       } catch (err) {
         console.warn('Failed to fetch users for email lookup:', err);
@@ -207,6 +209,12 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
     try {
       setLoading(true);
       setError(null);
+      
+      if (import.meta.env.DEV) {
+        console.log('🔄 Resetting password for userId:', userId);
+        console.log('   New password length:', newPassword.length);
+      }
+      
       const response = await fetch(`${API_BASE}/users/${userId}/password`, {
         method: 'PUT',
         headers: getAuthHeaders(),
@@ -214,11 +222,18 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to reset password');
+        const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
+        if (import.meta.env.DEV) {
+          console.error('❌ Password reset failed:', response.status, errorData);
+        }
+        throw new Error(errorData.error || `Failed to reset password: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      if (import.meta.env.DEV) {
+        console.log('✅ Password reset response:', data);
+      }
+      
       alert(`✅ Password reset successfully for ${student.fullName || student.name}`);
       setShowPasswordReset(false);
       setNewPassword('');
@@ -233,8 +248,9 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
       }
     } catch (err) {
       console.error('Error resetting password:', err);
-      setError(err instanceof Error ? err.message : 'Failed to reset password');
-      alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to reset password'}`);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to reset password';
+      setError(errorMessage);
+      alert(`❌ Error: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
