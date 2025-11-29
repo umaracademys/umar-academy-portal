@@ -22,6 +22,9 @@ const checkUser = async () => {
     console.log('✅ Connected to MongoDB\n');
 
     const emailToCheck = 'Rabyya@live.com';
+    
+    // Also check login status
+    console.log('\n🔐 Checking login status...');
     console.log(`🔍 Searching for user: ${emailToCheck}\n`);
 
     // First, show recent users to see what's in the database
@@ -53,6 +56,9 @@ const checkUser = async () => {
       console.log('   Role:', user.role || 'N/A');
       console.log('   ID:', user._id);
       console.log('   Created:', user.createdAt);
+      console.log('   Login Enabled:', user.loginEnabled !== false ? '✅ YES' : '❌ NO');
+      console.log('   Has Password:', user.password ? '✅ YES' : '❌ NO');
+      console.log('   Password Hash:', user.password ? (user.password.substring(0, 20) + '...') : 'N/A');
       console.log('   Full document:', JSON.stringify(user.toObject(), null, 2));
     } else {
       console.log('❌ USER NOT FOUND in users collection (case-insensitive search)');

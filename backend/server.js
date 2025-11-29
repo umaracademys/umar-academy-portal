@@ -572,6 +572,19 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid email, password, or role' });
     }
 
+    // Check if login is enabled for this user
+    if (user.loginEnabled === false) {
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        userId: user._id.toString(),
+        status: 'failure',
+        errorMessage: 'Login disabled for this account'
+      });
+      return res.status(403).json({ error: 'Login is disabled for this account. Please contact an administrator.' });
+    }
+
     // Verify password
     let isPasswordValid = false;
     if (!user.password) {
