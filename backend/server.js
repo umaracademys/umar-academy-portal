@@ -2507,6 +2507,110 @@ const testResultSchema = new mongoose.Schema({
 
 const TestResult = mongoose.model('TestResult', testResultSchema);
 
+// ============================================
+// TEACHER EVALUATION SYSTEM SCHEMAS
+// ============================================
+
+// Evaluation Question Schema
+const evaluationQuestionSchema = new mongoose.Schema({
+  id: { type: String, required: true },
+  questionText: { type: String, required: true },
+  questionType: { 
+    type: String, 
+    enum: ['text', 'audio', 'video'], 
+    required: true 
+  },
+  options: { type: [String], default: [] }, // For text questions - always 4 choices
+  correctAnswer: String, // For text questions (MCQ) - must be correct before next question appears
+  isRequired: { type: Boolean, default: true },
+  order: { type: Number, required: true },
+  mediaUrl: String, // For audio/video questions (reference media)
+  instructions: String,
+  points: { type: Number, default: 1 }
+}, { _id: false });
+
+// Teacher Evaluation Schema - Main evaluation template
+const teacherEvaluationSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  title: { type: String, required: true },
+  description: String,
+  questions: [evaluationQuestionSchema],
+  createdBy: { type: String, required: true }, // User ID
+  createdByName: { type: String, required: true },
+  status: { 
+    type: String, 
+    enum: ['draft', 'active', 'archived'], 
+    default: 'draft' 
+  },
+  evaluationPeriod: {
+    startDate: Date,
+    endDate: Date
+  },
+  autoSave: { type: Boolean, default: true }
+}, { timestamps: true });
+
+const Evaluation = mongoose.model('Evaluation', teacherEvaluationSchema);
+
+// Evaluation Assignment Schema - Links evaluation to teacher
+const evaluationAssignmentSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  evaluationId: { type: String, required: true, index: true },
+  teacherId: { type: String, required: true, index: true },
+  teacherName: { type: String, required: true },
+  assignedBy: { type: String, required: true }, // Admin/Super Admin ID
+  assignedByName: { type: String, required: true },
+  status: { 
+    type: String, 
+    enum: ['assigned', 'in_progress', 'completed', 'overdue'], 
+    default: 'assigned',
+    index: true
+  },
+  dueDate: Date,
+  startedAt: Date,
+  completedAt: Date,
+  progress: { type: Number, default: 0, min: 0, max: 100 }, // Percentage
+  currentQuestionIndex: { type: Number, default: 0 }
+}, { timestamps: true });
+
+const EvaluationAssignment = mongoose.model('EvaluationAssignment', evaluationAssignmentSchema);
+
+// Evaluation Answer Schema - Teacher's answers
+const evaluationAnswerSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  assignmentId: { type: String, required: true, index: true },
+  questionId: { type: String, required: true },
+  answerText: String,
+  selectedOption: String, // For MCQ
+  isCorrect: Boolean, // For MCQ validation
+  mediaUrl: String, // For audio/video/file uploads
+  answeredAt: { type: Date, default: Date.now },
+  autoSaved: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const EvaluationAnswer = mongoose.model('EvaluationAnswer', evaluationAnswerSchema);
+
+// Evaluation Upload Schema - Media uploads (Cloudinary)
+const evaluationUploadSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  assignmentId: { type: String, required: true, index: true },
+  questionId: { type: String, required: true },
+  answerId: String, // Link to answer if applicable
+  fileType: { 
+    type: String, 
+    enum: ['audio', 'video', 'image', 'document'], 
+    required: true 
+  },
+  cloudinaryUrl: { type: String, required: true },
+  cloudinaryPublicId: { type: String, required: true },
+  fileName: String,
+  fileSize: Number,
+  mimeType: String,
+  uploadedBy: { type: String, required: true },
+  uploadedAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const EvaluationUpload = mongoose.model('EvaluationUpload', evaluationUploadSchema);
+
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
   type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request'], required: true },
@@ -5601,6 +5705,478 @@ app.get('/api/health', async (req, res) => {
       message: error.message,
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// ============================================
+// TEACHER EVALUATION SYSTEM API ROUTES
+// ============================================
+
+// Get all evaluations (Super Admin & Admin only)
+app.get('/api/evaluations', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { status } = req.query;
+    const query = status ? { status } : {};
+    const evaluations = await Evaluation.find(query).sort({ createdAt: -1 });
+    res.json(evaluations);
+  } catch (error) {
+    console.error('❌ Error fetching evaluations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single evaluation by ID
+app.get('/api/evaluations/:id', authenticateToken, async (req, res) => {
+  try {
+    const evaluation = await Evaluation.findOne({ id: req.params.id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Teachers can only view if they have an assignment
+    if (req.user.role === 'teacher') {
+      const assignment = await EvaluationAssignment.findOne({
+        evaluationId: req.params.id,
+        teacherId: req.user.userId.toString()
+      });
+      if (!assignment) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json(evaluation);
+  } catch (error) {
+    console.error('❌ Error fetching evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create new evaluation (Super Admin & Admin only)
+app.post('/api/evaluations', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { title, description, questions, evaluationPeriod, autoSave } = req.body;
+    
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const evaluationId = `eval-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    
+    const evaluation = new Evaluation({
+      id: evaluationId,
+      title,
+      description,
+      questions: questions || [],
+      createdBy: req.user.userId.toString(),
+      createdByName: user.name || user.email,
+      evaluationPeriod: evaluationPeriod || {},
+      autoSave: autoSave !== undefined ? autoSave : true
+    });
+
+    await evaluation.save();
+    res.status(201).json(evaluation);
+  } catch (error) {
+    console.error('❌ Error creating evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update evaluation (Super Admin & Admin only)
+app.put('/api/evaluations/:id', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const evaluation = await Evaluation.findOne({ id: req.params.id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    const { title, description, questions, status, evaluationPeriod, autoSave } = req.body;
+    
+    if (title) evaluation.title = title;
+    if (description !== undefined) evaluation.description = description;
+    if (questions) evaluation.questions = questions;
+    if (status) evaluation.status = status;
+    if (evaluationPeriod) evaluation.evaluationPeriod = evaluationPeriod;
+    if (autoSave !== undefined) evaluation.autoSave = autoSave;
+
+    await evaluation.save();
+    res.json(evaluation);
+  } catch (error) {
+    console.error('❌ Error updating evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete evaluation (Super Admin only)
+app.delete('/api/evaluations/:id', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const evaluation = await Evaluation.findOne({ id: req.params.id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Check if there are any assignments
+    const assignments = await EvaluationAssignment.find({ evaluationId: req.params.id });
+    if (assignments.length > 0) {
+      return res.status(400).json({ error: 'Cannot delete evaluation with existing assignments' });
+    }
+
+    await Evaluation.deleteOne({ id: req.params.id });
+    res.json({ message: 'Evaluation deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Assign evaluation to teacher(s) (Super Admin & Admin only)
+app.post('/api/evaluations/:id/assign', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { teacherIds, dueDate } = req.body;
+    if (!teacherIds || !Array.isArray(teacherIds) || teacherIds.length === 0) {
+      return res.status(400).json({ error: 'teacherIds array is required' });
+    }
+
+    const evaluation = await Evaluation.findOne({ id: req.params.id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    const user = await User.findById(req.user.userId);
+    const assignments = [];
+
+    for (const teacherId of teacherIds) {
+      const teacher = await Teacher.findOne({ userId: teacherId });
+      if (!teacher) continue;
+
+      const assignmentId = `assign-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const assignment = new EvaluationAssignment({
+        id: assignmentId,
+        evaluationId: req.params.id,
+        teacherId: teacherId,
+        teacherName: teacher.fullName,
+        assignedBy: req.user.userId.toString(),
+        assignedByName: user.name || user.email,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        status: 'assigned'
+      });
+
+      await assignment.save();
+      assignments.push(assignment);
+    }
+
+    res.status(201).json({ assignments, count: assignments.length });
+  } catch (error) {
+    console.error('❌ Error assigning evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get assignments (filtered by role)
+app.get('/api/evaluation-assignments', authenticateToken, async (req, res) => {
+  try {
+    let query = {};
+
+    if (req.user.role === 'teacher') {
+      query.teacherId = req.user.userId.toString();
+    } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { status, evaluationId } = req.query;
+    if (status) query.status = status;
+    if (evaluationId) query.evaluationId = evaluationId;
+
+    const assignments = await EvaluationAssignment.find(query)
+      .sort({ createdAt: -1 })
+      .populate('evaluationId', 'title description');
+
+    res.json(assignments);
+  } catch (error) {
+    console.error('❌ Error fetching assignments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single assignment
+app.get('/api/evaluation-assignments/:id', authenticateToken, async (req, res) => {
+  try {
+    const assignment = await EvaluationAssignment.findOne({ id: req.params.id });
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    // Teachers can only view their own assignments
+    if (req.user.role === 'teacher' && assignment.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Get evaluation details
+    const evaluation = await Evaluation.findOne({ id: assignment.evaluationId });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Get answers
+    const answers = await EvaluationAnswer.find({ assignmentId: req.params.id });
+
+    res.json({
+      assignment,
+      evaluation,
+      answers
+    });
+  } catch (error) {
+    console.error('❌ Error fetching assignment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Start evaluation (Teacher only)
+app.post('/api/evaluation-assignments/:id/start', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const assignment = await EvaluationAssignment.findOne({ id: req.params.id });
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    if (assignment.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (assignment.status === 'completed') {
+      return res.status(400).json({ error: 'Evaluation already completed' });
+    }
+
+    assignment.status = 'in_progress';
+    assignment.startedAt = new Date();
+    await assignment.save();
+
+    res.json(assignment);
+  } catch (error) {
+    console.error('❌ Error starting evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Submit answer (Teacher only)
+app.post('/api/evaluation-assignments/:id/answers', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const assignment = await EvaluationAssignment.findOne({ id: req.params.id });
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    if (assignment.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { questionId, answerText, selectedOption, mediaUrl, autoSaved } = req.body;
+
+    // Get evaluation to validate MCQ answers
+    const evaluation = await Evaluation.findOne({ id: assignment.evaluationId });
+    const question = evaluation.questions.find(q => q.id === questionId);
+    
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    let isCorrect = null;
+    // All question types (text, audio, video) are MCQ with 4 choices - validate correctness
+    if ((question.questionType === 'text' || question.questionType === 'audio' || question.questionType === 'video') && selectedOption) {
+      isCorrect = selectedOption === question.correctAnswer;
+      
+      // If MCQ is incorrect, don't allow proceeding
+      if (!isCorrect && !autoSaved) {
+        return res.status(400).json({ 
+          error: 'Incorrect answer. Please select the correct option to continue.',
+          isCorrect: false
+        });
+      }
+    }
+
+    // Check if answer already exists
+    let answer = await EvaluationAnswer.findOne({ 
+      assignmentId: req.params.id, 
+      questionId 
+    });
+
+    if (answer) {
+      answer.answerText = answerText || answer.answerText;
+      answer.selectedOption = selectedOption || answer.selectedOption;
+      answer.isCorrect = isCorrect !== null ? isCorrect : answer.isCorrect;
+      answer.mediaUrl = mediaUrl || answer.mediaUrl;
+      answer.autoSaved = autoSaved !== undefined ? autoSaved : answer.autoSaved;
+      answer.answeredAt = new Date();
+    } else {
+      const answerId = `answer-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      answer = new EvaluationAnswer({
+        id: answerId,
+        assignmentId: req.params.id,
+        questionId,
+        answerText,
+        selectedOption,
+        isCorrect,
+        mediaUrl,
+        autoSaved: autoSaved !== undefined ? autoSaved : false
+      });
+    }
+
+    await answer.save();
+
+    // Update assignment progress
+    const totalQuestions = evaluation.questions.length;
+    const answeredQuestions = await EvaluationAnswer.countDocuments({ 
+      assignmentId: req.params.id 
+    });
+    assignment.progress = Math.round((answeredQuestions / totalQuestions) * 100);
+    assignment.currentQuestionIndex = evaluation.questions.findIndex(q => q.id === questionId);
+    await assignment.save();
+
+    res.json({ answer, isCorrect, assignment });
+  } catch (error) {
+    console.error('❌ Error submitting answer:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Complete evaluation (Teacher only)
+app.post('/api/evaluation-assignments/:id/complete', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const assignment = await EvaluationAssignment.findOne({ id: req.params.id });
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    if (assignment.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Verify all required questions are answered
+    const evaluation = await Evaluation.findOne({ id: assignment.evaluationId });
+    const requiredQuestions = evaluation.questions.filter(q => q.isRequired);
+    const answers = await EvaluationAnswer.find({ assignmentId: req.params.id });
+    
+    const answeredQuestionIds = new Set(answers.map(a => a.questionId));
+    const unansweredRequired = requiredQuestions.filter(q => !answeredQuestionIds.has(q.id));
+
+    if (unansweredRequired.length > 0) {
+      return res.status(400).json({ 
+        error: 'Please answer all required questions',
+        unansweredQuestions: unansweredRequired.map(q => q.id)
+      });
+    }
+
+    assignment.status = 'completed';
+    assignment.completedAt = new Date();
+    assignment.progress = 100;
+    await assignment.save();
+
+    res.json(assignment);
+  } catch (error) {
+    console.error('❌ Error completing evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload media (Cloudinary) - Teacher only
+app.post('/api/evaluation-assignments/:id/upload', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const assignment = await EvaluationAssignment.findOne({ id: req.params.id });
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    if (assignment.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Note: Cloudinary upload implementation would go here
+    // For now, return a placeholder
+    res.status(501).json({ error: 'Cloudinary upload not yet implemented' });
+  } catch (error) {
+    console.error('❌ Error uploading media:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get evaluation results (Super Admin & Admin only)
+app.get('/api/evaluation-results', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    const { evaluationId, teacherId, status } = req.query;
+    let query = {};
+
+    if (evaluationId) query.evaluationId = evaluationId;
+    if (teacherId) query.teacherId = teacherId;
+    if (status) query.status = status;
+
+    const assignments = await EvaluationAssignment.find(query)
+      .sort({ completedAt: -1, createdAt: -1 });
+
+    // Get detailed results with answers
+    const results = await Promise.all(assignments.map(async (assignment) => {
+      const evaluation = await Evaluation.findOne({ id: assignment.evaluationId });
+      const answers = await EvaluationAnswer.find({ assignmentId: assignment.id })
+        .sort({ answeredAt: 1 });
+
+      return {
+        assignment,
+        evaluation: evaluation ? {
+          id: evaluation.id,
+          title: evaluation.title,
+          description: evaluation.description
+        } : null,
+        answers,
+        totalQuestions: evaluation ? evaluation.questions.length : 0,
+        answeredQuestions: answers.length
+      };
+    }));
+
+    res.json(results);
+  } catch (error) {
+    console.error('❌ Error fetching results:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -395,3 +395,101 @@ export interface AdminNotification {
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
 }
+
+// ============================================
+// TEACHER EVALUATION SYSTEM TYPES
+// ============================================
+
+export type QuestionType = 'text' | 'audio' | 'video'; // text = text question with exactly 4 MCQ choices
+export type EvaluationStatus = 'draft' | 'active' | 'archived';
+export type AssignmentStatus = 'assigned' | 'in_progress' | 'completed' | 'overdue';
+
+export interface EvaluationQuestion {
+  id: string;
+  questionText: string;
+  questionType: QuestionType;
+  options?: string[]; // For text questions - always exactly 4 choices (MCQ format)
+  correctAnswer?: string; // For text questions - must match one of the 4 options exactly
+  isRequired: boolean;
+  order: number;
+  mediaUrl?: string; // For audio/video questions
+  instructions?: string;
+  points: number;
+}
+
+export interface EvaluationPeriod {
+  startDate?: string | Date;
+  endDate?: string | Date;
+}
+
+export interface Evaluation {
+  id: string;
+  title: string;
+  description?: string;
+  questions: EvaluationQuestion[];
+  createdBy: string;
+  createdByName: string;
+  status: EvaluationStatus;
+  evaluationPeriod?: EvaluationPeriod;
+  autoSave: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface EvaluationAssignment {
+  id: string;
+  evaluationId: string;
+  teacherId: string;
+  teacherName: string;
+  assignedBy: string;
+  assignedByName: string;
+  status: AssignmentStatus;
+  dueDate?: string | Date;
+  startedAt?: string | Date;
+  completedAt?: string | Date;
+  progress: number; // 0-100
+  currentQuestionIndex: number;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface EvaluationAnswer {
+  id: string;
+  assignmentId: string;
+  questionId: string;
+  answerText?: string;
+  selectedOption?: string; // For MCQ
+  isCorrect?: boolean; // For MCQ validation
+  mediaUrl?: string; // For audio/video/file uploads
+  answeredAt: string | Date;
+  autoSaved: boolean;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface EvaluationUpload {
+  id: string;
+  assignmentId: string;
+  questionId: string;
+  answerId?: string;
+  fileType: 'audio' | 'video' | 'image' | 'document';
+  cloudinaryUrl: string;
+  cloudinaryPublicId: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  uploadedBy: string;
+  uploadedAt: string | Date;
+}
+
+export interface EvaluationResult {
+  assignment: EvaluationAssignment;
+  evaluation: {
+    id: string;
+    title: string;
+    description?: string;
+  } | null;
+  answers: EvaluationAnswer[];
+  totalQuestions: number;
+  answeredQuestions: number;
+}

@@ -39,6 +39,8 @@ import AdminRecordings from '../components/AdminRecordings';
 import EmailModule from '../components/EmailModule';
 import StudentTestingModule from '../components/StudentTestingModule';
 import TestResultsPage from '../components/TestResultsPage';
+import TeacherEvaluationManagement from '../components/TeacherEvaluationManagement';
+import EvaluationResultsPage from '../components/EvaluationResultsPage';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -155,6 +157,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showEmailModule, setShowEmailModule] = useState(false);
   const [showTestingModule, setShowTestingModule] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
+  const [showEvaluationManagement, setShowEvaluationManagement] = useState(false);
+  const [showEvaluationResults, setShowEvaluationResults] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -266,6 +270,22 @@ const SuperAdminDashboard: React.FC = () => {
       label: 'Test Results',
       description: 'View, edit, and manage student test results.',
       onClick: () => setShowTestResults(true),
+      badge: null,
+      emphasis: 'neutral',
+    },
+    {
+      id: 'teacher-evaluations',
+      label: 'Teacher Evaluations',
+      description: 'Create and manage teacher evaluation forms.',
+      onClick: () => setShowEvaluationManagement(true),
+      badge: null,
+      emphasis: 'primary',
+    },
+    {
+      id: 'evaluation-results',
+      label: 'Evaluation Results',
+      description: 'View and analyze teacher evaluation results.',
+      onClick: () => setShowEvaluationResults(true),
       badge: null,
       emphasis: 'neutral',
     },
@@ -1279,6 +1299,18 @@ const SuperAdminDashboard: React.FC = () => {
       {showTestResults && (
         <TestResultsPage
           onClose={() => setShowTestResults(false)}
+        />
+      )}
+
+      {showEvaluationManagement && (
+        <TeacherEvaluationManagement
+          onClose={() => setShowEvaluationManagement(false)}
+        />
+      )}
+
+      {showEvaluationResults && (
+        <EvaluationResultsPage
+          onClose={() => setShowEvaluationResults(false)}
         />
       )}
 

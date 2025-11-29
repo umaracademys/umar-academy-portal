@@ -16,6 +16,8 @@ import TeacherProfile from '../components/TeacherProfile';
 import EmailModule from '../components/EmailModule';
 import StudentTestingModule from '../components/StudentTestingModule';
 import TestResultsPage from '../components/TestResultsPage';
+import TeacherEvaluationManagement from '../components/TeacherEvaluationManagement';
+import EvaluationResultsPage from '../components/EvaluationResultsPage';
 import TeacherPayroll from '../components/TeacherPayroll';
 import TeacherPerformance from '../components/TeacherPerformance';
 import TeacherAttendance from '../components/TeacherAttendance';
@@ -28,6 +30,8 @@ const AdminDashboard: React.FC = () => {
   const [showEmailModule, setShowEmailModule] = useState(false);
   const [showTestingModule, setShowTestingModule] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
+  const [showEvaluationManagement, setShowEvaluationManagement] = useState(false);
+  const [showEvaluationResults, setShowEvaluationResults] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   
   // Student Management State
@@ -217,6 +221,32 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+          <button
+            onClick={() => setShowEvaluationManagement(true)}
+            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+          >
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs sm:text-sm font-bold text-primary">Teacher Evaluations</p>
+              </div>
+              <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
+                Create and manage evaluation forms
+              </p>
+            </div>
+          </button>
+          <button
+            onClick={() => setShowEvaluationResults(true)}
+            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+          >
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs sm:text-sm font-bold text-primary">Evaluation Results</p>
+              </div>
+              <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
+                View and analyze results
+              </p>
+            </div>
+          </button>
           <button
             onClick={() => setShowEmailModule(true)}
             className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-transparent bg-accent text-primary hover:bg-accent/90 touch-target"
@@ -479,6 +509,18 @@ const AdminDashboard: React.FC = () => {
         </main>
       </div>
       
+      {showEvaluationManagement && (
+        <TeacherEvaluationManagement
+          onClose={() => setShowEvaluationManagement(false)}
+        />
+      )}
+
+      {showEvaluationResults && (
+        <EvaluationResultsPage
+          onClose={() => setShowEvaluationResults(false)}
+        />
+      )}
+
       <DebugPanel />
 
       {/* Student Management Modals */}

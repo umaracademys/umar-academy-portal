@@ -12,6 +12,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
 import { Ticket } from '../types/ticket';
+import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
@@ -27,6 +28,7 @@ const TeacherDashboard: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [showTicketReview, setShowTicketReview] = useState(false);
+  const [showEvaluationAssignments, setShowEvaluationAssignments] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -395,6 +397,20 @@ const TeacherDashboard: React.FC = () => {
           <div className="lg:col-span-1">
             <Card title="Quick Actions">
               <div className="space-y-3">
+                <button
+                  onClick={() => setShowEvaluationAssignments(true)}
+                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
+                      📝
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">My Evaluations</p>
+                      <p className="text-xs text-gray-600">Complete assigned evaluations</p>
+                    </div>
+                  </div>
+                </button>
                 <button
                   onClick={() => setShowRecitationReview(true)}
                   className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
@@ -996,6 +1012,12 @@ const TeacherDashboard: React.FC = () => {
             </main>
           </div>
         </div>
+      )}
+
+      {showEvaluationAssignments && (
+        <TeacherEvaluationAssignments
+          onClose={() => setShowEvaluationAssignments(false)}
+        />
       )}
       
       <DebugPanel />
