@@ -879,6 +879,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const newUser = await userResponse.json();
 
       // Create student profile with all data (may or may not require auth, but include it for consistency)
+      // Build schedule object - backend may have room field but TypeScript type doesn't
+      const schedulePayload = student.schedule && typeof student.schedule === 'object' ? {
+        days: Array.isArray(student.schedule.days) ? student.schedule.days : [],
+        startTime: student.schedule.startTime || '09:00',
+        endTime: student.schedule.endTime || '12:00',
+        ...((student.schedule as any).room ? { room: (student.schedule as any).room } : {})
+      } : {
+        days: [],
+        startTime: '09:00',
+        endTime: '12:00'
+      };
+
       const studentResponse = await fetchWithTimeout(
         `${API_BASE}/students`,
         {
@@ -892,23 +904,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Include all student profile data
           fullName: student.fullName,
           email: student.email,
-          contact: student.contact || student.phoneNumber || student.contactNumber || '', // Ensure contact is included
+          contact: student.contact || (student as any).phoneNumber || (student as any).contactNumber || '', // Ensure contact is included (handle backend variations)
           parentName: student.parentName || '',
           program: student.program || '',
           tuitionFee: student.tuitionFee || 0,
           registrationAmount: student.registrationAmount || 0,
           assignedTeacher: student.assignedTeacher || '',
           assignedTeacherId: student.assignedTeacher || '',
-          schedule: student.schedule && typeof student.schedule === 'object' ? {
-            days: Array.isArray(student.schedule.days) ? student.schedule.days : [],
-            startTime: student.schedule.startTime || '09:00',
-            endTime: student.schedule.endTime || '12:00',
-            room: student.schedule.room || ''
-          } : {
-            days: [],
-            startTime: '09:00',
-            endTime: '12:00'
-          },
+          schedule: schedulePayload,
           siblings: student.siblings || [],
           status: student.status || 'active',
           avatar: student.avatar || '',
