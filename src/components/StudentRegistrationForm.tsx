@@ -44,22 +44,24 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
   useEffect(() => {
     if (isEdit && student) {
       console.log('🔄 Initializing StudentRegistrationForm with student data:', student);
+      console.log('📞 Contact field:', student.contact || student.phoneNumber || 'NOT FOUND');
+      console.log('📅 Schedule:', student.schedule);
       setFormData({
         fullName: student.fullName || student.name || '',
         parentName: student.parentName || '',
         email: student.email || '',
-        contact: student.contact || student.phoneNumber || '',
+        contact: student.contact || student.phoneNumber || student.contactNumber || '',
         program: student.program || 'Full Time HQ' as ProgramType,
         tuitionFee: typeof student.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : (typeof student.tuitionFee === 'string' && student.tuitionFee ? parseFloat(student.tuitionFee) || 500 : 500),
         registrationAmount: typeof student.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : (typeof student.registrationAmount === 'string' && student.registrationAmount ? parseFloat(student.registrationAmount) || 100 : 100),
         assignedTeacher: student.assignedTeacher || student.assignedTeacherId || '',
-        scheduleDays: (student.schedule?.days || student.schedule?.workingDays || []) as ScheduleDay[],
+        scheduleDays: Array.isArray(student.schedule?.days) ? student.schedule.days : (Array.isArray(student.schedule?.workingDays) ? student.schedule.workingDays : []) as ScheduleDay[],
         startTime: student.schedule?.startTime || student.schedule?.workingHours?.start || '09:00',
         endTime: student.schedule?.endTime || student.schedule?.workingHours?.end || '12:00',
       });
       setSiblings(Array.isArray(student.siblings) ? student.siblings : []);
-    } else if (!isEdit) {
-      // Reset form when switching from edit to add mode
+    } else if (!isEdit && !student) {
+      // Only reset form when explicitly adding a new student (not editing)
       setFormData({
         fullName: '',
         parentName: '',
@@ -75,7 +77,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       });
       setSiblings([]);
     }
-  }, [isEdit, student]);
+  }, [isEdit, student?.id]); // Only re-run when edit mode or student ID changes
 
   const handleDayToggle = (day: ScheduleDay) => {
     setFormData(prev => ({
@@ -109,23 +111,30 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         history: []
       };
 
+    // Ensure contact and schedule are properly set
+    const contactValue = formData.contact?.trim() || '';
+    const scheduleData = {
+      days: Array.isArray(formData.scheduleDays) ? formData.scheduleDays : [],
+      startTime: formData.startTime || '09:00',
+      endTime: formData.endTime || '12:00',
+    };
+
+    console.log('💾 Saving student with contact:', contactValue);
+    console.log('💾 Saving student with schedule:', scheduleData);
+
     const studentData: Student = {
       id: isEdit ? student.id : `STU${Date.now()}`,
       studentRecordId: isEdit ? student.studentRecordId : undefined,
-      fullName: formData.fullName,
-      parentName: formData.parentName,
-      email: formData.email,
-      contact: formData.contact,
+      fullName: formData.fullName.trim(),
+      parentName: formData.parentName.trim(),
+      email: formData.email.trim(),
+      contact: contactValue, // Ensure contact is always included
       program: formData.program,
       siblings: siblings,
       tuitionFee: formData.tuitionFee,
       registrationAmount: formData.registrationAmount,
       assignedTeacher: formData.assignedTeacher,
-      schedule: {
-        days: formData.scheduleDays,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-      },
+      schedule: scheduleData, // Ensure schedule is always properly structured
       assessments: isEdit ? student.assessments || [] : [],
       evaluations: isEdit ? student.evaluations || [] : [],
       enrolledDate: isEdit ? student.enrolledDate : new Date().toISOString().split('T')[0],
@@ -136,8 +145,16 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
     try {
       if (isEdit) {
+        // Ensure contact and schedule are included in update payload
         const { recitationProfile: _profile, studentRecordId: _recordId, ...userUpdatePayload } = studentData;
-        await updateStudent(student.id, userUpdatePayload);
+        // Explicitly ensure contact and schedule are included
+        const updatePayload = {
+          ...userUpdatePayload,
+          contact: contactValue,
+          schedule: scheduleData,
+        };
+        console.log('🔄 Updating student with payload:', updatePayload);
+        await updateStudent(student.id, updatePayload);
         
         // Refresh data to ensure UI updates
         if (refreshData) {
@@ -222,8 +239,18 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                 <input
                   type="tel"
                   required
-                  value={formData.contact}
-                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  value={formData.contact || ''}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setFormData(prev => ({ ...prev, contact: newValue }));
+                  }}
+                  onBlur={(e) => {
+                    // Ensure value persists on blur
+                    const trimmedValue = e.target.value.trim();
+                    if (trimmedValue !== formData.contact) {
+                      setFormData(prev => ({ ...prev, contact: trimmedValue }));
+                    }
+                  }}
                   className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                   placeholder="+1-555-0000"
                 />
@@ -332,8 +359,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                 <input
                   type="time"
                   required
-                  value={formData.startTime}
-                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                  value={formData.startTime || '09:00'}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setFormData(prev => ({ ...prev, startTime: newValue || '09:00' }));
+                  }}
                   className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>
@@ -342,8 +372,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                 <input
                   type="time"
                   required
-                  value={formData.endTime}
-                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                  value={formData.endTime || '12:00'}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    setFormData(prev => ({ ...prev, endTime: newValue || '12:00' }));
+                  }}
                   className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 />
               </div>

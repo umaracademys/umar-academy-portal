@@ -892,17 +892,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Include all student profile data
           fullName: student.fullName,
           email: student.email,
-          contact: student.contact || '',
+          contact: student.contact || student.phoneNumber || student.contactNumber || '', // Ensure contact is included
           parentName: student.parentName || '',
           program: student.program || '',
           tuitionFee: student.tuitionFee || 0,
           registrationAmount: student.registrationAmount || 0,
           assignedTeacher: student.assignedTeacher || '',
           assignedTeacherId: student.assignedTeacher || '',
-          schedule: student.schedule || {
+          schedule: student.schedule && typeof student.schedule === 'object' ? {
+            days: Array.isArray(student.schedule.days) ? student.schedule.days : [],
+            startTime: student.schedule.startTime || '09:00',
+            endTime: student.schedule.endTime || '12:00',
+            room: student.schedule.room || ''
+          } : {
             days: [],
-            startTime: '',
-            endTime: ''
+            startTime: '09:00',
+            endTime: '12:00'
           },
           siblings: student.siblings || [],
           status: student.status || 'active',
