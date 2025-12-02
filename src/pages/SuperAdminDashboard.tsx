@@ -1185,210 +1185,253 @@ const SuperAdminDashboard: React.FC = () => {
 
       {showStudentEnrollment && selectedStudent && (
         <Suspense fallback={<ModalLoadingFallback />}>
-        <StudentEnrollment
-          student={selectedStudent}
-          onClose={() => {
-            setShowStudentEnrollment(false);
-            setSelectedStudent(null);
-          }}
-        />
+          <StudentEnrollment
+            student={selectedStudent}
+            onClose={() => {
+              setShowStudentEnrollment(false);
+              setSelectedStudent(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showStudentPayments && selectedStudent && (
-        <StudentPayments
-          student={selectedStudent}
-          onClose={() => {
-            setShowStudentPayments(false);
-            setSelectedStudent(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentPayments
+            student={selectedStudent}
+            onClose={() => {
+              setShowStudentPayments(false);
+              setSelectedStudent(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showStudentProgress && selectedStudent && (
-        <StudentProgress
-          student={selectedStudent}
-          onClose={() => {
-            setShowStudentProgress(false);
-            setSelectedStudent(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentProgress
+            student={selectedStudent}
+            onClose={() => {
+              setShowStudentProgress(false);
+              setSelectedStudent(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showStudentCommunication && selectedStudent && (
-        <StudentCommunication
-          student={selectedStudent}
-          onClose={() => {
-            setShowStudentCommunication(false);
-            setSelectedStudent(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentCommunication
+            student={selectedStudent}
+            onClose={() => {
+              setShowStudentCommunication(false);
+              setSelectedStudent(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showStudentCredentials && (
-        <StudentCredentials
-          student={selectedStudent || { id: 'general', name: 'System Access Management' }}
-          onClose={() => {
-            setShowStudentCredentials(false);
-            setSelectedStudent(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentCredentials
+            student={selectedStudent || { id: 'general', name: 'System Access Management' }}
+            onClose={() => {
+              setShowStudentCredentials(false);
+              setSelectedStudent(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showStudentAnalytics && (
-        <StudentAnalytics
-          student={selectedStudent || { id: 'general', name: 'System Analytics' }}
-          onClose={() => {
-            setShowStudentAnalytics(false);
-            setSelectedStudent(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentAnalytics
+            student={selectedStudent || { id: 'general', name: 'System Analytics' }}
+            onClose={() => {
+              setShowStudentAnalytics(false);
+              setSelectedStudent(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showStudentBulkOperations && (
-        <StudentBulkOperations
-          onClose={() => setShowStudentBulkOperations(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentBulkOperations
+            onClose={() => setShowStudentBulkOperations(false)}
+          />
+        </Suspense>
       )}
 
-      {/* Teacher Advanced Features Modals */}
+      {/* Teacher Advanced Features Modals - Lazy loaded */}
       {showTeacherCredentials && (
-        <TeacherCredentials
-          teacher={
-            selectedTeacher || {
-              id: 'general',
-              fullName: 'All Teachers',
-              email: 'access@umaracademy.org',
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherCredentials
+            teacher={
+              selectedTeacher || {
+                id: 'general',
+                fullName: 'All Teachers',
+                email: 'access@umaracademy.org',
+              }
             }
-          }
-          onClose={() => {
-            setShowTeacherCredentials(false);
-            setSelectedTeacher(null);
-          }}
-        />
+            onClose={() => {
+              setShowTeacherCredentials(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showTeacherAnalytics && (
-        <TeacherAnalytics
-          teacher={
-            selectedTeacher || {
-              id: 'general',
-              fullName: 'All Teachers',
-              email: 'analytics@umaracademy.org',
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherAnalytics
+            teacher={
+              selectedTeacher || {
+                id: 'general',
+                fullName: 'All Teachers',
+                email: 'analytics@umaracademy.org',
+              }
             }
-          }
-          onClose={() => {
-            setShowTeacherAnalytics(false);
-            setSelectedTeacher(null);
-          }}
-        />
+            onClose={() => {
+              setShowTeacherAnalytics(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showTeacherBulkOperations && (
-        <TeacherBulkOperations
-          onClose={() => setShowTeacherBulkOperations(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherBulkOperations
+            onClose={() => setShowTeacherBulkOperations(false)}
+          />
+        </Suspense>
       )}
 
       {/* Recitation Review Modal */}
       {showRecitationReview && (
-        <AdminRecitationReview
-          onClose={() => setShowRecitationReview(false)}
-          onSuccess={() => {
-            setShowRecitationReview(false);
-            refreshNotifications();
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <AdminRecitationReview
+            onClose={() => setShowRecitationReview(false)}
+            onSuccess={() => {
+              setShowRecitationReview(false);
+              refreshNotifications();
+            }}
+          />
+        </Suspense>
       )}
 
       {/* Ticket Review Modal */}
       {showTicketReview && (
-        <AdminTicketReview
-          onClose={() => setShowTicketReview(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <AdminTicketReview
+            onClose={() => setShowTicketReview(false)}
+          />
+        </Suspense>
       )}
 
       {/* Student Reports Modal */}
       {showStudentReports && (
-        <StudentReports
-          onClose={() => setShowStudentReports(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentReports
+            onClose={() => setShowStudentReports(false)}
+          />
+        </Suspense>
       )}
 
       {/* Notification Center Modal */}
       {showNotificationCenter && (
-        <AdminNotificationCenter
-          onClose={() => setShowNotificationCenter(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <AdminNotificationCenter
+            onClose={() => setShowNotificationCenter(false)}
+          />
+        </Suspense>
       )}
 
       {/* Activity Log Modal */}
       {showActivityLog && (
-        <ActivityLog
-          onClose={() => setShowActivityLog(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <ActivityLog
+            onClose={() => setShowActivityLog(false)}
+          />
+        </Suspense>
       )}
 
       {/* Recordings Library Modal */}
       {showRecordings && (
-        <>
-          {console.log('🎙️ SuperAdminDashboard: Rendering AdminRecordings modal, showRecordings =', showRecordings)}
+        <Suspense fallback={<ModalLoadingFallback />}>
           <AdminRecordings
             onClose={() => {
-              console.log('🔙 Closing Recordings Library');
               setShowRecordings(false);
             }}
           />
-        </>
+        </Suspense>
       )}
 
       {/* Email Module Modal */}
       {showEmailModule && (
-        <EmailModule
-          onClose={() => setShowEmailModule(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <EmailModule
+            onClose={() => setShowEmailModule(false)}
+          />
+        </Suspense>
       )}
 
       {/* Student Testing Module Modal */}
       {showTestingModule && (
-        <StudentTestingModule
-          onClose={() => setShowTestingModule(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentTestingModule
+            onClose={() => setShowTestingModule(false)}
+          />
+        </Suspense>
       )}
 
       {/* Test Results Page Modal */}
       {showTestResults && (
-        <TestResultsPage
-          onClose={() => setShowTestResults(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TestResultsPage
+            onClose={() => setShowTestResults(false)}
+          />
+        </Suspense>
       )}
 
       {showEvaluationManagement && (
-        <TeacherEvaluationManagement
-          onClose={() => setShowEvaluationManagement(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherEvaluationManagement
+            onClose={() => setShowEvaluationManagement(false)}
+          />
+        </Suspense>
       )}
 
       {showEvaluationResults && (
-        <EvaluationResultsPage
-          onClose={() => setShowEvaluationResults(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <EvaluationResultsPage
+            onClose={() => setShowEvaluationResults(false)}
+          />
+        </Suspense>
       )}
 
       {/* Teacher Attendance Form Modal */}
       {showTeacherAttendanceForm && (
-        <TeacherAttendanceForm
-          onClose={() => setShowTeacherAttendanceForm(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherAttendanceForm
+            onClose={() => setShowTeacherAttendanceForm(false)}
+          />
+        </Suspense>
       )}
 
       {/* Teacher Attendance Report Modal */}
       {showTeacherAttendanceReport && (
-        <TeacherAttendanceReport
-          onClose={() => setShowTeacherAttendanceReport(false)}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherAttendanceReport
+            onClose={() => setShowTeacherAttendanceReport(false)}
+          />
+        </Suspense>
       )}
 
-      <DebugPanel />
+      <Suspense fallback={null}>
+        <DebugPanel />
+      </Suspense>
     </div>
   );
 };
