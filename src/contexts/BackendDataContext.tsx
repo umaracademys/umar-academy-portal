@@ -575,6 +575,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           return {
             id: studentRecord._id || studentRecord.id || userId,
             studentRecordId: studentRecord._id || studentRecord.id,
+            userId: userId || user._id || user.id, // Add userId field for StudentCredentials component
             fullName: studentRecord.fullName || studentRecord.name || user.name || user.fullName || 'Unknown',
             email: studentRecord.email || user.email || '',
             phone: studentRecord.contact || studentRecord.phone || user.phone || '',
