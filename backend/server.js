@@ -2227,9 +2227,12 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, async (req, res) => 
         }
 
         const employmentType = teacher.employmentType === 'Full Time' ? 'Full Time' : 'Part Time';
+        
+        // ALWAYS use Teacher document _id for attendance records
+        const teacherDocumentId = teacher._id.toString();
 
         const attendanceRecord = {
-          teacherId: teacher._id.toString() || teacher.teacherId,
+          teacherId: teacherDocumentId, // Always use Teacher._id
           teacherName: teacher.fullName,
           date: date,
           employmentType: employmentType,
