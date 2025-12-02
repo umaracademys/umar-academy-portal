@@ -2143,9 +2143,12 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
     // Determine employment type
     const employmentType = teacher.employmentType === 'Full Time' ? 'Full Time' : 'Part Time';
 
+    // ALWAYS use Teacher document _id (not User._id) for attendance records
+    const teacherDocumentId = teacher._id.toString();
+    
     // Prepare attendance record
     const attendanceRecord = {
-      teacherId: teacher._id.toString() || teacher.teacherId,
+      teacherId: teacherDocumentId, // Always use Teacher._id
       teacherName: teacher.fullName,
       date: attendanceData.date, // YYYY-MM-DD format
       employmentType: employmentType,
@@ -2154,6 +2157,8 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
       paidDays: attendanceData.paidDays || 0,
       isPaid: attendanceData.isPaid || false
     };
+    
+    console.log(`📝 Saving attendance for: ${teacher.fullName} (Teacher._id: ${teacherDocumentId})`);
 
     // Add shift data based on employment type
     if (employmentType === 'Full Time') {
