@@ -66,15 +66,35 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
         setAttendances(data);
 
         // Load stats for each teacher
+        // Use Teacher document _id from attendance records (they already have the correct Teacher._id)
         const teacherIds = [...new Set(data.map(a => a.teacherId))];
         const statsMap: Record<string, TeacherAttendanceStats> = {};
 
         for (const tid of teacherIds) {
           try {
-            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?`;
+            // The teacherId from attendance records should already be Teacher document _id
+            // But let's also try to resolve it if needed
+            let teacherIdForStats = tid;
+            
+            // Try to find the teacher to get the correct Teacher document _id
+            const teacher = teachers.find(t => {
+              const teacherDocId = (t as any).teacherDocumentId || (t as any)._id?.toString();
+              return teacherDocId === tid || t.id === tid;
+            });
+            
+            if (teacher) {
+              // Use Teacher document _id if available
+              teacherIdForStats = (teacher as any).teacherDocumentId || 
+                                 (teacher as any)._id?.toString() || 
+                                 teacher.id;
+            }
+            
+            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${teacherIdForStats}?`;
             const statsParams = viewMode === 'month' 
               ? `month=${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
               : `startDate=${startDate}&endDate=${endDate}`;
+            
+            console.log(`📊 Loading stats for teacher: ${teacherIdForStats}`, statsUrl + statsParams);
             
             const statsResponse = await fetch(statsUrl + statsParams, {
               headers: {
@@ -86,9 +106,12 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
             if (statsResponse.ok) {
               const statsData: TeacherAttendanceStats = await statsResponse.json();
               statsMap[tid] = statsData;
+            } else {
+              const errorData = await statsResponse.json().catch(() => ({}));
+              console.error(`❌ Error loading stats for teacher ${teacherIdForStats}:`, statsResponse.status, errorData);
             }
           } catch (err) {
-            console.error(`Error loading stats for teacher ${tid}:`, err);
+            console.error(`❌ Error loading stats for teacher ${tid}:`, err);
           }
         }
 
@@ -144,7 +167,21 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
     setLoadingDetail(true);
     try {
       const token = localStorage.getItem('umar_academy_token');
-      let url = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/teacher/${teacherId}?`;
+      
+      // Resolve teacherId to Teacher document _id
+      let teacherIdForApi = teacherId;
+      const teacher = teachers.find(t => {
+        const teacherDocId = (t as any).teacherDocumentId || (t as any)._id?.toString();
+        return teacherDocId === teacherId || t.id === teacherId;
+      });
+      
+      if (teacher) {
+        teacherIdForApi = (teacher as any).teacherDocumentId || 
+                         (teacher as any)._id?.toString() || 
+                         teacher.id;
+      }
+      
+      let url = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/teacher/${teacherIdForApi}?`;
 
       if (viewMode === 'month') {
         const [year, month] = selectedMonth.split('-');
@@ -152,6 +189,8 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
       } else {
         url += `startDate=${startDate}&endDate=${endDate}`;
       }
+
+      console.log(`📊 Loading teacher detail for: ${teacherIdForApi}`, url);
 
       const response = await fetch(url, {
         headers: {
@@ -163,9 +202,12 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
       if (response.ok) {
         const data: TeacherAttendance[] = await response.json();
         setTeacherDetailAttendances(data);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(`❌ Error loading teacher detail:`, response.status, errorData);
       }
     } catch (error) {
-      console.error('Error loading teacher detail:', error);
+      console.error('❌ Error loading teacher detail:', error);
     } finally {
       setLoadingDetail(false);
     }
