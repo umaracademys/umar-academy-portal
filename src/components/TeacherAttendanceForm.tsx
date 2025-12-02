@@ -77,7 +77,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       try {
         const token = localStorage.getItem('umar_academy_token');
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?date=${selectedDateState}`,
+          `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?date=${selectedDateState}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -318,7 +318,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       };
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance`,
+        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance`,
         {
           method: 'POST',
           headers: {
@@ -333,7 +333,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
         alert(`✅ Attendance saved successfully for ${teacher.fullName}!`);
         // Reload existing attendance to refresh the form
         const loadResponse = await fetch(
-          `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?date=${selectedDateState}`,
+          `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?date=${selectedDateState}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -427,7 +427,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
     try {
       const token = localStorage.getItem('umar_academy_token');
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/${attendanceId}`,
+        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/${attendanceId}`,
         {
           method: 'DELETE',
           headers: {
@@ -523,7 +523,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       });
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/bulk`,
+        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/bulk`,
         {
           method: 'POST',
           headers: {
