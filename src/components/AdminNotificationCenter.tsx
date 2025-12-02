@@ -374,10 +374,10 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
           notification={selectedRegistrationNotification}
           onClose={() => setSelectedRegistrationNotification(null)}
           onApprove={(notificationId, registrationData) => {
-            // Navigate to students page with registration data to create student
-            navigate('/students', { state: { registrationData, notificationId } });
+            // Student is created directly in the modal
+            // Just close the modal and refresh notifications
             setSelectedRegistrationNotification(null);
-            onClose();
+            refreshNotifications();
           }}
         />
       )}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AdminNotification } from '../types';
+import { AdminNotification, Student } from '../types';
+import { useData } from '../contexts/DataContext';
 
 interface RegistrationRequestModalProps {
   notification: AdminNotification;
@@ -12,8 +13,10 @@ const RegistrationRequestModal: React.FC<RegistrationRequestModalProps> = ({
   onClose,
   onApprove 
 }) => {
+  const { addStudent, refreshData } = useData();
   const [registrationData, setRegistrationData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     // If registrationData is already in notification, use it
@@ -306,13 +309,78 @@ const RegistrationRequestModal: React.FC<RegistrationRequestModalProps> = ({
         <div className="flex justify-end space-x-3 p-6 border-t-2 border-primary bg-gray-50">
           {onApprove && (
             <button
-              onClick={() => {
-                onApprove(notification.id, registrationData);
-                onClose();
+              onClick={async () => {
+                if (!registrationData) return;
+                
+                setIsCreating(true);
+                try {
+                  // Convert registration data to student format
+                  const studentData: Student = {
+                    id: `STU${Date.now()}`,
+                    fullName: registrationData.studentFullName || '',
+                    parentName: registrationData.parentFullName || '',
+                    email: registrationData.parentEmail || '',
+                    contact: registrationData.parentPhone || '',
+                    program: registrationData.program || 'Part Time HQ',
+                    tuitionFee: 500, // Default
+                    registrationAmount: 100, // Default
+                    assignedTeacher: '', // Can be assigned later
+                    schedule: {
+                      days: registrationData.preferredSchedule ? 
+                        registrationData.preferredSchedule.split(',').map((d: string) => d.trim()) : 
+                        [],
+                      startTime: '09:00',
+                      endTime: '12:00'
+                    },
+                    siblings: registrationData.siblings || [],
+                    enrolledDate: new Date().toISOString().split('T')[0],
+                    status: 'active',
+                    avatar: `https://ui-avatars.com/api/?name=${(registrationData.studentFullName || '').replace(' ', '+')}&background=2E4D32&color=fff`,
+                    assessments: [],
+                    evaluations: [],
+                    recitationProfile: {
+                      current: {},
+                      history: []
+                    }
+                  };
+
+                  // Create the student
+                  await addStudent(studentData);
+                  
+                  // Refresh data to show new student in list
+                  await refreshData();
+                  
+                  // Mark notification as read
+                  const token = localStorage.getItem('umar_academy_token');
+                  await fetch(
+                    `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/admin-notifications/${notification.id}/read`,
+                    {
+                      method: 'PUT',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      }
+                    }
+                  );
+
+                  // Call onApprove callback if provided
+                  if (onApprove) {
+                    onApprove(notification.id, registrationData);
+                  }
+                  
+                  alert('✅ Student created successfully! They will appear in the students list.');
+                  onClose();
+                } catch (error) {
+                  console.error('Error creating student:', error);
+                  alert(`❌ Error creating student: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                } finally {
+                  setIsCreating(false);
+                }
               }}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-extrabold shadow-lg"
+              disabled={isCreating || !registrationData}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-extrabold shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              ✓ Create Student from This
+              {isCreating ? 'Creating...' : '✓ Approve & Create Student'}
             </button>
           )}
           <button
