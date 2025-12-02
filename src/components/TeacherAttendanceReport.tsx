@@ -311,15 +311,16 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                   <h3 className="font-extrabold text-primary text-lg mb-4">📊 Late Arrivals Summary</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {Object.entries(lateArrivalCounts)
-                      .sort(([, a], [, b]) => b - a)
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
                       .map(([teacherId, count]) => {
                         const teacher = teachers.find(t => t.id === teacherId);
-                        if (!teacher || count === 0) return null;
+                        const lateCount = count as number;
+                        if (!teacher || lateCount === 0) return null;
                         return (
                           <div key={teacherId} className="bg-white border-2 border-yellow-300 rounded-lg p-3">
                             <p className="font-extrabold text-primary">{teacher.fullName}</p>
                             <p className="text-yellow-700 font-semibold">
-                              {count} {count === 1 ? 'late arrival' : 'late arrivals'}
+                              {lateCount} {lateCount === 1 ? 'late arrival' : 'late arrivals'}
                             </p>
                           </div>
                         );
