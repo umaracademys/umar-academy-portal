@@ -99,23 +99,27 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                 recordsMap[record.teacherId] = {
                   ...record,
                   morningShift: {
-                    ...record.morningShift,
+                    status: (record.morningShift?.status || 'absent') as AttendanceStatus,
                     checkIn: record.morningShift?.checkIn || (record.morningShift?.status === 'present' ? times.morningStart : ''),
-                    checkOut: record.morningShift?.checkOut || (record.morningShift?.status === 'present' ? times.morningEnd : '')
+                    checkOut: record.morningShift?.checkOut || (record.morningShift?.status === 'present' ? times.morningEnd : ''),
+                    notes: record.morningShift?.notes || ''
                   },
                   eveningShift: {
-                    ...record.eveningShift,
+                    status: (record.eveningShift?.status || 'absent') as AttendanceStatus,
                     checkIn: record.eveningShift?.checkIn || (record.eveningShift?.status === 'present' ? times.eveningStart : ''),
-                    checkOut: record.eveningShift?.checkOut || (record.eveningShift?.status === 'present' ? times.eveningEnd : '')
+                    checkOut: record.eveningShift?.checkOut || (record.eveningShift?.status === 'present' ? times.eveningEnd : ''),
+                    notes: record.eveningShift?.notes || ''
                   }
                 };
               } else {
                 recordsMap[record.teacherId] = {
                   ...record,
                   shift: {
-                    ...record.shift,
+                    name: record.shift?.name || teacher.shifts?.[0]?.name || 'Default',
+                    status: (record.shift?.status || 'absent') as AttendanceStatus,
                     checkIn: record.shift?.checkIn || (record.shift?.status === 'present' ? times.startTime : ''),
-                    checkOut: record.shift?.checkOut || (record.shift?.status === 'present' ? times.endTime : '')
+                    checkOut: record.shift?.checkOut || (record.shift?.status === 'present' ? times.endTime : ''),
+                    notes: record.shift?.notes || ''
                   }
                 };
               }
