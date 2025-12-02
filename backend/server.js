@@ -1991,6 +1991,32 @@ app.put('/api/teachers/:id', async (req, res) => {
 // ============================================
 
 // Create or update teacher attendance (upsert - one record per teacher per date)
+// Test endpoint to check if a teacher exists
+app.get('/api/teacher-attendance/test/:teacherId', authenticateToken, async (req, res) => {
+  try {
+    const teacherId = req.params.teacherId;
+    const teacher = await Teacher.findById(teacherId).lean();
+    const allTeachers = await Teacher.find({}).select('_id fullName userId').limit(10).lean();
+    
+    res.json({
+      searchedId: teacherId,
+      found: !!teacher,
+      teacher: teacher ? {
+        _id: teacher._id?.toString(),
+        fullName: teacher.fullName,
+        userId: teacher.userId?.toString()
+      } : null,
+      sampleTeachers: allTeachers.map(t => ({
+        _id: t._id?.toString(),
+        fullName: t.fullName,
+        userId: t.userId?.toString()
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
   try {
     const user = req.user;
