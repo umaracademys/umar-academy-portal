@@ -253,11 +253,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       const token = localStorage.getItem('umar_academy_token');
       const record = attendanceRecords[teacherId] || {};
       const isFullTime = teacher.employmentType === 'Full Time';
-      // Try multiple ways to get the correct teacher ID
-      const teacherIdForApi = (teacher as any)._id?.toString() || 
-                              teacher.id?.toString() || 
-                              (teacher as any).userId?.toString() ||
-                              (teacher as any).teacherId?.toString();
+      // The teacher object from context has id = user._id
+      // But we need the Teacher document's _id for the backend
+      // Priority: teacherDocumentId > _id > id (user._id) > userId
+      const teacherIdForApi = (teacher as any).teacherDocumentId?.toString() ||
+                             (teacher as any)._id?.toString() || 
+                             teacher.id?.toString() || 
+                             (teacher as any).userId?.toString() ||
+                             (teacher as any).teacherId?.toString();
 
       console.log('🔍 Teacher ID lookup:', {
         teacherName: teacher.fullName,
@@ -454,14 +457,17 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
     setIsSubmitting(true);
     try {
       const token = localStorage.getItem('umar_academy_token');
-      const attendances = filteredTeachers.map(teacher => {
-        // Use teacher._id if available, otherwise fall back to teacher.id
-        // The backend will try to find teacher by _id, teacherId, or userId
-        const teacherId = (teacher as any)._id || teacher.id || (teacher as any).userId;
+        const attendances = filteredTeachers.map(teacher => {
+        // Use Teacher document _id if available, otherwise fall back to other IDs
+        // Priority: teacherDocumentId > _id > id (user._id) > userId
+        const teacherId = (teacher as any).teacherDocumentId?.toString() ||
+                         (teacher as any)._id?.toString() || 
+                         teacher.id?.toString() || 
+                         (teacher as any).userId?.toString();
         const record = attendanceRecords[teacher.id] || {};
         const isFullTime = teacher.employmentType === 'Full Time';
 
-        console.log(`📝 Preparing attendance for teacher: ${teacher.fullName}, ID: ${teacherId}, teacher.id: ${teacher.id}`);
+        console.log(`📝 Preparing attendance for teacher: ${teacher.fullName}, ID: ${teacherId}, teacher.id: ${teacher.id}, teacherDocumentId: ${(teacher as any).teacherDocumentId}`);
 
         return {
           teacherId: teacherId,
