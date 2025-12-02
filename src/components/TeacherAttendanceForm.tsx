@@ -3,6 +3,43 @@ import { Teacher, TeacherAttendance, AttendanceStatus } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 
+// Helper function to get teacher shift times (moved outside component for reuse)
+const getTeacherShiftTimes = (teacher: Teacher) => {
+  const isFullTime = teacher.employmentType === 'Full Time';
+  
+  if (isFullTime) {
+    // Get from fullTimeSchedule or schedule or shifts
+    const fullTimeSchedule = (teacher.schedule as any)?.fullTimeSchedule;
+    const morningStart = fullTimeSchedule?.morningShift?.startTime || 
+                        teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('morning'))?.startTime ||
+                        '09:00';
+    const morningEnd = fullTimeSchedule?.morningShift?.endTime || 
+                      teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('morning'))?.endTime ||
+                      '12:00';
+    const eveningStart = fullTimeSchedule?.eveningShift?.startTime || 
+                        teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('evening'))?.startTime ||
+                        '18:00';
+    const eveningEnd = fullTimeSchedule?.eveningShift?.endTime || 
+                      teacher.shifts?.find((s: any) => s.name?.toLowerCase().includes('evening'))?.endTime ||
+                      '21:00';
+    
+    return { morningStart, morningEnd, eveningStart, eveningEnd };
+  } else {
+    // Part Time - get from shifts or schedule
+    const shift = teacher.shifts?.[0];
+    const startTime = shift?.startTime || 
+                     (teacher.schedule as any)?.workingHours?.start || 
+                     (teacher.schedule as any)?.startTime || 
+                     '09:00';
+    const endTime = shift?.endTime || 
+                   (teacher.schedule as any)?.workingHours?.end || 
+                   (teacher.schedule as any)?.endTime || 
+                   '17:00';
+    
+    return { startTime, endTime };
+  }
+};
+
 interface TeacherAttendanceFormProps {
   onClose: () => void;
   selectedDate?: string; // YYYY-MM-DD format
@@ -54,7 +91,37 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
           const isPaidMap: Record<string, boolean> = {};
 
           existingRecords.forEach(record => {
-            recordsMap[record.teacherId] = record;
+            const teacher = teachers.find(t => t.id === record.teacherId);
+            if (teacher) {
+              // Ensure times are set if missing
+              const times = getTeacherShiftTimes(teacher);
+              if (record.employmentType === 'Full Time') {
+                recordsMap[record.teacherId] = {
+                  ...record,
+                  morningShift: {
+                    ...record.morningShift,
+                    checkIn: record.morningShift?.checkIn || (record.morningShift?.status === 'present' ? times.morningStart : ''),
+                    checkOut: record.morningShift?.checkOut || (record.morningShift?.status === 'present' ? times.morningEnd : '')
+                  },
+                  eveningShift: {
+                    ...record.eveningShift,
+                    checkIn: record.eveningShift?.checkIn || (record.eveningShift?.status === 'present' ? times.eveningStart : ''),
+                    checkOut: record.eveningShift?.checkOut || (record.eveningShift?.status === 'present' ? times.eveningEnd : '')
+                  }
+                };
+              } else {
+                recordsMap[record.teacherId] = {
+                  ...record,
+                  shift: {
+                    ...record.shift,
+                    checkIn: record.shift?.checkIn || (record.shift?.status === 'present' ? times.startTime : ''),
+                    checkOut: record.shift?.checkOut || (record.shift?.status === 'present' ? times.endTime : '')
+                  }
+                };
+              }
+            } else {
+              recordsMap[record.teacherId] = record;
+            }
             paidDaysMap[record.teacherId] = record.paidDays || 0;
             isPaidMap[record.teacherId] = record.isPaid || false;
           });
@@ -69,7 +136,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
     };
 
     loadExistingAttendance();
-  }, [selectedDateState]);
+  }, [selectedDateState, teachers]);
 
   const updateAttendance = (teacherId: string, field: string, value: any) => {
     setAttendanceRecords(prev => {
@@ -125,34 +192,37 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
     });
   };
 
+
   const handleBulkAction = (action: 'present' | 'absent') => {
     const newRecords = { ...attendanceRecords };
     filteredTeachers.forEach(teacher => {
       const isFullTime = teacher.employmentType === 'Full Time';
       if (isFullTime) {
+        const times = getTeacherShiftTimes(teacher);
         newRecords[teacher.id] = {
           ...newRecords[teacher.id],
           morningShift: {
             status: action as AttendanceStatus,
-            checkIn: action === 'present' ? '09:00' : '',
-            checkOut: action === 'present' ? '17:00' : '',
+            checkIn: action === 'present' ? times.morningStart : '',
+            checkOut: action === 'present' ? times.morningEnd : '',
             notes: ''
           },
           eveningShift: {
             status: action as AttendanceStatus,
-            checkIn: action === 'present' ? '18:00' : '',
-            checkOut: action === 'present' ? '21:00' : '',
+            checkIn: action === 'present' ? times.eveningStart : '',
+            checkOut: action === 'present' ? times.eveningEnd : '',
             notes: ''
           }
         };
       } else {
+        const times = getTeacherShiftTimes(teacher);
         newRecords[teacher.id] = {
           ...newRecords[teacher.id],
           shift: {
             name: teacher.shifts?.[0]?.name || 'Default',
             status: action as AttendanceStatus,
-            checkIn: action === 'present' ? '09:00' : '',
-            checkOut: action === 'present' ? '17:00' : '',
+            checkIn: action === 'present' ? times.startTime : '',
+            checkOut: action === 'present' ? times.endTime : '',
             notes: ''
           }
         };
@@ -352,7 +422,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Morning Shift */}
                         <div className="border border-primary/30 rounded-lg p-3 bg-white">
-                          <h4 className="font-extrabold text-primary mb-2">Morning Shift</h4>
+                          <h4 className="font-extrabold text-primary mb-2">
+                            Morning Shift
+                            {(() => {
+                              const times = getTeacherShiftTimes(teacher);
+                              return times.morningStart && times.morningEnd ? 
+                                ` (${times.morningStart} - ${times.morningEnd})` : '';
+                            })()}
+                          </h4>
                           <div className="space-y-2">
                             <select
                               value={morningShift.status}
@@ -365,20 +442,26 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                               <option value="half-day">Half Day</option>
                             </select>
                             <div className="grid grid-cols-2 gap-2">
-                              <input
-                                type="time"
-                                value={morningShift.checkIn || ''}
-                                onChange={(e) => updateAttendance(teacher.id, 'morningCheckIn', e.target.value)}
-                                placeholder="Check In"
-                                className="px-2 py-1 border border-primary rounded text-sm"
-                              />
-                              <input
-                                type="time"
-                                value={morningShift.checkOut || ''}
-                                onChange={(e) => updateAttendance(teacher.id, 'morningCheckOut', e.target.value)}
-                                placeholder="Check Out"
-                                className="px-2 py-1 border border-primary rounded text-sm"
-                              />
+                              <div>
+                                <label className="text-xs text-primary/70 mb-1 block">Check In</label>
+                                <input
+                                  type="time"
+                                  value={morningShift.checkIn || getTeacherShiftTimes(teacher).morningStart}
+                                  onChange={(e) => updateAttendance(teacher.id, 'morningCheckIn', e.target.value)}
+                                  placeholder="Check In"
+                                  className="w-full px-2 py-1 border border-primary rounded text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-primary/70 mb-1 block">Check Out</label>
+                                <input
+                                  type="time"
+                                  value={morningShift.checkOut || getTeacherShiftTimes(teacher).morningEnd}
+                                  onChange={(e) => updateAttendance(teacher.id, 'morningCheckOut', e.target.value)}
+                                  placeholder="Check Out"
+                                  className="w-full px-2 py-1 border border-primary rounded text-sm"
+                                />
+                              </div>
                             </div>
                             <textarea
                               value={morningShift.notes || ''}
@@ -392,7 +475,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
 
                         {/* Evening Shift */}
                         <div className="border border-primary/30 rounded-lg p-3 bg-white">
-                          <h4 className="font-extrabold text-primary mb-2">Evening Shift</h4>
+                          <h4 className="font-extrabold text-primary mb-2">
+                            Evening Shift
+                            {(() => {
+                              const times = getTeacherShiftTimes(teacher);
+                              return times.eveningStart && times.eveningEnd ? 
+                                ` (${times.eveningStart} - ${times.eveningEnd})` : '';
+                            })()}
+                          </h4>
                           <div className="space-y-2">
                             <select
                               value={eveningShift.status}
@@ -405,20 +495,26 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                               <option value="half-day">Half Day</option>
                             </select>
                             <div className="grid grid-cols-2 gap-2">
-                              <input
-                                type="time"
-                                value={eveningShift.checkIn || ''}
-                                onChange={(e) => updateAttendance(teacher.id, 'eveningCheckIn', e.target.value)}
-                                placeholder="Check In"
-                                className="px-2 py-1 border border-primary rounded text-sm"
-                              />
-                              <input
-                                type="time"
-                                value={eveningShift.checkOut || ''}
-                                onChange={(e) => updateAttendance(teacher.id, 'eveningCheckOut', e.target.value)}
-                                placeholder="Check Out"
-                                className="px-2 py-1 border border-primary rounded text-sm"
-                              />
+                              <div>
+                                <label className="text-xs text-primary/70 mb-1 block">Check In</label>
+                                <input
+                                  type="time"
+                                  value={eveningShift.checkIn || getTeacherShiftTimes(teacher).eveningStart}
+                                  onChange={(e) => updateAttendance(teacher.id, 'eveningCheckIn', e.target.value)}
+                                  placeholder="Check In"
+                                  className="w-full px-2 py-1 border border-primary rounded text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-primary/70 mb-1 block">Check Out</label>
+                                <input
+                                  type="time"
+                                  value={eveningShift.checkOut || getTeacherShiftTimes(teacher).eveningEnd}
+                                  onChange={(e) => updateAttendance(teacher.id, 'eveningCheckOut', e.target.value)}
+                                  placeholder="Check Out"
+                                  className="w-full px-2 py-1 border border-primary rounded text-sm"
+                                />
+                              </div>
                             </div>
                             <textarea
                               value={eveningShift.notes || ''}
@@ -432,7 +528,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                       </div>
                     ) : (
                       <div className="border border-primary/30 rounded-lg p-3 bg-white">
-                        <h4 className="font-extrabold text-primary mb-2">Shift: {shift.name}</h4>
+                        <h4 className="font-extrabold text-primary mb-2">
+                          Shift: {shift.name}
+                          {(() => {
+                            const times = getTeacherShiftTimes(teacher);
+                            return times.startTime && times.endTime ? 
+                              ` (${times.startTime} - ${times.endTime})` : '';
+                          })()}
+                        </h4>
                         <div className="space-y-2">
                           <select
                             value={shift.status}
@@ -445,20 +548,26 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                             <option value="half-day">Half Day</option>
                           </select>
                           <div className="grid grid-cols-2 gap-2">
-                            <input
-                              type="time"
-                              value={shift.checkIn || ''}
-                              onChange={(e) => updateAttendance(teacher.id, 'shiftCheckIn', e.target.value)}
-                              placeholder="Check In"
-                              className="px-2 py-1 border border-primary rounded text-sm"
-                            />
-                            <input
-                              type="time"
-                              value={shift.checkOut || ''}
-                              onChange={(e) => updateAttendance(teacher.id, 'shiftCheckOut', e.target.value)}
-                              placeholder="Check Out"
-                              className="px-2 py-1 border border-primary rounded text-sm"
-                            />
+                            <div>
+                              <label className="text-xs text-primary/70 mb-1 block">Check In</label>
+                              <input
+                                type="time"
+                                value={shift.checkIn || getTeacherShiftTimes(teacher).startTime}
+                                onChange={(e) => updateAttendance(teacher.id, 'shiftCheckIn', e.target.value)}
+                                placeholder="Check In"
+                                className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-primary/70 mb-1 block">Check Out</label>
+                              <input
+                                type="time"
+                                value={shift.checkOut || getTeacherShiftTimes(teacher).endTime}
+                                onChange={(e) => updateAttendance(teacher.id, 'shiftCheckOut', e.target.value)}
+                                placeholder="Check Out"
+                                className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              />
+                            </div>
                           </div>
                           <textarea
                             value={shift.notes || ''}

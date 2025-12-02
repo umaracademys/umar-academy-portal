@@ -107,6 +107,33 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
     return grouped;
   }, [attendances]);
 
+  // Calculate individual late arrival counts
+  const lateArrivalCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    attendances.forEach(att => {
+      if (!counts[att.teacherId]) {
+        counts[att.teacherId] = 0;
+      }
+      
+      if (att.employmentType === 'Full Time') {
+        // Count morning shift late
+        if (att.morningShift?.status === 'late') {
+          counts[att.teacherId]++;
+        }
+        // Count evening shift late
+        if (att.eveningShift?.status === 'late') {
+          counts[att.teacherId]++;
+        }
+      } else {
+        // Count part time shift late
+        if (att.shift?.status === 'late') {
+          counts[att.teacherId]++;
+        }
+      }
+    });
+    return counts;
+  }, [attendances]);
+
   const getStatusColor = (status: string) => {
     const colors = {
       present: 'bg-green-100 text-green-800',
@@ -251,6 +278,8 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                     const teacherStats = stats[teacherId];
                     if (!teacher) return null;
 
+                    const lateCount = lateArrivalCounts[teacherId] || 0;
+                    
                     return (
                       <div key={teacherId} className="border-2 border-primary rounded-lg p-4 bg-soft-primary">
                         <h3 className="font-extrabold text-primary text-lg mb-2">{teacher.fullName}</h3>
@@ -260,7 +289,9 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                             <p><span className="font-semibold">Total Shifts:</span> {teacherStats.totalShifts}</p>
                             <p><span className="font-semibold">Present:</span> {teacherStats.totalPresent}</p>
                             <p><span className="font-semibold">Absent:</span> {teacherStats.totalAbsent}</p>
-                            <p><span className="font-semibold">Late:</span> {teacherStats.totalLate}</p>
+                            <p className="font-semibold text-yellow-700">
+                              <span className="font-extrabold">Late Arrivals:</span> {lateCount} {lateCount === 1 ? 'time' : 'times'}
+                            </p>
                             <p><span className="font-semibold">Half Day:</span> {teacherStats.totalHalfDay}</p>
                             <p><span className="font-semibold">Paid Days:</span> {teacherStats.totalPaidDays}</p>
                             <p><span className="font-semibold">Present Rate:</span> {teacherStats.presentRate.toFixed(1)}%</p>
@@ -271,6 +302,29 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Late Arrivals Summary */}
+              {Object.keys(lateArrivalCounts).length > 0 && (
+                <div className="border-2 border-yellow-300 rounded-lg p-4 bg-yellow-50">
+                  <h3 className="font-extrabold text-primary text-lg mb-4">📊 Late Arrivals Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Object.entries(lateArrivalCounts)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([teacherId, count]) => {
+                        const teacher = teachers.find(t => t.id === teacherId);
+                        if (!teacher || count === 0) return null;
+                        return (
+                          <div key={teacherId} className="bg-white border-2 border-yellow-300 rounded-lg p-3">
+                            <p className="font-extrabold text-primary">{teacher.fullName}</p>
+                            <p className="text-yellow-700 font-semibold">
+                              {count} {count === 1 ? 'late arrival' : 'late arrivals'}
+                            </p>
+                          </div>
+                        );
+                      })}
+                  </div>
                 </div>
               )}
 
@@ -289,6 +343,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Morning</th>
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Evening</th>
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Shift</th>
+                        <th className="px-4 py-2 text-left text-primary font-extrabold">Check In Times</th>
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Paid Days</th>
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Paid</th>
                       </tr>
@@ -296,48 +351,76 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                     <tbody>
                       {attendances
                         .sort((a, b) => b.date.localeCompare(a.date))
-                        .map((att, idx) => (
-                          <tr key={idx} className="border-b border-primary/20 hover:bg-soft-primary">
-                            <td className="px-4 py-2 text-primary">{formatDate(att.date)}</td>
-                            <td className="px-4 py-2 text-primary font-semibold">{att.teacherName}</td>
-                            <td className="px-4 py-2 text-primary">{att.employmentType}</td>
-                            <td className="px-4 py-2">
-                              {att.morningShift ? (
-                                <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.morningShift.status)}`}>
-                                  {att.morningShift.status}
-                                </span>
-                              ) : (
-                                <span className="text-primary/50">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2">
-                              {att.eveningShift ? (
-                                <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.eveningShift.status)}`}>
-                                  {att.eveningShift.status}
-                                </span>
-                              ) : (
-                                <span className="text-primary/50">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2">
-                              {att.shift ? (
-                                <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.shift.status)}`}>
-                                  {att.shift.status}
-                                </span>
-                              ) : (
-                                <span className="text-primary/50">—</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2 text-primary">{att.paidDays}</td>
-                            <td className="px-4 py-2">
-                              {att.isPaid ? (
-                                <span className="text-green-600 font-semibold">✓</span>
-                              ) : (
-                                <span className="text-red-600 font-semibold">✗</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                        .map((att, idx) => {
+                          // Get check-in times
+                          const morningCheckIn = att.morningShift?.checkIn || '';
+                          const eveningCheckIn = att.eveningShift?.checkIn || '';
+                          const shiftCheckIn = att.shift?.checkIn || '';
+                          const checkInTimes = att.employmentType === 'Full Time' 
+                            ? `${morningCheckIn || '—'} / ${eveningCheckIn || '—'}`
+                            : shiftCheckIn || '—';
+                          
+                          return (
+                            <tr key={idx} className="border-b border-primary/20 hover:bg-soft-primary">
+                              <td className="px-4 py-2 text-primary">{formatDate(att.date)}</td>
+                              <td className="px-4 py-2 text-primary font-semibold">{att.teacherName}</td>
+                              <td className="px-4 py-2 text-primary">{att.employmentType}</td>
+                              <td className="px-4 py-2">
+                                {att.morningShift ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.morningShift.status)}`}>
+                                      {att.morningShift.status}
+                                    </span>
+                                    {att.morningShift.checkIn && (
+                                      <span className="text-xs text-primary/70">{att.morningShift.checkIn}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-primary/50">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2">
+                                {att.eveningShift ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.eveningShift.status)}`}>
+                                      {att.eveningShift.status}
+                                    </span>
+                                    {att.eveningShift.checkIn && (
+                                      <span className="text-xs text-primary/70">{att.eveningShift.checkIn}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-primary/50">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2">
+                                {att.shift ? (
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.shift.status)}`}>
+                                      {att.shift.status}
+                                    </span>
+                                    {att.shift.checkIn && (
+                                      <span className="text-xs text-primary/70">{att.shift.checkIn}</span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-primary/50">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2 text-primary text-sm">
+                                {checkInTimes}
+                              </td>
+                              <td className="px-4 py-2 text-primary">{att.paidDays}</td>
+                              <td className="px-4 py-2">
+                                {att.isPaid ? (
+                                  <span className="text-green-600 font-semibold">✓</span>
+                                ) : (
+                                  <span className="text-red-600 font-semibold">✗</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </tbody>
                   </table>
                 </div>
