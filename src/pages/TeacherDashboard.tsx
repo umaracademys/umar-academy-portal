@@ -13,6 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation } from '../types';
 import { Ticket } from '../types/ticket';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
+import TeacherAttendanceView from '../components/TeacherAttendanceView';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
@@ -29,6 +30,7 @@ const TeacherDashboard: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [showEvaluationAssignments, setShowEvaluationAssignments] = useState(false);
+  const [showMyAttendance, setShowMyAttendance] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -423,6 +425,14 @@ const TeacherDashboard: React.FC = () => {
                   className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
                 >
                   <div className="font-bold text-primary mb-1">View Student Reports</div>
+                </button>
+                <button
+                  onClick={() => setShowMyAttendance(true)}
+                  className="p-4 border-2 border-primary rounded-lg hover:bg-soft-primary transition text-left w-full"
+                >
+                  <div className="text-2xl mb-2">📅</div>
+                  <div className="font-bold text-primary mb-1">My Attendance</div>
+                  <div className="text-sm text-primary/70">View your attendance history and paid days</div>
                   <div className="text-xs text-gray-600">Access comprehensive reports</div>
                 </button>
                 <Link
@@ -1017,6 +1027,14 @@ const TeacherDashboard: React.FC = () => {
       {showEvaluationAssignments && (
         <TeacherEvaluationAssignments
           onClose={() => setShowEvaluationAssignments(false)}
+        />
+      )}
+
+      {/* My Attendance Modal */}
+      {showMyAttendance && currentTeacher && (
+        <TeacherAttendanceView
+          teacherId={currentTeacher.id}
+          onClose={() => setShowMyAttendance(false)}
         />
       )}
       

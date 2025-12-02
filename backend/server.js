@@ -407,6 +407,52 @@ const teacherSchema = new mongoose.Schema({
 
 const Teacher = mongoose.model('Teacher', teacherSchema);
 
+// Teacher Attendance Schema
+const teacherAttendanceSchema = new mongoose.Schema({
+  teacherId: { type: String, required: true, index: true },
+  teacherName: { type: String, required: true },
+  date: { type: String, required: true, index: true }, // YYYY-MM-DD format
+  employmentType: { type: String, enum: ['Full Time', 'Part Time'], required: true },
+  
+  // Full Time shifts (morning and evening)
+  morningShift: {
+    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'absent' },
+    checkIn: String, // HH:mm format
+    checkOut: String, // HH:mm format
+    notes: String
+  },
+  eveningShift: {
+    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'absent' },
+    checkIn: String, // HH:mm format
+    checkOut: String, // HH:mm format
+    notes: String
+  },
+  
+  // Part Time shift
+  shift: {
+    name: String, // Shift name from teacher.shifts
+    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'absent' },
+    checkIn: String, // HH:mm format
+    checkOut: String, // HH:mm format
+    notes: String
+  },
+  
+  // Paid days tracking
+  paidDays: { type: Number, default: 0 },
+  isPaid: { type: Boolean, default: false },
+  
+  // Metadata
+  recordedBy: { type: String, required: true }, // Admin/SuperAdmin ID
+  recordedByName: { type: String, required: true } // Admin/SuperAdmin name
+}, { timestamps: true });
+
+// Compound index for efficient queries - ensure one record per teacher per date
+teacherAttendanceSchema.index({ teacherId: 1, date: 1 }, { unique: true });
+teacherAttendanceSchema.index({ date: 1 });
+teacherAttendanceSchema.index({ teacherId: 1, date: -1 });
+
+const TeacherAttendance = mongoose.model('TeacherAttendance', teacherAttendanceSchema);
+
 // Activity Log Schema - Track security events and user activities
 const activityLogSchema = new mongoose.Schema({
   eventType: { 
@@ -1934,6 +1980,398 @@ app.put('/api/teachers/:id', async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({ error: 'A teacher with that email already exists.' });
     }
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// TEACHER ATTENDANCE ENDPOINTS
+// ============================================
+
+// Create or update teacher attendance (upsert - one record per teacher per date)
+app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only admins and superadmins can record attendance' });
+    }
+
+    const attendanceData = { ...req.body };
+    
+    // Validate required fields
+    if (!attendanceData.teacherId || !attendanceData.date) {
+      return res.status(400).json({ error: 'teacherId and date are required' });
+    }
+
+    // Get teacher info
+    const teacher = await Teacher.findOne({ 
+      $or: [
+        { _id: attendanceData.teacherId },
+        { teacherId: attendanceData.teacherId },
+        { userId: attendanceData.teacherId }
+      ]
+    }).lean();
+
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    // Determine employment type
+    const employmentType = teacher.employmentType === 'Full Time' ? 'Full Time' : 'Part Time';
+
+    // Prepare attendance record
+    const attendanceRecord = {
+      teacherId: teacher._id.toString() || teacher.teacherId,
+      teacherName: teacher.fullName,
+      date: attendanceData.date, // YYYY-MM-DD format
+      employmentType: employmentType,
+      recordedBy: user.id || user._id,
+      recordedByName: user.name || user.email,
+      paidDays: attendanceData.paidDays || 0,
+      isPaid: attendanceData.isPaid || false
+    };
+
+    // Add shift data based on employment type
+    if (employmentType === 'Full Time') {
+      attendanceRecord.morningShift = attendanceData.morningShift || {
+        status: 'absent',
+        checkIn: '',
+        checkOut: '',
+        notes: ''
+      };
+      attendanceRecord.eveningShift = attendanceData.eveningShift || {
+        status: 'absent',
+        checkIn: '',
+        checkOut: '',
+        notes: ''
+      };
+    } else {
+      attendanceRecord.shift = attendanceData.shift || {
+        name: teacher.shifts?.[0]?.name || 'Default',
+        status: 'absent',
+        checkIn: '',
+        checkOut: '',
+        notes: ''
+      };
+    }
+
+    // Upsert attendance record (update if exists, create if not)
+    const attendance = await TeacherAttendance.findOneAndUpdate(
+      { teacherId: attendanceRecord.teacherId, date: attendanceRecord.date },
+      attendanceRecord,
+      { upsert: true, new: true, runValidators: true }
+    );
+
+    res.json(attendance);
+  } catch (error) {
+    console.error('❌ Error creating/updating teacher attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Bulk create/update attendance (for multiple teachers on same date)
+app.post('/api/teacher-attendance/bulk', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only admins and superadmins can record attendance' });
+    }
+
+    const { date, attendances } = req.body; // attendances is array of attendance records
+
+    if (!date || !Array.isArray(attendances)) {
+      return res.status(400).json({ error: 'date and attendances array are required' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const attendanceData of attendances) {
+      try {
+        // Get teacher info
+        const teacher = await Teacher.findOne({ 
+          $or: [
+            { _id: attendanceData.teacherId },
+            { teacherId: attendanceData.teacherId },
+            { userId: attendanceData.teacherId }
+          ]
+        }).lean();
+
+        if (!teacher) {
+          errors.push({ teacherId: attendanceData.teacherId, error: 'Teacher not found' });
+          continue;
+        }
+
+        const employmentType = teacher.employmentType === 'Full Time' ? 'Full Time' : 'Part Time';
+
+        const attendanceRecord = {
+          teacherId: teacher._id.toString() || teacher.teacherId,
+          teacherName: teacher.fullName,
+          date: date,
+          employmentType: employmentType,
+          recordedBy: user.id || user._id,
+          recordedByName: user.name || user.email,
+          paidDays: attendanceData.paidDays || 0,
+          isPaid: attendanceData.isPaid || false
+        };
+
+        if (employmentType === 'Full Time') {
+          attendanceRecord.morningShift = attendanceData.morningShift || {
+            status: 'absent',
+            checkIn: '',
+            checkOut: '',
+            notes: ''
+          };
+          attendanceRecord.eveningShift = attendanceData.eveningShift || {
+            status: 'absent',
+            checkIn: '',
+            checkOut: '',
+            notes: ''
+          };
+        } else {
+          attendanceRecord.shift = attendanceData.shift || {
+            name: teacher.shifts?.[0]?.name || 'Default',
+            status: 'absent',
+            checkIn: '',
+            checkOut: '',
+            notes: ''
+          };
+        }
+
+        const attendance = await TeacherAttendance.findOneAndUpdate(
+          { teacherId: attendanceRecord.teacherId, date: date },
+          attendanceRecord,
+          { upsert: true, new: true, runValidators: true }
+        );
+
+        results.push(attendance);
+      } catch (err) {
+        errors.push({ teacherId: attendanceData.teacherId, error: err.message });
+      }
+    }
+
+    res.json({ success: true, created: results.length, errors: errors, results });
+  } catch (error) {
+    console.error('❌ Error bulk creating/updating teacher attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get attendance records with filters
+app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
+  try {
+    const { teacherId, date, startDate, endDate, month, year, employmentType } = req.query;
+    const user = req.user;
+
+    let query = {};
+
+    // Teachers can only see their own attendance
+    if (user.role === 'teacher') {
+      const teacher = await Teacher.findOne({
+        $or: [
+          { userId: user.id || user._id },
+          { email: user.email }
+        ]
+      }).lean();
+
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher profile not found' });
+      }
+      query.teacherId = teacher._id.toString() || teacher.teacherId;
+    } else if (teacherId) {
+      // Admin/SuperAdmin can filter by teacher
+      query.teacherId = teacherId;
+    }
+
+    if (date) {
+      query.date = date;
+    } else if (startDate && endDate) {
+      query.date = { $gte: startDate, $lte: endDate };
+    } else if (month && year) {
+      // Get all dates in the month
+      const start = `${year}-${String(month).padStart(2, '0')}-01`;
+      const end = `${year}-${String(month).padStart(2, '0')}-31`;
+      query.date = { $gte: start, $lte: end };
+    }
+
+    if (employmentType) {
+      query.employmentType = employmentType;
+    }
+
+    const attendances = await TeacherAttendance.find(query)
+      .sort({ date: -1, teacherName: 1 })
+      .lean();
+
+    res.json(attendances);
+  } catch (error) {
+    console.error('❌ Error fetching teacher attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get attendance for specific teacher
+app.get('/api/teacher-attendance/teacher/:teacherId', authenticateToken, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { startDate, endDate, month, year } = req.query;
+    const user = req.user;
+
+    // Teachers can only see their own attendance
+    if (user.role === 'teacher') {
+      const teacher = await Teacher.findOne({
+        $or: [
+          { userId: user.id || user._id },
+          { email: user.email }
+        ]
+      }).lean();
+
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher profile not found' });
+      }
+      
+      const teacherMongoId = teacher._id.toString() || teacher.teacherId;
+      if (teacherMongoId !== teacherId) {
+        return res.status(403).json({ error: 'You can only view your own attendance' });
+      }
+    }
+
+    let query = { teacherId };
+
+    if (startDate && endDate) {
+      query.date = { $gte: startDate, $lte: endDate };
+    } else if (month && year) {
+      const start = `${year}-${String(month).padStart(2, '0')}-01`;
+      const end = `${year}-${String(month).padStart(2, '0')}-31`;
+      query.date = { $gte: start, $lte: end };
+    }
+
+    const attendances = await TeacherAttendance.find(query)
+      .sort({ date: -1 })
+      .lean();
+
+    res.json(attendances);
+  } catch (error) {
+    console.error('❌ Error fetching teacher attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get attendance statistics for a teacher
+app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { month, year } = req.query;
+    const user = req.user;
+
+    // Teachers can only see their own stats
+    if (user.role === 'teacher') {
+      const teacher = await Teacher.findOne({
+        $or: [
+          { userId: user.id || user._id },
+          { email: user.email }
+        ]
+      }).lean();
+
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher profile not found' });
+      }
+      
+      const teacherMongoId = teacher._id.toString() || teacher.teacherId;
+      if (teacherMongoId !== teacherId) {
+        return res.status(403).json({ error: 'You can only view your own statistics' });
+      }
+    }
+
+    let query = { teacherId };
+
+    if (month && year) {
+      const start = `${year}-${String(month).padStart(2, '0')}-01`;
+      const end = `${year}-${String(month).padStart(2, '0')}-31`;
+      query.date = { $gte: start, $lte: end };
+    }
+
+    const attendances = await TeacherAttendance.find(query).lean();
+    const teacher = await Teacher.findOne({
+      $or: [
+        { _id: teacherId },
+        { teacherId: teacherId },
+        { userId: teacherId }
+      ]
+    }).lean();
+
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const isFullTime = teacher.employmentType === 'Full Time';
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalLate = 0;
+    let totalHalfDay = 0;
+    let totalPaidDays = 0;
+
+    attendances.forEach(att => {
+      if (isFullTime) {
+        // Count morning shift
+        if (att.morningShift?.status === 'present') totalPresent++;
+        else if (att.morningShift?.status === 'absent') totalAbsent++;
+        else if (att.morningShift?.status === 'late') totalLate++;
+        else if (att.morningShift?.status === 'half-day') totalHalfDay++;
+
+        // Count evening shift
+        if (att.eveningShift?.status === 'present') totalPresent++;
+        else if (att.eveningShift?.status === 'absent') totalAbsent++;
+        else if (att.eveningShift?.status === 'late') totalLate++;
+        else if (att.eveningShift?.status === 'half-day') totalHalfDay++;
+      } else {
+        if (att.shift?.status === 'present') totalPresent++;
+        else if (att.shift?.status === 'absent') totalAbsent++;
+        else if (att.shift?.status === 'late') totalLate++;
+        else if (att.shift?.status === 'half-day') totalHalfDay++;
+      }
+
+      totalPaidDays += att.paidDays || 0;
+    });
+
+    const totalShifts = isFullTime ? attendances.length * 2 : attendances.length;
+    const presentRate = totalShifts > 0 ? (totalPresent / totalShifts) * 100 : 0;
+
+    res.json({
+      teacherId,
+      teacherName: teacher.fullName,
+      employmentType: teacher.employmentType,
+      period: month && year ? `${year}-${String(month).padStart(2, '0')}` : 'all',
+      totalRecords: attendances.length,
+      totalShifts,
+      totalPresent,
+      totalAbsent,
+      totalLate,
+      totalHalfDay,
+      totalPaidDays,
+      presentRate: Math.round(presentRate * 100) / 100
+    });
+  } catch (error) {
+    console.error('❌ Error fetching teacher attendance statistics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete attendance record
+app.delete('/api/teacher-attendance/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only admins and superadmins can delete attendance' });
+    }
+
+    const attendance = await TeacherAttendance.findByIdAndDelete(req.params.id);
+    if (!attendance) {
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+
+    res.json({ message: 'Attendance record deleted successfully', attendance });
+  } catch (error) {
+    console.error('❌ Error deleting teacher attendance:', error);
     res.status(500).json({ error: error.message });
   }
 });

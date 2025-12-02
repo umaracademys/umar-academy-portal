@@ -256,6 +256,63 @@ export interface Admin {
   avatar?: string;
 }
 
+// Teacher Attendance Types
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'half-day';
+
+export interface ShiftAttendance {
+  status: AttendanceStatus;
+  checkIn?: string; // HH:mm format
+  checkOut?: string; // HH:mm format
+  notes?: string;
+}
+
+export interface TeacherAttendance {
+  id?: string;
+  _id?: string;
+  teacherId: string;
+  teacherName: string;
+  date: string; // YYYY-MM-DD format
+  employmentType: 'Full Time' | 'Part Time';
+  
+  // For Full Time teachers (2 shifts)
+  morningShift?: ShiftAttendance;
+  eveningShift?: ShiftAttendance;
+  
+  // For Part Time teachers (1 shift)
+  shift?: {
+    name: string;
+    status: AttendanceStatus;
+    checkIn?: string;
+    checkOut?: string;
+    notes?: string;
+  };
+  
+  // Paid days tracking
+  paidDays: number;
+  isPaid: boolean;
+  
+  // Metadata
+  recordedBy: string;
+  recordedByName: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+}
+
+export interface TeacherAttendanceStats {
+  teacherId: string;
+  teacherName: string;
+  employmentType: 'Full Time' | 'Part Time';
+  period: string;
+  totalRecords: number;
+  totalShifts: number;
+  totalPresent: number;
+  totalAbsent: number;
+  totalLate: number;
+  totalHalfDay: number;
+  totalPaidDays: number;
+  presentRate: number;
+}
+
 export interface Course {
   id: string;
   name: string;

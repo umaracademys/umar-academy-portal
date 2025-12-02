@@ -41,6 +41,8 @@ import StudentTestingModule from '../components/StudentTestingModule';
 import TestResultsPage from '../components/TestResultsPage';
 import TeacherEvaluationManagement from '../components/TeacherEvaluationManagement';
 import EvaluationResultsPage from '../components/EvaluationResultsPage';
+import TeacherAttendanceForm from '../components/TeacherAttendanceForm';
+import TeacherAttendanceReport from '../components/TeacherAttendanceReport';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -159,6 +161,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTestResults, setShowTestResults] = useState(false);
   const [showEvaluationManagement, setShowEvaluationManagement] = useState(false);
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
+  const [showTeacherAttendanceForm, setShowTeacherAttendanceForm] = useState(false);
+  const [showTeacherAttendanceReport, setShowTeacherAttendanceReport] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -219,6 +223,22 @@ const SuperAdminDashboard: React.FC = () => {
       label: 'Student Reports',
       description: 'View and manage student assignment history by program.',
       onClick: () => setShowStudentReports(true),
+      badge: null,
+      emphasis: 'neutral',
+    },
+    {
+      id: 'teacher-attendance',
+      label: 'Take Teacher Attendance',
+      description: 'Record attendance for teachers (Full Time & Part Time).',
+      onClick: () => setShowTeacherAttendanceForm(true),
+      badge: null,
+      emphasis: 'primary',
+    },
+    {
+      id: 'teacher-attendance-report',
+      label: 'Teacher Attendance Report',
+      description: 'View attendance history, statistics, and paid days.',
+      onClick: () => setShowTeacherAttendanceReport(true),
       badge: null,
       emphasis: 'neutral',
     },
@@ -1311,6 +1331,20 @@ const SuperAdminDashboard: React.FC = () => {
       {showEvaluationResults && (
         <EvaluationResultsPage
           onClose={() => setShowEvaluationResults(false)}
+        />
+      )}
+
+      {/* Teacher Attendance Form Modal */}
+      {showTeacherAttendanceForm && (
+        <TeacherAttendanceForm
+          onClose={() => setShowTeacherAttendanceForm(false)}
+        />
+      )}
+
+      {/* Teacher Attendance Report Modal */}
+      {showTeacherAttendanceReport && (
+        <TeacherAttendanceReport
+          onClose={() => setShowTeacherAttendanceReport(false)}
         />
       )}
 
