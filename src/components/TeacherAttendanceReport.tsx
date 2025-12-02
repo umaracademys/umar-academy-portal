@@ -548,8 +548,8 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                                     ✏️ Edit
                                   </button>
                                   <button
-                                    onClick={() => handleDelete(att.id)}
-                                    disabled={deletingAttendanceId === att.id}
+                                    onClick={() => handleDelete((att as any)._id || att.id)}
+                                    disabled={deletingAttendanceId === ((att as any)._id || att.id)}
                                     className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                                     title="Delete attendance"
                                   >
@@ -733,8 +733,8 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                                       ✏️ Edit
                                     </button>
                                     <button
-                                      onClick={() => handleDelete(att.id)}
-                                      disabled={deletingAttendanceId === att.id}
+                                      onClick={() => handleDelete((att as any)._id || att.id)}
+                                      disabled={deletingAttendanceId === ((att as any)._id || att.id)}
                                       className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                                       title="Delete attendance"
                                     >
