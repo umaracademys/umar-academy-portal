@@ -1148,10 +1148,12 @@ app.get('/api/teachers', async (req, res) => {
     const teachers = await Teacher.find({}).populate('userId').lean();
     
     // Convert to plain objects and ensure assignedStudents is always an array
+    // IMPORTANT: Keep _id as ObjectId or string - don't lose it
     const teachersWithArrays = teachers.map(teacher => ({
       ...teacher,
       assignedStudents: Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents : [],
-      _id: teacher._id.toString()
+      _id: teacher._id?.toString() || teacher._id, // Ensure _id is always included as string
+      id: teacher._id?.toString() || teacher._id // Also include as 'id' for compatibility
     }));
     
     // Log assignedStudents arrays for debugging
