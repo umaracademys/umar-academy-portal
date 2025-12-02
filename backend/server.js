@@ -2003,17 +2003,47 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'teacherId and date are required' });
     }
 
-    // Get teacher info
-    const teacher = await Teacher.findOne({ 
-      $or: [
-        { _id: attendanceData.teacherId },
-        { teacherId: attendanceData.teacherId },
-        { userId: attendanceData.teacherId }
-      ]
-    }).lean();
+    // Get teacher info - try multiple ways to find the teacher
+    let teacher = null;
+    const teacherIdStr = attendanceData.teacherId?.toString();
+    
+    // Try as ObjectId first
+    if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
+      const objectId = new mongoose.Types.ObjectId(teacherIdStr);
+      teacher = await Teacher.findOne({ 
+        $or: [
+          { _id: objectId },
+          { userId: objectId },
+          { teacherId: teacherIdStr },
+          { _id: teacherIdStr },
+          { userId: teacherIdStr }
+        ]
+      }).lean();
+    }
+    
+    // If not found, try as string
+    if (!teacher) {
+      teacher = await Teacher.findOne({ 
+        $or: [
+          { _id: teacherIdStr },
+          { teacherId: teacherIdStr },
+          { userId: teacherIdStr },
+          { email: teacherIdStr } // Sometimes email might be used
+        ]
+      }).lean();
+    }
 
     if (!teacher) {
-      return res.status(404).json({ error: 'Teacher not found' });
+      console.error('❌ Teacher not found for ID:', attendanceData.teacherId);
+      // Log available teachers for debugging
+      const sampleTeachers = await Teacher.find({}).limit(5).select('_id teacherId userId fullName email').lean();
+      console.log('📋 Sample teachers:', sampleTeachers.map(t => ({
+        _id: t._id?.toString(),
+        teacherId: t.teacherId,
+        userId: t.userId?.toString(),
+        name: t.fullName || t.email
+      })));
+      return res.status(404).json({ error: `Teacher not found with ID: ${attendanceData.teacherId}` });
     }
 
     // Determine employment type
@@ -2088,16 +2118,38 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, async (req, res) => 
 
     for (const attendanceData of attendances) {
       try {
-        // Get teacher info
-        const teacher = await Teacher.findOne({ 
-          $or: [
-            { _id: attendanceData.teacherId },
-            { teacherId: attendanceData.teacherId },
-            { userId: attendanceData.teacherId }
-          ]
-        }).lean();
+        // Get teacher info - try multiple ways to find the teacher
+        let teacher = null;
+        const teacherIdStr = attendanceData.teacherId?.toString();
+        
+        // Try as ObjectId first
+        if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
+          const objectId = new mongoose.Types.ObjectId(teacherIdStr);
+          teacher = await Teacher.findOne({ 
+            $or: [
+              { _id: objectId },
+              { userId: objectId },
+              { teacherId: teacherIdStr },
+              { _id: teacherIdStr },
+              { userId: teacherIdStr }
+            ]
+          }).lean();
+        }
+        
+        // If not found, try as string
+        if (!teacher) {
+          teacher = await Teacher.findOne({ 
+            $or: [
+              { _id: teacherIdStr },
+              { teacherId: teacherIdStr },
+              { userId: teacherIdStr },
+              { email: teacherIdStr }
+            ]
+          }).lean();
+        }
 
         if (!teacher) {
+          console.error('❌ Teacher not found in bulk for ID:', attendanceData.teacherId);
           errors.push({ teacherId: attendanceData.teacherId, error: 'Teacher not found' });
           continue;
         }

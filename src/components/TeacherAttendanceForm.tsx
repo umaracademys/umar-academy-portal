@@ -253,7 +253,25 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       const token = localStorage.getItem('umar_academy_token');
       const record = attendanceRecords[teacherId] || {};
       const isFullTime = teacher.employmentType === 'Full Time';
-      const teacherIdForApi = (teacher as any)._id || teacher.id || (teacher as any).userId;
+      // Try multiple ways to get the correct teacher ID
+      const teacherIdForApi = (teacher as any)._id?.toString() || 
+                              teacher.id?.toString() || 
+                              (teacher as any).userId?.toString() ||
+                              (teacher as any).teacherId?.toString();
+
+      console.log('🔍 Teacher ID lookup:', {
+        teacherName: teacher.fullName,
+        teacherId: teacher.id,
+        _id: (teacher as any)._id,
+        userId: (teacher as any).userId,
+        teacherIdField: (teacher as any).teacherId,
+        usingForApi: teacherIdForApi
+      });
+
+      if (!teacherIdForApi) {
+        alert('❌ Error: Could not determine teacher ID. Please refresh and try again.');
+        return;
+      }
 
       const attendanceData = {
         teacherId: teacherIdForApi,
