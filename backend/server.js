@@ -2012,18 +2012,26 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
     // Try as ObjectId first (most common case - Teacher._id)
     if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
       const objectId = new mongoose.Types.ObjectId(teacherIdStr);
-      teacher = await Teacher.findOne({ 
-        $or: [
-          { _id: objectId },
-          { userId: objectId },
-          { teacherId: teacherIdStr },
-          { _id: teacherIdStr },
-          { userId: teacherIdStr }
-        ]
-      }).lean();
       
+      // Try direct _id match first (most reliable)
+      teacher = await Teacher.findById(objectId).lean();
       if (teacher) {
-        console.log('✅ Found teacher by ObjectId lookup:', teacher.fullName, 'Teacher._id:', teacher._id?.toString());
+        console.log('✅ Found teacher by direct _id lookup:', teacher.fullName, 'Teacher._id:', teacher._id?.toString());
+      } else {
+        // Try with $or query
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { _id: objectId },
+            { userId: objectId },
+            { teacherId: teacherIdStr },
+            { _id: teacherIdStr },
+            { userId: teacherIdStr }
+          ]
+        }).lean();
+        
+        if (teacher) {
+          console.log('✅ Found teacher by $or lookup:', teacher.fullName, 'Teacher._id:', teacher._id?.toString());
+        }
       }
     }
     
@@ -2070,13 +2078,30 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
 
     if (!teacher) {
       console.error('❌ Teacher not found for ID:', attendanceData.teacherId);
-      // Log available teachers for debugging
-      const sampleTeachers = await Teacher.find({}).limit(10).select('_id teacherId userId fullName email').lean();
-      console.log('📋 Available teachers in database:');
-      sampleTeachers.forEach(t => {
-        console.log(`  - ${t.fullName || 'Unknown'}: _id=${t._id?.toString()}, userId=${t.userId?.toString()}, teacherId=${t.teacherId}`);
+      console.error('🔍 Searched with:', {
+        teacherIdStr,
+        isValidObjectId: mongoose.Types.ObjectId.isValid(teacherIdStr),
+        objectId: mongoose.Types.ObjectId.isValid(teacherIdStr) ? new mongoose.Types.ObjectId(teacherIdStr).toString() : 'N/A'
       });
-      return res.status(404).json({ error: `Teacher not found with ID: ${attendanceData.teacherId}. Check backend logs for available teachers.` });
+      
+      // Log available teachers for debugging
+      const allTeachers = await Teacher.find({}).select('_id teacherId userId fullName email').lean();
+      console.log(`📋 All ${allTeachers.length} teachers in database:`);
+      allTeachers.forEach(t => {
+        console.log(`  - ${t.fullName || 'Unknown'}: _id="${t._id?.toString()}", userId="${t.userId?.toString()}", teacherId="${t.teacherId}"`);
+      });
+      
+      // Check if any teacher has matching _id
+      const matchingById = allTeachers.find(t => t._id?.toString() === teacherIdStr);
+      if (matchingById) {
+        console.log('⚠️ Found teacher by string comparison but not by query:', matchingById.fullName);
+      }
+      
+      return res.status(404).json({ 
+        error: `Teacher not found with ID: ${attendanceData.teacherId}. Check backend logs for available teachers.`,
+        searchedId: teacherIdStr,
+        totalTeachers: allTeachers.length
+      });
     }
 
     // Determine employment type
