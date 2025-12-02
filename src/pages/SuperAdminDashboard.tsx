@@ -1,48 +1,60 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
-import StudentRegistrationForm from '../components/StudentRegistrationForm';
-import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
-import AdminRegistrationForm from '../components/AdminRegistrationForm';
-import PermissionManager from '../components/PermissionManager';
-import DataManager from '../components/DataManager';
-import StudentList from '../components/StudentList';
-import StudentProfile from '../components/StudentProfile';
-import StudentEnrollment from '../components/StudentEnrollment';
-import StudentPayments from '../components/StudentPayments';
-import StudentProgress from '../components/StudentProgress';
-import StudentCommunication from '../components/StudentCommunication';
-import StudentCredentials from '../components/StudentCredentials';
-import StudentAnalytics from '../components/StudentAnalytics';
-import StudentBulkOperations from '../components/StudentBulkOperations';
-import TeacherList from '../components/TeacherList';
-import TeacherProfile from '../components/TeacherProfile';
-import TeacherPayroll from '../components/TeacherPayroll';
-import TeacherPerformance from '../components/TeacherPerformance';
-import TeacherAttendance from '../components/TeacherAttendance';
-import TeacherCommunication from '../components/TeacherCommunication';
-import TeacherCredentials from '../components/TeacherCredentials';
-import TeacherAnalytics from '../components/TeacherAnalytics';
-import TeacherBulkOperations from '../components/TeacherBulkOperations';
-import DebugPanel from '../components/DebugPanel';
-import AdminRecitationReview from '../components/AdminRecitationReview';
-import StudentReports from '../components/StudentReports';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
-import AdminTicketReview from '../components/AdminTicketReview';
-import AdminNotificationCenter from '../components/AdminNotificationCenter';
-import ActivityLog from '../components/ActivityLog';
-import AdminRecordings from '../components/AdminRecordings';
-import EmailModule from '../components/EmailModule';
-import StudentTestingModule from '../components/StudentTestingModule';
-import TestResultsPage from '../components/TestResultsPage';
-import TeacherEvaluationManagement from '../components/TeacherEvaluationManagement';
-import EvaluationResultsPage from '../components/EvaluationResultsPage';
-import TeacherAttendanceForm from '../components/TeacherAttendanceForm';
-import TeacherAttendanceReport from '../components/TeacherAttendanceReport';
+
+// Lazy load heavy components for better performance
+const StudentRegistrationForm = lazy(() => import('../components/StudentRegistrationForm'));
+const TeacherRegistrationForm = lazy(() => import('../components/TeacherRegistrationForm'));
+const AdminRegistrationForm = lazy(() => import('../components/AdminRegistrationForm'));
+const PermissionManager = lazy(() => import('../components/PermissionManager'));
+const DataManager = lazy(() => import('../components/DataManager'));
+const StudentList = lazy(() => import('../components/StudentList'));
+const StudentProfile = lazy(() => import('../components/StudentProfile'));
+const StudentEnrollment = lazy(() => => import('../components/StudentEnrollment'));
+const StudentPayments = lazy(() => import('../components/StudentPayments'));
+const StudentProgress = lazy(() => import('../components/StudentProgress'));
+const StudentCommunication = lazy(() => import('../components/StudentCommunication'));
+const StudentCredentials = lazy(() => import('../components/StudentCredentials'));
+const StudentAnalytics = lazy(() => import('../components/StudentAnalytics'));
+const StudentBulkOperations = lazy(() => import('../components/StudentBulkOperations'));
+const TeacherList = lazy(() => import('../components/TeacherList'));
+const TeacherProfile = lazy(() => import('../components/TeacherProfile'));
+const TeacherPayroll = lazy(() => import('../components/TeacherPayroll'));
+const TeacherPerformance = lazy(() => import('../components/TeacherPerformance'));
+const TeacherAttendance = lazy(() => import('../components/TeacherAttendance'));
+const TeacherCommunication = lazy(() => import('../components/TeacherCommunication'));
+const TeacherCredentials = lazy(() => import('../components/TeacherCredentials'));
+const TeacherAnalytics = lazy(() => import('../components/TeacherAnalytics'));
+const TeacherBulkOperations = lazy(() => import('../components/TeacherBulkOperations'));
+const DebugPanel = lazy(() => import('../components/DebugPanel'));
+const AdminRecitationReview = lazy(() => import('../components/AdminRecitationReview'));
+const StudentReports = lazy(() => import('../components/StudentReports'));
+const AdminTicketReview = lazy(() => import('../components/AdminTicketReview'));
+const AdminNotificationCenter = lazy(() => import('../components/AdminNotificationCenter'));
+const ActivityLog = lazy(() => import('../components/ActivityLog'));
+const AdminRecordings = lazy(() => import('../components/AdminRecordings'));
+const EmailModule = lazy(() => import('../components/EmailModule'));
+const StudentTestingModule = lazy(() => import('../components/StudentTestingModule'));
+const TestResultsPage = lazy(() => import('../components/TestResultsPage'));
+const TeacherEvaluationManagement = lazy(() => import('../components/TeacherEvaluationManagement'));
+const EvaluationResultsPage = lazy(() => import('../components/EvaluationResultsPage'));
+const TeacherAttendanceForm = lazy(() => import('../components/TeacherAttendanceForm'));
+const TeacherAttendanceReport = lazy(() => import('../components/TeacherAttendanceReport'));
+
+// Loading fallback for lazy components
+const ModalLoadingFallback: React.FC = () => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg p-8">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-primary font-semibold">Loading...</p>
+    </div>
+  </div>
+);
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -723,14 +735,15 @@ const SuperAdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* Student List */}
+        {/* Student List - Lazy loaded */}
         <div
           ref={studentDirectoryRef}
           className={`rounded-3xl transition-all duration-500 ${
             highlightDirectory ? 'ring-2 ring-primary ring-offset-2 ring-offset-white shadow-lg shadow-primary/20' : ''
           }`}
         >
-          <StudentList
+          <Suspense fallback={<div className="text-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div></div>}>
+            <StudentList
             onStudentSelect={handleStudentSelect}
             onEditStudent={handleEditStudent}
             onDeleteStudent={handleDeleteStudent}
@@ -745,6 +758,7 @@ const SuperAdminDashboard: React.FC = () => {
             }}
             onBulkOperations={() => setShowStudentBulkOperations(true)}
           />
+          </Suspense>
         </div>
       </div>
     );
@@ -847,8 +861,9 @@ const SuperAdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* Teacher List */}
-        <TeacherList
+        {/* Teacher List - Lazy loaded */}
+        <Suspense fallback={<div className="text-center py-8"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div></div>}>
+          <TeacherList
           onTeacherSelect={handleTeacherSelect}
           onEditTeacher={handleEditTeacher}
           onDeleteTeacher={handleDeleteTeacher}
@@ -863,6 +878,7 @@ const SuperAdminDashboard: React.FC = () => {
           }}
           onBulkOperations={() => setShowTeacherBulkOperations(true)}
         />
+        </Suspense>
       </div>
     );
   };
@@ -1027,27 +1043,43 @@ const SuperAdminDashboard: React.FC = () => {
         </main>
       </div>
 
-      {/* Registration Modals */}
+      {/* Registration Modals - Lazy loaded */}
       {showStudentForm && (
-        <StudentRegistrationForm 
-          onClose={() => setShowStudentForm(false)} 
-          student={selectedStudent}
-          isEdit={!!selectedStudent}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <StudentRegistrationForm 
+            onClose={() => setShowStudentForm(false)} 
+            student={selectedStudent}
+            isEdit={!!selectedStudent}
+          />
+        </Suspense>
       )}
       {showTeacherForm && (
-        <TeacherRegistrationForm 
-          onClose={() => {
-            setShowTeacherForm(false);
-            setSelectedTeacher(null);
-          }}
-          teacher={selectedTeacher}
-          isEdit={!!selectedTeacher}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherRegistrationForm 
+            onClose={() => {
+              setShowTeacherForm(false);
+              setSelectedTeacher(null);
+            }}
+            teacher={selectedTeacher}
+            isEdit={!!selectedTeacher}
+          />
+        </Suspense>
       )}
-      {showAdminForm && <AdminRegistrationForm onClose={() => setShowAdminForm(false)} />}
-      {showPermissionManager && <PermissionManager onClose={() => setShowPermissionManager(false)} />}
-      {showDataManager && <DataManager onClose={() => setShowDataManager(false)} />}
+      {showAdminForm && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <AdminRegistrationForm onClose={() => setShowAdminForm(false)} />
+        </Suspense>
+      )}
+      {showPermissionManager && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <PermissionManager onClose={() => setShowPermissionManager(false)} />
+        </Suspense>
+      )}
+      {showDataManager && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <DataManager onClose={() => setShowDataManager(false)} />
+        </Suspense>
+      )}
 
       {/* Teacher Management Modals */}
       {showTeacherProfile && selectedTeacher && (
@@ -1084,49 +1116,56 @@ const SuperAdminDashboard: React.FC = () => {
 
 
       {showTeacherPayroll && selectedTeacher && (
-        <TeacherPayroll
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherPayroll(false);
-            setSelectedTeacher(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherPayroll
+            teacher={selectedTeacher}
+            onClose={() => {
+              setShowTeacherPayroll(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showTeacherPerformance && selectedTeacher && (
-        <TeacherPerformance
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherPerformance(false);
-            setSelectedTeacher(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherPerformance
+            teacher={selectedTeacher}
+            onClose={() => {
+              setShowTeacherPerformance(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showTeacherAttendance && selectedTeacher && (
-        <TeacherAttendance
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherAttendance(false);
-            setSelectedTeacher(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherAttendance
+            teacher={selectedTeacher}
+            onClose={() => {
+              setShowTeacherAttendance(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {showTeacherCommunication && selectedTeacher && (
-        <TeacherCommunication
-          teacher={selectedTeacher}
-          onClose={() => {
-            setShowTeacherCommunication(false);
-            setSelectedTeacher(null);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherCommunication
+            teacher={selectedTeacher}
+            onClose={() => {
+              setShowTeacherCommunication(false);
+              setSelectedTeacher(null);
+            }}
+          />
+        </Suspense>
       )}
 
-      {/* Student Management Modals */}
+      {/* Student Management Modals - Lazy loaded */}
       {showStudentProfile && selectedStudent && (
-        <>
-          {console.log('🔍 Rendering StudentProfile modal with student:', selectedStudent)}
+        <Suspense fallback={<ModalLoadingFallback />}>
           <StudentProfile
             student={selectedStudent}
             onClose={() => {

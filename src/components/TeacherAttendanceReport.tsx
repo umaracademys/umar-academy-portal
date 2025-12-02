@@ -65,21 +65,17 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
         const data: TeacherAttendance[] = await response.json();
         setAttendances(data);
 
-        // Load stats for each teacher
-        // Attendance records already have teacherId = Teacher document _id (from backend)
+        // OPTIMIZED: Load stats for all teachers in parallel
         const teacherIds = [...new Set(data.map(a => a.teacherId))];
-        const statsMap: Record<string, TeacherAttendanceStats> = {};
-
-        for (const tid of teacherIds) {
+        const statsParams = viewMode === 'month' 
+          ? `month=${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
+          : `startDate=${startDate}&endDate=${endDate}`;
+        
+        // Fetch all stats in parallel
+        const statsPromises = teacherIds.map(async (tid) => {
           try {
-            // The teacherId from attendance records IS the Teacher document _id
-            // Use it directly - backend's findTeacherById will handle it
-            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?`;
-            const statsParams = viewMode === 'month' 
-              ? `month=${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
-              : `startDate=${startDate}&endDate=${endDate}`;
-            
-            const statsResponse = await fetch(statsUrl + statsParams, {
+            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?${statsParams}`;
+            const statsResponse = await fetch(statsUrl, {
               headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -88,16 +84,25 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
 
             if (statsResponse.ok) {
               const statsData: TeacherAttendanceStats = await statsResponse.json();
-              statsMap[tid] = statsData;
+              return { teacherId: tid, stats: statsData };
             } else {
-              // Log error but don't fail the whole report
-              const errorData = await statsResponse.json().catch(() => ({}));
-              console.warn(`⚠️ Could not load stats for teacher ${tid}:`, statsResponse.status, errorData);
+              console.warn(`⚠️ Could not load stats for teacher ${tid}:`, statsResponse.status);
+              return { teacherId: tid, stats: null };
             }
           } catch (err) {
             console.warn(`⚠️ Error loading stats for teacher ${tid}:`, err);
+            return { teacherId: tid, stats: null };
           }
-        }
+        });
+
+        // Wait for all stats to load in parallel
+        const statsResults = await Promise.all(statsPromises);
+        const statsMap: Record<string, TeacherAttendanceStats> = {};
+        statsResults.forEach(({ teacherId, stats }) => {
+          if (stats) {
+            statsMap[teacherId] = stats;
+          }
+        });
 
         setStats(statsMap);
       }
