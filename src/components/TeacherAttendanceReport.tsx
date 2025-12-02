@@ -66,35 +66,18 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
         setAttendances(data);
 
         // Load stats for each teacher
-        // Use Teacher document _id from attendance records (they already have the correct Teacher._id)
+        // Attendance records already have teacherId = Teacher document _id (from backend)
         const teacherIds = [...new Set(data.map(a => a.teacherId))];
         const statsMap: Record<string, TeacherAttendanceStats> = {};
 
         for (const tid of teacherIds) {
           try {
-            // The teacherId from attendance records should already be Teacher document _id
-            // But let's also try to resolve it if needed
-            let teacherIdForStats = tid;
-            
-            // Try to find the teacher to get the correct Teacher document _id
-            const teacher = teachers.find(t => {
-              const teacherDocId = (t as any).teacherDocumentId || (t as any)._id?.toString();
-              return teacherDocId === tid || t.id === tid;
-            });
-            
-            if (teacher) {
-              // Use Teacher document _id if available
-              teacherIdForStats = (teacher as any).teacherDocumentId || 
-                                 (teacher as any)._id?.toString() || 
-                                 teacher.id;
-            }
-            
-            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${teacherIdForStats}?`;
+            // The teacherId from attendance records IS the Teacher document _id
+            // Use it directly - backend's findTeacherById will handle it
+            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?`;
             const statsParams = viewMode === 'month' 
               ? `month=${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
               : `startDate=${startDate}&endDate=${endDate}`;
-            
-            console.log(`📊 Loading stats for teacher: ${teacherIdForStats}`, statsUrl + statsParams);
             
             const statsResponse = await fetch(statsUrl + statsParams, {
               headers: {
@@ -107,11 +90,12 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
               const statsData: TeacherAttendanceStats = await statsResponse.json();
               statsMap[tid] = statsData;
             } else {
+              // Log error but don't fail the whole report
               const errorData = await statsResponse.json().catch(() => ({}));
-              console.error(`❌ Error loading stats for teacher ${teacherIdForStats}:`, statsResponse.status, errorData);
+              console.warn(`⚠️ Could not load stats for teacher ${tid}:`, statsResponse.status, errorData);
             }
           } catch (err) {
-            console.error(`❌ Error loading stats for teacher ${tid}:`, err);
+            console.warn(`⚠️ Error loading stats for teacher ${tid}:`, err);
           }
         }
 
@@ -168,18 +152,19 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
     try {
       const token = localStorage.getItem('umar_academy_token');
       
-      // Resolve teacherId to Teacher document _id
+      // teacherId from groupedByTeacher is already Teacher document _id from attendance records
+      // But if it's from teachers list (clicked card), we need to resolve it
       let teacherIdForApi = teacherId;
-      const teacher = teachers.find(t => {
-        const teacherDocId = (t as any).teacherDocumentId || (t as any)._id?.toString();
-        return teacherDocId === teacherId || t.id === teacherId;
-      });
       
+      // Check if it's a User._id (from teachers list) or Teacher._id (from attendance)
+      const teacher = teachers.find(t => t.id === teacherId);
       if (teacher) {
+        // It's a User._id, resolve to Teacher document _id
         teacherIdForApi = (teacher as any).teacherDocumentId || 
                          (teacher as any)._id?.toString() || 
                          teacher.id;
       }
+      // Otherwise, assume it's already Teacher document _id from attendance records
       
       let url = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/teacher/${teacherIdForApi}?`;
 
@@ -189,8 +174,6 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
       } else {
         url += `startDate=${startDate}&endDate=${endDate}`;
       }
-
-      console.log(`📊 Loading teacher detail for: ${teacherIdForApi}`, url);
 
       const response = await fetch(url, {
         headers: {
@@ -204,10 +187,10 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
         setTeacherDetailAttendances(data);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error(`❌ Error loading teacher detail:`, response.status, errorData);
+        console.warn(`⚠️ Could not load teacher detail:`, response.status, errorData);
       }
     } catch (error) {
-      console.error('❌ Error loading teacher detail:', error);
+      console.warn('⚠️ Error loading teacher detail:', error);
     } finally {
       setLoadingDetail(false);
     }
@@ -424,7 +407,12 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
               {Object.keys(groupedByTeacher).length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {Object.entries(groupedByTeacher).map(([teacherId, records]) => {
-                    const teacher = teachers.find(t => t.id === teacherId);
+                    // teacherId from attendance records is Teacher document _id
+                    // Find teacher by matching Teacher document _id
+                    const teacher = teachers.find(t => {
+                      const teacherDocId = (t as any).teacherDocumentId || (t as any)._id?.toString();
+                      return teacherDocId === teacherId || t.id === teacherId;
+                    });
                     const teacherStats = stats[teacherId];
                     if (!teacher) return null;
 
