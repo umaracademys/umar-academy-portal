@@ -255,7 +255,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       const isFullTime = teacher.employmentType === 'Full Time';
       // The teacher object from context has id = user._id
       // But we need the Teacher document's _id for the backend
-      // Priority: teacherDocumentId > _id > id (user._id) > userId
+      // Priority: teacherDocumentId > _id (Teacher document) > id (user._id) > userId
       const teacherIdForApi = (teacher as any).teacherDocumentId?.toString() ||
                              (teacher as any)._id?.toString() || 
                              teacher.id?.toString() || 
@@ -266,15 +266,30 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
         teacherName: teacher.fullName,
         teacherId: teacher.id,
         _id: (teacher as any)._id,
+        teacherDocumentId: (teacher as any).teacherDocumentId,
         userId: (teacher as any).userId,
         teacherIdField: (teacher as any).teacherId,
         usingForApi: teacherIdForApi
       });
 
+      // If we're using user._id (teacher.id), we need to find the Teacher document
+      // The backend can handle this, but let's make sure we're sending the right ID
+      if (teacherIdForApi === teacher.id && (teacher as any)._id && (teacher as any)._id !== teacher.id) {
+        // Use the Teacher document _id instead of User _id
+        const teacherDocId = (teacher as any)._id.toString();
+        console.log('🔄 Using Teacher document _id instead of User _id:', teacherDocId);
+        // We'll use teacherDocId below
+      }
+
       if (!teacherIdForApi) {
         alert('❌ Error: Could not determine teacher ID. Please refresh and try again.');
         return;
       }
+
+      // Use Teacher document _id if available, otherwise use what we found
+      const finalTeacherId = ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) 
+        ? (teacher as any)._id.toString() 
+        : teacherIdForApi;
 
       const attendanceData = {
         teacherId: teacherIdForApi,
