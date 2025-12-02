@@ -451,6 +451,7 @@ export interface AdminNotification {
   read: boolean;
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
+  registrationData?: any; // Full registration form data for student_registration_request
 }
 
 // ============================================

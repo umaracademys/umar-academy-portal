@@ -4220,6 +4220,19 @@ app.get('/api/admin-notifications', async (req, res) => {
   }
 });
 
+// Get single notification by ID
+app.get('/api/admin-notifications/:id', authenticateToken, async (req, res) => {
+  try {
+    const notification = await AdminNotification.findById(req.params.id);
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.put('/api/admin-notifications/:id/read', async (req, res) => {
   try {
     const notification = await AdminNotification.findByIdAndUpdate(

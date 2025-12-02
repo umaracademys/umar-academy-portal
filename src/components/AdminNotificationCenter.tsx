@@ -3,6 +3,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AdminNotification } from '../types';
 import { useNavigate } from 'react-router-dom';
+import RegistrationRequestModal from './RegistrationRequestModal';
 
 interface AdminNotificationCenterProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
   const { user } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'unread' | 'high'>('all');
+  const [selectedRegistrationNotification, setSelectedRegistrationNotification] = useState<AdminNotification | null>(null);
 
   // Refresh notifications when component opens
   useEffect(() => {
@@ -141,9 +143,9 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       navigate('/dashboard?section=teachers');
       onClose();
     } else if (notification.type === 'student_registration_request') {
-      // Navigate to students page to review registration
-      navigate('/students');
-      onClose();
+      // Show registration request modal
+      setSelectedRegistrationNotification(notification);
+      // Don't close the notification center, just show the modal
     } else {
       onClose();
     }
@@ -365,6 +367,20 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
           )}
         </div>
       </div>
+
+      {/* Registration Request Modal */}
+      {selectedRegistrationNotification && (
+        <RegistrationRequestModal
+          notification={selectedRegistrationNotification}
+          onClose={() => setSelectedRegistrationNotification(null)}
+          onApprove={(notificationId, registrationData) => {
+            // Navigate to students page with registration data to create student
+            navigate('/students', { state: { registrationData, notificationId } });
+            setSelectedRegistrationNotification(null);
+            onClose();
+          }}
+        />
+      )}
     </div>
   );
 };
