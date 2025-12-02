@@ -3105,7 +3105,7 @@ const EvaluationUpload = mongoose.model('EvaluationUpload', evaluationUploadSche
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
-  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request'], required: true },
+  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request', 'student_registration_request'], required: true },
   title: { type: String, required: true },
   message: { type: String, required: true },
   recitationReviewId: { type: String },
@@ -3113,7 +3113,8 @@ const adminNotificationSchema = new mongoose.Schema({
   studentId: { type: String },
   teacherId: { type: String }, // For profile_update_request
   read: { type: Boolean, default: false },
-  priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' }
+  priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+  registrationData: { type: mongoose.Schema.Types.Mixed } // Store full registration data for student_registration_request
 }, { timestamps: true });
 
 const AdminNotification = mongoose.model('AdminNotification', adminNotificationSchema);
@@ -4251,6 +4252,55 @@ app.post('/api/admin-notifications', async (req, res) => {
     res.status(201).json(notification);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PUBLIC REGISTRATION ENDPOINT (No Auth Required)
+// ============================================
+app.post('/api/public/student-registration', async (req, res) => {
+  try {
+    const registrationData = req.body;
+
+    // Validate required fields
+    if (!registrationData.studentFullName || !registrationData.parentFullName || 
+        !registrationData.parentEmail || !registrationData.parentPhone) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: studentFullName, parentFullName, parentEmail, and parentPhone are required' 
+      });
+    }
+
+    // Create notification for admin
+    const notification = new AdminNotification({
+      type: 'student_registration_request',
+      title: 'New Student Registration Request',
+      message: `${registrationData.parentFullName} submitted a registration request for ${registrationData.studentFullName}. Program: ${registrationData.program || 'Not specified'}`,
+      studentId: null, // Will be set when student is created
+      priority: 'high',
+      read: false,
+      // Store registration data in a custom field (we'll add this to schema)
+      registrationData: registrationData
+    });
+
+    await notification.save();
+
+    // Log the registration request (you might want to store this in a separate collection)
+    console.log('📝 New student registration request:', {
+      studentName: registrationData.studentFullName,
+      parentName: registrationData.parentFullName,
+      parentEmail: registrationData.parentEmail,
+      program: registrationData.program,
+      timestamp: new Date()
+    });
+
+    res.status(201).json({ 
+      success: true,
+      message: 'Registration request submitted successfully. We will review your application and contact you soon.',
+      notificationId: notification._id
+    });
+  } catch (error) {
+    console.error('❌ Error processing registration request:', error);
+    res.status(500).json({ error: error.message || 'Failed to submit registration request' });
   }
 });
 

@@ -441,7 +441,7 @@ export interface AssignmentTicket {
 
 export interface AdminNotification {
   id: string;
-  type: 'recitation_review_pending' | 'assignment_submitted' | 'student_enrolled' | 'payment_received' | 'profile_update_request';
+  type: 'recitation_review_pending' | 'assignment_submitted' | 'student_enrolled' | 'payment_received' | 'profile_update_request' | 'student_registration_request';
   title: string;
   message: string;
   recitationReviewId?: string; // If type is recitation_review_pending

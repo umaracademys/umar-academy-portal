@@ -140,6 +140,10 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       // Navigate to teacher management
       navigate('/dashboard?section=teachers');
       onClose();
+    } else if (notification.type === 'student_registration_request') {
+      // Navigate to students page to review registration
+      navigate('/students');
+      onClose();
     } else {
       onClose();
     }
@@ -166,6 +170,8 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
         return '💰';
       case 'profile_update_request':
         return '✏️';
+      case 'student_registration_request':
+        return '📋';
       default:
         return '🔔';
     }

@@ -13,6 +13,7 @@ import TeachersPage from './pages/TeachersPage';
 import MushafDemo from './pages/MushafDemo';
 // import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
 import StudentRouter from './modules/student/StudentRouter';
+import ParentRegistrationForm from './pages/ParentRegistrationForm';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -84,6 +85,10 @@ function AppContent() {
       <Route 
         path="/mushaf-demo" 
         element={<MushafDemo />} 
+      />
+      <Route 
+        path="/register" 
+        element={<ParentRegistrationForm />} 
       />
       <Route 
         path="/login" 
