@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import Login from './pages/Login';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import TeacherDashboard from './pages/TeacherDashboard';
-import TeacherProfile from './pages/TeacherProfile';
-import AssignmentManagement from './pages/AssignmentManagement';
-import StudentsPage from './pages/StudentsPage';
-import TeachersPage from './pages/TeachersPage';
-import MushafDemo from './pages/MushafDemo';
-// import StudentDashboard from './pages/StudentDashboard'; // Used in StudentRouter
-import StudentRouter from './modules/student/StudentRouter';
-import ParentRegistrationForm from './pages/ParentRegistrationForm';
+
+// Lazy load heavy components for code-splitting
+const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard'));
+const TeacherProfile = lazy(() => import('./pages/TeacherProfile'));
+const AssignmentManagement = lazy(() => import('./pages/AssignmentManagement'));
+const StudentsPage = lazy(() => import('./pages/StudentsPage'));
+const TeachersPage = lazy(() => import('./pages/TeachersPage'));
+const MushafDemo = lazy(() => import('./pages/MushafDemo'));
+const StudentRouter = lazy(() => import('./modules/student/StudentRouter'));
+const ParentRegistrationForm = lazy(() => import('./pages/ParentRegistrationForm'));
+
+// Loading component for Suspense
+const LoadingFallback: React.FC = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-primary font-semibold">Loading...</p>
+    </div>
+  </div>
+);
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();

@@ -102,9 +102,40 @@ export default defineConfig({
     minify: 'esbuild', // Use esbuild instead of terser (faster and doesn't require extra dependency)
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'mushaf-vendor': ['@umar-academy/mushaf']
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('@umar-academy/mushaf')) {
+              return 'mushaf-vendor';
+            }
+            if (id.includes('sql.js') || id.includes('sqlite3')) {
+              return 'sql-vendor';
+            }
+            // Other node_modules
+            return 'vendor';
+          }
+          
+          // Large components - split into separate chunks
+          if (id.includes('StudentPersonalMushaf') || id.includes('MushafDemo')) {
+            return 'mushaf-components';
+          }
+          if (id.includes('TeacherAttendanceForm') || id.includes('TeacherAttendanceReport')) {
+            return 'attendance-components';
+          }
+          if (id.includes('StudentTestingModule') || id.includes('TestResultsPage')) {
+            return 'testing-components';
+          }
+          if (id.includes('StudentAssignments') || id.includes('AssignmentManagement')) {
+            return 'assignment-components';
+          }
+          
+          // Context providers (usually large)
+          if (id.includes('BackendDataContext')) {
+            return 'context-backend';
+          }
         }
       }
     }
