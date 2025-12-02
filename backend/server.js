@@ -605,18 +605,33 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    // Find user by email and role
-    const user = await User.findOne({ email, role });
-    if (!user) {
+    // Find user by email first (to check if email exists)
+    const userByEmail = await User.findOne({ email });
+    if (!userByEmail) {
       await logActivity('login_failure', {
         req,
         email,
         role,
         status: 'failure',
-        errorMessage: 'User not found'
+        errorMessage: 'Email not found'
       });
       return res.status(401).json({ error: 'Invalid email, password, or role' });
     }
+
+    // Check if role matches
+    if (userByEmail.role !== role) {
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        actualRole: userByEmail.role,
+        status: 'failure',
+        errorMessage: `Role mismatch: expected ${role}, but user has role ${userByEmail.role}`
+      });
+      return res.status(401).json({ error: `Invalid role. This account is registered as ${userByEmail.role}, not ${role}.` });
+    }
+
+    const user = userByEmail;
 
     // Check if login is enabled for this user
     if (user.loginEnabled === false) {
