@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { TeacherAttendance, TeacherAttendanceStats, Teacher } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import TeacherAttendanceForm from './TeacherAttendanceForm';
 
 interface TeacherAttendanceReportProps {
   onClose: () => void;
@@ -28,6 +29,8 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
   const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<string | null>(null);
   const [teacherDetailAttendances, setTeacherDetailAttendances] = useState<TeacherAttendance[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [editingAttendance, setEditingAttendance] = useState<TeacherAttendance | null>(null);
+  const [deletingAttendanceId, setDeletingAttendanceId] = useState<string | null>(null);
 
   // Load attendance data
   useEffect(() => {
@@ -68,7 +71,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
 
         for (const tid of teacherIds) {
           try {
-            const statsUrl = `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?`;
+            const statsUrl = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?`;
             const statsParams = viewMode === 'month' 
               ? `month=${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
               : `startDate=${startDate}&endDate=${endDate}`;
@@ -141,7 +144,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
     setLoadingDetail(true);
     try {
       const token = localStorage.getItem('umar_academy_token');
-      let url = `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/teacher/${teacherId}?`;
+      let url = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/teacher/${teacherId}?`;
 
       if (viewMode === 'month') {
         const [year, month] = selectedMonth.split('-');
@@ -181,6 +184,57 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  const handleEdit = (attendance: TeacherAttendance) => {
+    setEditingAttendance(attendance);
+  };
+
+  const handleDelete = async (attendanceId: string) => {
+    if (!confirm('Are you sure you want to delete this attendance record? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingAttendanceId(attendanceId);
+    try {
+      const token = localStorage.getItem('umar_academy_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/${attendanceId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        // Reload attendance data
+        loadAttendance();
+        if (selectedTeacherForDetail) {
+          loadTeacherDetail(selectedTeacherForDetail);
+        }
+        alert('Attendance record deleted successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Error deleting attendance: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error deleting attendance:', error);
+      alert('Error deleting attendance record. Please try again.');
+    } finally {
+      setDeletingAttendanceId(null);
+    }
+  };
+
+  const handleEditClose = () => {
+    setEditingAttendance(null);
+    // Reload attendance data after edit
+    loadAttendance();
+    if (selectedTeacherForDetail) {
+      loadTeacherDetail(selectedTeacherForDetail);
+    }
   };
 
   const exportToCSV = () => {
@@ -411,6 +465,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Check In Times</th>
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Paid Days</th>
                         <th className="px-4 py-2 text-left text-primary font-extrabold">Paid</th>
+                        <th className="px-4 py-2 text-left text-primary font-extrabold">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -482,6 +537,25 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                                 ) : (
                                   <span className="text-red-600 font-semibold">✗</span>
                                 )}
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleEdit(att)}
+                                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                                    title="Edit attendance"
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(att.id)}
+                                    disabled={deletingAttendanceId === att.id}
+                                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                                    title="Delete attendance"
+                                  >
+                                    {deletingAttendanceId === att.id ? '⏳ Deleting...' : '🗑️ Delete'}
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -583,6 +657,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                             <th className="px-4 py-2 text-left text-primary font-extrabold">Check In/Out</th>
                             <th className="px-4 py-2 text-left text-primary font-extrabold">Paid Days</th>
                             <th className="px-4 py-2 text-left text-primary font-extrabold">Notes</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -648,6 +723,25 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                                 <td className="px-4 py-2 text-primary text-xs max-w-xs truncate">
                                   {att.morningShift?.notes || att.eveningShift?.notes || att.shift?.notes || '—'}
                                 </td>
+                                <td className="px-4 py-2">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleEdit(att)}
+                                      className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-semibold"
+                                      title="Edit attendance"
+                                    >
+                                      ✏️ Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(att.id)}
+                                      disabled={deletingAttendanceId === att.id}
+                                      className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                                      title="Delete attendance"
+                                    >
+                                      {deletingAttendanceId === att.id ? '⏳ Deleting...' : '🗑️ Delete'}
+                                    </button>
+                                  </div>
+                                </td>
                               </tr>
                             ))}
                         </tbody>
@@ -659,6 +753,14 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Attendance Modal */}
+      {editingAttendance && (
+        <TeacherAttendanceForm
+          onClose={handleEditClose}
+          attendanceToEdit={editingAttendance}
+        />
       )}
     </div>
   );

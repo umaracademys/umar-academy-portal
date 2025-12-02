@@ -44,17 +44,19 @@ interface TeacherAttendanceFormProps {
   onClose: () => void;
   selectedDate?: string; // YYYY-MM-DD format
   selectedTeacherId?: string; // Optional, for single teacher
+  attendanceToEdit?: TeacherAttendance; // Optional, for editing existing attendance
 }
 
 const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({ 
   onClose, 
   selectedDate,
-  selectedTeacherId 
+  selectedTeacherId,
+  attendanceToEdit
 }) => {
   const { teachers } = useData();
   const { user } = useAuth();
   const [selectedDateState, setSelectedDateState] = useState(
-    selectedDate || new Date().toISOString().split('T')[0]
+    attendanceToEdit?.date || selectedDate || new Date().toISOString().split('T')[0]
   );
   const [filterEmploymentType, setFilterEmploymentType] = useState<'all' | 'Full Time' | 'Part Time'>('all');
   const [attendanceRecords, setAttendanceRecords] = useState<Record<string, Partial<TeacherAttendance>>>({});
@@ -71,8 +73,39 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
     return empType === filterEmploymentType;
   });
 
-  // Load existing attendance for the selected date
+  // Load existing attendance for the selected date or edit mode
   useEffect(() => {
+    // If editing, pre-fill the form with attendance data
+    if (attendanceToEdit) {
+      const teacher = teachers.find(t => {
+        const tid = (t as any)._id?.toString() || (t as any).teacherDocumentId || t.id;
+        return tid === attendanceToEdit.teacherId;
+      });
+      
+      if (teacher) {
+        const teacherId = (teacher as any)._id?.toString() || (teacher as any).teacherDocumentId || teacher.id;
+        const record: Partial<TeacherAttendance> = {};
+        
+        if (attendanceToEdit.employmentType === 'Full Time') {
+          record.morningShift = attendanceToEdit.morningShift;
+          record.eveningShift = attendanceToEdit.eveningShift;
+        } else {
+          record.shift = attendanceToEdit.shift;
+        }
+        
+        setAttendanceRecords({ [teacherId]: record });
+        setPaidDays({ [teacherId]: attendanceToEdit.paidDays || 0 });
+        setIsPaid({ [teacherId]: attendanceToEdit.isPaid || false });
+        setSelectedDateState(attendanceToEdit.date);
+        
+        // Set selected teacher if provided
+        if (selectedTeacherId) {
+          // Already set
+        }
+      }
+      return; // Don't load from API if editing
+    }
+    
     const loadExistingAttendance = async () => {
       try {
         const token = localStorage.getItem('umar_academy_token');
