@@ -2384,26 +2384,21 @@ app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (re
     const { month, year } = req.query;
     const user = req.user;
 
+    // Resolve teacherId to actual Teacher document _id using helper
+    const teacher = await findTeacherById(teacherId);
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
     // Teachers can only see their own stats
     if (user.role === 'teacher') {
-      const teacher = await Teacher.findOne({
-        $or: [
-          { userId: user.id || user._id },
-          { email: user.email }
-        ]
-      }).lean();
-
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher profile not found' });
-      }
-      
-      const teacherMongoId = teacher._id.toString() || teacher.teacherId;
-      if (teacherMongoId !== teacherId) {
+      const currentUserTeacher = await findTeacherById(user.id || user._id);
+      if (!currentUserTeacher || currentUserTeacher._id.toString() !== teacher._id.toString()) {
         return res.status(403).json({ error: 'You can only view your own statistics' });
       }
     }
 
-    let query = { teacherId };
+    let query = { teacherId: teacher._id.toString() };
 
     if (month && year) {
       const start = `${year}-${String(month).padStart(2, '0')}-01`;
@@ -2412,17 +2407,6 @@ app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (re
     }
 
     const attendances = await TeacherAttendance.find(query).lean();
-    const teacher = await Teacher.findOne({
-      $or: [
-        { _id: teacherId },
-        { teacherId: teacherId },
-        { userId: teacherId }
-      ]
-    }).lean();
-
-    if (!teacher) {
-      return res.status(404).json({ error: 'Teacher not found' });
-    }
 
     const isFullTime = teacher.employmentType === 'Full Time';
     let totalPresent = 0;
