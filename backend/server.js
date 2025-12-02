@@ -2010,32 +2010,36 @@ app.put('/api/teachers/:id', async (req, res) => {
 // TEACHER ATTENDANCE ENDPOINTS
 // ============================================
 
-// Helper function to find teacher by any ID (Teacher._id, User._id, teacherId, email)
+// REDESIGNED: Simple, reliable teacher lookup
+// Always returns Teacher document with _id, or null
 const findTeacherById = async (teacherId) => {
-  if (!teacherId) return null;
+  if (!teacherId) {
+    console.log('❌ No teacherId provided');
+    return null;
+  }
   
-  const teacherIdStr = teacherId.toString();
-  let teacher = null;
+  const teacherIdStr = teacherId.toString().trim();
   
-  // 1. Try direct Teacher._id lookup (most common case)
+  // STEP 1: Try direct Teacher._id lookup (this is what we want 99% of the time)
   if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
     try {
-      teacher = await Teacher.findById(teacherIdStr).lean();
+      const teacher = await Teacher.findById(teacherIdStr).lean();
       if (teacher) {
-        console.log(`✅ Found teacher by _id: ${teacher.fullName} (${teacher._id})`);
+        console.log(`✅ Found teacher by Teacher._id: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${teacher.userId})`);
         return teacher;
       }
     } catch (err) {
-      console.log(`⚠️ Error in Teacher.findById: ${err.message}`);
+      console.log(`⚠️ Error in Teacher.findById(${teacherIdStr}): ${err.message}`);
     }
   }
   
-  // 2. Try finding by userId (if teacherId is a User._id)
+  // STEP 2: If not found, it might be a User._id - find Teacher by userId
   if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
     try {
-      teacher = await Teacher.findOne({ userId: new mongoose.Types.ObjectId(teacherIdStr) }).lean();
+      const teacher = await Teacher.findOne({ userId: new mongoose.Types.ObjectId(teacherIdStr) }).lean();
       if (teacher) {
-        console.log(`✅ Found teacher by userId: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${teacherIdStr})`);
+        console.log(`✅ Found teacher by User._id lookup: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${teacherIdStr})`);
+        console.log(`⚠️ WARNING: Frontend sent User._id instead of Teacher._id. Use Teacher._id: ${teacher._id} for future requests.`);
         return teacher;
       }
     } catch (err) {
@@ -2043,46 +2047,36 @@ const findTeacherById = async (teacherId) => {
     }
   }
   
-  // 3. Try finding by teacherId field
-  try {
-    teacher = await Teacher.findOne({ teacherId: teacherIdStr }).lean();
-    if (teacher) {
-      console.log(`✅ Found teacher by teacherId field: ${teacher.fullName} (${teacher._id})`);
-      return teacher;
-    }
-  } catch (err) {
-    console.log(`⚠️ Error in Teacher.findOne by teacherId: ${err.message}`);
-  }
-  
-  // 4. Try finding by email
-  try {
-    teacher = await Teacher.findOne({ email: teacherIdStr }).lean();
-    if (teacher) {
-      console.log(`✅ Found teacher by email: ${teacher.fullName} (${teacher._id})`);
-      return teacher;
-    }
-  } catch (err) {
-    console.log(`⚠️ Error in Teacher.findOne by email: ${err.message}`);
-  }
-  
-  // 5. If teacherId might be a User._id, find User first, then Teacher by userId
+  // STEP 3: Last resort - try User lookup then Teacher
   if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
     try {
       const User = mongoose.model('User');
       const user = await User.findById(teacherIdStr).lean();
       if (user && user.role === 'teacher') {
-        teacher = await Teacher.findOne({ userId: user._id }).lean();
+        const teacher = await Teacher.findOne({ userId: user._id }).lean();
         if (teacher) {
-          console.log(`✅ Found teacher via User lookup: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${user._id})`);
+          console.log(`✅ Found teacher via User->Teacher lookup: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${user._id})`);
+          console.log(`⚠️ WARNING: Frontend sent User._id instead of Teacher._id. Use Teacher._id: ${teacher._id} for future requests.`);
           return teacher;
         }
       }
     } catch (err) {
-      console.log(`⚠️ Error in User lookup: ${err.message}`);
+      console.log(`⚠️ Error in User->Teacher lookup: ${err.message}`);
     }
   }
   
+  // Not found - log all teachers for debugging
   console.log(`❌ Teacher not found for ID: ${teacherIdStr}`);
+  try {
+    const allTeachers = await Teacher.find({}).select('_id fullName userId email').limit(20).lean();
+    console.log(`📋 Available teachers (showing first 20 of ${allTeachers.length}):`);
+    allTeachers.forEach(t => {
+      console.log(`  - ${t.fullName || 'Unknown'}: Teacher._id="${t._id?.toString()}", User._id="${t.userId?.toString()}", email="${t.email}"`);
+    });
+  } catch (err) {
+    console.log(`⚠️ Error fetching teachers list: ${err.message}`);
+  }
+  
   return null;
 };
 

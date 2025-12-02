@@ -253,41 +253,38 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       const token = localStorage.getItem('umar_academy_token');
       const record = attendanceRecords[teacherId] || {};
       const isFullTime = teacher.employmentType === 'Full Time';
-      // The teacher object from context has id = user._id
-      // But we need the Teacher document's _id for the backend
-      // IMPORTANT: teacher.id = User._id, but we need Teacher._id
-      // Priority: teacherDocumentId > _id (Teacher document, if different from id) > id (user._id) > userId
-      let teacherIdForApi = null;
+      // REDESIGNED: Always use Teacher document _id (not User._id)
+      // The backend expects Teacher._id, not User._id
+      // Priority: teacherDocumentId > _id (if different from id) > error (don't use User._id)
+      let teacherIdForApi: string | null = null;
       
-      // First priority: Teacher document _id (this is what backend needs)
+      // First priority: teacherDocumentId (explicitly set Teacher document _id)
       if ((teacher as any).teacherDocumentId) {
         teacherIdForApi = (teacher as any).teacherDocumentId.toString();
-      } else if ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) {
-        // _id exists and is different from id (user._id), so it's the Teacher document _id
+      } 
+      // Second priority: _id if it's different from id (id = User._id, _id = Teacher._id)
+      else if ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) {
         teacherIdForApi = (teacher as any)._id.toString();
-      } else {
-        // Fallback to other IDs (backend will try to find Teacher by userId)
-        teacherIdForApi = teacher.id?.toString() || 
-                          (teacher as any).userId?.toString() ||
-                          (teacher as any).teacherId?.toString();
       }
-
-      console.log('🔍 Teacher ID lookup:', {
-        teacherName: teacher.fullName,
-        teacherId: teacher.id, // User._id
-        _id: (teacher as any)._id, // Teacher document _id
-        teacherDocumentId: (teacher as any).teacherDocumentId,
-        userId: (teacher as any).userId,
-        usingForApi: teacherIdForApi,
-        note: (teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString() 
-          ? '✅ Using Teacher document _id' 
-          : '⚠️ Using fallback ID (backend will lookup)'
-      });
-
-      if (!teacherIdForApi) {
-        alert('❌ Error: Could not determine teacher ID. Please refresh and try again.');
+      // If we can't find Teacher._id, show error - don't send User._id
+      else {
+        console.error('❌ Cannot find Teacher document _id!', {
+          teacherName: teacher.fullName,
+          teacherId: teacher.id, // User._id
+          _id: (teacher as any)._id,
+          teacherDocumentId: (teacher as any).teacherDocumentId,
+          userId: (teacher as any).userId
+        });
+        alert(`❌ Error: Cannot find Teacher document ID for ${teacher.fullName}. Please refresh the page and try again.`);
         return;
       }
+
+      console.log('✅ Using Teacher document _id:', {
+        teacherName: teacher.fullName,
+        teacherDocumentId: teacherIdForApi,
+        userDocumentId: teacher.id, // For reference
+        note: 'Backend will use Teacher._id to find teacher'
+      });
 
       const attendanceData = {
         teacherId: teacherIdForApi,
