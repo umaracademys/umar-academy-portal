@@ -611,6 +611,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             return {
               id: user._id,
               studentRecordId: user._id,
+              userId: user._id || user.id, // Add userId field (same as id for users with role='student')
               fullName: user.name || user.fullName || 'Unknown',
               email: user.email || '',
               phone: user.phone || '',
