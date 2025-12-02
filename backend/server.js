@@ -2033,6 +2033,26 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
       }).lean();
     }
 
+    // If still not found, the teacherId might be a User._id - find User first, then Teacher by userId
+    if (!teacher && mongoose.Types.ObjectId.isValid(teacherIdStr)) {
+      try {
+        const User = mongoose.model('User');
+        const user = await User.findById(teacherIdStr).lean();
+        if (user) {
+          // Now find Teacher by userId
+          teacher = await Teacher.findOne({
+            $or: [
+              { userId: user._id },
+              { userId: user._id.toString() },
+              { email: user.email }
+            ]
+          }).lean();
+        }
+      } catch (userErr) {
+        // User model might not exist or other error, continue
+      }
+    }
+
     if (!teacher) {
       console.error('❌ Teacher not found for ID:', attendanceData.teacherId);
       // Log available teachers for debugging
@@ -2146,6 +2166,26 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, async (req, res) => 
               { email: teacherIdStr }
             ]
           }).lean();
+        }
+
+        // If still not found, the teacherId might be a User._id - find User first, then Teacher by userId
+        if (!teacher && mongoose.Types.ObjectId.isValid(teacherIdStr)) {
+          try {
+            const User = mongoose.model('User');
+            const user = await User.findById(teacherIdStr).lean();
+            if (user) {
+              // Now find Teacher by userId
+              teacher = await Teacher.findOne({
+                $or: [
+                  { userId: user._id },
+                  { userId: user._id.toString() },
+                  { email: user.email }
+                ]
+              }).lean();
+            }
+          } catch (userErr) {
+            // User model might not exist or other error, continue
+          }
         }
 
         if (!teacher) {
