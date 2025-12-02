@@ -61,6 +61,8 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paidDays, setPaidDays] = useState<Record<string, number>>({});
   const [isPaid, setIsPaid] = useState<Record<string, boolean>>({});
+  const [savingTeacherId, setSavingTeacherId] = useState<string | null>(null);
+  const [deletingTeacherId, setDeletingTeacherId] = useState<string | null>(null);
 
   // Filter teachers based on employment type
   const filteredTeachers = teachers.filter(teacher => {
@@ -91,13 +93,18 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
           const isPaidMap: Record<string, boolean> = {};
 
           existingRecords.forEach(record => {
-            const teacher = teachers.find(t => t.id === record.teacherId);
+            // Try to find teacher by matching teacherId with teacher._id, teacher.id, or teacher.userId
+            const teacher = teachers.find(t => {
+              const tid = (t as any)._id?.toString() || t.id || (t as any).userId?.toString();
+              return tid === record.teacherId || record.teacherId === t.id;
+            });
             if (teacher) {
               // Ensure times are set if missing
               const times = getTeacherShiftTimes(teacher);
               if (record.employmentType === 'Full Time') {
-                recordsMap[record.teacherId] = {
+                recordsMap[teacher.id] = {
                   ...record,
+                  id: (record as any).id || (record as any)._id, // Preserve attendance record ID for delete
                   morningShift: {
                     status: (record.morningShift?.status || 'absent') as AttendanceStatus,
                     checkIn: record.morningShift?.checkIn || (record.morningShift?.status === 'present' ? times.morningStart : ''),
@@ -112,8 +119,9 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                   }
                 };
               } else {
-                recordsMap[record.teacherId] = {
+                recordsMap[teacher.id] = {
                   ...record,
+                  id: (record as any).id || (record as any)._id, // Preserve attendance record ID for delete
                   shift: {
                     name: record.shift?.name || teacher.shifts?.[0]?.name || 'Default',
                     status: (record.shift?.status || 'absent') as AttendanceStatus,
@@ -123,11 +131,9 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                   }
                 };
               }
-            } else {
-              recordsMap[record.teacherId] = record;
+              paidDaysMap[teacher.id] = record.paidDays || 0;
+              isPaidMap[teacher.id] = record.isPaid || false;
             }
-            paidDaysMap[record.teacherId] = record.paidDays || 0;
-            isPaidMap[record.teacherId] = record.isPaid || false;
           });
 
           setAttendanceRecords(recordsMap);
@@ -233,6 +239,195 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
       }
     });
     setAttendanceRecords(newRecords);
+  };
+
+  // Save individual teacher attendance
+  const handleSaveIndividual = async (teacherId: string) => {
+    if (!user) return;
+
+    const teacher = teachers.find(t => t.id === teacherId);
+    if (!teacher) return;
+
+    setSavingTeacherId(teacherId);
+    try {
+      const token = localStorage.getItem('umar_academy_token');
+      const record = attendanceRecords[teacherId] || {};
+      const isFullTime = teacher.employmentType === 'Full Time';
+      const teacherIdForApi = (teacher as any)._id || teacher.id || (teacher as any).userId;
+
+      const attendanceData = {
+        teacherId: teacherIdForApi,
+        date: selectedDateState,
+        paidDays: paidDays[teacherId] || 0,
+        isPaid: isPaid[teacherId] || false,
+        ...(isFullTime
+          ? {
+              morningShift: record.morningShift || {
+                status: 'absent' as AttendanceStatus,
+                checkIn: '',
+                checkOut: '',
+                notes: ''
+              },
+              eveningShift: record.eveningShift || {
+                status: 'absent' as AttendanceStatus,
+                checkIn: '',
+                checkOut: '',
+                notes: ''
+              }
+            }
+          : {
+              shift: record.shift || {
+                name: teacher.shifts?.[0]?.name || 'Default',
+                status: 'absent' as AttendanceStatus,
+                checkIn: '',
+                checkOut: '',
+                notes: ''
+              }
+            })
+      };
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(attendanceData)
+        }
+      );
+
+      if (response.ok) {
+        alert(`✅ Attendance saved successfully for ${teacher.fullName}!`);
+        // Reload existing attendance to refresh the form
+        const loadResponse = await fetch(
+          `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?date=${selectedDateState}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        if (loadResponse.ok) {
+          const existingRecords: TeacherAttendance[] = await loadResponse.json();
+          const recordsMap: Record<string, Partial<TeacherAttendance>> = {};
+          const paidDaysMap: Record<string, number> = {};
+          const isPaidMap: Record<string, boolean> = {};
+
+          existingRecords.forEach(record => {
+            const t = teachers.find(t => {
+              const tid = (t as any)._id?.toString() || t.id;
+              return tid === record.teacherId || record.teacherId === t.id;
+            });
+            if (t) {
+              const times = getTeacherShiftTimes(t);
+              if (record.employmentType === 'Full Time') {
+                recordsMap[t.id] = {
+                  ...record,
+                  morningShift: {
+                    status: (record.morningShift?.status || 'absent') as AttendanceStatus,
+                    checkIn: record.morningShift?.checkIn || (record.morningShift?.status === 'present' ? times.morningStart : ''),
+                    checkOut: record.morningShift?.checkOut || (record.morningShift?.status === 'present' ? times.morningEnd : ''),
+                    notes: record.morningShift?.notes || ''
+                  },
+                  eveningShift: {
+                    status: (record.eveningShift?.status || 'absent') as AttendanceStatus,
+                    checkIn: record.eveningShift?.checkIn || (record.eveningShift?.status === 'present' ? times.eveningStart : ''),
+                    checkOut: record.eveningShift?.checkOut || (record.eveningShift?.status === 'present' ? times.eveningEnd : ''),
+                    notes: record.eveningShift?.notes || ''
+                  }
+                };
+              } else {
+                recordsMap[t.id] = {
+                  ...record,
+                  shift: {
+                    name: record.shift?.name || teacher.shifts?.[0]?.name || 'Default',
+                    status: (record.shift?.status || 'absent') as AttendanceStatus,
+                    checkIn: record.shift?.checkIn || (record.shift?.status === 'present' ? times.startTime : ''),
+                    checkOut: record.shift?.checkOut || (record.shift?.status === 'present' ? times.endTime : ''),
+                    notes: record.shift?.notes || ''
+                  }
+                };
+              }
+              paidDaysMap[t.id] = record.paidDays || 0;
+              isPaidMap[t.id] = record.isPaid || false;
+            }
+          });
+
+          setAttendanceRecords(recordsMap);
+          setPaidDays(paidDaysMap);
+          setIsPaid(isPaidMap);
+        }
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save attendance');
+      }
+    } catch (error) {
+      console.error('Error saving individual attendance:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to save attendance'}`);
+    } finally {
+      setSavingTeacherId(null);
+    }
+  };
+
+  // Delete individual teacher attendance
+  const handleDeleteIndividual = async (teacherId: string, attendanceId?: string) => {
+    if (!user) return;
+
+    const teacher = teachers.find(t => t.id === teacherId);
+    if (!teacher) return;
+
+    if (!attendanceId) {
+      // Try to find the attendance record ID
+      const record = attendanceRecords[teacherId];
+      if (!record || !(record as any).id && !(record as any)._id) {
+        alert('❌ Cannot delete: Attendance record not found. Please refresh and try again.');
+        return;
+      }
+      attendanceId = (record as any).id || (record as any)._id;
+    }
+
+    const confirmed = window.confirm(`Are you sure you want to delete attendance for ${teacher.fullName} on ${selectedDateState}?`);
+    if (!confirmed) return;
+
+    setDeletingTeacherId(teacherId);
+    try {
+      const token = localStorage.getItem('umar_academy_token');
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/${attendanceId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        alert(`✅ Attendance deleted successfully for ${teacher.fullName}!`);
+        // Remove from local state
+        const newRecords = { ...attendanceRecords };
+        delete newRecords[teacherId];
+        setAttendanceRecords(newRecords);
+        const newPaidDays = { ...paidDays };
+        delete newPaidDays[teacherId];
+        setPaidDays(newPaidDays);
+        const newIsPaid = { ...isPaid };
+        delete newIsPaid[teacherId];
+        setIsPaid(newIsPaid);
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete attendance');
+      }
+    } catch (error) {
+      console.error('Error deleting attendance:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to delete attendance'}`);
+    } finally {
+      setDeletingTeacherId(null);
+    }
   };
 
   const handleSubmit = async () => {
@@ -416,31 +611,53 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                           {teacher.employmentType} • {teacher.department}
                         </p>
                       </div>
-                      <div className="flex gap-2 items-center">
-                        <label className="text-sm font-semibold text-primary">Paid Days:</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.5"
-                          value={paidDays[teacher.id] || 0}
-                          onChange={(e) => setPaidDays(prev => ({
-                            ...prev,
-                            [teacher.id]: parseFloat(e.target.value) || 0
-                          }))}
-                          className="w-20 px-2 py-1 border border-primary rounded text-primary"
-                        />
-                        <label className="text-sm font-semibold text-primary flex items-center gap-2">
+                      <div className="flex flex-col gap-2 items-end">
+                        <div className="flex gap-2 items-center">
+                          <label className="text-sm font-semibold text-primary">Paid Days:</label>
                           <input
-                            type="checkbox"
-                            checked={isPaid[teacher.id] || false}
-                            onChange={(e) => setIsPaid(prev => ({
+                            type="number"
+                            min="0"
+                            step="0.5"
+                            value={paidDays[teacher.id] || 0}
+                            onChange={(e) => setPaidDays(prev => ({
                               ...prev,
-                              [teacher.id]: e.target.checked
+                              [teacher.id]: parseFloat(e.target.value) || 0
                             }))}
-                            className="w-4 h-4"
+                            className="w-20 px-2 py-1 border border-primary rounded text-primary"
                           />
-                          Paid
-                        </label>
+                          <label className="text-sm font-semibold text-primary flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isPaid[teacher.id] || false}
+                              onChange={(e) => setIsPaid(prev => ({
+                                ...prev,
+                                [teacher.id]: e.target.checked
+                              }))}
+                              className="w-4 h-4"
+                            />
+                            Paid
+                          </label>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveIndividual(teacher.id)}
+                            disabled={savingTeacherId === teacher.id || isSubmitting}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Save this teacher's attendance"
+                          >
+                            {savingTeacherId === teacher.id ? 'Saving...' : '💾 Save'}
+                          </button>
+                          {(attendanceRecords[teacher.id] as any)?.id || (attendanceRecords[teacher.id] as any)?._id ? (
+                            <button
+                              onClick={() => handleDeleteIndividual(teacher.id)}
+                              disabled={deletingTeacherId === teacher.id || isSubmitting}
+                              className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete this teacher's attendance"
+                            >
+                              {deletingTeacherId === teacher.id ? 'Deleting...' : '🗑️ Delete'}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
 
@@ -612,20 +829,25 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-6 mt-6 border-t-2 border-primary">
-            <button
-              onClick={onClose}
-              className="px-6 py-2 border-2 border-primary rounded-lg hover:bg-primary/10 font-extrabold text-primary shadow-lg"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-primary text-accent rounded-lg hover:bg-primary/90 font-extrabold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105 transition-all"
-            >
-              {isSubmitting ? 'Saving...' : 'Save Attendance'}
-            </button>
+          <div className="flex justify-between items-center pt-6 mt-6 border-t-2 border-primary bg-gray-50 p-6 -mx-6 -mb-6">
+            <div className="text-sm text-primary/70">
+              💡 Tip: You can save individual teachers or save all at once
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="px-6 py-2 border-2 border-primary rounded-lg hover:bg-primary/10 font-extrabold text-primary shadow-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-primary text-accent rounded-lg hover:bg-primary/90 font-extrabold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105 transition-all"
+              >
+                {isSubmitting ? 'Saving All...' : '💾 Save All Teachers'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
