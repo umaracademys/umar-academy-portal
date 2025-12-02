@@ -70,7 +70,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
           try {
             const statsUrl = `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/stats/${tid}?`;
             const statsParams = viewMode === 'month' 
-              ? `${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
+              ? `month=${selectedMonth.split('-')[1]}&year=${selectedMonth.split('-')[0]}`
               : `startDate=${startDate}&endDate=${endDate}`;
             
             const statsResponse = await fetch(statsUrl + statsParams, {
@@ -300,7 +300,27 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
             </div>
           ) : attendances.length === 0 ? (
             <div className="text-center py-8 text-primary">
-              <p>No attendance records found for the selected period.</p>
+              <div className="max-w-md mx-auto">
+                <div className="text-6xl mb-4">📋</div>
+                <p className="text-xl font-extrabold mb-2">No attendance records found</p>
+                <p className="text-primary/70 mb-4">
+                  {viewMode === 'month' 
+                    ? `No attendance has been recorded for ${new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.`
+                    : `No attendance has been recorded between ${new Date(startDate).toLocaleDateString()} and ${new Date(endDate).toLocaleDateString()}.`}
+                </p>
+                <div className="bg-soft-primary border-2 border-primary rounded-lg p-4 mt-4">
+                  <p className="text-sm font-semibold text-primary mb-2">💡 To get started:</p>
+                  <ol className="text-sm text-primary/80 text-left list-decimal list-inside space-y-1">
+                    <li>Go to the dashboard</li>
+                    <li>Click "Take Teacher Attendance"</li>
+                    <li>Select a date and record attendance for teachers</li>
+                    <li>Return here to view the reports</li>
+                  </ol>
+                </div>
+                <p className="text-xs text-primary/60 mt-4">
+                  Tip: Try selecting a different month or date range if you've already recorded attendance.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-6">
