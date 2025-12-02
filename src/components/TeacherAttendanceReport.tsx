@@ -25,6 +25,9 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
   );
   const [viewMode, setViewMode] = useState<'dateRange' | 'month'>('month');
   const [stats, setStats] = useState<Record<string, TeacherAttendanceStats>>({});
+  const [selectedTeacherForDetail, setSelectedTeacherForDetail] = useState<string | null>(null);
+  const [teacherDetailAttendances, setTeacherDetailAttendances] = useState<TeacherAttendance[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Load attendance data
   useEffect(() => {
@@ -133,6 +136,37 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
     });
     return counts;
   }, [attendances]);
+
+  const loadTeacherDetail = async (teacherId: string) => {
+    setLoadingDetail(true);
+    try {
+      const token = localStorage.getItem('umar_academy_token');
+      let url = `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/teacher/${teacherId}?`;
+
+      if (viewMode === 'month') {
+        const [year, month] = selectedMonth.split('-');
+        url += `month=${month}&year=${year}`;
+      } else {
+        url += `startDate=${startDate}&endDate=${endDate}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data: TeacherAttendance[] = await response.json();
+        setTeacherDetailAttendances(data);
+      }
+    } catch (error) {
+      console.error('Error loading teacher detail:', error);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -281,8 +315,18 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
                     const lateCount = lateArrivalCounts[teacherId] || 0;
                     
                     return (
-                      <div key={teacherId} className="border-2 border-primary rounded-lg p-4 bg-soft-primary">
-                        <h3 className="font-extrabold text-primary text-lg mb-2">{teacher.fullName}</h3>
+                      <div 
+                        key={teacherId} 
+                        className="border-2 border-primary rounded-lg p-4 bg-soft-primary cursor-pointer hover:bg-soft-accent transition-all hover:shadow-lg"
+                        onClick={() => {
+                          setSelectedTeacherForDetail(teacherId);
+                          loadTeacherDetail(teacherId);
+                        }}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-extrabold text-primary text-lg">{teacher.fullName}</h3>
+                          <span className="text-xs text-primary/70 bg-white px-2 py-1 rounded">Click to view details</span>
+                        </div>
                         {teacherStats ? (
                           <div className="space-y-1 text-sm">
                             <p><span className="font-semibold">Total Records:</span> {teacherStats.totalRecords}</p>
@@ -440,6 +484,162 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
           </button>
         </div>
       </div>
+
+      {/* Teacher Detail Modal */}
+      {selectedTeacherForDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-2xl max-w-6xl w-full my-8 border-2 border-primary max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)] p-6 rounded-t-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-extrabold text-accent">
+                    {teachers.find(t => t.id === selectedTeacherForDetail)?.fullName}'s Attendance History
+                  </h2>
+                  <p className="text-accent/90 text-sm mt-1">
+                    {viewMode === 'month' 
+                      ? `Month: ${selectedMonth}` 
+                      : `${startDate} to ${endDate}`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedTeacherForDetail(null)}
+                  className="w-10 h-10 flex items-center justify-center bg-accent text-primary rounded-full hover:bg-accent/90 font-bold text-xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {loadingDetail ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-primary">Loading attendance history...</p>
+                </div>
+              ) : teacherDetailAttendances.length === 0 ? (
+                <div className="text-center py-8 text-primary">
+                  <p>No attendance records found for this teacher in the selected period.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Summary Stats */}
+                  {stats[selectedTeacherForDetail] && (
+                    <div className="border-2 border-primary rounded-lg p-4 bg-soft-primary mb-4">
+                      <h3 className="font-extrabold text-primary text-lg mb-3">Summary Statistics</h3>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <p className="text-primary/70">Total Records</p>
+                          <p className="font-extrabold text-primary text-lg">{stats[selectedTeacherForDetail].totalRecords}</p>
+                        </div>
+                        <div>
+                          <p className="text-primary/70">Present</p>
+                          <p className="font-extrabold text-green-700 text-lg">{stats[selectedTeacherForDetail].totalPresent}</p>
+                        </div>
+                        <div>
+                          <p className="text-primary/70">Absent</p>
+                          <p className="font-extrabold text-red-700 text-lg">{stats[selectedTeacherForDetail].totalAbsent}</p>
+                        </div>
+                        <div>
+                          <p className="text-primary/70">Present Rate</p>
+                          <p className="font-extrabold text-primary text-lg">{stats[selectedTeacherForDetail].presentRate.toFixed(1)}%</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Detailed History Table */}
+                  <div className="border-2 border-primary rounded-lg overflow-hidden">
+                    <div className="bg-primary text-accent p-4 font-extrabold">
+                      Daily Attendance History
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-soft-primary">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Date</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Morning Shift</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Evening Shift</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Shift</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Check In/Out</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Paid Days</th>
+                            <th className="px-4 py-2 text-left text-primary font-extrabold">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {teacherDetailAttendances
+                            .sort((a, b) => b.date.localeCompare(a.date))
+                            .map((att, idx) => (
+                              <tr key={idx} className="border-b border-primary/20 hover:bg-soft-primary">
+                                <td className="px-4 py-2 text-primary font-semibold">{formatDate(att.date)}</td>
+                                <td className="px-4 py-2">
+                                  {att.morningShift ? (
+                                    <div className="flex flex-col gap-1">
+                                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.morningShift.status)}`}>
+                                        {att.morningShift.status}
+                                      </span>
+                                      {att.morningShift.checkIn && (
+                                        <span className="text-xs text-primary/70">
+                                          {att.morningShift.checkIn} - {att.morningShift.checkOut || 'N/A'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-primary/50">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {att.eveningShift ? (
+                                    <div className="flex flex-col gap-1">
+                                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.eveningShift.status)}`}>
+                                        {att.eveningShift.status}
+                                      </span>
+                                      {att.eveningShift.checkIn && (
+                                        <span className="text-xs text-primary/70">
+                                          {att.eveningShift.checkIn} - {att.eveningShift.checkOut || 'N/A'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-primary/50">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">
+                                  {att.shift ? (
+                                    <div className="flex flex-col gap-1">
+                                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(att.shift.status)}`}>
+                                        {att.shift.status}
+                                      </span>
+                                      {att.shift.checkIn && (
+                                        <span className="text-xs text-primary/70">
+                                          {att.shift.checkIn} - {att.shift.checkOut || 'N/A'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-primary/50">—</span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-primary text-sm">
+                                  {att.employmentType === 'Full Time' 
+                                    ? `${att.morningShift?.checkIn || '—'} / ${att.eveningShift?.checkIn || '—'}`
+                                    : att.shift?.checkIn || '—'}
+                                </td>
+                                <td className="px-4 py-2 text-primary">{att.paidDays || 0}</td>
+                                <td className="px-4 py-2 text-primary text-xs max-w-xs truncate">
+                                  {att.morningShift?.notes || att.eveningShift?.notes || att.shift?.notes || '—'}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
