@@ -2019,28 +2019,42 @@ const findTeacherById = async (teacherId) => {
   }
   
   const teacherIdStr = teacherId.toString().trim();
+  console.log(`🔍 findTeacherById called with: "${teacherIdStr}" (type: ${typeof teacherId}, isValid: ${mongoose.Types.ObjectId.isValid(teacherIdStr)})`);
   
   // STEP 1: Try direct Teacher._id lookup (this is what we want 99% of the time)
   if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
     try {
-      const teacher = await Teacher.findById(teacherIdStr).lean();
+      const objectId = new mongoose.Types.ObjectId(teacherIdStr);
+      console.log(`🔍 Trying Teacher.findById with ObjectId: ${objectId}`);
+      
+      const teacher = await Teacher.findById(objectId).lean();
       if (teacher) {
         console.log(`✅ Found teacher by Teacher._id: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${teacher.userId})`);
         return teacher;
+      } else {
+        console.log(`⚠️ Teacher.findById returned null for: ${teacherIdStr}`);
       }
     } catch (err) {
       console.log(`⚠️ Error in Teacher.findById(${teacherIdStr}): ${err.message}`);
+      console.log(`⚠️ Error stack: ${err.stack}`);
     }
+  } else {
+    console.log(`⚠️ Invalid ObjectId format: ${teacherIdStr}`);
   }
   
   // STEP 2: If not found, it might be a User._id - find Teacher by userId
   if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
     try {
-      const teacher = await Teacher.findOne({ userId: new mongoose.Types.ObjectId(teacherIdStr) }).lean();
+      const objectId = new mongoose.Types.ObjectId(teacherIdStr);
+      console.log(`🔍 Trying Teacher.findOne({ userId: ${objectId} })`);
+      
+      const teacher = await Teacher.findOne({ userId: objectId }).lean();
       if (teacher) {
         console.log(`✅ Found teacher by User._id lookup: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${teacherIdStr})`);
         console.log(`⚠️ WARNING: Frontend sent User._id instead of Teacher._id. Use Teacher._id: ${teacher._id} for future requests.`);
         return teacher;
+      } else {
+        console.log(`⚠️ Teacher.findOne({ userId }) returned null for: ${teacherIdStr}`);
       }
     } catch (err) {
       console.log(`⚠️ Error in Teacher.findOne by userId: ${err.message}`);
@@ -2053,6 +2067,7 @@ const findTeacherById = async (teacherId) => {
       const User = mongoose.model('User');
       const user = await User.findById(teacherIdStr).lean();
       if (user && user.role === 'teacher') {
+        console.log(`🔍 Found User with role=teacher, looking for Teacher with userId: ${user._id}`);
         const teacher = await Teacher.findOne({ userId: user._id }).lean();
         if (teacher) {
           console.log(`✅ Found teacher via User->Teacher lookup: ${teacher.fullName} (Teacher._id: ${teacher._id}, User._id: ${user._id})`);
@@ -2071,7 +2086,9 @@ const findTeacherById = async (teacherId) => {
     const allTeachers = await Teacher.find({}).select('_id fullName userId email').limit(20).lean();
     console.log(`📋 Available teachers (showing first 20 of ${allTeachers.length}):`);
     allTeachers.forEach(t => {
-      console.log(`  - ${t.fullName || 'Unknown'}: Teacher._id="${t._id?.toString()}", User._id="${t.userId?.toString()}", email="${t.email}"`);
+      const matches = t._id?.toString() === teacherIdStr || t.userId?.toString() === teacherIdStr;
+      const marker = matches ? ' ⭐ MATCHES SEARCHED ID' : '';
+      console.log(`  - ${t.fullName || 'Unknown'}: Teacher._id="${t._id?.toString()}", User._id="${t.userId?.toString()}", email="${t.email}"${marker}`);
     });
   } catch (err) {
     console.log(`⚠️ Error fetching teachers list: ${err.message}`);
@@ -2122,6 +2139,9 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
 
     // Get teacher info using the helper function
     console.log('🔍 Looking up teacher with ID:', attendanceData.teacherId);
+    console.log('🔍 ID type:', typeof attendanceData.teacherId);
+    console.log('🔍 ID value:', JSON.stringify(attendanceData.teacherId));
+    
     const teacher = await findTeacherById(attendanceData.teacherId);
 
     if (!teacher) {
@@ -2129,6 +2149,21 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
       const allTeachers = await Teacher.find({}).select('_id teacherId userId fullName email').lean();
       console.error(`❌ Teacher not found for ID: ${attendanceData.teacherId}`);
       console.error(`📋 Total teachers in database: ${allTeachers.length}`);
+      
+      // Check if the ID exists in the list
+      const matchingTeacher = allTeachers.find(t => 
+        t._id?.toString() === attendanceData.teacherId?.toString() ||
+        t.userId?.toString() === attendanceData.teacherId?.toString()
+      );
+      
+      if (matchingTeacher) {
+        console.error(`⚠️ Found matching teacher but lookup failed:`, {
+          fullName: matchingTeacher.fullName,
+          _id: matchingTeacher._id?.toString(),
+          userId: matchingTeacher.userId?.toString()
+        });
+      }
+      
       allTeachers.forEach(t => {
         console.log(`  - ${t.fullName || 'Unknown'}: _id="${t._id?.toString()}", userId="${t.userId?.toString()}", teacherId="${t.teacherId}"`);
       });
@@ -2136,9 +2171,20 @@ app.post('/api/teacher-attendance', authenticateToken, async (req, res) => {
       return res.status(404).json({ 
         error: `Teacher not found with ID: ${attendanceData.teacherId}. Check backend logs for available teachers.`,
         searchedId: attendanceData.teacherId?.toString(),
-        totalTeachers: allTeachers.length
+        totalTeachers: allTeachers.length,
+        availableTeachers: allTeachers.map(t => ({
+          _id: t._id?.toString(),
+          fullName: t.fullName,
+          userId: t.userId?.toString()
+        }))
       });
     }
+    
+    console.log('✅ Teacher found:', {
+      _id: teacher._id?.toString(),
+      fullName: teacher.fullName,
+      userId: teacher.userId?.toString()
+    });
 
     // Determine employment type
     const employmentType = teacher.employmentType === 'Full Time' ? 'Full Time' : 'Part Time';
