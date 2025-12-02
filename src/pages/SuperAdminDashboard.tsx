@@ -15,7 +15,7 @@ const PermissionManager = lazy(() => import('../components/PermissionManager'));
 const DataManager = lazy(() => import('../components/DataManager'));
 const StudentList = lazy(() => import('../components/StudentList'));
 const StudentProfile = lazy(() => import('../components/StudentProfile'));
-const StudentEnrollment = lazy(() => => import('../components/StudentEnrollment'));
+const StudentEnrollment = lazy(() => import('../components/StudentEnrollment'));
 const StudentPayments = lazy(() => import('../components/StudentPayments'));
 const StudentProgress = lazy(() => import('../components/StudentProgress'));
 const StudentCommunication = lazy(() => import('../components/StudentCommunication'));
@@ -1180,10 +1180,11 @@ const SuperAdminDashboard: React.FC = () => {
               setShowStudentForm(true);
             }}
           />
-        </>
+        </Suspense>
       )}
 
       {showStudentEnrollment && selectedStudent && (
+        <Suspense fallback={<ModalLoadingFallback />}>
         <StudentEnrollment
           student={selectedStudent}
           onClose={() => {
