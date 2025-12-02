@@ -945,6 +945,22 @@ app.get('/api/users', apiLimiter, async (req, res) => {
   }
 });
 
+// Get a single user by ID (no password)
+app.get('/api/users/:id', apiLimiter, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all students
 app.get('/api/students', async (req, res) => {
   try {
