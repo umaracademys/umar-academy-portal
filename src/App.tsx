@@ -92,70 +92,72 @@ function AppContent() {
   }
 
   return (
-    <Routes>
-      <Route 
-        path="/mushaf-demo" 
-        element={<MushafDemo />} 
-      />
-      <Route 
-        path="/register" 
-        element={<ParentRegistrationForm />} 
-      />
-      <Route 
-        path="/login" 
-        element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} 
-      />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <DashboardRouter />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <TeacherProfile />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/assignments"
-        element={
-          <ProtectedRoute>
-            <AssignmentManagement />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/students"
-        element={
-          <ProtectedRoute>
-            <StudentsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/teachers"
-        element={
-          <ProtectedRoute>
-            <TeachersPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/student/*"
-        element={
-          <ProtectedRoute>
-            <StudentRouter />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route 
+          path="/mushaf-demo" 
+          element={<MushafDemo />} 
+        />
+        <Route 
+          path="/register" 
+          element={<ParentRegistrationForm />} 
+        />
+        <Route 
+          path="/login" 
+          element={isAuthenticated ? <Navigate to="/dashboard" /> : <Login />} 
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <TeacherProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/assignments"
+          element={
+            <ProtectedRoute>
+              <AssignmentManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students"
+          element={
+            <ProtectedRoute>
+              <StudentsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teachers"
+          element={
+            <ProtectedRoute>
+              <TeachersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/student/*"
+          element={
+            <ProtectedRoute>
+              <StudentRouter />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
