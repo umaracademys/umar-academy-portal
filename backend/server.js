@@ -2218,55 +2218,8 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, async (req, res) => 
 
     for (const attendanceData of attendances) {
       try {
-        // Get teacher info - try multiple ways to find the teacher
-        let teacher = null;
-        const teacherIdStr = attendanceData.teacherId?.toString();
-        
-        // Try as ObjectId first
-        if (mongoose.Types.ObjectId.isValid(teacherIdStr)) {
-          const objectId = new mongoose.Types.ObjectId(teacherIdStr);
-          teacher = await Teacher.findOne({ 
-            $or: [
-              { _id: objectId },
-              { userId: objectId },
-              { teacherId: teacherIdStr },
-              { _id: teacherIdStr },
-              { userId: teacherIdStr }
-            ]
-          }).lean();
-        }
-        
-        // If not found, try as string
-        if (!teacher) {
-          teacher = await Teacher.findOne({ 
-            $or: [
-              { _id: teacherIdStr },
-              { teacherId: teacherIdStr },
-              { userId: teacherIdStr },
-              { email: teacherIdStr }
-            ]
-          }).lean();
-        }
-
-        // If still not found, the teacherId might be a User._id - find User first, then Teacher by userId
-        if (!teacher && mongoose.Types.ObjectId.isValid(teacherIdStr)) {
-          try {
-            const User = mongoose.model('User');
-            const user = await User.findById(teacherIdStr).lean();
-            if (user) {
-              // Now find Teacher by userId
-              teacher = await Teacher.findOne({
-                $or: [
-                  { userId: user._id },
-                  { userId: user._id.toString() },
-                  { email: user.email }
-                ]
-              }).lean();
-            }
-          } catch (userErr) {
-            // User model might not exist or other error, continue
-          }
-        }
+        // Get teacher info using the helper function
+        const teacher = await findTeacherById(attendanceData.teacherId);
 
         if (!teacher) {
           console.error('❌ Teacher not found in bulk for ID:', attendanceData.teacherId);
@@ -2390,19 +2343,15 @@ app.get('/api/teacher-attendance/teacher/:teacherId', authenticateToken, async (
 
     // Teachers can only see their own attendance
     if (user.role === 'teacher') {
-      const teacher = await Teacher.findOne({
-        $or: [
-          { userId: user.id || user._id },
-          { email: user.email }
-        ]
-      }).lean();
-
+      const teacher = await findTeacherById(user.id || user._id);
       if (!teacher) {
         return res.status(404).json({ error: 'Teacher profile not found' });
       }
       
       const teacherMongoId = teacher._id.toString() || teacher.teacherId;
-      if (teacherMongoId !== teacherId) {
+      // Also check if the requested teacherId matches this teacher
+      const requestedTeacher = await findTeacherById(teacherId);
+      if (!requestedTeacher || requestedTeacher._id.toString() !== teacherMongoId) {
         return res.status(403).json({ error: 'You can only view your own attendance' });
       }
     }
