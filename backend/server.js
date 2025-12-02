@@ -1203,6 +1203,26 @@ const handleManualSync = async (req, res) => {
 app.get('/api/teachers/sync-assigned-students', handleManualSync);
 app.post('/api/teachers/sync-assigned-students', handleManualSync);
 
+// Simple endpoint to get teacher count
+app.get('/api/teachers/count', async (req, res) => {
+  try {
+    const count = await Teacher.countDocuments({});
+    const teachers = await Teacher.find({}).select('_id fullName email userId').lean();
+    
+    res.json({
+      count,
+      teachers: teachers.map(t => ({
+        _id: t._id?.toString(),
+        fullName: t.fullName,
+        email: t.email,
+        userId: t.userId?.toString()
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET endpoint to check current state (for debugging)
 app.get('/api/teachers/sync-status', async (req, res) => {
   try {
