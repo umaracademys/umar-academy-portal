@@ -242,11 +242,16 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
     try {
       const token = localStorage.getItem('umar_academy_token');
       const attendances = filteredTeachers.map(teacher => {
+        // Use teacher._id if available, otherwise fall back to teacher.id
+        // The backend will try to find teacher by _id, teacherId, or userId
+        const teacherId = (teacher as any)._id || teacher.id || (teacher as any).userId;
         const record = attendanceRecords[teacher.id] || {};
         const isFullTime = teacher.employmentType === 'Full Time';
 
+        console.log(`📝 Preparing attendance for teacher: ${teacher.fullName}, ID: ${teacherId}, teacher.id: ${teacher.id}`);
+
         return {
-          teacherId: teacher.id,
+          teacherId: teacherId,
           date: selectedDateState,
           paidDays: paidDays[teacher.id] || 0,
           isPaid: isPaid[teacher.id] || false,
@@ -277,6 +282,17 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
         };
       });
 
+      const payload = {
+        date: selectedDateState,
+        attendances
+      };
+
+      console.log('📤 Submitting attendance:', {
+        date: selectedDateState,
+        teacherCount: attendances.length,
+        teachers: attendances.map(a => ({ teacherId: a.teacherId }))
+      });
+
       const response = await fetch(
         `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance/bulk`,
         {
@@ -285,23 +301,29 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            date: selectedDateState,
-            attendances
-          })
+          body: JSON.stringify(payload)
         }
       );
 
       if (response.ok) {
-        alert('✅ Attendance saved successfully!');
+        const result = await response.json();
+        if (result.errors && result.errors.length > 0) {
+          const errorMessages = result.errors.map((e: any) => 
+            `Teacher ${e.teacherId}: ${e.error}`
+          ).join('\n');
+          alert(`⚠️ Attendance saved with some errors:\n\n${errorMessages}\n\n${result.created} records saved successfully.`);
+        } else {
+          alert(`✅ Attendance saved successfully for ${result.created || attendances.length} teacher(s)!`);
+        }
         onClose();
       } else {
         const error = await response.json();
+        console.error('Error response:', error);
         throw new Error(error.error || 'Failed to save attendance');
       }
     } catch (error) {
       console.error('Error saving attendance:', error);
-      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to save attendance'}`);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to save attendance'}\n\nPlease check the browser console for details.`);
     } finally {
       setIsSubmitting(false);
     }
