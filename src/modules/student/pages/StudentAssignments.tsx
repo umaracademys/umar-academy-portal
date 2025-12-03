@@ -117,7 +117,17 @@ const StudentAssignments: React.FC = () => {
             wordIndex: m.wordIndex,
       position: m.position,
       note: m.note,
-      audioUrl: m.audioUrl ? (m.audioUrl.startsWith('http') ? m.audioUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${m.audioUrl.startsWith('/') ? '' : '/'}${m.audioUrl}`) : undefined,
+      audioUrl: m.audioUrl ? (() => {
+        if (m.audioUrl.startsWith('http')) return m.audioUrl;
+        let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        // Remove /api from base URL if present (uploads are served from root, not /api)
+        if (baseUrl.endsWith('/api')) {
+          baseUrl = baseUrl.replace('/api', '');
+        }
+        baseUrl = baseUrl.replace(/\/$/, '');
+        const audioPath = m.audioUrl.startsWith('/') ? m.audioUrl : `/${m.audioUrl}`;
+        return `${baseUrl}${audioPath}`;
+      })() : undefined,
             timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
     }));
   }, [selectedAssignment, viewingMistakesFor, studentAssignments]);
