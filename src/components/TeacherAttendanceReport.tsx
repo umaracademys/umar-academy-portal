@@ -116,9 +116,23 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
         });
 
         setStats(statsMap);
+      } else {
+        if (import.meta.env.DEV) {
+          console.warn(`⚠️ Failed to load attendance: ${response.status} ${response.statusText}`);
+          try {
+            const errorText = await response.text();
+            console.warn('Error response:', errorText);
+          } catch (e) {
+            console.warn('Could not read error response');
+          }
+        }
+        setAttendances([]);
+        setStats({});
       }
     } catch (error) {
       console.error('Error loading attendance:', error);
+      setAttendances([]);
+      setStats({});
     } finally {
       setLoading(false);
     }
