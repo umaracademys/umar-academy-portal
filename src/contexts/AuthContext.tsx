@@ -54,6 +54,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string, role?: UserRole): Promise<boolean> => {
     setError(null);
     
+    // Validate inputs before making request
+    if (!email || !password) {
+      setError('Email and password are required');
+      return false;
+    }
+    
     try {
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
       
@@ -67,6 +73,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
 
       if (!response.ok) {
+        // Only log error if it's not a 401 (unauthorized) - those are expected for invalid credentials
+        if (response.status !== 401) {
+          console.warn(`⚠️ Login request failed with status ${response.status}`);
+        }
         const errorData = await response.json().catch(() => ({ error: 'Login failed' }));
         setError(errorData.error || 'Invalid credentials. Please try again.');
         return false;
