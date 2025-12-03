@@ -620,6 +620,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               fullName: user.name || user.fullName || 'Unknown',
               email: user.email || '',
               phone: user.phone || '',
+              contact: user.phone || user.contact || '', // Add contact field for StudentRegistrationForm
               address: user.address || '',
               dateOfBirth: user.dateOfBirth || new Date().toISOString(),
               enrollmentDate: user.enrollmentDate || new Date().toISOString(),
