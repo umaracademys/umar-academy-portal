@@ -179,6 +179,25 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
           setAttendanceRecords(recordsMap);
           setPaidDays(paidDaysMap);
           setIsPaid(isPaidMap);
+          
+          if (import.meta.env.DEV) {
+            console.log(`✅ Loaded ${existingRecords.length} attendance record(s) for ${selectedDateState}`);
+            console.log(`📊 Mapped to ${Object.keys(recordsMap).length} teacher(s)`);
+            if (existingRecords.length > 0 && Object.keys(recordsMap).length === 0) {
+              console.warn('⚠️ Attendance records found but could not match to teachers. Check teacher ID mapping.');
+              console.log('Sample record teacherId:', existingRecords[0].teacherId);
+              console.log('Available teacher IDs:', teachers.slice(0, 5).map(t => ({
+                id: t.id,
+                _id: (t as any)._id?.toString(),
+                teacherDocumentId: (t as any).teacherDocumentId?.toString(),
+                name: t.fullName
+              })));
+            }
+          }
+        } else {
+          if (import.meta.env.DEV) {
+            console.log(`ℹ️ No attendance records found for ${selectedDateState} (status: ${response.status})`);
+          }
         }
       } catch (error) {
         console.error('Error loading existing attendance:', error);
