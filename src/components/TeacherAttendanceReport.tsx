@@ -41,7 +41,7 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
     setLoading(true);
     try {
       const token = localStorage.getItem('umar_academy_token');
-      let url = `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?`;
+      let url = `${import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/teacher-attendance?`;
 
       if (viewMode === 'month') {
         const [year, month] = selectedMonth.split('-');
@@ -63,6 +63,17 @@ const TeacherAttendanceReport: React.FC<TeacherAttendanceReportProps> = ({ onClo
 
       if (response.ok) {
         const data: TeacherAttendance[] = await response.json();
+        if (import.meta.env.DEV) {
+          console.log(`✅ Loaded ${data.length} attendance record(s) from API`);
+          if (data.length > 0) {
+            console.log('Sample attendance:', {
+              teacherId: data[0].teacherId,
+              teacherName: data[0].teacherName,
+              date: data[0].date,
+              employmentType: data[0].employmentType
+            });
+          }
+        }
         setAttendances(data);
 
         // OPTIMIZED: Load stats for all teachers in parallel

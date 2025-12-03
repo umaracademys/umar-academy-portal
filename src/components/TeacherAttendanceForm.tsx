@@ -126,10 +126,17 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
           const isPaidMap: Record<string, boolean> = {};
 
           existingRecords.forEach(record => {
-            // Try to find teacher by matching teacherId with teacher._id, teacher.id, or teacher.userId
+            // Match teacher by Teacher document _id (which is stored in record.teacherId)
+            // The backend saves attendance with teacherId = Teacher._id (not User._id)
             const teacher = teachers.find(t => {
-              const tid = (t as any)._id?.toString() || t.id || (t as any).userId?.toString();
-              return tid === record.teacherId || record.teacherId === t.id;
+              // Priority: teacherDocumentId > _id (if different from id) > id
+              const teacherDocId = (t as any).teacherDocumentId?.toString() || 
+                                   ((t as any)._id && (t as any)._id.toString() !== t.id?.toString() ? (t as any)._id.toString() : null) ||
+                                   null;
+              // Match by Teacher document _id (what's stored in record.teacherId)
+              return teacherDocId === record.teacherId || 
+                     (t as any)._id?.toString() === record.teacherId ||
+                     t.id === record.teacherId;
             });
             if (teacher) {
               // Ensure times are set if missing
