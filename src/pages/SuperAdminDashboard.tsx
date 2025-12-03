@@ -37,7 +37,6 @@ const StudentReports = lazy(() => import('../components/StudentReports'));
 const AdminTicketReview = lazy(() => import('../components/AdminTicketReview'));
 const AdminNotificationCenter = lazy(() => import('../components/AdminNotificationCenter'));
 const ActivityLog = lazy(() => import('../components/ActivityLog'));
-const AdminRecordings = lazy(() => import('../components/AdminRecordings'));
 const EmailModule = lazy(() => import('../components/EmailModule'));
 const StudentTestingModule = lazy(() => import('../components/StudentTestingModule'));
 const TestResultsPage = lazy(() => import('../components/TestResultsPage'));
@@ -167,7 +166,6 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showActivityLog, setShowActivityLog] = useState(false);
-  const [showRecordings, setShowRecordings] = useState(false);
   const [showEmailModule, setShowEmailModule] = useState(false);
   const [showTestingModule, setShowTestingModule] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
@@ -1353,17 +1351,6 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <ActivityLog
             onClose={() => setShowActivityLog(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Recordings Library Modal */}
-      {showRecordings && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <AdminRecordings
-            onClose={() => {
-              setShowRecordings(false);
-            }}
           />
         </Suspense>
       )}
