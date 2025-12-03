@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
+import { useBackendData } from '../contexts/BackendDataContext';
 
 interface TeacherTicketReviewProps {
   ticket: Ticket;
@@ -16,11 +17,70 @@ interface TeacherTicketReviewProps {
 }
 
 const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClose, onSubmit }) => {
+  const { getStudentPersonalMushaf } = useBackendData();
   const [mushafPage, setMushafPage] = useState(1);
   const [mistakes, setMistakes] = useState<MushafMistake[]>(ticket.mistakes || []);
   const [teacherComment, setTeacherComment] = useState(ticket.teacherComment || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [personalMushafMistakes, setPersonalMushafMistakes] = useState<MushafMistake[]>([]);
+  const [loadingPersonalMushaf, setLoadingPersonalMushaf] = useState(false);
+
+  // Load student's personal mushaf when ticket is opened
+  useEffect(() => {
+    const loadPersonalMushaf = async () => {
+      if (!ticket.studentId) {
+        setPersonalMushafMistakes([]);
+        return;
+      }
+
+      try {
+        setLoadingPersonalMushaf(true);
+        const personalMushafData = await getStudentPersonalMushaf(ticket.studentId);
+        
+        if (personalMushafData && personalMushafData.mistakes) {
+          const convertedMistakes: MushafMistake[] = personalMushafData.mistakes.map((m: any) => ({
+            id: m.id || `personal-${Date.now()}-${Math.random()}`,
+            type: m.type,
+            page: m.page,
+            surah: m.surah,
+            ayah: m.ayah,
+            wordIndex: m.wordIndex,
+            position: m.position,
+            note: m.note,
+            audioUrl: m.audioUrl ? (m.audioUrl.startsWith('http') ? m.audioUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${m.audioUrl.startsWith('/') ? '' : '/'}${m.audioUrl}`) : undefined,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+          }));
+          setPersonalMushafMistakes(convertedMistakes);
+        } else {
+          setPersonalMushafMistakes([]);
+        }
+      } catch (error) {
+        console.error('Error loading personal mushaf:', error);
+        setPersonalMushafMistakes([]);
+      } finally {
+        setLoadingPersonalMushaf(false);
+      }
+    };
+
+    loadPersonalMushaf();
+  }, [ticket.studentId, getStudentPersonalMushaf]);
+
+  // Initialize mushaf page when ticket is selected
+  useEffect(() => {
+    if (ticket.mistakes && ticket.mistakes.length > 0) {
+      const firstMistake = ticket.mistakes[0];
+      if (firstMistake?.page) {
+        setMushafPage(firstMistake.page);
+      }
+    } else if (personalMushafMistakes.length > 0) {
+      // If no ticket mistakes, show first personal mistake
+      const firstMistake = personalMushafMistakes[0];
+      if (firstMistake?.page) {
+        setMushafPage(firstMistake.page);
+      }
+    }
+  }, [ticket.mistakes, personalMushafMistakes]);
 
   // Convert mistakes to MushafMistake format
   const mushafMistakes = useMemo(() => {
@@ -33,7 +93,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
       wordIndex: m.wordIndex,
       position: m.position,
       note: m.note,
-      audioUrl: m.audioUrl,
+      audioUrl: m.audioUrl ? (m.audioUrl.startsWith('http') ? m.audioUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${m.audioUrl.startsWith('/') ? '' : '/'}${m.audioUrl}`) : undefined,
       timestamp: m.timestamp || new Date()
     }));
   }, [mistakes]);
@@ -198,10 +258,17 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                   </div>
                 </div>
                 <div className="p-4 bg-gradient-to-b from-gray-50 to-white">
+                  {loadingPersonalMushaf && (
+                    <div className="text-center py-4 text-gray-500">
+                      Loading student's mistake history...
+                    </div>
+                  )}
                   <InteractiveMushaf
                     currentPage={mushafPage}
                     onPageChange={setMushafPage}
                     mistakes={mushafMistakes}
+                    historicalMistakes={personalMushafMistakes}
+                    showHistorical={true}
                     onMistakeMark={handleMistakeMark}
                     readOnly={false}
                     mode="marking"

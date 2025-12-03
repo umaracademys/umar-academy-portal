@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
@@ -13,7 +13,7 @@ import { uploadMistakeAudio } from '../../../services/audioService';
 const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
   const { students, getStudentByEmail } = useData();
-  const { assignments: backendAssignments } = useBackendData();
+  const { assignments: backendAssignments, getStudentPersonalMushaf } = useBackendData();
   const { user } = useAuth();
   const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null);
   const [mushafPage, setMushafPage] = useState<number>(1);
@@ -31,6 +31,8 @@ const StudentAssignments: React.FC = () => {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const [viewingMistakesFor, setViewingMistakesFor] = useState<{ assignmentId: string; type: 'sabq' | 'sabqi' | 'manzil'; index: number } | null>(null);
+  const [personalMushafMistakes, setPersonalMushafMistakes] = useState<MushafMistake[]>([]);
+  const [loadingPersonalMushaf, setLoadingPersonalMushaf] = useState(false);
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
 
@@ -115,7 +117,7 @@ const StudentAssignments: React.FC = () => {
             wordIndex: m.wordIndex,
       position: m.position,
       note: m.note,
-      audioUrl: m.audioUrl,
+      audioUrl: m.audioUrl ? (m.audioUrl.startsWith('http') ? m.audioUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${m.audioUrl.startsWith('/') ? '' : '/'}${m.audioUrl}`) : undefined,
             timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
     }));
   }, [selectedAssignment, viewingMistakesFor, studentAssignments]);
@@ -132,6 +134,46 @@ const StudentAssignments: React.FC = () => {
     });
   };
 
+  // Load personal mushaf when assignment is selected
+  useEffect(() => {
+    const loadPersonalMushaf = async () => {
+      if (!selectedAssignment || !currentStudent?.id) {
+        setPersonalMushafMistakes([]);
+        return;
+      }
+
+      try {
+        setLoadingPersonalMushaf(true);
+        const personalMushafData = await getStudentPersonalMushaf(currentStudent.id);
+        
+        if (personalMushafData && personalMushafData.mistakes) {
+          const convertedMistakes: MushafMistake[] = personalMushafData.mistakes.map((m: any) => ({
+            id: m.id || `personal-${Date.now()}-${Math.random()}`,
+            type: m.type,
+            page: m.page,
+            surah: m.surah,
+            ayah: m.ayah,
+            wordIndex: m.wordIndex,
+            position: m.position,
+            note: m.note,
+            audioUrl: m.audioUrl ? (m.audioUrl.startsWith('http') ? m.audioUrl : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}${m.audioUrl.startsWith('/') ? '' : '/'}${m.audioUrl}`) : undefined,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+          }));
+          setPersonalMushafMistakes(convertedMistakes);
+        } else {
+          setPersonalMushafMistakes([]);
+        }
+      } catch (error) {
+        console.error('Error loading personal mushaf:', error);
+        setPersonalMushafMistakes([]);
+      } finally {
+        setLoadingPersonalMushaf(false);
+      }
+    };
+
+    loadPersonalMushaf();
+  }, [selectedAssignment, currentStudent?.id, getStudentPersonalMushaf]);
+
   // Auto-set mushaf page when assignment is selected
   React.useEffect(() => {
     if (selectedAssignment && mushafMistakes.length > 0) {
@@ -139,8 +181,14 @@ const StudentAssignments: React.FC = () => {
       if (firstMistake.page) {
         setMushafPage(firstMistake.page);
       }
+    } else if (selectedAssignment && personalMushafMistakes.length > 0) {
+      // If no assignment mistakes, show first personal mistake
+      const firstMistake = personalMushafMistakes[0];
+      if (firstMistake.page) {
+        setMushafPage(firstMistake.page);
+      }
     }
-  }, [selectedAssignment, mushafMistakes]);
+  }, [selectedAssignment, mushafMistakes, personalMushafMistakes]);
 
   const startRecording = async () => {
     try {
@@ -899,6 +947,8 @@ const StudentAssignments: React.FC = () => {
                     currentPage={mushafPage}
                     onPageChange={setMushafPage}
                     mistakes={mushafMistakes}
+                    historicalMistakes={personalMushafMistakes}
+                    showHistorical={true}
                     readOnly={true}
                     mode="viewing"
                     studentName={currentStudent.fullName}
