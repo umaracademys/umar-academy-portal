@@ -1613,12 +1613,38 @@ export const WordByWordPage: React.FC<{
                                     <div className="text-xs text-gray-500 mb-1">Audio correction:</div>
                                     <audio 
                                       controls 
+                                      preload="metadata"
+                                      onError={(e) => {
+                                        console.error('Audio load error:', wordMistake.audioUrl, e);
+                                        const target = e.target as HTMLAudioElement;
+                                        if (target) {
+                                          target.style.opacity = '0.5';
+                                          target.title = 'Audio file not found or cannot be loaded';
+                                        }
+                                      }}
+                                      onLoadedMetadata={() => {
+                                        console.log('Audio loaded successfully:', wordMistake.audioUrl);
+                                      }}
                                       src={
-                                        wordMistake.audioUrl.startsWith('http') 
-                                          ? wordMistake.audioUrl 
-                                          : `${typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE 
-                                              ? (window as any).MUSHAF_API_BASE.replace('/api', '') 
-                                              : import.meta.env?.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:3001'}${wordMistake.audioUrl}`
+                                        (() => {
+                                          const url = wordMistake.audioUrl || '';
+                                          // If already a full URL, use it
+                                          if (url.startsWith('http://') || url.startsWith('https://')) {
+                                            return url;
+                                          }
+                                          // Get base URL
+                                          let baseUrl = 'http://localhost:3001';
+                                          if (typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE) {
+                                            baseUrl = (window as any).MUSHAF_API_BASE.replace('/api', '');
+                                          } else if (import.meta.env?.VITE_API_BASE_URL) {
+                                            baseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api', '');
+                                          }
+                                          // Ensure base URL doesn't end with /
+                                          baseUrl = baseUrl.replace(/\/$/, '');
+                                          // Ensure audio URL starts with /
+                                          const audioPath = url.startsWith('/') ? url : `/${url}`;
+                                          return `${baseUrl}${audioPath}`;
+                                        })()
                                       } 
                                       className="w-full h-8"
                                     >

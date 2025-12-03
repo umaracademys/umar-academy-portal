@@ -30,7 +30,7 @@ const StudentAssignments: React.FC = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const [viewingMistakesFor, setViewingMistakesFor] = useState<{ assignmentId: string; type: 'sabq' | 'sabqi' | 'manzil'; index: number } | null>(null);
+  const [viewingMistakesFor, setViewingMistakesFor] = useState<{ assignmentId: string; type: 'sabq' | 'sabqi' | 'manzil' | 'all'; index?: number } | null>(null);
   const [personalMushafMistakes, setPersonalMushafMistakes] = useState<MushafMistake[]>([]);
   const [loadingPersonalMushaf, setLoadingPersonalMushaf] = useState(false);
 
@@ -134,10 +134,11 @@ const StudentAssignments: React.FC = () => {
     });
   };
 
-  // Load personal mushaf when assignment is selected
+  // Load personal mushaf when assignment is selected or viewing mistakes
   useEffect(() => {
     const loadPersonalMushaf = async () => {
-      if (!selectedAssignment || !currentStudent?.id) {
+      const assignmentId = viewingMistakesFor?.assignmentId || selectedAssignment;
+      if (!assignmentId || !currentStudent?.id) {
         setPersonalMushafMistakes([]);
         return;
       }
@@ -172,7 +173,7 @@ const StudentAssignments: React.FC = () => {
     };
 
     loadPersonalMushaf();
-  }, [selectedAssignment, currentStudent?.id, getStudentPersonalMushaf]);
+  }, [selectedAssignment, viewingMistakesFor?.assignmentId, currentStudent?.id, getStudentPersonalMushaf]);
 
   // Auto-set mushaf page when assignment is selected
   React.useEffect(() => {
@@ -447,6 +448,24 @@ const StudentAssignments: React.FC = () => {
                           {/* Assignment Details (when expanded) */}
                           {isSelected && (
                             <div className="mt-4 pt-4 border-t border-accent-soft space-y-4">
+                              {/* View All Mushaf Button */}
+                              {assignment.mushafMistakes && assignment.mushafMistakes.length > 0 && (
+                                <div className="mb-4">
+                                  <button
+                                    onClick={() => {
+                                      setViewingMistakesFor({ assignmentId: assignment.id, type: 'all' });
+                                      if (assignment.mushafMistakes.length > 0) {
+                                        setMushafPage(assignment.mushafMistakes[0].page);
+                                      }
+                                    }}
+                                    className="w-full px-4 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors flex items-center justify-center gap-2"
+                                  >
+                                    <span>📖</span>
+                                    <span>View All Mistakes ({assignment.mushafMistakes.length})</span>
+                                  </button>
+                                </div>
+                              )}
+                              
                               {/* Classwork Section */}
                               {hasClasswork && (
                                 <div className="p-4 bg-soft-primary rounded-xl border border-primary-soft">
@@ -897,7 +916,7 @@ const StudentAssignments: React.FC = () => {
         )}
 
         {/* Mushaf Modal */}
-        {selectedAssignment && mushafMistakes.length > 0 && (
+        {(selectedAssignment || viewingMistakesFor) && (mushafMistakes.length > 0 || personalMushafMistakes.length > 0) && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
             <div className="bg-white rounded-3xl shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
               {/* Header */}
@@ -906,19 +925,20 @@ const StudentAssignments: React.FC = () => {
                   <div>
                     <h2 className="text-xl sm:text-2xl font-semibold">
                       Mushaf View
-                      {viewingMistakesFor && ` - ${viewingMistakesFor.type.toUpperCase()}`}
+                      {viewingMistakesFor && viewingMistakesFor.type !== 'all' && ` - ${viewingMistakesFor.type.toUpperCase()}`}
+                      {viewingMistakesFor && viewingMistakesFor.type === 'all' && ' - All Mistakes'}
                     </h2>
                     <p className="text-white/80 text-xs sm:text-sm mt-1">
-                      {mushafMistakes.length} mistake(s) marked
+                      {mushafMistakes.length} assignment mistake(s) • {personalMushafMistakes.length} historical mistake(s)
                     </p>
                       </div>
                   <div className="flex gap-2">
-                    {viewingMistakesFor && (
+                    {viewingMistakesFor && viewingMistakesFor.type !== 'all' && (
                       <button
                         onClick={() => {
-                          setViewingMistakesFor(null);
-                          const assignment = studentAssignments.find(a => a.id === selectedAssignment);
+                          const assignment = studentAssignments.find(a => a.id === viewingMistakesFor.assignmentId);
                           if (assignment?.mushafMistakes && assignment.mushafMistakes.length > 0) {
+                            setViewingMistakesFor({ assignmentId: viewingMistakesFor.assignmentId, type: 'all' });
                             setMushafPage(assignment.mushafMistakes[0].page);
                           }
                         }}
