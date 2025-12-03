@@ -38,9 +38,18 @@ export async function uploadMistakeAudio(
 
     const data = await response.json();
     // Return full URL if relative path
-    const audioUrl = data.audioUrl.startsWith('http') 
-      ? data.audioUrl 
-      : `${apiBase}${data.audioUrl}`;
+    let audioUrl = data.audioUrl;
+    if (!audioUrl.startsWith('http')) {
+      // Remove /api from base URL if present (uploads are served from root, not /api)
+      let baseUrl = apiBase;
+      if (baseUrl.endsWith('/api')) {
+        baseUrl = baseUrl.replace('/api', '');
+      }
+      // Ensure base URL doesn't end with / and audioUrl starts with /
+      baseUrl = baseUrl.replace(/\/$/, '');
+      audioUrl = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
+      audioUrl = `${baseUrl}${audioUrl}`;
+    }
     return audioUrl;
   } catch (error) {
     console.error('Error uploading audio:', error);

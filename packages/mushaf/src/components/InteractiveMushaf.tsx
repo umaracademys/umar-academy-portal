@@ -1635,9 +1635,13 @@ export const WordByWordPage: React.FC<{
                                           // Get base URL
                                           let baseUrl = 'http://localhost:3001';
                                           if (typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE) {
-                                            baseUrl = (window as any).MUSHAF_API_BASE.replace('/api', '');
+                                            baseUrl = (window as any).MUSHAF_API_BASE;
                                           } else if (import.meta.env?.VITE_API_BASE_URL) {
-                                            baseUrl = import.meta.env.VITE_API_BASE_URL.replace('/api', '');
+                                            baseUrl = import.meta.env.VITE_API_BASE_URL;
+                                          }
+                                          // Remove /api from base URL if present (uploads are served from root, not /api)
+                                          if (baseUrl.endsWith('/api')) {
+                                            baseUrl = baseUrl.replace('/api', '');
                                           }
                                           // Ensure base URL doesn't end with /
                                           baseUrl = baseUrl.replace(/\/$/, '');
