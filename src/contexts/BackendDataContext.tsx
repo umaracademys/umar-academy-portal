@@ -399,10 +399,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               });
             }
           } else {
-            console.warn('⚠️ No assignments found in database. This could mean:');
-            console.warn('  1. No assignments have been created yet');
-            console.warn('  2. Assignments exist but query is not finding them');
-            console.warn('  3. Check backend logs when approving tickets to see if assignments are being created');
+            // Only log this warning once per session to reduce console noise
+            if (import.meta.env.DEV) {
+              const hasWarnedAboutAssignments = sessionStorage.getItem('warned_about_no_assignments');
+              if (!hasWarnedAboutAssignments) {
+                console.info('ℹ️ No assignments found in database. This is normal if no assignments have been created yet.');
+                sessionStorage.setItem('warned_about_no_assignments', 'true');
+              }
+            }
           }
           // Map MongoDB _id to id for frontend compatibility
           const mappedAssignments = assignmentsData.map((assignment: any) => ({
@@ -579,6 +583,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             fullName: studentRecord.fullName || studentRecord.name || user.name || user.fullName || 'Unknown',
             email: studentRecord.email || user.email || '',
             phone: studentRecord.contact || studentRecord.phone || user.phone || '',
+            contact: studentRecord.contact || studentRecord.phone || user.phone || '', // Add contact field for StudentRegistrationForm
             address: studentRecord.address || user.address || '',
             dateOfBirth: studentRecord.dateOfBirth || user.dateOfBirth || new Date().toISOString(),
             enrollmentDate: studentRecord.enrolledDate || studentRecord.enrollmentDate || user.enrollmentDate || new Date().toISOString(),

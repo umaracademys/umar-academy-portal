@@ -43,9 +43,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
   // Initialize form data when student prop changes (for edit mode)
   useEffect(() => {
     if (isEdit && student) {
-      console.log('🔄 Initializing StudentRegistrationForm with student data:', student);
-      console.log('📞 Contact field:', student.contact || student.phoneNumber || 'NOT FOUND');
-      console.log('📅 Schedule:', student.schedule);
+      if (import.meta.env.DEV) {
+        console.log('🔄 Initializing StudentRegistrationForm with student data:', student);
+        console.log('📞 Contact field:', student.contact || student.phone || student.phoneNumber || 'Not set');
+        console.log('📅 Schedule:', student.schedule);
+      }
       setFormData({
         fullName: student.fullName || student.name || '',
         parentName: student.parentName || '',
