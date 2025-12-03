@@ -1627,9 +1627,11 @@ export const WordByWordPage: React.FC<{
                                       }}
                                       src={
                                         (() => {
-                                          const url = wordMistake.audioUrl || '';
-                                          // If already a full URL, use it
+                                          let url = wordMistake.audioUrl || '';
+                                          // If already a full URL, check if it has /api and remove it
                                           if (url.startsWith('http://') || url.startsWith('https://')) {
+                                            // Fix URLs that incorrectly include /api/uploads
+                                            url = url.replace('/api/uploads/', '/uploads/');
                                             return url;
                                           }
                                           // Get base URL
