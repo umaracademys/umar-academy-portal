@@ -157,8 +157,22 @@ app.post('/api/recordings/upload', (req, res) => {
 
 app.use(express.json({ limit: '10mb' }));
 
-// Serve uploaded audio files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded audio files - must be before 404 handler
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, filePath) => {
+    // Set proper headers for audio files
+    if (filePath.endsWith('.webm') || filePath.endsWith('.mp4') || filePath.endsWith('.mp3')) {
+      res.setHeader('Content-Type', 'audio/webm');
+      res.setHeader('Accept-Ranges', 'bytes');
+    }
+  },
+  fallthrough: false // Don't fall through to next middleware if file not found
+}));
+
+// Log uploads directory for debugging
+console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
+console.log(`📁 Mistakes directory: ${uploadsDir}`);
+console.log(`📁 Recordings directory: ${recordingsDir}`);
 
 // Connect to MongoDB (don't exit on failure - allow graceful degradation)
 mongoose.connect(MONGODB_URI)
