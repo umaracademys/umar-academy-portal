@@ -10,6 +10,7 @@ import StudentEnrollment from '../components/StudentEnrollment';
 import StudentPayments from '../components/StudentPayments';
 import StudentProgress from '../components/StudentProgress';
 import StudentCommunication from '../components/StudentCommunication';
+import StudentPersonalMushaf from '../components/StudentPersonalMushaf';
 import Card from '../components/Card';
 
 const StudentsPage: React.FC = () => {
@@ -24,6 +25,7 @@ const StudentsPage: React.FC = () => {
   const [showStudentPayments, setShowStudentPayments] = useState(false);
   const [showStudentProgress, setShowStudentProgress] = useState(false);
   const [showStudentCommunication, setShowStudentCommunication] = useState(false);
+  const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
 
   const handleStudentSelect = (student: any) => {
     setSelectedStudent(student);
@@ -86,6 +88,10 @@ const StudentsPage: React.FC = () => {
             setShowStudentAnalytics(true);
           }}
           onBulkOperations={() => setShowStudentBulkOperations(true)}
+          onPersonalMushaf={(student) => {
+            setSelectedStudent(student);
+            setShowStudentPersonalMushaf(true);
+          }}
         />
       </div>
 
@@ -202,6 +208,17 @@ const StudentsPage: React.FC = () => {
             if (refreshData) {
               refreshData();
             }
+          }}
+        />
+      )}
+
+      {showStudentPersonalMushaf && selectedStudent && (
+        <StudentPersonalMushaf
+          studentId={selectedStudent.id}
+          studentName={selectedStudent.fullName}
+          onClose={() => {
+            setShowStudentPersonalMushaf(false);
+            setSelectedStudent(null);
           }}
         />
       )}

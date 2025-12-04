@@ -9,12 +9,14 @@ import Card from './Card';
 interface StudentPersonalMushafProps {
   onClose?: () => void;
   studentId?: string; // Optional: can be passed directly
+  studentName?: string; // Optional: student name for display
 }
 
-const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, studentId: propStudentId }) => {
+const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, studentId: propStudentId, studentName: propStudentName }) => {
   const { getStudentPersonalMushaf } = useBackendData();
   const { user } = useAuth();
-  const { getStudentByEmail } = useData();
+  const { getStudentByEmail, students } = useData();
+  const [studentName, setStudentName] = useState<string>(propStudentName || '');
   const [currentPage, setCurrentPage] = useState(1);
   const [mistakes, setMistakes] = useState<MushafMistake[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,18 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     return user?.id || '';
   }, [propStudentId, user, getStudentByEmail]);
 
+  // Get student name from students list if not provided
+  useEffect(() => {
+    if (propStudentName) {
+      setStudentName(propStudentName);
+    } else if (studentId) {
+      const student = students.find(s => s.id === studentId);
+      if (student?.fullName) {
+        setStudentName(student.fullName);
+      }
+    }
+  }, [studentId, propStudentName, students]);
+
   useEffect(() => {
     const loadPersonalMushaf = async () => {
       if (!studentId) {
@@ -53,6 +67,11 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         setLoading(true);
         setError(null);
         const data = await getStudentPersonalMushaf(studentId);
+        
+        // Update student name from API response if available
+        if (data?.studentName && !studentName) {
+          setStudentName(data.studentName);
+        }
         
         if (data && data.mistakes) {
           // Convert to MushafMistake format
@@ -147,9 +166,11 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)]">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold text-white">My Personal Mushaf</h2>
+              <h2 className="text-2xl font-semibold text-white">
+                {studentName ? `${studentName}'s Personal Mushaf` : 'My Personal Mushaf'}
+              </h2>
               <p className="text-white/80 text-sm mt-1">
-                All mistakes from your recitation reviews
+                {studentName ? `All mistakes from ${studentName}'s recitation reviews` : 'All mistakes from your recitation reviews'}
               </p>
             </div>
             {onClose && (

@@ -10,9 +10,10 @@ interface StudentListProps {
   onCredentials?: (student: any) => void;
   onAnalytics?: (student: any) => void;
   onBulkOperations?: () => void;
+  onPersonalMushaf?: (student: any) => void;
 }
 
-const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStudent, onDeleteStudent, onAddStudent, onCredentials, onAnalytics, onBulkOperations }) => {
+const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStudent, onDeleteStudent, onAddStudent, onCredentials, onAnalytics, onBulkOperations, onPersonalMushaf }) => {
   const { students, teachers, addStudent } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('all');
@@ -446,6 +447,15 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                             className="text-purple-600 hover:text-purple-800 text-sm font-medium"
                           >
                             Analytics
+                          </button>
+                        )}
+                        {onPersonalMushaf && (
+                          <button
+                            onClick={() => onPersonalMushaf(student)}
+                            className="text-green-600 hover:text-green-800 text-xs font-medium"
+                            title="View Personal Mushaf with Mistakes"
+                          >
+                            Mushaf
                           </button>
                         )}
                       </div>
