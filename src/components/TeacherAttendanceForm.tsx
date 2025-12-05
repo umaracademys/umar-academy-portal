@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Teacher, TeacherAttendance, AttendanceStatus } from '../types';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 // Helper function to get teacher shift times (moved outside component for reuse)
 const getTeacherShiftTimes = (teacher: Teacher) => {
@@ -799,12 +800,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                                 />
                               </div>
                             </div>
-                            <textarea
+                            <AiSuggestionsInput
                               value={morningShift.notes || ''}
-                              onChange={(e) => updateAttendance(teacher.id, 'morningNotes', e.target.value)}
-                              placeholder="Notes..."
-                              className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              onChange={(value) => updateAttendance(teacher.id, 'morningNotes', value)}
+                              category="attendance"
                               rows={2}
+                              multiline={true}
+                              className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              placeholder="Notes..."
                             />
                           </div>
                         </div>
@@ -852,12 +855,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                                 />
                               </div>
                             </div>
-                            <textarea
+                            <AiSuggestionsInput
                               value={eveningShift.notes || ''}
-                              onChange={(e) => updateAttendance(teacher.id, 'eveningNotes', e.target.value)}
-                              placeholder="Notes..."
-                              className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              onChange={(value) => updateAttendance(teacher.id, 'eveningNotes', value)}
+                              category="attendance"
                               rows={2}
+                              multiline={true}
+                              className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              placeholder="Notes..."
                             />
                           </div>
                         </div>
@@ -905,12 +910,14 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                               />
                             </div>
                           </div>
-                          <textarea
+                          <AiSuggestionsInput
                             value={shift.notes || ''}
-                            onChange={(e) => updateAttendance(teacher.id, 'shiftNotes', e.target.value)}
-                            placeholder="Notes..."
-                            className="w-full px-2 py-1 border border-primary rounded text-sm"
+                            onChange={(value) => updateAttendance(teacher.id, 'shiftNotes', value)}
+                            category="attendance"
                             rows={2}
+                            multiline={true}
+                            className="w-full px-2 py-1 border border-primary rounded text-sm"
+                            placeholder="Notes..."
                           />
                         </div>
                       </div>

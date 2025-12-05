@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AiSuggestionsInput from './AiSuggestionsInput';
 import { useAuth } from '../contexts/AuthContext';
 
 interface EmailModuleProps {

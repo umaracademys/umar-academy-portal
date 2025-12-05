@@ -253,13 +253,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
                 Comment <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <AiSuggestionsInput
                 value={adminComment}
-                onChange={(e) => setAdminComment(e.target.value)}
-                placeholder="Enter comment for sabq assignment..."
+                onChange={(value) => setAdminComment(value)}
+                category="general"
                 rows={5}
+                multiline={true}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
-                required
+                placeholder="Enter comment for sabq assignment..."
               />
             </div>
           )}
@@ -292,13 +293,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                 <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
                   Notes for Teacher <span className="text-red-500">*</span>
                 </label>
-                <textarea
+                <AiSuggestionsInput
                   value={teacherNotes}
-                  onChange={(e) => setTeacherNotes(e.target.value)}
-                  placeholder="Enter notes or instructions for the teacher..."
+                  onChange={(value) => setTeacherNotes(value)}
+                  category="general"
                   rows={5}
+                  multiline={true}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
-                  required
+                  placeholder="Enter notes or instructions for the teacher..."
                 />
               </div>
             </>
