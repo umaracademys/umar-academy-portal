@@ -34,7 +34,7 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement | HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch suggestions based on category and current input
   const fetchSuggestions = async (searchQuery: string) => {

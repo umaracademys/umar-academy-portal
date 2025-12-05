@@ -12,6 +12,8 @@ const TeacherProfile = lazy(() => import('./pages/TeacherProfile'));
 const AssignmentManagement = lazy(() => import('./pages/AssignmentManagement'));
 const StudentsPage = lazy(() => import('./pages/StudentsPage'));
 const TeachersPage = lazy(() => import('./pages/TeachersPage'));
+const SuperAdminAiLibrary = lazy(() => import('./pages/SuperAdminAiLibrary'));
+const AdminAiLibrary = lazy(() => import('./pages/AdminAiLibrary'));
 const MushafDemo = lazy(() => import('./pages/MushafDemo'));
 const StudentRouter = lazy(() => import('./modules/student/StudentRouter'));
 const ParentRegistrationForm = lazy(() => import('./pages/ParentRegistrationForm'));
