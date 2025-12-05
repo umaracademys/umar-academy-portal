@@ -5651,7 +5651,7 @@ app.get('/api/mistake-library/export/:format', async (req, res) => {
   try {
     const { format } = req.params;
     const { category, tag } = req.query;
-    const query: any = { isPublic: true };
+    const query = { isPublic: true };
 
     if (category) query.category = category;
     if (tag) query.tags = tag;
