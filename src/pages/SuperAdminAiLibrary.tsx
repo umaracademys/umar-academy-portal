@@ -42,7 +42,58 @@ const SuperAdminAiLibrary: React.FC = () => {
   const [showBulkAdd, setShowBulkAdd] = useState(false);
 
   useEffect(() => {
-    loadCategories();
+    const initializeIfNeeded = async () => {
+      try {
+        const data = await getCategories();
+        if (data.length === 0) {
+          // No categories exist, auto-initialize
+          console.log('No categories found, auto-initializing...');
+          await initializeCategories();
+          
+          // Wait a bit for categories to be loaded
+          await new Promise(resolve => setTimeout(resolve, 500));
+          const updatedCategories = await getCategories();
+          const generalCategory = updatedCategories.find(c => c.name === 'general');
+          
+          if (generalCategory) {
+            const defaultPhrases = [
+              'Please complete the assignment',
+              'Review the material carefully',
+              'Practice regularly',
+              'Focus on accuracy',
+              'Take your time',
+              'Ask questions if needed',
+              'Good progress',
+              'Keep up the good work',
+              'Needs more practice',
+              'Excellent effort',
+              'Well done',
+              'Continue practicing',
+              'Pay attention to details',
+              'Work on pronunciation',
+              'Memorize thoroughly'
+            ];
+            
+            let addedCount = 0;
+            for (const phrase of defaultPhrases) {
+              try {
+                await createPhrase(phrase, 'general');
+                addedCount++;
+              } catch (err) {
+                // Ignore duplicates
+              }
+            }
+            console.log(`✅ Auto-initialized: ${updatedCategories.length} categories and ${addedCount} phrases`);
+          }
+        }
+      } catch (err) {
+        console.error('Error checking/initializing categories:', err);
+      }
+    };
+    
+    initializeIfNeeded().then(() => {
+      loadCategories();
+    });
   }, []);
 
   useEffect(() => {
