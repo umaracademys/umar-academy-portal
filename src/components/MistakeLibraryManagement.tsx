@@ -66,8 +66,10 @@ const MistakeLibraryManagement: React.FC<MistakeLibraryManagementProps> = ({
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
       if (searchTerm) params.append('search', searchTerm);
 
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/mistake-library?${params.toString()}`,
+        `${apiUrl}/mistake-library?${params.toString()}`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -88,9 +90,11 @@ const MistakeLibraryManagement: React.FC<MistakeLibraryManagementProps> = ({
 
   const handleSave = async () => {
     try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
       const url = editingEntry
-        ? `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/mistake-library/${editingEntry.id}`
-        : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/mistake-library`;
+        ? `${apiUrl}/mistake-library/${editingEntry.id}`
+        : `${apiUrl}/mistake-library`;
 
       const method = editingEntry ? 'PUT' : 'POST';
 
@@ -125,8 +129,10 @@ const MistakeLibraryManagement: React.FC<MistakeLibraryManagementProps> = ({
     if (!confirm('Are you sure you want to delete this entry?')) return;
 
     try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/mistake-library/${id}`,
+        `${apiUrl}/mistake-library/${id}`,
         {
           method: 'DELETE',
           headers: {
@@ -233,8 +239,10 @@ const MistakeLibraryManagement: React.FC<MistakeLibraryManagementProps> = ({
       if (selectedCategory !== 'all') params.append('category', selectedCategory);
       if (searchTerm) params.append('search', searchTerm);
 
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/mistake-library/export/${format}?${params.toString()}`,
+        `${apiUrl}/mistake-library/export/${format}?${params.toString()}`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -262,8 +270,10 @@ const MistakeLibraryManagement: React.FC<MistakeLibraryManagementProps> = ({
     if (onSelect) {
       onSelect(entry);
       // Increment usage count
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
       fetch(
-        `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/mistake-library/${entry.id}/use`,
+        `${apiUrl}/mistake-library/${entry.id}/use`,
         {
           method: 'POST',
           headers: {

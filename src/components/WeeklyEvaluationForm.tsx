@@ -115,7 +115,9 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
     setShowSuggestions({ ...showSuggestions, [fieldType]: true });
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/ai/suggestions`, {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+      const response = await fetch(`${apiUrl}/ai/suggestions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -191,7 +193,9 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
   const handleSummarize = async () => {
     setSummarizing(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/ai/summarize`, {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+      const response = await fetch(`${apiUrl}/ai/summarize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -276,7 +280,9 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
     setSuccess(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/weekly-evaluations`, {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+      const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+      const response = await fetch(`${apiUrl}/weekly-evaluations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
