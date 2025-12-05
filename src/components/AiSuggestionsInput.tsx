@@ -65,7 +65,7 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        console.log('AI Suggestions response:', { category, query: searchQuery, data });
+        console.log('AI Suggestions response:', { category, query: searchQuery, dataLength: Array.isArray(data) ? data.length : 0, data });
         // Transform data to match expected format
         const formattedSuggestions = Array.isArray(data) ? data.map((item: any) => ({
           id: item.id || item._id || `suggestion-${Date.now()}-${Math.random()}`,
@@ -73,11 +73,18 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
           category: item.category || category,
           usageCount: item.usageCount || 0
         })) : [];
+        
+        console.log('Formatted suggestions:', formattedSuggestions.length, formattedSuggestions);
         setSuggestions(formattedSuggestions);
         setShowSuggestions(formattedSuggestions.length > 0);
+        
+        // If no suggestions and category is 'general', show helpful message
+        if (formattedSuggestions.length === 0 && category === 'general') {
+          console.warn('⚠️ No phrases found in "general" category. Please initialize categories in AI Library (/super-admin/ai-library).');
+        }
       } else {
         const errorText = await response.text();
-        console.warn('Failed to fetch suggestions:', response.status, response.statusText, errorText);
+        console.error('❌ Failed to fetch suggestions:', response.status, response.statusText, errorText);
         setSuggestions([]);
         setShowSuggestions(false);
       }
