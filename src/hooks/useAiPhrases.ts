@@ -339,6 +339,7 @@ export const useAiPhrases = () => {
     getCategories,
     getPhrases,
     createCategory,
+    updateCategory,
     deleteCategory,
     createPhrase,
     updatePhrase,
