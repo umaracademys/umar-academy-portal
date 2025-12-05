@@ -154,13 +154,13 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     // Check if user is a teacher
     const teacher = teachers.find(t => t.id === user.id || t.email === user.email);
     if (teacher) {
-      return { id: teacher.id, name: teacher.fullName || teacher.name || 'Teacher' };
+      return { id: teacher.id, name: teacher.fullName || 'Teacher' };
     }
     
     // Check if user is an admin
     const admin = admins.find(a => a.id === user.id || a.email === user.email);
     if (admin) {
-      return { id: admin.id, name: admin.fullName || admin.name || 'Admin' };
+      return { id: admin.id, name: admin.fullName || 'Admin' };
     }
     
     return { id: user.id || '', name: user.name || user.email || 'User' };

@@ -102,7 +102,23 @@ const StudentAssignments: React.FC = () => {
     if (viewingMistakesFor) {
       const assignment = studentAssignments.find(a => a.id === viewingMistakesFor.assignmentId);
       if (!assignment) return [];
-      return getMistakesForPhase(assignment, viewingMistakesFor.type, viewingMistakesFor.index);
+      if (viewingMistakesFor.type === 'all') {
+        // Return all mistakes for all phases
+        if (!assignment.mushafMistakes) return [];
+        return assignment.mushafMistakes.map((m: any) => ({
+          id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+          type: m.type,
+          page: m.page,
+          surah: m.surah,
+          ayah: m.ayah,
+          wordIndex: m.wordIndex,
+          position: m.position,
+          note: m.note,
+          audioUrl: m.audioUrl,
+          timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+        }));
+      }
+      return getMistakesForPhase(assignment, viewingMistakesFor.type, viewingMistakesFor.index || 0);
     }
     
     if (!selectedAssignment) return [];
