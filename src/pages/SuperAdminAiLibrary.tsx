@@ -233,6 +233,87 @@ const SuperAdminAiLibrary: React.FC = () => {
     }
   };
 
+  const handleImportTajweedPhrases = async () => {
+    if (!confirm('Import default Tajweed phrases? This will add common letter mistakes and tips to the tajweed category.')) {
+      return;
+    }
+
+    const tajweedData = [
+      { "letter": "أ / ء", "commonMistake": "Not pronounced or too soft", "easyTip": "Make a sudden stop sound at the back of the throat", "scope": "tajweed" },
+      { "letter": "ه", "commonMistake": "Soft or skipped", "easyTip": "Pronounce clearly from the throat", "scope": "tajweed" },
+      { "letter": "ع", "commonMistake": "Weak or like 'a'", "easyTip": "Push from deep throat, make a small vibration", "scope": "tajweed" },
+      { "letter": "ح", "commonMistake": "Pronounced like خ or too soft", "easyTip": "Breath out from middle of throat, soft 'h' sound", "scope": "tajweed" },
+      { "letter": "غ", "commonMistake": "Pronounced like ع", "easyTip": "Use back-of-throat vibration", "scope": "tajweed" },
+      { "letter": "خ", "commonMistake": "Pronounced like ح", "easyTip": "Make strong 'kh' sound from throat", "scope": "tajweed" },
+      { "letter": "ص", "commonMistake": "Pronounced too lightly", "easyTip": "Press tongue/teeth slightly, make it heavier", "scope": "tajweed" },
+      { "letter": "ض", "commonMistake": "Pronounced too lightly", "easyTip": "Press tongue/teeth slightly, make it heavier", "scope": "tajweed" },
+      { "letter": "ط", "commonMistake": "Pronounced too lightly", "easyTip": "Press tongue/teeth slightly, make it heavier", "scope": "tajweed" },
+      { "letter": "ظ", "commonMistake": "Pronounced too lightly", "easyTip": "Press tongue/teeth slightly, make it heavier", "scope": "tajweed" },
+      { "letter": "ق", "commonMistake": "Pronounced like ك", "easyTip": "Use back-of-throat sound", "scope": "tajweed" },
+      { "letter": "ر", "commonMistake": "Rolled too softly", "easyTip": "Roll the tongue lightly at front of mouth", "scope": "tajweed" },
+      { "letter": "ن", "commonMistake": "Missing nasal sound", "easyTip": "Hold sound for 2 counts in nose", "scope": "tajweed" },
+      { "letter": "م", "commonMistake": "Missing nasal sound", "easyTip": "Hold sound for 2 counts in nose", "scope": "tajweed" },
+      { "letter": "قـلـقـلـة", "commonMistake": "Soft or silent", "easyTip": "Give a small bounce, sharp sound", "scope": "tajweed" },
+      { "letter": "Alif / Waw / Ya", "commonMistake": "Too short or too long", "easyTip": "Hold for 2–4 counts depending on rule", "scope": "tajweed" },
+      { "letter": "ث", "commonMistake": "Pronounced like س or ت", "easyTip": "Focus on tongue between teeth for 'th' sound", "scope": "tajweed" },
+      { "letter": "س", "commonMistake": "Pronounced like ث or ص", "easyTip": "Make a clear 's' sound from front of mouth", "scope": "tajweed" },
+      { "letter": "ت", "commonMistake": "Pronounced like ث", "easyTip": "Tip of tongue on upper teeth, short 't'", "scope": "tajweed" },
+      { "letter": "ذ", "commonMistake": "Pronounced like ز or د", "easyTip": "Tongue lightly between teeth, 'dh' sound", "scope": "tajweed" },
+      { "letter": "ز", "commonMistake": "Pronounced like ذ or س", "easyTip": "Make buzzing 'z' sound, not soft", "scope": "tajweed" },
+      { "letter": "د", "commonMistake": "Pronounced like ذ", "easyTip": "Tip of tongue touches upper teeth, short 'd'", "scope": "tajweed" },
+      { "letter": "ش", "commonMistake": "Pronounced like س or ص", "easyTip": "Push air softly while saying 'sh'", "scope": "tajweed" },
+      { "letter": "ض / ط / ظ", "commonMistake": "Sometimes light instead of heavy", "easyTip": "Emphasize heavy pronunciation with tongue/teeth", "scope": "tajweed" },
+      { "letter": "Shaddah letters", "commonMistake": "Double letters pronounced as single", "easyTip": "Pronounce the letter twice with correct length", "scope": "tajweed" },
+      { "letter": "Waqf / Ibtida'", "commonMistake": "Stopping incorrectly", "easyTip": "Pause correctly without changing letters", "scope": "tajweed" }
+    ];
+
+    try {
+      // Find tajweed category
+      const tajweedCategory = categories.find(c => c.name === 'tajweed');
+      if (!tajweedCategory) {
+        alert('Tajweed category not found. Please initialize categories first.');
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      // Create phrases for each entry
+      for (const item of tajweedData) {
+        // Create multiple phrases per entry for better usability
+        const phrases = [
+          `${item.letter}: ${item.commonMistake}`,
+          `${item.letter}: ${item.easyTip}`,
+          `${item.letter} - Common mistake: ${item.commonMistake}. Tip: ${item.easyTip}`
+        ];
+
+        for (const phrase of phrases) {
+          try {
+            await createPhrase(phrase, 'tajweed');
+            successCount++;
+          } catch (err) {
+            // Ignore duplicate errors (phrase already exists)
+            if (err instanceof Error && !err.message.includes('already exists')) {
+              errorCount++;
+              errors.push(`${phrase}: ${err.message}`);
+            }
+          }
+        }
+      }
+
+      await loadPhrases('tajweed');
+
+      if (errorCount > 0) {
+        alert(`Imported ${successCount} phrases. ${errorCount} failed:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? '\n...' : ''}`);
+      } else {
+        alert(`Successfully imported ${successCount} Tajweed phrases!`);
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to import phrases');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -263,6 +344,13 @@ const SuperAdminAiLibrary: React.FC = () => {
                       title="Initialize default categories"
                     >
                       Init
+                    </button>
+                    <button
+                      onClick={handleImportTajweedPhrases}
+                      className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600"
+                      title="Import default Tajweed phrases"
+                    >
+                      📚 Import Tajweed
                     </button>
                     <button
                       onClick={() => {
