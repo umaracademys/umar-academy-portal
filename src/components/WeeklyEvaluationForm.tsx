@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
+import MistakeLibraryManagement from './MistakeLibraryManagement';
 
 interface WeeklyEvaluationFormProps {
   studentId: string;
@@ -28,6 +29,11 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Record<string, string[]>>({});
+  const [loadingSuggestions, setLoadingSuggestions] = useState<Record<string, boolean>>({});
+  const [showSuggestions, setShowSuggestions] = useState<Record<string, boolean>>({});
+  const [summarizing, setSummarizing] = useState(false);
+  const [showMistakeLibrary, setShowMistakeLibrary] = useState(false);
 
   // Get current week dates
   const getWeekDates = () => {
@@ -99,6 +105,162 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
         mistakesMade: formData.mistakes.mistakesMade.filter((_, i) => i !== index)
       }
     });
+  };
+
+  // Fetch AI suggestions for a field
+  const fetchSuggestions = async (fieldType: string) => {
+    if (loadingSuggestions[fieldType]) return;
+    
+    setLoadingSuggestions({ ...loadingSuggestions, [fieldType]: true });
+    setShowSuggestions({ ...showSuggestions, [fieldType]: true });
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/ai/suggestions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          fieldType,
+          context: { studentName, formData },
+          studentName
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions({ ...suggestions, [fieldType]: data.suggestions || [] });
+      }
+    } catch (err) {
+      console.error('Error fetching suggestions:', err);
+    } finally {
+      setLoadingSuggestions({ ...loadingSuggestions, [fieldType]: false });
+    }
+  };
+
+  // Use a suggestion
+  const useSuggestion = (fieldType: string, suggestion: string) => {
+    const fieldMap: Record<string, (value: string) => void> = {
+      tajweedStrengths: (value) => setFormData({
+        ...formData,
+        tajweedEvaluation: { ...formData.tajweedEvaluation, strengths: value }
+      }),
+      tajweedAreasForImprovement: (value) => setFormData({
+        ...formData,
+        tajweedEvaluation: { ...formData.tajweedEvaluation, areasForImprovement: value }
+      }),
+      tajweedSpecificNotes: (value) => setFormData({
+        ...formData,
+        tajweedEvaluation: { ...formData.tajweedEvaluation, specificNotes: value }
+      }),
+      memoryMemorizedPages: (value) => setFormData({
+        ...formData,
+        memoryEvaluation: { ...formData.memoryEvaluation, memorizedPages: value }
+      }),
+      memoryRetentionQuality: (value) => setFormData({
+        ...formData,
+        memoryEvaluation: { ...formData.memoryEvaluation, retentionQuality: value }
+      }),
+      memorySpecificNotes: (value) => setFormData({
+        ...formData,
+        memoryEvaluation: { ...formData.memoryEvaluation, specificNotes: value }
+      }),
+      mistakesHowFixed: (value) => setFormData({
+        ...formData,
+        mistakes: { ...formData.mistakes, howFixed: value }
+      }),
+      mistakesImprovement: (value) => setFormData({
+        ...formData,
+        mistakes: { ...formData.mistakes, improvement: value }
+      }),
+      generalNotes: (value) => setFormData({
+        ...formData,
+        generalNotes: value
+      })
+    };
+
+    const setter = fieldMap[fieldType];
+    if (setter) {
+      setter(suggestion);
+      setShowSuggestions({ ...showSuggestions, [fieldType]: false });
+    }
+  };
+
+  // AI Summarize
+  const handleSummarize = async () => {
+    setSummarizing(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'}/api/ai/summarize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          evaluationData: formData,
+          studentName
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Show summary in a modal or alert
+        alert(data.summary);
+      }
+    } catch (err) {
+      console.error('Error generating summary:', err);
+      alert('Failed to generate summary. Please try again.');
+    } finally {
+      setSummarizing(false);
+    }
+  };
+
+  // Suggestion chip component
+  const SuggestionChips: React.FC<{ fieldType: string; label: string }> = ({ fieldType, label }) => {
+    const fieldSuggestions = suggestions[fieldType] || [];
+    const isLoading = loadingSuggestions[fieldType];
+    const isVisible = showSuggestions[fieldType];
+
+    return (
+      <div className="mb-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (!isVisible && !isLoading) {
+              fetchSuggestions(fieldType);
+            } else {
+              setShowSuggestions({ ...showSuggestions, [fieldType]: false });
+            }
+          }}
+          className="text-xs text-primary hover:text-primary-700 font-semibold mb-2 flex items-center gap-1"
+        >
+          {isLoading ? (
+            <>
+              <span className="animate-spin">⏳</span> Loading suggestions...
+            </>
+          ) : isVisible ? (
+            <>Hide Suggestions</>
+          ) : (
+            <>💡 Get Suggestions</>
+          )}
+        </button>
+        {isVisible && fieldSuggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {fieldSuggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => useSuggestion(fieldType, suggestion)}
+                className="px-3 py-1 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-full text-xs text-blue-700 font-medium transition-all cursor-pointer"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleSubmit = async (status: 'draft' | 'submitted') => {
@@ -232,6 +394,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Strengths</label>
+                <SuggestionChips fieldType="tajweedStrengths" label="Strengths" />
                 <textarea
                   value={formData.tajweedEvaluation.strengths}
                   onChange={(e) => setFormData({
@@ -248,6 +411,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Areas for Improvement</label>
+                <SuggestionChips fieldType="tajweedAreasForImprovement" label="Areas for Improvement" />
                 <textarea
                   value={formData.tajweedEvaluation.areasForImprovement}
                   onChange={(e) => setFormData({
@@ -264,6 +428,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Specific Notes</label>
+                <SuggestionChips fieldType="tajweedSpecificNotes" label="Specific Notes" />
                 <textarea
                   value={formData.tajweedEvaluation.specificNotes}
                   onChange={(e) => setFormData({
@@ -306,6 +471,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Memorized Pages</label>
+                <SuggestionChips fieldType="memoryMemorizedPages" label="Memorized Pages" />
                 <textarea
                   value={formData.memoryEvaluation.memorizedPages}
                   onChange={(e) => setFormData({
@@ -322,6 +488,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Retention Quality</label>
+                <SuggestionChips fieldType="memoryRetentionQuality" label="Retention Quality" />
                 <textarea
                   value={formData.memoryEvaluation.retentionQuality}
                   onChange={(e) => setFormData({
@@ -338,6 +505,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Specific Notes</label>
+                <SuggestionChips fieldType="memorySpecificNotes" label="Specific Notes" />
                 <textarea
                   value={formData.memoryEvaluation.specificNotes}
                   onChange={(e) => setFormData({
@@ -421,7 +589,17 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                 </button>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">How Mistakes Were Fixed</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-bold text-gray-700">How Mistakes Were Fixed</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowMistakeLibrary(true)}
+                    className="px-3 py-1 bg-purple-500 text-white rounded-lg text-xs font-bold hover:bg-purple-600 transition flex items-center gap-1"
+                  >
+                    📚 Use from Library
+                  </button>
+                </div>
+                <SuggestionChips fieldType="mistakesHowFixed" label="How Mistakes Were Fixed" />
                 <textarea
                   value={formData.mistakes.howFixed}
                   onChange={(e) => setFormData({
@@ -438,6 +616,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Improvement</label>
+                <SuggestionChips fieldType="mistakesImprovement" label="Improvement" />
                 <textarea
                   value={formData.mistakes.improvement}
                   onChange={(e) => setFormData({
@@ -458,6 +637,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
           {/* General Notes */}
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">General Notes</label>
+            <SuggestionChips fieldType="generalNotes" label="General Notes" />
             <textarea
               value={formData.generalNotes}
               onChange={(e) => setFormData({ ...formData, generalNotes: e.target.value })}
@@ -481,30 +661,70 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-between items-center pt-4 border-t border-gray-200">
             <button
-              onClick={onClose}
-              className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-bold transition-all"
+              onClick={handleSummarize}
+              disabled={summarizing}
+              className="px-4 py-2 bg-purple-500 text-white rounded-lg font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60 flex items-center gap-2"
             >
-              Cancel
+              {summarizing ? (
+                <>
+                  <span className="animate-spin">⏳</span> Summarizing...
+                </>
+              ) : (
+                <>
+                  🤖 Summarize with AI
+                </>
+              )}
             </button>
-            <button
-              onClick={() => handleSubmit('draft')}
-              disabled={loading}
-              className="px-6 py-3 bg-gray-500 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60"
-            >
-              {loading ? 'Saving...' : 'Save Draft'}
-            </button>
-            <button
-              onClick={() => handleSubmit('submitted')}
-              disabled={loading}
-              className="px-6 py-3 bg-primary text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60"
-            >
-              {loading ? 'Submitting...' : 'Submit for Review'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSubmit('draft')}
+                disabled={loading}
+                className="px-6 py-3 bg-gray-500 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60"
+              >
+                {loading ? 'Saving...' : 'Save Draft'}
+              </button>
+              <button
+                onClick={() => handleSubmit('submitted')}
+                disabled={loading}
+                className="px-6 py-3 bg-primary text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60"
+              >
+                {loading ? 'Submitting...' : 'Submit for Review'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Mistake Library Modal */}
+      {showMistakeLibrary && (
+        <MistakeLibraryManagement
+          onClose={() => setShowMistakeLibrary(false)}
+          onSelect={(entry) => {
+            // Add the mistake and fix to the form
+            const newText = formData.mistakes.howFixed
+              ? `${formData.mistakes.howFixed}\n\n${entry.title}:\nMistake: ${entry.mistake}\nFix: ${entry.howToFix}`
+              : `${entry.title}:\nMistake: ${entry.mistake}\nFix: ${entry.howToFix}`;
+            
+            setFormData({
+              ...formData,
+              mistakes: {
+                ...formData.mistakes,
+                howFixed: newText
+              }
+            });
+            setShowMistakeLibrary(false);
+          }}
+          selectMode={true}
+        />
+      )}
     </div>
   );
 };

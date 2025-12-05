@@ -315,6 +315,40 @@ const weeklyEvaluationSchema = new mongoose.Schema({
 
 const WeeklyEvaluation = mongoose.model('WeeklyEvaluation', weeklyEvaluationSchema);
 
+// Mistake Library Schema - Common mistakes and how to fix them
+const mistakeLibrarySchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  category: {
+    type: String,
+    enum: ['letter', 'word', 'tajweed_rule', 'memory_technique', 'general'],
+    required: true,
+    index: true
+  },
+  title: { type: String, required: true }, // e.g., "Heavy Letter (ق)", "Madd Rule"
+  description: String, // Detailed description
+  mistake: { type: String, required: true }, // The common mistake
+  howToFix: { type: String, required: true }, // How to fix it
+  examples: [{
+    text: String, // Example text
+    correct: String, // Correct pronunciation/usage
+    incorrect: String // Incorrect pronunciation/usage
+  }],
+  tips: [String], // Teaching tips
+  relatedMistakes: [String], // IDs of related mistakes
+  tags: [String], // For searchability
+  createdBy: { type: String, required: true }, // User ID
+  createdByName: { type: String, required: true },
+  isPublic: { type: Boolean, default: true }, // Can be shared
+  usageCount: { type: Number, default: 0 }, // How many times used
+  lastUsed: Date
+}, { timestamps: true });
+
+mistakeLibrarySchema.index({ category: 1, title: 1 });
+mistakeLibrarySchema.index({ tags: 1 });
+mistakeLibrarySchema.index({ mistake: 'text', howToFix: 'text', title: 'text' }); // Text search
+
+const MistakeLibrary = mongoose.model('MistakeLibrary', mistakeLibrarySchema);
+
 // Recitation profile schema helpers
 const recitationUnitSchema = new mongoose.Schema({
   unitType: { type: String, enum: ['juz', 'surah', 'pages'], default: 'surah' },
@@ -5262,6 +5296,402 @@ app.delete('/api/weekly-evaluations/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// AI SUGGESTIONS API ENDPOINTS
+// ============================================
+
+// Get AI suggestions for a specific field
+app.post('/api/ai/suggestions', async (req, res) => {
+  try {
+    const { fieldType, context, studentName, currentValue } = req.body;
+
+    // Predefined suggestions based on field type
+    const suggestions: Record<string, string[]> = {
+      tajweedStrengths: [
+        'Excellent pronunciation of Arabic letters',
+        'Good application of tajweed rules',
+        'Clear articulation of sounds',
+        'Proper elongation (madd) application',
+        'Good understanding of ikhfa rules',
+        'Consistent application of ghunna',
+        'Proper handling of heavy and light letters',
+        'Good rhythm and flow in recitation'
+      ],
+      tajweedAreasForImprovement: [
+        'Needs practice with madd (elongation) rules',
+        'Work on ikhfa pronunciation',
+        'Improve ghunna application',
+        'Focus on heavy letter pronunciation',
+        'Practice proper stopping and starting',
+        'Work on letter articulation clarity',
+        'Improve rhythm and pacing',
+        'Focus on specific tajweed rules'
+      ],
+      tajweedSpecificNotes: [
+        'Student shows good progress in basic tajweed rules',
+        'Needs more practice with advanced tajweed concepts',
+        'Demonstrates understanding but needs consistency',
+        'Excellent foundation, ready for more complex rules',
+        'Requires focused practice on specific areas',
+        'Shows improvement week over week',
+        'Needs reinforcement of fundamental rules'
+      ],
+      memoryMemorizedPages: [
+        'Memorized pages X to Y this week',
+        'Completed memorization of specific surah',
+        'Reviewed previously memorized pages',
+        'Made progress on new memorization',
+        'Focused on retention of previous work',
+        'Combined new and review memorization'
+      ],
+      memoryRetentionQuality: [
+        'Excellent retention of previously memorized material',
+        'Good recall with minimal mistakes',
+        'Needs occasional review to maintain retention',
+        'Strong memory, consistent performance',
+        'Requires regular review sessions',
+        'Shows improvement in retention over time'
+      ],
+      memorySpecificNotes: [
+        'Student demonstrates strong memorization ability',
+        'Needs more frequent review sessions',
+        'Shows good progress in memorization speed',
+        'Requires focus on accuracy over speed',
+        'Excellent retention of long-term memorization',
+        'Needs structured review schedule'
+      ],
+      mistakesHowFixed: [
+        'Worked through mistakes one-on-one during session',
+        'Provided additional practice exercises',
+        'Used repetition and correction technique',
+        'Demonstrated correct pronunciation multiple times',
+        'Created practice drills for specific mistakes',
+        'Used visual aids and examples',
+        'Provided audio recordings for practice'
+      ],
+      mistakesImprovement: [
+        'Shows significant improvement in mistake reduction',
+        'Student is more aware of common mistakes',
+        'Demonstrates self-correction ability',
+        'Needs continued practice to eliminate mistakes',
+        'Shows progress but requires more time',
+        'Excellent response to correction techniques'
+      ],
+      generalNotes: [
+        'Overall good progress this week',
+        'Student is engaged and motivated',
+        'Requires additional support in specific areas',
+        'Shows consistent improvement',
+        'Needs more practice time',
+        'Excellent attitude and effort',
+        'Ready for next level of challenges'
+      ]
+    };
+
+    // Get suggestions for the field type
+    const fieldSuggestions = suggestions[fieldType] || [];
+
+    // If OpenAI API key is available, enhance suggestions
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (openaiApiKey && context) {
+      try {
+        // You can integrate OpenAI here for dynamic suggestions
+        // For now, return predefined suggestions
+      } catch (error) {
+        console.warn('OpenAI API not available, using predefined suggestions');
+      }
+    }
+
+    res.json({ suggestions: fieldSuggestions });
+  } catch (error) {
+    console.error('Error generating suggestions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// AI Summarize evaluation
+app.post('/api/ai/summarize', async (req, res) => {
+  try {
+    const { evaluationData, studentName } = req.body;
+
+    // Create a summary from the evaluation data
+    let summary = `Weekly Evaluation Summary for ${studentName}\n\n`;
+    
+    summary += `Tajweed Evaluation:\n`;
+    summary += `- Overall Rating: ${evaluationData.tajweedEvaluation?.overallRating || 'N/A'}/10\n`;
+    if (evaluationData.tajweedEvaluation?.strengths) {
+      summary += `- Strengths: ${evaluationData.tajweedEvaluation.strengths}\n`;
+    }
+    if (evaluationData.tajweedEvaluation?.areasForImprovement) {
+      summary += `- Areas for Improvement: ${evaluationData.tajweedEvaluation.areasForImprovement}\n`;
+    }
+    
+    summary += `\nMemory Evaluation:\n`;
+    summary += `- Overall Rating: ${evaluationData.memoryEvaluation?.overallRating || 'N/A'}/10\n`;
+    if (evaluationData.memoryEvaluation?.memorizedPages) {
+      summary += `- Memorized: ${evaluationData.memoryEvaluation.memorizedPages}\n`;
+    }
+    if (evaluationData.memoryEvaluation?.retentionQuality) {
+      summary += `- Retention Quality: ${evaluationData.memoryEvaluation.retentionQuality}\n`;
+    }
+    
+    if (evaluationData.mistakes?.mistakesMade?.length > 0) {
+      summary += `\nMistakes Identified:\n`;
+      evaluationData.mistakes.mistakesMade.forEach((mistake: any, index: number) => {
+        summary += `${index + 1}. ${mistake.type}: ${mistake.description} (Location: ${mistake.location}, Frequency: ${mistake.frequency})\n`;
+      });
+    }
+    
+    if (evaluationData.mistakes?.howFixed) {
+      summary += `\nHow Mistakes Were Fixed: ${evaluationData.mistakes.howFixed}\n`;
+    }
+    
+    if (evaluationData.mistakes?.improvement) {
+      summary += `Improvement: ${evaluationData.mistakes.improvement}\n`;
+    }
+    
+    if (evaluationData.generalNotes) {
+      summary += `\nGeneral Notes: ${evaluationData.generalNotes}\n`;
+    }
+
+    // If OpenAI API key is available, use it for better summarization
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (openaiApiKey) {
+      try {
+        // You can integrate OpenAI here for AI-powered summarization
+        // For now, return the structured summary
+      } catch (error) {
+        console.warn('OpenAI API not available, using basic summary');
+      }
+    }
+
+    res.json({ summary });
+  } catch (error) {
+    console.error('Error generating summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// MISTAKE LIBRARY API ENDPOINTS
+// ============================================
+
+// Get all mistake library entries
+app.get('/api/mistake-library', async (req, res) => {
+  try {
+    const { category, search, tag } = req.query;
+    const query: any = {};
+
+    if (category) query.category = category;
+    if (tag) query.tags = tag;
+    if (search) {
+      query.$text = { $search: search };
+    }
+
+    const entries = await MistakeLibrary.find(query)
+      .sort(search ? { score: { $meta: 'textScore' } } : { usageCount: -1, createdAt: -1 });
+    
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching mistake library:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single mistake library entry
+app.get('/api/mistake-library/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const entry = await MistakeLibrary.findOne({ id });
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Mistake library entry not found' });
+    }
+
+    res.json(entry);
+  } catch (error) {
+    console.error('Error fetching mistake library entry:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create mistake library entry
+app.post('/api/mistake-library', async (req, res) => {
+  try {
+    const {
+      category,
+      title,
+      description,
+      mistake,
+      howToFix,
+      examples,
+      tips,
+      relatedMistakes,
+      tags,
+      createdBy,
+      createdByName,
+      isPublic
+    } = req.body;
+
+    if (!category || !title || !mistake || !howToFix) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const entry = new MistakeLibrary({
+      id: `ML${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      category,
+      title,
+      description: description || '',
+      mistake,
+      howToFix,
+      examples: examples || [],
+      tips: tips || [],
+      relatedMistakes: relatedMistakes || [],
+      tags: tags || [],
+      createdBy: createdBy || '',
+      createdByName: createdByName || '',
+      isPublic: isPublic !== undefined ? isPublic : true
+    });
+
+    await entry.save();
+    res.json(entry);
+  } catch (error) {
+    console.error('Error creating mistake library entry:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update mistake library entry
+app.put('/api/mistake-library/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const entry = await MistakeLibrary.findOne({ id });
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Mistake library entry not found' });
+    }
+
+    const {
+      category,
+      title,
+      description,
+      mistake,
+      howToFix,
+      examples,
+      tips,
+      relatedMistakes,
+      tags,
+      isPublic
+    } = req.body;
+
+    if (category) entry.category = category;
+    if (title) entry.title = title;
+    if (description !== undefined) entry.description = description;
+    if (mistake) entry.mistake = mistake;
+    if (howToFix) entry.howToFix = howToFix;
+    if (examples) entry.examples = examples;
+    if (tips) entry.tips = tips;
+    if (relatedMistakes) entry.relatedMistakes = relatedMistakes;
+    if (tags) entry.tags = tags;
+    if (isPublic !== undefined) entry.isPublic = isPublic;
+
+    await entry.save();
+    res.json(entry);
+  } catch (error) {
+    console.error('Error updating mistake library entry:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete mistake library entry
+app.delete('/api/mistake-library/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const entry = await MistakeLibrary.findOne({ id });
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Mistake library entry not found' });
+    }
+
+    await MistakeLibrary.deleteOne({ id });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting mistake library entry:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Increment usage count (when used in evaluation)
+app.post('/api/mistake-library/:id/use', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const entry = await MistakeLibrary.findOne({ id });
+
+    if (!entry) {
+      return res.status(404).json({ error: 'Mistake library entry not found' });
+    }
+
+    entry.usageCount = (entry.usageCount || 0) + 1;
+    entry.lastUsed = new Date();
+    await entry.save();
+
+    res.json(entry);
+  } catch (error) {
+    console.error('Error updating usage count:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Export mistake library as report (JSON/CSV)
+app.get('/api/mistake-library/export/:format', async (req, res) => {
+  try {
+    const { format } = req.params;
+    const { category, tag } = req.query;
+    const query: any = { isPublic: true };
+
+    if (category) query.category = category;
+    if (tag) query.tags = tag;
+
+    const entries = await MistakeLibrary.find(query).sort({ category: 1, title: 1 });
+
+    if (format === 'json') {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename=mistake-library.json');
+      res.json(entries);
+    } else if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=mistake-library.csv');
+      
+      // CSV header
+      let csv = 'Category,Title,Mistake,How to Fix,Description,Tips,Tags\n';
+      
+      entries.forEach(entry => {
+        const escapeCsv = (str: string) => {
+          if (!str) return '';
+          return `"${str.replace(/"/g, '""')}"`;
+        };
+        
+        csv += [
+          entry.category,
+          entry.title,
+          entry.mistake,
+          entry.howToFix,
+          entry.description || '',
+          entry.tips.join('; ') || '',
+          entry.tags.join(', ') || ''
+        ].map(escapeCsv).join(',') + '\n';
+      });
+      
+      res.send(csv);
+    } else {
+      res.status(400).json({ error: 'Invalid format. Use json or csv' });
+    }
+  } catch (error) {
+    console.error('Error exporting mistake library:', error);
     res.status(500).json({ error: error.message });
   }
 });
