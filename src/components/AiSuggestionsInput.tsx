@@ -59,10 +59,19 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
 
       if (response.ok) {
         const data = await response.json();
-        setSuggestions(data);
-        setShowSuggestions(data.length > 0);
+        console.log('AI Suggestions response:', { category, query: searchQuery, data });
+        // Transform data to match expected format
+        const formattedSuggestions = Array.isArray(data) ? data.map((item: any) => ({
+          id: item.id || item._id || `suggestion-${Date.now()}-${Math.random()}`,
+          phrase: item.phrase || item.text || item,
+          category: item.category || category,
+          usageCount: item.usageCount || 0
+        })) : [];
+        setSuggestions(formattedSuggestions);
+        setShowSuggestions(formattedSuggestions.length > 0);
       } else {
-        console.warn('Failed to fetch suggestions:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.warn('Failed to fetch suggestions:', response.status, response.statusText, errorText);
         setSuggestions([]);
         setShowSuggestions(false);
       }
@@ -82,10 +91,8 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
     }
 
     debounceTimer.current = setTimeout(() => {
-      if (value || !value) {
-        // Show suggestions even when empty (top phrases)
-        fetchSuggestions(value);
-      }
+      // Always fetch suggestions, even when empty (to show top phrases)
+      fetchSuggestions(value || '');
     }, 300); // 300ms debounce
 
     return () => {
