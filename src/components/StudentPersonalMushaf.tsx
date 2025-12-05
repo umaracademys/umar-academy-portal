@@ -13,9 +13,9 @@ interface StudentPersonalMushafProps {
 }
 
 const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, studentId: propStudentId, studentName: propStudentName }) => {
-  const { getStudentPersonalMushaf } = useBackendData();
+  const { getStudentPersonalMushaf, addMistakeToPersonalMushaf } = useBackendData();
   const { user } = useAuth();
-  const { getStudentByEmail, students } = useData();
+  const { getStudentByEmail, students, teachers, admins } = useData();
   const [studentName, setStudentName] = useState<string>(propStudentName || '');
   const [currentPage, setCurrentPage] = useState(1);
   const [mistakes, setMistakes] = useState<MushafMistake[]>([]);
@@ -82,6 +82,7 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
             surah: m.surah,
             ayah: m.ayah,
             wordIndex: m.wordIndex,
+            letterIndex: m.letterIndex,
             position: m.position,
             note: m.note,
             audioUrl: m.audioUrl,
@@ -145,6 +146,88 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     const pages = new Set<number>(mistakes.map(m => m.page));
     return Array.from(pages).sort((a, b) => a - b);
   }, [mistakes]);
+
+  // Get current user info for marking mistakes
+  const getCurrentUserInfo = useMemo(() => {
+    if (!user) return { id: '', name: '' };
+    
+    // Check if user is a teacher
+    const teacher = teachers.find(t => t.id === user.id || t.email === user.email);
+    if (teacher) {
+      return { id: teacher.id, name: teacher.fullName || teacher.name || 'Teacher' };
+    }
+    
+    // Check if user is an admin
+    const admin = admins.find(a => a.id === user.id || a.email === user.email);
+    if (admin) {
+      return { id: admin.id, name: admin.fullName || admin.name || 'Admin' };
+    }
+    
+    return { id: user.id || '', name: user.name || user.email || 'User' };
+  }, [user, teachers, admins]);
+
+  // Handle mistake marking
+  const handleMistakeMark = async (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => {
+    if (!studentId) {
+      alert('Student ID not found');
+      return;
+    }
+
+    try {
+      const userInfo = getCurrentUserInfo;
+      const result = await addMistakeToPersonalMushaf(
+        studentId,
+        mistake,
+        userInfo.id,
+        userInfo.name
+      );
+
+      if (result && result.success) {
+        // Reload personal mushaf to show the new mistake
+        const data = await getStudentPersonalMushaf(studentId);
+        
+        if (data && data.mistakes) {
+          const convertedMistakes: MushafMistake[] = data.mistakes.map((m: any) => ({
+            id: m.id,
+            type: m.type,
+            page: m.page,
+            surah: m.surah,
+            ayah: m.ayah,
+            wordIndex: m.wordIndex,
+            letterIndex: m.letterIndex,
+            position: m.position,
+            note: m.note,
+            audioUrl: m.audioUrl,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            workflowStep: m.workflowStep
+          } as MushafMistake & { workflowStep?: string }));
+          
+          setMistakes(convertedMistakes);
+          
+          // Update statistics
+          const statsData = {
+            total: convertedMistakes.length,
+            sabq: convertedMistakes.filter(m => (m as any).workflowStep === 'sabq').length,
+            sabqi: convertedMistakes.filter(m => (m as any).workflowStep === 'sabqi').length,
+            manzil: convertedMistakes.filter(m => (m as any).workflowStep === 'manzil').length,
+            byType: {} as Record<string, number>
+          };
+          
+          convertedMistakes.forEach(m => {
+            statsData.byType[m.type] = (statsData.byType[m.type] || 0) + 1;
+          });
+          
+          setStats(statsData);
+          
+          // Navigate to the page with the new mistake
+          setCurrentPage(mistake.page);
+        }
+      }
+    } catch (err) {
+      console.error('Error saving mistake:', err);
+      alert(err instanceof Error ? err.message : 'Failed to save mistake');
+    }
+  };
 
   if (loading) {
     return (
@@ -259,26 +342,28 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📖</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No Mistakes Yet</h3>
-              <p className="text-gray-600">
-                Your personal Mushaf will show all mistakes from your recitation reviews.
+              <p className="text-gray-600 mb-4">
+                {studentName ? `${studentName}'s personal Mushaf will show all mistakes from recitation reviews.` : 'Your personal Mushaf will show all mistakes from your recitation reviews.'}
+              </p>
+              <p className="text-sm text-gray-500">
+                Click on any word to mark a mistake.
               </p>
             </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="bg-soft-accent rounded-2xl p-4 w-full max-w-4xl">
-                <InteractiveMushaf
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                  mistakes={filteredMistakes.filter(m => m.page === currentPage)}
-                  historicalMistakes={mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m))}
-                  onMistakeMark={() => {}} // Read-only
-                  readOnly={true}
-                  mode="viewing"
-                  showHistorical={true}
-                />
-              </div>
+          ) : null}
+          <div className="flex justify-center">
+            <div className="bg-soft-accent rounded-2xl p-4 w-full max-w-4xl">
+              <InteractiveMushaf
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                mistakes={filteredMistakes.filter(m => m.page === currentPage)}
+                historicalMistakes={mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m))}
+                onMistakeMark={handleMistakeMark}
+                readOnly={false}
+                mode="marking"
+                showHistorical={true}
+              />
             </div>
-          )}
+          </div>
         </div>
 
         {/* Mistake List Sidebar (if mistakes exist) */}

@@ -248,6 +248,73 @@ const evaluationSchema = new mongoose.Schema({
   evaluatedBy: String
 }, { _id: false });
 
+// Weekly Evaluation Schema - for comprehensive weekly student reports
+const weeklyEvaluationSchema = new mongoose.Schema({
+  id: { type: String, unique: true, required: true },
+  studentId: { type: String, required: true, index: true },
+  studentName: { type: String, required: true },
+  teacherId: { type: String, required: true, index: true },
+  teacherName: { type: String, required: true },
+  weekStartDate: { type: Date, required: true }, // Start of the week being evaluated
+  weekEndDate: { type: Date, required: true }, // End of the week being evaluated
+  
+  // Tajweed evaluation
+  tajweedEvaluation: {
+    overallRating: { type: Number, min: 1, max: 10 },
+    strengths: String, // What the student did well in tajweed
+    areasForImprovement: String, // Areas that need work
+    specificNotes: String // Detailed tajweed notes
+  },
+  
+  // Memory evaluation
+  memoryEvaluation: {
+    overallRating: { type: Number, min: 1, max: 10 },
+    memorizedPages: String, // What was memorized this week
+    retentionQuality: String, // How well they retained previous memorization
+    specificNotes: String // Detailed memory notes
+  },
+  
+  // Mistakes section
+  mistakes: {
+    mistakesMade: [{
+      type: String, // Type of mistake (madd, memory, ikhfa, etc.)
+      description: String, // Description of the mistake
+      location: String, // Where it occurred (surah, ayah, page)
+      frequency: Number // How often it occurred
+    }],
+    howFixed: String, // How the teacher helped fix the mistakes
+    improvement: String // Progress made in fixing mistakes
+  },
+  
+  // General notes
+  generalNotes: String,
+  
+  // Approval workflow
+  status: {
+    type: String,
+    enum: ['draft', 'submitted', 'under_review', 'feedback_provided', 'resubmitted', 'approved', 'rejected'],
+    default: 'draft',
+    index: true
+  },
+  submittedAt: Date,
+  reviewedBy: String, // Super Admin ID
+  reviewedByName: String, // Super Admin name
+  reviewedAt: Date,
+  adminFeedback: String, // Feedback from super admin
+  approvedAt: Date,
+  
+  // For tracking resubmissions
+  resubmissionCount: { type: Number, default: 0 },
+  previousFeedback: [{
+    feedback: String,
+    providedBy: String,
+    providedByName: String,
+    providedAt: Date
+  }]
+}, { timestamps: true });
+
+const WeeklyEvaluation = mongoose.model('WeeklyEvaluation', weeklyEvaluationSchema);
+
 // Recitation profile schema helpers
 const recitationUnitSchema = new mongoose.Schema({
   unitType: { type: String, enum: ['juz', 'surah', 'pages'], default: 'surah' },
@@ -3135,6 +3202,7 @@ const studentPersonalMushafSchema = new mongoose.Schema({
     surah: { type: Number, required: true },
     ayah: { type: Number, required: true },
     wordIndex: Number,
+    letterIndex: Number, // For letter-level mistakes
     position: {
       x: Number,
       y: Number
@@ -4874,6 +4942,326 @@ app.get('/api/students/:studentId/personal-mushaf/filter', async (req, res) => {
     res.json({ mistakes: filteredMistakes });
   } catch (error) {
     console.error('Error filtering personal Mushaf:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add mistake to student's personal Mushaf
+app.post('/api/students/:studentId/personal-mushaf/mistakes', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { mistake, markedBy, markedByName } = req.body;
+    
+    if (!mistake) {
+      return res.status(400).json({ error: 'Mistake data is required' });
+    }
+    
+    // Find or create personal Mushaf
+    let personalMushaf = await StudentPersonalMushaf.findOne({ studentId });
+    
+    if (!personalMushaf) {
+      // Get student name
+      const student = await Student.findOne({ id: studentId });
+      const studentName = student?.fullName || 'Unknown Student';
+      
+      personalMushaf = new StudentPersonalMushaf({
+        studentId,
+        studentName,
+        mistakes: []
+      });
+    }
+    
+    // Check for duplicates (same page, surah, ayah, wordIndex, type)
+    const isDuplicate = personalMushaf.mistakes.some(existing => 
+      existing.page === mistake.page &&
+      existing.surah === mistake.surah &&
+      existing.ayah === mistake.ayah &&
+      existing.wordIndex === mistake.wordIndex &&
+      existing.type === mistake.type &&
+      (mistake.letterIndex === undefined || existing.letterIndex === mistake.letterIndex)
+    );
+    
+    if (isDuplicate) {
+      return res.status(400).json({ error: 'This mistake already exists' });
+    }
+    
+    // Create new mistake entry
+    const newMistake = {
+      id: mistake.id || `mistake-${Date.now()}-${Math.random()}`,
+      type: mistake.type,
+      page: mistake.page,
+      surah: mistake.surah,
+      ayah: mistake.ayah,
+      wordIndex: mistake.wordIndex,
+      letterIndex: mistake.letterIndex,
+      position: mistake.position || { x: 50, y: 50 },
+      note: mistake.note || '',
+      audioUrl: mistake.audioUrl,
+      ticketId: null, // Direct addition, not from ticket
+      workflowStep: 'direct', // Mark as directly added
+      markedBy: markedBy || null,
+      markedByName: markedByName || null,
+      timestamp: mistake.timestamp ? new Date(mistake.timestamp) : new Date(),
+      createdAt: new Date()
+    };
+    
+    personalMushaf.mistakes.push(newMistake);
+    await personalMushaf.save();
+    
+    console.log('✅ Added mistake to Personal Mushaf:', {
+      studentId,
+      mistakeId: newMistake.id,
+      type: newMistake.type,
+      page: newMistake.page
+    });
+    
+    res.json({ success: true, mistake: newMistake, personalMushaf });
+  } catch (error) {
+    console.error('Error adding mistake to personal Mushaf:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// WEEKLY EVALUATION API ENDPOINTS
+// ============================================
+
+// Create or update weekly evaluation (Teacher)
+app.post('/api/weekly-evaluations', async (req, res) => {
+  try {
+    const {
+      id,
+      studentId,
+      studentName,
+      teacherId,
+      teacherName,
+      weekStartDate,
+      weekEndDate,
+      tajweedEvaluation,
+      memoryEvaluation,
+      mistakes,
+      generalNotes,
+      status
+    } = req.body;
+
+    if (!studentId || !teacherId || !weekStartDate || !weekEndDate) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    let evaluation;
+    if (id) {
+      // Update existing evaluation
+      evaluation = await WeeklyEvaluation.findOne({ id });
+      if (!evaluation) {
+        return res.status(404).json({ error: 'Evaluation not found' });
+      }
+
+      // Only allow updates if status is draft or feedback_provided
+      if (!['draft', 'feedback_provided'].includes(evaluation.status)) {
+        return res.status(400).json({ error: 'Cannot update evaluation in current status' });
+      }
+
+      evaluation.studentId = studentId;
+      evaluation.studentName = studentName;
+      evaluation.teacherId = teacherId;
+      evaluation.teacherName = teacherName;
+      evaluation.weekStartDate = new Date(weekStartDate);
+      evaluation.weekEndDate = new Date(weekEndDate);
+      evaluation.tajweedEvaluation = tajweedEvaluation || {};
+      evaluation.memoryEvaluation = memoryEvaluation || {};
+      evaluation.mistakes = mistakes || {};
+      evaluation.generalNotes = generalNotes || '';
+      evaluation.status = status || evaluation.status;
+
+      if (status === 'resubmitted') {
+        evaluation.resubmissionCount = (evaluation.resubmissionCount || 0) + 1;
+        evaluation.status = 'under_review';
+      } else if (status === 'submitted' && evaluation.status === 'draft') {
+        evaluation.submittedAt = new Date();
+        evaluation.status = 'under_review';
+      }
+    } else {
+      // Create new evaluation
+      evaluation = new WeeklyEvaluation({
+        id: `WE${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        studentId,
+        studentName,
+        teacherId,
+        teacherName,
+        weekStartDate: new Date(weekStartDate),
+        weekEndDate: new Date(weekEndDate),
+        tajweedEvaluation: tajweedEvaluation || {},
+        memoryEvaluation: memoryEvaluation || {},
+        mistakes: mistakes || {},
+        generalNotes: generalNotes || '',
+        status: status || 'draft'
+      });
+
+      if (status === 'submitted') {
+        evaluation.submittedAt = new Date();
+        evaluation.status = 'under_review';
+      }
+    }
+
+    await evaluation.save();
+    res.json(evaluation);
+  } catch (error) {
+    console.error('Error saving weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get weekly evaluations for a student
+app.get('/api/students/:studentId/weekly-evaluations', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { status, teacherId } = req.query;
+
+    const query = { studentId };
+    if (status) query.status = status;
+    if (teacherId) query.teacherId = teacherId;
+
+    const evaluations = await WeeklyEvaluation.find(query).sort({ weekStartDate: -1 });
+    res.json(evaluations);
+  } catch (error) {
+    console.error('Error fetching weekly evaluations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get weekly evaluations for a teacher
+app.get('/api/teachers/:teacherId/weekly-evaluations', async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { status } = req.query;
+
+    const query = { teacherId };
+    if (status) query.status = status;
+
+    const evaluations = await WeeklyEvaluation.find(query).sort({ weekStartDate: -1 });
+    res.json(evaluations);
+  } catch (error) {
+    console.error('Error fetching teacher weekly evaluations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all weekly evaluations (for super admin review)
+app.get('/api/weekly-evaluations', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query = status ? { status } : {};
+
+    const evaluations = await WeeklyEvaluation.find(query)
+      .sort({ submittedAt: -1, createdAt: -1 });
+    res.json(evaluations);
+  } catch (error) {
+    console.error('Error fetching weekly evaluations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single weekly evaluation
+app.get('/api/weekly-evaluations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    res.json(evaluation);
+  } catch (error) {
+    console.error('Error fetching weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Super Admin review: Provide feedback or approve
+app.post('/api/weekly-evaluations/:id/review', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, feedback, reviewedBy, reviewedByName } = req.body;
+
+    if (!['approve', 'request_changes'].includes(action)) {
+      return res.status(400).json({ error: 'Invalid action' });
+    }
+
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    if (!['under_review', 'resubmitted'].includes(evaluation.status)) {
+      return res.status(400).json({ error: 'Evaluation is not in reviewable status' });
+    }
+
+    evaluation.reviewedBy = reviewedBy;
+    evaluation.reviewedByName = reviewedByName;
+    evaluation.reviewedAt = new Date();
+
+    if (action === 'approve') {
+      evaluation.status = 'approved';
+      evaluation.approvedAt = new Date();
+      
+      // Add to student's evaluations array
+      const student = await Student.findOne({ id: evaluation.studentId });
+      if (student) {
+        const approvedEvaluation = {
+          id: evaluation.id,
+          date: evaluation.weekStartDate.toISOString().split('T')[0],
+          category: 'Weekly Report',
+          rating: Math.round((evaluation.tajweedEvaluation?.overallRating || 0 + evaluation.memoryEvaluation?.overallRating || 0) / 2),
+          comments: `Tajweed: ${evaluation.tajweedEvaluation?.overallRating || 'N/A'}/10, Memory: ${evaluation.memoryEvaluation?.overallRating || 'N/A'}/10. ${evaluation.generalNotes || ''}`,
+          evaluatedBy: evaluation.teacherId,
+          weeklyEvaluationId: evaluation.id
+        };
+
+        student.evaluations = student.evaluations || [];
+        student.evaluations.push(approvedEvaluation);
+        await student.save();
+      }
+    } else if (action === 'request_changes') {
+      evaluation.status = 'feedback_provided';
+      evaluation.adminFeedback = feedback || '';
+      
+      // Add to previous feedback history
+      evaluation.previousFeedback = evaluation.previousFeedback || [];
+      evaluation.previousFeedback.push({
+        feedback: feedback || '',
+        providedBy: reviewedBy,
+        providedByName: reviewedByName,
+        providedAt: new Date()
+      });
+    }
+
+    await evaluation.save();
+    res.json(evaluation);
+  } catch (error) {
+    console.error('Error reviewing weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete weekly evaluation (only if draft)
+app.delete('/api/weekly-evaluations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    if (evaluation.status !== 'draft') {
+      return res.status(400).json({ error: 'Can only delete draft evaluations' });
+    }
+
+    await WeeklyEvaluation.deleteOne({ id });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting weekly evaluation:', error);
     res.status(500).json({ error: error.message });
   }
 });

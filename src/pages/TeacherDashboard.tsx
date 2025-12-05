@@ -14,6 +14,7 @@ import { Student, Assessment, Evaluation } from '../types';
 import { Ticket } from '../types/ticket';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
+import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
@@ -22,6 +23,7 @@ const TeacherDashboard: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
+  const [showWeeklyEvaluationForm, setShowWeeklyEvaluationForm] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
@@ -577,13 +579,11 @@ const TeacherDashboard: React.FC = () => {
                             <button
                               onClick={() => {
                                 setSelectedStudent(student);
-                                setShowEvaluationForm(true);
-                                setSaveError(null);
-                                setSaveSuccess(null);
+                                setShowWeeklyEvaluationForm(true);
                               }}
                               className="rounded-lg border-2 border-accent px-3 py-1 text-xs font-bold text-accent transition hover:bg-soft-accent"
                             >
-                              Add Evaluation
+                              Add Weekly Evaluation
                             </button>
                           )}
                         </div>
@@ -723,7 +723,23 @@ const TeacherDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Evaluation Form Modal */}
+      {/* Weekly Evaluation Form Modal */}
+      {showWeeklyEvaluationForm && selectedStudent && (
+        <WeeklyEvaluationForm
+          studentId={selectedStudent.id}
+          studentName={selectedStudent.fullName}
+          onClose={() => {
+            setShowWeeklyEvaluationForm(false);
+            setSelectedStudent(null);
+          }}
+          onSuccess={() => {
+            if (refreshData) refreshData();
+            setRefreshKey(prev => prev + 1);
+          }}
+        />
+      )}
+
+      {/* Old Evaluation Form Modal (kept for backward compatibility) */}
       {showEvaluationForm && selectedStudent && (
         <div 
           className="fixed inset-0 flex items-center justify-center p-4 z-50"

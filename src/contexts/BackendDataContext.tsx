@@ -18,6 +18,7 @@ import {
 } from '../types';
 import { ClassworkSection, Assignment } from '../types/assignment';
 import { Ticket } from '../types/ticket';
+import { MushafMistake } from '@umar-academy/mushaf';
 
 interface BackendDataContextType {
   students: Student[];
@@ -123,6 +124,7 @@ interface BackendDataContextType {
   // Personal Mushaf
   getStudentPersonalMushaf: (studentId: string) => Promise<any>;
   getStudentPersonalMushafFiltered: (studentId: string, filters?: { page?: number; surah?: number; ayah?: number }) => Promise<any>;
+  addMistakeToPersonalMushaf: (studentId: string, mistake: Omit<MushafMistake, 'id' | 'timestamp'>, markedBy?: string, markedByName?: string) => Promise<any>;
   // Listening sessions
   createListeningSession: (payload: ListeningSessionStartPayload) => Promise<ListeningSession>;
   updateListeningSession: (sessionIdOrTicketId: string, payload: ListeningSessionUpdatePayload) => Promise<ListeningSession>;
@@ -2510,6 +2512,33 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Add mistake to student's personal Mushaf
+  const addMistakeToPersonalMushaf = async (studentId: string, mistake: Omit<MushafMistake, 'id' | 'timestamp'>, markedBy?: string, markedByName?: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/students/${studentId}/personal-mushaf/mistakes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          mistake,
+          markedBy,
+          markedByName
+        })
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to add mistake' }));
+        throw new Error(errorData.error || 'Failed to add mistake to personal Mushaf');
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error adding mistake to personal Mushaf:', error);
+      throw error;
+    }
+  };
+
   const createListeningSession = async (payload: ListeningSessionStartPayload): Promise<ListeningSession> => {
     try {
       const response = await fetch(`${API_BASE}/listening-sessions/start`, {
@@ -2638,6 +2667,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     fixMissingAssignmentIds,
     getStudentPersonalMushaf,
     getStudentPersonalMushafFiltered,
+    addMistakeToPersonalMushaf,
     createListeningSession,
     updateListeningSession,
     endListeningSession
