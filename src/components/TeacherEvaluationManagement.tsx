@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { TeacherEvaluation, EvaluationQuestion, QuestionType } from '../types';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
