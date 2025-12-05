@@ -95,7 +95,17 @@ export const useAiPhrases = () => {
       setLoading(true);
       setError(null);
       const apiUrl = getApiUrl();
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Get user info from localStorage
+      const userStr = localStorage.getItem('user');
+      let user = { id: '', name: '', email: '' };
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch (e) {
+          console.warn('Failed to parse user from localStorage');
+        }
+      }
       
       const response = await fetch(`${apiUrl}/ai/phrases/categories`, {
         method: 'POST',
@@ -107,7 +117,7 @@ export const useAiPhrases = () => {
           name,
           displayName,
           description,
-          createdBy: user.id || '',
+          createdBy: user.id || user._id || 'system',
           createdByName: user.name || user.email || 'System'
         })
       });

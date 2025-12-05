@@ -353,8 +353,8 @@ const MistakeLibrary = mongoose.model('MistakeLibrary', mistakeLibrarySchema);
 const aiPhraseSchema = new mongoose.Schema({
   phrase: { type: String, required: true, index: 'text' }, // Text search index
   category: { type: String, required: true, index: true }, // e.g., "progress_report", "evaluation", "attendance", "general"
-  createdBy: { type: String, required: true }, // User ID
-  createdByName: { type: String, required: true }, // User name for display
+  createdBy: { type: String, required: false, default: 'system' }, // User ID
+  createdByName: { type: String, required: false, default: 'System' }, // User name for display
   usageCount: { type: Number, default: 0 }, // Track how often it's used
   lastUsed: Date,
   isActive: { type: Boolean, default: true } // Can be deactivated without deleting
@@ -370,8 +370,8 @@ const aiPhraseCategorySchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true }, // e.g., "progress_report"
   displayName: { type: String, required: true }, // e.g., "Progress Report"
   description: String,
-  createdBy: { type: String, required: true }, // Only Super Admin can create
-  createdByName: { type: String, required: true },
+  createdBy: { type: String, required: false, default: 'system' }, // Only Super Admin can create
+  createdByName: { type: String, required: false, default: 'System' },
   isSystem: { type: Boolean, default: false }, // System categories cannot be deleted
   phraseCount: { type: Number, default: 0 } // Cache count
 }, { timestamps: true });
@@ -5767,11 +5767,12 @@ app.post('/api/ai/phrases/categories', async (req, res) => {
       return res.status(400).json({ error: 'Category already exists' });
     }
 
+    // Use provided values or defaults
     const category = new AiPhraseCategory({
       name,
       displayName,
       description: description || '',
-      createdBy: createdBy || '',
+      createdBy: createdBy || 'system',
       createdByName: createdByName || 'System'
     });
 
@@ -5903,7 +5904,7 @@ app.post('/api/ai/phrases', async (req, res) => {
     const aiPhrase = new AiPhrase({
       phrase: phrase.trim(),
       category,
-      createdBy: createdBy || '',
+      createdBy: createdBy || 'system',
       createdByName: createdByName || 'System'
     });
 
