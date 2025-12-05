@@ -301,6 +301,14 @@ const SuperAdminDashboard: React.FC = () => {
       badge: null,
       emphasis: 'neutral',
     },
+    {
+      id: 'ai-library',
+      label: 'AI Phrase Library',
+      description: 'Manage AI phrase suggestions across the application.',
+      onClick: () => navigate('/super-admin/ai-library'),
+      badge: null,
+      emphasis: 'primary',
+    },
   ];
 
   const managementActions = [

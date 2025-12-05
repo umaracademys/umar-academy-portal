@@ -3,6 +3,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import MistakeLibraryManagement from './MistakeLibraryManagement';
 import AutocompleteInput from './AutocompleteInput';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface WeeklyEvaluationFormProps {
   studentId: string;
@@ -451,7 +452,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Strengths</label>
                 <SuggestionChips fieldType="tajweedStrengths" label="Strengths" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.tajweedEvaluation.strengths}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -460,7 +461,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       strengths: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="tajweed"
                   placeholder="What the student did well in tajweed..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
@@ -470,7 +471,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Areas for Improvement</label>
                 <SuggestionChips fieldType="tajweedAreasForImprovement" label="Areas for Improvement" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.tajweedEvaluation.areasForImprovement}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -479,7 +480,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       areasForImprovement: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="tajweed"
                   placeholder="Areas that need work..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
@@ -489,7 +490,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Specific Notes</label>
                 <SuggestionChips fieldType="tajweedSpecificNotes" label="Specific Notes" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.tajweedEvaluation.specificNotes}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -498,7 +499,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       specificNotes: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="tajweed"
                   placeholder="Detailed tajweed notes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
@@ -534,7 +535,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Memorized Pages</label>
                 <SuggestionChips fieldType="memoryMemorizedPages" label="Memorized Pages" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.memoryEvaluation.memorizedPages}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -543,7 +544,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       memorizedPages: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="memory"
                   placeholder="What was memorized this week..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={2}
@@ -553,7 +554,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Retention Quality</label>
                 <SuggestionChips fieldType="memoryRetentionQuality" label="Retention Quality" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.memoryEvaluation.retentionQuality}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -562,7 +563,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       retentionQuality: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="memory"
                   placeholder="How well they retained previous memorization..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={2}
@@ -572,7 +573,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Specific Notes</label>
                 <SuggestionChips fieldType="memorySpecificNotes" label="Specific Notes" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.memoryEvaluation.specificNotes}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -581,7 +582,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       specificNotes: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="memory"
                   placeholder="Detailed memory notes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
@@ -668,7 +669,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                   </button>
                 </div>
                 <SuggestionChips fieldType="mistakesHowFixed" label="How Mistakes Were Fixed" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.mistakes.howFixed}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -677,7 +678,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       howFixed: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="mistakes"
                   placeholder="How you helped the student fix these mistakes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
@@ -687,7 +688,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Improvement</label>
                 <SuggestionChips fieldType="mistakesImprovement" label="Improvement" />
-                <AutocompleteInput
+                <AiSuggestionsInput
                   value={formData.mistakes.improvement}
                   onChange={(value) => setFormData({
                     ...formData,
@@ -696,7 +697,7 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                       improvement: value
                     }
                   })}
-                  suggestions={libraryPhrases}
+                  category="mistakes"
                   placeholder="Progress made in fixing mistakes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
@@ -710,10 +711,10 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">General Notes</label>
             <SuggestionChips fieldType="generalNotes" label="General Notes" />
-            <AutocompleteInput
+            <AiSuggestionsInput
               value={formData.generalNotes}
               onChange={(value) => setFormData({ ...formData, generalNotes: value })}
-              suggestions={libraryPhrases}
+              category="evaluation"
               placeholder="Additional notes about the student's progress this week..."
               className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={4}

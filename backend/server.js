@@ -349,6 +349,35 @@ mistakeLibrarySchema.index({ mistake: 'text', howToFix: 'text', title: 'text' })
 
 const MistakeLibrary = mongoose.model('MistakeLibrary', mistakeLibrarySchema);
 
+// AI Phrase Library Schema - Global phrase suggestions system
+const aiPhraseSchema = new mongoose.Schema({
+  phrase: { type: String, required: true, index: 'text' }, // Text search index
+  category: { type: String, required: true, index: true }, // e.g., "progress_report", "evaluation", "attendance", "general"
+  createdBy: { type: String, required: true }, // User ID
+  createdByName: { type: String, required: true }, // User name for display
+  usageCount: { type: Number, default: 0 }, // Track how often it's used
+  lastUsed: Date,
+  isActive: { type: Boolean, default: true } // Can be deactivated without deleting
+}, { timestamps: true });
+
+// Compound index for category + text search
+aiPhraseSchema.index({ category: 1, phrase: 'text' });
+
+const AiPhrase = mongoose.model('AiPhrase', aiPhraseSchema);
+
+// AI Phrase Category Schema - Categories for organizing phrases
+const aiPhraseCategorySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true }, // e.g., "progress_report"
+  displayName: { type: String, required: true }, // e.g., "Progress Report"
+  description: String,
+  createdBy: { type: String, required: true }, // Only Super Admin can create
+  createdByName: { type: String, required: true },
+  isSystem: { type: Boolean, default: false }, // System categories cannot be deleted
+  phraseCount: { type: Number, default: 0 } // Cache count
+}, { timestamps: true });
+
+const AiPhraseCategory = mongoose.model('AiPhraseCategory', aiPhraseCategorySchema);
+
 // Recitation profile schema helpers
 const recitationUnitSchema = new mongoose.Schema({
   unitType: { type: String, enum: ['juz', 'surah', 'pages'], default: 'surah' },
@@ -5692,6 +5721,331 @@ app.get('/api/mistake-library/export/:format', async (req, res) => {
     }
   } catch (error) {
     console.error('Error exporting mistake library:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// AI PHRASE LIBRARY API ENDPOINTS
+// ============================================
+
+// Get all categories (all users can view)
+app.get('/api/ai/phrases/categories', async (req, res) => {
+  try {
+    const categories = await AiPhraseCategory.find({}).sort({ displayName: 1 });
+    
+    // Get phrase count for each category
+    const categoriesWithCounts = await Promise.all(
+      categories.map(async (cat) => {
+        const count = await AiPhrase.countDocuments({ category: cat.name, isActive: true });
+        return {
+          ...cat.toObject(),
+          phraseCount: count
+        };
+      })
+    );
+    
+    res.json(categoriesWithCounts);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create category (Super Admin only)
+app.post('/api/ai/phrases/categories', async (req, res) => {
+  try {
+    const { name, displayName, description, createdBy, createdByName } = req.body;
+
+    if (!name || !displayName) {
+      return res.status(400).json({ error: 'Category name and display name are required' });
+    }
+
+    // Check if category already exists
+    const existing = await AiPhraseCategory.findOne({ name });
+    if (existing) {
+      return res.status(400).json({ error: 'Category already exists' });
+    }
+
+    const category = new AiPhraseCategory({
+      name,
+      displayName,
+      description: description || '',
+      createdBy: createdBy || '',
+      createdByName: createdByName || 'System'
+    });
+
+    await category.save();
+    res.json(category);
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete category (Super Admin only, and only if no phrases exist)
+app.delete('/api/ai/phrases/categories/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    
+    const category = await AiPhraseCategory.findOne({ name });
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    if (category.isSystem) {
+      return res.status(400).json({ error: 'Cannot delete system category' });
+    }
+
+    // Check if category has phrases
+    const phraseCount = await AiPhrase.countDocuments({ category: name });
+    if (phraseCount > 0) {
+      return res.status(400).json({ error: `Cannot delete category with ${phraseCount} phrases. Delete phrases first.` });
+    }
+
+    await AiPhraseCategory.deleteOne({ name });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get phrases (with optional category filter)
+app.get('/api/ai/phrases', async (req, res) => {
+  try {
+    const { category, search, limit = 100 } = req.query;
+    const query = { isActive: true };
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (search) {
+      query.$or = [
+        { phrase: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const phrases = await AiPhrase.find(query)
+      .sort({ usageCount: -1, createdAt: -1 })
+      .limit(parseInt(limit));
+
+    res.json(phrases);
+  } catch (error) {
+    console.error('Error fetching phrases:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get suggestions based on category and query (fuzzy match)
+app.get('/api/ai/suggestions', async (req, res) => {
+  try {
+    const { category, query: searchQuery } = req.query;
+
+    if (!category) {
+      return res.status(400).json({ error: 'Category is required' });
+    }
+
+    const query = {
+      category,
+      isActive: true
+    };
+
+    // Fuzzy matching: if searchQuery provided, find phrases that contain it
+    if (searchQuery && searchQuery.trim()) {
+      const searchTerm = searchQuery.trim();
+      query.phrase = { $regex: searchTerm, $options: 'i' };
+    }
+
+    // Get phrases, prioritize by usage count and recent usage
+    const phrases = await AiPhrase.find(query)
+      .sort({
+        usageCount: -1,
+        lastUsed: -1,
+        createdAt: -1
+      })
+      .limit(10);
+
+    res.json(phrases.map(p => ({
+      id: p._id,
+      phrase: p.phrase,
+      category: p.category,
+      usageCount: p.usageCount
+    })));
+  } catch (error) {
+    console.error('Error fetching suggestions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create phrase (Super Admin + Admin)
+app.post('/api/ai/phrases', async (req, res) => {
+  try {
+    const { phrase, category, createdBy, createdByName } = req.body;
+
+    if (!phrase || !category) {
+      return res.status(400).json({ error: 'Phrase and category are required' });
+    }
+
+    // Verify category exists
+    const categoryExists = await AiPhraseCategory.findOne({ name: category });
+    if (!categoryExists) {
+      return res.status(400).json({ error: 'Category does not exist' });
+    }
+
+    // Check for duplicates (same phrase in same category)
+    const existing = await AiPhrase.findOne({ phrase: phrase.trim(), category });
+    if (existing) {
+      return res.status(400).json({ error: 'This phrase already exists in this category' });
+    }
+
+    const aiPhrase = new AiPhrase({
+      phrase: phrase.trim(),
+      category,
+      createdBy: createdBy || '',
+      createdByName: createdByName || 'System'
+    });
+
+    await aiPhrase.save();
+
+    // Update category phrase count
+    await AiPhraseCategory.updateOne(
+      { name: category },
+      { $inc: { phraseCount: 1 } }
+    );
+
+    res.json(aiPhrase);
+  } catch (error) {
+    console.error('Error creating phrase:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update phrase (Super Admin + Admin)
+app.put('/api/ai/phrases/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { phrase, category } = req.body;
+
+    const aiPhrase = await AiPhrase.findById(id);
+    if (!aiPhrase) {
+      return res.status(404).json({ error: 'Phrase not found' });
+    }
+
+    const oldCategory = aiPhrase.category;
+
+    if (phrase) aiPhrase.phrase = phrase.trim();
+    if (category) {
+      // Verify new category exists
+      const categoryExists = await AiPhraseCategory.findOne({ name: category });
+      if (!categoryExists) {
+        return res.status(400).json({ error: 'Category does not exist' });
+      }
+      aiPhrase.category = category;
+    }
+
+    await aiPhrase.save();
+
+    // Update category counts if category changed
+    if (category && category !== oldCategory) {
+      await AiPhraseCategory.updateOne(
+        { name: oldCategory },
+        { $inc: { phraseCount: -1 } }
+      );
+      await AiPhraseCategory.updateOne(
+        { name: category },
+        { $inc: { phraseCount: 1 } }
+      );
+    }
+
+    res.json(aiPhrase);
+  } catch (error) {
+    console.error('Error updating phrase:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete phrase (Super Admin + Admin)
+app.delete('/api/ai/phrases/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const aiPhrase = await AiPhrase.findById(id);
+    if (!aiPhrase) {
+      return res.status(404).json({ error: 'Phrase not found' });
+    }
+
+    const category = aiPhrase.category;
+
+    // Soft delete (set isActive to false)
+    aiPhrase.isActive = false;
+    await aiPhrase.save();
+
+    // Update category phrase count
+    await AiPhraseCategory.updateOne(
+      { name: category },
+      { $inc: { phraseCount: -1 } }
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting phrase:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Track phrase usage (when a phrase is selected)
+app.post('/api/ai/phrases/:id/use', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const aiPhrase = await AiPhrase.findById(id);
+    if (!aiPhrase) {
+      return res.status(404).json({ error: 'Phrase not found' });
+    }
+
+    aiPhrase.usageCount = (aiPhrase.usageCount || 0) + 1;
+    aiPhrase.lastUsed = new Date();
+    await aiPhrase.save();
+
+    res.json(aiPhrase);
+  } catch (error) {
+    console.error('Error tracking usage:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Initialize default categories (run once)
+app.post('/api/ai/phrases/init-categories', async (req, res) => {
+  try {
+    const defaultCategories = [
+      { name: 'progress_report', displayName: 'Progress Report', description: 'Phrases for student progress reports', isSystem: true },
+      { name: 'evaluation', displayName: 'Evaluation', description: 'Phrases for student evaluations', isSystem: true },
+      { name: 'attendance', displayName: 'Attendance', description: 'Phrases for attendance notes', isSystem: true },
+      { name: 'general', displayName: 'General', description: 'General purpose phrases', isSystem: true },
+      { name: 'tajweed', displayName: 'Tajweed', description: 'Tajweed-related phrases', isSystem: true },
+      { name: 'memory', displayName: 'Memory', description: 'Memory-related phrases', isSystem: true },
+      { name: 'mistakes', displayName: 'Mistakes', description: 'Mistake-related phrases', isSystem: true }
+    ];
+
+    const created = [];
+    for (const cat of defaultCategories) {
+      const existing = await AiPhraseCategory.findOne({ name: cat.name });
+      if (!existing) {
+        const category = new AiPhraseCategory({
+          ...cat,
+          createdBy: 'system',
+          createdByName: 'System'
+        });
+        await category.save();
+        created.push(category);
+      }
+    }
+
+    res.json({ message: `Initialized ${created.length} categories`, created });
+  } catch (error) {
+    console.error('Error initializing categories:', error);
     res.status(500).json({ error: error.message });
   }
 });
