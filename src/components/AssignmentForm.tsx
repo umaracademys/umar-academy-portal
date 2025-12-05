@@ -301,12 +301,14 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
                         required
                       />
-              <input
-                type="text"
-                        placeholder="Details (optional)"
+              <AiSuggestionsInput
                         value={phase.details || ''}
-                        onChange={(e) => updateClassworkPhase('sabq', index, 'details', e.target.value)}
+                        onChange={(value) => updateClassworkPhase('sabq', index, 'details', value)}
+                        category="general"
+                        rows={2}
+                        multiline={true}
                         className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
+                        placeholder="Details (optional)"
                       />
             </div>
                     <button
@@ -357,12 +359,14 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
                         required
                       />
-                      <input
-                        type="text"
-                        placeholder="Details (optional)"
+                      <AiSuggestionsInput
                         value={phase.details || ''}
-                        onChange={(e) => updateClassworkPhase('sabqi', index, 'details', e.target.value)}
+                        onChange={(value) => updateClassworkPhase('sabqi', index, 'details', value)}
+                        category="general"
+                        rows={2}
+                        multiline={true}
                         className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
+                        placeholder="Details (optional)"
                       />
                     </div>
                     <button
@@ -413,12 +417,14 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
                         className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
                         required
                   />
-                  <input
-                    type="text"
-                        placeholder="Details (optional)"
+                  <AiSuggestionsInput
                         value={phase.details || ''}
-                        onChange={(e) => updateClassworkPhase('manzil', index, 'details', e.target.value)}
+                        onChange={(value) => updateClassworkPhase('manzil', index, 'details', value)}
+                        category="general"
+                        rows={2}
+                        multiline={true}
                         className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
+                        placeholder="Details (optional)"
                       />
                     </div>
                   <button
