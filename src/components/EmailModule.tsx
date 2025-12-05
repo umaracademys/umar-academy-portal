@@ -235,13 +235,14 @@ const EmailModule: React.FC<EmailModuleProps> = ({ onClose }) => {
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Message <span className="text-red-500">*</span>
               </label>
-              <textarea
+              <AiSuggestionsInput
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={isHtml ? "Enter HTML content..." : "Enter your message..."}
+                onChange={(value) => setMessage(value)}
+                category="general"
                 rows={12}
+                multiline={true}
                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
-                required
+                placeholder={isHtml ? "Enter HTML content..." : "Enter your message..."}
               />
               {isHtml && (
                 <p className="text-xs text-gray-500 mt-1">

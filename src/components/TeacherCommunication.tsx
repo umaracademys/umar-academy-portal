@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Card from './Card';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TeacherCommunicationProps {
   teacher: any;
@@ -11,6 +12,8 @@ const TeacherCommunication: React.FC<TeacherCommunicationProps> = ({ teacher, on
   const [showComposeModal, setShowComposeModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
+  const [composeMessage, setComposeMessage] = useState('');
+  const [templateContent, setTemplateContent] = useState('');
 
   const messageHistory = [
     {
@@ -479,11 +482,15 @@ const TeacherCommunication: React.FC<TeacherCommunicationProps> = ({ teacher, on
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea
+                <AiSuggestionsInput
+                  value={composeMessage}
+                  onChange={(value) => setComposeMessage(value)}
+                  category="general"
                   rows={6}
-                  placeholder="Enter your message here..."
+                  multiline={true}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                ></textarea>
+                  placeholder="Enter your message here..."
+                />
               </div>
               
               <div>
@@ -548,11 +555,15 @@ const TeacherCommunication: React.FC<TeacherCommunicationProps> = ({ teacher, on
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message Template</label>
-                <textarea
+                <AiSuggestionsInput
+                  value={templateContent}
+                  onChange={(value) => setTemplateContent(value)}
+                  category="general"
                   rows={6}
-                  placeholder="Enter message template. Use {variable_name} for dynamic content."
+                  multiline={true}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
-                ></textarea>
+                  placeholder="Enter message template. Use {variable_name} for dynamic content."
+                />
               </div>
               
               <div>
