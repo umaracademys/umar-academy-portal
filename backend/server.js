@@ -5975,6 +5975,92 @@ app.get('/api/ai/phrases', async (req, res) => {
   }
 });
 
+// Helper function to initialize AI Library if needed
+async function initializeAiLibraryIfNeeded() {
+  try {
+    const categoryCount = await AiPhraseCategory.countDocuments();
+    if (categoryCount === 0) {
+      console.log('🔧 Auto-initializing AI Phrase categories (on-demand)...');
+      const defaultCategories = [
+        { name: 'progress_report', displayName: 'Progress Report', description: 'Phrases for student progress reports', isSystem: true },
+        { name: 'evaluation', displayName: 'Evaluation', description: 'Phrases for student evaluations', isSystem: true },
+        { name: 'attendance', displayName: 'Attendance', description: 'Phrases for attendance notes', isSystem: true },
+        { name: 'general', displayName: 'General', description: 'General purpose phrases', isSystem: true },
+        { name: 'tajweed', displayName: 'Tajweed', description: 'Tajweed-related phrases', isSystem: true },
+        { name: 'memory', displayName: 'Memory', description: 'Memory-related phrases', isSystem: true },
+        { name: 'mistakes', displayName: 'Mistakes', description: 'Mistake-related phrases', isSystem: true }
+      ];
+
+      const created = [];
+      for (const cat of defaultCategories) {
+        const existing = await AiPhraseCategory.findOne({ name: cat.name });
+        if (!existing) {
+          const category = new AiPhraseCategory({
+            ...cat,
+            createdBy: 'system',
+            createdByName: 'System'
+          });
+          await category.save();
+          created.push(category);
+        }
+      }
+
+      // Add default phrases to general category
+      const generalCategory = await AiPhraseCategory.findOne({ name: 'general' });
+      if (generalCategory) {
+        const defaultPhrases = [
+          'Please complete the assignment',
+          'Review the material carefully',
+          'Practice regularly',
+          'Focus on accuracy',
+          'Take your time',
+          'Ask questions if needed',
+          'Good progress',
+          'Keep up the good work',
+          'Needs more practice',
+          'Excellent effort',
+          'Well done',
+          'Continue practicing',
+          'Pay attention to details',
+          'Work on pronunciation',
+          'Memorize thoroughly'
+        ];
+
+        let phraseCount = 0;
+        for (const phraseText of defaultPhrases) {
+          const existing = await AiPhrase.findOne({ phrase: phraseText, category: 'general' });
+          if (!existing) {
+            const phrase = new AiPhrase({
+              phrase: phraseText,
+              category: 'general',
+              createdBy: 'system',
+              createdByName: 'System',
+              isActive: true
+            });
+            await phrase.save();
+            phraseCount++;
+          }
+        }
+
+        // Update category phrase count
+        if (phraseCount > 0) {
+          await AiPhraseCategory.updateOne(
+            { name: 'general' },
+            { $inc: { phraseCount: phraseCount } }
+          );
+        }
+
+        console.log(`✅ Auto-initialized (on-demand): ${created.length} categories and ${phraseCount} default phrases`);
+      }
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('⚠️  Error auto-initializing AI Phrase categories:', error.message);
+    return false;
+  }
+}
+
 // Get suggestions based on category and query (fuzzy match)
 app.get('/api/ai/suggestions', async (req, res) => {
   try {
@@ -5982,6 +6068,17 @@ app.get('/api/ai/suggestions', async (req, res) => {
 
     if (!category) {
       return res.status(400).json({ error: 'Category is required' });
+    }
+
+    // Auto-initialize if no categories exist
+    const phraseCount = await AiPhrase.countDocuments({ category, isActive: true });
+    if (phraseCount === 0) {
+      // Check if categories exist at all
+      const totalCategories = await AiPhraseCategory.countDocuments();
+      if (totalCategories === 0) {
+        console.log(`[AI Suggestions] No categories found, initializing...`);
+        await initializeAiLibraryIfNeeded();
+      }
     }
 
     const query = {
