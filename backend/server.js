@@ -5310,7 +5310,7 @@ app.post('/api/ai/suggestions', async (req, res) => {
     const { fieldType, context, studentName, currentValue } = req.body;
 
     // Predefined suggestions based on field type
-    const suggestions: Record<string, string[]> = {
+    const suggestions = {
       tajweedStrengths: [
         'Excellent pronunciation of Arabic letters',
         'Good application of tajweed rules',
@@ -5441,7 +5441,7 @@ app.post('/api/ai/summarize', async (req, res) => {
     
     if (evaluationData.mistakes?.mistakesMade?.length > 0) {
       summary += `\nMistakes Identified:\n`;
-      evaluationData.mistakes.mistakesMade.forEach((mistake: any, index: number) => {
+      evaluationData.mistakes.mistakesMade.forEach((mistake, index) => {
         summary += `${index + 1}. ${mistake.type}: ${mistake.description} (Location: ${mistake.location}, Frequency: ${mistake.frequency})\n`;
       });
     }
@@ -5484,7 +5484,7 @@ app.post('/api/ai/summarize', async (req, res) => {
 app.get('/api/mistake-library', async (req, res) => {
   try {
     const { category, search, tag } = req.query;
-    const query: any = {};
+    const query = {};
 
     if (category) query.category = category;
     if (tag) query.tags = tag;
@@ -5670,7 +5670,7 @@ app.get('/api/mistake-library/export/:format', async (req, res) => {
       let csv = 'Category,Title,Mistake,How to Fix,Description,Tips,Tags\n';
       
       entries.forEach(entry => {
-        const escapeCsv = (str: string) => {
+        const escapeCsv = (str) => {
           if (!str) return '';
           return `"${str.replace(/"/g, '""')}"`;
         };
