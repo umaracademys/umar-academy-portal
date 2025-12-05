@@ -61,10 +61,15 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
         const data = await response.json();
         setSuggestions(data);
         setShowSuggestions(data.length > 0);
+      } else {
+        console.warn('Failed to fetch suggestions:', response.status, response.statusText);
+        setSuggestions([]);
+        setShowSuggestions(false);
       }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       setSuggestions([]);
+      setShowSuggestions(false);
     } finally {
       setLoading(false);
     }
@@ -159,9 +164,8 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => {
-          if (suggestions.length > 0 || value) {
-            fetchSuggestions(value);
-          }
+          // Always fetch suggestions on focus, even if empty
+          fetchSuggestions(value);
         }}
         onBlur={() => {
           // Delay hiding to allow clicking on suggestions
@@ -173,7 +177,7 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
         disabled={disabled}
       />
       
-      {showSuggestions && suggestions.length > 0 && (
+      {(showSuggestions || loading) && (
         <div
           ref={suggestionsRef}
           className="absolute z-50 w-full mt-1 bg-white border-2 border-primary rounded-lg shadow-xl max-h-60 overflow-y-auto"
@@ -184,7 +188,12 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
               Loading suggestions...
             </div>
           )}
-          {suggestions.map((suggestion, index) => (
+          {!loading && suggestions.length === 0 && (
+            <div className="px-4 py-2 text-sm text-gray-500 text-center">
+              No suggestions available. Add phrases in AI Library.
+            </div>
+          )}
+          {!loading && suggestions.length > 0 && suggestions.map((suggestion, index) => (
             <div
               key={suggestion.id}
               onClick={() => handleSelect(suggestion)}
