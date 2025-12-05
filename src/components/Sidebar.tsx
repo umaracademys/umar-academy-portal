@@ -18,7 +18,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
   const isMobileOpen = externalIsMobileOpen !== undefined ? externalIsMobileOpen : internalMobileOpen;
   const setIsMobileOpen = onMobileToggle || setInternalMobileOpen;
 
-  const baseMenuItems = [
+  interface MenuItem {
+    id: string;
+    icon: string;
+    label: string;
+    badge: string | null;
+    isLink: boolean;
+    href?: string;
+  }
+
+  const baseMenuItems: MenuItem[] = [
     { id: 'overview', icon: 'OV', label: 'Overview', badge: null, isLink: false },
     { id: 'students', icon: 'ST', label: 'Students', badge: null, isLink: true, href: '/students' },
     { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' },
@@ -26,14 +35,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
   ];
 
   // Add AI Library based on role
-  const aiLibraryItem = 
+  const aiLibraryItem: MenuItem | null = 
     user?.role === 'superadmin' 
       ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/super-admin/ai-library' }
       : user?.role === 'admin'
       ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/admin/ai-library' }
       : null;
 
-  const menuItems = aiLibraryItem 
+  const menuItems: MenuItem[] = aiLibraryItem 
     ? [...baseMenuItems, aiLibraryItem, 
         { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
         { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
@@ -116,9 +125,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
         <ul className="space-y-1">
           {menuItems.map((item) => (
             <li key={item.id}>
-              {item.isLink ? (
+              {item.isLink && item.href ? (
                 <Link
-                  to={item.href || '/'}
+                  to={item.href}
                   onClick={() => setIsMobileOpen(false)}
                   className="w-full flex items-center justify-between p-3 rounded-lg transition-all font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
