@@ -18,17 +18,37 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
   const isMobileOpen = externalIsMobileOpen !== undefined ? externalIsMobileOpen : internalMobileOpen;
   const setIsMobileOpen = onMobileToggle || setInternalMobileOpen;
 
-  const menuItems = [
+  const baseMenuItems = [
     { id: 'overview', icon: 'OV', label: 'Overview', badge: null, isLink: false },
     { id: 'students', icon: 'ST', label: 'Students', badge: null, isLink: true, href: '/students' },
     { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' },
     { id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' },
-    { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
-    { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
-    { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
-    { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
-    { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false },
   ];
+
+  // Add AI Library based on role
+  const aiLibraryItem = 
+    user?.role === 'superadmin' 
+      ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/super-admin/ai-library' }
+      : user?.role === 'admin'
+      ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/admin/ai-library' }
+      : null;
+
+  const menuItems = aiLibraryItem 
+    ? [...baseMenuItems, aiLibraryItem, 
+        { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
+        { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
+        { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
+        { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
+        { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false },
+      ]
+    : [
+        ...baseMenuItems,
+        { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
+        { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
+        { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
+        { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
+        { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false },
+      ];
 
   return (
     <>

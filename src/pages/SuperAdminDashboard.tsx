@@ -359,6 +359,14 @@ const SuperAdminDashboard: React.FC = () => {
       footer: `${totalAdmins} admins`,
     },
     {
+      id: 'ai-library',
+      badge: 'AI',
+      title: 'AI Phrase Library',
+      description: 'Manage AI phrase suggestions across the application.',
+      action: () => navigate('/super-admin/ai-library'),
+      footer: 'Manage phrases',
+    },
+    {
       id: 'permissions',
       badge: 'PM',
       title: 'Permission Manager',
