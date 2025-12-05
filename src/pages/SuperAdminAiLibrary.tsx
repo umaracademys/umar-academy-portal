@@ -83,15 +83,16 @@ const SuperAdminAiLibrary: React.FC = () => {
     }
   };
 
-  const handleDeleteCategory = async (name: string) => {
-    if (!confirm(`Are you sure you want to delete category "${name}"? This will also delete all phrases in this category.`)) {
+  const handleDeleteCategory = async (categoryName: string, displayName?: string) => {
+    const categoryLabel = displayName || categoryName;
+    if (!confirm(`Are you sure you want to delete category "${categoryLabel}"? This will also delete all phrases in this category.`)) {
       return;
     }
 
     try {
-      await deleteCategory(name);
+      await deleteCategory(categoryName);
       await loadCategories();
-      if (selectedCategory === name) {
+      if (selectedCategory === categoryName) {
         setSelectedCategory('');
       }
     } catch (err) {
@@ -316,7 +317,7 @@ const SuperAdminAiLibrary: React.FC = () => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteCategory(category.name);
+                              handleDeleteCategory(category.name, category.displayName);
                             }}
                             className="text-red-600 hover:text-red-800 text-xs font-bold"
                           >
