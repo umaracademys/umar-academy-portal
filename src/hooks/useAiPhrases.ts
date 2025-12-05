@@ -98,7 +98,7 @@ export const useAiPhrases = () => {
       
       // Get user info from localStorage
       const userStr = localStorage.getItem('user');
-      let user = { id: '', name: '', email: '' };
+      let user: any = { id: '', name: '', email: '' };
       if (userStr) {
         try {
           user = JSON.parse(userStr);
@@ -106,6 +106,9 @@ export const useAiPhrases = () => {
           console.warn('Failed to parse user from localStorage');
         }
       }
+      
+      const userId = user.id || user._id || 'system';
+      const userName = user.name || user.email || 'System';
       
       const response = await fetch(`${apiUrl}/ai/phrases/categories`, {
         method: 'POST',
@@ -117,8 +120,8 @@ export const useAiPhrases = () => {
           name,
           displayName,
           description,
-          createdBy: user.id || user._id || 'system',
-          createdByName: user.name || user.email || 'System'
+          createdBy: userId,
+          createdByName: userName
         })
       });
 
@@ -167,7 +170,20 @@ export const useAiPhrases = () => {
       setLoading(true);
       setError(null);
       const apiUrl = getApiUrl();
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Get user info from localStorage
+      const userStr = localStorage.getItem('user');
+      let user: any = { id: '', name: '', email: '' };
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch (e) {
+          console.warn('Failed to parse user from localStorage');
+        }
+      }
+      
+      const userId = user.id || user._id || 'system';
+      const userName = user.name || user.email || 'System';
       
       const response = await fetch(`${apiUrl}/ai/phrases`, {
         method: 'POST',
@@ -178,8 +194,8 @@ export const useAiPhrases = () => {
         body: JSON.stringify({
           phrase,
           category,
-          createdBy: user.id || '',
-          createdByName: user.name || user.email || 'System'
+          createdBy: userId,
+          createdByName: userName
         })
       });
 
