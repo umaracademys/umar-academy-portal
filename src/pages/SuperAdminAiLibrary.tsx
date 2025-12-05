@@ -228,8 +228,14 @@ const SuperAdminAiLibrary: React.FC = () => {
       await initializeCategories();
       await loadCategories();
       
+      // Wait a bit for categories to be loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await loadCategories();
+      
       // Also add some default phrases to general category
-      const generalCategory = categories.find(c => c.name === 'general');
+      const updatedCategories = await getCategories();
+      const generalCategory = updatedCategories.find(c => c.name === 'general');
+      
       if (generalCategory) {
         const defaultPhrases = [
           'Please complete the assignment',
@@ -241,28 +247,42 @@ const SuperAdminAiLibrary: React.FC = () => {
           'Good progress',
           'Keep up the good work',
           'Needs more practice',
-          'Excellent effort'
+          'Excellent effort',
+          'Well done',
+          'Continue practicing',
+          'Pay attention to details',
+          'Work on pronunciation',
+          'Memorize thoroughly'
         ];
         
         let addedCount = 0;
+        let errorCount = 0;
         for (const phrase of defaultPhrases) {
           try {
             await createPhrase(phrase, 'general');
             addedCount++;
           } catch (err) {
             // Ignore duplicates
+            if (err instanceof Error && !err.message.includes('already exists')) {
+              errorCount++;
+            }
           }
         }
         
+        await loadCategories();
+        
         if (addedCount > 0) {
-          alert(`Categories initialized! Also added ${addedCount} default phrases to General category.`);
+          alert(`✅ Categories initialized!\n✅ Added ${addedCount} default phrases to General category.\n\nYou can now see AI suggestions while typing!`);
+        } else if (errorCount > 0) {
+          alert(`Categories initialized, but ${errorCount} phrases failed to add.`);
         } else {
           alert('Categories initialized successfully!');
         }
       } else {
-        alert('Categories initialized successfully!');
+        alert('Categories initialized, but General category not found. Please refresh and try again.');
       }
     } catch (err) {
+      console.error('Init error:', err);
       alert(err instanceof Error ? err.message : 'Failed to initialize categories');
     }
   };
