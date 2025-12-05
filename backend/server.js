@@ -5787,11 +5787,24 @@ app.post('/api/ai/phrases/categories', async (req, res) => {
 // Delete category (Super Admin only, and only if no phrases exist)
 app.delete('/api/ai/phrases/categories/:name', async (req, res) => {
   try {
-    const { name } = req.params;
+    let { name } = req.params;
     
-    const category = await AiPhraseCategory.findOne({ name });
+    // Decode URL-encoded category name
+    name = decodeURIComponent(name);
+    
+    // Try to find by name first
+    let category = await AiPhraseCategory.findOne({ name });
+    
+    // If not found by name, try to find by displayName (for backwards compatibility)
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      category = await AiPhraseCategory.findOne({ displayName: name });
+      if (category) {
+        name = category.name; // Use the actual name field
+      }
+    }
+    
+    if (!category) {
+      return res.status(404).json({ error: `Category "${name}" not found` });
     }
 
     if (category.isSystem) {
@@ -5799,13 +5812,13 @@ app.delete('/api/ai/phrases/categories/:name', async (req, res) => {
     }
 
     // Check if category has phrases
-    const phraseCount = await AiPhrase.countDocuments({ category: name });
+    const phraseCount = await AiPhrase.countDocuments({ category: category.name });
     if (phraseCount > 0) {
-      return res.status(400).json({ error: `Cannot delete category with ${phraseCount} phrases. Delete phrases first.` });
+      return res.status(400).json({ error: `Cannot delete category with ${phraseCount} phrase(s). Delete phrases first.` });
     }
 
-    await AiPhraseCategory.deleteOne({ name });
-    res.json({ success: true });
+    await AiPhraseCategory.deleteOne({ _id: category._id });
+    res.json({ success: true, message: `Category "${category.displayName}" deleted successfully` });
   } catch (error) {
     console.error('Error deleting category:', error);
     res.status(500).json({ error: error.message });

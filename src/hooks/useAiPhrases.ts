@@ -145,7 +145,9 @@ export const useAiPhrases = () => {
       setLoading(true);
       setError(null);
       const apiUrl = getApiUrl();
-      const response = await fetch(`${apiUrl}/ai/phrases/categories/${name}`, {
+      // Encode the category name for URL
+      const encodedName = encodeURIComponent(name);
+      const response = await fetch(`${apiUrl}/ai/phrases/categories/${encodedName}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
