@@ -176,8 +176,92 @@ console.log(`📁 Recordings directory: ${recordingsDir}`);
 
 // Connect to MongoDB (don't exit on failure - allow graceful degradation)
 mongoose.connect(MONGODB_URI)
-.then(() => {
+.then(async () => {
   console.log(`📊 Connected to MongoDB`);
+  
+  // Auto-initialize AI Phrase categories if they don't exist
+  try {
+    const categoryCount = await AiPhraseCategory.countDocuments();
+    if (categoryCount === 0) {
+      console.log('🔧 Auto-initializing AI Phrase categories...');
+      const defaultCategories = [
+        { name: 'progress_report', displayName: 'Progress Report', description: 'Phrases for student progress reports', isSystem: true },
+        { name: 'evaluation', displayName: 'Evaluation', description: 'Phrases for student evaluations', isSystem: true },
+        { name: 'attendance', displayName: 'Attendance', description: 'Phrases for attendance notes', isSystem: true },
+        { name: 'general', displayName: 'General', description: 'General purpose phrases', isSystem: true },
+        { name: 'tajweed', displayName: 'Tajweed', description: 'Tajweed-related phrases', isSystem: true },
+        { name: 'memory', displayName: 'Memory', description: 'Memory-related phrases', isSystem: true },
+        { name: 'mistakes', displayName: 'Mistakes', description: 'Mistake-related phrases', isSystem: true }
+      ];
+
+      const created = [];
+      for (const cat of defaultCategories) {
+        const existing = await AiPhraseCategory.findOne({ name: cat.name });
+        if (!existing) {
+          const category = new AiPhraseCategory({
+            ...cat,
+            createdBy: 'system',
+            createdByName: 'System'
+          });
+          await category.save();
+          created.push(category);
+        }
+      }
+
+      // Add default phrases to general category
+      const generalCategory = await AiPhraseCategory.findOne({ name: 'general' });
+      if (generalCategory) {
+        const defaultPhrases = [
+          'Please complete the assignment',
+          'Review the material carefully',
+          'Practice regularly',
+          'Focus on accuracy',
+          'Take your time',
+          'Ask questions if needed',
+          'Good progress',
+          'Keep up the good work',
+          'Needs more practice',
+          'Excellent effort',
+          'Well done',
+          'Continue practicing',
+          'Pay attention to details',
+          'Work on pronunciation',
+          'Memorize thoroughly'
+        ];
+
+        let phraseCount = 0;
+        for (const phraseText of defaultPhrases) {
+          const existing = await AiPhrase.findOne({ phrase: phraseText, category: 'general' });
+          if (!existing) {
+            const phrase = new AiPhrase({
+              phrase: phraseText,
+              category: 'general',
+              createdBy: 'system',
+              createdByName: 'System',
+              isActive: true
+            });
+            await phrase.save();
+            phraseCount++;
+          }
+        }
+
+        // Update category phrase count
+        if (phraseCount > 0) {
+          await AiPhraseCategory.updateOne(
+            { name: 'general' },
+            { $inc: { phraseCount: phraseCount } }
+          );
+        }
+
+        console.log(`✅ Auto-initialized: ${created.length} categories and ${phraseCount} default phrases`);
+      }
+    } else {
+      console.log(`✅ AI Phrase Library: ${categoryCount} categories already exist`);
+    }
+  } catch (error) {
+    console.error('⚠️  Error auto-initializing AI Phrase categories:', error.message);
+    // Don't fail server startup if initialization fails
+  }
 })
 .catch((error) => {
   console.error('❌ MongoDB connection error:', error);
