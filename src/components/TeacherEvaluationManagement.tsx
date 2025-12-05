@@ -529,11 +529,13 @@ const TeacherEvaluationManagement: React.FC<TeacherEvaluationManagementProps> = 
                     Description
                     <span className="text-xs text-primary/60 font-normal">(Optional)</span>
                   </label>
-                  <textarea
+                  <AiSuggestionsInput
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full px-4 py-2.5 border-2 border-primary/20 rounded-xl bg-white text-sm font-medium text-primary placeholder:text-primary/40 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm hover:shadow-md resize-none"
+                    onChange={(value) => setFormData({ ...formData, description: value })}
+                    category="evaluation"
                     rows={3}
+                    multiline={true}
+                    className="w-full px-4 py-2.5 border-2 border-primary/20 rounded-xl bg-white text-sm font-medium text-primary placeholder:text-primary/40 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm hover:shadow-md resize-none"
                     placeholder="Describe what this evaluation covers..."
                   />
                 </div>
