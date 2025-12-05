@@ -11,6 +11,7 @@ const SuperAdminAiLibrary: React.FC = () => {
     getCategories,
     getPhrases,
     createCategory,
+    updateCategory,
     deleteCategory,
     createPhrase,
     updatePhrase,
@@ -23,6 +24,7 @@ const SuperAdminAiLibrary: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCategoryForm, setShowCategoryForm] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<AiPhraseCategory | null>(null);
   const [showPhraseForm, setShowPhraseForm] = useState(false);
   const [editingPhrase, setEditingPhrase] = useState<AiPhrase | null>(null);
 
@@ -74,13 +76,32 @@ const SuperAdminAiLibrary: React.FC = () => {
 
   const handleCreateCategory = async () => {
     try {
-      await createCategory(categoryForm.name, categoryForm.displayName, categoryForm.description);
+      if (editingCategory) {
+        await updateCategory(editingCategory.name, categoryForm.displayName, categoryForm.description);
+      } else {
+        await createCategory(categoryForm.name, categoryForm.displayName, categoryForm.description);
+      }
       setCategoryForm({ name: '', displayName: '', description: '' });
+      setEditingCategory(null);
       setShowCategoryForm(false);
       await loadCategories();
     } catch (err) {
-      console.error('Error creating category:', err);
+      alert(err instanceof Error ? err.message : 'Failed to save category');
     }
+  };
+
+  const handleEditCategory = (category: AiPhraseCategory) => {
+    if (category.isSystem) {
+      alert('Cannot edit system categories');
+      return;
+    }
+    setEditingCategory(category);
+    setCategoryForm({
+      name: category.name,
+      displayName: category.displayName,
+      description: category.description || ''
+    });
+    setShowCategoryForm(true);
   };
 
   const handleDeleteCategory = async (categoryName: string, displayName?: string) => {
@@ -245,6 +266,7 @@ const SuperAdminAiLibrary: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
+                        setEditingCategory(null);
                         setCategoryForm({ name: '', displayName: '', description: '' });
                         setShowCategoryForm(true);
                       }}
@@ -257,14 +279,23 @@ const SuperAdminAiLibrary: React.FC = () => {
 
                 {showCategoryForm && (
                   <div className="mb-4 p-3 bg-gray-50 rounded-lg border-2 border-primary">
-                    <h3 className="text-sm font-bold text-primary mb-2">New Category</h3>
-                    <input
-                      type="text"
-                      value={categoryForm.name}
-                      onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                      placeholder="Category name (e.g., progress_report)"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2"
-                    />
+                    <h3 className="text-sm font-bold text-primary mb-2">
+                      {editingCategory ? 'Edit Category' : 'New Category'}
+                    </h3>
+                    {!editingCategory && (
+                      <input
+                        type="text"
+                        value={categoryForm.name}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                        placeholder="Category name (e.g., progress_report)"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2"
+                      />
+                    )}
+                    {editingCategory && (
+                      <div className="mb-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
+                        Category name: <strong>{editingCategory.name}</strong> (cannot be changed)
+                      </div>
+                    )}
                     <input
                       type="text"
                       value={categoryForm.displayName}
@@ -282,13 +313,17 @@ const SuperAdminAiLibrary: React.FC = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={handleCreateCategory}
-                        disabled={!categoryForm.name || !categoryForm.displayName}
+                        disabled={(!categoryForm.name && !editingCategory) || !categoryForm.displayName}
                         className="flex-1 px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
                       >
-                        Create
+                        {editingCategory ? 'Update' : 'Create'}
                       </button>
                       <button
-                        onClick={() => setShowCategoryForm(false)}
+                        onClick={() => {
+                          setShowCategoryForm(false);
+                          setEditingCategory(null);
+                          setCategoryForm({ name: '', displayName: '', description: '' });
+                        }}
                         className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-400"
                       >
                         Cancel
@@ -309,20 +344,33 @@ const SuperAdminAiLibrary: React.FC = () => {
                       onClick={() => setSelectedCategory(category.name)}
                     >
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-bold text-primary">{category.displayName}</h3>
                           <p className="text-xs text-gray-600">{category.phraseCount || 0} phrases</p>
                         </div>
                         {!category.isSystem && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCategory(category.name, category.displayName);
-                            }}
-                            className="text-red-600 hover:text-red-800 text-xs font-bold"
-                          >
-                            ×
-                          </button>
+                          <div className="flex gap-1 ml-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditCategory(category);
+                              }}
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600 transition"
+                              title="Edit category"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteCategory(category.name, category.displayName);
+                              }}
+                              className="px-2 py-1 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600 transition"
+                              title="Delete category"
+                            >
+                              🗑️
+                            </button>
+                          </div>
                         )}
                       </div>
                       {category.description && (

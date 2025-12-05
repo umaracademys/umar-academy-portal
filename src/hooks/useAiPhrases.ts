@@ -140,6 +140,39 @@ export const useAiPhrases = () => {
     }
   }, []);
 
+  const updateCategory = useCallback(async (name: string, displayName: string, description?: string): Promise<AiPhraseCategory> => {
+    try {
+      setLoading(true);
+      setError(null);
+      const apiUrl = getApiUrl();
+      const encodedName = encodeURIComponent(name);
+      const response = await fetch(`${apiUrl}/ai/phrases/categories/${encodedName}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          displayName,
+          description
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update category');
+      }
+
+      return await response.json();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update category';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const deleteCategory = useCallback(async (name: string): Promise<void> => {
     try {
       setLoading(true);

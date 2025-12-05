@@ -5784,6 +5784,45 @@ app.post('/api/ai/phrases/categories', async (req, res) => {
   }
 });
 
+// Update category (Super Admin only)
+app.put('/api/ai/phrases/categories/:name', async (req, res) => {
+  try {
+    let { name } = req.params;
+    const { displayName, description } = req.body;
+    
+    // Decode URL-encoded category name
+    name = decodeURIComponent(name);
+    
+    // Try to find by name first
+    let category = await AiPhraseCategory.findOne({ name });
+    
+    // If not found by name, try to find by displayName
+    if (!category) {
+      category = await AiPhraseCategory.findOne({ displayName: name });
+      if (category) {
+        name = category.name;
+      }
+    }
+    
+    if (!category) {
+      return res.status(404).json({ error: `Category "${name}" not found` });
+    }
+
+    if (category.isSystem) {
+      return res.status(400).json({ error: 'Cannot edit system category' });
+    }
+
+    if (displayName) category.displayName = displayName;
+    if (description !== undefined) category.description = description;
+
+    await category.save();
+    res.json(category);
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Delete category (Super Admin only, and only if no phrases exist)
 app.delete('/api/ai/phrases/categories/:name', async (req, res) => {
   try {
