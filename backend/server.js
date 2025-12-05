@@ -6071,13 +6071,60 @@ app.get('/api/ai/suggestions', async (req, res) => {
     }
 
     // Auto-initialize if no categories exist
-    const phraseCount = await AiPhrase.countDocuments({ category, isActive: true });
-    if (phraseCount === 0) {
-      // Check if categories exist at all
-      const totalCategories = await AiPhraseCategory.countDocuments();
-      if (totalCategories === 0) {
-        console.log(`[AI Suggestions] No categories found, initializing...`);
-        await initializeAiLibraryIfNeeded();
+    const totalCategories = await AiPhraseCategory.countDocuments();
+    if (totalCategories === 0) {
+      console.log(`[AI Suggestions] No categories found, initializing...`);
+      await initializeAiLibraryIfNeeded();
+    } else {
+      // Check if this specific category has no phrases
+      const phraseCount = await AiPhrase.countDocuments({ category, isActive: true });
+      if (phraseCount === 0 && category === 'general') {
+        // Add default phrases to general category if it's empty
+        console.log(`[AI Suggestions] General category is empty, adding default phrases...`);
+        const generalCategory = await AiPhraseCategory.findOne({ name: 'general' });
+        if (generalCategory) {
+          const defaultPhrases = [
+            'Please complete the assignment',
+            'Review the material carefully',
+            'Practice regularly',
+            'Focus on accuracy',
+            'Take your time',
+            'Ask questions if needed',
+            'Good progress',
+            'Keep up the good work',
+            'Needs more practice',
+            'Excellent effort',
+            'Well done',
+            'Continue practicing',
+            'Pay attention to details',
+            'Work on pronunciation',
+            'Memorize thoroughly'
+          ];
+
+          let phraseCount = 0;
+          for (const phraseText of defaultPhrases) {
+            const existing = await AiPhrase.findOne({ phrase: phraseText, category: 'general' });
+            if (!existing) {
+              const phrase = new AiPhrase({
+                phrase: phraseText,
+                category: 'general',
+                createdBy: 'system',
+                createdByName: 'System',
+                isActive: true
+              });
+              await phrase.save();
+              phraseCount++;
+            }
+          }
+
+          if (phraseCount > 0) {
+            await AiPhraseCategory.updateOne(
+              { name: 'general' },
+              { $inc: { phraseCount: phraseCount } }
+            );
+            console.log(`[AI Suggestions] Added ${phraseCount} default phrases to general category`);
+          }
+        }
       }
     }
 
