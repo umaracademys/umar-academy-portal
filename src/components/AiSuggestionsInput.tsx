@@ -63,31 +63,69 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
         headers
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log('AI Suggestions response:', { category, query: searchQuery, dataLength: Array.isArray(data) ? data.length : 0, data });
-        // Transform data to match expected format
-        const formattedSuggestions = Array.isArray(data) ? data.map((item: any) => ({
-          id: item.id || item._id || `suggestion-${Date.now()}-${Math.random()}`,
-          phrase: item.phrase || item.text || item,
-          category: item.category || category,
-          usageCount: item.usageCount || 0
-        })) : [];
-        
-        console.log('Formatted suggestions:', formattedSuggestions.length, formattedSuggestions);
-        setSuggestions(formattedSuggestions);
-        setShowSuggestions(formattedSuggestions.length > 0);
-        
-        // If no suggestions and category is 'general', show helpful message
-        if (formattedSuggestions.length === 0 && category === 'general') {
-          console.warn('⚠️ No phrases found in "general" category. Please initialize categories in AI Library (/super-admin/ai-library).');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('AI Suggestions response:', { category, query: searchQuery, dataLength: Array.isArray(data) ? data.length : 0, data });
+          // Transform data to match expected format
+          const formattedSuggestions = Array.isArray(data) ? data.map((item: any) => ({
+            id: item.id || item._id || `suggestion-${Date.now()}-${Math.random()}`,
+            phrase: item.phrase || item.text || item,
+            category: item.category || category,
+            usageCount: item.usageCount || 0
+          })) : [];
+          
+          console.log('Formatted suggestions:', formattedSuggestions.length, formattedSuggestions);
+          
+          // If no suggestions and category is 'general', try to initialize
+          if (formattedSuggestions.length === 0 && category === 'general') {
+            console.warn('⚠️ No phrases found, attempting to initialize...');
+            try {
+              // Try to call initialization endpoint
+              const initResponse = await fetch(`${apiUrl}/ai/phrases/init-categories`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                }
+              });
+              
+              if (initResponse.ok) {
+                console.log('✅ Initialization successful, retrying suggestions...');
+                // Retry fetching suggestions after a short delay
+                setTimeout(async () => {
+                  try {
+                    const retryResponse = await fetch(`${apiUrl}/ai/suggestions?${params.toString()}`, {
+                      headers
+                    });
+                    if (retryResponse.ok) {
+                      const retryData = await retryResponse.json();
+                      const retrySuggestions = Array.isArray(retryData) ? retryData.map((item: any) => ({
+                        id: item.id || item._id || `suggestion-${Date.now()}-${Math.random()}`,
+                        phrase: item.phrase || item.text || item,
+                        category: item.category || category,
+                        usageCount: item.usageCount || 0
+                      })) : [];
+                      setSuggestions(retrySuggestions);
+                      setShowSuggestions(retrySuggestions.length > 0);
+                    }
+                  } catch (retryErr) {
+                    console.error('Error retrying suggestions:', retryErr);
+                  }
+                }, 500);
+              }
+            } catch (initErr) {
+              console.error('Error initializing:', initErr);
+            }
+          }
+          
+          setSuggestions(formattedSuggestions);
+          setShowSuggestions(formattedSuggestions.length > 0);
+        } else {
+          const errorText = await response.text();
+          console.error('❌ Failed to fetch suggestions:', response.status, response.statusText, errorText);
+          setSuggestions([]);
+          setShowSuggestions(false);
         }
-      } else {
-        const errorText = await response.text();
-        console.error('❌ Failed to fetch suggestions:', response.status, response.statusText, errorText);
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       setSuggestions([]);

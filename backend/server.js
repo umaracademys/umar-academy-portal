@@ -6331,7 +6331,59 @@ app.post('/api/ai/phrases/init-categories', async (req, res) => {
       }
     }
 
-    res.json({ message: `Initialized ${created.length} categories`, created });
+    // Also add default phrases to general category
+    const generalCategory = await AiPhraseCategory.findOne({ name: 'general' });
+    if (generalCategory) {
+      const defaultPhrases = [
+        'Please complete the assignment',
+        'Review the material carefully',
+        'Practice regularly',
+        'Focus on accuracy',
+        'Take your time',
+        'Ask questions if needed',
+        'Good progress',
+        'Keep up the good work',
+        'Needs more practice',
+        'Excellent effort',
+        'Well done',
+        'Continue practicing',
+        'Pay attention to details',
+        'Work on pronunciation',
+        'Memorize thoroughly'
+      ];
+
+      let phraseCount = 0;
+      for (const phraseText of defaultPhrases) {
+        const existing = await AiPhrase.findOne({ phrase: phraseText, category: 'general' });
+        if (!existing) {
+          const phrase = new AiPhrase({
+            phrase: phraseText,
+            category: 'general',
+            createdBy: 'system',
+            createdByName: 'System',
+            isActive: true
+          });
+          await phrase.save();
+          phraseCount++;
+        }
+      }
+
+      // Update category phrase count
+      if (phraseCount > 0) {
+        await AiPhraseCategory.updateOne(
+          { name: 'general' },
+          { $inc: { phraseCount: phraseCount } }
+        );
+      }
+
+      res.json({ 
+        message: `Initialized ${created.length} categories and ${phraseCount} default phrases`, 
+        created,
+        phrasesAdded: phraseCount
+      });
+    } else {
+      res.json({ message: `Initialized ${created.length} categories`, created });
+    }
   } catch (error) {
     console.error('Error initializing categories:', error);
     res.status(500).json({ error: error.message });
