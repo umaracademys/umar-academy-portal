@@ -5911,6 +5911,10 @@ app.get('/api/ai/suggestions', async (req, res) => {
       query.phrase = { $regex: searchTerm, $options: 'i' };
     }
 
+    // Debug: Log query and count
+    const totalCount = await AiPhrase.countDocuments(query);
+    console.log(`[AI Suggestions] Category: ${category}, Query: "${searchQuery || ''}", Total matches: ${totalCount}`);
+
     // Get phrases, prioritize by usage count and recent usage
     const phrases = await AiPhrase.find(query)
       .sort({
@@ -5920,12 +5924,15 @@ app.get('/api/ai/suggestions', async (req, res) => {
       })
       .limit(10);
 
-    res.json(phrases.map(p => ({
+    const result = phrases.map(p => ({
       id: p._id,
       phrase: p.phrase,
       category: p.category,
       usageCount: p.usageCount
-    })));
+    }));
+
+    console.log(`[AI Suggestions] Returning ${result.length} phrases for category "${category}"`);
+    res.json(result);
   } catch (error) {
     console.error('Error fetching suggestions:', error);
     res.status(500).json({ error: error.message });
