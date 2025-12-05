@@ -36,6 +36,8 @@ const SuperAdminAiLibrary: React.FC = () => {
     phrase: '',
     category: ''
   });
+  const [bulkPhrases, setBulkPhrases] = useState('');
+  const [showBulkAdd, setShowBulkAdd] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -102,7 +104,15 @@ const SuperAdminAiLibrary: React.FC = () => {
       if (editingPhrase) {
         await updatePhrase(editingPhrase._id, phraseForm.phrase, phraseForm.category);
       } else {
-        await createPhrase(phraseForm.phrase, phraseForm.category || selectedCategory);
+        if (!phraseForm.phrase.trim()) {
+          alert('Please enter a phrase');
+          return;
+        }
+        if (!phraseForm.category && !selectedCategory) {
+          alert('Please select a category');
+          return;
+        }
+        await createPhrase(phraseForm.phrase.trim(), phraseForm.category || selectedCategory);
       }
       setPhraseForm({ phrase: '', category: '' });
       setEditingPhrase(null);
@@ -110,6 +120,58 @@ const SuperAdminAiLibrary: React.FC = () => {
       await loadPhrases(selectedCategory);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to save phrase');
+    }
+  };
+
+  const handleBulkAddPhrases = async () => {
+    if (!bulkPhrases.trim()) {
+      alert('Please enter phrases');
+      return;
+    }
+    if (!selectedCategory) {
+      alert('Please select a category');
+      return;
+    }
+
+    try {
+      // Split by newlines and filter out empty lines
+      const phrases = bulkPhrases
+        .split('\n')
+        .map(p => p.trim())
+        .filter(p => p.length > 0);
+
+      if (phrases.length === 0) {
+        alert('No valid phrases found');
+        return;
+      }
+
+      // Create phrases one by one
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const phrase of phrases) {
+        try {
+          await createPhrase(phrase, selectedCategory);
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          errors.push(`${phrase}: ${err instanceof Error ? err.message : 'Failed'}`);
+        }
+      }
+
+      setBulkPhrases('');
+      setShowBulkAdd(false);
+
+      if (errorCount > 0) {
+        alert(`Added ${successCount} phrases. ${errorCount} failed:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? '\n...' : ''}`);
+      } else {
+        alert(`Successfully added ${successCount} phrases!`);
+      }
+
+      await loadPhrases(selectedCategory);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add phrases');
     }
   };
 
@@ -282,16 +344,28 @@ const SuperAdminAiLibrary: React.FC = () => {
                       ? categories.find(c => c.name === selectedCategory)?.displayName || 'Phrases'
                       : 'All Phrases'}
                   </h2>
-                  <button
-                    onClick={() => {
-                      setEditingPhrase(null);
-                      setPhraseForm({ phrase: '', category: selectedCategory });
-                      setShowPhraseForm(true);
-                    }}
-                    className="px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary/90"
-                  >
-                    + Add Phrase
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setShowBulkAdd(true);
+                        setShowPhraseForm(false);
+                      }}
+                      className="px-4 py-2 bg-purple-500 text-white rounded-lg font-bold hover:bg-purple-600"
+                    >
+                      📝 Bulk Add
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingPhrase(null);
+                        setPhraseForm({ phrase: '', category: selectedCategory });
+                        setShowPhraseForm(true);
+                        setShowBulkAdd(false);
+                      }}
+                      className="px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary/90"
+                    >
+                      + Add Phrase
+                    </button>
+                  </div>
                 </div>
 
                 {/* Search */}
@@ -304,6 +378,43 @@ const SuperAdminAiLibrary: React.FC = () => {
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
+
+                {/* Bulk Add Form */}
+                {showBulkAdd && (
+                  <div className="mb-4 p-4 bg-purple-50 rounded-lg border-2 border-purple-500">
+                    <h3 className="text-sm font-bold text-purple-700 mb-2">
+                      Bulk Add Phrases (one per line)
+                    </h3>
+                    <p className="text-xs text-gray-600 mb-2">
+                      Enter multiple phrases, one per line. They will be added to: <strong>{categories.find(c => c.name === selectedCategory)?.displayName || selectedCategory}</strong>
+                    </p>
+                    <textarea
+                      value={bulkPhrases}
+                      onChange={(e) => setBulkPhrases(e.target.value)}
+                      placeholder="Enter phrases, one per line:&#10;Excellent pronunciation&#10;Good application of rules&#10;Needs more practice"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm mb-2 resize-none font-mono"
+                      rows={8}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleBulkAddPhrases}
+                        disabled={!bulkPhrases.trim() || !selectedCategory}
+                        className="flex-1 px-3 py-2 bg-purple-500 text-white rounded-lg text-sm font-bold hover:bg-purple-600 disabled:opacity-50"
+                      >
+                        Add All Phrases
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowBulkAdd(false);
+                          setBulkPhrases('');
+                        }}
+                        className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Phrase Form */}
                 {showPhraseForm && (
@@ -331,7 +442,7 @@ const SuperAdminAiLibrary: React.FC = () => {
                     <div className="flex gap-2">
                       <button
                         onClick={handleCreatePhrase}
-                        disabled={!phraseForm.phrase || (!phraseForm.category && !selectedCategory)}
+                        disabled={!phraseForm.phrase.trim() || (!phraseForm.category && !selectedCategory)}
                         className="flex-1 px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 disabled:opacity-50"
                       >
                         {editingPhrase ? 'Update' : 'Create'}
@@ -362,6 +473,9 @@ const SuperAdminAiLibrary: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-96 overflow-y-auto">
+                    <div className="mb-2 text-xs text-gray-500 font-semibold">
+                      Showing {phrases.length} phrase{phrases.length !== 1 ? 's' : ''}
+                    </div>
                     {phrases.map((phrase) => (
                       <div
                         key={phrase._id}
@@ -369,28 +483,35 @@ const SuperAdminAiLibrary: React.FC = () => {
                       >
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">{phrase.phrase}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs text-gray-500">
+                            <p className="text-sm font-medium text-gray-900 mb-1">{phrase.phrase}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                                 {categories.find(c => c.name === phrase.category)?.displayName || phrase.category}
                               </span>
                               {phrase.usageCount > 0 && (
-                                <span className="text-xs text-blue-600">
-                                  • Used {phrase.usageCount} times
+                                <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                                  Used {phrase.usageCount} time{phrase.usageCount !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {phrase.createdByName && (
+                                <span className="text-xs text-gray-400">
+                                  by {phrase.createdByName}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 ml-2">
                             <button
                               onClick={() => handleEditPhrase(phrase)}
-                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600"
+                              className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600 transition"
+                              title="Edit phrase"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDeletePhrase(phrase._id)}
-                              className="px-2 py-1 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600"
+                              className="px-2 py-1 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600 transition"
+                              title="Delete phrase"
                             >
                               Delete
                             </button>
