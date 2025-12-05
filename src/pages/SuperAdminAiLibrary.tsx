@@ -227,7 +227,41 @@ const SuperAdminAiLibrary: React.FC = () => {
     try {
       await initializeCategories();
       await loadCategories();
-      alert('Categories initialized successfully!');
+      
+      // Also add some default phrases to general category
+      const generalCategory = categories.find(c => c.name === 'general');
+      if (generalCategory) {
+        const defaultPhrases = [
+          'Please complete the assignment',
+          'Review the material carefully',
+          'Practice regularly',
+          'Focus on accuracy',
+          'Take your time',
+          'Ask questions if needed',
+          'Good progress',
+          'Keep up the good work',
+          'Needs more practice',
+          'Excellent effort'
+        ];
+        
+        let addedCount = 0;
+        for (const phrase of defaultPhrases) {
+          try {
+            await createPhrase(phrase, 'general');
+            addedCount++;
+          } catch (err) {
+            // Ignore duplicates
+          }
+        }
+        
+        if (addedCount > 0) {
+          alert(`Categories initialized! Also added ${addedCount} default phrases to General category.`);
+        } else {
+          alert('Categories initialized successfully!');
+        }
+      } else {
+        alert('Categories initialized successfully!');
+      }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to initialize categories');
     }
