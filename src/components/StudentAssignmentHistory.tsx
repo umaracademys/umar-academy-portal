@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { Assignment } from '../types/assignment';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface StudentAssignmentHistoryProps {
   studentId: string;
@@ -874,10 +875,12 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                             <div className="space-y-3">
                                               <div>
                                                 <label className="block text-xs font-extrabold text-primary mb-2">Feedback</label>
-                                                <textarea
+                                                <AiSuggestionsInput
                                                   value={gradeData.feedback}
-                                                  onChange={(e) => setGradeData(prev => ({ ...prev, feedback: e.target.value }))}
+                                                  onChange={(value) => setGradeData(prev => ({ ...prev, feedback: value }))}
+                                                  category="evaluation"
                                                   rows={4}
+                                                  multiline={true}
                                                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                                                   placeholder="Enter feedback for the student..."
                                                 />

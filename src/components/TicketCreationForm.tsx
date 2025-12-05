@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Ticket, TicketType } from '../types/ticket';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TicketCreationFormProps {
   studentId: string;

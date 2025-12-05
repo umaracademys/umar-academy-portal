@@ -691,10 +691,12 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Final Report / Summary <span className="text-red-500">*</span>
                 </label>
-                <textarea
+                <AiSuggestionsInput
                   value={editForm.finalReport}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, finalReport: e.target.value }))}
+                  onChange={(value) => setEditForm(prev => ({ ...prev, finalReport: value }))}
+                  category="progress_report"
                   rows={6}
+                  multiline={true}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   placeholder="Enter the final report or summary..."
                 />
@@ -703,10 +705,12 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
               {/* Homework */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Homework</label>
-                <textarea
+                <AiSuggestionsInput
                   value={editForm.homework}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, homework: e.target.value }))}
+                  onChange={(value) => setEditForm(prev => ({ ...prev, homework: value }))}
+                  category="general"
                   rows={4}
+                  multiline={true}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   placeholder="Enter homework instructions..."
                 />

@@ -3,6 +3,7 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, ClassworkPhase } from '../types/assignment';
 import { Ticket } from '../types/ticket';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface AssignmentFormProps {
   studentId: string;
@@ -457,12 +458,14 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
                   <label className="block text-sm font-extrabold text-primary mb-1">
                     Homework Content
                   </label>
-                  <textarea
+                  <AiSuggestionsInput
                     value={homework.content}
-                    onChange={(e) => setHomework(prev => ({ ...prev, content: e.target.value }))}
-                    placeholder="Enter homework instructions or content..."
+                    onChange={(value) => setHomework(prev => ({ ...prev, content: value }))}
+                    category="general"
                     rows={4}
+                    multiline={true}
                     className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
+                    placeholder="Enter homework instructions or content..."
                   />
                 </div>
           <div>
@@ -486,12 +489,14 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
             <label className="block text-sm font-extrabold text-primary mb-2">
               Comment
             </label>
-            <textarea
+            <AiSuggestionsInput
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Add any additional comments or notes..."
+              onChange={(value) => setComment(value)}
+              category="general"
               rows={4}
+              multiline={true}
               className="w-full px-4 py-2.5 border-2 border-primary/30 rounded-2xl bg-white text-primary focus:ring-4 focus:ring-primary/20 focus:border-primary transition shadow-sm"
+              placeholder="Add any additional comments or notes..."
             />
           </div>
 

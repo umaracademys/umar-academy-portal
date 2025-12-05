@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { RecitationReview, RecitationType, Student } from '../types';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TeacherRecitationReviewProps {
   onClose: () => void;
@@ -280,14 +281,14 @@ const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClo
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               📝 Review Notes *
             </label>
-            <textarea
-              name="notes"
+            <AiSuggestionsInput
               value={formData.notes}
-              onChange={handleInputChange}
-              required
+              onChange={(value) => handleInputChange({ target: { name: 'notes', value } } as any)}
+              category="tajweed"
               rows={6}
-              placeholder="Enter your review notes here... (e.g., pronunciation, mistakes, corrections needed, etc.)"
+              multiline={true}
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Enter your review notes here... (e.g., pronunciation, mistakes, corrections needed, etc.)"
             />
           </div>
 
