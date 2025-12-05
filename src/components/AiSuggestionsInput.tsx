@@ -51,10 +51,16 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
         params.append('query', searchQuery.trim());
       }
 
+      const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${apiUrl}/ai/suggestions?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers
       });
 
       if (response.ok) {
@@ -111,11 +117,16 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
     try {
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+      const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       await fetch(`${apiUrl}/ai/phrases/${suggestion.id}/use`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers
       });
     } catch (error) {
       console.error('Error tracking usage:', error);
