@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Assignment } from '../types/assignment';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TeacherStudentReportsProps {
   onClose: () => void;

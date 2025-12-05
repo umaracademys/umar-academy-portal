@@ -6,6 +6,7 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import Card from './Card';
 import { useAutoRecording } from '../hooks/useAutoRecording';
 import TicketCreationForm from './TicketCreationForm';
+import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
