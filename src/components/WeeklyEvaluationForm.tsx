@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import MistakeLibraryManagement from './MistakeLibraryManagement';
+import AutocompleteInput from './AutocompleteInput';
 
 interface WeeklyEvaluationFormProps {
   studentId: string;
@@ -34,6 +35,8 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
   const [showSuggestions, setShowSuggestions] = useState<Record<string, boolean>>({});
   const [summarizing, setSummarizing] = useState(false);
   const [showMistakeLibrary, setShowMistakeLibrary] = useState(false);
+  const [libraryEntries, setLibraryEntries] = useState<any[]>([]);
+  const [libraryPhrases, setLibraryPhrases] = useState<string[]>([]);
 
   // Get current week dates
   const getWeekDates = () => {
@@ -106,6 +109,53 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
       }
     });
   };
+
+  // Load mistake library entries for autocomplete
+  useEffect(() => {
+    const loadLibraryEntries = async () => {
+      try {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+        const response = await fetch(
+          `${apiUrl}/mistake-library?isPublic=true`,
+          {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          }
+        );
+
+        if (response.ok) {
+          const entries = await response.json();
+          setLibraryEntries(entries);
+          
+          // Extract phrases from library entries for autocomplete
+          const phrases: string[] = [];
+          entries.forEach((entry: any) => {
+            // Add title
+            if (entry.title) phrases.push(entry.title);
+            // Add mistake description
+            if (entry.mistake) phrases.push(entry.mistake);
+            // Add how to fix
+            if (entry.howToFix) phrases.push(entry.howToFix);
+            // Add description
+            if (entry.description) phrases.push(entry.description);
+            // Add tips
+            if (entry.tips && Array.isArray(entry.tips)) {
+              entry.tips.forEach((tip: string) => phrases.push(tip));
+            }
+          });
+          
+          // Remove duplicates and set
+          setLibraryPhrases([...new Set(phrases)]);
+        }
+      } catch (err) {
+        console.error('Error loading library entries:', err);
+      }
+    };
+
+    loadLibraryEntries();
+  }, []);
 
   // Fetch AI suggestions for a field
   const fetchSuggestions = async (fieldType: string) => {
@@ -401,52 +451,58 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Strengths</label>
                 <SuggestionChips fieldType="tajweedStrengths" label="Strengths" />
-                <textarea
+                <AutocompleteInput
                   value={formData.tajweedEvaluation.strengths}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     tajweedEvaluation: {
                       ...formData.tajweedEvaluation,
-                      strengths: e.target.value
+                      strengths: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="What the student did well in tajweed..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
-                  placeholder="What the student did well in tajweed..."
+                  multiline={true}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Areas for Improvement</label>
                 <SuggestionChips fieldType="tajweedAreasForImprovement" label="Areas for Improvement" />
-                <textarea
+                <AutocompleteInput
                   value={formData.tajweedEvaluation.areasForImprovement}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     tajweedEvaluation: {
                       ...formData.tajweedEvaluation,
-                      areasForImprovement: e.target.value
+                      areasForImprovement: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="Areas that need work..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
-                  placeholder="Areas that need work..."
+                  multiline={true}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Specific Notes</label>
                 <SuggestionChips fieldType="tajweedSpecificNotes" label="Specific Notes" />
-                <textarea
+                <AutocompleteInput
                   value={formData.tajweedEvaluation.specificNotes}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     tajweedEvaluation: {
                       ...formData.tajweedEvaluation,
-                      specificNotes: e.target.value
+                      specificNotes: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="Detailed tajweed notes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
-                  placeholder="Detailed tajweed notes..."
+                  multiline={true}
                 />
               </div>
             </div>
@@ -478,52 +534,58 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Memorized Pages</label>
                 <SuggestionChips fieldType="memoryMemorizedPages" label="Memorized Pages" />
-                <textarea
+                <AutocompleteInput
                   value={formData.memoryEvaluation.memorizedPages}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     memoryEvaluation: {
                       ...formData.memoryEvaluation,
-                      memorizedPages: e.target.value
+                      memorizedPages: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="What was memorized this week..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={2}
-                  placeholder="What was memorized this week..."
+                  multiline={true}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Retention Quality</label>
                 <SuggestionChips fieldType="memoryRetentionQuality" label="Retention Quality" />
-                <textarea
+                <AutocompleteInput
                   value={formData.memoryEvaluation.retentionQuality}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     memoryEvaluation: {
                       ...formData.memoryEvaluation,
-                      retentionQuality: e.target.value
+                      retentionQuality: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="How well they retained previous memorization..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={2}
-                  placeholder="How well they retained previous memorization..."
+                  multiline={true}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Specific Notes</label>
                 <SuggestionChips fieldType="memorySpecificNotes" label="Specific Notes" />
-                <textarea
+                <AutocompleteInput
                   value={formData.memoryEvaluation.specificNotes}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     memoryEvaluation: {
                       ...formData.memoryEvaluation,
-                      specificNotes: e.target.value
+                      specificNotes: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="Detailed memory notes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
-                  placeholder="Detailed memory notes..."
+                  multiline={true}
                 />
               </div>
             </div>
@@ -606,35 +668,39 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
                   </button>
                 </div>
                 <SuggestionChips fieldType="mistakesHowFixed" label="How Mistakes Were Fixed" />
-                <textarea
+                <AutocompleteInput
                   value={formData.mistakes.howFixed}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     mistakes: {
                       ...formData.mistakes,
-                      howFixed: e.target.value
+                      howFixed: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="How you helped the student fix these mistakes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
-                  placeholder="How you helped the student fix these mistakes..."
+                  multiline={true}
                 />
               </div>
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-2">Improvement</label>
                 <SuggestionChips fieldType="mistakesImprovement" label="Improvement" />
-                <textarea
+                <AutocompleteInput
                   value={formData.mistakes.improvement}
-                  onChange={(e) => setFormData({
+                  onChange={(value) => setFormData({
                     ...formData,
                     mistakes: {
                       ...formData.mistakes,
-                      improvement: e.target.value
+                      improvement: value
                     }
                   })}
+                  suggestions={libraryPhrases}
+                  placeholder="Progress made in fixing mistakes..."
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                   rows={3}
-                  placeholder="Progress made in fixing mistakes..."
+                  multiline={true}
                 />
               </div>
             </div>
@@ -644,12 +710,14 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">General Notes</label>
             <SuggestionChips fieldType="generalNotes" label="General Notes" />
-            <textarea
+            <AutocompleteInput
               value={formData.generalNotes}
-              onChange={(e) => setFormData({ ...formData, generalNotes: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, generalNotes: value })}
+              suggestions={libraryPhrases}
+              placeholder="Additional notes about the student's progress this week..."
               className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               rows={4}
-              placeholder="Additional notes about the student's progress this week..."
+              multiline={true}
             />
           </div>
 
