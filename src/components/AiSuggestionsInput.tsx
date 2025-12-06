@@ -64,7 +64,7 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
 
         if (response.ok) {
           const data = await response.json();
-          console.log('AI Suggestions response:', { category, query: searchQuery, dataLength: Array.isArray(data) ? data.length : 0, data });
+          console.log('AI Suggestions response:', { category, dataLength: Array.isArray(data) ? data.length : 0, data });
           // Transform data to match expected format
           const formattedSuggestions = Array.isArray(data) ? data.map((item: any) => ({
             id: item.id || item._id || `suggestion-${Date.now()}-${Math.random()}`,
