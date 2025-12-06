@@ -1,7 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface ITeacher extends Document {
-  _id: string;
   userId: mongoose.Types.ObjectId;
   teacherId: string;
   fullName: string;

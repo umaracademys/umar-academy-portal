@@ -1,7 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IAssignment extends Document {
-  _id: string;
   assignmentId: string;
   title: string;
   description: string;
