@@ -129,6 +129,22 @@ interface BackendDataContextType {
   createListeningSession: (payload: ListeningSessionStartPayload) => Promise<ListeningSession>;
   updateListeningSession: (sessionIdOrTicketId: string, payload: ListeningSessionUpdatePayload) => Promise<ListeningSession>;
   endListeningSession: (sessionIdOrTicketId: string, payload?: ListeningSessionEndPayload) => Promise<ListeningSession>;
+  // Teacher Pair management
+  getTeacherPairs: () => Promise<any[]>;
+  getTeacherPair: (id: string) => Promise<any>;
+  createTeacherPair: (pair: any) => Promise<any>;
+  updateTeacherPair: (id: string, pair: any) => Promise<any>;
+  deleteTeacherPair: (id: string) => Promise<void>;
+  getPairStudents: (filters?: { pair?: string; student?: string; status?: string }) => Promise<any[]>;
+  getPairStudent: (id: string) => Promise<any>;
+  createPairStudent: (pairStudent: any) => Promise<any>;
+  updatePairStudent: (id: string, pairStudent: any) => Promise<any>;
+  deletePairStudent: (id: string) => Promise<void>;
+  getPairDailyReports: (filters?: { pair?: string; student?: string; teacher?: string; date?: string }) => Promise<any[]>;
+  getPairDailyReport: (id: string) => Promise<any>;
+  createPairDailyReport: (report: any) => Promise<any>;
+  updatePairDailyReport: (id: string, report: any) => Promise<any>;
+  deletePairDailyReport: (id: string) => Promise<void>;
 }
 
 const BackendDataContext = createContext<BackendDataContextType | undefined>(undefined);
@@ -2608,6 +2624,227 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Teacher Pair management functions
+  const getTeacherPairs = async (): Promise<any[]> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-pairs`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch teacher pairs');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching teacher pairs:', error);
+      return [];
+    }
+  };
+
+  const getTeacherPair = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-pairs/${id}`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch teacher pair');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching teacher pair:', error);
+      throw error;
+    }
+  };
+
+  const createTeacherPair = async (pair: any): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-pairs`, {
+        method: 'POST',
+        body: JSON.stringify(pair)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create teacher pair' }));
+        throw new Error(errorData.error || 'Failed to create teacher pair');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating teacher pair:', error);
+      throw error;
+    }
+  };
+
+  const updateTeacherPair = async (id: string, pair: any): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-pairs/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(pair)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to update teacher pair' }));
+        throw new Error(errorData.error || 'Failed to update teacher pair');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating teacher pair:', error);
+      throw error;
+    }
+  };
+
+  const deleteTeacherPair = async (id: string): Promise<void> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-pairs/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete teacher pair' }));
+        throw new Error(errorData.error || 'Failed to delete teacher pair');
+      }
+    } catch (error) {
+      console.error('Error deleting teacher pair:', error);
+      throw error;
+    }
+  };
+
+  const getPairStudents = async (filters?: { pair?: string; student?: string; status?: string }): Promise<any[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.pair) params.append('pair', filters.pair);
+      if (filters?.student) params.append('student', filters.student);
+      if (filters?.status) params.append('status', filters.status);
+      
+      const url = `${API_BASE}/pair-students${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetchWithTimeout(url, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch pair students');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching pair students:', error);
+      return [];
+    }
+  };
+
+  const getPairStudent = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-students/${id}`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch pair student');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching pair student:', error);
+      throw error;
+    }
+  };
+
+  const createPairStudent = async (pairStudent: any): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-students`, {
+        method: 'POST',
+        body: JSON.stringify(pairStudent)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create pair student' }));
+        throw new Error(errorData.error || 'Failed to create pair student');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating pair student:', error);
+      throw error;
+    }
+  };
+
+  const updatePairStudent = async (id: string, pairStudent: any): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-students/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(pairStudent)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to update pair student' }));
+        throw new Error(errorData.error || 'Failed to update pair student');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating pair student:', error);
+      throw error;
+    }
+  };
+
+  const deletePairStudent = async (id: string): Promise<void> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-students/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete pair student' }));
+        throw new Error(errorData.error || 'Failed to delete pair student');
+      }
+    } catch (error) {
+      console.error('Error deleting pair student:', error);
+      throw error;
+    }
+  };
+
+  const getPairDailyReports = async (filters?: { pair?: string; student?: string; teacher?: string; date?: string }): Promise<any[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.pair) params.append('pair', filters.pair);
+      if (filters?.student) params.append('student', filters.student);
+      if (filters?.teacher) params.append('teacher', filters.teacher);
+      if (filters?.date) params.append('date', filters.date);
+      
+      const url = `${API_BASE}/pair-daily-reports${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetchWithTimeout(url, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch daily reports');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching daily reports:', error);
+      return [];
+    }
+  };
+
+  const getPairDailyReport = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-daily-reports/${id}`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch daily report');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching daily report:', error);
+      throw error;
+    }
+  };
+
+  const createPairDailyReport = async (report: any): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-daily-reports`, {
+        method: 'POST',
+        body: JSON.stringify(report)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create daily report' }));
+        throw new Error(errorData.error || 'Failed to create daily report');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating daily report:', error);
+      throw error;
+    }
+  };
+
+  const updatePairDailyReport = async (id: string, report: any): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-daily-reports/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(report)
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to update daily report' }));
+        throw new Error(errorData.error || 'Failed to update daily report');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error updating daily report:', error);
+      throw error;
+    }
+  };
+
+  const deletePairDailyReport = async (id: string): Promise<void> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-daily-reports/${id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete daily report' }));
+        throw new Error(errorData.error || 'Failed to delete daily report');
+      }
+    } catch (error) {
+      console.error('Error deleting daily report:', error);
+      throw error;
+    }
+  };
+
   const value: BackendDataContextType = {
     students,
     teachers,
@@ -2670,7 +2907,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     addMistakeToPersonalMushaf,
     createListeningSession,
     updateListeningSession,
-    endListeningSession
+    endListeningSession,
+    // Teacher Pair management
+    getTeacherPairs,
+    getTeacherPair,
+    createTeacherPair,
+    updateTeacherPair,
+    deleteTeacherPair,
+    getPairStudents,
+    getPairStudent,
+    createPairStudent,
+    updatePairStudent,
+    deletePairStudent,
+    getPairDailyReports,
+    getPairDailyReport,
+    createPairDailyReport,
+    updatePairDailyReport,
+    deletePairDailyReport
   };
 
   return (
