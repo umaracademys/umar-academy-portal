@@ -210,11 +210,15 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                       required
                     >
                       <option value="">Select Teacher</option>
-                      {teachers.map(teacher => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.fullName}
-                        </option>
-                      ))}
+                      {teachers.map(teacher => {
+                        // Use Teacher document _id (not User.id)
+                        const teacherDocId = (teacher as any)._id || (teacher as any).teacherDocumentId || teacher.id;
+                        return (
+                          <option key={teacher.id} value={teacherDocId}>
+                            {teacher.fullName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -227,11 +231,15 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                       required
                     >
                       <option value="">Select Teacher</option>
-                      {teachers.map(teacher => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.fullName}
-                        </option>
-                      ))}
+                      {teachers.map(teacher => {
+                        // Use Teacher document _id (not User.id)
+                        const teacherDocId = (teacher as any)._id || (teacher as any).teacherDocumentId || teacher.id;
+                        return (
+                          <option key={teacher.id} value={teacherDocId}>
+                            {teacher.fullName}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                 </div>

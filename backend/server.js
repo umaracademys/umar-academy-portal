@@ -8585,10 +8585,33 @@ app.post('/api/teacher-pairs', async (req, res) => {
       return res.status(400).json({ error: 'Name, teacher1, teacher2, and program are required' });
     }
 
+    // Validate and convert teacher IDs to ObjectIds
+    if (!mongoose.Types.ObjectId.isValid(teacher1)) {
+      return res.status(400).json({ error: 'Invalid teacher1 ID format' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(teacher2)) {
+      return res.status(400).json({ error: 'Invalid teacher2 ID format' });
+    }
+
+    // Verify teachers exist
+    const teacher1Doc = await Teacher.findById(teacher1);
+    const teacher2Doc = await Teacher.findById(teacher2);
+    
+    if (!teacher1Doc) {
+      return res.status(404).json({ error: 'Teacher 1 not found' });
+    }
+    if (!teacher2Doc) {
+      return res.status(404).json({ error: 'Teacher 2 not found' });
+    }
+
+    if (teacher1 === teacher2) {
+      return res.status(400).json({ error: 'Teacher 1 and Teacher 2 cannot be the same' });
+    }
+
     const pair = new TeacherPair({
       name,
-      teacher1,
-      teacher2,
+      teacher1: new mongoose.Types.ObjectId(teacher1),
+      teacher2: new mongoose.Types.ObjectId(teacher2),
       program,
       status: status || 'active',
       notes: notes || ''
@@ -8610,9 +8633,40 @@ app.post('/api/teacher-pairs', async (req, res) => {
 app.put('/api/teacher-pairs/:id', async (req, res) => {
   try {
     const { name, teacher1, teacher2, program, status, notes } = req.body;
+    
+    // Validate teacher IDs if provided
+    if (teacher1 && !mongoose.Types.ObjectId.isValid(teacher1)) {
+      return res.status(400).json({ error: 'Invalid teacher1 ID format' });
+    }
+    if (teacher2 && !mongoose.Types.ObjectId.isValid(teacher2)) {
+      return res.status(400).json({ error: 'Invalid teacher2 ID format' });
+    }
+
+    // Verify teachers exist if provided
+    if (teacher1) {
+      const teacher1Doc = await Teacher.findById(teacher1);
+      if (!teacher1Doc) {
+        return res.status(404).json({ error: 'Teacher 1 not found' });
+      }
+    }
+    if (teacher2) {
+      const teacher2Doc = await Teacher.findById(teacher2);
+      if (!teacher2Doc) {
+        return res.status(404).json({ error: 'Teacher 2 not found' });
+      }
+    }
+
+    if (teacher1 && teacher2 && teacher1 === teacher2) {
+      return res.status(400).json({ error: 'Teacher 1 and Teacher 2 cannot be the same' });
+    }
+
+    const updateData = { name, program, status, notes };
+    if (teacher1) updateData.teacher1 = new mongoose.Types.ObjectId(teacher1);
+    if (teacher2) updateData.teacher2 = new mongoose.Types.ObjectId(teacher2);
+
     const pair = await TeacherPair.findByIdAndUpdate(
       req.params.id,
-      { name, teacher1, teacher2, program, status, notes },
+      updateData,
       { new: true, runValidators: true }
     )
       .populate('teacher1', 'fullName email')
