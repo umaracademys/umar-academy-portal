@@ -18,7 +18,7 @@ import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
 import PairDailyReportForm from '../components/PairDailyReportForm';
 
 const TeacherDashboard: React.FC = () => {
-  const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
+  const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
   const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -44,6 +44,77 @@ const TeacherDashboard: React.FC = () => {
 
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
   const assignedStudents = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id) : [];
+  
+  // Get pair partner teacher
+  const pairPartner = useMemo(() => {
+    if (!currentTeacher || teacherPairs.length === 0) return null;
+    
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    const teacherIdStr = teacherDocId.toString();
+    
+    // Find the first active pair and get the partner
+    for (const pair of teacherPairs) {
+      if (pair.status === 'active') {
+        const pairTeacher1Id = pair.teacher1?._id?.toString() || pair.teacher1?.toString();
+        const pairTeacher2Id = pair.teacher2?._id?.toString() || pair.teacher2?.toString();
+        
+        if (pairTeacher1Id === teacherIdStr && pair.teacher2) {
+          // Current teacher is teacher1, return teacher2
+          const partnerId = pair.teacher2._id || pair.teacher2;
+          return teachers.find(t => {
+            const tId = (t as any)._id || (t as any).teacherDocumentId || t.id;
+            return tId.toString() === partnerId.toString();
+          }) || null;
+        } else if (pairTeacher2Id === teacherIdStr && pair.teacher1) {
+          // Current teacher is teacher2, return teacher1
+          const partnerId = pair.teacher1._id || pair.teacher1;
+          return teachers.find(t => {
+            const tId = (t as any)._id || (t as any).teacherDocumentId || t.id;
+            return tId.toString() === partnerId.toString();
+          }) || null;
+        }
+      }
+    }
+    return null;
+  }, [currentTeacher, teacherPairs, teachers]);
+  
+  // Get all students from pairs (combine with directly assigned)
+  const allPairStudents = useMemo(() => {
+    const students: Student[] = [];
+    const studentIds = new Set<string>();
+    
+    // Add directly assigned students
+    assignedStudents.forEach(s => {
+      const id = s.id || (s as any)._id?.toString();
+      if (id && !studentIds.has(id)) {
+        students.push(s);
+        studentIds.add(id);
+      }
+    });
+    
+    // Add pair students - get from all students list
+    Object.values(pairStudentsMap).forEach(pairStudentList => {
+      pairStudentList.forEach((ps: any) => {
+        const studentRef = ps.student;
+        if (studentRef) {
+          const studentId = studentRef._id?.toString() || studentRef.toString();
+          if (studentId && !studentIds.has(studentId)) {
+            // Find student in all students list by matching IDs
+            const fullStudent = allStudents.find(s => {
+              const sId = s.id?.toString() || (s as any)._id?.toString();
+              return sId === studentId;
+            });
+            if (fullStudent) {
+              students.push(fullStudent);
+              studentIds.add(studentId);
+            }
+          }
+        }
+      });
+    });
+    
+    return students;
+  }, [assignedStudents, pairStudentsMap, allStudents]);
 
   // Load teacher pairs
   useEffect(() => {
@@ -333,11 +404,39 @@ const TeacherDashboard: React.FC = () => {
           </div>
         )}
 
+        {/* Pair Teacher Info Banner */}
+        {pairPartner && (
+          <div className="mb-4 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border-2 border-primary/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-2xl">👥</span>
+                </div>
+                <div>
+                  <h3 className="font-bold text-primary text-lg">Teaching Pair</h3>
+                  <p className="text-sm text-primary/70">
+                    You're paired with <span className="font-semibold text-primary">{pairPartner.fullName}</span>
+                  </p>
+                  <p className="text-xs text-primary/60 mt-1">
+                    Both of you can assess, evaluate, assign, and communicate about shared students
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <p className="text-xs font-semibold text-primary/70">Pair Students</p>
+                  <p className="text-lg font-bold text-primary">{allPairStudents.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Statistics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <StatCard title="Assigned Students" value={currentTeacher ? assignedStudents.length : 0} icon="AS" />
-          <StatCard title="Total Assessments" value={currentTeacher ? assignedStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} icon="TA" />
-          <StatCard title="Active Students" value={currentTeacher ? assignedStudents.filter(s => s.status === 'active').length : 0} icon="WK" />
+          <StatCard title="Pair Students" value={currentTeacher ? allPairStudents.length : 0} icon="AS" />
+          <StatCard title="Total Assessments" value={currentTeacher ? allPairStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} icon="TA" />
+          <StatCard title="Active Students" value={currentTeacher ? allPairStudents.filter(s => s.status === 'active').length : 0} icon="WK" />
           <StatCard title="Pending Tickets" value={teacherTickets.length} icon="PT" />
         </div>
 
@@ -584,7 +683,24 @@ const TeacherDashboard: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {assignedStudents.map((student) => (
+                {allPairStudents.map((student) => {
+                  // Check if student is in a pair
+                  const studentPairInfo = Object.entries(pairStudentsMap).find(([_, students]) => 
+                    students.some((ps: any) => (ps.student?._id?.toString() || ps.student?.toString()) === (student.id || (student as any)._id?.toString()))
+                  );
+                  const isPairStudent = !!studentPairInfo;
+                  
+                  // Get pair details if student is in a pair
+                  const pairDetails = studentPairInfo ? (() => {
+                    const [pairId, pairStudents] = studentPairInfo;
+                    const pair = teacherPairs.find(p => p._id === pairId);
+                    const pairStudent = (pairStudents as any[]).find((ps: any) => 
+                      (ps.student?._id?.toString() || ps.student?.toString()) === (student.id || (student as any)._id?.toString())
+                    );
+                    return { pair, pairStudent };
+                  })() : null;
+                  
+                  return (
                   <div key={student.id} className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center space-x-4">
@@ -594,7 +710,20 @@ const TeacherDashboard: React.FC = () => {
                           className="h-14 w-14 rounded-full border-2 border-gray-200"
                         />
                         <div>
-                          <h4 className="font-bold text-lg text-primary">{student.fullName}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-bold text-lg text-primary">{student.fullName}</h4>
+                            {isPairStudent && pairPartner && (
+                              <span className="px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center gap-1">
+                                <span>👥</span> Pair
+                              </span>
+                            )}
+                          </div>
+                          {isPairStudent && pairDetails?.pair && (
+                            <p className="text-xs text-primary/70 mt-1">
+                              Pair: <span className="font-semibold">{pairDetails.pair.name}</span>
+                              {pairPartner && ` • Shared with ${pairPartner.fullName}`}
+                            </p>
+                          )}
                           {permissions.canViewStudentPersonalInfo && (
                             <p className="text-sm text-gray-600">Parent: {student.parentName}</p>
                           )}
@@ -739,6 +868,24 @@ const TeacherDashboard: React.FC = () => {
                       >
                         View Activity History
                       </button>
+                      {isPairStudent && pairPartner && (
+                        <button
+                          onClick={() => {
+                            // Open communication with pair teacher
+                            const message = `Discuss ${student.fullName} with ${pairPartner.fullName}`;
+                            alert(`Communication feature coming soon!\n\n${message}\n\nBoth teachers can assess, evaluate, and assign tasks for this student.`);
+                          }}
+                          className="rounded-lg border-2 border-accent px-4 py-2 text-xs font-bold text-accent transition hover:bg-soft-accent flex items-center gap-1"
+                          title={`Communicate with ${pairPartner.fullName} about this student`}
+                        >
+                          <span>💬</span> Message Pair Teacher
+                        </button>
+                      )}
+                      {isPairStudent && pairDetails?.pair && (
+                        <span className="rounded-lg bg-primary/10 px-4 py-2 text-xs font-bold text-primary flex items-center gap-1">
+                          <span>👥</span> Both teachers can assess & evaluate
+                        </span>
+                      )}
                       {permissions.canContactParents && (
                         <button
                           disabled

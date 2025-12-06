@@ -73,8 +73,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     if (pairId) {
       const pair = teacherPairs.find(p => p._id === pairId);
       if (pair) {
-        // Auto-set assigned teacher to first teacher in pair if not already set
-        if (!formData.assignedTeacher && pair.teacher1) {
+        // Auto-set assigned teacher to first teacher in pair for backward compatibility
+        if (pair.teacher1) {
           const teacher1Id = pair.teacher1._id || pair.teacher1;
           const matchingTeacher = teachers.find(t => {
             const tId = (t as any)._id || (t as any).teacherDocumentId || t.id;
@@ -85,6 +85,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           }
         }
       }
+    } else {
+      // Clear assigned teacher if pair is deselected
+      setFormData({ ...formData, assignedTeacher: '' });
     }
   };
 
@@ -217,18 +220,23 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     
     if (isSubmitting) return; // Prevent double submission
     
-    // Validate pair assignment if selected
-    if (selectedPair) {
-      if (!pairSchedule.startTime || !pairSchedule.endTime) {
-        alert('Please provide start and end times for the pair schedule');
-        setIsSubmitting(false);
-        return;
-      }
-      if (pairSchedule.days.length === 0) {
-        alert('Please select at least one day for the pair schedule');
-        setIsSubmitting(false);
-        return;
-      }
+    // Validate pair assignment (now required)
+    if (!selectedPair) {
+      alert('Please select a teacher pair. All students must be assigned to a teacher pair.');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (!pairSchedule.startTime || !pairSchedule.endTime) {
+      alert('Please provide start and end times for the pair schedule');
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (pairSchedule.days.length === 0) {
+      alert('Please select at least one day for the pair schedule');
+      setIsSubmitting(false);
+      return;
     }
     
     setIsSubmitting(true);
@@ -261,7 +269,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       siblings: siblings,
       tuitionFee: formData.tuitionFee,
       registrationAmount: formData.registrationAmount,
-      assignedTeacher: formData.assignedTeacher,
+        assignedTeacher: formData.assignedTeacher || '', // Will be set from pair
       schedule: scheduleData, // Ensure schedule is always properly structured
       assessments: isEdit ? student.assessments || [] : [],
       evaluations: isEdit ? student.evaluations || [] : [],
@@ -462,13 +470,24 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           {/* Program Information */}
           <div className="mb-6">
             <h3 className="text-lg font-extrabold text-primary mb-4">Program Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-extrabold text-primary mb-2">Program *</label>
                 <select
                   required
                   value={formData.program}
-                  onChange={(e) => setFormData({ ...formData, program: e.target.value as ProgramType })}
+                  onChange={(e) => {
+                    const newProgram = e.target.value as ProgramType;
+                    setFormData({ ...formData, program: newProgram });
+                    // Clear pair selection if program changes and pair doesn't match
+                    if (selectedPair) {
+                      const currentPair = teacherPairs.find((p: any) => p._id === selectedPair);
+                      if (currentPair && currentPair.program !== newProgram) {
+                        setSelectedPair('');
+                        setPairSchedule({ startTime: '09:00', endTime: '10:00', days: [] });
+                      }
+                    }
+                  }}
                   className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 >
                   <option value="Full Time HQ">Full Time HQ</option>
@@ -476,46 +495,53 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                   <option value="After School Reading">After School Reading</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Assigned Teacher *</label>
-                <select
-                  required
-                  value={formData.assignedTeacher}
-                  onChange={(e) => setFormData({ ...formData, assignedTeacher: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                >
-                  <option value="">Select Teacher</option>
-                  {teachers.map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>
-                  ))}
-                </select>
-              </div>
             </div>
             
             {/* Teacher Pair Assignment */}
             <div className="mt-4">
-              <h4 className="text-sm font-extrabold text-primary mb-3 flex items-center gap-2">
-                <span>👥</span> Teacher Pair Assignment <span className="text-xs font-normal text-primary/70">(Optional)</span>
+              <h4 className="text-lg font-extrabold text-primary mb-3 flex items-center gap-2">
+                <span>👥</span> Teacher Pair Assignment *
               </h4>
+              <p className="text-xs text-primary/70 mb-4">
+                Select a teacher pair to assign this student. Both teachers in the pair will be able to assess, evaluate, and communicate about this student.
+              </p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-extrabold text-primary mb-2">
-                    Select Teacher Pair
+                    Select Teacher Pair *
                   </label>
                   <select
+                    required
                     value={selectedPair}
                     onChange={(e) => handlePairChange(e.target.value)}
                     className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                   >
-                    <option value="">No Pair (Individual Assignment)</option>
+                    <option value="">Select a Teacher Pair</option>
                     {teacherPairs
-                      .filter((pair: any) => pair.program === formData.program || !formData.program)
+                      .filter((pair: any) => {
+                        // Normalize program names for comparison
+                        const normalizeProgram = (p: string) => p?.toLowerCase().replace(/\s+/g, ' ').trim();
+                        const pairProgram = normalizeProgram(pair.program);
+                        const formProgram = normalizeProgram(formData.program);
+                        return pairProgram === formProgram || !formData.program;
+                      })
+                      .filter((pair: any) => pair.status === 'active')
                       .map((pair: any) => (
                         <option key={pair._id} value={pair._id}>
-                          {pair.name} ({pair.program}) - {pair.teacher1?.fullName || 'Teacher 1'} & {pair.teacher2?.fullName || 'Teacher 2'}
+                          {pair.name} - {pair.teacher1?.fullName || 'Teacher 1'} & {pair.teacher2?.fullName || 'Teacher 2'} ({pair.program})
                         </option>
                       ))}
                   </select>
+                  {teacherPairs.filter((pair: any) => {
+                    const normalizeProgram = (p: string) => p?.toLowerCase().replace(/\s+/g, ' ').trim();
+                    const pairProgram = normalizeProgram(pair.program);
+                    const formProgram = normalizeProgram(formData.program);
+                    return pairProgram === formProgram && pair.status === 'active';
+                  }).length === 0 && (
+                    <p className="text-xs text-red-600 mt-1">
+                      No active teacher pairs found for {formData.program}. Please create a pair first.
+                    </p>
+                  )}
                 </div>
 
                 {selectedPair && (
