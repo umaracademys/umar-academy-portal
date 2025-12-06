@@ -218,28 +218,46 @@ export const useAiPhrases = () => {
       }
       
       const userId = user.id || user._id || 'system';
-      const userName = user.name || user.email || 'System';
+      const userName = user.name || user.fullName || user.email || 'System';
+      
+      const requestBody = {
+        phrase: phrase.trim(),
+        category: category.trim(),
+        createdBy: userId,
+        createdByName: userName
+      };
+      
+      console.log('[useAiPhrases] Creating phrase:', requestBody);
+      
+      const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       
       const response = await fetch(`${apiUrl}/ai/phrases`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          phrase,
-          category,
-          createdBy: userId,
-          createdByName: userName
-        })
+        headers,
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { error: errorText || 'Failed to create phrase' };
+        }
+        console.error('[useAiPhrases] Error creating phrase:', response.status, errorData);
         throw new Error(errorData.error || 'Failed to create phrase');
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('[useAiPhrases] Phrase created successfully:', result);
+      return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create phrase';
       setError(errorMessage);
