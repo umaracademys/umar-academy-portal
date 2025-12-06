@@ -6218,8 +6218,9 @@ app.post('/api/ai/phrases', async (req, res) => {
         console.log('[Create Phrase] Reactivated existing phrase');
         return res.json(existing);
       }
-      console.log('[Create Phrase] Duplicate phrase found');
-      return res.status(400).json({ error: 'This phrase already exists in this category' });
+      // If exists and active, just return it (no error)
+      console.log('[Create Phrase] Phrase already exists, returning existing phrase');
+      return res.json(existing);
     }
 
     const aiPhrase = new AiPhrase({
