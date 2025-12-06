@@ -27,6 +27,11 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   const [refreshKey, setRefreshKey] = useState(0);
   const [pairInfo, setPairInfo] = useState<any>(null);
 
+  const currentStudent = useMemo(
+    () => students.find((entry) => entry.id === student.id) ?? student,
+    [students, student],
+  );
+
   // Load pair information for student
   useEffect(() => {
     const loadPairInfo = async () => {
@@ -71,11 +76,6 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     // This will force re-computation of activityHistory when assignments change
     setRefreshKey(prev => prev + 1);
   }, [backendAssignments.length]);
-
-  const currentStudent = useMemo(
-    () => students.find((entry) => entry.id === student.id) ?? student,
-    [students, student],
-  );
 
   const assignedTeacher = teachers.find((t) => t.id === currentStudent.assignedTeacher);
 
