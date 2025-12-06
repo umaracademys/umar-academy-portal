@@ -14,6 +14,8 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
     deleteTeacherPair,
     getPairStudents,
     createPairStudent,
+    updatePairStudent,
+    deletePairStudent,
     teachers,
     students
   } = useBackendData();
@@ -25,6 +27,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
   const [editingPair, setEditingPair] = useState<any>(null);
   const [selectedPair, setSelectedPair] = useState<string | null>(null);
   const [showStudentForm, setShowStudentForm] = useState(false);
+  const [editingPairStudent, setEditingPairStudent] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -130,10 +133,20 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
     
     setLoading(true);
     try {
-      await createPairStudent({
-        ...studentFormData,
-        pair: selectedPair
-      });
+      if (editingPairStudent) {
+        // Update existing pair student
+        await updatePairStudent(editingPairStudent._id, {
+          ...studentFormData,
+          pair: selectedPair
+        });
+        setEditingPairStudent(null);
+      } else {
+        // Create new pair student
+        await createPairStudent({
+          ...studentFormData,
+          pair: selectedPair
+        });
+      }
       await loadPairStudents(selectedPair);
       setShowStudentForm(false);
       setStudentFormData({
@@ -146,7 +159,36 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
         status: 'active'
       });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to add student to pair');
+      alert(error instanceof Error ? error.message : 'Failed to save student to pair');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditPairStudent = (pairStudent: any) => {
+    setEditingPairStudent(pairStudent);
+    setStudentFormData({
+      student: pairStudent.student?._id || pairStudent.student || '',
+      program: pairStudent.student?.program || pairStudent.pair?.program || '',
+      startDate: pairStudent.startDate || new Date().toISOString().split('T')[0],
+      startTime: pairStudent.startTime || '09:00',
+      endTime: pairStudent.endTime || '10:00',
+      days: pairStudent.days || [],
+      status: pairStudent.status || 'active'
+    });
+    setShowStudentForm(true);
+  };
+
+  const handleDeletePairStudent = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this student from the pair?')) return;
+    if (!selectedPair) return;
+    
+    setLoading(true);
+    try {
+      await deletePairStudent(id);
+      await loadPairStudents(selectedPair);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to remove student from pair');
     } finally {
       setLoading(false);
     }
@@ -394,15 +436,16 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                         <h5 className="font-bold text-primary">Students in Pair</h5>
                         <button
                           onClick={() => {
-      setStudentFormData({
-        student: '',
-        program: '',
-        startDate: new Date().toISOString().split('T')[0],
-        startTime: '09:00',
-        endTime: '10:00',
-        days: [],
-        status: 'active'
-      });
+                            setEditingPairStudent(null);
+                            setStudentFormData({
+                              student: '',
+                              program: '',
+                              startDate: new Date().toISOString().split('T')[0],
+                              startTime: '09:00',
+                              endTime: '10:00',
+                              days: [],
+                              status: 'active'
+                            });
                             setShowStudentForm(true);
                           }}
                           className="px-2 py-1 bg-accent text-white rounded text-xs font-bold hover:bg-accent/90"
@@ -413,13 +456,23 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
 
                       {showStudentForm && (
                         <form onSubmit={handleAddStudent} className="mb-4 p-3 bg-gray-50 rounded-lg space-y-3">
+                          <div className="flex justify-between items-center mb-2">
+                            <h6 className="text-sm font-bold text-primary">
+                              {editingPairStudent ? 'Edit Student in Pair' : 'Add Student to Pair'}
+                            </h6>
+                          </div>
                           <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Program</label>
                             <select
                               value={studentFormData.program}
-                              onChange={(e) => setStudentFormData({ ...studentFormData, program: e.target.value, student: '' })}
+                              onChange={(e) => {
+                                if (!editingPairStudent) {
+                                  setStudentFormData({ ...studentFormData, program: e.target.value, student: '' });
+                                }
+                              }}
                               className="w-full px-3 py-1 border-2 border-gray-200 rounded text-sm"
                               required
+                              disabled={!!editingPairStudent}
                             >
                               <option value="">Select Program</option>
                               <option value="Full-Time HQ">Full-Time HQ</option>
@@ -435,7 +488,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                               onChange={(e) => setStudentFormData({ ...studentFormData, student: e.target.value })}
                               className="w-full px-3 py-1 border-2 border-gray-200 rounded text-sm"
                               required
-                              disabled={!studentFormData.program}
+                              disabled={!studentFormData.program || !!editingPairStudent}
                             >
                               <option value="">{studentFormData.program ? 'Select Student' : 'Select Program First'}</option>
                               {(() => {
@@ -531,11 +584,23 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                               disabled={loading || studentFormData.days.length === 0}
                               className="px-3 py-1 bg-primary text-white rounded text-xs font-bold hover:bg-primary/90 disabled:opacity-50"
                             >
-                              Add
+                              {editingPairStudent ? 'Update' : 'Add'}
                             </button>
                             <button
                               type="button"
-                              onClick={() => setShowStudentForm(false)}
+                              onClick={() => {
+                                setShowStudentForm(false);
+                                setEditingPairStudent(null);
+                                setStudentFormData({
+                                  student: '',
+                                  program: '',
+                                  startDate: new Date().toISOString().split('T')[0],
+                                  startTime: '09:00',
+                                  endTime: '10:00',
+                                  days: [],
+                                  status: 'active'
+                                });
+                              }}
                               className="px-3 py-1 border-2 border-gray-300 rounded text-xs font-bold hover:bg-gray-50"
                             >
                               Cancel
@@ -549,18 +614,40 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                       ) : (
                         <div className="space-y-2">
                           {pairStudents.map(ps => (
-                            <div key={ps._id} className="p-2 bg-gray-50 rounded text-sm">
-                              <div className="font-semibold">{ps.student?.fullName || 'Unknown'}</div>
-                              <div className="text-xs text-gray-600">
-                                {ps.startTime} - {ps.endTime} • {ps.days.join(', ')}
+                            <div key={ps._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-primary">{ps.student?.fullName || 'Unknown'}</div>
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    {ps.startTime} - {ps.endTime} • {ps.days.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}
+                                  </div>
+                                  <span className={`inline-block mt-2 px-2 py-0.5 rounded text-xs font-semibold ${
+                                    ps.status === 'active' ? 'bg-green-100 text-green-800' :
+                                    ps.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }`}>
+                                    {ps.status}
+                                  </span>
+                                </div>
+                                <div className="flex gap-2 ml-3">
+                                  <button
+                                    onClick={() => handleEditPairStudent(ps)}
+                                    disabled={loading}
+                                    className="px-2 py-1 bg-primary text-white rounded text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition"
+                                    title="Edit student in pair"
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePairStudent(ps._id)}
+                                    disabled={loading}
+                                    className="px-2 py-1 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600 disabled:opacity-50 transition"
+                                    title="Remove student from pair"
+                                  >
+                                    🗑️ Delete
+                                  </button>
+                                </div>
                               </div>
-                              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${
-                                ps.status === 'active' ? 'bg-green-100 text-green-800' :
-                                ps.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {ps.status}
-                              </span>
                             </div>
                           ))}
                         </div>
