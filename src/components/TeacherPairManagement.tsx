@@ -430,18 +430,35 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                               disabled={!studentFormData.program}
                             >
                               <option value="">{studentFormData.program ? 'Select Student' : 'Select Program First'}</option>
-                              {[...students]
-                                .filter(student => !studentFormData.program || student.program === studentFormData.program)
-                                .sort((a, b) => {
-                                  const nameA = (a.fullName || '').toLowerCase();
-                                  const nameB = (b.fullName || '').toLowerCase();
-                                  return nameA.localeCompare(nameB);
-                                })
-                                .map(student => (
-                                  <option key={student.id} value={student.id}>
-                                    {student.fullName}
-                                  </option>
-                                ))}
+                              {(() => {
+                                const filtered = [...students].filter(student => {
+                                  if (!studentFormData.program) return false;
+                                  const studentProgram = (student.program || '').trim();
+                                  const selectedProgram = studentFormData.program.trim();
+                                  // Case-insensitive exact match
+                                  return studentProgram.toLowerCase() === selectedProgram.toLowerCase();
+                                });
+                                
+                                if (filtered.length === 0 && studentFormData.program) {
+                                  return (
+                                    <option value="" disabled>
+                                      No students found for {studentFormData.program}
+                                    </option>
+                                  );
+                                }
+                                
+                                return filtered
+                                  .sort((a, b) => {
+                                    const nameA = (a.fullName || '').toLowerCase();
+                                    const nameB = (b.fullName || '').toLowerCase();
+                                    return nameA.localeCompare(nameB);
+                                  })
+                                  .map(student => (
+                                    <option key={student.id} value={student.id}>
+                                      {student.fullName}
+                                    </option>
+                                  ));
+                              })()}
                             </select>
                           </div>
 
