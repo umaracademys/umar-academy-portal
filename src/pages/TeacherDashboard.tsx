@@ -93,7 +93,7 @@ const TeacherDashboard: React.FC = () => {
     });
     
     // Add pair students - get from all students list
-    Object.values(pairStudentsMap).forEach((pairStudentList: any[]) => {
+    (Object.values(pairStudentsMap) as any[][]).forEach((pairStudentList: any[]) => {
       pairStudentList.forEach((ps: any) => {
         const studentRef = ps.student;
         if (studentRef) {
@@ -685,7 +685,7 @@ const TeacherDashboard: React.FC = () => {
               <div className="space-y-4">
                 {allPairStudents.map((student) => {
                   // Check if student is in a pair
-                  const studentPairInfo = Object.entries(pairStudentsMap).find(([_, students]: [string, any[]]) => 
+                  const studentPairInfo = (Object.entries(pairStudentsMap) as [string, any[]][]).find(([_, students]) => 
                     students.some((ps: any) => (ps.student?._id?.toString() || ps.student?.toString()) === (student.id || (student as any)._id?.toString()))
                   );
                   const isPairStudent = !!studentPairInfo;
