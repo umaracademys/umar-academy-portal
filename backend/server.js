@@ -8665,8 +8665,8 @@ app.get('/api/pair-students', async (req, res) => {
 
     const pairStudents = await PairStudent.find(query)
       .populate('pair', 'name program')
-      .populate('student', 'fullName email studentId')
-      .sort({ createdAt: -1 });
+      .populate('student', 'fullName email studentId program')
+      .sort({ 'student.program': 1, 'student.fullName': 1 });
     res.json(pairStudents);
   } catch (error) {
     console.error('Error fetching pair students:', error);

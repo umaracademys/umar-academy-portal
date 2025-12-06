@@ -69,7 +69,18 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
   const loadPairStudents = async (pairId: string) => {
     try {
       const data = await getPairStudents({ pair: pairId });
-      setPairStudents(data);
+      // Sort by program then A-Z by name
+      const sorted = [...data].sort((a, b) => {
+        const programA = (a.student?.program || a.pair?.program || '').toLowerCase();
+        const programB = (b.student?.program || b.pair?.program || '').toLowerCase();
+        if (programA !== programB) {
+          return programA.localeCompare(programB);
+        }
+        const nameA = (a.student?.fullName || '').toLowerCase();
+        const nameB = (b.student?.fullName || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      setPairStudents(sorted);
     } catch (error) {
       console.error('Error loading pair students:', error);
     }
@@ -400,11 +411,22 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                               required
                             >
                               <option value="">Select Student</option>
-                              {students.map(student => (
-                                <option key={student.id} value={student.id}>
-                                  {student.fullName}
-                                </option>
-                              ))}
+                              {[...students]
+                                .sort((a, b) => {
+                                  const programA = (a.program || '').toLowerCase();
+                                  const programB = (b.program || '').toLowerCase();
+                                  if (programA !== programB) {
+                                    return programA.localeCompare(programB);
+                                  }
+                                  const nameA = (a.fullName || '').toLowerCase();
+                                  const nameB = (b.fullName || '').toLowerCase();
+                                  return nameA.localeCompare(nameB);
+                                })
+                                .map(student => (
+                                  <option key={student.id} value={student.id}>
+                                    {student.fullName} {student.program ? `(${student.program})` : ''}
+                                  </option>
+                                ))}
                             </select>
                           </div>
 
