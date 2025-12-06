@@ -8497,24 +8497,6 @@ app.use((req, res) => {
     });
   }
   
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.path,
-    method: req.method
-  });
-});
-
-// Global error handler middleware (must be last)
-app.use((err, req, res, next) => {
-  console.error('❌ Global error handler:', err);
-  console.error('Stack:', err.stack);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message,
-    timestamp: new Date().toISOString()
-  });
-});
-
 // ============================================
 // TEACHER PAIR MANAGEMENT API ENDPOINTS
 // ============================================
