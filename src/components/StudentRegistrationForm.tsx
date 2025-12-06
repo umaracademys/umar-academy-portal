@@ -7,6 +7,7 @@ import {
   StudentRecitationProfile
 } from '../types';
 import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 
 interface StudentRegistrationFormProps {
   onClose: () => void;
@@ -16,6 +17,15 @@ interface StudentRegistrationFormProps {
 
 const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClose, student, isEdit = false }) => {
   const { addStudent, updateStudent, teachers, refreshData } = useData();
+  const { getPairStudents, getTeacherPairs, createPairStudent, updatePairStudent, deletePairStudent } = useBackendData();
+  const [pairInfo, setPairInfo] = useState<any>(null);
+  const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
+  const [selectedPair, setSelectedPair] = useState<string>('');
+  const [pairSchedule, setPairSchedule] = useState({
+    startTime: '09:00',
+    endTime: '10:00',
+    days: [] as string[]
+  });
   const [formData, setFormData] = useState({
     fullName: student?.fullName || '',
     parentName: student?.parentName || '',
@@ -39,6 +49,108 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
   });
 
   const allDays: ScheduleDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const pairDays = [
+    { value: 'mon', label: 'Monday' },
+    { value: 'tue', label: 'Tuesday' },
+    { value: 'wed', label: 'Wednesday' },
+    { value: 'thu', label: 'Thursday' },
+    { value: 'fri', label: 'Friday' },
+    { value: 'sat', label: 'Saturday' },
+    { value: 'sun', label: 'Sunday' }
+  ];
+
+  const handlePairToggle = (day: string) => {
+    setPairSchedule(prev => ({
+      ...prev,
+      days: prev.days.includes(day)
+        ? prev.days.filter(d => d !== day)
+        : [...prev.days, day]
+    }));
+  };
+
+  const handlePairChange = (pairId: string) => {
+    setSelectedPair(pairId);
+    if (pairId) {
+      const pair = teacherPairs.find(p => p._id === pairId);
+      if (pair) {
+        // Auto-set assigned teacher to first teacher in pair if not already set
+        if (!formData.assignedTeacher && pair.teacher1) {
+          const teacher1Id = pair.teacher1._id || pair.teacher1;
+          const matchingTeacher = teachers.find(t => {
+            const tId = (t as any)._id || (t as any).teacherDocumentId || t.id;
+            return tId.toString() === teacher1Id.toString();
+          });
+          if (matchingTeacher) {
+            setFormData({ ...formData, assignedTeacher: matchingTeacher.id });
+          }
+        }
+      }
+    }
+  };
+
+  // Load teacher pairs
+  useEffect(() => {
+    const loadPairs = async () => {
+      try {
+        const pairs = await getTeacherPairs();
+        // Filter to only active pairs
+        const activePairs = pairs.filter((p: any) => p.status === 'active');
+        setTeacherPairs(activePairs);
+      } catch (error) {
+        console.error('Error loading teacher pairs:', error);
+      }
+    };
+    
+    loadPairs();
+  }, [getTeacherPairs]);
+
+  // Load pair information for student
+  useEffect(() => {
+    const loadPairInfo = async () => {
+      if (!isEdit || !student?.id) {
+        setPairInfo(null);
+        setSelectedPair('');
+        return;
+      }
+      
+      try {
+        const pairStudents = await getPairStudents({ student: student.id, status: 'active' });
+        if (pairStudents.length > 0) {
+          const pairStudent = pairStudents[0];
+          // Get the full pair information
+          const pairs = await getTeacherPairs();
+          const pair = pairs.find((p: any) => p._id === pairStudent.pair?._id || p._id === pairStudent.pair);
+          
+          if (pair) {
+            setPairInfo({
+              pair: pair,
+              pairStudent: pairStudent,
+              schedule: {
+                startTime: pairStudent.startTime,
+                endTime: pairStudent.endTime,
+                days: pairStudent.days
+              }
+            });
+            setSelectedPair(pair._id);
+            setPairSchedule({
+              startTime: pairStudent.startTime || '09:00',
+              endTime: pairStudent.endTime || '10:00',
+              days: pairStudent.days || []
+            });
+          }
+        } else {
+          setPairInfo(null);
+          setSelectedPair('');
+        }
+      } catch (error) {
+        console.error('Error loading pair info:', error);
+        setPairInfo(null);
+        setSelectedPair('');
+      }
+    };
+    
+    loadPairInfo();
+  }, [isEdit, student?.id, getPairStudents, getTeacherPairs]);
 
   // Initialize form data when student prop changes (for edit mode)
   useEffect(() => {
@@ -105,6 +217,20 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     
     if (isSubmitting) return; // Prevent double submission
     
+    // Validate pair assignment if selected
+    if (selectedPair) {
+      if (!pairSchedule.startTime || !pairSchedule.endTime) {
+        alert('Please provide start and end times for the pair schedule');
+        setIsSubmitting(false);
+        return;
+      }
+      if (pairSchedule.days.length === 0) {
+        alert('Please select at least one day for the pair schedule');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+    
     setIsSubmitting(true);
 
     const recitationProfile: StudentRecitationProfile =
@@ -158,6 +284,60 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         console.log('🔄 Updating student with payload:', updatePayload);
         await updateStudent(student.id, updatePayload);
         
+        // Handle teacher pair assignment/update
+        if (selectedPair) {
+          const studentId = student.id || student._id;
+          
+          // Check if student already has a pair assignment
+          if (pairInfo?.pairStudent?._id) {
+            // Update existing pair student
+            try {
+              await updatePairStudent(pairInfo.pairStudent._id, {
+                pair: selectedPair,
+                startTime: pairSchedule.startTime,
+                endTime: pairSchedule.endTime,
+                days: pairSchedule.days,
+                status: 'active'
+              });
+            } catch (error) {
+              console.error('Error updating pair student:', error);
+              // If update fails, try creating new one
+              if (pairInfo.pairStudent._id) {
+                try {
+                  await deletePairStudent(pairInfo.pairStudent._id);
+                } catch (e) {
+                  console.error('Error deleting old pair student:', e);
+                }
+              }
+              await createPairStudent({
+                pair: selectedPair,
+                student: studentId,
+                startTime: pairSchedule.startTime,
+                endTime: pairSchedule.endTime,
+                days: pairSchedule.days,
+                status: 'active'
+              });
+            }
+          } else {
+            // Create new pair student
+            await createPairStudent({
+              pair: selectedPair,
+              student: studentId,
+              startTime: pairSchedule.startTime,
+              endTime: pairSchedule.endTime,
+              days: pairSchedule.days,
+              status: 'active'
+            });
+          }
+        } else if (pairInfo?.pairStudent?._id) {
+          // Remove from pair if pair was deselected
+          try {
+            await deletePairStudent(pairInfo.pairStudent._id);
+          } catch (error) {
+            console.error('Error removing student from pair:', error);
+          }
+        }
+        
         // Refresh data to ensure UI updates
         if (refreshData) {
           await refreshData();
@@ -170,7 +350,26 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         onClose();
         
       } else {
-        await addStudent(studentData);
+        const savedStudent = await addStudent(studentData);
+        const studentId = savedStudent?.id || savedStudent?._id || studentData.id;
+        
+        // Handle teacher pair assignment for new students
+        if (selectedPair && studentId) {
+          try {
+            await createPairStudent({
+              pair: selectedPair,
+              student: studentId,
+              startTime: pairSchedule.startTime,
+              endTime: pairSchedule.endTime,
+              days: pairSchedule.days,
+              status: 'active'
+            });
+          } catch (error) {
+            console.error('Error assigning student to pair:', error);
+            // Don't fail the entire student creation if pair assignment fails
+            alert('Student created but failed to assign to pair. You can assign them manually later.');
+          }
+        }
         
         // Refresh data to ensure UI updates
         if (refreshData) {
@@ -290,6 +489,116 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                     <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+            
+            {/* Teacher Pair Assignment */}
+            <div className="mt-4">
+              <h4 className="text-sm font-extrabold text-primary mb-3 flex items-center gap-2">
+                <span>👥</span> Teacher Pair Assignment <span className="text-xs font-normal text-primary/70">(Optional)</span>
+              </h4>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-extrabold text-primary mb-2">
+                    Select Teacher Pair
+                  </label>
+                  <select
+                    value={selectedPair}
+                    onChange={(e) => handlePairChange(e.target.value)}
+                    className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
+                  >
+                    <option value="">No Pair (Individual Assignment)</option>
+                    {teacherPairs
+                      .filter((pair: any) => pair.program === formData.program || !formData.program)
+                      .map((pair: any) => (
+                        <option key={pair._id} value={pair._id}>
+                          {pair.name} ({pair.program}) - {pair.teacher1?.fullName || 'Teacher 1'} & {pair.teacher2?.fullName || 'Teacher 2'}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {selectedPair && (
+                  <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border-2 border-primary/30 space-y-4">
+                    {(() => {
+                      const selectedPairData = teacherPairs.find((p: any) => p._id === selectedPair);
+                      return selectedPairData ? (
+                        <>
+                          <div>
+                            <span className="text-xs font-bold text-primary/70">Pair:</span>
+                            <span className="ml-2 text-sm font-semibold text-primary">{selectedPairData.name}</span>
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold text-primary/70">Teachers:</span>
+                            <div className="ml-2 mt-1">
+                              <div className="text-sm font-semibold text-primary">
+                                • {selectedPairData.teacher1?.fullName || 'Teacher 1'}
+                              </div>
+                              {selectedPairData.teacher2?.fullName && (
+                                <div className="text-sm font-semibold text-primary">
+                                  • {selectedPairData.teacher2.fullName}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      ) : null;
+                    })()}
+
+                    <div>
+                      <label className="block text-xs font-extrabold text-primary mb-2">Pair Schedule - Start Time *</label>
+                      <input
+                        type="time"
+                        required={!!selectedPair}
+                        value={pairSchedule.startTime}
+                        onChange={(e) => setPairSchedule({ ...pairSchedule, startTime: e.target.value })}
+                        className="w-full px-3 py-2 border-2 border-primary rounded-lg text-primary bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold text-primary mb-2">Pair Schedule - End Time *</label>
+                      <input
+                        type="time"
+                        required={!!selectedPair}
+                        value={pairSchedule.endTime}
+                        onChange={(e) => setPairSchedule({ ...pairSchedule, endTime: e.target.value })}
+                        className="w-full px-3 py-2 border-2 border-primary rounded-lg text-primary bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-extrabold text-primary mb-2">Pair Schedule - Days *</label>
+                      <div className="flex flex-wrap gap-2">
+                        {pairDays.map(day => (
+                          <button
+                            key={day.value}
+                            type="button"
+                            onClick={() => handlePairToggle(day.value)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition border-2 ${
+                              pairSchedule.days.includes(day.value)
+                                ? 'bg-primary text-accent border-primary shadow-lg'
+                                : 'bg-soft-primary text-primary border-primary hover:bg-primary/20'
+                            }`}
+                          >
+                            {day.label.substring(0, 3)}
+                          </button>
+                        ))}
+                      </div>
+                      {pairSchedule.days.length === 0 && selectedPair && (
+                        <p className="text-xs text-red-600 mt-1">Please select at least one day</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {isEdit && pairInfo && pairInfo.pair && !selectedPair && (
+                  <div className="p-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                    <p className="text-xs font-semibold text-yellow-800">
+                      ⚠️ Student is currently in pair "{pairInfo.pair.name}". Deselecting will remove them from the pair.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

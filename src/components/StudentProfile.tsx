@@ -22,9 +22,49 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   onCommunication,
 }) => {
   const { students, teachers, assignments } = useData();
-  const { assignments: backendAssignments, tickets, recitationReviews } = useBackendData();
+  const { assignments: backendAssignments, tickets, recitationReviews, getPairStudents, getTeacherPairs } = useBackendData();
   const [activeTab, setActiveTab] = useState('overview');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pairInfo, setPairInfo] = useState<any>(null);
+
+  // Load pair information for student
+  useEffect(() => {
+    const loadPairInfo = async () => {
+      if (!currentStudent?.id) {
+        setPairInfo(null);
+        return;
+      }
+      
+      try {
+        const pairStudents = await getPairStudents({ student: currentStudent.id, status: 'active' });
+        if (pairStudents.length > 0) {
+          const pairStudent = pairStudents[0];
+          // Get the full pair information
+          const pairs = await getTeacherPairs();
+          const pair = pairs.find((p: any) => p._id === pairStudent.pair?._id || p._id === pairStudent.pair);
+          
+          if (pair) {
+            setPairInfo({
+              pair: pair,
+              pairStudent: pairStudent,
+              schedule: {
+                startTime: pairStudent.startTime,
+                endTime: pairStudent.endTime,
+                days: pairStudent.days
+              }
+            });
+          }
+        } else {
+          setPairInfo(null);
+        }
+      } catch (error) {
+        console.error('Error loading pair info:', error);
+        setPairInfo(null);
+      }
+    };
+    
+    loadPairInfo();
+  }, [currentStudent?.id, getPairStudents, getTeacherPairs]);
 
   // Refresh data when backendAssignments changes (e.g., after deletion)
   useEffect(() => {
@@ -256,6 +296,11 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                       Teacher: {assignedTeacher.fullName}
                     </span>
                   )}
+                  {pairInfo?.pair && (
+                    <span className="rounded-full bg-primary/20 px-3 py-1 font-medium text-primary">
+                      👥 Pair: {pairInfo.pair.name}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -335,6 +380,26 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                       {
                         label: 'Assigned Teacher',
                         value: assignedTeacher ? assignedTeacher.fullName : 'Not assigned',
+                      },
+                      {
+                        label: 'Teacher Pair',
+                        value: pairInfo?.pair ? (
+                          <div className="space-y-1">
+                            <div className="font-semibold">{pairInfo.pair.name}</div>
+                            <div className="text-xs text-gray-600">
+                              {pairInfo.pair.teacher1?.fullName || 'Teacher 1'}
+                              {pairInfo.pair.teacher2?.fullName && ` & ${pairInfo.pair.teacher2.fullName}`}
+                            </div>
+                            {pairInfo.schedule && (
+                              <div className="text-xs text-gray-500">
+                                {pairInfo.schedule.startTime} - {pairInfo.schedule.endTime}
+                                {pairInfo.schedule.days && pairInfo.schedule.days.length > 0 && (
+                                  <> • {pairInfo.schedule.days.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}</>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : 'Not in a pair',
                       },
                       {
                         label: 'Tuition',
