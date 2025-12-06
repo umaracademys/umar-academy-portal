@@ -19,7 +19,7 @@ import PairDailyReportForm from '../components/PairDailyReportForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
-  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -35,6 +35,8 @@ const TeacherDashboard: React.FC = () => {
   const [showEvaluationAssignments, setShowEvaluationAssignments] = useState(false);
   const [showMyAttendance, setShowMyAttendance] = useState(false);
   const [showPairDailyReport, setShowPairDailyReport] = useState(false);
+  const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
+  const [pairStudentsMap, setPairStudentsMap] = useState<Record<string, any[]>>({});
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -42,6 +44,44 @@ const TeacherDashboard: React.FC = () => {
 
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
   const assignedStudents = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id) : [];
+
+  // Load teacher pairs
+  useEffect(() => {
+    const loadTeacherPairs = async () => {
+      if (!currentTeacher) return;
+      try {
+        const pairs = await getTeacherPairs();
+        // Use Teacher document ID for filtering
+        const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+        const teacherIdStr = teacherDocId.toString();
+        
+        const filteredPairs = pairs.filter((pair: any) => {
+          const pairTeacher1Id = pair.teacher1?._id?.toString() || pair.teacher1?.toString();
+          const pairTeacher2Id = pair.teacher2?._id?.toString() || pair.teacher2?.toString();
+          return pairTeacher1Id === teacherIdStr || pairTeacher2Id === teacherIdStr;
+        });
+        
+        setTeacherPairs(filteredPairs);
+        
+        // Load pair students for each pair
+        const studentsMap: Record<string, any[]> = {};
+        for (const pair of filteredPairs) {
+          try {
+            const students = await getPairStudents({ pair: pair._id, status: 'active' });
+            studentsMap[pair._id] = students;
+          } catch (error) {
+            console.error(`Error loading students for pair ${pair._id}:`, error);
+            studentsMap[pair._id] = [];
+          }
+        }
+        setPairStudentsMap(studentsMap);
+      } catch (error) {
+        console.error('Error loading teacher pairs:', error);
+      }
+    };
+    
+    loadTeacherPairs();
+  }, [currentTeacher, getTeacherPairs, getPairStudents]);
 
   const teacherTickets = useMemo(() => {
     if (!currentTeacher?.id) {
@@ -464,6 +504,72 @@ const TeacherDashboard: React.FC = () => {
             </Card>
           </div>
         </div>
+
+        {/* Teacher Pairs Section */}
+        {teacherPairs.length > 0 && (
+          <div className="mb-8">
+            <Card title={`My Teacher Pairs (${teacherPairs.length})`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {teacherPairs.map((pair) => {
+                  const pairStudents = pairStudentsMap[pair._id] || [];
+                  const otherTeacher = pair.teacher1?._id?.toString() === ((currentTeacher as any)?._id || (currentTeacher as any)?.teacherDocumentId || currentTeacher?.id)?.toString()
+                    ? pair.teacher2
+                    : pair.teacher1;
+                  
+                  return (
+                    <div key={pair._id} className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h4 className="font-bold text-lg text-primary">{pair.name}</h4>
+                          <p className="text-sm text-gray-600">{pair.program}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Partner: {otherTeacher?.fullName || 'Unknown'}
+                          </p>
+                        </div>
+                        <span className={`px-3 py-1 rounded-lg text-xs font-bold ${
+                          pair.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {pair.status}
+                        </span>
+                      </div>
+                      
+                      {pair.notes && (
+                        <p className="text-sm text-gray-600 mb-4">{pair.notes}</p>
+                      )}
+                      
+                      <div className="border-t-2 border-gray-200 pt-4">
+                        <h5 className="font-bold text-sm text-primary mb-2">
+                          Students in Pair ({pairStudents.length})
+                        </h5>
+                        {pairStudents.length === 0 ? (
+                          <p className="text-sm text-gray-500">No students assigned</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {pairStudents.map((ps: any) => (
+                              <div key={ps._id} className="p-3 bg-gray-50 rounded-lg">
+                                <div className="font-semibold text-sm">{ps.student?.fullName || 'Unknown'}</div>
+                                <div className="text-xs text-gray-600 mt-1">
+                                  {ps.startTime} - {ps.endTime} • {ps.days.join(', ')}
+                                </div>
+                                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${
+                                  ps.status === 'active' ? 'bg-green-100 text-green-800' :
+                                  ps.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {ps.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+        )}
 
         {/* Assigned Students List */}
         <div className="mb-8">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../../../components/Header';
 import StatCard from '../../../components/StatCard';
@@ -14,7 +14,7 @@ import { Assignment } from '../../../types/index';
 
 const StudentDashboard: React.FC = () => {
   const { students, getStudentByEmail, updateStudent } = useData();
-  const { assignments: backendAssignments } = useBackendData();
+  const { assignments: backendAssignments, getPairStudents, getPairDailyReports } = useBackendData();
   const { user } = useAuth();
   
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -22,8 +22,40 @@ const StudentDashboard: React.FC = () => {
   const [showRecordings, setShowRecordings] = useState(false);
   const [showPersonalMushaf, setShowPersonalMushaf] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
+  const [pairInfo, setPairInfo] = useState<any>(null);
+  const [pairDailyReports, setPairDailyReports] = useState<any[]>([]);
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
+
+  // Load pair information for student
+  useEffect(() => {
+    const loadPairInfo = async () => {
+      if (!currentStudent?.id) return;
+      try {
+        const pairStudents = await getPairStudents({ student: currentStudent.id, status: 'active' });
+        if (pairStudents.length > 0) {
+          const pairStudent = pairStudents[0];
+          setPairInfo({
+            pair: pairStudent.pair,
+            pairStudent: pairStudent,
+            schedule: {
+              startTime: pairStudent.startTime,
+              endTime: pairStudent.endTime,
+              days: pairStudent.days
+            }
+          });
+          
+          // Load daily reports for this student
+          const reports = await getPairDailyReports({ student: currentStudent.id });
+          setPairDailyReports(reports);
+        }
+      } catch (error) {
+        console.error('Error loading pair info:', error);
+      }
+    };
+    
+    loadPairInfo();
+  }, [currentStudent, getPairStudents, getPairDailyReports]);
 
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
@@ -258,6 +290,88 @@ const StudentDashboard: React.FC = () => {
           <StatCard title="Average Grade" value={`${averageGrade}%`} icon="AG" />
           <StatCard title="Pending" value={pendingAssignments.length} icon="PD" />
         </div>
+
+        {/* Teacher Pair Information */}
+        {pairInfo && pairInfo.pair && (
+          <div className="mb-4">
+            <Card title="My Teacher Pair">
+              <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-lg text-primary mb-2">
+                      {pairInfo.pair.name || 'Teacher Pair'}
+                    </h3>
+                    <p className="text-sm text-gray-700 mb-3">
+                      Program: <span className="font-semibold">{pairInfo.pair.program || 'N/A'}</span>
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-600">Teachers:</span>
+                        <span className="text-sm font-semibold text-primary">
+                          {pairInfo.pair.teacher1?.fullName || 'Teacher 1'}
+                          {pairInfo.pair.teacher2?.fullName && ` & ${pairInfo.pair.teacher2.fullName}`}
+                        </span>
+                      </div>
+                      {pairInfo.schedule && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-600">Schedule:</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {pairInfo.schedule.startTime} - {pairInfo.schedule.endTime}
+                          </span>
+                        </div>
+                      )}
+                      {pairInfo.schedule?.days && pairInfo.schedule.days.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-gray-600">Days:</span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            {pairInfo.schedule.days.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className={`px-4 py-2 rounded-lg text-sm font-bold ${
+                      pairInfo.pair.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {pairInfo.pair.status || 'Active'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Recent Daily Reports */}
+              {pairDailyReports.length > 0 && (
+                <div className="mt-6 border-t-2 border-gray-200 pt-4">
+                  <h4 className="font-bold text-sm text-primary mb-3">Recent Daily Reports</h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {pairDailyReports.slice(0, 5).map((report: any) => (
+                      <div key={report._id} className="p-3 bg-gray-50 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="text-xs font-bold text-gray-600">
+                            {new Date(report.date).toLocaleDateString()}
+                          </span>
+                          <span className="text-xs font-semibold text-primary">
+                            {report.teacher?.fullName || 'Teacher'}
+                          </span>
+                        </div>
+                        {(report.sabq || report.sabqi || report.manzil) && (
+                          <div className="text-xs text-gray-700 space-y-1">
+                            {report.sabq && <div><span className="font-semibold">Sabq:</span> {report.sabq.substring(0, 50)}...</div>}
+                            {report.sabqi && <div><span className="font-semibold">Sabqi:</span> {report.sabqi.substring(0, 50)}...</div>}
+                            {report.manzil && <div><span className="font-semibold">Manzil:</span> {report.manzil.substring(0, 50)}...</div>}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
