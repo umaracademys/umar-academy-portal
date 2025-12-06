@@ -34,6 +34,7 @@ const TeacherDashboard: React.FC = () => {
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [showEvaluationAssignments, setShowEvaluationAssignments] = useState(false);
   const [showMyAttendance, setShowMyAttendance] = useState(false);
+  const [showPairDailyReport, setShowPairDailyReport] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
