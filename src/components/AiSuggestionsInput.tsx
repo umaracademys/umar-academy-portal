@@ -36,8 +36,8 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch suggestions based on category and current input
-  const fetchSuggestions = async (searchQuery: string) => {
+  // Fetch suggestions based on category (show all, not filtered by input)
+  const fetchSuggestions = async () => {
     if (!category) return;
 
     try {
@@ -45,11 +45,10 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
       
+      // Only send category, not the query - show all phrases from library
       const params = new URLSearchParams();
       params.append('category', category);
-      if (searchQuery.trim()) {
-        params.append('query', searchQuery.trim());
-      }
+      // Don't append query - we want all suggestions from the library
 
       const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
       const headers: HeadersInit = {
@@ -135,23 +134,16 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
     }
   };
 
-  // Debounced search
+  // Fetch suggestions on focus or when category changes (not based on input value)
   useEffect(() => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-    }
+    // Fetch suggestions when category changes
+    fetchSuggestions();
+  }, [category]);
 
-    debounceTimer.current = setTimeout(() => {
-      // Always fetch suggestions, even when empty (to show top phrases)
-      fetchSuggestions(value || '');
-    }, 300); // 300ms debounce
-
-    return () => {
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-    };
-  }, [value, category]);
+  // Also fetch on focus to ensure suggestions are shown
+  const handleFocus = () => {
+    fetchSuggestions();
+  };
 
   const handleSelect = async (suggestion: Suggestion) => {
     onChange(suggestion.phrase);
