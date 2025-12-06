@@ -701,7 +701,7 @@ const TeacherDashboard: React.FC = () => {
                   })() : null;
                   
                   return (
-                  <div key={student.id} className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-all">
+                    <div key={student.id} className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center space-x-4">
                         <img
@@ -896,7 +896,8 @@ const TeacherDashboard: React.FC = () => {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
