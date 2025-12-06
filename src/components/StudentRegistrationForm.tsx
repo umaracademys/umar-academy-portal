@@ -98,6 +98,10 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         const pairs = await getTeacherPairs();
         // Filter to only active pairs
         const activePairs = pairs.filter((p: any) => p.status === 'active');
+        if (import.meta.env.DEV) {
+          console.log('📋 Loaded teacher pairs:', activePairs);
+          console.log('📋 Active pairs by program:', activePairs.map((p: any) => ({ name: p.name, program: p.program, status: p.status })));
+        }
         setTeacherPairs(activePairs);
       } catch (error) {
         console.error('Error loading teacher pairs:', error);
@@ -519,11 +523,25 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                     <option value="">Select a Teacher Pair</option>
                     {teacherPairs
                       .filter((pair: any) => {
-                        // Normalize program names for comparison
-                        const normalizeProgram = (p: string) => p?.toLowerCase().replace(/\s+/g, ' ').trim();
+                        // Normalize program names for comparison (handle hyphens, spaces, and variations)
+                        const normalizeProgram = (p: string) => {
+                          if (!p) return '';
+                          return p.toLowerCase()
+                            .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
+                            .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+                            .trim();
+                        };
                         const pairProgram = normalizeProgram(pair.program);
                         const formProgram = normalizeProgram(formData.program);
-                        return pairProgram === formProgram || !formData.program;
+                        // Also check if form program contains pair program or vice versa (for "After School" vs "After School Reading")
+                        const matches = pairProgram === formProgram || 
+                                      pairProgram.includes(formProgram) || 
+                                      formProgram.includes(pairProgram) ||
+                                      !formData.program;
+                        if (import.meta.env.DEV && formData.program) {
+                          console.log(`🔍 Pair "${pair.name}": pairProgram="${pairProgram}", formProgram="${formProgram}", matches=${matches}`);
+                        }
+                        return matches;
                       })
                       .filter((pair: any) => pair.status === 'active')
                       .map((pair: any) => (
@@ -533,10 +551,20 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                       ))}
                   </select>
                   {teacherPairs.filter((pair: any) => {
-                    const normalizeProgram = (p: string) => p?.toLowerCase().replace(/\s+/g, ' ').trim();
+                    const normalizeProgram = (p: string) => {
+                      if (!p) return '';
+                      return p.toLowerCase()
+                        .replace(/[-_]/g, ' ') // Replace hyphens and underscores with spaces
+                        .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+                        .trim();
+                    };
                     const pairProgram = normalizeProgram(pair.program);
                     const formProgram = normalizeProgram(formData.program);
-                    return pairProgram === formProgram && pair.status === 'active';
+                    // Also check if form program contains pair program or vice versa (for "After School" vs "After School Reading")
+                    const matches = pairProgram === formProgram || 
+                                   pairProgram.includes(formProgram) || 
+                                   formProgram.includes(pairProgram);
+                    return matches && pair.status === 'active';
                   }).length === 0 && (
                     <p className="text-xs text-red-600 mt-1">
                       No active teacher pairs found for {formData.program}. Please create a pair first.
