@@ -386,14 +386,15 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                         <h5 className="font-bold text-primary">Students in Pair</h5>
                         <button
                           onClick={() => {
-                            setStudentFormData({
-                              student: '',
-                              startDate: new Date().toISOString().split('T')[0],
-                              startTime: '09:00',
-                              endTime: '10:00',
-                              days: [],
-                              status: 'active'
-                            });
+      setStudentFormData({
+        student: '',
+        program: '',
+        startDate: new Date().toISOString().split('T')[0],
+        startTime: '09:00',
+        endTime: '10:00',
+        days: [],
+        status: 'active'
+      });
                             setShowStudentForm(true);
                           }}
                           className="px-2 py-1 bg-accent text-white rounded text-xs font-bold hover:bg-accent/90"
@@ -405,28 +406,40 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                       {showStudentForm && (
                         <form onSubmit={handleAddStudent} className="mb-4 p-3 bg-gray-50 rounded-lg space-y-3">
                           <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Program</label>
+                            <select
+                              value={studentFormData.program}
+                              onChange={(e) => setStudentFormData({ ...studentFormData, program: e.target.value, student: '' })}
+                              className="w-full px-3 py-1 border-2 border-gray-200 rounded text-sm"
+                              required
+                            >
+                              <option value="">Select Program</option>
+                              <option value="Full-Time HQ">Full-Time HQ</option>
+                              <option value="Part-Time HQ">Part-Time HQ</option>
+                              <option value="After School">After School</option>
+                            </select>
+                          </div>
+
+                          <div>
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Student</label>
                             <select
                               value={studentFormData.student}
                               onChange={(e) => setStudentFormData({ ...studentFormData, student: e.target.value })}
                               className="w-full px-3 py-1 border-2 border-gray-200 rounded text-sm"
                               required
+                              disabled={!studentFormData.program}
                             >
-                              <option value="">Select Student</option>
+                              <option value="">{studentFormData.program ? 'Select Student' : 'Select Program First'}</option>
                               {[...students]
+                                .filter(student => !studentFormData.program || student.program === studentFormData.program)
                                 .sort((a, b) => {
-                                  const programA = (a.program || '').toLowerCase();
-                                  const programB = (b.program || '').toLowerCase();
-                                  if (programA !== programB) {
-                                    return programA.localeCompare(programB);
-                                  }
                                   const nameA = (a.fullName || '').toLowerCase();
                                   const nameB = (b.fullName || '').toLowerCase();
                                   return nameA.localeCompare(nameB);
                                 })
                                 .map(student => (
                                   <option key={student.id} value={student.id}>
-                                    {student.fullName} {student.program ? `(${student.program})` : ''}
+                                    {student.fullName}
                                   </option>
                                 ))}
                             </select>
