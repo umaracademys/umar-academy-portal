@@ -80,20 +80,29 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   const assignedTeacher = teachers.find((t) => t.id === currentStudent.assignedTeacher);
 
   const scheduleEntries = useMemo(() => {
-    const days = Array.isArray(currentStudent.schedule?.days)
-      ? currentStudent.schedule?.days
-      : [];
+    // Use pair schedule if available, otherwise use student schedule
+    const schedule = pairInfo?.schedule || currentStudent.schedule;
+    const days = Array.isArray(schedule?.days)
+      ? schedule.days
+      : (Array.isArray(currentStudent.schedule?.days) ? currentStudent.schedule.days : []);
+
+    // Get teacher names from pair
+    const teacherNames = pairInfo?.pair 
+      ? `${pairInfo.pair.teacher1?.fullName || 'Teacher 1'}${pairInfo.pair.teacher2?.fullName ? ` & ${pairInfo.pair.teacher2.fullName}` : ''}`
+      : (assignedTeacher?.fullName || 'Not assigned');
 
     return days.map((day: string) => ({
       day,
       time:
-        currentStudent.schedule?.startTime && currentStudent.schedule?.endTime
-          ? `${currentStudent.schedule?.startTime} - ${currentStudent.schedule?.endTime}`
-          : '—',
-      teacher: assignedTeacher?.fullName || 'Not assigned',
+        schedule?.startTime && schedule?.endTime
+          ? `${schedule.startTime} - ${schedule.endTime}`
+          : (currentStudent.schedule?.startTime && currentStudent.schedule?.endTime
+              ? `${currentStudent.schedule.startTime} - ${currentStudent.schedule.endTime}`
+              : '—'),
+      teacher: teacherNames,
       room: currentStudent.schedule?.room || '—',
     }));
-  }, [assignedTeacher?.fullName, currentStudent.schedule]);
+  }, [pairInfo, assignedTeacher?.fullName, currentStudent.schedule]);
 
   const studentAssignments = useMemo(
     () =>
@@ -291,14 +300,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                   <span className="rounded-full bg-accent/20 px-3 py-1 font-medium capitalize text-accent">
                     {currentStudent.status || 'active'}
                   </span>
-                  {assignedTeacher && (
-                    <span className="rounded-full bg-accent/20 px-3 py-1 font-medium text-accent">
-                      Teacher: {assignedTeacher.fullName}
-                    </span>
-                  )}
                   {pairInfo?.pair && (
                     <span className="rounded-full bg-primary/20 px-3 py-1 font-medium text-primary">
                       👥 Pair: {pairInfo.pair.name}
+                    </span>
+                  )}
+                  {!pairInfo?.pair && (
+                    <span className="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-600">
+                      No Pair Assigned
                     </span>
                   )}
                 </div>
@@ -378,28 +387,54 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                     items={[
                       { label: 'Program', value: currentStudent.program },
                       {
-                        label: 'Assigned Teacher',
-                        value: assignedTeacher ? assignedTeacher.fullName : 'Not assigned',
-                      },
-                      {
                         label: 'Teacher Pair',
                         value: pairInfo?.pair ? (
-                          <div className="space-y-1">
-                            <div className="font-semibold">{pairInfo.pair.name}</div>
-                            <div className="text-xs text-gray-600">
-                              {pairInfo.pair.teacher1?.fullName || 'Teacher 1'}
-                              {pairInfo.pair.teacher2?.fullName && ` & ${pairInfo.pair.teacher2.fullName}`}
+                          <div className="space-y-2">
+                            <div>
+                              <div className="font-semibold text-primary">{pairInfo.pair.name}</div>
+                              <div className="text-xs text-gray-600 mt-1">
+                                Program: {pairInfo.pair.program}
+                              </div>
+                            </div>
+                            <div className="border-t border-gray-200 pt-2">
+                              <div className="text-xs font-bold text-gray-500 mb-1">Teachers:</div>
+                              <div className="text-sm font-semibold text-primary">
+                                • {pairInfo.pair.teacher1?.fullName || 'Teacher 1'}
+                              </div>
+                              {pairInfo.pair.teacher2?.fullName && (
+                                <div className="text-sm font-semibold text-primary">
+                                  • {pairInfo.pair.teacher2.fullName}
+                                </div>
+                              )}
                             </div>
                             {pairInfo.schedule && (
-                              <div className="text-xs text-gray-500">
-                                {pairInfo.schedule.startTime} - {pairInfo.schedule.endTime}
+                              <div className="border-t border-gray-200 pt-2">
+                                <div className="text-xs font-bold text-gray-500 mb-1">Schedule:</div>
+                                <div className="text-xs text-gray-700">
+                                  {pairInfo.schedule.startTime} - {pairInfo.schedule.endTime}
+                                </div>
                                 {pairInfo.schedule.days && pairInfo.schedule.days.length > 0 && (
-                                  <> • {pairInfo.schedule.days.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}</>
+                                  <div className="text-xs text-gray-700 mt-1">
+                                    Days: {pairInfo.schedule.days.map((d: string) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}
+                                  </div>
                                 )}
                               </div>
                             )}
+                            <div className="mt-2">
+                              <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${
+                                pairInfo.pair.status === 'active' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {pairInfo.pair.status || 'Active'}
+                              </span>
+                            </div>
                           </div>
-                        ) : 'Not in a pair',
+                        ) : (
+                          <div className="text-sm text-gray-500 italic">
+                            No teacher pair assigned. Please assign this student to a pair.
+                          </div>
+                        ),
                       },
                       {
                         label: 'Tuition',
