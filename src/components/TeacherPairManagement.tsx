@@ -431,18 +431,43 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                             >
                               <option value="">{studentFormData.program ? 'Select Student' : 'Select Program First'}</option>
                               {(() => {
+                                if (!studentFormData.program) {
+                                  return null;
+                                }
+                                
+                                const selectedProgram = studentFormData.program.trim();
                                 const filtered = [...students].filter(student => {
-                                  if (!studentFormData.program) return false;
                                   const studentProgram = (student.program || '').trim();
-                                  const selectedProgram = studentFormData.program.trim();
                                   // Case-insensitive exact match
-                                  return studentProgram.toLowerCase() === selectedProgram.toLowerCase();
+                                  const matches = studentProgram.toLowerCase() === selectedProgram.toLowerCase();
+                                  
+                                  // Debug: log mismatches (only first few to avoid spam)
+                                  if (!matches && studentProgram && Math.random() < 0.1) {
+                                    console.log('Program mismatch:', {
+                                      student: student.fullName,
+                                      studentProgram,
+                                      selectedProgram,
+                                      matches
+                                    });
+                                  }
+                                  
+                                  return matches;
                                 });
                                 
-                                if (filtered.length === 0 && studentFormData.program) {
+                                // Debug: log filter results
+                                if (studentFormData.program) {
+                                  console.log('Filter results:', {
+                                    selectedProgram,
+                                    totalStudents: students.length,
+                                    filteredCount: filtered.length,
+                                    allPrograms: [...new Set(students.map(s => s.program).filter(Boolean))]
+                                  });
+                                }
+                                
+                                if (filtered.length === 0) {
                                   return (
                                     <option value="" disabled>
-                                      No students found for {studentFormData.program}
+                                      No students found for {selectedProgram}
                                     </option>
                                   );
                                 }
