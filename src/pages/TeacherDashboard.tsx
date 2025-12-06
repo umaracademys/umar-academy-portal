@@ -15,6 +15,7 @@ import { Ticket } from '../types/ticket';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
+import PairDailyReportForm from '../components/PairDailyReportForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData } = useData();
@@ -436,6 +437,20 @@ const TeacherDashboard: React.FC = () => {
                   <div className="font-bold text-primary mb-1">My Attendance</div>
                   <div className="text-sm text-primary/70">View your attendance history and paid days</div>
                   <div className="text-xs text-gray-600">Access comprehensive reports</div>
+                </button>
+                <button
+                  onClick={() => setShowPairDailyReport(true)}
+                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
+                      📝
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">Daily Report</p>
+                      <p className="text-xs text-gray-600">Submit daily reports for pair students</p>
+                    </div>
+                  </div>
                 </button>
                 <Link
                   to="/assignments"
@@ -1051,6 +1066,16 @@ const TeacherDashboard: React.FC = () => {
         <TeacherAttendanceView
           teacherId={currentTeacher.id}
           onClose={() => setShowMyAttendance(false)}
+        />
+      )}
+
+      {/* Pair Daily Report Modal */}
+      {showPairDailyReport && (
+        <PairDailyReportForm
+          onClose={() => setShowPairDailyReport(false)}
+          onSuccess={() => {
+            setRefreshKey(prev => prev + 1);
+          }}
         />
       )}
       

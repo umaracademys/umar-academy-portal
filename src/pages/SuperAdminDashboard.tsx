@@ -44,6 +44,7 @@ const TeacherEvaluationManagement = lazy(() => import('../components/TeacherEval
 const EvaluationResultsPage = lazy(() => import('../components/EvaluationResultsPage'));
 const TeacherAttendanceForm = lazy(() => import('../components/TeacherAttendanceForm'));
 const TeacherAttendanceReport = lazy(() => import('../components/TeacherAttendanceReport'));
+const TeacherPairManagement = lazy(() => import('../components/TeacherPairManagement'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -173,6 +174,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
   const [showTeacherAttendanceForm, setShowTeacherAttendanceForm] = useState(false);
   const [showTeacherAttendanceReport, setShowTeacherAttendanceReport] = useState(false);
+  const [showTeacherPairManagement, setShowTeacherPairManagement] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -306,6 +308,14 @@ const SuperAdminDashboard: React.FC = () => {
       label: 'AI Phrase Library',
       description: 'Manage AI phrase suggestions across the application.',
       onClick: () => navigate('/super-admin/ai-library'),
+      badge: null,
+      emphasis: 'primary',
+    },
+    {
+      id: 'teacher-pairs',
+      label: 'Manage Teacher Pairs',
+      description: 'Create and manage teacher pairs for collaborative teaching.',
+      onClick: () => setShowTeacherPairManagement(true),
       badge: null,
       emphasis: 'primary',
     },
@@ -1410,6 +1420,15 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <TeacherAttendanceReport
             onClose={() => setShowTeacherAttendanceReport(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Teacher Pair Management Modal */}
+      {showTeacherPairManagement && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherPairManagement
+            onClose={() => setShowTeacherPairManagement(false)}
           />
         </Suspense>
       )}
