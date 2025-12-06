@@ -8515,6 +8515,421 @@ app.use((err, req, res, next) => {
   });
 });
 
+// ============================================
+// TEACHER PAIR MANAGEMENT API ENDPOINTS
+// ============================================
+
+// Teacher Pair Schema
+const teacherPairSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  teacher1: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  teacher2: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  program: { type: String, enum: ['Full-Time HQ', 'Part-Time HQ', 'After School'], required: true },
+  status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+  notes: { type: String, default: '' }
+}, { timestamps: true });
+
+teacherPairSchema.index({ teacher1: 1, teacher2: 1 });
+teacherPairSchema.index({ status: 1 });
+
+const TeacherPair = mongoose.model('TeacherPair', teacherPairSchema);
+
+// Pair Student Schema
+const pairStudentSchema = new mongoose.Schema({
+  pair: { type: mongoose.Schema.Types.ObjectId, ref: 'TeacherPair', required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  startDate: { type: Date, required: true, default: Date.now },
+  status: { type: String, enum: ['active', 'on-hold', 'completed'], default: 'active' },
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+  days: [{ type: String, enum: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], required: true }]
+}, { timestamps: true });
+
+// Unique partial index: one student can only belong to one active pair at a time
+pairStudentSchema.index(
+  { student: 1 },
+  { unique: true, partialFilterExpression: { status: 'active' } }
+);
+pairStudentSchema.index({ pair: 1 });
+pairStudentSchema.index({ student: 1, status: 1 });
+
+const PairStudent = mongoose.model('PairStudent', pairStudentSchema);
+
+// Pair Daily Report Schema
+const pairDailyReportSchema = new mongoose.Schema({
+  pair: { type: mongoose.Schema.Types.ObjectId, ref: 'TeacherPair', required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  teacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  sabq: { type: String, default: '' },
+  sabqi: { type: String, default: '' },
+  manzil: { type: String, default: '' },
+  mistakes: { type: String, default: '' },
+  correctionMethod: { type: String, default: '' },
+  behaviorNote: { type: String, default: '' },
+  date: { type: Date, required: true, default: Date.now }
+}, { timestamps: true });
+
+pairDailyReportSchema.index({ pair: 1, student: 1, date: -1 });
+pairDailyReportSchema.index({ student: 1, date: -1 });
+pairDailyReportSchema.index({ teacher: 1, date: -1 });
+pairDailyReportSchema.index({ date: -1 });
+
+const PairDailyReport = mongoose.model('PairDailyReport', pairDailyReportSchema);
+
+// Get all teacher pairs
+app.get('/api/teacher-pairs', async (req, res) => {
+  try {
+    const pairs = await TeacherPair.find({})
+      .populate('teacher1', 'fullName email')
+      .populate('teacher2', 'fullName email')
+      .sort({ createdAt: -1 });
+    res.json(pairs);
+  } catch (error) {
+    console.error('Error fetching teacher pairs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single teacher pair
+app.get('/api/teacher-pairs/:id', async (req, res) => {
+  try {
+    const pair = await TeacherPair.findById(req.params.id)
+      .populate('teacher1', 'fullName email')
+      .populate('teacher2', 'fullName email');
+    if (!pair) {
+      return res.status(404).json({ error: 'Teacher pair not found' });
+    }
+    res.json(pair);
+  } catch (error) {
+    console.error('Error fetching teacher pair:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create teacher pair
+app.post('/api/teacher-pairs', async (req, res) => {
+  try {
+    const { name, teacher1, teacher2, program, status, notes } = req.body;
+    
+    if (!name || !teacher1 || !teacher2 || !program) {
+      return res.status(400).json({ error: 'Name, teacher1, teacher2, and program are required' });
+    }
+
+    const pair = new TeacherPair({
+      name,
+      teacher1,
+      teacher2,
+      program,
+      status: status || 'active',
+      notes: notes || ''
+    });
+
+    await pair.save();
+    const populated = await TeacherPair.findById(pair._id)
+      .populate('teacher1', 'fullName email')
+      .populate('teacher2', 'fullName email');
+    
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Error creating teacher pair:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update teacher pair
+app.put('/api/teacher-pairs/:id', async (req, res) => {
+  try {
+    const { name, teacher1, teacher2, program, status, notes } = req.body;
+    const pair = await TeacherPair.findByIdAndUpdate(
+      req.params.id,
+      { name, teacher1, teacher2, program, status, notes },
+      { new: true, runValidators: true }
+    )
+      .populate('teacher1', 'fullName email')
+      .populate('teacher2', 'fullName email');
+
+    if (!pair) {
+      return res.status(404).json({ error: 'Teacher pair not found' });
+    }
+
+    res.json(pair);
+  } catch (error) {
+    console.error('Error updating teacher pair:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete teacher pair
+app.delete('/api/teacher-pairs/:id', async (req, res) => {
+  try {
+    // Check if pair has students
+    const studentsCount = await PairStudent.countDocuments({ pair: req.params.id });
+    if (studentsCount > 0) {
+      return res.status(400).json({ error: 'Cannot delete pair with assigned students' });
+    }
+
+    const pair = await TeacherPair.findByIdAndDelete(req.params.id);
+    if (!pair) {
+      return res.status(404).json({ error: 'Teacher pair not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting teacher pair:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PAIR STUDENT MANAGEMENT API ENDPOINTS
+// ============================================
+
+// Get all pair students
+app.get('/api/pair-students', async (req, res) => {
+  try {
+    const { pair, student, status } = req.query;
+    const query = {};
+    if (pair) query.pair = pair;
+    if (student) query.student = student;
+    if (status) query.status = status;
+
+    const pairStudents = await PairStudent.find(query)
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId')
+      .sort({ createdAt: -1 });
+    res.json(pairStudents);
+  } catch (error) {
+    console.error('Error fetching pair students:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single pair student
+app.get('/api/pair-students/:id', async (req, res) => {
+  try {
+    const pairStudent = await PairStudent.findById(req.params.id)
+      .populate('pair', 'name program teacher1 teacher2')
+      .populate('student', 'fullName email studentId');
+    if (!pairStudent) {
+      return res.status(404).json({ error: 'Pair student not found' });
+    }
+    res.json(pairStudent);
+  } catch (error) {
+    console.error('Error fetching pair student:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create pair student
+app.post('/api/pair-students', async (req, res) => {
+  try {
+    const { pair, student, startDate, status, startTime, endTime, days } = req.body;
+    
+    if (!pair || !student || !startTime || !endTime || !days || days.length === 0) {
+      return res.status(400).json({ error: 'Pair, student, startTime, endTime, and days are required' });
+    }
+
+    // Check if student already has an active pair
+    const existingActive = await PairStudent.findOne({ 
+      student, 
+      status: 'active' 
+    });
+    if (existingActive) {
+      return res.status(400).json({ error: 'Student already belongs to an active pair' });
+    }
+
+    const pairStudent = new PairStudent({
+      pair,
+      student,
+      startDate: startDate || new Date(),
+      status: status || 'active',
+      startTime,
+      endTime,
+      days
+    });
+
+    await pairStudent.save();
+    const populated = await PairStudent.findById(pairStudent._id)
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId');
+    
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Error creating pair student:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update pair student
+app.put('/api/pair-students/:id', async (req, res) => {
+  try {
+    const { status, startTime, endTime, days } = req.body;
+    const pairStudent = await PairStudent.findByIdAndUpdate(
+      req.params.id,
+      { status, startTime, endTime, days },
+      { new: true, runValidators: true }
+    )
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId');
+
+    if (!pairStudent) {
+      return res.status(404).json({ error: 'Pair student not found' });
+    }
+
+    res.json(pairStudent);
+  } catch (error) {
+    console.error('Error updating pair student:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete pair student
+app.delete('/api/pair-students/:id', async (req, res) => {
+  try {
+    const pairStudent = await PairStudent.findByIdAndDelete(req.params.id);
+    if (!pairStudent) {
+      return res.status(404).json({ error: 'Pair student not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting pair student:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PAIR DAILY REPORT API ENDPOINTS
+// ============================================
+
+// Get all daily reports
+app.get('/api/pair-daily-reports', async (req, res) => {
+  try {
+    const { pair, student, teacher, date } = req.query;
+    const query = {};
+    if (pair) query.pair = pair;
+    if (student) query.student = student;
+    if (teacher) query.teacher = teacher;
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      query.date = { $gte: startDate, $lte: endDate };
+    }
+
+    const reports = await PairDailyReport.find(query)
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId')
+      .populate('teacher', 'fullName email')
+      .sort({ date: -1, createdAt: -1 });
+    res.json(reports);
+  } catch (error) {
+    console.error('Error fetching daily reports:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single daily report
+app.get('/api/pair-daily-reports/:id', async (req, res) => {
+  try {
+    const report = await PairDailyReport.findById(req.params.id)
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId')
+      .populate('teacher', 'fullName email');
+    if (!report) {
+      return res.status(404).json({ error: 'Daily report not found' });
+    }
+    res.json(report);
+  } catch (error) {
+    console.error('Error fetching daily report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create daily report
+app.post('/api/pair-daily-reports', async (req, res) => {
+  try {
+    const { pair, student, teacher, sabq, sabqi, manzil, mistakes, correctionMethod, behaviorNote, date } = req.body;
+    
+    if (!pair || !student || !teacher || !date) {
+      return res.status(400).json({ error: 'Pair, student, teacher, and date are required' });
+    }
+
+    const report = new PairDailyReport({
+      pair,
+      student,
+      teacher,
+      sabq: sabq || '',
+      sabqi: sabqi || '',
+      manzil: manzil || '',
+      mistakes: mistakes || '',
+      correctionMethod: correctionMethod || '',
+      behaviorNote: behaviorNote || '',
+      date: new Date(date)
+    });
+
+    await report.save();
+    const populated = await PairDailyReport.findById(report._id)
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId')
+      .populate('teacher', 'fullName email');
+    
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Error creating daily report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update daily report
+app.put('/api/pair-daily-reports/:id', async (req, res) => {
+  try {
+    const { sabq, sabqi, manzil, mistakes, correctionMethod, behaviorNote, date } = req.body;
+    const updateData = {};
+    if (sabq !== undefined) updateData.sabq = sabq;
+    if (sabqi !== undefined) updateData.sabqi = sabqi;
+    if (manzil !== undefined) updateData.manzil = manzil;
+    if (mistakes !== undefined) updateData.mistakes = mistakes;
+    if (correctionMethod !== undefined) updateData.correctionMethod = correctionMethod;
+    if (behaviorNote !== undefined) updateData.behaviorNote = behaviorNote;
+    if (date) updateData.date = new Date(date);
+
+    const report = await PairDailyReport.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    )
+      .populate('pair', 'name program')
+      .populate('student', 'fullName email studentId')
+      .populate('teacher', 'fullName email');
+
+    if (!report) {
+      return res.status(404).json({ error: 'Daily report not found' });
+    }
+
+    res.json(report);
+  } catch (error) {
+    console.error('Error updating daily report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete daily report
+app.delete('/api/pair-daily-reports/:id', async (req, res) => {
+  try {
+    const report = await PairDailyReport.findByIdAndDelete(req.params.id);
+    if (!report) {
+      return res.status(404).json({ error: 'Daily report not found' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting daily report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start server regardless of MongoDB connection status
 // Bind to 0.0.0.0 for deployment platforms (Render, Heroku, etc.)
 const HOST = process.env.HOST || '0.0.0.0';
