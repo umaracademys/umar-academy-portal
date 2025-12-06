@@ -8930,6 +8930,26 @@ app.delete('/api/pair-daily-reports/:id', async (req, res) => {
   }
 });
 
+// 404 handler (must be after all routes)
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
+// Global error handler middleware (must be last)
+app.use((err, req, res, next) => {
+  console.error('❌ Global error handler:', err);
+  console.error('Stack:', err.stack);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: err.message,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Start server regardless of MongoDB connection status
 // Bind to 0.0.0.0 for deployment platforms (Render, Heroku, etc.)
 const HOST = process.env.HOST || '0.0.0.0';
