@@ -8483,20 +8483,6 @@ app.get('/api/evaluation-results', authenticateToken, async (req, res) => {
   }
 });
 
-// 404 handler for undefined routes (but skip /uploads as they're handled by static middleware)
-app.use((req, res) => {
-  // Don't handle /uploads routes here - they should be handled by static middleware
-  if (req.path.startsWith('/uploads')) {
-    // If we reach here, the file doesn't exist
-    console.log(`⚠️  File not found: ${req.path}`);
-    return res.status(404).json({ 
-      error: 'File not found',
-      path: req.path,
-      method: req.method,
-      message: 'The requested file does not exist in the uploads directory'
-    });
-  }
-  
 // ============================================
 // TEACHER PAIR MANAGEMENT API ENDPOINTS
 // ============================================
@@ -8912,8 +8898,20 @@ app.delete('/api/pair-daily-reports/:id', async (req, res) => {
   }
 });
 
-// 404 handler (must be after all routes)
+// 404 handler for undefined routes (but skip /uploads as they're handled by static middleware)
 app.use((req, res) => {
+  // Don't handle /uploads routes here - they should be handled by static middleware
+  if (req.path.startsWith('/uploads')) {
+    // If we reach here, the file doesn't exist
+    console.log(`⚠️  File not found: ${req.path}`);
+    return res.status(404).json({ 
+      error: 'File not found',
+      path: req.path,
+      method: req.method,
+      message: 'The requested file does not exist in the uploads directory'
+    });
+  }
+  
   res.status(404).json({ 
     error: 'Route not found',
     path: req.path,
