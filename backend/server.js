@@ -1207,7 +1207,9 @@ app.get('/api/users/:id', apiLimiter, async (req, res) => {
 // Get all students
 app.get('/api/students', async (req, res) => {
   try {
-    const students = await Student.find({}).populate('userId');
+    const students = await Student.find({})
+      .populate('userId')
+      .sort({ program: 1, fullName: 1 }); // Sort by program first, then A-Z by name
     res.json(students);
   } catch (error) {
     res.status(500).json({ error: error.message });

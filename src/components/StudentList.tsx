@@ -56,40 +56,23 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       return matchesSearch && matchesTeacher && matchesStatus;
     });
 
-    // Sort students
+    // Sort students: first by program, then A-Z by name
     filtered.sort((a, b) => {
-      let aValue, bValue;
-      switch (sortBy) {
-        case 'name':
-          aValue = a.fullName;
-          bValue = b.fullName;
-          break;
-        case 'email':
-          aValue = a.email;
-          bValue = b.email;
-          break;
-        case 'enrolledDate':
-          aValue = new Date(a.enrolledDate);
-          bValue = new Date(b.enrolledDate);
-          break;
-        case 'tuitionFee':
-          aValue = a.tuitionFee;
-          bValue = b.tuitionFee;
-          break;
-        default:
-          aValue = a.fullName;
-          bValue = b.fullName;
+      // First sort by program
+      const programA = (a.program || '').toLowerCase();
+      const programB = (b.program || '').toLowerCase();
+      if (programA !== programB) {
+        return programA.localeCompare(programB);
       }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
+      
+      // If programs are the same, sort by name A-Z
+      const nameA = (a.fullName || '').toLowerCase();
+      const nameB = (b.fullName || '').toLowerCase();
+      return nameA.localeCompare(nameB);
     });
 
     return filtered;
-  }, [students, searchTerm, selectedTeacher, selectedStatus, sortBy, sortOrder]);
+  }, [students, searchTerm, selectedTeacher, selectedStatus]);
 
   // Pagination
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
