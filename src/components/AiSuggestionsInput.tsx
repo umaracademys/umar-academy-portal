@@ -218,10 +218,7 @@ const AiSuggestionsInput: React.FC<AiSuggestionsInputProps> = ({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        onFocus={() => {
-          // Always fetch suggestions on focus, even if empty
-          fetchSuggestions(value);
-        }}
+        onFocus={handleFocus}
         onBlur={() => {
           // Delay hiding to allow clicking on suggestions
           setTimeout(() => setShowSuggestions(false), 200);
