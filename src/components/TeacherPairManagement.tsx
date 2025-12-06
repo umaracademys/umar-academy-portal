@@ -37,6 +37,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
 
   const [studentFormData, setStudentFormData] = useState({
     student: '',
+    program: '' as string,
     startDate: new Date().toISOString().split('T')[0],
     startTime: '09:00',
     endTime: '10:00',
@@ -137,6 +138,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
       setShowStudentForm(false);
       setStudentFormData({
         student: '',
+        program: '',
         startDate: new Date().toISOString().split('T')[0],
         startTime: '09:00',
         endTime: '10:00',
