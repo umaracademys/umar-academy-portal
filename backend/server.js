@@ -6172,40 +6172,76 @@ app.post('/api/ai/phrases', async (req, res) => {
   try {
     const { phrase, category, createdBy, createdByName } = req.body;
 
+    console.log('[Create Phrase] Request body:', { phrase, category, createdBy, createdByName });
+
     if (!phrase || !category) {
+      console.error('[Create Phrase] Missing required fields:', { phrase: !!phrase, category: !!category });
       return res.status(400).json({ error: 'Phrase and category are required' });
     }
 
-    // Verify category exists
-    const categoryExists = await AiPhraseCategory.findOne({ name: category });
+    // Verify category exists, if not, create it (for system categories)
+    let categoryExists = await AiPhraseCategory.findOne({ name: category });
     if (!categoryExists) {
-      return res.status(400).json({ error: 'Category does not exist' });
+      // Try to find by displayName
+      categoryExists = await AiPhraseCategory.findOne({ displayName: category });
+      if (!categoryExists) {
+        // Auto-create general category if it doesn't exist
+        if (category === 'general') {
+          console.log('[Create Phrase] Auto-creating general category...');
+          categoryExists = new AiPhraseCategory({
+            name: 'general',
+            displayName: 'General',
+            description: 'General purpose phrases',
+            isSystem: true,
+            createdBy: 'system',
+            createdByName: 'System'
+          });
+          await categoryExists.save();
+        } else {
+          console.error('[Create Phrase] Category does not exist:', category);
+          return res.status(400).json({ error: `Category "${category}" does not exist. Please create it first.` });
+        }
+      }
     }
 
-    // Check for duplicates (same phrase in same category)
-    const existing = await AiPhrase.findOne({ phrase: phrase.trim(), category });
+    // Check for duplicates (same phrase in same category, including inactive ones)
+    const existing = await AiPhrase.findOne({ 
+      phrase: phrase.trim(), 
+      category: categoryExists.name 
+    });
+    
     if (existing) {
+      // If exists but inactive, reactivate it
+      if (!existing.isActive) {
+        existing.isActive = true;
+        await existing.save();
+        console.log('[Create Phrase] Reactivated existing phrase');
+        return res.json(existing);
+      }
+      console.log('[Create Phrase] Duplicate phrase found');
       return res.status(400).json({ error: 'This phrase already exists in this category' });
     }
 
     const aiPhrase = new AiPhrase({
       phrase: phrase.trim(),
-      category,
+      category: categoryExists.name, // Use the actual category name from DB
       createdBy: createdBy || 'system',
-      createdByName: createdByName || 'System'
+      createdByName: createdByName || 'System',
+      isActive: true
     });
 
     await aiPhrase.save();
 
     // Update category phrase count
     await AiPhraseCategory.updateOne(
-      { name: category },
+      { name: categoryExists.name },
       { $inc: { phraseCount: 1 } }
     );
 
+    console.log('[Create Phrase] Successfully created phrase:', aiPhrase._id);
     res.json(aiPhrase);
   } catch (error) {
-    console.error('Error creating phrase:', error);
+    console.error('[Create Phrase] Error:', error);
     res.status(500).json({ error: error.message });
   }
 });
