@@ -435,39 +435,26 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                                   return null;
                                 }
                                 
-                                const selectedProgram = studentFormData.program.trim();
-                                const filtered = [...students].filter(student => {
-                                  const studentProgram = (student.program || '').trim();
-                                  // Case-insensitive exact match
-                                  const matches = studentProgram.toLowerCase() === selectedProgram.toLowerCase();
-                                  
-                                  // Debug: log mismatches (only first few to avoid spam)
-                                  if (!matches && studentProgram && Math.random() < 0.1) {
-                                    console.log('Program mismatch:', {
-                                      student: student.fullName,
-                                      studentProgram,
-                                      selectedProgram,
-                                      matches
-                                    });
-                                  }
-                                  
-                                  return matches;
-                                });
+                                // Normalize program names for comparison (handle hyphens, spaces, case)
+                                const normalizeProgram = (program: string) => {
+                                  return program
+                                    .trim()
+                                    .toLowerCase()
+                                    .replace(/-/g, ' ')  // Replace hyphens with spaces
+                                    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+                                    .trim();
+                                };
                                 
-                                // Debug: log filter results
-                                if (studentFormData.program) {
-                                  console.log('Filter results:', {
-                                    selectedProgram,
-                                    totalStudents: students.length,
-                                    filteredCount: filtered.length,
-                                    allPrograms: [...new Set(students.map(s => s.program).filter(Boolean))]
-                                  });
-                                }
+                                const selectedProgram = normalizeProgram(studentFormData.program);
+                                const filtered = [...students].filter(student => {
+                                  const studentProgram = normalizeProgram(student.program || '');
+                                  return studentProgram === selectedProgram;
+                                });
                                 
                                 if (filtered.length === 0) {
                                   return (
                                     <option value="" disabled>
-                                      No students found for {selectedProgram}
+                                      No students found for {studentFormData.program}
                                     </option>
                                   );
                                 }
