@@ -112,7 +112,7 @@ const PairTeacherMessage: React.FC<PairTeacherMessageProps> = ({
 
     setUploadingFiles(true);
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = Array.from(files).map(async (file: File) => {
         const arrayBuffer = await file.arrayBuffer();
         const apiUrl = API_BASE.endsWith('/api') ? API_BASE.replace('/api', '') : API_BASE;
         
