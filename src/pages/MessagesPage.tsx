@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
@@ -8,6 +9,7 @@ import Card from '../components/Card';
 
 const MessagesPage: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { teachers, students } = useData();
   const { getTeacherStudentMessages } = useBackendData();
   const [conversations, setConversations] = useState<any[]>([]);
@@ -148,6 +150,17 @@ const MessagesPage: React.FC = () => {
     setShowMessageModal(true);
   };
 
+  // Redirect super admin to dedicated page
+  useEffect(() => {
+    if ((user as any)?.role === 'superadmin') {
+      navigate('/super-admin/messages');
+    }
+  }, [user, navigate]);
+
+  if ((user as any)?.role === 'superadmin') {
+    return null; // Will redirect
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -158,7 +171,7 @@ const MessagesPage: React.FC = () => {
           <p className="text-gray-600 mt-2">
             {user?.role === 'teacher' && 'Communicate with your students'}
             {user?.role === 'student' && 'Communicate with your teachers'}
-            {user?.role === 'admin' || user?.role === 'superadmin' ? 'View all teacher-student communications' : ''}
+            {user?.role === 'admin' && 'View all teacher-student communications'}
           </p>
         </div>
 
@@ -174,7 +187,7 @@ const MessagesPage: React.FC = () => {
               <p className="text-sm text-gray-500">
                 {user?.role === 'teacher' && 'Start messaging your students from the Teacher Dashboard'}
                 {user?.role === 'student' && 'Your teachers will be able to message you here'}
-                {user?.role === 'admin' || user?.role === 'superadmin' ? 'No messages between teachers and students yet' : ''}
+                {((user as any)?.role === 'admin' || (user as any)?.role === 'superadmin') ? 'No messages between teachers and students yet' : ''}
               </p>
             </div>
           </Card>
@@ -228,8 +241,8 @@ const MessagesPage: React.FC = () => {
             setSelectedConversation(null);
             loadConversations(); // Refresh conversations after closing
           }}
-          adminView={user?.role === 'admin' || user?.role === 'superadmin'}
-          adminCanInitiate={user?.role === 'admin' || user?.role === 'superadmin'}
+          adminView={(user as any)?.role === 'admin' || (user as any)?.role === 'superadmin'}
+          adminCanInitiate={(user as any)?.role === 'admin' || (user as any)?.role === 'superadmin'}
         />
       )}
     </div>

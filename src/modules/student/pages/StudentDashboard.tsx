@@ -7,13 +7,14 @@ import DebugPanel from '../../../components/DebugPanel';
 import StudentRecordings from '../../../components/StudentRecordings';
 import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import StudentTestResults from '../../../components/StudentTestResults';
+import TeacherStudentMessage from '../../../components/TeacherStudentMessage';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Assignment } from '../../../types/index';
 
 const StudentDashboard: React.FC = () => {
-  const { students, getStudentByEmail, updateStudent } = useData();
+  const { students, getStudentByEmail, updateStudent, teachers } = useData();
   const { assignments: backendAssignments, getPairStudents, getPairDailyReports } = useBackendData();
   const { user } = useAuth();
   
@@ -22,6 +23,8 @@ const StudentDashboard: React.FC = () => {
   const [showRecordings, setShowRecordings] = useState(false);
   const [showPersonalMushaf, setShowPersonalMushaf] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
+  const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
+  const [selectedTeacherForMessage, setSelectedTeacherForMessage] = useState<any>(null);
   const [pairInfo, setPairInfo] = useState<any>(null);
   const [pairDailyReports, setPairDailyReports] = useState<any[]>([]);
 
@@ -547,6 +550,29 @@ const StudentDashboard: React.FC = () => {
           {/* Quick Actions */}
           <Card title="Quick Actions">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {currentStudent?.assignedTeacher && (() => {
+                const assignedTeacher = teachers.find(t => {
+                  const tId = (t as any)._id || (t as any).teacherDocumentId || t.id;
+                  const studentTeacherId = currentStudent.assignedTeacher;
+                  return tId?.toString() === studentTeacherId?.toString();
+                });
+                
+                if (assignedTeacher) {
+                  return (
+                    <button
+                      onClick={() => {
+                        setSelectedTeacherForMessage(assignedTeacher);
+                        setShowTeacherStudentMessage(true);
+                      }}
+                      className="p-4 rounded-xl border-2 border-primary bg-primary text-white hover:bg-primary/90 transition-all shadow-sm text-center"
+                    >
+                      <div className="font-bold mb-1">💬 Message Teacher</div>
+                      <div className="text-xs opacity-90">{assignedTeacher.fullName}</div>
+                    </button>
+                  );
+                }
+                return null;
+              })()}
               <Link
                 to="/student/profile"
                 className="p-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm text-center"
@@ -570,11 +596,6 @@ const StudentDashboard: React.FC = () => {
                 <div className="font-bold text-primary mb-1">My Courses</div>
                 <div className="text-xs text-gray-600">Course information</div>
               </Link>
-              
-              <div className="p-4 rounded-xl border-2 border-gray-200 bg-gray-50 text-center">
-                <div className="font-bold text-gray-400 mb-1">Progress</div>
-                <div className="text-xs text-gray-500">Coming Soon</div>
-              </div>
             </div>
           </Card>
 
@@ -621,6 +642,58 @@ const StudentDashboard: React.FC = () => {
           </Card>
         </div>
 
+        {/* Quick Actions */}
+        <Card title="Quick Actions">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {currentStudent?.assignedTeacher && (() => {
+              const assignedTeacher = teachers.find(t => {
+                const tId = (t as any)._id || (t as any).teacherDocumentId || t.id;
+                const studentTeacherId = currentStudent.assignedTeacher;
+                return tId?.toString() === studentTeacherId?.toString();
+              });
+              
+              if (assignedTeacher) {
+                return (
+                  <button
+                    onClick={() => {
+                      setSelectedTeacherForMessage(assignedTeacher);
+                      setShowTeacherStudentMessage(true);
+                    }}
+                    className="p-4 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition flex items-center gap-2"
+                  >
+                    <span className="text-2xl">💬</span>
+                    <div className="text-left">
+                      <div className="text-sm font-semibold">Message Teacher</div>
+                      <div className="text-xs opacity-90">{assignedTeacher.fullName}</div>
+                    </div>
+                  </button>
+                );
+              }
+              return null;
+            })()}
+            <Link
+              to="/student/assignments"
+              className="p-4 bg-accent text-white rounded-lg font-bold hover:bg-accent/90 transition flex items-center gap-2"
+            >
+              <span className="text-2xl">📝</span>
+              <div className="text-left">
+                <div className="text-sm font-semibold">View Assignments</div>
+                <div className="text-xs opacity-90">{studentAssignments.length} total</div>
+              </div>
+            </Link>
+            <button
+              onClick={() => setShowPersonalMushaf(true)}
+              className="p-4 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition flex items-center gap-2"
+            >
+              <span className="text-2xl">📖</span>
+              <div className="text-left">
+                <div className="text-sm font-semibold">Personal Mushaf</div>
+                <div className="text-xs opacity-90">View mistakes</div>
+              </div>
+            </button>
+          </div>
+        </Card>
+
         {/* Payment Information */}
         <Card title="Payment Information">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -662,6 +735,18 @@ const StudentDashboard: React.FC = () => {
       {showTestResults && (
         <StudentTestResults
           onClose={() => setShowTestResults(false)}
+        />
+      )}
+
+      {/* Teacher-Student Message Modal */}
+      {showTeacherStudentMessage && currentStudent && selectedTeacherForMessage && (
+        <TeacherStudentMessage
+          teacher={selectedTeacherForMessage}
+          student={currentStudent}
+          onClose={() => {
+            setShowTeacherStudentMessage(false);
+            setSelectedTeacherForMessage(null);
+          }}
         />
       )}
       

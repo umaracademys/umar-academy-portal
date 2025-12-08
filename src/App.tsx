@@ -18,6 +18,7 @@ const MushafDemo = lazy(() => import('./pages/MushafDemo'));
 const StudentRouter = lazy(() => import('./modules/student/StudentRouter'));
 const ParentRegistrationForm = lazy(() => import('./pages/ParentRegistrationForm'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage'));
+const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -170,6 +171,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/super-admin/messages"
+          element={
+            <ProtectedRoute>
+              <SuperAdminMessagesPage />
             </ProtectedRoute>
           }
         />
