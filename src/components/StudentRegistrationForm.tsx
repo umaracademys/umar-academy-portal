@@ -381,7 +381,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         
       } else {
         const savedStudent = await addStudent(studentData);
-        const studentId = savedStudent?.id || savedStudent?._id || studentData.id;
+        const studentId = (savedStudent as any)?.id || (savedStudent as any)?._id || studentData.id;
         
         // Handle teacher pair assignment for new students (only if pair type selected)
         if (assignmentType === 'pair' && selectedPair && studentId) {

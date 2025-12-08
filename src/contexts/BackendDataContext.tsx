@@ -2851,6 +2851,80 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Pair Teacher Messages
+  const getPairTeacherMessages = async (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean }): Promise<any[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.pair) params.append('pair', filters.pair);
+      if (filters?.teacherId) params.append('teacherId', filters.teacherId);
+      if (filters?.student) params.append('student', filters.student);
+      if (filters?.unreadOnly) params.append('unreadOnly', 'true');
+      
+      const url = `${API_BASE}/pair-teacher-messages${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetchWithTimeout(url, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch pair teacher messages');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching pair teacher messages:', error);
+      return [];
+    }
+  };
+
+  const getPairTeacherMessage = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-teacher-messages/${id}`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch pair teacher message');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching pair teacher message:', error);
+      throw error;
+    }
+  };
+
+  const createPairTeacherMessage = async (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; subject: string; message: string }): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-teacher-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create pair teacher message');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating pair teacher message:', error);
+      throw error;
+    }
+  };
+
+  const markPairTeacherMessageAsRead = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-teacher-messages/${id}/read`, { method: 'PUT' });
+      if (!response.ok) throw new Error('Failed to mark message as read');
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      throw error;
+    }
+  };
+
+  const markPairTeacherMessagesAsRead = async (messageIds: string[], teacherId: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/pair-teacher-messages/mark-read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageIds, teacherId })
+      });
+      if (!response.ok) throw new Error('Failed to mark messages as read');
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      throw error;
+    }
+  };
+
   const value: BackendDataContextType = {
     students,
     teachers,

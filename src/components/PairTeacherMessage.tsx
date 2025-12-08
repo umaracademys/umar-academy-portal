@@ -223,11 +223,10 @@ const PairTeacherMessage: React.FC<PairTeacherMessageProps> = ({
               <label className="block text-xs font-bold text-primary mb-1">Message *</label>
               <AiSuggestionsInput
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(value) => setMessage(value)}
                 placeholder="Type your message..."
                 category="general"
                 className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white min-h-[100px]"
-                required
               />
             </div>
             {student && (
