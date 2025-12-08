@@ -18,6 +18,7 @@ interface StudentRegistrationFormProps {
 const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClose, student, isEdit = false }) => {
   const { addStudent, updateStudent, teachers, refreshData } = useData();
   const { getPairStudents, getTeacherPairs, createPairStudent, updatePairStudent, deletePairStudent } = useBackendData();
+  const [assignmentType, setAssignmentType] = useState<'individual' | 'pair'>('individual');
   const [pairInfo, setPairInfo] = useState<any>(null);
   const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
   const [selectedPair, setSelectedPair] = useState<string>('');
@@ -224,23 +225,31 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     
     if (isSubmitting) return; // Prevent double submission
     
-    // Validate pair assignment (now required)
-    if (!selectedPair) {
-      alert('Please select a teacher pair. All students must be assigned to a teacher pair.');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (!pairSchedule.startTime || !pairSchedule.endTime) {
-      alert('Please provide start and end times for the pair schedule');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    if (pairSchedule.days.length === 0) {
-      alert('Please select at least one day for the pair schedule');
-      setIsSubmitting(false);
-      return;
+    // Validate assignment based on type
+    if (assignmentType === 'individual') {
+      if (!formData.assignedTeacher) {
+        alert('Please select a teacher.');
+        setIsSubmitting(false);
+        return;
+      }
+    } else if (assignmentType === 'pair') {
+      if (!selectedPair) {
+        alert('Please select a teacher pair.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!pairSchedule.startTime || !pairSchedule.endTime) {
+        alert('Please provide start and end times for the pair schedule');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (pairSchedule.days.length === 0) {
+        alert('Please select at least one day for the pair schedule');
+        setIsSubmitting(false);
+        return;
+      }
     }
     
     setIsSubmitting(true);
@@ -296,8 +305,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         console.log('🔄 Updating student with payload:', updatePayload);
         await updateStudent(student.id, updatePayload);
         
-        // Handle teacher pair assignment/update
-        if (selectedPair) {
+        // Handle teacher pair assignment/update (only if pair type selected)
+        if (assignmentType === 'pair' && selectedPair) {
           const studentId = student.id || student._id;
           
           // Check if student already has a pair assignment
@@ -365,8 +374,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         const savedStudent = await addStudent(studentData);
         const studentId = savedStudent?.id || savedStudent?._id || studentData.id;
         
-        // Handle teacher pair assignment for new students
-        if (selectedPair && studentId) {
+        // Handle teacher pair assignment for new students (only if pair type selected)
+        if (assignmentType === 'pair' && selectedPair && studentId) {
           try {
             await createPairStudent({
               pair: selectedPair,
@@ -501,19 +510,86 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
               </div>
             </div>
             
-            {/* Teacher Pair Assignment */}
+            {/* Teacher Assignment Type */}
             <div className="mt-4">
               <h4 className="text-lg font-extrabold text-primary mb-3 flex items-center gap-2">
-                <span>👥</span> Teacher Pair Assignment *
+                <span>👤</span> Teacher Assignment *
               </h4>
               <p className="text-xs text-primary/70 mb-4">
-                Select a teacher pair to assign this student. Both teachers in the pair will be able to assess, evaluate, and communicate about this student.
+                Choose how to assign this student: either to an individual teacher or to a teacher pair.
               </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-extrabold text-primary mb-2">
-                    Select Teacher Pair *
+              
+              {/* Assignment Type Selector */}
+              <div className="mb-4">
+                <div className="flex gap-4">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      value="individual"
+                      checked={assignmentType === 'individual'}
+                      onChange={(e) => {
+                        setAssignmentType('individual');
+                        setSelectedPair('');
+                        setPairSchedule({ startTime: '09:00', endTime: '10:00', days: [] });
+                      }}
+                      className="w-4 h-4 text-primary border-primary focus:ring-primary"
+                    />
+                    <span className="text-sm font-semibold text-primary">Individual Teacher</span>
                   </label>
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="assignmentType"
+                      value="pair"
+                      checked={assignmentType === 'pair'}
+                      onChange={(e) => {
+                        setAssignmentType('pair');
+                        setFormData({ ...formData, assignedTeacher: '' });
+                      }}
+                      className="w-4 h-4 text-primary border-primary focus:ring-primary"
+                    />
+                    <span className="text-sm font-semibold text-primary">Teacher Pair</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Individual Teacher Assignment */}
+              {assignmentType === 'individual' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-extrabold text-primary mb-2">
+                      Select Teacher *
+                    </label>
+                    <select
+                      required={assignmentType === 'individual'}
+                      value={formData.assignedTeacher}
+                      onChange={(e) => setFormData({ ...formData, assignedTeacher: e.target.value })}
+                      className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
+                    >
+                      <option value="">Select a Teacher</option>
+                      {teachers
+                        .filter((teacher: any) => {
+                          // Filter teachers by program if needed
+                          return true; // Show all teachers for now
+                        })
+                        .map((teacher: any) => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.fullName}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Teacher Pair Assignment */}
+              {assignmentType === 'pair' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-extrabold text-primary mb-2">
+                      Select Teacher Pair *
+                    </label>
                   <select
                     required
                     value={selectedPair}
