@@ -348,7 +348,7 @@ const SuperAdminMessagesPage: React.FC = () => {
             setMessageType(null);
           }}
           adminView={true}
-          adminId={user?._id || user?.id}
+          adminCanInitiate={true}
         />
       )}
 
