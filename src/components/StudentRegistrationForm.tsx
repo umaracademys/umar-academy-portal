@@ -655,9 +655,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                       No active teacher pairs found for {formData.program}. Please create a pair first.
                     </p>
                   )}
-                </div>
+                  </div>
 
-                {selectedPair && (
+                  {selectedPair && (
                   <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg border-2 border-primary/30 space-y-4">
                     {(() => {
                       const selectedPairData = teacherPairs.find((p: any) => p._id === selectedPair);
