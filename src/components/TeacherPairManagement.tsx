@@ -14,11 +14,8 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
     deleteTeacherPair,
     getPairStudents,
     createPairStudent,
-<<<<<<< HEAD
-=======
-    updatePairStudent,
->>>>>>> 1fccc8be17075747304c5af1dcd2c13a732cbf5c
     deletePairStudent,
+    updatePairStudent,
     teachers,
     students
   } = useBackendData();
