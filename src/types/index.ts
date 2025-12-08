@@ -4,7 +4,7 @@ import type { MushafMistake } from '@umar-academy/mushaf';
 import type { AssignmentPortion } from './assignment';
 
 export type UserRole = 'superadmin' | 'admin' | 'teacher' | 'student';
-export type ProgramType = 'Full Time HQ' | 'Part Time HQ' | 'After School Reading';
+export type ProgramType = 'Full-Time HQ' | 'Part-Time HQ' | 'After School';
 export type ScheduleDay = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export interface User {

@@ -27,7 +27,7 @@ const AdminRegistrationForm: React.FC<AdminRegistrationFormProps> = ({ onClose }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const programs = ['Full Time HQ', 'Part Time HQ', 'After School Reading'];
+  const programs = ['Full-Time HQ', 'Part-Time HQ', 'After School'];
 
   const handleProgramToggle = (program: string) => {
     setFormData(prev => ({

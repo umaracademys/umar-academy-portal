@@ -321,7 +321,7 @@ const RegistrationRequestModal: React.FC<RegistrationRequestModalProps> = ({
                     parentName: registrationData.parentFullName || '',
                     email: registrationData.parentEmail || '',
                     contact: registrationData.parentPhone || '',
-                    program: registrationData.program || 'Part Time HQ',
+                    program: registrationData.program || 'Part-Time HQ',
                     tuitionFee: 500, // Default
                     registrationAmount: 100, // Default
                     assignedTeacher: '', // Can be assigned later

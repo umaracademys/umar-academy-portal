@@ -118,7 +118,7 @@ const TeacherRecitationReview: React.FC<TeacherRecitationReviewProps> = ({ onClo
         teacherId: user?.id || '',
         teacherName: user?.name || 'Unknown Teacher',
         recitationType: formData.recitationType,
-        program: formData.program || selectedStudent.program || 'Full Time HQ',
+        program: formData.program || selectedStudent.program || 'Full-Time HQ',
         notes: formData.notes,
         audioLink: formData.audioLink || undefined,
         status: 'pending_review',

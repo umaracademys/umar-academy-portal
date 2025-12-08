@@ -32,7 +32,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     parentName: student?.parentName || '',
     email: student?.email || '',
     contact: student?.contact || '',
-    program: student?.program || 'Full Time HQ' as ProgramType,
+    program: student?.program || 'Full-Time HQ' as ProgramType,
     tuitionFee: typeof student?.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : 500,
     registrationAmount: typeof student?.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : 100,
     assignedTeacher: student?.assignedTeacher || '',
@@ -45,7 +45,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
   const [showSiblingForm, setShowSiblingForm] = useState(false);
   const [siblingData, setSiblingData] = useState({
     fullName: '',
-    program: 'Full Time HQ' as ProgramType,
+    program: 'Full-Time HQ' as ProgramType,
     assignedTeacher: '',
   });
 
@@ -182,7 +182,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         parentName: student.parentName || '',
         email: student.email || '',
         contact: student.contact || student.phoneNumber || student.contactNumber || '',
-        program: student.program || 'Full Time HQ' as ProgramType,
+        program: student.program || 'Full-Time HQ' as ProgramType,
         tuitionFee: typeof student.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : (typeof student.tuitionFee === 'string' && student.tuitionFee ? parseFloat(student.tuitionFee) || 500 : 500),
         registrationAmount: typeof student.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : (typeof student.registrationAmount === 'string' && student.registrationAmount ? parseFloat(student.registrationAmount) || 100 : 100),
         assignedTeacher: student.assignedTeacher || student.assignedTeacherId || '',
@@ -198,7 +198,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         parentName: '',
         email: '',
         contact: '',
-        program: 'Full Time HQ',
+        program: 'Full-Time HQ',
         tuitionFee: 500,
         registrationAmount: 100,
         assignedTeacher: '',
@@ -222,7 +222,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
   const handleAddSibling = () => {
     if (siblingData.fullName) {
       setSiblings([...siblings, { id: `SIB${Date.now()}`, ...siblingData }]);
-      setSiblingData({ fullName: '', program: 'Full Time HQ', assignedTeacher: '' });
+      setSiblingData({ fullName: '', program: 'Full-Time HQ', assignedTeacher: '' });
       setShowSiblingForm(false);
     }
   };
@@ -512,9 +512,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                   }}
                   className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 >
-                  <option value="Full Time HQ">Full Time HQ</option>
-                  <option value="Part Time HQ">Part Time HQ</option>
-                  <option value="After School Reading">After School Reading</option>
+                  <option value="Full-Time HQ">Full-Time HQ</option>
+                  <option value="Part-Time HQ">Part-Time HQ</option>
+                  <option value="After School">After School</option>
                 </select>
               </div>
             </div>
@@ -861,9 +861,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                     onChange={(e) => setSiblingData({ ...siblingData, program: e.target.value as ProgramType })}
                     className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
                   >
-                    <option value="Full Time HQ">Full Time HQ</option>
-                    <option value="Part Time HQ">Part Time HQ</option>
-                    <option value="After School Reading">After School Reading</option>
+                    <option value="Full-Time HQ">Full-Time HQ</option>
+                    <option value="Part-Time HQ">Part-Time HQ</option>
+                    <option value="After School">After School</option>
                   </select>
                   <select
                     value={siblingData.assignedTeacher}

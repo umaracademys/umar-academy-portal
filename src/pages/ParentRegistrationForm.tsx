@@ -315,9 +315,9 @@ const ParentRegistrationForm: React.FC = () => {
                   className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
                 >
                   <option value="">Select Program</option>
-                  <option value="Full Time HQ">Full Time HQ</option>
-                  <option value="Part Time HQ">Part Time HQ</option>
-                  <option value="After School Reading">After School Reading</option>
+                  <option value="Full-Time HQ">Full-Time HQ</option>
+                  <option value="Part-Time HQ">Part-Time HQ</option>
+                  <option value="After School">After School</option>
                 </select>
               </div>
               <div className="md:col-span-2">
