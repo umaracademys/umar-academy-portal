@@ -32,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
     { id: 'students', icon: 'ST', label: 'Students', badge: null, isLink: true, href: '/students' },
     { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' },
     { id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' },
+    { id: 'messages', icon: 'MS', label: 'Messages', badge: null, isLink: true, href: '/messages' },
   ];
 
   // Add AI Library based on role
