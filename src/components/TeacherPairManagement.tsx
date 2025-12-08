@@ -422,7 +422,16 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
                     <p className="text-sm text-gray-600 mb-3">{pair.notes}</p>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {onViewMessages && (
+                      <button
+                        onClick={() => onViewMessages(pair)}
+                        className="px-3 py-1 bg-accent text-white rounded text-sm font-bold hover:bg-accent/90"
+                        title="View messages between teachers in this pair (Admin can see all messages)"
+                      >
+                        💬 View Messages
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setSelectedPair(selectedPair === pair._id ? null : pair._id);
