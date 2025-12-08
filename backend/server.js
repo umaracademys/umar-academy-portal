@@ -8627,6 +8627,33 @@ pairTeacherMessageSchema.index({ student: 1, createdAt: -1 });
 
 const PairTeacherMessage = mongoose.model('PairTeacherMessage', pairTeacherMessageSchema);
 
+// Teacher-Student Message Schema
+const teacherStudentMessageSchema = new mongoose.Schema({
+  fromTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', default: null },
+  toStudent: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
+  fromStudent: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
+  toTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', default: null },
+  message: { type: String, required: true, trim: true },
+  attachments: [{
+    filename: { type: String, required: true },
+    url: { type: String, required: true },
+    mimetype: { type: String, required: true },
+    size: { type: Number, required: true }
+  }],
+  read: { type: Boolean, default: false },
+  readAt: { type: Date, default: null },
+  adminInitiated: { type: Boolean, default: false },
+  adminId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }
+}, { timestamps: true });
+
+teacherStudentMessageSchema.index({ fromTeacher: 1, toStudent: 1, createdAt: -1 });
+teacherStudentMessageSchema.index({ fromStudent: 1, toTeacher: 1, createdAt: -1 });
+teacherStudentMessageSchema.index({ toStudent: 1, read: 1, createdAt: -1 });
+teacherStudentMessageSchema.index({ toTeacher: 1, read: 1, createdAt: -1 });
+teacherStudentMessageSchema.index({ adminInitiated: 1, createdAt: -1 });
+
+const TeacherStudentMessage = mongoose.model('TeacherStudentMessage', teacherStudentMessageSchema);
+
 // Get all teacher pairs
 app.get('/api/teacher-pairs', async (req, res) => {
   try {
@@ -9197,6 +9224,221 @@ app.put('/api/pair-teacher-messages/mark-read', async (req, res) => {
     );
 
     res.json({ success: true, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// TEACHER-STUDENT MESSAGING API ENDPOINTS
+// ============================================
+
+// File upload route for teacher-student messages
+app.post('/api/teacher-student-messages/upload', (req, res) => {
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    try {
+      const buffer = Buffer.concat(chunks);
+      
+      const contentType = req.headers['content-type'] || 'application/octet-stream';
+      const filename = req.headers['x-filename'] || `file-${Date.now()}`;
+      
+      let fileType = 'document';
+      if (contentType.startsWith('image/')) fileType = 'image';
+      else if (contentType.startsWith('video/')) fileType = 'video';
+      else if (contentType.startsWith('audio/')) fileType = 'audio';
+      else if (contentType.includes('pdf')) fileType = 'document';
+      else if (contentType.includes('word') || contentType.includes('document')) fileType = 'document';
+      
+      const messagesDir = path.join(__dirname, 'uploads', 'messages');
+      if (!fs.existsSync(messagesDir)) {
+        fs.mkdirSync(messagesDir, { recursive: true });
+      }
+      
+      const timestamp = Date.now();
+      const extension = filename.split('.').pop() || 'bin';
+      const uniqueFilename = `ts-message-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+      const filePath = path.join(messagesDir, uniqueFilename);
+      
+      fs.writeFileSync(filePath, buffer);
+      
+      const fileUrl = `/uploads/messages/${uniqueFilename}`;
+      console.log(`✅ Teacher-Student message file uploaded: ${fileUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      res.json({ 
+        url: fileUrl,
+        filename: uniqueFilename,
+        originalName: filename,
+        type: fileType,
+        size: buffer.length,
+        mimeType: contentType
+      });
+    } catch (error) {
+      console.error('Error in teacher-student message file upload:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  req.on('error', (error) => {
+    console.error('Error reading request:', error);
+    res.status(500).json({ error: error.message });
+  });
+});
+
+// Get teacher-student messages
+app.get('/api/teacher-student-messages', async (req, res) => {
+  try {
+    const { teacherId, studentId, unreadOnly, adminView } = req.query;
+    const query = {};
+    
+    // Admin can see all messages
+    if (adminView === 'true') {
+      // No additional filters - show all
+    } else if (teacherId && studentId) {
+      // Conversation between specific teacher and student
+      query.$or = [
+        { fromTeacher: teacherId, toStudent: studentId },
+        { fromStudent: studentId, toTeacher: teacherId }
+      ];
+    } else if (teacherId) {
+      // All messages for a teacher (both sent and received)
+      query.$or = [
+        { fromTeacher: teacherId },
+        { toTeacher: teacherId }
+      ];
+    } else if (studentId) {
+      // All messages for a student (both sent and received)
+      query.$or = [
+        { fromStudent: studentId },
+        { toStudent: studentId }
+      ];
+    }
+    
+    if (unreadOnly === 'true') {
+      query.read = false;
+      if (teacherId) query.toTeacher = teacherId;
+      if (studentId) query.toStudent = studentId;
+    }
+
+    const messages = await TeacherStudentMessage.find(query)
+      .populate('fromTeacher', 'fullName')
+      .populate('toStudent', 'fullName studentId')
+      .populate('fromStudent', 'fullName studentId')
+      .populate('toTeacher', 'fullName')
+      .populate('adminId', 'fullName email')
+      .sort({ createdAt: -1 });
+    
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching teacher-student messages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single message
+app.get('/api/teacher-student-messages/:id', async (req, res) => {
+  try {
+    const message = await TeacherStudentMessage.findById(req.params.id)
+      .populate('fromTeacher', 'fullName')
+      .populate('toStudent', 'fullName studentId')
+      .populate('fromStudent', 'fullName studentId')
+      .populate('toTeacher', 'fullName')
+      .populate('adminId', 'fullName email');
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    
+    res.json(message);
+  } catch (error) {
+    console.error('Error fetching teacher-student message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create teacher-student message
+app.post('/api/teacher-student-messages', async (req, res) => {
+  try {
+    const { fromTeacher, toStudent, fromStudent, toTeacher, message, attachments, adminInitiated, adminId } = req.body;
+    
+    // Validate: must have either (fromTeacher + toStudent) OR (fromStudent + toTeacher)
+    if (!((fromTeacher && toStudent) || (fromStudent && toTeacher))) {
+      return res.status(400).json({ error: 'Must specify either (fromTeacher + toStudent) or (fromStudent + toTeacher)' });
+    }
+    
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const newMessage = new TeacherStudentMessage({
+      fromTeacher: fromTeacher || null,
+      toStudent: toStudent || null,
+      fromStudent: fromStudent || null,
+      toTeacher: toTeacher || null,
+      message: message.trim(),
+      attachments: attachments || [],
+      read: false,
+      adminInitiated: adminInitiated || false,
+      adminId: adminInitiated ? adminId : null
+    });
+
+    await newMessage.save();
+    
+    // Populate before sending response
+    await newMessage.populate('fromTeacher', 'fullName');
+    await newMessage.populate('toStudent', 'fullName studentId');
+    await newMessage.populate('fromStudent', 'fullName studentId');
+    await newMessage.populate('toTeacher', 'fullName');
+    if (adminId) {
+      await newMessage.populate('adminId', 'fullName email');
+    }
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error('Error creating teacher-student message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark message as read
+app.put('/api/teacher-student-messages/:id/read', async (req, res) => {
+  try {
+    const message = await TeacherStudentMessage.findByIdAndUpdate(
+      req.params.id,
+      { read: true, readAt: new Date() },
+      { new: true }
+    );
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    
+    res.json(message);
+  } catch (error) {
+    console.error('Error marking message as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark multiple messages as read
+app.put('/api/teacher-student-messages/mark-read', async (req, res) => {
+  try {
+    const { messageIds, teacherId, studentId } = req.body;
+    
+    if (!messageIds || !Array.isArray(messageIds)) {
+      return res.status(400).json({ error: 'messageIds array is required' });
+    }
+    
+    const query = { _id: { $in: messageIds } };
+    if (teacherId) query.toTeacher = teacherId;
+    if (studentId) query.toStudent = studentId;
+    
+    await TeacherStudentMessage.updateMany(
+      query,
+      { read: true, readAt: new Date() }
+    );
+    
+    res.json({ success: true, count: messageIds.length });
   } catch (error) {
     console.error('Error marking messages as read:', error);
     res.status(500).json({ error: error.message });

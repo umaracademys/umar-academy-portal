@@ -151,6 +151,12 @@ interface BackendDataContextType {
   createPairTeacherMessage: (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; message: string; files?: Array<{ name: string; url: string; type: string; size?: number }> }) => Promise<any>;
   markPairTeacherMessageAsRead: (id: string) => Promise<any>;
   markPairTeacherMessagesAsRead: (messageIds: string[], teacherId: string) => Promise<any>;
+  // Teacher-Student Messaging
+  getTeacherStudentMessages: (filters?: { teacherId?: string; studentId?: string; unreadOnly?: boolean; adminView?: string }) => Promise<any[]>;
+  getTeacherStudentMessage: (id: string) => Promise<any>;
+  createTeacherStudentMessage: (message: { fromTeacher?: string; toStudent?: string; fromStudent?: string; toTeacher?: string; message: string; attachments?: Array<{ filename: string; url: string; mimetype: string; size: number }>; adminInitiated?: boolean; adminId?: string }) => Promise<any>;
+  markTeacherStudentMessageAsRead: (id: string) => Promise<any>;
+  markTeacherStudentMessagesAsRead: (messageIds: string[], teacherId?: string, studentId?: string) => Promise<any>;
 }
 
 const BackendDataContext = createContext<BackendDataContextType | undefined>(undefined);
@@ -2926,6 +2932,80 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Teacher-Student Messaging
+  const getTeacherStudentMessages = async (filters?: { teacherId?: string; studentId?: string; unreadOnly?: boolean; adminView?: string }): Promise<any[]> => {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.teacherId) params.append('teacherId', filters.teacherId);
+      if (filters?.studentId) params.append('studentId', filters.studentId);
+      if (filters?.unreadOnly) params.append('unreadOnly', 'true');
+      if (filters?.adminView) params.append('adminView', filters.adminView);
+      
+      const url = `${API_BASE}/teacher-student-messages${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetchWithTimeout(url, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch teacher-student messages');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching teacher-student messages:', error);
+      return [];
+    }
+  };
+
+  const getTeacherStudentMessage = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-student-messages/${id}`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to fetch teacher-student message');
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching teacher-student message:', error);
+      throw error;
+    }
+  };
+
+  const createTeacherStudentMessage = async (message: { fromTeacher?: string; toStudent?: string; fromStudent?: string; toTeacher?: string; message: string; attachments?: Array<{ filename: string; url: string; mimetype: string; size: number }>; adminInitiated?: boolean; adminId?: string }): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-student-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(message)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create teacher-student message');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error creating teacher-student message:', error);
+      throw error;
+    }
+  };
+
+  const markTeacherStudentMessageAsRead = async (id: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-student-messages/${id}/read`, { method: 'PUT' });
+      if (!response.ok) throw new Error('Failed to mark message as read');
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking message as read:', error);
+      throw error;
+    }
+  };
+
+  const markTeacherStudentMessagesAsRead = async (messageIds: string[], teacherId?: string, studentId?: string): Promise<any> => {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE}/teacher-student-messages/mark-read`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageIds, teacherId, studentId })
+      });
+      if (!response.ok) throw new Error('Failed to mark messages as read');
+      return await response.json();
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+      throw error;
+    }
+  };
+
   const value: BackendDataContextType = {
     students,
     teachers,
@@ -3009,7 +3089,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     getPairTeacherMessage,
     createPairTeacherMessage,
     markPairTeacherMessageAsRead,
-    markPairTeacherMessagesAsRead
+    markPairTeacherMessagesAsRead,
+    getTeacherStudentMessages,
+    getTeacherStudentMessage,
+    createTeacherStudentMessage,
+    markTeacherStudentMessageAsRead,
+    markTeacherStudentMessagesAsRead
   };
 
   return (

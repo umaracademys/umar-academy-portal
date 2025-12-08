@@ -17,6 +17,7 @@ import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
 import PairDailyReportForm from '../components/PairDailyReportForm';
 import PairTeacherMessage from '../components/PairTeacherMessage';
+import TeacherStudentMessage from '../components/TeacherStudentMessage';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
@@ -39,6 +40,8 @@ const TeacherDashboard: React.FC = () => {
   const [showPairMessage, setShowPairMessage] = useState(false);
   const [selectedPairForMessage, setSelectedPairForMessage] = useState<any>(null);
   const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
+  const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
+  const [selectedStudentForTSMessage, setSelectedStudentForTSMessage] = useState<any>(null);
   const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
   const [pairStudentsMap, setPairStudentsMap] = useState<Record<string, any[]>>({});
 
@@ -898,6 +901,16 @@ const TeacherDashboard: React.FC = () => {
                           <span>💬</span> Message Pair Teacher
                         </button>
                       )}
+                      <button
+                        onClick={() => {
+                          setSelectedStudentForTSMessage(student);
+                          setShowTeacherStudentMessage(true);
+                        }}
+                        className="rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition hover:bg-soft-primary flex items-center gap-1"
+                        title="Message this student"
+                      >
+                        <span>📧</span> Message Student
+                      </button>
                       {isPairStudent && pairDetails?.pair && (
                         <span className="rounded-lg bg-primary/10 px-4 py-2 text-xs font-bold text-primary flex items-center gap-1">
                           <span>👥</span> Both teachers can assess & evaluate
@@ -1362,6 +1375,18 @@ const TeacherDashboard: React.FC = () => {
             setShowPairMessage(false);
             setSelectedPairForMessage(null);
             setSelectedStudentForMessage(null);
+          }}
+        />
+      )}
+
+      {/* Teacher-Student Message Modal */}
+      {showTeacherStudentMessage && currentTeacher && selectedStudentForTSMessage && (
+        <TeacherStudentMessage
+          teacher={currentTeacher}
+          student={selectedStudentForTSMessage}
+          onClose={() => {
+            setShowTeacherStudentMessage(false);
+            setSelectedStudentForTSMessage(null);
           }}
         />
       )}
