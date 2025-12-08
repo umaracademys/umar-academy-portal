@@ -672,8 +672,8 @@ const TeacherDashboard: React.FC = () => {
 
         {/* Assigned Students List */}
         <div className="mb-8">
-          <Card title={`Assigned Students (${assignedStudents.length})`}>
-            {assignedStudents.length === 0 ? (
+          <Card title={`Assigned Students (${allPairStudents.length})`}>
+            {allPairStudents.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                   <span className="text-2xl font-bold text-gray-400">AS</span>
