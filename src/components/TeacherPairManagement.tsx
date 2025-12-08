@@ -641,37 +641,6 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                       ) : (
                         <div className="space-y-2">
                           {pairStudents.map(ps => (
-<<<<<<< HEAD
-                            <div key={ps._id} className="p-2 bg-gray-50 rounded text-sm flex justify-between items-start">
-                              <div>
-                                <div className="font-semibold">{ps.student?.fullName || 'Unknown'}</div>
-                                <div className="text-xs text-gray-600">
-                                  {ps.startTime} - {ps.endTime} • {ps.days.join(', ')}
-                                </div>
-                                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${
-                                  ps.status === 'active' ? 'bg-green-100 text-green-800' :
-                                  ps.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {ps.status}
-                                </span>
-                              </div>
-                              <button
-                                onClick={async () => {
-                                  if (!confirm(`Remove ${ps.student?.fullName || 'this student'} from this pair?`)) return;
-                                  try {
-                                    await deletePairStudent(ps._id);
-                                    await loadPairStudents(selectedPair!);
-                                  } catch (error) {
-                                    alert(error instanceof Error ? error.message : 'Failed to remove student');
-                                  }
-                                }}
-                                className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-bold"
-                                title="Remove student from pair"
-                              >
-                                ×
-                              </button>
-=======
                             <div key={ps._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
@@ -689,15 +658,15 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                                 </div>
                                 <div className="flex gap-2 ml-3">
                                   <button
-                                    onClick={() => handleEditPairStudent(ps)}
-                                    disabled={loading}
-                                    className="px-2 py-1 bg-primary text-white rounded text-xs font-bold hover:bg-primary/90 disabled:opacity-50 transition"
-                                    title="Edit student in pair"
-                                  >
-                                    ✏️ Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePairStudent(ps._id)}
+                                    onClick={async () => {
+                                      if (!confirm(`Remove ${ps.student?.fullName || 'this student'} from this pair?`)) return;
+                                      try {
+                                        await deletePairStudent(ps._id);
+                                        await loadPairStudents(selectedPair!);
+                                      } catch (error) {
+                                        alert(error instanceof Error ? error.message : 'Failed to remove student');
+                                      }
+                                    }}
                                     disabled={loading}
                                     className="px-2 py-1 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600 disabled:opacity-50 transition"
                                     title="Remove student from pair"
@@ -706,7 +675,6 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                                   </button>
                                 </div>
                               </div>
->>>>>>> 1fccc8be17075747304c5af1dcd2c13a732cbf5c
                             </div>
                           ))}
                         </div>
