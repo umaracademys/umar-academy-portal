@@ -146,7 +146,7 @@ interface BackendDataContextType {
   updatePairDailyReport: (id: string, report: any) => Promise<any>;
   deletePairDailyReport: (id: string) => Promise<void>;
   // Pair Teacher Messages
-  getPairTeacherMessages: (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean }) => Promise<any[]>;
+  getPairTeacherMessages: (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean; adminView?: string }) => Promise<any[]>;
   getPairTeacherMessage: (id: string) => Promise<any>;
   createPairTeacherMessage: (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; message: string; files?: Array<{ name: string; url: string; type: string; size?: number }> }) => Promise<any>;
   markPairTeacherMessageAsRead: (id: string) => Promise<any>;
@@ -2852,13 +2852,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   // Pair Teacher Messages
-  const getPairTeacherMessages = async (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean }): Promise<any[]> => {
+  const getPairTeacherMessages = async (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean; adminView?: string }): Promise<any[]> => {
     try {
       const params = new URLSearchParams();
       if (filters?.pair) params.append('pair', filters.pair);
       if (filters?.teacherId) params.append('teacherId', filters.teacherId);
       if (filters?.student) params.append('student', filters.student);
       if (filters?.unreadOnly) params.append('unreadOnly', 'true');
+      if (filters?.adminView) params.append('adminView', filters.adminView);
       
       const url = `${API_BASE}/pair-teacher-messages${params.toString() ? '?' + params.toString() : ''}`;
       const response = await fetchWithTimeout(url, { method: 'GET' });

@@ -45,6 +45,7 @@ const EvaluationResultsPage = lazy(() => import('../components/EvaluationResults
 const TeacherAttendanceForm = lazy(() => import('../components/TeacherAttendanceForm'));
 const TeacherAttendanceReport = lazy(() => import('../components/TeacherAttendanceReport'));
 const TeacherPairManagement = lazy(() => import('../components/TeacherPairManagement'));
+const PairTeacherMessagesAdmin = lazy(() => import('../components/PairTeacherMessagesAdmin'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -175,6 +176,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherAttendanceForm, setShowTeacherAttendanceForm] = useState(false);
   const [showTeacherAttendanceReport, setShowTeacherAttendanceReport] = useState(false);
   const [showTeacherPairManagement, setShowTeacherPairManagement] = useState(false);
+  const [showPairMessagesAdmin, setShowPairMessagesAdmin] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -318,6 +320,14 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowTeacherPairManagement(true),
       badge: null,
       emphasis: 'primary',
+    },
+    {
+      id: 'pair-messages',
+      label: 'Pair Teacher Messages',
+      description: 'View all messages between teachers in pairs (Admin oversight).',
+      onClick: () => setShowPairMessagesAdmin(true),
+      badge: null,
+      emphasis: 'accent',
     },
   ];
 
@@ -1432,9 +1442,17 @@ const SuperAdminDashboard: React.FC = () => {
             onViewMessages={(pair: any) => {
               // Open admin view of pair messages
               setShowTeacherPairManagement(false);
-              // TODO: Open admin message viewer
-              alert(`Admin view of messages for pair "${pair.name}" - Feature coming soon`);
+              setShowPairMessagesAdmin(true);
             }}
+          />
+        </Suspense>
+      )}
+
+      {/* Pair Teacher Messages Admin Modal */}
+      {showPairMessagesAdmin && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <PairTeacherMessagesAdmin
+            onClose={() => setShowPairMessagesAdmin(false)}
           />
         </Suspense>
       )}
