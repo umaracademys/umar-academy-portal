@@ -148,7 +148,7 @@ interface BackendDataContextType {
   // Pair Teacher Messages
   getPairTeacherMessages: (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean }) => Promise<any[]>;
   getPairTeacherMessage: (id: string) => Promise<any>;
-  createPairTeacherMessage: (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; subject: string; message: string }) => Promise<any>;
+  createPairTeacherMessage: (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; message: string; files?: Array<{ name: string; url: string; type: string; size?: number }> }) => Promise<any>;
   markPairTeacherMessageAsRead: (id: string) => Promise<any>;
   markPairTeacherMessagesAsRead: (messageIds: string[], teacherId: string) => Promise<any>;
 }
@@ -2881,7 +2881,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  const createPairTeacherMessage = async (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; subject: string; message: string }): Promise<any> => {
+  const createPairTeacherMessage = async (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; message: string; files?: Array<{ name: string; url: string; type: string; size?: number }> }): Promise<any> => {
     try {
       const response = await fetchWithTimeout(`${API_BASE}/pair-teacher-messages`, {
         method: 'POST',

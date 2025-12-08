@@ -5,8 +5,13 @@ export interface IPairTeacherMessage extends Document {
   fromTeacher: mongoose.Types.ObjectId;
   toTeacher: mongoose.Types.ObjectId;
   student?: mongoose.Types.ObjectId; // Optional: link message to specific student
-  subject: string;
   message: string;
+  files?: Array<{
+    name: string;
+    url: string;
+    type: string;
+    size?: number;
+  }>;
   read: boolean;
   readAt?: Date;
   createdAt: Date;
@@ -34,16 +39,17 @@ const PairTeacherMessageSchema = new Schema<IPairTeacherMessage>({
     ref: 'Student',
     default: null
   },
-  subject: {
-    type: String,
-    required: true,
-    trim: true
-  },
   message: {
     type: String,
     required: true,
     trim: true
   },
+  files: [{
+    name: { type: String, required: true },
+    url: { type: String, required: true },
+    type: { type: String, required: true },
+    size: { type: Number, default: 0 }
+  }],
   read: {
     type: Boolean,
     default: false

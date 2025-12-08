@@ -115,6 +115,63 @@ app.post('/api/mistakes/audio', (req, res) => {
   });
 });
 
+// File upload route for pair teacher messages - must be before json middleware
+app.post('/api/pair-teacher-messages/upload', (req, res) => {
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    try {
+      const buffer = Buffer.concat(chunks);
+      
+      // Get content type and filename from headers
+      const contentType = req.headers['content-type'] || 'application/octet-stream';
+      const filename = req.headers['x-filename'] || `file-${Date.now()}`;
+      
+      // Determine file type
+      let fileType = 'document';
+      if (contentType.startsWith('image/')) fileType = 'image';
+      else if (contentType.startsWith('video/')) fileType = 'video';
+      else if (contentType.startsWith('audio/')) fileType = 'audio';
+      else if (contentType.includes('pdf')) fileType = 'document';
+      else if (contentType.includes('word') || contentType.includes('document')) fileType = 'document';
+      
+      // Create messages directory if it doesn't exist
+      const messagesDir = path.join(__dirname, 'uploads', 'messages');
+      if (!fs.existsSync(messagesDir)) {
+        fs.mkdirSync(messagesDir, { recursive: true });
+      }
+      
+      // Generate unique filename
+      const timestamp = Date.now();
+      const extension = filename.split('.').pop() || 'bin';
+      const uniqueFilename = `message-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+      const filePath = path.join(messagesDir, uniqueFilename);
+      
+      // Save file
+      fs.writeFileSync(filePath, buffer);
+      
+      // Return URL
+      const fileUrl = `/uploads/messages/${uniqueFilename}`;
+      console.log(`✅ File uploaded: ${fileUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+      res.json({ 
+        url: fileUrl,
+        filename: uniqueFilename,
+        originalName: filename,
+        type: fileType,
+        size: buffer.length,
+        mimeType: contentType
+      });
+    } catch (error) {
+      console.error('Error in file upload endpoint:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  req.on('error', (error) => {
+    console.error('Error reading request:', error);
+    res.status(500).json({ error: error.message });
+  });
+});
+
 // Recording upload route for ticket recordings - must be before json middleware
 app.post('/api/recordings/upload', (req, res) => {
   const chunks = [];
@@ -8552,8 +8609,13 @@ const pairTeacherMessageSchema = new mongoose.Schema({
   fromTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
   toTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
-  subject: { type: String, required: true, trim: true },
   message: { type: String, required: true, trim: true },
+  files: [{
+    name: { type: String, required: true },
+    url: { type: String, required: true },
+    type: { type: String, required: true },
+    size: { type: Number, default: 0 }
+  }],
   read: { type: Boolean, default: false },
   readAt: { type: Date, default: null }
 }, { timestamps: true });
@@ -9038,10 +9100,10 @@ app.get('/api/pair-teacher-messages/:id', async (req, res) => {
 // Create pair teacher message
 app.post('/api/pair-teacher-messages', async (req, res) => {
   try {
-    const { pair, fromTeacher, toTeacher, student, subject, message } = req.body;
+    const { pair, fromTeacher, toTeacher, student, message, files } = req.body;
     
-    if (!pair || !fromTeacher || !toTeacher || !subject || !message) {
-      return res.status(400).json({ error: 'Pair, fromTeacher, toTeacher, subject, and message are required' });
+    if (!pair || !fromTeacher || !toTeacher || !message) {
+      return res.status(400).json({ error: 'Pair, fromTeacher, toTeacher, and message are required' });
     }
 
     // Verify that the pair exists and contains these teachers
@@ -9065,8 +9127,8 @@ app.post('/api/pair-teacher-messages', async (req, res) => {
       fromTeacher,
       toTeacher,
       student: student || null,
-      subject: subject.trim(),
       message: message.trim(),
+      files: files || [],
       read: false
     });
 
