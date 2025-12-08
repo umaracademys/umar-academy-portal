@@ -738,7 +738,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                     </p>
                   </div>
                 )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
 
