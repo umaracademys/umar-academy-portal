@@ -305,9 +305,21 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                       👥 Pair: {pairInfo.pair.name}
                     </span>
                   )}
-                  {!pairInfo?.pair && (
+                  {!pairInfo?.pair && currentStudent.assignedTeacher && (() => {
+                    const teacher = teachers.find(t => t.id === currentStudent.assignedTeacher);
+                    return teacher ? (
+                      <span className="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-600">
+                        👤 Individual: {teacher.fullName}
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-600">
+                        👤 Individual Assignment
+                      </span>
+                    );
+                  })()}
+                  {!pairInfo?.pair && !currentStudent.assignedTeacher && (
                     <span className="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-600">
-                      No Pair Assigned
+                      No Assignment
                     </span>
                   )}
                 </div>

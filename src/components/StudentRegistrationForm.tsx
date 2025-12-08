@@ -112,12 +112,13 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     loadPairs();
   }, [getTeacherPairs]);
 
-  // Load pair information for student
+  // Load pair information for student and detect assignment type
   useEffect(() => {
     const loadPairInfo = async () => {
       if (!isEdit || !student?.id) {
         setPairInfo(null);
         setSelectedPair('');
+        setAssignmentType('individual');
         return;
       }
       
@@ -140,6 +141,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
               }
             });
             setSelectedPair(pair._id);
+            setAssignmentType('pair');
             setPairSchedule({
               startTime: pairStudent.startTime || '09:00',
               endTime: pairStudent.endTime || '10:00',
@@ -149,11 +151,18 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         } else {
           setPairInfo(null);
           setSelectedPair('');
+          // If student has assignedTeacher, it's individual assignment
+          if (student.assignedTeacher || student.assignedTeacherId) {
+            setAssignmentType('individual');
+          } else {
+            setAssignmentType('individual'); // Default to individual
+          }
         }
       } catch (error) {
         console.error('Error loading pair info:', error);
         setPairInfo(null);
         setSelectedPair('');
+        setAssignmentType('individual');
       }
     };
     

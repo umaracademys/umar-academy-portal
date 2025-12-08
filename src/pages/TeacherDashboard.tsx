@@ -717,6 +717,11 @@ const TeacherDashboard: React.FC = () => {
                                 <span>👥</span> Pair
                               </span>
                             )}
+                            {!isPairStudent && student.assignedTeacher && (
+                              <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold flex items-center gap-1">
+                                <span>👤</span> Individual
+                              </span>
+                            )}
                           </div>
                           {isPairStudent && pairDetails?.pair && (
                             <p className="text-xs text-primary/70 mt-1">
@@ -724,6 +729,14 @@ const TeacherDashboard: React.FC = () => {
                               {pairPartner && ` • Shared with ${pairPartner.fullName}`}
                             </p>
                           )}
+                          {!isPairStudent && student.assignedTeacher && (() => {
+                            const teacher = teachers.find(t => t.id === student.assignedTeacher);
+                            return teacher ? (
+                              <p className="text-xs text-gray-600 mt-1">
+                                Teacher: <span className="font-semibold">{teacher.fullName}</span>
+                              </p>
+                            ) : null;
+                          })()}
                           {permissions.canViewStudentPersonalInfo && (
                             <p className="text-sm text-gray-600">Parent: {student.parentName}</p>
                           )}
