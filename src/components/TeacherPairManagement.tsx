@@ -14,6 +14,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
     deleteTeacherPair,
     getPairStudents,
     createPairStudent,
+    deletePairStudent,
     teachers,
     students
   } = useBackendData();
@@ -115,10 +116,37 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this teacher pair?')) return;
+    // Check if pair has students
+    const pairStudents = await getPairStudents({ pair: id });
+    if (pairStudents.length > 0) {
+      const confirmDelete = confirm(
+        `This pair has ${pairStudents.length} student(s) assigned. ` +
+        `You need to remove all students before deleting the pair. ` +
+        `Would you like to remove all students and delete the pair?`
+      );
+      
+      if (!confirmDelete) return;
+      
+      // Delete all students first
+      try {
+        for (const pairStudent of pairStudents) {
+          await deletePairStudent(pairStudent._id);
+        }
+      } catch (error) {
+        alert('Failed to remove students. Please remove them manually first.');
+        return;
+      }
+    } else {
+      if (!confirm('Are you sure you want to delete this teacher pair?')) return;
+    }
+    
     try {
       await deleteTeacherPair(id);
       await loadPairs();
+      if (selectedPair === id) {
+        setSelectedPair(null);
+        setPairStudents([]);
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Failed to delete pair');
     }
@@ -541,18 +569,35 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }
                       ) : (
                         <div className="space-y-2">
                           {pairStudents.map(ps => (
-                            <div key={ps._id} className="p-2 bg-gray-50 rounded text-sm">
-                              <div className="font-semibold">{ps.student?.fullName || 'Unknown'}</div>
-                              <div className="text-xs text-gray-600">
-                                {ps.startTime} - {ps.endTime} • {ps.days.join(', ')}
+                            <div key={ps._id} className="p-2 bg-gray-50 rounded text-sm flex justify-between items-start">
+                              <div>
+                                <div className="font-semibold">{ps.student?.fullName || 'Unknown'}</div>
+                                <div className="text-xs text-gray-600">
+                                  {ps.startTime} - {ps.endTime} • {ps.days.join(', ')}
+                                </div>
+                                <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${
+                                  ps.status === 'active' ? 'bg-green-100 text-green-800' :
+                                  ps.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {ps.status}
+                                </span>
                               </div>
-                              <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs ${
-                                ps.status === 'active' ? 'bg-green-100 text-green-800' :
-                                ps.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {ps.status}
-                              </span>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`Remove ${ps.student?.fullName || 'this student'} from this pair?`)) return;
+                                  try {
+                                    await deletePairStudent(ps._id);
+                                    await loadPairStudents(selectedPair!);
+                                  } catch (error) {
+                                    alert(error instanceof Error ? error.message : 'Failed to remove student');
+                                  }
+                                }}
+                                className="ml-2 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 font-bold"
+                                title="Remove student from pair"
+                              >
+                                ×
+                              </button>
                             </div>
                           ))}
                         </div>
