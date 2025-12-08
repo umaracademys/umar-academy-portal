@@ -16,6 +16,7 @@ import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignm
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
 import PairDailyReportForm from '../components/PairDailyReportForm';
+import PairTeacherMessage from '../components/PairTeacherMessage';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
@@ -35,6 +36,9 @@ const TeacherDashboard: React.FC = () => {
   const [showEvaluationAssignments, setShowEvaluationAssignments] = useState(false);
   const [showMyAttendance, setShowMyAttendance] = useState(false);
   const [showPairDailyReport, setShowPairDailyReport] = useState(false);
+  const [showPairMessage, setShowPairMessage] = useState(false);
+  const [selectedPairForMessage, setSelectedPairForMessage] = useState<any>(null);
+  const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
   const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
   const [pairStudentsMap, setPairStudentsMap] = useState<Record<string, any[]>>({});
 
@@ -881,12 +885,12 @@ const TeacherDashboard: React.FC = () => {
                       >
                         View Activity History
                       </button>
-                      {isPairStudent && pairPartner && (
+                      {isPairStudent && pairPartner && pairDetails?.pair && (
                         <button
                           onClick={() => {
-                            // Open communication with pair teacher
-                            const message = `Discuss ${student.fullName} with ${pairPartner.fullName}`;
-                            alert(`Communication feature coming soon!\n\n${message}\n\nBoth teachers can assess, evaluate, and assign tasks for this student.`);
+                            setSelectedPairForMessage(pairDetails.pair);
+                            setSelectedStudentForMessage(student);
+                            setShowPairMessage(true);
                           }}
                           className="rounded-lg border-2 border-accent px-4 py-2 text-xs font-bold text-accent transition hover:bg-soft-accent flex items-center gap-1"
                           title={`Communicate with ${pairPartner.fullName} about this student`}
@@ -1343,6 +1347,21 @@ const TeacherDashboard: React.FC = () => {
           onClose={() => setShowPairDailyReport(false)}
           onSuccess={() => {
             setRefreshKey(prev => prev + 1);
+          }}
+        />
+      )}
+
+      {/* Pair Teacher Message Modal */}
+      {showPairMessage && selectedPairForMessage && currentTeacher && pairPartner && (
+        <PairTeacherMessage
+          pair={selectedPairForMessage}
+          student={selectedStudentForMessage}
+          currentTeacher={currentTeacher}
+          pairPartner={pairPartner}
+          onClose={() => {
+            setShowPairMessage(false);
+            setSelectedPairForMessage(null);
+            setSelectedStudentForMessage(null);
           }}
         />
       )}

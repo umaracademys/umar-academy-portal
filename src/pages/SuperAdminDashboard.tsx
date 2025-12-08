@@ -1429,6 +1429,12 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <TeacherPairManagement
             onClose={() => setShowTeacherPairManagement(false)}
+            onViewMessages={(pair: any) => {
+              // Open admin view of pair messages
+              setShowTeacherPairManagement(false);
+              // TODO: Open admin message viewer
+              alert(`Admin view of messages for pair "${pair.name}" - Feature coming soon`);
+            }}
           />
         </Suspense>
       )}

@@ -4,9 +4,10 @@ import Card from './Card';
 
 interface TeacherPairManagementProps {
   onClose: () => void;
+  onViewMessages?: (pair: any) => void;
 }
 
-const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose }) => {
+const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, onViewMessages }) => {
   const { 
     getTeacherPairs, 
     createTeacherPair, 

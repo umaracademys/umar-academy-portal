@@ -145,6 +145,12 @@ interface BackendDataContextType {
   createPairDailyReport: (report: any) => Promise<any>;
   updatePairDailyReport: (id: string, report: any) => Promise<any>;
   deletePairDailyReport: (id: string) => Promise<void>;
+  // Pair Teacher Messages
+  getPairTeacherMessages: (filters?: { pair?: string; teacherId?: string; student?: string; unreadOnly?: boolean }) => Promise<any[]>;
+  getPairTeacherMessage: (id: string) => Promise<any>;
+  createPairTeacherMessage: (message: { pair: string; fromTeacher: string; toTeacher: string; student?: string; subject: string; message: string }) => Promise<any>;
+  markPairTeacherMessageAsRead: (id: string) => Promise<any>;
+  markPairTeacherMessagesAsRead: (messageIds: string[], teacherId: string) => Promise<any>;
 }
 
 const BackendDataContext = createContext<BackendDataContextType | undefined>(undefined);
@@ -2923,7 +2929,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     getPairDailyReport,
     createPairDailyReport,
     updatePairDailyReport,
-    deletePairDailyReport
+    deletePairDailyReport,
+    getPairTeacherMessages,
+    getPairTeacherMessage,
+    createPairTeacherMessage,
+    markPairTeacherMessageAsRead,
+    markPairTeacherMessagesAsRead
   };
 
   return (

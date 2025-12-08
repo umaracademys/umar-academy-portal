@@ -8546,6 +8546,25 @@ pairDailyReportSchema.index({ date: -1 });
 
 const PairDailyReport = mongoose.model('PairDailyReport', pairDailyReportSchema);
 
+// Pair Teacher Message Schema
+const pairTeacherMessageSchema = new mongoose.Schema({
+  pair: { type: mongoose.Schema.Types.ObjectId, ref: 'TeacherPair', required: true },
+  fromTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  toTeacher: { type: mongoose.Schema.Types.ObjectId, ref: 'Teacher', required: true },
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', default: null },
+  subject: { type: String, required: true, trim: true },
+  message: { type: String, required: true, trim: true },
+  read: { type: Boolean, default: false },
+  readAt: { type: Date, default: null }
+}, { timestamps: true });
+
+pairTeacherMessageSchema.index({ pair: 1, createdAt: -1 });
+pairTeacherMessageSchema.index({ fromTeacher: 1, toTeacher: 1, createdAt: -1 });
+pairTeacherMessageSchema.index({ toTeacher: 1, read: 1, createdAt: -1 });
+pairTeacherMessageSchema.index({ student: 1, createdAt: -1 });
+
+const PairTeacherMessage = mongoose.model('PairTeacherMessage', pairTeacherMessageSchema);
+
 // Get all teacher pairs
 app.get('/api/teacher-pairs', async (req, res) => {
   try {
@@ -8950,6 +8969,174 @@ app.delete('/api/pair-daily-reports/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting daily report:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PAIR TEACHER MESSAGE API ENDPOINTS
+// ============================================
+
+// Get all pair teacher messages (for a pair, or all messages for a teacher)
+// Admins can view all messages by not providing teacherId
+app.get('/api/pair-teacher-messages', async (req, res) => {
+  try {
+    const { pair, teacherId, student, unreadOnly, adminView } = req.query;
+    const query = {};
+    
+    if (pair) query.pair = pair;
+    if (student) query.student = student;
+    
+    // If adminView is true, show all messages (admins can see everything)
+    // Otherwise, filter by teacherId if provided
+    if (adminView !== 'true' && teacherId) {
+      query.$or = [
+        { fromTeacher: teacherId },
+        { toTeacher: teacherId }
+      ];
+    }
+    
+    if (unreadOnly === 'true' && teacherId) {
+      query.read = false;
+      query.toTeacher = teacherId; // Only unread messages where this teacher is the recipient
+    }
+
+    const messages = await PairTeacherMessage.find(query)
+      .populate('pair', 'name program teacher1 teacher2')
+      .populate('fromTeacher', 'fullName email')
+      .populate('toTeacher', 'fullName email')
+      .populate('student', 'fullName email studentId')
+      .sort({ createdAt: -1 });
+    
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching pair teacher messages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single message
+app.get('/api/pair-teacher-messages/:id', async (req, res) => {
+  try {
+    const message = await PairTeacherMessage.findById(req.params.id)
+      .populate('pair', 'name program teacher1 teacher2')
+      .populate('fromTeacher', 'fullName email')
+      .populate('toTeacher', 'fullName email')
+      .populate('student', 'fullName email studentId');
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+    
+    res.json(message);
+  } catch (error) {
+    console.error('Error fetching pair teacher message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create pair teacher message
+app.post('/api/pair-teacher-messages', async (req, res) => {
+  try {
+    const { pair, fromTeacher, toTeacher, student, subject, message } = req.body;
+    
+    if (!pair || !fromTeacher || !toTeacher || !subject || !message) {
+      return res.status(400).json({ error: 'Pair, fromTeacher, toTeacher, subject, and message are required' });
+    }
+
+    // Verify that the pair exists and contains these teachers
+    const pairDoc = await TeacherPair.findById(pair);
+    if (!pairDoc) {
+      return res.status(404).json({ error: 'Teacher pair not found' });
+    }
+
+    const teacher1Id = pairDoc.teacher1.toString();
+    const teacher2Id = pairDoc.teacher2.toString();
+    const fromTeacherId = fromTeacher.toString();
+    const toTeacherId = toTeacher.toString();
+
+    if ((fromTeacherId !== teacher1Id && fromTeacherId !== teacher2Id) ||
+        (toTeacherId !== teacher1Id && toTeacherId !== teacher2Id)) {
+      return res.status(400).json({ error: 'Both teachers must be part of the specified pair' });
+    }
+
+    const newMessage = new PairTeacherMessage({
+      pair,
+      fromTeacher,
+      toTeacher,
+      student: student || null,
+      subject: subject.trim(),
+      message: message.trim(),
+      read: false
+    });
+
+    await newMessage.save();
+    
+    const populated = await PairTeacherMessage.findById(newMessage._id)
+      .populate('pair', 'name program teacher1 teacher2')
+      .populate('fromTeacher', 'fullName email')
+      .populate('toTeacher', 'fullName email')
+      .populate('student', 'fullName email studentId');
+    
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Error creating pair teacher message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark message as read
+app.put('/api/pair-teacher-messages/:id/read', async (req, res) => {
+  try {
+    const message = await PairTeacherMessage.findByIdAndUpdate(
+      req.params.id,
+      { read: true, readAt: new Date() },
+      { new: true }
+    )
+      .populate('pair', 'name program teacher1 teacher2')
+      .populate('fromTeacher', 'fullName email')
+      .populate('toTeacher', 'fullName email')
+      .populate('student', 'fullName email studentId');
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    res.json(message);
+  } catch (error) {
+    console.error('Error marking message as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark multiple messages as read
+app.put('/api/pair-teacher-messages/mark-read', async (req, res) => {
+  try {
+    const { messageIds, teacherId } = req.body;
+    
+    if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+      return res.status(400).json({ error: 'Message IDs array is required' });
+    }
+
+    if (!teacherId) {
+      return res.status(400).json({ error: 'Teacher ID is required' });
+    }
+
+    // Only mark messages as read if the teacher is the recipient
+    const result = await PairTeacherMessage.updateMany(
+      {
+        _id: { $in: messageIds },
+        toTeacher: teacherId,
+        read: false
+      },
+      {
+        $set: { read: true, readAt: new Date() }
+      }
+    );
+
+    res.json({ success: true, modifiedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('Error marking messages as read:', error);
     res.status(500).json({ error: error.message });
   }
 });
