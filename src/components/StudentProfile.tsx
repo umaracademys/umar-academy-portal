@@ -442,9 +442,13 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                               </span>
                             </div>
                           </div>
+                        ) : currentStudent.assignedTeacher ? (
+                          <div className="text-sm text-gray-500">
+                            Individual Teacher: {assignedTeacher?.fullName || 'Not found'}
+                          </div>
                         ) : (
                           <div className="text-sm text-gray-500 italic">
-                            No teacher pair assigned. Please assign this student to a pair.
+                            No assignment. Edit profile to assign teacher or pair.
                           </div>
                         ),
                       },
