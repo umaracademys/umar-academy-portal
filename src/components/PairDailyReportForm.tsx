@@ -50,10 +50,14 @@ const PairDailyReportForm: React.FC<PairDailyReportFormProps> = ({ onClose, onSu
       // Filter pairs where current teacher is teacher1 or teacher2
       const currentTeacher = teachers.find(t => t.email === user?.email);
       if (currentTeacher) {
-        const filtered = data.filter((pair: any) => 
-          (pair.teacher1?._id === currentTeacher.id || pair.teacher1 === currentTeacher.id) ||
-          (pair.teacher2?._id === currentTeacher.id || pair.teacher2 === currentTeacher.id)
-        );
+        // Use Teacher document ID (not User.id)
+        const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+        const filtered = data.filter((pair: any) => {
+          const pairTeacher1Id = pair.teacher1?._id?.toString() || pair.teacher1?.toString();
+          const pairTeacher2Id = pair.teacher2?._id?.toString() || pair.teacher2?.toString();
+          const teacherIdStr = teacherDocId.toString();
+          return pairTeacher1Id === teacherIdStr || pairTeacher2Id === teacherIdStr;
+        });
         setPairs(filtered);
       } else {
         setPairs(data);
@@ -86,12 +90,15 @@ const PairDailyReportForm: React.FC<PairDailyReportFormProps> = ({ onClose, onSu
       return;
     }
 
+    // Use Teacher document ID (not User.id)
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+
     setLoading(true);
     try {
       await createPairDailyReport({
         pair: selectedPair,
         student: selectedStudent,
-        teacher: currentTeacher.id,
+        teacher: teacherDocId,
         ...formData
       });
       alert('Daily report submitted successfully!');

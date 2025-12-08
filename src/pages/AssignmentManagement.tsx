@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ProgramType } from '../types';
 import StudentAssignmentHistory from '../components/StudentAssignmentHistory';
 import AssignmentForm from '../components/AssignmentForm';
@@ -8,7 +10,10 @@ import { Ticket } from '../types/ticket';
 import Header from '../components/Header';
 
 const AssignmentManagement: React.FC = () => {
-  const { students, assignments } = useBackendData();
+  const { students: allStudents, assignments, getTeacherPairs, getPairStudents } = useBackendData();
+  const { teachers, getStudentsByTeacher } = useData();
+  const { user } = useAuth();
+  const [pairStudents, setPairStudents] = useState<any[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramType | 'all'>('all');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
@@ -17,20 +22,93 @@ const AssignmentManagement: React.FC = () => {
   const [prefillTicket, setPrefillTicket] = useState<Ticket | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Get unique programs from students
+  // Check if current user is a teacher
+  const currentTeacher = useMemo(() => {
+    if (!user || !teachers) return null;
+    return teachers.find(t => t.email === user.email) || null;
+  }, [user, teachers]);
+
+  // Load pair students for teacher
+  useEffect(() => {
+    const loadPairStudents = async () => {
+      if (!currentTeacher) {
+        setPairStudents([]);
+        return;
+      }
+      
+      try {
+        const pairs = await getTeacherPairs();
+        // Use Teacher document ID for filtering
+        const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+        const teacherIdStr = teacherDocId.toString();
+        
+        const filteredPairs = pairs.filter((pair: any) => {
+          const pairTeacher1Id = pair.teacher1?._id?.toString() || pair.teacher1?.toString();
+          const pairTeacher2Id = pair.teacher2?._id?.toString() || pair.teacher2?.toString();
+          return pairTeacher1Id === teacherIdStr || pairTeacher2Id === teacherIdStr;
+        });
+        
+        // Get all pair students from these pairs
+        const allPairStudents: any[] = [];
+        for (const pair of filteredPairs) {
+          try {
+            const students = await getPairStudents({ pair: pair._id, status: 'active' });
+            allPairStudents.push(...students);
+          } catch (error) {
+            console.error(`Error loading students for pair ${pair._id}:`, error);
+          }
+        }
+        setPairStudents(allPairStudents);
+      } catch (error) {
+        console.error('Error loading pair students:', error);
+        setPairStudents([]);
+      }
+    };
+    
+    loadPairStudents();
+  }, [currentTeacher, getTeacherPairs, getPairStudents]);
+
+  // Get assigned students for teacher (including pair students)
+  const assignedStudents = useMemo(() => {
+    if (!currentTeacher?.id) return allStudents; // If not a teacher, show all students
+    
+    const directAssigned = getStudentsByTeacher(currentTeacher.id);
+    
+    // Get pair student IDs
+    const pairStudentIds = new Set(
+      pairStudents
+        .map(ps => ps.student?._id?.toString() || ps.student?.toString() || ps.student)
+        .filter(Boolean)
+    );
+    
+    // Get pair students from allStudents
+    const pairStudentsList = allStudents.filter(s => 
+      pairStudentIds.has(s.id?.toString()) || pairStudentIds.has((s as any)._id?.toString())
+    );
+    
+    // Combine direct assigned and pair students, remove duplicates
+    const allAssigned = [...directAssigned, ...pairStudentsList];
+    const uniqueAssigned = allAssigned.filter((student, index, self) => 
+      index === self.findIndex(s => s.id === student.id || (s as any)._id === (student as any)._id)
+    );
+    
+    return uniqueAssigned;
+  }, [currentTeacher, allStudents, getStudentsByTeacher, pairStudents]);
+
+  // Get unique programs from assigned students
   const programs = useMemo(() => {
     const programSet = new Set<ProgramType>();
-    students.forEach(student => {
+    assignedStudents.forEach(student => {
       if (student.program) {
         programSet.add(student.program);
       }
     });
     return Array.from(programSet);
-  }, [students]);
+  }, [assignedStudents]);
 
   // Filter students by program and search
   const filteredStudents = useMemo(() => {
-    let filtered = students;
+    let filtered = assignedStudents;
     
     // Filter by program
     if (selectedProgram !== 'all') {
@@ -48,21 +126,23 @@ const AssignmentManagement: React.FC = () => {
     }
     
     return filtered;
-  }, [students, selectedProgram, searchQuery]);
+  }, [assignedStudents, selectedProgram, searchQuery]);
 
-  // Calculate statistics
+  // Calculate statistics (only for assigned students if teacher)
   const stats = useMemo(() => {
-    const totalAssignments = assignments.length;
-    const studentsWithAssignments = new Set(assignments.map(a => a.studentId)).size;
-    const activeAssignments = assignments.filter(a => a.status === 'active').length;
+    const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
+    const relevantAssignments = assignments.filter(a => assignedStudentIds.has(a.studentId));
+    const totalAssignments = relevantAssignments.length;
+    const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
+    const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
     
     return {
       totalAssignments,
       studentsWithAssignments,
       activeAssignments,
-      totalStudents: students.length
+      totalStudents: assignedStudents.length
     };
-  }, [assignments, students]);
+  }, [assignments, assignedStudents]);
 
   // Get student initials
   const getInitials = (name: string) => {
@@ -131,7 +211,11 @@ const AssignmentManagement: React.FC = () => {
                   <h1 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-lg mt-0.5">Assignment Management</h1>
                 </div>
               </div>
-              <p className="text-xs sm:text-sm text-white/95 max-w-2xl font-bold">Manage assignments, tickets, and classwork for all students</p>
+              <p className="text-xs sm:text-sm text-white/95 max-w-2xl font-bold">
+                {currentTeacher 
+                  ? `Manage assignments, tickets, and classwork for your assigned students` 
+                  : `Manage assignments, tickets, and classwork for all students`}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
@@ -242,13 +326,21 @@ const AssignmentManagement: React.FC = () => {
           <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-base sm:text-lg font-extrabold text-primary mb-1">
-                Students
+                {currentTeacher ? 'My Assigned Students' : 'Students'}
               </h2>
               <p className="text-xs text-primary-soft font-medium">
                 {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} found
+                {currentTeacher && ' (your assigned students)'}
                 {selectedProgram !== 'all' && ` in ${selectedProgram}`}
                 {searchQuery && ` matching "${searchQuery}"`}
               </p>
+              {currentTeacher && (
+                <div className="mt-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
+                  <p className="text-xs font-semibold text-primary">
+                    👤 Viewing only students assigned to you: <span className="font-bold">{currentTeacher.fullName}</span>
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
