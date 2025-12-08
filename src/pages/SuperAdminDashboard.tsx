@@ -46,6 +46,8 @@ const TeacherAttendanceForm = lazy(() => import('../components/TeacherAttendance
 const TeacherAttendanceReport = lazy(() => import('../components/TeacherAttendanceReport'));
 const TeacherPairManagement = lazy(() => import('../components/TeacherPairManagement'));
 const PairTeacherMessagesAdmin = lazy(() => import('../components/PairTeacherMessagesAdmin'));
+const TeacherStudentMessage = lazy(() => import('../components/TeacherStudentMessage'));
+const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStudentMessagesAdmin'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -177,6 +179,10 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherAttendanceReport, setShowTeacherAttendanceReport] = useState(false);
   const [showTeacherPairManagement, setShowTeacherPairManagement] = useState(false);
   const [showPairMessagesAdmin, setShowPairMessagesAdmin] = useState(false);
+  const [showTeacherStudentMessagesAdmin, setShowTeacherStudentMessagesAdmin] = useState(false);
+  const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
+  const [selectedTeacherForMessage, setSelectedTeacherForMessage] = useState<any>(null);
+  const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -328,6 +334,14 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowPairMessagesAdmin(true),
       badge: null,
       emphasis: 'accent',
+    },
+    {
+      id: 'teacher-student-messages',
+      label: 'Teacher-Student Messages',
+      description: 'View and manage all messages between teachers and students (Admin oversight).',
+      onClick: () => setShowTeacherStudentMessagesAdmin(true),
+      badge: null,
+      emphasis: 'primary',
     },
   ];
 
@@ -1453,6 +1467,39 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <PairTeacherMessagesAdmin
             onClose={() => setShowPairMessagesAdmin(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Teacher-Student Messages Admin Modal */}
+      {showTeacherStudentMessagesAdmin && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherStudentMessagesAdmin
+            onClose={() => setShowTeacherStudentMessagesAdmin(false)}
+            onInitiateMessage={(teacher: any, student: any) => {
+              setShowTeacherStudentMessagesAdmin(false);
+              setSelectedTeacherForMessage(teacher);
+              setSelectedStudentForMessage(student);
+              setShowTeacherStudentMessage(true);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Teacher-Student Message Modal (Admin Initiated) */}
+      {showTeacherStudentMessage && selectedTeacherForMessage && selectedStudentForMessage && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherStudentMessage
+            teacher={selectedTeacherForMessage}
+            student={selectedStudentForMessage}
+            onClose={() => {
+              setShowTeacherStudentMessage(false);
+              setSelectedTeacherForMessage(null);
+              setSelectedStudentForMessage(null);
+              setShowTeacherStudentMessagesAdmin(true);
+            }}
+            adminView={true}
+            adminCanInitiate={true}
           />
         </Suspense>
       )}
