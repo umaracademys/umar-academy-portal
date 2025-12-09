@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "create-developer": "node backend/createDeveloper.js",
+    "create-developer:prod": "node backend/createDeveloperProduction.js",
     "dev": "vite",
     "build": "tsc && vite build",
     "build:mushaf": "pnpm --filter @umar-academy/mushaf build",

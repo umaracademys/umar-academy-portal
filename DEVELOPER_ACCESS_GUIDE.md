@@ -18,7 +18,21 @@ The data structure and relationships remain intact, so functionality can be test
 
 ## Creating a Developer Account
 
-### Option 1: Create via Backend API
+### Option 1: Create in Production Database (Recommended)
+
+For production access, you need to create the developer account in your production MongoDB database:
+
+```bash
+# Set your production MongoDB URI and run the script
+MONGODB_URI="your-production-mongodb-uri" npm run create-developer:prod
+```
+
+Or directly:
+```bash
+MONGODB_URI="mongodb+srv://user:pass@cluster.mongodb.net/dbname" node backend/createDeveloperProduction.js
+```
+
+### Option 2: Create via Backend API
 
 You can create a developer account directly in MongoDB or via the backend API:
 
