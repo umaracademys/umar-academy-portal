@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import Login from './pages/Login';
+import DeveloperModeIndicator from './components/DeveloperModeIndicator';
 
 // Lazy load heavy components for code-splitting
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
@@ -96,8 +97,10 @@ function AppContent() {
   }
 
   return (
-    <Suspense fallback={<LoadingFallback />}>
-      <Routes>
+    <>
+      <DeveloperModeIndicator />
+      <Suspense fallback={<LoadingFallback />}>
+        <Routes>
         <Route 
           path="/mushaf-demo" 
           element={<MushafDemo />} 
@@ -192,8 +195,9 @@ function AppContent() {
         />
         <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Suspense>
+        </Routes>
+      </Suspense>
+    </>
   );
 }
 

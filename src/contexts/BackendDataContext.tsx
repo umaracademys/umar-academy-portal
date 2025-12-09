@@ -19,6 +19,7 @@ import {
 import { ClassworkSection, Assignment } from '../types/assignment';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
+import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../utils/dataMasking';
 
 interface BackendDataContextType {
   students: Student[];
@@ -671,7 +672,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           });
       }
 
-      const teachersData = users
+      let teachersData = users
         .filter((user: any) => user.role === 'teacher')
         .map((user: any) => {
           // Find matching teacher record to get actual data
@@ -836,9 +837,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
       }
 
-      setStudents(studentsData);
-      setTeachers(teachersData);
-      setAdmins(adminsData);
+      // Apply data masking if current user is a developer account
+      let finalStudentsData = studentsData;
+      let finalTeachersData = teachersData;
+      let finalAdminsData = adminsData;
+      
+      try {
+        const savedUser = localStorage.getItem('umar_academy_user');
+        const currentUser = savedUser ? JSON.parse(savedUser) : null;
+        const isDeveloper = isDeveloperAccount(currentUser);
+        
+        if (isDeveloper) {
+          console.log('🔒 Developer account detected - applying data masking to protect user privacy');
+          finalStudentsData = maskStudents(studentsData);
+          finalTeachersData = maskTeachers(teachersData);
+          // Admins are typically not masked as they're staff, but we can mask their personal info too
+          finalAdminsData = adminsData.map((admin, index) => maskUser(admin, index));
+        }
+      } catch (error) {
+        // If we can't read user, proceed without masking
+        console.warn('⚠️ Could not check for developer account, proceeding without masking');
+      }
+
+      setStudents(finalStudentsData);
+      setTeachers(finalTeachersData);
+      setAdmins(finalAdminsData);
       
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       if (import.meta.env.DEV) {

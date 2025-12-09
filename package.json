@@ -5,6 +5,7 @@
   "private": true,
   "packageManager": "pnpm@9.0.0",
   "scripts": {
+    "create-developer": "node backend/createDeveloper.js",
     "dev": "vite",
     "build": "tsc && vite build",
     "build:mushaf": "pnpm --filter @umar-academy/mushaf build",
