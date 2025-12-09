@@ -20,6 +20,7 @@ import { ClassworkSection, Assignment } from '../types/assignment';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../utils/dataMasking';
+import { useAuth } from './AuthContext';
 
 interface BackendDataContextType {
   students: Student[];
@@ -260,6 +261,7 @@ const serializeRecitationHistoryEntry = (entry: RecitationHistoryEntry) => ({
 });
 
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user: currentUser } = useAuth(); // Get current user from AuthContext
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -843,20 +845,36 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       let finalAdminsData = adminsData;
       
       try {
-        const savedUser = localStorage.getItem('umar_academy_user');
-        const currentUser = savedUser ? JSON.parse(savedUser) : null;
-        const isDeveloper = isDeveloperAccount(currentUser);
+        // Use currentUser from AuthContext, fallback to localStorage if needed
+        const userToCheck = currentUser || (() => {
+          try {
+            const savedUser = localStorage.getItem('umar_academy_user');
+            return savedUser ? JSON.parse(savedUser) : null;
+          } catch {
+            return null;
+          }
+        })();
+        
+        const isDeveloper = isDeveloperAccount(userToCheck);
         
         if (isDeveloper) {
           console.log('🔒 Developer account detected - applying data masking to protect user privacy');
+          console.log('   User:', userToCheck?.email, 'isDeveloper:', userToCheck?.isDeveloper, 'isTestAccount:', userToCheck?.isTestAccount);
           finalStudentsData = maskStudents(studentsData);
           finalTeachersData = maskTeachers(teachersData);
           // Admins are typically not masked as they're staff, but we can mask their personal info too
           finalAdminsData = adminsData.map((admin, index) => maskUser(admin, index));
+          console.log('✅ Data masking applied:', { 
+            students: finalStudentsData.length, 
+            teachers: finalTeachersData.length, 
+            admins: finalAdminsData.length 
+          });
+        } else {
+          console.log('ℹ️ Not a developer account, data masking not applied');
         }
       } catch (error) {
         // If we can't read user, proceed without masking
-        console.warn('⚠️ Could not check for developer account, proceeding without masking');
+        console.warn('⚠️ Could not check for developer account, proceeding without masking:', error);
       }
 
       setStudents(finalStudentsData);
@@ -907,6 +925,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
     }
   }, [loadData]);
+
+  // Re-apply masking when user changes (e.g., after login)
+  useEffect(() => {
+    if (currentUser && isDeveloperAccount(currentUser) && students.length > 0) {
+      console.log('🔄 User changed to developer account - re-applying data masking');
+      // Re-apply masking to existing data
+      const maskedStudents = maskStudents(students);
+      const maskedTeachers = maskTeachers(teachers);
+      const maskedAdmins = admins.map((admin, index) => maskUser(admin, index));
+      setStudents(maskedStudents);
+      setTeachers(maskedTeachers);
+      setAdmins(maskedAdmins);
+    }
+  }, [currentUser?.email, currentUser?.isDeveloper, currentUser?.isTestAccount]);
 
   // Student operations
   const addStudent = async (student: Student) => {

@@ -995,6 +995,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     });
 
     // Return user data (without password) and token
+    // Include isDeveloper and isTestAccount flags for frontend data masking
     res.json({
       token,
       user: {
@@ -1003,6 +1004,8 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         email: user.email,
         role: user.role,
         avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.fullName || 'User')}&background=random&color=fff`,
+        isDeveloper: user.isDeveloper || false,
+        isTestAccount: user.isTestAccount || false,
       }
     });
   } catch (error) {

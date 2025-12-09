@@ -176,21 +176,36 @@ export const maskAssignment = (assignment: any, studentIndex: number = 0, option
  * Check if current user is a developer/test account
  */
 export const isDeveloperAccount = (user: any): boolean => {
-  if (!user) return false;
+  if (!user) {
+    console.log('🔍 isDeveloperAccount: No user provided');
+    return false;
+  }
   
   // Check for developer role or test account flag
   const email = (user.email || '').toLowerCase();
   const role = (user.role || '').toLowerCase();
+  const isDeveloper = (user as any).isDeveloper === true;
+  const isTestAccount = (user as any).isTestAccount === true;
   
-  return (
+  const result = (
     role === 'developer' ||
     role === 'test' ||
     email.includes('@developer') ||
     email.includes('@test') ||
     email.includes('@demo') ||
-    (user as any).isDeveloper === true ||
-    (user as any).isTestAccount === true
+    isDeveloper ||
+    isTestAccount
   );
+  
+  console.log('🔍 isDeveloperAccount check:', {
+    email,
+    role,
+    isDeveloper,
+    isTestAccount,
+    result
+  });
+  
+  return result;
 };
 
 /**
