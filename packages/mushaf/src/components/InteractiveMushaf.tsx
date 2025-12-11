@@ -1144,7 +1144,7 @@ export const WordByWordPage: React.FC<{
       )}
 
       {/* Mushaf-style Arabic text container - Centered */}
-      <div className="w-full flex justify-center items-center px-4">
+      <div className="w-full flex justify-center items-center">
         {/* Mushaf page container with traditional styling - Clean white background, thin yellow border */}
         <div 
           className="mushaf-arabic-text"
