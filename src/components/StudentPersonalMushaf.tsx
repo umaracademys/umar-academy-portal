@@ -352,8 +352,8 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
               </p>
             </div>
           ) : (
-            <div className="w-full flex justify-center items-start" style={{ padding: '0' }}>
-              <div className="w-full max-w-full" style={{ padding: '0' }}>
+            <div className="w-full flex justify-center items-center min-h-full" style={{ padding: '0' }}>
+              <div className="w-full max-w-7xl mx-auto flex justify-center" style={{ padding: '0' }}>
                 <InteractiveMushaf
                   currentPage={currentPage}
                   onPageChange={setCurrentPage}

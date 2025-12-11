@@ -1144,7 +1144,7 @@ export const WordByWordPage: React.FC<{
       )}
 
       {/* Mushaf-style Arabic text container - Centered */}
-      <div className="w-full flex justify-center items-center">
+      <div className="w-full flex justify-center items-center px-4">
         {/* Mushaf page container with traditional styling - Clean white background, thin yellow border */}
         <div 
           className="mushaf-arabic-text"
@@ -1155,7 +1155,7 @@ export const WordByWordPage: React.FC<{
             minHeight: 'auto',
             direction: 'rtl',
             textAlign: 'right',
-            maxWidth: '100%',
+            maxWidth: '1200px',
             width: '100%',
             boxSizing: 'border-box',
             overflow: 'hidden',
@@ -2166,23 +2166,25 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           </>
         )}
 
-        {/* Mushaf Content */}
-        <div className="flex-1 min-w-0 w-full overflow-hidden">
+        {/* Mushaf Content - Centered */}
+        <div className="flex-1 min-w-0 w-full overflow-hidden flex justify-center items-start">
 
-          <WordByWordPage
-            pageNumber={currentPage}
-            onWordClick={handleWordClick}
-            onLetterClick={handleLetterClick}
-            mistakes={mistakes}
-            historicalMistakes={historicalMistakes}
-            showHistorical={showHistorical}
-            readOnly={readOnly || !!onVerseSelect} // Read-only if verse selection mode
-            onMistakesWithWords={setMistakesWithWords}
-            onPageChange={onPageChange}
-            selectedVerses={selectedVerses}
-          />
+          <div className="w-full max-w-7xl flex justify-center">
+            <WordByWordPage
+              pageNumber={currentPage}
+              onWordClick={handleWordClick}
+              onLetterClick={handleLetterClick}
+              mistakes={mistakes}
+              historicalMistakes={historicalMistakes}
+              showHistorical={showHistorical}
+              readOnly={readOnly || !!onVerseSelect} // Read-only if verse selection mode
+              onMistakesWithWords={setMistakesWithWords}
+              onPageChange={onPageChange}
+              selectedVerses={selectedVerses}
+            />
+          </div>
 
-        <MistakeModal
+          <MistakeModal
           word={selectedWord}
           letterIndex={selectedLetterIndex}
           onClose={() => {
