@@ -1165,10 +1165,10 @@ export const WordByWordPage: React.FC<{
             paddingTop: '0.75rem',
             paddingBottom: '0.75rem',
             paddingRight: '0.5rem',
-            paddingLeft: '1.25rem',
+            paddingLeft: '0',
             border: '1px solid #fef3c7',
             borderTop: '2px solid #fef3c7',
-            borderLeft: '2px solid #fef3c7'
+            borderLeft: 'none'
           }}
         >
 
@@ -2021,22 +2021,33 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               className="fixed inset-0 bg-black/50 z-40 lg:hidden"
               onClick={() => setShowSurahIndex(false)}
             />
-            {/* Index Container */}
-            <div className={`bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 flex flex-col ${
-              isIndexMinimized ? 'w-12' : 'w-[calc(100%-2.5rem)] sm:w-56 lg:w-64'
+            {/* Index Container - Elegant Design */}
+            <div className={`bg-gradient-to-br from-white to-gray-50 border-2 border-primary/20 rounded-xl shadow-2xl transition-all duration-300 flex flex-col ${
+              isIndexMinimized ? 'w-12' : 'w-[calc(100%-2.5rem)] sm:w-64 lg:w-72'
             } flex-shrink-0 ${
               'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-16 sm:top-20 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 max-h-[70vh] lg:max-h-[calc(100vh-8rem)]'
             }`}>
-              <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex-shrink-0">
-                <div className="flex items-center justify-between mb-2">
+              {/* Header */}
+              <div className="p-4 border-b-2 border-primary/10 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 flex-shrink-0">
+                <div className="flex items-center justify-between mb-3">
                   {!isIndexMinimized && (
-                    <h3 className="text-sm font-bold text-gray-900" dir="rtl">Surah Index</h3>
+                    <div className="flex items-center gap-2" dir="rtl">
+                      <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                        <span className="text-primary font-bold text-sm">📖</span>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-primary" dir="rtl" style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif' }}>
+                          فهرس السور
+                        </h3>
+                        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wide">Surah Index</p>
+                      </div>
+                    </div>
                   )}
                   <div className="flex items-center gap-1 ml-auto">
                     {/* Minimize button - desktop only */}
                     <button
                       onClick={() => setIsIndexMinimized(!isIndexMinimized)}
-                      className="hidden lg:block text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
+                      className="hidden lg:block text-gray-500 hover:text-primary p-2 hover:bg-primary/10 rounded-lg transition-all"
                       title={isIndexMinimized ? "Expand" : "Minimize"}
                     >
                       {isIndexMinimized ? (
@@ -2052,7 +2063,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                     {/* Close button */}
                     <button
                       onClick={() => setShowSurahIndex(false)}
-                      className="text-gray-600 hover:text-gray-900 p-1.5 hover:bg-white/50 rounded transition-colors"
+                      className="text-gray-500 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-all"
                       title="Close"
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2062,55 +2073,92 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                   </div>
                 </div>
                 {!isIndexMinimized && (
-                  <input
-                    type="text"
-                    placeholder="Search surah..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white"
-                    dir="rtl"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="ابحث عن سورة..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-3 py-2.5 pr-9 text-sm border-2 border-primary/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 bg-white placeholder:text-gray-400 transition-all"
+                      dir="rtl"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                  </div>
                 )}
               </div>
               {!isIndexMinimized && (
-                <div className="overflow-y-auto pr-1 flex-1">
+                <div className="overflow-y-auto pr-1 flex-1 custom-scrollbar">
                   {filteredChapters.length === 0 ? (
-                    <div className="p-4 text-center text-sm text-gray-500" dir="rtl">
-                      No surahs found
+                    <div className="p-6 text-center" dir="rtl">
+                      <div className="text-3xl mb-2">🔍</div>
+                      <p className="text-sm text-gray-500 font-semibold">لم يتم العثور على سورة</p>
+                      <p className="text-xs text-gray-400 mt-1">No surahs found</p>
                     </div>
                   ) : (
-                    filteredChapters.map((surah) => (
-                      <button
-                        key={surah.id}
-                        onClick={() => navigateToSurah(surah)}
-                        className={`w-full text-right p-2 sm:p-2.5 hover:bg-gray-50 transition-colors border-b border-gray-100 ${
-                          currentSurah?.id === surah.id
-                            ? 'bg-green-50 border-l-4 border-l-green-600'
-                            : ''
-                        }`}
-                      >
-                        <div className="flex items-center justify-between" dir="rtl">
-                          <div className="flex-1 text-right" dir="rtl">
-                            <div className="flex items-center gap-2 justify-start" dir="rtl">
-                              <span className="text-xs font-semibold text-gray-600">
-                                {surah.id}.
-                              </span>
-                              <span className={`text-sm sm:text-base font-semibold text-right ${currentSurah?.id === surah.id ? 'text-green-900' : 'text-gray-800'}`} style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}>
-                                {surah.name_arabic || FALLBACK_CHAPTERS.find(fc => fc.id === surah.id)?.name_arabic || surah.name_simple}
-                              </span>
+                    <div className="p-2 space-y-1">
+                      {filteredChapters.map((surah) => (
+                        <button
+                          key={surah.id}
+                          onClick={() => navigateToSurah(surah)}
+                          className={`w-full text-right p-3 rounded-lg transition-all duration-200 group ${
+                            currentSurah?.id === surah.id
+                              ? 'bg-gradient-to-r from-primary/15 to-accent/10 border-2 border-primary/40 shadow-md'
+                              : 'hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 border-2 border-transparent hover:border-primary/20 hover:shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-3" dir="rtl">
+                            {/* Arabic Name & Number */}
+                            <div className="flex-1 text-right min-w-0" dir="rtl">
+                              <div className="flex items-center gap-2.5 mb-1" dir="rtl">
+                                <div className={`flex-shrink-0 h-7 w-7 rounded-md flex items-center justify-center font-bold text-xs transition-colors ${
+                                  currentSurah?.id === surah.id
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'bg-gray-200 text-gray-600 group-hover:bg-primary/20 group-hover:text-primary'
+                                }`}>
+                                  {surah.id}
+                                </div>
+                                <span 
+                                  className={`text-base sm:text-lg font-bold truncate ${
+                                    currentSurah?.id === surah.id 
+                                      ? 'text-primary' 
+                                      : 'text-gray-800 group-hover:text-primary'
+                                  }`} 
+                                  style={{ 
+                                    fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
+                                    direction: 'rtl'
+                                  }}
+                                >
+                                  {surah.name_arabic || FALLBACK_CHAPTERS.find(fc => fc.id === surah.id)?.name_arabic || surah.name_simple}
+                                </span>
+                              </div>
+                              {surah.name_simple && surah.name_simple !== surah.name_arabic && (
+                                <div className={`text-xs font-medium mt-0.5 text-right transition-colors ${
+                                  currentSurah?.id === surah.id
+                                    ? 'text-primary/70'
+                                    : 'text-gray-500 group-hover:text-primary/70'
+                                }`} style={{ direction: 'ltr' }}>
+                                  {surah.name_simple}
+                                </div>
+                              )}
                             </div>
-                            {surah.name_simple && surah.name_simple !== surah.name_arabic && (
-                              <div className="text-[10px] text-gray-500 mt-0.5 text-right" style={{ direction: 'ltr' }}>
-                                {surah.name_simple}
+                            {/* Page Number */}
+                            {surah.pages?.[0] && (
+                              <div className={`flex-shrink-0 text-xs font-bold px-2.5 py-1 rounded-md transition-colors ${
+                                currentSurah?.id === surah.id
+                                  ? 'bg-primary/20 text-primary'
+                                  : 'bg-gray-100 text-gray-500 group-hover:bg-primary/10 group-hover:text-primary'
+                              }`} dir="ltr">
+                                Pg {surah.pages[0]}
                               </div>
                             )}
                           </div>
-                          <div className="text-[10px] text-gray-400 mr-2" dir="ltr">
-                            Pg {surah.pages?.[0]}
-                          </div>
-                        </div>
-                      </button>
-                    ))
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
