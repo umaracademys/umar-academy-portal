@@ -434,47 +434,167 @@ const SuperAdminDashboard: React.FC = () => {
     },
   ];
 
+  // Helper function to get time ago
+  const getTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  // Calculate additional metrics
+  const inactiveStudentCount = totalStudents - activeStudentCount;
+  const inactiveTeacherCount = totalTeachers - activeTeacherCount;
+  const totalPendingItems = pendingReviewsCount + pendingTicketCount + pendingHomeworkCount;
+  const recentActivityCount = useMemo(() => {
+    // Count recent activities (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    let count = 0;
+    // Count recent recitation reviews
+    count += recitationReviews.filter((r: any) => {
+      const reviewDate = r.createdAt ? new Date(r.createdAt) : new Date(r.submittedAt || Date.now());
+      return reviewDate >= sevenDaysAgo;
+    }).length;
+    
+    // Count recent tickets
+    count += recitationTickets.filter((t: any) => {
+      const ticketDate = t.createdAt ? new Date(t.createdAt) : new Date(t.submittedAt || Date.now());
+      return ticketDate >= sevenDaysAgo;
+    }).length;
+    
+    return count;
+  }, [recitationReviews, recitationTickets]);
+
   const OverviewSection = () => (
-    <div className="space-y-4">
-      <section className="rounded-xl border border-gray-200 bg-white px-3 py-3 shadow-md sm:px-4 sm:py-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-              Super Admin Control Center
-            </span>
-            <h1 className="text-xl font-semibold text-primary">Stay ahead of every workflow</h1>
-            <p className="max-w-3xl text-xs text-gray-600">
-              Review listening submissions, create new tickets, and keep student progress moving without leaving this
-              page. Each card below opens a live workflow or modal.
+    <div className="space-y-6">
+      {/* Welcome Header */}
+      <section className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white via-soft-primary/20 to-white px-6 py-6 shadow-lg">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-3 py-1 rounded-full">
+                Super Admin Control Center
+              </span>
+              {totalPendingItems > 0 && (
+                <span className="rounded-full bg-red-500 text-white px-2.5 py-1 text-xs font-bold animate-pulse">
+                  {totalPendingItems} pending
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary">Dashboard Overview</h1>
+            <p className="max-w-3xl text-sm text-gray-600 leading-relaxed">
+              Monitor system activity, manage workflows, and stay on top of pending reviews and submissions. 
+              Everything you need is just a click away.
             </p>
-            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
-              <span className="rounded-full bg-soft-primary px-2 py-0.5 text-primary font-semibold">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className="rounded-full bg-primary/10 px-3 py-1.5 text-primary border border-primary/20">
                 {activeStudentCount} active students
               </span>
-              <span className="rounded-full border border-primary/30 px-2 py-0.5 text-primary font-semibold">
+              <span className="rounded-full bg-accent/10 px-3 py-1.5 text-accent border border-accent/20">
+                {activeTeacherCount} active teachers
+              </span>
+              <span className="rounded-full bg-orange-100 px-3 py-1.5 text-orange-700 border border-orange-200">
                 {pendingReviewsCount} recitation reviews
+              </span>
+              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 border border-blue-200">
+                {pendingTicketCount} pending tickets
               </span>
             </div>
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+      </section>
+
+      {/* Enhanced Stats Grid */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-white rounded-xl border-2 border-primary/20 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-primary/40">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Students</p>
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+              <span className="text-lg">👥</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-primary mb-1">{totalStudents}</p>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-green-600 font-semibold">+{activeStudentCount} active</span>
+            {inactiveStudentCount > 0 && (
+              <span className="text-gray-400">• {inactiveStudentCount} inactive</span>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border-2 border-accent/20 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-accent/40">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Teachers</p>
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-accent/20 to-accent/10 flex items-center justify-center">
+              <span className="text-lg">👨‍🏫</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-accent mb-1">{totalTeachers}</p>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-green-600 font-semibold">+{activeTeacherCount} active</span>
+            {inactiveTeacherCount > 0 && (
+              <span className="text-gray-400">• {inactiveTeacherCount} inactive</span>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border-2 border-orange-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-orange-300">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Pending Reviews</p>
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center">
+              <span className="text-lg">📋</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-orange-600 mb-1">{pendingReviewsCount + pendingTicketCount}</p>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-orange-600 font-semibold">{pendingReviewsCount} recitations</span>
+            <span className="text-gray-400">• {pendingTicketCount} tickets</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border-2 border-blue-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-blue-300">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recent Activity</p>
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
+              <span className="text-lg">⚡</span>
+            </div>
+          </div>
+          <p className="text-3xl font-bold text-blue-600 mb-1">{recentActivityCount}</p>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-blue-600 font-semibold">Last 7 days</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Actions - Better Organized */}
+      <section className="rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-md">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-primary mb-2">Quick Actions</h2>
+          <p className="text-sm text-gray-600">Access frequently used workflows and management tools</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {overviewQuickActions.map((action) => {
             const commonClasses =
-              'flex h-full flex-col justify-between rounded-xl border px-3 py-2.5 text-left shadow-sm transition';
+              'flex h-full flex-col justify-between rounded-xl border-2 px-4 py-3.5 text-left shadow-sm transition-all duration-200 group';
             const activeButtonClasses = {
-              primary: `${commonClasses} border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50`,
-              neutral: `${commonClasses} border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300`,
-              accent: `${commonClasses} border-accent/30 bg-white hover:bg-soft-accent hover:border-accent/50`,
-              'accent-solid': `${commonClasses} border-transparent bg-accent text-primary hover:bg-accent/90`,
+              primary: `${commonClasses} border-primary/30 bg-white hover:bg-gradient-to-br hover:from-soft-primary hover:to-white hover:border-primary/50 hover:shadow-md`,
+              neutral: `${commonClasses} border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 hover:shadow-md`,
+              accent: `${commonClasses} border-accent/30 bg-white hover:bg-gradient-to-br hover:from-soft-accent hover:to-white hover:border-accent/50 hover:shadow-md`,
+              'accent-solid': `${commonClasses} border-transparent bg-gradient-to-br from-accent to-accent/90 text-white hover:from-accent/90 hover:to-accent shadow-md hover:shadow-lg`,
             };
 
             const badge =
               action.badge !== null && action.badge !== undefined && action.badge > 0 ? (
-                <span className="ml-auto rounded-full bg-red-500 text-white px-2 py-0.5 text-[10px] font-semibold">
+                <span className="ml-auto rounded-full bg-red-500 text-white px-2.5 py-1 text-xs font-bold shadow-sm animate-pulse">
                   {action.badge}
                 </span>
               ) : null;
-
 
             const isDisabled = (action as any).disabled;
             const isFixing = action.id === 'fix-assignment-ids' && isFixingIds;
@@ -486,19 +606,19 @@ const SuperAdminDashboard: React.FC = () => {
                 disabled={isDisabled}
                 className={`${activeButtonClasses[action.emphasis || 'neutral']} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <p className={`text-sm font-semibold ${action.emphasis === 'accent-solid' ? 'text-primary' : 'text-primary'}`}>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className={`text-sm font-bold leading-tight ${action.emphasis === 'accent-solid' ? 'text-white' : 'text-primary'}`}>
                       {isFixing ? 'Fixing...' : action.label}
-                      {badge}
                     </p>
+                    {badge}
                   </div>
-                  <p className={`mt-1 text-xs ${action.emphasis === 'accent-solid' ? 'text-primary/80' : 'text-gray-600'}`}>
+                  <p className={`text-xs leading-relaxed ${action.emphasis === 'accent-solid' ? 'text-white/90' : 'text-gray-600'}`}>
                     {action.description}
                   </p>
                 </div>
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${action.emphasis === 'accent-solid' ? 'text-primary/70' : 'text-gray-500'}`}>
-                  {isFixing ? 'Processing...' : 'Open workflow'}
+                <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${action.emphasis === 'accent-solid' ? 'text-white/80' : 'text-gray-500'}`}>
+                  {isFixing ? 'Processing...' : '→ Open'}
                 </span>
               </button>
             );
@@ -506,41 +626,171 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Students"
-          value={`${totalStudents} • ${activeStudentCount} active`}
-          icon="ST"
-        />
-        <StatCard
-          title="Teachers"
-          value={`${totalTeachers} • ${activeTeacherCount} active`}
-          icon="TC"
-        />
-      </section>
-
-      <section className="space-y-6">
+      {/* Management Actions - Enhanced */}
+      <section className="space-y-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-lg font-semibold text-primary">Manage Records & Settings</h3>
-          <div className="h-px flex-1 bg-gray-200" />
+          <h3 className="text-xl font-bold text-primary">System Management</h3>
+          <div className="h-px flex-1 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200" />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {managementActions.map((item) => (
             <button
               key={item.id}
               onClick={item.action}
-              className="flex h-full flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
+              className="flex h-full flex-col gap-3 rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-left shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-0.5"
             >
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary text-xs font-semibold text-primary">
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-soft-primary to-primary/10 text-sm font-bold text-primary shadow-sm">
                 {item.badge}
               </div>
               <div className="flex-1">
-                <h4 className="text-sm font-semibold text-primary">{item.title}</h4>
-                <p className="mt-1 text-sm text-gray-600">{item.description}</p>
+                <h4 className="text-base font-bold text-primary mb-1">{item.title}</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">{item.description}</p>
               </div>
-              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{item.footer}</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{item.footer}</span>
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* Recent Activity Feed */}
+      <section className="rounded-2xl border-2 border-gray-200 bg-white px-6 py-6 shadow-md">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-bold text-primary mb-1">Recent Activity</h3>
+            <p className="text-sm text-gray-600">Latest system events and user actions</p>
+          </div>
+          <button
+            onClick={() => setShowActivityLog(true)}
+            className="text-xs font-semibold text-primary hover:text-accent transition-colors"
+          >
+            View All →
+          </button>
+        </div>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {useMemo(() => {
+            const activities: Array<{
+              id: string;
+              type: string;
+              title: string;
+              description: string;
+              time: string;
+              icon: string;
+              color: string;
+              onClick?: () => void;
+            }> = [];
+
+            // Add recent recitation reviews
+            recitationReviews
+              .filter((r: any) => r.status === 'pending_review')
+              .slice(0, 5)
+              .forEach((review: any) => {
+                const date = review.submittedAt ? new Date(review.submittedAt) : new Date();
+                const timeAgo = getTimeAgo(date);
+                activities.push({
+                  id: `review-${review.id}`,
+                  type: 'recitation',
+                  title: `${review.type || 'Recitation'} Review Pending`,
+                  description: `Student: ${review.studentName || 'Unknown'}`,
+                  time: timeAgo,
+                  icon: '📖',
+                  color: 'border-orange-400 bg-orange-50',
+                  onClick: () => setShowRecitationReview(true),
+                });
+              });
+
+            // Add recent tickets
+            recitationTickets
+              .filter((t: any) => t.status === 'pending_review')
+              .slice(0, 5)
+              .forEach((ticket: any) => {
+                const date = ticket.submittedAt ? new Date(ticket.submittedAt) : new Date();
+                const timeAgo = getTimeAgo(date);
+                activities.push({
+                  id: `ticket-${ticket.id}`,
+                  type: 'ticket',
+                  title: `${ticket.type || 'Ticket'} Pending Review`,
+                  description: `Student: ${ticket.studentName || 'Unknown'}`,
+                  time: timeAgo,
+                  icon: '🎫',
+                  color: 'border-blue-400 bg-blue-50',
+                  onClick: () => setShowTicketReview(true),
+                });
+              });
+
+            // Add recent notifications
+            adminNotifications
+              .filter((n: any) => !n.read)
+              .slice(0, 3)
+              .forEach((notification: any) => {
+                const date = notification.createdAt ? new Date(notification.createdAt) : new Date();
+                const timeAgo = getTimeAgo(date);
+                activities.push({
+                  id: `notif-${notification.id}`,
+                  type: 'notification',
+                  title: notification.title || 'New Notification',
+                  description: notification.message || '',
+                  time: timeAgo,
+                  icon: '🔔',
+                  color: 'border-purple-400 bg-purple-50',
+                  onClick: () => setShowNotificationCenter(true),
+                });
+              });
+
+            // Sort by time (most recent first)
+            activities.sort((a, b) => {
+              const timeA = a.time.includes('minute') ? 0 : a.time.includes('hour') ? 1 : 2;
+              const timeB = b.time.includes('minute') ? 0 : b.time.includes('hour') ? 1 : 2;
+              return timeA - timeB;
+            });
+
+            return activities.length > 0 ? activities.slice(0, 8) : [{
+              id: 'no-activity',
+              type: 'empty',
+              title: 'No recent activity',
+              description: 'All caught up! No pending items.',
+              time: 'Just now',
+              icon: '✅',
+              color: 'border-gray-300 bg-gray-50',
+            }];
+          }, [recitationReviews, recitationTickets, adminNotifications]).map((activity) => (
+            <div
+              key={activity.id}
+              onClick={activity.onClick}
+              className={`flex items-start gap-3 p-3 rounded-lg border-l-4 ${activity.color} cursor-pointer hover:shadow-md transition-all duration-200 ${
+                activity.onClick ? 'hover:scale-[1.01]' : ''
+              }`}
+            >
+              <span className="text-2xl flex-shrink-0">{activity.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-primary text-sm mb-0.5">{activity.title}</p>
+                <p className="text-xs text-gray-600 truncate">{activity.description}</p>
+                <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* System Status */}
+      <section className="rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-white to-gray-50 px-6 py-5 shadow-md">
+        <h3 className="text-lg font-bold text-primary mb-4">System Status</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
+              <span className="font-semibold text-primary">System Operational</span>
+            </div>
+            <span className="text-xs font-semibold text-green-600">All systems normal</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+              <span className="font-semibold text-primary">Unread Notifications</span>
+            </div>
+            <span className="rounded-full bg-blue-500 text-white px-2.5 py-1 text-xs font-bold">
+              {unreadNotificationsCount}
+            </span>
+          </div>
         </div>
       </section>
 
