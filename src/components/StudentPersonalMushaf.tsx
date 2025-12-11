@@ -268,40 +268,40 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
         </div>
 
-        {/* Statistics Bar */}
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+        {/* Statistics Bar - Enhanced Design */}
+        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">{stats.total}</div>
-              <div className="text-xs text-gray-600">Total Mistakes</div>
+            <div className="text-center p-3 rounded-xl bg-white border-2 border-primary/20 shadow-sm hover:shadow-md transition-all">
+              <div className="text-3xl font-bold text-primary mb-1">{stats.total}</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Mistakes</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{stats.sabq}</div>
-              <div className="text-xs text-gray-600">Sabq</div>
+            <div className="text-center p-3 rounded-xl bg-white border-2 border-blue-200 shadow-sm hover:shadow-md transition-all">
+              <div className="text-3xl font-bold text-blue-600 mb-1">{stats.sabq}</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sabq</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{stats.sabqi}</div>
-              <div className="text-xs text-gray-600">Sabqi</div>
+            <div className="text-center p-3 rounded-xl bg-white border-2 border-green-200 shadow-sm hover:shadow-md transition-all">
+              <div className="text-3xl font-bold text-green-600 mb-1">{stats.sabqi}</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sabqi</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{stats.manzil}</div>
-              <div className="text-xs text-gray-600">Manzil</div>
+            <div className="text-center p-3 rounded-xl bg-white border-2 border-purple-200 shadow-sm hover:shadow-md transition-all">
+              <div className="text-3xl font-bold text-purple-600 mb-1">{stats.manzil}</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Manzil</div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">{pagesWithMistakes.length}</div>
-              <div className="text-xs text-gray-600">Pages</div>
+            <div className="text-center p-3 rounded-xl bg-white border-2 border-orange-200 shadow-sm hover:shadow-md transition-all">
+              <div className="text-3xl font-bold text-orange-600 mb-1">{pagesWithMistakes.length}</div>
+              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pages</div>
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="px-6 py-3 bg-white border-b border-gray-200 flex flex-wrap gap-4 items-center">
+        {/* Filters - Enhanced Design */}
+        <div className="px-6 py-4 bg-white border-b-2 border-gray-200 flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Filter by Type:</label>
+            <label className="text-sm font-semibold text-gray-700">Filter by Type:</label>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50"
             >
               <option value="all">All Types</option>
               <option value="sabq">Sabq</option>
@@ -311,11 +311,11 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
           
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Filter by Page:</label>
+            <label className="text-sm font-semibold text-gray-700">Filter by Page:</label>
             <select
               value={filterPage || ''}
               onChange={(e) => setFilterPage(e.target.value ? parseInt(e.target.value) : null)}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50"
             >
               <option value="">All Pages</option>
               {pagesWithMistakes.map(page => (
@@ -324,8 +324,10 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
             </select>
           </div>
           
-          <div className="ml-auto text-sm text-gray-600">
-            Showing {filteredMistakes.length} of {stats.total} mistakes
+          <div className="ml-auto px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
+            <span className="text-sm font-semibold text-primary">
+              Showing <span className="font-bold">{filteredMistakes.length}</span> of <span className="font-bold">{stats.total}</span> mistakes
+            </span>
           </div>
         </div>
 
@@ -336,10 +338,10 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
         )}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Content - No padding on left */}
+        <div className="flex-1 overflow-y-auto" style={{ padding: '0' }}>
           {mistakes.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-12 px-6">
               <div className="text-6xl mb-4">📖</div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">No Mistakes Yet</h3>
               <p className="text-gray-600 mb-4">
@@ -349,28 +351,32 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                 Click on any word to mark a mistake.
               </p>
             </div>
-          ) : null}
-          <div className="flex justify-center">
-            <div className="bg-soft-accent rounded-2xl p-4 w-full max-w-4xl">
-              <InteractiveMushaf
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                mistakes={filteredMistakes.filter(m => m.page === currentPage)}
-                historicalMistakes={mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m))}
-                onMistakeMark={handleMistakeMark}
-                readOnly={false}
-                mode="marking"
-                showHistorical={true}
-              />
+          ) : (
+            <div className="w-full flex justify-center items-start" style={{ padding: '0' }}>
+              <div className="w-full max-w-full" style={{ padding: '0' }}>
+                <InteractiveMushaf
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                  mistakes={filteredMistakes.filter(m => m.page === currentPage)}
+                  historicalMistakes={mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m))}
+                  onMistakeMark={handleMistakeMark}
+                  readOnly={false}
+                  mode="marking"
+                  showHistorical={true}
+                />
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Mistake List Sidebar (if mistakes exist) */}
+        {/* Mistake List Footer (if mistakes exist) - Enhanced Design */}
         {filteredMistakes.length > 0 && (
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-            <div className="max-h-40 overflow-y-auto">
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">
+          <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t-2 border-gray-200">
+            <div className="max-h-40 overflow-y-auto custom-scrollbar">
+              <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
                 Mistakes on Page {currentPage} ({filteredMistakes.filter(m => m.page === currentPage).length})
               </h3>
               <div className="space-y-2">
@@ -379,21 +385,24 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                   .map((mistake) => (
                     <div
                       key={mistake.id}
-                      className="flex items-start gap-2 p-2 bg-white rounded-lg text-xs"
+                      className="flex items-start gap-2 p-3 bg-white rounded-lg border-2 border-gray-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
                     >
-                      <span className={`px-2 py-1 rounded-full text-white text-xs font-semibold ${
+                      <span className={`px-3 py-1 rounded-full text-white text-xs font-bold shadow-sm ${
                         (mistake as any).workflowStep === 'sabq' ? 'bg-blue-500' :
                         (mistake as any).workflowStep === 'sabqi' ? 'bg-green-500' :
                         (mistake as any).workflowStep === 'manzil' ? 'bg-purple-500' : 'bg-gray-500'
                       }`}>
                         {(mistake as any).workflowStep?.toUpperCase() || 'N/A'}
                       </span>
-                      <span className="px-2 py-1 rounded-full bg-primary text-white text-xs font-semibold">
+                      <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold shadow-sm">
                         {mistake.type}
                       </span>
                       {mistake.note && (
-                        <span className="text-gray-600 italic">"{mistake.note}"</span>
+                        <span className="text-gray-700 text-xs italic ml-auto">"{mistake.note}"</span>
                       )}
+                      <span className="text-gray-400 text-xs ml-auto">
+                        Surah {mistake.surah}:{mistake.ayah}
+                      </span>
                     </div>
                   ))}
               </div>
