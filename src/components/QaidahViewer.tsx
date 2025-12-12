@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
+import { InteractiveMushaf } from '@umar-academy/mushaf';
+import { MushafMistake } from '@umar-academy/mushaf';
 import QaidahPage from './QaidahPage';
 import QaidahCanvas from './QaidahCanvas';
 
@@ -101,7 +103,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
       if (e.key === 'ArrowLeft' && currentPage > 1) {
         e.preventDefault();
         goToPage(currentPage - 1);
-      } else if (e.key === 'ArrowRight' && currentPage < totalPages) {
+      } else if (e.key === 'ArrowRight' && currentPage < effectiveTotalPages) {
         e.preventDefault();
         goToPage(currentPage + 1);
       } else if (e.key === '+' || e.key === '=') {
@@ -119,12 +121,17 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, totalPages]);
+  }, [currentPage, totalPages, selectedBook]);
 
   const goToPage = (page: number) => {
-    if (page < 1 || page > totalPages) return;
+    const maxPages = selectedBook === 'quran' ? 604 : totalPages;
+    if (page < 1 || page > maxPages) return;
     onPageChange?.(page);
-    navigate(`/qaidah/${page}`);
+    if (selectedBook === 'quran') {
+      navigate(`/qaidah/${page}`);
+    } else {
+      navigate(`/qaidah/${page}`);
+    }
   };
 
   const handleZoomIn = () => {
@@ -141,6 +148,9 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   };
 
   const imageUrl = getImageUrl(currentPage);
+
+  // For Quran, set total pages to 604 (standard Mushaf)
+  const effectiveTotalPages = selectedBook === 'quran' ? 604 : totalPages;
 
   // Get available students for selection (if teacher, only show assigned students)
   const availableStudents = user?.role === 'teacher' 
@@ -194,12 +204,12 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
         
         <div className="px-4 py-2 bg-white/10 text-white rounded min-w-[120px] text-center">
           <span className="font-semibold">{currentPage}</span>
-          {totalPages && <span className="text-white/70"> / {totalPages}</span>}
+          {effectiveTotalPages && <span className="text-white/70"> / {effectiveTotalPages}</span>}
         </div>
         
         <button
           onClick={() => goToPage(currentPage + 1)}
-          disabled={currentPage >= totalPages}
+          disabled={currentPage >= effectiveTotalPages}
           className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
@@ -237,36 +247,62 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
       {/* Page Display */}
       <div className="flex-1 relative" ref={containerRef}>
-        <QaidahPage
-          pageNumber={currentPage}
-          imageUrl={imageUrl}
-          zoom={zoom}
-          onZoomChange={setZoom}
-          position={position}
-          onPositionChange={setPosition}
-          containerRef={containerRef}
-          imageRef={imageRef}
-        />
-        
-        {/* Qaidah Canvas Overlay for marking */}
-        {canMark && selectedStudentId && (
-          <QaidahCanvas
-            studentId={selectedStudentId}
-            book={selectedBook}
-            page={currentPage}
-            imageUrl={imageUrl}
-            zoom={zoom}
-            position={position}
-            containerRef={containerRef}
-            imageRef={imageRef}
-            enabled={true}
-          />
+        {selectedBook === 'quran' ? (
+          /* Use InteractiveMushaf for Quran */
+          <div className="w-full h-full bg-gray-900">
+            <InteractiveMushaf
+              currentPage={currentPage}
+              onPageChange={(page) => {
+                setCurrentPage(page);
+                onPageChange?.(page);
+                navigate(`/qaidah/${page}`);
+              }}
+              mistakes={[]} // Qaidah marks will be handled separately
+              historicalMistakes={[]}
+              onMistakeMark={() => {}} // We'll handle marking through QaidahCanvas
+              readOnly={!canMark || !selectedStudentId}
+              mode={canMark && selectedStudentId ? 'marking' : 'viewing'}
+              studentName={selectedStudentId ? availableStudents.find(s => (s.id || (s as any)._id) === selectedStudentId)?.fullName : undefined}
+            />
+            
+            {/* Note: For Quran, marking is handled by Mushaf's built-in system */}
+            {/* QaidahCanvas is disabled for Quran as Mushaf has its own marking interface */}
+          </div>
+        ) : (
+          /* Use QaidahPage for Qaidah 1 and 2 */
+          <>
+            <QaidahPage
+              pageNumber={currentPage}
+              imageUrl={imageUrl}
+              zoom={zoom}
+              onZoomChange={setZoom}
+              position={position}
+              onPositionChange={setPosition}
+              containerRef={containerRef}
+              imageRef={imageRef}
+            />
+            
+            {/* Qaidah Canvas Overlay for marking */}
+            {canMark && selectedStudentId && (
+              <QaidahCanvas
+                studentId={selectedStudentId}
+                book={selectedBook}
+                page={currentPage}
+                imageUrl={imageUrl}
+                zoom={zoom}
+                position={position}
+                containerRef={containerRef}
+                imageRef={imageRef}
+                enabled={true}
+              />
+            )}
+          </>
         )}
       </div>
 
       {/* Page Indicator (bottom) */}
       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-sm">
-        Page {currentPage} of {totalPages}
+        Page {currentPage} of {effectiveTotalPages}
       </div>
 
       {/* Keyboard Shortcuts Hint */}

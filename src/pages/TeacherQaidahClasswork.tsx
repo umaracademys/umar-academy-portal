@@ -22,8 +22,14 @@ const TeacherQaidahClasswork: React.FC = () => {
       })
     : students;
 
-  // Detect total pages for selected book
+      // Detect total pages for selected book
   useEffect(() => {
+    // For Quran, use Mushaf (604 pages)
+    if (selectedBook === 'quran') {
+      setTotalPages(604);
+      return;
+    }
+
     const detectTotalPages = async () => {
       let maxPage = 100;
       let foundLastPage = false;
@@ -33,9 +39,11 @@ const TeacherQaidahClasswork: React.FC = () => {
           const img = new Image();
           img.onload = () => resolve(true);
           img.onerror = () => resolve(false);
-          // For quran, check different path
-          if (selectedBook === 'quran') {
-            img.src = `/quran/${pageNum}.png`;
+          // For qaidah, check qaidah1 or qaidah2 folders
+          if (selectedBook === 'qaidah1') {
+            img.src = `/qaidah1/${pageNum}.png`;
+          } else if (selectedBook === 'qaidah2') {
+            img.src = `/qaidah2/${pageNum}.png`;
           } else {
             img.src = `/qaidah/${pageNum}.png`;
           }
