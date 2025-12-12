@@ -10006,6 +10006,7 @@ app.post('/api/qaidah/classwork', authenticateToken, async (req, res) => {
       });
       await qaidahMark.save();
 
+      console.log(`✅ Created new classwork for student ${studentId}, book ${book}, page ${pageNum}, date ${classworkDate}`);
       res.json({
         success: true,
         message: 'Classwork saved successfully',
@@ -10022,8 +10023,9 @@ app.post('/api/qaidah/classwork', authenticateToken, async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error saving qaidah classwork:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error saving classwork:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
@@ -10055,6 +10057,7 @@ app.get('/api/qaidah/classwork/:studentId/:book/:page', authenticateToken, async
       classworkDate: { $exists: true, $ne: null } // Only return documents with classworkDate
     }).sort({ classworkDate: -1 });
 
+    console.log(`✅ Found ${classworkList.length} classwork entries for student ${studentId}, book ${book}, page ${pageNum}`);
     res.json({
       student: studentId,
       book,
@@ -10071,8 +10074,9 @@ app.get('/api/qaidah/classwork/:studentId/:book/:page', authenticateToken, async
       }))
     });
   } catch (error) {
-    console.error('Error fetching qaidah classwork:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error fetching classwork:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
