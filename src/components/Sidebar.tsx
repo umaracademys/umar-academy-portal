@@ -43,22 +43,36 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/admin/ai-library' }
       : null;
 
-  const menuItems: MenuItem[] = aiLibraryItem 
-    ? [...baseMenuItems, aiLibraryItem, 
-        { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
-        { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
-        { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
-        { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
-        { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false },
-      ]
-    : [
-        ...baseMenuItems,
-        { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
-        { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
-        { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
-        { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
-        { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false },
-      ];
+  // Add Qaidah Submissions for teachers/admins/superadmins
+  const qaidahItem: MenuItem | null = 
+    (user?.role === 'teacher' || user?.role === 'admin' || user?.role === 'superadmin')
+      ? { id: 'qaidah', icon: 'QA', label: 'Qaidah', badge: null, isLink: true, href: '/qaidah-submissions' }
+      : null;
+
+  const menuItems: MenuItem[] = (() => {
+    const items = [...baseMenuItems];
+    
+    // Add Qaidah if available
+    if (qaidahItem) {
+      items.push(qaidahItem);
+    }
+    
+    // Add AI Library if available
+    if (aiLibraryItem) {
+      items.push(aiLibraryItem);
+    }
+    
+    // Add remaining items
+    items.push(
+      { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
+      { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
+      { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
+      { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
+      { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false }
+    );
+    
+    return items;
+  })();
 
   return (
     <>
