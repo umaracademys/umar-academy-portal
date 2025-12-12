@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
-import QaidahPage from './QaidahPage';
+import QaidahPdfViewer from './QaidahPdfViewer';
 import QaidahCanvas from './QaidahCanvas';
 
 interface QaidahViewerProps {
@@ -28,13 +28,13 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   const { students } = useData();
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [preloadedPages, setPreloadedPages] = useState<Set<number>>(new Set());
+  const [pdfTotalPages, setPdfTotalPages] = useState<number | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(propStudentId || '');
   const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2' | 'quran'>(propBook || 'qaidah1');
   const navigate = useNavigate();
   const pageRef = useRef<number>(currentPage);
   const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const pdfViewerRef = useRef<HTMLDivElement>(null);
 
   // Check if user can mark (teacher or admin)
   const canMark = user && (user.role === 'teacher' || user.role === 'admin' || user.role === 'superadmin');
@@ -50,39 +50,29 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   }, [currentPage]);
 
-  // Helper to get image URL (uses relative URLs so frontend proxy can handle them)
-  const getImageUrl = useCallback((pageNum: number): string => {
+  // Helper to get PDF URL (uses relative URLs so frontend proxy can handle them)
+  const getPdfUrl = useCallback((): string => {
     // Use relative URLs - the frontend server will proxy these to the backend
-    // For quran, use Mushaf (no image URL needed)
+    // For quran, use Mushaf (no PDF needed)
     if (selectedBook === 'quran') {
-      return `/quran/${pageNum}.png`; // Fallback, but Mushaf handles this
+      return ''; // Mushaf handles this
     }
-    // For qaidah1 and qaidah2, use separate folders with JPG (actual format)
+    // For qaidah1 and qaidah2, use PDF files
     if (selectedBook === 'qaidah1') {
-      return `/qaidah1/${pageNum}.jpg`;
+      return `/qaidah1/qaidah1.pdf`;
     }
     if (selectedBook === 'qaidah2') {
-      return `/qaidah2/${pageNum}.jpg`;
+      return `/qaidah2/qaidah2.pdf`;
     }
-    // Fallback to generic qaidah folder (for backward compatibility)
-    return `/qaidah/${pageNum}.jpg`;
+    // Fallback to generic qaidah folder
+    return `/qaidah/qaidah.pdf`;
   }, [selectedBook]);
 
-  // Preload adjacent pages
-  const preloadPage = useCallback((pageNum: number) => {
-    if (pageNum < 1 || pageNum > totalPages || preloadedPages.has(pageNum)) {
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      setPreloadedPages((prev) => new Set(prev).add(pageNum));
-    };
-    img.src = getImageUrl(pageNum);
-  }, [totalPages, preloadedPages, getImageUrl]);
-
   // For Quran, set total pages to 604 (standard Mushaf)
-  const effectiveTotalPages = selectedBook === 'quran' ? 604 : totalPages;
+  // For PDFs, use the PDF's page count, otherwise fall back to totalPages prop
+  const effectiveTotalPages = selectedBook === 'quran' 
+    ? 604 
+    : (pdfTotalPages || totalPages);
 
   const goToPage = useCallback((page: number) => {
     const maxPages = selectedBook === 'quran' ? 604 : totalPages;
@@ -101,15 +91,10 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     }
   }, [selectedBook, totalPages, availablePages, onPageChange, navigate]);
 
-  // Preload current, previous, and next pages
-  useEffect(() => {
-    preloadPage(currentPage);
-    if (currentPage > 1) preloadPage(currentPage - 1);
-    if (currentPage < totalPages) preloadPage(currentPage + 1);
-    // Preload a few more pages ahead for smooth navigation
-    if (currentPage < totalPages - 1) preloadPage(currentPage + 2);
-    if (currentPage < totalPages - 2) preloadPage(currentPage + 3);
-  }, [currentPage, totalPages, preloadPage]);
+  // Handle PDF load to get total pages
+  const handlePdfTotalPages = useCallback((totalPages: number) => {
+    setPdfTotalPages(totalPages);
+  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -125,21 +110,13 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
       if (e.key === 'ArrowLeft' && currentPage > 1) {
         e.preventDefault();
-        if (selectedBook !== 'quran' && availablePages.length > 0) {
-          const currentIndex = availablePages.indexOf(currentPage);
-          if (currentIndex > 0) {
-            goToPage(availablePages[currentIndex - 1]);
-          }
-        } else {
-          goToPage(currentPage - 1);
-        }
+        // For PDFs, just go to previous page (no availablePages filtering needed)
+        goToPage(currentPage - 1);
       } else if (e.key === 'ArrowRight' && currentPage < effectiveTotalPages) {
         e.preventDefault();
-        if (selectedBook !== 'quran' && availablePages.length > 0) {
-          const currentIndex = availablePages.indexOf(currentPage);
-          if (currentIndex < availablePages.length - 1) {
-            goToPage(availablePages[currentIndex + 1]);
-          }
+        // For PDFs, just go to next page (no availablePages filtering needed)
+        if (selectedBook === 'quran') {
+          goToPage(currentPage + 1);
         } else {
           goToPage(currentPage + 1);
         }
@@ -173,7 +150,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   };
 
-  const imageUrl = getImageUrl(currentPage);
+  const pdfUrl = getPdfUrl();
 
   // Get available students for selection (if teacher, only show assigned students)
   const availableStudents = user?.role === 'teacher' 
@@ -217,18 +194,8 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
       {/* Navigation Controls */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2">
         <button
-          onClick={() => {
-            // For Qaidah books, find previous available page
-            if (selectedBook !== 'quran' && availablePages.length > 0) {
-              const currentIndex = availablePages.indexOf(currentPage);
-              if (currentIndex > 0) {
-                goToPage(availablePages[currentIndex - 1]);
-              }
-            } else {
-              goToPage(currentPage - 1);
-            }
-          }}
-          disabled={currentPage <= 1 || (selectedBook !== 'quran' && availablePages.length > 0 && availablePages.indexOf(currentPage) === 0)}
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage <= 1}
           className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
         >
@@ -241,18 +208,8 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
         </div>
         
         <button
-          onClick={() => {
-            // For Qaidah books, find next available page
-            if (selectedBook !== 'quran' && availablePages.length > 0) {
-              const currentIndex = availablePages.indexOf(currentPage);
-              if (currentIndex < availablePages.length - 1) {
-                goToPage(availablePages[currentIndex + 1]);
-              }
-            } else {
-              goToPage(currentPage + 1);
-            }
-          }}
-          disabled={currentPage >= effectiveTotalPages || (selectedBook !== 'quran' && availablePages.length > 0 && availablePages.indexOf(currentPage) === availablePages.length - 1)}
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage >= effectiveTotalPages}
           className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
@@ -311,30 +268,37 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
             {/* QaidahCanvas is disabled for Quran as Mushaf has its own marking interface */}
           </div>
         ) : (
-          /* Use QaidahPage for Qaidah 1 and 2 */
+          /* Use QaidahPdfViewer for Qaidah 1 and 2 */
           <>
-            <QaidahPage
-              pageNumber={currentPage}
-              imageUrl={imageUrl}
+            <QaidahPdfViewer
+              pdfUrl={pdfUrl}
+              currentPage={currentPage}
+              onPageChange={(page) => {
+                onPageChange?.(page);
+                navigate(`/qaidah/${page}`);
+              }}
+              onTotalPagesChange={handlePdfTotalPages}
               zoom={zoom}
               onZoomChange={setZoom}
               position={position}
               onPositionChange={setPosition}
               containerRef={containerRef}
-              imageRef={imageRef}
+              onLoad={() => {
+                // PDF loaded
+              }}
             />
             
-            {/* Qaidah Canvas Overlay for marking */}
+            {/* Qaidah Canvas Overlay for marking - Note: May need updates for PDF coordinate system */}
             {canMark && selectedStudentId && (
               <QaidahCanvas
                 studentId={selectedStudentId}
                 book={selectedBook}
                 page={currentPage}
-                imageUrl={imageUrl}
+                imageUrl={pdfUrl} // Pass PDF URL for reference
                 zoom={zoom}
                 position={position}
                 containerRef={containerRef}
-                imageRef={imageRef}
+                imageRef={pdfViewerRef as any}
                 enabled={true}
               />
             )}
@@ -342,10 +306,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
         )}
       </div>
 
-      {/* Page Indicator (bottom) */}
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-sm">
-        Page {currentPage} of {effectiveTotalPages}
-      </div>
+      {/* Page Indicator is handled by QaidahPdfViewer for PDFs */}
 
       {/* Keyboard Shortcuts Hint */}
       <div className="absolute bottom-4 right-4 z-20 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-xs opacity-60 hover:opacity-100 transition-opacity">
