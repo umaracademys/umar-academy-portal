@@ -226,8 +226,65 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   fallthrough: false // Don't fall through to next middleware if file not found
 }));
 
+// Serve Qaidah and Quran page images from public directory
+// These are uploaded via the book upload manager
+const publicDir = path.join(__dirname, '..', 'public');
+app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
+  setHeaders: (res, filePath) => {
+    // Set proper cache headers for images
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    }
+  },
+  fallthrough: false
+}));
+
+app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    }
+  },
+  fallthrough: false
+}));
+
+app.use('/quran', express.static(path.join(publicDir, 'quran'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    }
+  },
+  fallthrough: false
+}));
+
+// Fallback for generic /qaidah path
+app.use('/qaidah', express.static(path.join(publicDir, 'qaidah'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (filePath.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    }
+  },
+  fallthrough: false
+}));
+
 // Log uploads directory for debugging
 console.log(`📁 Uploads directory: ${path.join(__dirname, 'uploads')}`);
+console.log(`📁 Public directory: ${publicDir}`);
+console.log(`📁 Qaidah1 directory: ${path.join(publicDir, 'qaidah1')}`);
+console.log(`📁 Qaidah2 directory: ${path.join(publicDir, 'qaidah2')}`);
+console.log(`📁 Quran directory: ${path.join(publicDir, 'quran')}`);
 console.log(`📁 Mistakes directory: ${uploadsDir}`);
 console.log(`📁 Recordings directory: ${recordingsDir}`);
 
