@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
@@ -22,7 +22,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   onPageChange,
   studentId: propStudentId,
   book: propBook,
-  availablePages = [],
+  availablePages = [] as number[],
 }) => {
   const { user } = useAuth();
   const { students } = useData();
@@ -79,6 +79,26 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     };
     img.src = getImageUrl(pageNum);
   }, [totalPages, preloadedPages, getImageUrl]);
+
+  // For Quran, set total pages to 604 (standard Mushaf)
+  const effectiveTotalPages = selectedBook === 'quran' ? 604 : totalPages;
+
+  const goToPage = useCallback((page: number) => {
+    const maxPages = selectedBook === 'quran' ? 604 : totalPages;
+    if (page < 1 || page > maxPages) return;
+    
+    // For Qaidah books, only allow navigation to available pages
+    if (selectedBook !== 'quran' && availablePages.length > 0 && !availablePages.includes(page)) {
+      return; // Don't navigate to unavailable pages
+    }
+    
+    onPageChange?.(page);
+    if (selectedBook === 'quran') {
+      navigate(`/qaidah/${page}`);
+    } else {
+      navigate(`/qaidah/${page}`);
+    }
+  }, [selectedBook, totalPages, availablePages, onPageChange, navigate]);
 
   // Preload current, previous, and next pages
   useEffect(() => {
@@ -137,24 +157,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, totalPages, selectedBook]);
-
-  const goToPage = (page: number) => {
-    const maxPages = selectedBook === 'quran' ? 604 : totalPages;
-    if (page < 1 || page > maxPages) return;
-    
-    // For Qaidah books, only allow navigation to available pages
-    if (selectedBook !== 'quran' && availablePages.length > 0 && !availablePages.includes(page)) {
-      return; // Don't navigate to unavailable pages
-    }
-    
-    onPageChange?.(page);
-    if (selectedBook === 'quran') {
-      navigate(`/qaidah/${page}`);
-    } else {
-      navigate(`/qaidah/${page}`);
-    }
-  };
+  }, [currentPage, effectiveTotalPages, selectedBook, availablePages, goToPage]);
 
   const handleZoomIn = () => {
     setZoom((prev) => Math.min(5, prev + 0.25));
@@ -170,9 +173,6 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   };
 
   const imageUrl = getImageUrl(currentPage);
-
-  // For Quran, set total pages to 604 (standard Mushaf)
-  const effectiveTotalPages = selectedBook === 'quran' ? 604 : totalPages;
 
   // Get available students for selection (if teacher, only show assigned students)
   const availableStudents = user?.role === 'teacher' 
