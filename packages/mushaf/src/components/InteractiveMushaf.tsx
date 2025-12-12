@@ -1136,18 +1136,20 @@ export const WordByWordPage: React.FC<{
     <div className="relative w-full flex flex-col items-center justify-center overflow-hidden" dir="rtl">
       {/* Optional background image */}
       {background && (
-        <img
-          src={background}
-          alt={`Page ${pageNumber}`}
-          className="max-w-full h-auto rounded-xl shadow-lg mb-4 mx-auto"
-        />
+        <div className="mushaf-wrapper">
+          <img
+            src={background}
+            alt={`Page ${pageNumber}`}
+            className="mushaf-image max-w-full h-auto rounded-xl shadow-lg mb-4"
+          />
+        </div>
       )}
 
-      {/* Mushaf-style Arabic text container - Centered */}
-      <div className="w-full flex justify-center items-center">
+      {/* Mushaf-style Arabic text container - Centered using Flexbox */}
+      <div className="mushaf-wrapper" style={{ width: '100%', marginTop: '0' }}>
         {/* Mushaf page container with traditional styling - Clean white background, thin yellow border */}
         <div 
-          className="mushaf-arabic-text"
+          className="mushaf-arabic-text mushaf-image"
           dir="rtl"
           style={{
             backgroundColor: '#ffffff',
@@ -1155,12 +1157,11 @@ export const WordByWordPage: React.FC<{
             minHeight: 'auto',
             direction: 'rtl',
             textAlign: 'right',
-            maxWidth: '1200px',
-            width: '100%',
+            maxWidth: '100%',
+            width: 'auto',
             boxSizing: 'border-box',
             overflow: 'hidden',
             fontFeatureSettings: '"liga" 1, "kern" 1',
-            margin: '0 auto',
             display: 'block',
             paddingTop: '0.75rem',
             paddingBottom: '0.75rem',
@@ -1168,7 +1169,8 @@ export const WordByWordPage: React.FC<{
             paddingLeft: '0',
             border: '1px solid #fef3c7',
             borderTop: '2px solid #fef3c7',
-            borderLeft: 'none'
+            borderLeft: 'none',
+            height: 'auto'
           }}
         >
 
