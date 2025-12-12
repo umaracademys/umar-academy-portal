@@ -9532,8 +9532,8 @@ app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res
       return res.status(400).json({ error: 'Invalid page number' });
     }
 
-    if (!['qaidah1', 'qaidah2'].includes(book)) {
-      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
     }
 
     // Verify student exists
@@ -9581,8 +9581,8 @@ app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: studentId, book, page' });
     }
 
-    if (!['qaidah1', 'qaidah2'].includes(book)) {
-      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
     }
 
     const pageNum = parseInt(page, 10);

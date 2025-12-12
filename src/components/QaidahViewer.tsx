@@ -48,21 +48,21 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   }, [currentPage]);
 
-  // Helper to get image URL (tries PNG first, then JPG)
+  // Helper to get image URL (tries JPG first since that's the actual format)
   const getImageUrl = useCallback((pageNum: number): string => {
-    // For quran, use different path
+    // For quran, use Mushaf (no image URL needed)
     if (selectedBook === 'quran') {
-      return `/quran/${pageNum}.png`;
+      return `/quran/${pageNum}.png`; // Fallback, but Mushaf handles this
     }
-    // For qaidah1 and qaidah2, use separate folders
+    // For qaidah1 and qaidah2, use separate folders with JPG (actual format)
     if (selectedBook === 'qaidah1') {
-      return `/qaidah1/${pageNum}.png`;
+      return `/qaidah1/${pageNum}.jpg`;
     }
     if (selectedBook === 'qaidah2') {
-      return `/qaidah2/${pageNum}.png`;
+      return `/qaidah2/${pageNum}.jpg`;
     }
     // Fallback to generic qaidah folder (for backward compatibility)
-    return `/qaidah/${pageNum}.png`;
+    return `/qaidah/${pageNum}.jpg`;
   }, [selectedBook]);
 
   // Preload adjacent pages

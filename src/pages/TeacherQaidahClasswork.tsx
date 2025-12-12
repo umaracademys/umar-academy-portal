@@ -36,18 +36,46 @@ const TeacherQaidahClasswork: React.FC = () => {
 
       const checkPageExists = (pageNum: number): Promise<boolean> => {
         return new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => resolve(true);
-          img.onerror = () => resolve(false);
-          // For qaidah, check qaidah1 or qaidah2 folders
-          if (selectedBook === 'qaidah1') {
-            img.src = `/qaidah1/${pageNum}.png`;
-          } else if (selectedBook === 'qaidah2') {
-            img.src = `/qaidah2/${pageNum}.png`;
-          } else {
-            img.src = `/qaidah/${pageNum}.png`;
-          }
-          setTimeout(() => resolve(false), 2000);
+          // Try JPG first (actual format), then PNG as fallback
+          const tryFormat = (format: 'jpg' | 'png') => {
+            const img = new Image();
+            let resolved = false;
+            
+            img.onload = () => {
+              if (!resolved) {
+                resolved = true;
+                resolve(true);
+              }
+            };
+            
+            img.onerror = () => {
+              if (format === 'jpg') {
+                // Try PNG if JPG fails
+                tryFormat('png');
+              } else if (!resolved) {
+                resolved = true;
+                resolve(false);
+              }
+            };
+            
+            // For qaidah, check qaidah1 or qaidah2 folders
+            if (selectedBook === 'qaidah1') {
+              img.src = `/qaidah1/${pageNum}.${format}`;
+            } else if (selectedBook === 'qaidah2') {
+              img.src = `/qaidah2/${pageNum}.${format}`;
+            } else {
+              img.src = `/qaidah/${pageNum}.${format}`;
+            }
+            
+            setTimeout(() => {
+              if (!resolved) {
+                resolved = true;
+                resolve(false);
+              }
+            }, 2000);
+          };
+          
+          tryFormat('jpg');
         });
       };
 
