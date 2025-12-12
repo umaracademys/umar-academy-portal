@@ -30,9 +30,17 @@ const QaidahUploadManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<number | null>(null);
 
+  // Get API base URL
+  const getApiBase = () => {
+    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+    return base.endsWith('/api') ? base : `${base}/api`;
+  };
+
+  const API_BASE = getApiBase();
+
   // Get auth token
   const getAuthToken = () => {
-    return localStorage.getItem('token') || '';
+    return localStorage.getItem('token') || localStorage.getItem('umar_academy_token') || '';
   };
 
   // Load pages for selected book
@@ -42,7 +50,7 @@ const QaidahUploadManager: React.FC = () => {
     try {
       setLoading(true);
       const token = getAuthToken();
-      const response = await fetch(`/api/qaidah/pages/${selectedBook}`, {
+      const response = await fetch(`${API_BASE}/qaidah/pages/${selectedBook}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -176,7 +184,7 @@ const QaidahUploadManager: React.FC = () => {
             reader.readAsDataURL(file);
           });
 
-          const response = await fetch('/api/qaidah/upload', {
+          const response = await fetch(`${API_BASE}/qaidah/upload`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -321,12 +329,12 @@ const QaidahUploadManager: React.FC = () => {
       setDeleting(pageNum);
       const token = getAuthToken();
 
-      const response = await fetch(`/api/qaidah/pages/${selectedBook}/${pageNum}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+          const response = await fetch(`${API_BASE}/qaidah/pages/${selectedBook}/${pageNum}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
 
       if (!response.ok) {
         const data = await response.json();
