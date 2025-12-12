@@ -40,7 +40,9 @@ const BACKEND_BASE_URL = API_BASE_URL.replace('/api', '');
 // These images are stored in backend/public directories
 app.use('/qaidah1', async (req, res) => {
   try {
-    const imageUrl = `${BACKEND_BASE_URL}/qaidah1${req.path}`;
+    // req.path already includes /qaidah1, so use it directly
+    const imageUrl = `${BACKEND_BASE_URL}${req.path}`;
+    console.log(`🖼️ Proxying Qaidah1: ${req.path} -> ${imageUrl}`);
     const response = await fetch(imageUrl);
     if (response.ok) {
       const buffer = await response.arrayBuffer();
@@ -49,17 +51,20 @@ app.use('/qaidah1', async (req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.send(Buffer.from(buffer));
     } else {
-      res.status(404).json({ error: 'Image not found' });
+      console.log(`❌ Backend returned ${response.status} for ${imageUrl}`);
+      res.status(404).json({ error: 'Image not found', path: req.path, url: imageUrl });
     }
   } catch (error) {
     console.error('Error proxying Qaidah1 image:', error);
-    res.status(500).json({ error: 'Failed to load image' });
+    res.status(500).json({ error: 'Failed to load image', message: error?.message });
   }
 });
 
 app.use('/qaidah2', async (req, res) => {
   try {
-    const imageUrl = `${BACKEND_BASE_URL}/qaidah2${req.path}`;
+    // req.path already includes /qaidah2, so use it directly
+    const imageUrl = `${BACKEND_BASE_URL}${req.path}`;
+    console.log(`🖼️ Proxying Qaidah2: ${req.path} -> ${imageUrl}`);
     const response = await fetch(imageUrl);
     if (response.ok) {
       const buffer = await response.arrayBuffer();
@@ -68,17 +73,20 @@ app.use('/qaidah2', async (req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.send(Buffer.from(buffer));
     } else {
-      res.status(404).json({ error: 'Image not found' });
+      console.log(`❌ Backend returned ${response.status} for ${imageUrl}`);
+      res.status(404).json({ error: 'Image not found', path: req.path, url: imageUrl });
     }
   } catch (error) {
     console.error('Error proxying Qaidah2 image:', error);
-    res.status(500).json({ error: 'Failed to load image' });
+    res.status(500).json({ error: 'Failed to load image', message: error?.message });
   }
 });
 
 app.use('/quran', async (req, res) => {
   try {
-    const imageUrl = `${BACKEND_BASE_URL}/quran${req.path}`;
+    // req.path already includes /quran, so use it directly
+    const imageUrl = `${BACKEND_BASE_URL}${req.path}`;
+    console.log(`🖼️ Proxying Quran: ${req.path} -> ${imageUrl}`);
     const response = await fetch(imageUrl);
     if (response.ok) {
       const buffer = await response.arrayBuffer();
@@ -87,18 +95,21 @@ app.use('/quran', async (req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.send(Buffer.from(buffer));
     } else {
-      res.status(404).json({ error: 'Image not found' });
+      console.log(`❌ Backend returned ${response.status} for ${imageUrl}`);
+      res.status(404).json({ error: 'Image not found', path: req.path, url: imageUrl });
     }
   } catch (error) {
     console.error('Error proxying Quran image:', error);
-    res.status(500).json({ error: 'Failed to load image' });
+    res.status(500).json({ error: 'Failed to load image', message: error?.message });
   }
 });
 
 // Fallback for generic /qaidah path
 app.use('/qaidah', async (req, res) => {
   try {
-    const imageUrl = `${BACKEND_BASE_URL}/qaidah${req.path}`;
+    // req.path already includes /qaidah, so use it directly
+    const imageUrl = `${BACKEND_BASE_URL}${req.path}`;
+    console.log(`🖼️ Proxying Qaidah: ${req.path} -> ${imageUrl}`);
     const response = await fetch(imageUrl);
     if (response.ok) {
       const buffer = await response.arrayBuffer();
@@ -107,11 +118,12 @@ app.use('/qaidah', async (req, res) => {
       res.setHeader('Cache-Control', 'public, max-age=31536000');
       res.send(Buffer.from(buffer));
     } else {
-      res.status(404).json({ error: 'Image not found' });
+      console.log(`❌ Backend returned ${response.status} for ${imageUrl}`);
+      res.status(404).json({ error: 'Image not found', path: req.path, url: imageUrl });
     }
   } catch (error) {
     console.error('Error proxying Qaidah image:', error);
-    res.status(500).json({ error: 'Failed to load image' });
+    res.status(500).json({ error: 'Failed to load image', message: error?.message });
   }
 });
 
