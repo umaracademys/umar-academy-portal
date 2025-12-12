@@ -12,13 +12,12 @@
     "build": "tsc && vite build",
     "build:mushaf": "pnpm --filter @umar-academy/mushaf build",
     "build:all": "pnpm -r build",
-    "build:render": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install && pnpm --filter @umar-academy/mushaf build && pnpm run build",
+    "build:render": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile && pnpm --filter @umar-academy/mushaf build && pnpm run build",
     "preview": "vite preview",
     "start": "node frontend-server.js",
     "seed": "tsx src/scripts/seedData.ts",
     "test-db": "tsx src/scripts/testConnection.ts",
-    "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts",
-    "postinstall": "pnpm --filter @umar-academy/mushaf build"
+    "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts"
   },
   "dependencies": {
     "@umar-academy/mushaf": "workspace:*",

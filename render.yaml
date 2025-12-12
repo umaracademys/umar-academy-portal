@@ -22,7 +22,7 @@ services:
     name: umar-academy-frontend
     env: node
     plan: free
-    buildCommand: corepack enable && corepack prepare pnpm@latest --activate && pnpm install --prod=false && pnpm --filter @umar-academy/mushaf build && pnpm run build
+    buildCommand: corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile --no-optional && pnpm --filter @umar-academy/mushaf build && pnpm run build
     startCommand: npm start
     envVars:
       - key: VITE_API_BASE_URL
