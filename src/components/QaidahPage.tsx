@@ -40,12 +40,15 @@ const QaidahPage: React.FC<QaidahPageProps> = ({
     setImageError(false);
     
     const img = new Image();
-    const tryAlternativeFormat = () => {
-      // Try alternative format based on page number
-      const baseUrl = `/qaidah/${pageNumber}`;
-      const altUrl = imageUrl.endsWith('.png') 
-        ? `${baseUrl}.jpg`
-        : `${baseUrl}.png`;
+      const tryAlternativeFormat = () => {
+        // Try alternative format based on page number
+        // Determine base path from current imageUrl
+        const isQuran = imageUrl.includes('/quran/');
+        const basePath = isQuran ? '/quran' : '/qaidah';
+        const baseUrl = `${basePath}/${pageNumber}`;
+        const altUrl = imageUrl.endsWith('.png') 
+          ? `${baseUrl}.jpg`
+          : `${baseUrl}.png`;
       
       const altImg = new Image();
       altImg.onload = () => {
