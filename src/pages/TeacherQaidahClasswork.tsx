@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import QaidahViewer from '../components/QaidahViewer';
@@ -15,6 +15,7 @@ const TeacherQaidahClasswork: React.FC = () => {
   const [totalPages, setTotalPages] = useState(100);
   const [availablePages, setAvailablePages] = useState<number[]>([]);
   const [isLoadingPages, setIsLoadingPages] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   // Get available students (teachers see assigned students, admins see all)
   const availableStudents = user?.role === 'teacher'
@@ -26,37 +27,50 @@ const TeacherQaidahClasswork: React.FC = () => {
     : students;
 
   // Fetch available pages from backend
-  useEffect(() => {
-    const loadPages = async () => {
-      setIsLoadingPages(true);
-      try {
-        // For Quran, use fixed 604 pages
-        if (selectedBook === 'quran') {
-          setTotalPages(604);
-          setAvailablePages([]); // All pages available for Quran
-          setIsLoadingPages(false);
-          return;
-        }
-
-        const result = await fetchAvailablePages(selectedBook);
-        setTotalPages(result.totalPages);
-        setAvailablePages(result.pages);
-        
-        // If current page is not available, go to first available page
-        if (result.pages.length > 0 && !result.pages.includes(currentPage)) {
-          setCurrentPage(result.pages[0]);
-        }
-      } catch (error) {
-        console.error('Error loading pages:', error);
-        setTotalPages(100); // Fallback
-        setAvailablePages([]);
-      } finally {
+  const loadPages = useCallback(async () => {
+    setIsLoadingPages(true);
+    try {
+      // For Quran, use fixed 604 pages
+      if (selectedBook === 'quran') {
+        setTotalPages(604);
+        setAvailablePages([]); // All pages available for Quran
         setIsLoadingPages(false);
+        return;
       }
-    };
 
+      const result = await fetchAvailablePages(selectedBook);
+      setTotalPages(result.totalPages);
+      setAvailablePages(result.pages);
+      
+      // If current page is not available, go to first available page
+      if (result.pages.length > 0 && !result.pages.includes(currentPage)) {
+        setCurrentPage(result.pages[0]);
+      }
+      
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Error loading pages:', error);
+      setTotalPages(100); // Fallback
+      setAvailablePages([]);
+    } finally {
+      setIsLoadingPages(false);
+    }
+  }, [selectedBook, currentPage]);
+
+  useEffect(() => {
     loadPages();
   }, [selectedBook]);
+
+  // Auto-refresh pages every 30 seconds to catch new uploads
+  useEffect(() => {
+    if (selectedBook === 'quran') return; // Don't auto-refresh for Quran
+    
+    const interval = setInterval(() => {
+      loadPages();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedBook, loadPages]);
 
   const handlePageChange = (page: number) => {
     // For Quran, allow any page 1-604
@@ -186,18 +200,36 @@ const TeacherQaidahClasswork: React.FC = () => {
           {/* Student Info Card */}
           {selectedStudent && (
             <div className="mt-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                  {selectedStudent.fullName?.charAt(0) || 'S'}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    {selectedStudent.fullName?.charAt(0) || 'S'}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">{selectedStudent.fullName}</p>
+                    <p className="text-gray-300 text-sm">
+                      {selectedBook === 'quran' ? 'Quran' : selectedBook === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} • 
+                      {isLoadingPages ? ' Loading pages...' : ` ${totalPages} pages available`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-white font-semibold">{selectedStudent.fullName}</p>
-                  <p className="text-gray-300 text-sm">
-                    {selectedBook === 'quran' ? 'Quran' : selectedBook === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} • 
-                    {isLoadingPages ? ' Loading pages...' : ` ${totalPages} pages available`}
-                  </p>
-                </div>
+                {selectedBook !== 'quran' && (
+                  <button
+                    onClick={loadPages}
+                    disabled={isLoadingPages}
+                    className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    title="Refresh pages (check for new uploads)"
+                  >
+                    <span>🔄</span>
+                    <span>{isLoadingPages ? 'Refreshing...' : 'Refresh'}</span>
+                  </button>
+                )}
               </div>
+              {selectedBook !== 'quran' && lastRefresh && (
+                <p className="text-gray-400 text-xs mt-2">
+                  Last updated: {lastRefresh.toLocaleTimeString()}
+                </p>
+              )}
             </div>
           )}
         </div>
