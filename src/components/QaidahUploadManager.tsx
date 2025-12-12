@@ -20,7 +20,10 @@ const QaidahUploadManager: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2' | 'quran'>('qaidah1');
   const [pageNumber, setPageNumber] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadMode, setUploadMode] = useState<'single' | 'bulk'>('single');
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [pages, setPages] = useState<PageInfo[]>([]);
@@ -62,7 +65,7 @@ const QaidahUploadManager: React.FC = () => {
     loadPages();
   }, [selectedBook, user]);
 
-  // Handle file selection
+  // Handle single file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -84,7 +87,155 @@ const QaidahUploadManager: React.FC = () => {
     }
   };
 
-  // Handle upload
+  // Handle multiple file selection (folder upload)
+  const handleFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Validate all files
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    const invalidFiles: string[] = [];
+    const tooLargeFiles: string[] = [];
+
+    files.forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        invalidFiles.push(file.name);
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        tooLargeFiles.push(file.name);
+      }
+    });
+
+    if (invalidFiles.length > 0) {
+      setUploadError(`Invalid file types: ${invalidFiles.join(', ')}. Only JPG/PNG allowed.`);
+      return;
+    }
+
+    if (tooLargeFiles.length > 0) {
+      setUploadError(`Files too large (max 10MB): ${tooLargeFiles.join(', ')}`);
+      return;
+    }
+
+    setSelectedFiles(files);
+    setUploadError(null);
+  };
+
+  // Extract page number from filename
+  const extractPageNumber = (filename: string): number | null => {
+    // Try to find a number in the filename
+    const match = filename.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  };
+
+  // Handle bulk upload
+  const handleBulkUpload = async () => {
+    if (selectedFiles.length === 0) {
+      setUploadError('Please select at least one file.');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadError(null);
+      setUploadSuccess(null);
+      setUploadProgress({ current: 0, total: selectedFiles.length });
+
+      const token = getAuthToken();
+      const results: { success: boolean; filename: string; pageNumber?: number; error?: string }[] = [];
+      let successCount = 0;
+      let failCount = 0;
+
+      // Upload files sequentially to avoid overwhelming the server
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        setUploadProgress({ current: i + 1, total: selectedFiles.length });
+
+        try {
+          // Extract page number from filename
+          let pageNum = extractPageNumber(file.name);
+          
+          // If no page number found in filename, skip this file
+          if (!pageNum) {
+            results.push({
+              success: false,
+              filename: file.name,
+              error: 'Could not extract page number from filename. Please rename file to include a number (e.g., "1.jpg", "page_2.png")',
+            });
+            failCount++;
+            continue;
+          }
+
+          // Convert file to base64
+          const base64Data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          const response = await fetch('/api/qaidah/upload', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              book: selectedBook,
+              pageNumber: pageNum,
+              fileData: base64Data,
+              filename: file.name,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Upload failed');
+          }
+
+          results.push({
+            success: true,
+            filename: file.name,
+            pageNumber: pageNum,
+          });
+          successCount++;
+        } catch (error: any) {
+          results.push({
+            success: false,
+            filename: file.name,
+            error: error.message || 'Upload failed',
+          });
+          failCount++;
+        }
+      }
+
+      // Show results
+      if (successCount > 0 && failCount === 0) {
+        setUploadSuccess(`Successfully uploaded ${successCount} page(s)!`);
+      } else if (successCount > 0 && failCount > 0) {
+        setUploadSuccess(`Uploaded ${successCount} page(s), ${failCount} failed. Check errors below.`);
+        const failedFiles = results.filter(r => !r.success).map(r => `${r.filename}: ${r.error}`).join('\n');
+        setUploadError(`Failed files:\n${failedFiles}`);
+      } else {
+        setUploadError(`All uploads failed. Check errors above.`);
+      }
+
+      // Clear selections
+      setSelectedFiles([]);
+      const fileInput = document.getElementById('files-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      // Reload pages
+      await loadPages();
+    } catch (error: any) {
+      setUploadError(error.message || 'Bulk upload failed');
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
+    }
+  };
+
+  // Handle single file upload
   const handleUpload = async () => {
     if (!selectedFile || !pageNumber) {
       setUploadError('Please select a file and enter a page number.');
@@ -232,41 +383,117 @@ const QaidahUploadManager: React.FC = () => {
 
         {/* Upload Form */}
         <div className="border-t pt-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Upload New Page</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Page Number
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={pageNumber}
-                onChange={(e) => setPageNumber(e.target.value)}
-                placeholder="e.g., 1, 2, 3..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Image File (JPG/PNG, max 10MB)
-              </label>
-              <input
-                id="file-input"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png"
-                onChange={handleFileSelect}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-              {selectedFile && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
-                </p>
-              )}
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Upload Pages</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setUploadMode('single');
+                  setSelectedFile(null);
+                  setSelectedFiles([]);
+                  setPageNumber('');
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  uploadMode === 'single'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Single Upload
+              </button>
+              <button
+                onClick={() => {
+                  setUploadMode('bulk');
+                  setSelectedFile(null);
+                  setSelectedFiles([]);
+                  setPageNumber('');
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  uploadMode === 'bulk'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                📁 Folder/Bulk Upload
+              </button>
             </div>
           </div>
+
+          {uploadMode === 'single' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Page Number
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={pageNumber}
+                  onChange={(e) => setPageNumber(e.target.value)}
+                  placeholder="e.g., 1, 2, 3..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Image File (JPG/PNG, max 10MB)
+                </label>
+                <input
+                  id="file-input"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  onChange={handleFileSelect}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+                {selectedFile && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Multiple Files or Folder (JPG/PNG, max 10MB each)
+              </label>
+              <input
+                id="files-input"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png"
+                multiple
+                onChange={handleFilesSelect}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+              {selectedFiles.length > 0 && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    {selectedFiles.length} file(s) selected:
+                  </p>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {selectedFiles.map((file, index) => {
+                      // Try to extract page number from filename
+                      const pageMatch = file.name.match(/(\d+)/);
+                      const extractedPage = pageMatch ? parseInt(pageMatch[1], 10) : null;
+                      return (
+                        <div key={index} className="flex items-center justify-between text-sm text-gray-600 bg-white p-2 rounded">
+                          <span>{file.name}</span>
+                          <span className="text-gray-500">
+                            {(file.size / 1024).toFixed(2)} KB
+                            {extractedPage && ` → Page ${extractedPage}`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">
+                    💡 Tip: Files with numbers in their names (e.g., "1.jpg", "page_2.png") will automatically use that number as the page number.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error/Success Messages */}
           {uploadError && (
@@ -281,13 +508,27 @@ const QaidahUploadManager: React.FC = () => {
             </div>
           )}
 
-          <button
-            onClick={handleUpload}
-            disabled={uploading || !selectedFile || !pageNumber}
-            className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {uploading ? 'Uploading...' : 'Upload Page'}
-          </button>
+          {uploadMode === 'single' ? (
+            <button
+              onClick={handleUpload}
+              disabled={uploading || !selectedFile || !pageNumber}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {uploading ? 'Uploading...' : 'Upload Page'}
+            </button>
+          ) : (
+            <button
+              onClick={handleBulkUpload}
+              disabled={uploading || selectedFiles.length === 0}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {uploading
+                ? uploadProgress
+                  ? `Uploading... ${uploadProgress.current}/${uploadProgress.total}`
+                  : 'Uploading...'
+                : `Upload ${selectedFiles.length} Page(s)`}
+            </button>
+          )}
         </div>
       </div>
 
