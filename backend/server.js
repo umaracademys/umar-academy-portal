@@ -9522,6 +9522,237 @@ app.use((req, res) => {
 
 // ==================== QAIDAH MARKING ROUTES ====================
 
+// ============================================
+// Qaidah/Quran Page Upload API (Super Admin Only)
+// These routes must come BEFORE the parameterized routes to avoid route conflicts
+// ============================================
+
+// Create public directories if they don't exist
+const publicQaidah1Dir = path.join(__dirname, '..', 'public', 'qaidah1');
+const publicQaidah2Dir = path.join(__dirname, '..', 'public', 'qaidah2');
+const publicQuranDir = path.join(__dirname, '..', 'public', 'quran');
+const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallback
+
+[publicQaidah1Dir, publicQaidah2Dir, publicQuranDir, publicQaidahDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`📁 Created directory: ${dir}`);
+  }
+});
+
+// GET /api/qaidah/pages/:book - List all pages for a book (Super Admin only)
+// MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
+app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
+  // Check if user is super admin
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Only super admins can view pages' });
+  }
+
+  try {
+    const { book } = req.params;
+    
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    // Determine directory
+    let targetDir;
+    if (book === 'qaidah1') {
+      targetDir = publicQaidah1Dir;
+    } else if (book === 'qaidah2') {
+      targetDir = publicQaidah2Dir;
+    } else if (book === 'quran') {
+      targetDir = publicQuranDir;
+    } else {
+      targetDir = publicQaidahDir;
+    }
+
+    // Read directory
+    if (!fs.existsSync(targetDir)) {
+      return res.json({ book, pages: [] });
+    }
+
+    const files = fs.readdirSync(targetDir);
+    const pages = files
+      .filter(file => /\.(jpg|jpeg|png)$/i.test(file))
+      .map(file => {
+        const pageMatch = file.match(/^(\d+)\./);
+        if (pageMatch) {
+          const pageNum = parseInt(pageMatch[1], 10);
+          const stats = fs.statSync(path.join(targetDir, file));
+          return {
+            pageNumber: pageNum,
+            filename: file,
+            size: stats.size,
+            url: `/${book}/${file}`,
+            uploadedAt: stats.mtime
+          };
+        }
+        return null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.pageNumber - b.pageNumber);
+
+    res.json({ book, pages, totalPages: pages.length });
+  } catch (error) {
+    console.error('Error listing pages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/qaidah/pages/:book/:pageNumber - Delete a page (Super Admin only)
+// MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
+app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req, res) => {
+  // Check if user is super admin
+  if (req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Only super admins can delete pages' });
+  }
+
+  try {
+    const { book, pageNumber } = req.params;
+    const pageNum = parseInt(pageNumber, 10);
+
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    // Determine directory
+    let targetDir;
+    if (book === 'qaidah1') {
+      targetDir = publicQaidah1Dir;
+    } else if (book === 'qaidah2') {
+      targetDir = publicQaidah2Dir;
+    } else if (book === 'quran') {
+      targetDir = publicQuranDir;
+    } else {
+      targetDir = publicQaidahDir;
+    }
+
+    // Try to delete file (check multiple extensions)
+    const extensions = ['jpg', 'jpeg', 'png'];
+    let deleted = false;
+    let deletedFile = null;
+
+    for (const ext of extensions) {
+      const filePath = path.join(targetDir, `${pageNum}.${ext}`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        deleted = true;
+        deletedFile = `${pageNum}.${ext}`;
+        console.log(`✅ Page deleted: ${book}/${deletedFile}`);
+        break;
+      }
+    }
+
+    if (!deleted) {
+      return res.status(404).json({ error: 'Page not found' });
+    }
+
+    res.json({ success: true, book, pageNumber: pageNum, deletedFile });
+  } catch (error) {
+    console.error('Error deleting page:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/qaidah/upload - Upload a Qaidah/Quran page (Super Admin only)
+// MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
+app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is super admin
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can upload pages' });
+    }
+
+    const { book, pageNumber, fileData, filename } = req.body;
+
+    // Validate inputs
+    if (!book || !['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    if (!pageNumber || isNaN(pageNumber) || pageNumber < 1) {
+      return res.status(400).json({ error: 'Invalid page number. Must be a positive integer' });
+    }
+
+    if (!fileData) {
+      return res.status(400).json({ error: 'No file data provided' });
+    }
+
+    // Parse base64 file data
+    let fileBuffer;
+    let fileExtension;
+    
+    if (fileData.startsWith('data:')) {
+      // Data URL format: data:image/jpeg;base64,...
+      const matches = fileData.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!matches) {
+        return res.status(400).json({ error: 'Invalid file data format' });
+      }
+      fileExtension = matches[1].toLowerCase();
+      if (fileExtension === 'jpeg') fileExtension = 'jpg';
+      fileBuffer = Buffer.from(matches[2], 'base64');
+    } else {
+      // Assume base64 string
+      fileBuffer = Buffer.from(fileData, 'base64');
+      // Try to get extension from filename
+      if (filename) {
+        fileExtension = filename.split('.').pop().toLowerCase();
+        if (fileExtension === 'jpeg') fileExtension = 'jpg';
+      } else {
+        fileExtension = 'jpg'; // Default
+      }
+    }
+
+    // Validate file extension
+    const allowedExtensions = ['jpg', 'jpeg', 'png'];
+    if (!allowedExtensions.includes(fileExtension)) {
+      return res.status(400).json({ error: `Invalid file type. Allowed: ${allowedExtensions.join(', ')}` });
+    }
+
+    // Determine target directory
+    let targetDir;
+    if (book === 'qaidah1') {
+      targetDir = publicQaidah1Dir;
+    } else if (book === 'qaidah2') {
+      targetDir = publicQaidah2Dir;
+    } else if (book === 'quran') {
+      targetDir = publicQuranDir;
+    } else {
+      targetDir = publicQaidahDir;
+    }
+
+    // Ensure directory exists
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // Save file (use .jpg extension for consistency)
+    const savedExtension = fileExtension === 'jpeg' ? 'jpg' : fileExtension;
+    const filePath = path.join(targetDir, `${pageNumber}.${savedExtension}`);
+    
+    fs.writeFileSync(filePath, fileBuffer);
+    
+    console.log(`✅ Page uploaded: ${book}/${pageNumber}.${savedExtension} (${(fileBuffer.length / 1024).toFixed(2)} KB)`);
+    
+    res.json({
+      success: true,
+      book,
+      pageNumber,
+      filename: `${pageNumber}.${savedExtension}`,
+      url: `/${book}/${pageNumber}.${savedExtension}`,
+      size: fileBuffer.length
+    });
+  } catch (error) {
+    console.error('Error uploading page:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/qaidah/:studentId/:book/:page - Get marks for a specific page
 app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res) => {
   try {
@@ -10055,233 +10286,6 @@ app.post('/api/qaidah/homework/assign', authenticateToken, async (req, res) => {
   }
 });
 
-// ============================================
-// Qaidah/Quran Page Upload API (Super Admin Only)
-// ============================================
-
-// Create public directories if they don't exist
-const publicQaidah1Dir = path.join(__dirname, '..', 'public', 'qaidah1');
-const publicQaidah2Dir = path.join(__dirname, '..', 'public', 'qaidah2');
-const publicQuranDir = path.join(__dirname, '..', 'public', 'quran');
-const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallback
-
-[publicQaidah1Dir, publicQaidah2Dir, publicQuranDir, publicQaidahDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`📁 Created directory: ${dir}`);
-  }
-});
-
-// POST /api/qaidah/upload - Upload a Qaidah/Quran page (Super Admin only)
-// Accepts JSON with base64 encoded file for simplicity
-app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
-  try {
-    // Check if user is super admin
-    if (req.user.role !== 'superadmin') {
-      return res.status(403).json({ error: 'Only super admins can upload pages' });
-    }
-
-    const { book, pageNumber, fileData, filename } = req.body;
-
-    // Validate inputs
-    if (!book || !['qaidah1', 'qaidah2', 'quran'].includes(book)) {
-      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
-    }
-
-    if (!pageNumber || isNaN(pageNumber) || pageNumber < 1) {
-      return res.status(400).json({ error: 'Invalid page number. Must be a positive integer' });
-    }
-
-    if (!fileData) {
-      return res.status(400).json({ error: 'No file data provided' });
-    }
-
-    // Parse base64 file data
-    let fileBuffer;
-    let fileExtension;
-    
-    if (fileData.startsWith('data:')) {
-      // Data URL format: data:image/jpeg;base64,...
-      const matches = fileData.match(/^data:image\/(\w+);base64,(.+)$/);
-      if (!matches) {
-        return res.status(400).json({ error: 'Invalid file data format' });
-      }
-      fileExtension = matches[1].toLowerCase();
-      if (fileExtension === 'jpeg') fileExtension = 'jpg';
-      fileBuffer = Buffer.from(matches[2], 'base64');
-    } else {
-      // Assume base64 string
-      fileBuffer = Buffer.from(fileData, 'base64');
-      // Try to get extension from filename
-      if (filename) {
-        fileExtension = filename.split('.').pop().toLowerCase();
-        if (fileExtension === 'jpeg') fileExtension = 'jpg';
-      } else {
-        fileExtension = 'jpg'; // Default
-      }
-    }
-
-    // Validate file extension
-    const allowedExtensions = ['jpg', 'jpeg', 'png'];
-    if (!allowedExtensions.includes(fileExtension)) {
-      return res.status(400).json({ error: `Invalid file type. Allowed: ${allowedExtensions.join(', ')}` });
-    }
-
-    // Determine target directory
-    let targetDir;
-    if (book === 'qaidah1') {
-      targetDir = publicQaidah1Dir;
-    } else if (book === 'qaidah2') {
-      targetDir = publicQaidah2Dir;
-    } else if (book === 'quran') {
-      targetDir = publicQuranDir;
-    } else {
-      targetDir = publicQaidahDir;
-    }
-
-    // Ensure directory exists
-    if (!fs.existsSync(targetDir)) {
-      fs.mkdirSync(targetDir, { recursive: true });
-    }
-
-    // Save file (use .jpg extension for consistency)
-    const savedExtension = fileExtension === 'jpeg' ? 'jpg' : fileExtension;
-    const filePath = path.join(targetDir, `${pageNumber}.${savedExtension}`);
-    
-    fs.writeFileSync(filePath, fileBuffer);
-    
-    console.log(`✅ Page uploaded: ${book}/${pageNumber}.${savedExtension} (${(fileBuffer.length / 1024).toFixed(2)} KB)`);
-    
-    res.json({
-      success: true,
-      book,
-      pageNumber,
-      filename: `${pageNumber}.${savedExtension}`,
-      url: `/${book}/${pageNumber}.${savedExtension}`,
-      size: fileBuffer.length
-    });
-  } catch (error) {
-    console.error('Error uploading page:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/qaidah/pages/:book - List all pages for a book (Super Admin only)
-app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
-  // Check if user is super admin
-  if (req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Only super admins can view pages' });
-  }
-
-  try {
-    const { book } = req.params;
-    
-    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
-      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
-    }
-
-    // Determine directory
-    let targetDir;
-    if (book === 'qaidah1') {
-      targetDir = publicQaidah1Dir;
-    } else if (book === 'qaidah2') {
-      targetDir = publicQaidah2Dir;
-    } else if (book === 'quran') {
-      targetDir = publicQuranDir;
-    } else {
-      targetDir = publicQaidahDir;
-    }
-
-    // Read directory
-    if (!fs.existsSync(targetDir)) {
-      return res.json({ book, pages: [] });
-    }
-
-    const files = fs.readdirSync(targetDir);
-    const pages = files
-      .filter(file => /\.(jpg|jpeg|png)$/i.test(file))
-      .map(file => {
-        const pageMatch = file.match(/^(\d+)\./);
-        if (pageMatch) {
-          const pageNum = parseInt(pageMatch[1], 10);
-          const stats = fs.statSync(path.join(targetDir, file));
-          return {
-            pageNumber: pageNum,
-            filename: file,
-            size: stats.size,
-            url: `/${book}/${file}`,
-            uploadedAt: stats.mtime
-          };
-        }
-        return null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.pageNumber - b.pageNumber);
-
-    res.json({ book, pages, totalPages: pages.length });
-  } catch (error) {
-    console.error('Error listing pages:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DELETE /api/qaidah/pages/:book/:pageNumber - Delete a page (Super Admin only)
-app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req, res) => {
-  // Check if user is super admin
-  if (req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Only super admins can delete pages' });
-  }
-
-  try {
-    const { book, pageNumber } = req.params;
-    const pageNum = parseInt(pageNumber, 10);
-
-    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
-      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
-    }
-
-    if (isNaN(pageNum) || pageNum < 1) {
-      return res.status(400).json({ error: 'Invalid page number' });
-    }
-
-    // Determine directory
-    let targetDir;
-    if (book === 'qaidah1') {
-      targetDir = publicQaidah1Dir;
-    } else if (book === 'qaidah2') {
-      targetDir = publicQaidah2Dir;
-    } else if (book === 'quran') {
-      targetDir = publicQuranDir;
-    } else {
-      targetDir = publicQaidahDir;
-    }
-
-    // Try to delete file (check multiple extensions)
-    const extensions = ['jpg', 'jpeg', 'png'];
-    let deleted = false;
-    let deletedFile = null;
-
-    for (const ext of extensions) {
-      const filePath = path.join(targetDir, `${pageNum}.${ext}`);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        deleted = true;
-        deletedFile = `${pageNum}.${ext}`;
-        console.log(`✅ Page deleted: ${book}/${deletedFile}`);
-        break;
-      }
-    }
-
-    if (!deleted) {
-      return res.status(404).json({ error: 'Page not found' });
-    }
-
-    res.json({ success: true, book, pageNumber: pageNum, deletedFile });
-  } catch (error) {
-    console.error('Error deleting page:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Global error handler middleware (must be last)
 app.use((err, req, res, next) => {
