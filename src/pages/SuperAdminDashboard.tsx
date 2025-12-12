@@ -48,6 +48,7 @@ const TeacherPairManagement = lazy(() => import('../components/TeacherPairManage
 const PairTeacherMessagesAdmin = lazy(() => import('../components/PairTeacherMessagesAdmin'));
 const TeacherStudentMessage = lazy(() => import('../components/TeacherStudentMessage'));
 const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStudentMessagesAdmin'));
+const QaidahUploadManager = lazy(() => import('../components/QaidahUploadManager'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -1170,6 +1171,11 @@ const SuperAdminDashboard: React.FC = () => {
       case 'students': return <StudentsSection />;
       case 'teachers': return <TeachersSection />;
       case 'settings': return <SystemSection />;
+      case 'book-uploads': return (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <QaidahUploadManager />
+        </Suspense>
+      );
       default: return <OverviewSection />;
     }
   };
