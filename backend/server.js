@@ -9543,13 +9543,17 @@ const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallb
 // GET /api/qaidah/pages/:book - List all pages for a book (Super Admin only)
 // MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
 app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
+  console.log('📚 GET /api/qaidah/pages/:book called with book:', req.params.book);
+  
   // Check if user is super admin
   if (req.user.role !== 'superadmin') {
+    console.log('❌ Access denied: User is not super admin');
     return res.status(403).json({ error: 'Only super admins can view pages' });
   }
 
   try {
     const { book } = req.params;
+    console.log('📖 Processing request for book:', book);
     
     if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
       return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
@@ -9593,9 +9597,10 @@ app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
       .filter(Boolean)
       .sort((a, b) => a.pageNumber - b.pageNumber);
 
+    console.log(`✅ Found ${pages.length} pages for ${book}`);
     res.json({ book, pages, totalPages: pages.length });
   } catch (error) {
-    console.error('Error listing pages:', error);
+    console.error('❌ Error listing pages:', error);
     res.status(500).json({ error: error.message });
   }
 });
