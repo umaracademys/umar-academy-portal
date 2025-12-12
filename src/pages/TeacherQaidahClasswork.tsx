@@ -211,6 +211,12 @@ const TeacherQaidahClasswork: React.FC = () => {
                       {selectedBook === 'quran' ? 'Quran' : selectedBook === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} • 
                       {isLoadingPages ? ' Loading pages...' : ` ${totalPages} pages available`}
                     </p>
+                    {selectedBook !== 'quran' && availablePages.length > 0 && (
+                      <p className="text-gray-400 text-xs mt-1">
+                        Pages: {availablePages.slice(0, 5).join(', ')}
+                        {availablePages.length > 5 && ` +${availablePages.length - 5} more`}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {selectedBook !== 'quran' && (
@@ -218,7 +224,7 @@ const TeacherQaidahClasswork: React.FC = () => {
                     onClick={loadPages}
                     disabled={isLoadingPages}
                     className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    title="Refresh pages (check for new uploads)"
+                    title="Refresh pages (check for new uploads from book upload manager)"
                   >
                     <span>🔄</span>
                     <span>{isLoadingPages ? 'Refreshing...' : 'Refresh'}</span>
@@ -227,7 +233,7 @@ const TeacherQaidahClasswork: React.FC = () => {
               </div>
               {selectedBook !== 'quran' && lastRefresh && (
                 <p className="text-gray-400 text-xs mt-2">
-                  Last updated: {lastRefresh.toLocaleTimeString()}
+                  Last updated: {lastRefresh.toLocaleTimeString()} • Auto-refresh every 30s
                 </p>
               )}
             </div>
