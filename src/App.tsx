@@ -23,6 +23,7 @@ const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage
 const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
 const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 const QaidahSubmissions = lazy(() => import('./pages/QaidahSubmissions'));
+const TeacherQaidahClasswork = lazy(() => import('./pages/TeacherQaidahClasswork'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -209,6 +210,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <QaidahSubmissions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/qaidah-classwork"
+          element={
+            <ProtectedRoute>
+              <TeacherQaidahClasswork />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher/qaidah-classwork/:book/:pageNumber"
+          element={
+            <ProtectedRoute>
+              <TeacherQaidahClasswork />
             </ProtectedRoute>
           }
         />

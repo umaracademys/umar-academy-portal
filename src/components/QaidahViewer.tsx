@@ -48,9 +48,13 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
   // Helper to get image URL (tries PNG first, then JPG)
   const getImageUrl = useCallback((pageNum: number): string => {
-    // Try PNG first, then JPG
+    // For quran, use different path
+    if (selectedBook === 'quran') {
+      return `/quran/${pageNum}.png`;
+    }
+    // For qaidah, use qaidah path
     return `/qaidah/${pageNum}.png`;
-  }, []);
+  }, [selectedBook]);
 
   // Preload adjacent pages
   const preloadPage = useCallback((pageNum: number) => {

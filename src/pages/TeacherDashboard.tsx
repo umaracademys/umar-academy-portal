@@ -372,6 +372,12 @@ const TeacherDashboard: React.FC = () => {
                 Manage Assignments
               </Link>
               <Link
+                to="/teacher/qaidah-classwork"
+                className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 shadow-md hover:shadow-lg"
+              >
+                📖 Qaidah Classwork
+              </Link>
+              <Link
                 to="/qaidah-submissions"
                 className="inline-flex items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-green-700 shadow-md hover:shadow-lg"
               >
@@ -611,6 +617,20 @@ const TeacherDashboard: React.FC = () => {
                 >
                   <div className="font-bold text-primary mb-1">Manage Assignments</div>
                   <div className="text-xs text-gray-600">Create and manage assignments</div>
+                </Link>
+                <Link
+                  to="/teacher/qaidah-classwork"
+                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-blue-600 hover:bg-blue-50 transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600 text-lg font-bold">
+                      📖
+                    </div>
+                    <div>
+                      <div className="font-bold text-primary mb-1">Qaidah Classwork</div>
+                      <div className="text-xs text-gray-600">Mark and save classwork for students</div>
+                    </div>
+                  </div>
                 </Link>
                 <Link
                   to="/qaidah-submissions"
