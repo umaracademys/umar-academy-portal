@@ -696,7 +696,7 @@ const Teacher = mongoose.model('Teacher', teacherSchema);
 const teacherAttendanceSchema = new mongoose.Schema({
   teacherId: { type: String, required: true, index: true },
   teacherName: { type: String, required: true },
-  date: { type: String, required: true, index: true }, // YYYY-MM-DD format
+  date: { type: String, required: true }, // YYYY-MM-DD format
   employmentType: { type: String, enum: ['Full Time', 'Part Time'], required: true },
   
   // Full Time shifts (morning and evening)
@@ -3667,7 +3667,7 @@ const qaidahHomeworkSchema = new mongoose.Schema({
   }],
   classworkDate: { type: Date, index: true }, // Date of class session
   homeworkInstructions: { type: String, default: '' },
-  dueDate: { type: Date, required: true, index: true },
+  dueDate: { type: Date, required: true },
   youtubeLink: { type: String, default: '' }, // Student's submission
   teacherFeedback: { type: String, default: '' }, // Optional feedback
   status: { type: String, enum: ['pending', 'submitted', 'reviewed'], default: 'pending', index: true },

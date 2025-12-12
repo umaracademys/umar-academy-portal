@@ -7,7 +7,7 @@ const quranPageSchema = new mongoose.Schema({
   line_number: { type: Number, required: true },
   line_type: { type: String, enum: ['ayah', 'surah_name', 'basmallah'], required: true },
   is_centered: { type: Boolean, default: false },
-  surah_number: { type: Number, index: true },
+  surah_number: { type: Number },
   first_word_id: { type: Number },
   last_word_id: { type: Number },
   mushaf_id: { type: Number, default: 1 }, // For future multi-mushaf support
