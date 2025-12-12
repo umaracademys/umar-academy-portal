@@ -52,19 +52,23 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
   // Helper to get image URL (tries JPG first since that's the actual format)
   const getImageUrl = useCallback((pageNum: number): string => {
+    // Get backend base URL (without /api)
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+    const backendBase = apiBase.replace('/api', '');
+    
     // For quran, use Mushaf (no image URL needed)
     if (selectedBook === 'quran') {
-      return `/quran/${pageNum}.png`; // Fallback, but Mushaf handles this
+      return `${backendBase}/quran/${pageNum}.png`; // Fallback, but Mushaf handles this
     }
     // For qaidah1 and qaidah2, use separate folders with JPG (actual format)
     if (selectedBook === 'qaidah1') {
-      return `/qaidah1/${pageNum}.jpg`;
+      return `${backendBase}/qaidah1/${pageNum}.jpg`;
     }
     if (selectedBook === 'qaidah2') {
-      return `/qaidah2/${pageNum}.jpg`;
+      return `${backendBase}/qaidah2/${pageNum}.jpg`;
     }
     // Fallback to generic qaidah folder (for backward compatibility)
-    return `/qaidah/${pageNum}.jpg`;
+    return `${backendBase}/qaidah/${pageNum}.jpg`;
   }, [selectedBook]);
 
   // Preload adjacent pages
