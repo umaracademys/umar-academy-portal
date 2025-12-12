@@ -268,28 +268,28 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
         </div>
 
-        {/* Statistics Bar - Enhanced Design */}
-        <div className="px-6 py-5 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-3 rounded-xl bg-white border-2 border-primary/20 shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl font-bold text-primary mb-1">{stats.total}</div>
-              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Total Mistakes</div>
+        {/* Statistics Bar - Compact Design */}
+        <div className="px-4 py-2 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-primary/20 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
+              <div className="text-xl font-bold text-primary leading-tight">{stats.total}</div>
+              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Total Mistakes</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white border-2 border-blue-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl font-bold text-blue-600 mb-1">{stats.sabq}</div>
-              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sabq</div>
+            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-blue-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
+              <div className="text-xl font-bold text-blue-600 leading-tight">{stats.sabq}</div>
+              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Sabq</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white border-2 border-green-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl font-bold text-green-600 mb-1">{stats.sabqi}</div>
-              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sabqi</div>
+            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-green-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
+              <div className="text-xl font-bold text-green-600 leading-tight">{stats.sabqi}</div>
+              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Sabqi</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white border-2 border-purple-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl font-bold text-purple-600 mb-1">{stats.manzil}</div>
-              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Manzil</div>
+            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-purple-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
+              <div className="text-xl font-bold text-purple-600 leading-tight">{stats.manzil}</div>
+              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Manzil</div>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white border-2 border-orange-200 shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl font-bold text-orange-600 mb-1">{pagesWithMistakes.length}</div>
-              <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Pages</div>
+            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-orange-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
+              <div className="text-xl font-bold text-orange-600 leading-tight">{pagesWithMistakes.length}</div>
+              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Pages</div>
             </div>
           </div>
         </div>
