@@ -10,6 +10,89 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Get backend URL for proxying Qaidah images
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const BACKEND_BASE_URL = API_BASE_URL.replace('/api', '');
+
+// Proxy Qaidah/Quran images to backend (before static file serving)
+// These images are stored in backend/public directories
+app.use('/qaidah1', async (req, res) => {
+  try {
+    const imageUrl = `${BACKEND_BASE_URL}/qaidah1${req.path}`;
+    const response = await fetch(imageUrl);
+    if (response.ok) {
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.send(Buffer.from(buffer));
+    } else {
+      res.status(404).json({ error: 'Image not found' });
+    }
+  } catch (error) {
+    console.error('Error proxying Qaidah1 image:', error);
+    res.status(500).json({ error: 'Failed to load image' });
+  }
+});
+
+app.use('/qaidah2', async (req, res) => {
+  try {
+    const imageUrl = `${BACKEND_BASE_URL}/qaidah2${req.path}`;
+    const response = await fetch(imageUrl);
+    if (response.ok) {
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.send(Buffer.from(buffer));
+    } else {
+      res.status(404).json({ error: 'Image not found' });
+    }
+  } catch (error) {
+    console.error('Error proxying Qaidah2 image:', error);
+    res.status(500).json({ error: 'Failed to load image' });
+  }
+});
+
+app.use('/quran', async (req, res) => {
+  try {
+    const imageUrl = `${BACKEND_BASE_URL}/quran${req.path}`;
+    const response = await fetch(imageUrl);
+    if (response.ok) {
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || 'image/png';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.send(Buffer.from(buffer));
+    } else {
+      res.status(404).json({ error: 'Image not found' });
+    }
+  } catch (error) {
+    console.error('Error proxying Quran image:', error);
+    res.status(500).json({ error: 'Failed to load image' });
+  }
+});
+
+// Fallback for generic /qaidah path
+app.use('/qaidah', async (req, res) => {
+  try {
+    const imageUrl = `${BACKEND_BASE_URL}/qaidah${req.path}`;
+    const response = await fetch(imageUrl);
+    if (response.ok) {
+      const buffer = await response.arrayBuffer();
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.send(Buffer.from(buffer));
+    } else {
+      res.status(404).json({ error: 'Image not found' });
+    }
+  } catch (error) {
+    console.error('Error proxying Qaidah image:', error);
+    res.status(500).json({ error: 'Failed to load image' });
+  }
+});
+
 // Check if dist directory exists
 const distPath = path.join(__dirname, 'dist');
 const indexPath = path.join(distPath, 'index.html');
@@ -87,7 +170,10 @@ app.get('*', (req, res) => {
   const path = req.path.toLowerCase();
   const isStaticFile = /\.(js|css|wasm|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/.test(path);
   
-  if (isStaticFile) {
+  // Skip Qaidah/Quran image paths - they're handled by proxy above
+  const isQaidahImage = path.startsWith('/qaidah') || path.startsWith('/quran');
+  
+  if (isStaticFile && !isQaidahImage) {
     // Static file not found - return 404 instead of serving index.html
     console.log(`❌ Static file not found: ${req.path}`);
     return res.status(404).json({
