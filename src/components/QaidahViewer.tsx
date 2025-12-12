@@ -253,7 +253,6 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
             <InteractiveMushaf
               currentPage={currentPage}
               onPageChange={(page) => {
-                setCurrentPage(page);
                 onPageChange?.(page);
                 navigate(`/qaidah/${page}`);
               }}
