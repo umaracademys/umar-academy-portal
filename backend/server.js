@@ -9519,7 +9519,7 @@ const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallb
   }
 });
 
-// GET /api/qaidah/pages/:book - List all pages for a book (Super Admin only)
+// GET /api/qaidah/pages/:book - List all pages for a book (Teachers, Admins, and Super Admins)
 // MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
 app.get('/api/qaidah/pages/:book', authenticateToken, async (req, res) => {
   try {
@@ -9527,10 +9527,10 @@ app.get('/api/qaidah/pages/:book', authenticateToken, async (req, res) => {
     console.log('📚 Request params:', req.params);
     console.log('📚 User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
     
-    // Check if user is super admin
-    if (!req.user || req.user.role !== 'superadmin') {
-      console.log('❌ Access denied: User is not super admin');
-      return res.status(403).json({ error: 'Only super admins can view pages' });
+    // Allow teachers, admins, and super admins
+    if (!req.user || !['teacher', 'admin', 'superadmin'].includes(req.user.role)) {
+      console.log('❌ Access denied: User is not authorized');
+      return res.status(403).json({ error: 'Only teachers, admins, and super admins can view pages' });
     }
 
     const { book } = req.params;

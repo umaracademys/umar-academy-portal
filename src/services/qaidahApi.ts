@@ -397,6 +397,49 @@ export async function reviewQaidahHomework(
 /**
  * Assign homework to student (teacher/admin)
  */
+/**
+ * Fetch available pages for a book
+ */
+export async function fetchAvailablePages(
+  book: 'qaidah1' | 'qaidah2' | 'quran'
+): Promise<{ book: string; pages: number[]; totalPages: number }> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const response = await fetch(`${API_BASE}/qaidah/pages/${book}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        // Return empty pages if not found
+        return { book, pages: [], totalPages: 0 };
+      }
+      throw new Error(`Failed to fetch available pages: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    // Extract page numbers from the pages array
+    const pageNumbers = (data.pages || []).map((p: any) => p.pageNumber).sort((a: number, b: number) => a - b);
+    return {
+      book: data.book || book,
+      pages: pageNumbers,
+      totalPages: pageNumbers.length
+    };
+  } catch (error) {
+    console.error(`Error fetching available pages for ${book}:`, error);
+    // Return empty pages on error
+    return { book, pages: [], totalPages: 0 };
+  }
+}
+
 export async function assignQaidahHomework(
   studentId: string,
   book: 'qaidah1' | 'qaidah2' | 'quran',

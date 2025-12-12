@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import QaidahViewer from '../components/QaidahViewer';
 import { useNavigate } from 'react-router-dom';
+import { fetchAvailablePages } from '../services/qaidahApi';
 
 const TeacherQaidahClasswork: React.FC = () => {
   const { user } = useAuth();
@@ -12,6 +13,8 @@ const TeacherQaidahClasswork: React.FC = () => {
   const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2' | 'quran'>('qaidah1');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(100);
+  const [availablePages, setAvailablePages] = useState<number[]>([]);
+  const [isLoadingPages, setIsLoadingPages] = useState(true);
 
   // Get available students (teachers see assigned students, admins see all)
   const availableStudents = user?.role === 'teacher'
@@ -22,134 +25,54 @@ const TeacherQaidahClasswork: React.FC = () => {
       })
     : students;
 
-      // Detect total pages for selected book
+  // Fetch available pages from backend
   useEffect(() => {
-    // For Quran, use Mushaf (604 pages)
-    if (selectedBook === 'quran') {
-      setTotalPages(604);
-      return;
-    }
-
-    const detectTotalPages = async () => {
-      let maxPage = 100;
-      let foundLastPage = false;
-
-      const checkPageExists = (pageNum: number): Promise<boolean> => {
-        return new Promise((resolve) => {
-          // Try JPG first (actual format), then PNG as fallback
-          const tryFormat = (format: 'jpg' | 'png') => {
-            const img = new Image();
-            let resolved = false;
-            
-            img.onload = () => {
-              if (!resolved) {
-                resolved = true;
-                resolve(true);
-              }
-            };
-            
-            img.onerror = () => {
-              if (format === 'jpg') {
-                // Try PNG if JPG fails
-                tryFormat('png');
-              } else if (!resolved) {
-                resolved = true;
-                resolve(false);
-              }
-            };
-            
-            // For qaidah, check qaidah1 or qaidah2 folders
-            if (selectedBook === 'qaidah1') {
-              img.src = `/qaidah1/${pageNum}.${format}`;
-            } else if (selectedBook === 'qaidah2') {
-              img.src = `/qaidah2/${pageNum}.${format}`;
-            } else {
-              img.src = `/qaidah/${pageNum}.${format}`;
-            }
-            
-            setTimeout(() => {
-              if (!resolved) {
-                resolved = true;
-                resolve(false);
-              }
-            }, 2000);
-          };
-          
-          tryFormat('jpg');
-        });
-      };
-
-      // Try common page counts first (starting with known counts)
-      // Qaidah1 has ~83 pages, Qaidah2 has ~48 pages
-      const commonCounts = [25, 48, 50, 83, 100, 150, 200];
-      let highestFound = 1;
-      
-      for (const count of commonCounts) {
-        const exists = await checkPageExists(count);
-        if (exists) {
-          highestFound = count;
-          // If we found a page at this count, it might be the last one
-          // But continue checking slightly higher to be sure
-        } else if (highestFound > 1) {
-          // If we found pages before but this one doesn't exist, we've likely found the max
-          maxPage = highestFound;
-          foundLastPage = true;
-          break;
-        }
-      }
-
-      // If we found some pages but not the last one, use the highest found as starting point
-      if (!foundLastPage && highestFound > 1) {
-        maxPage = highestFound;
-        foundLastPage = true;
-      }
-
-      // If not found, do a binary search starting from a reasonable high value
-      if (!foundLastPage) {
-        let low = 1;
-        let high = 200;
-        let lastFound = 1;
-
-        // First, find an upper bound by checking pages in increments
-        // This avoids checking every single page
-        for (let testPage = 10; testPage <= 200; testPage += 10) {
-          const exists = await checkPageExists(testPage);
-          if (exists) {
-            lastFound = testPage;
-          } else {
-            // Found the upper bound
-            high = Math.min(testPage, 200);
-            break;
-          }
+    const loadPages = async () => {
+      setIsLoadingPages(true);
+      try {
+        // For Quran, use fixed 604 pages
+        if (selectedBook === 'quran') {
+          setTotalPages(604);
+          setAvailablePages([]); // All pages available for Quran
+          setIsLoadingPages(false);
+          return;
         }
 
-        // Now do binary search between lastFound and high
-        low = lastFound;
-        while (low <= high) {
-          const mid = Math.floor((low + high) / 2);
-          const exists = await checkPageExists(mid);
-          
-          if (exists) {
-            lastFound = mid;
-            low = mid + 1;
-          } else {
-            high = mid - 1;
-          }
+        const result = await fetchAvailablePages(selectedBook);
+        setTotalPages(result.totalPages);
+        setAvailablePages(result.pages);
+        
+        // If current page is not available, go to first available page
+        if (result.pages.length > 0 && !result.pages.includes(currentPage)) {
+          setCurrentPage(result.pages[0]);
         }
-        maxPage = lastFound;
+      } catch (error) {
+        console.error('Error loading pages:', error);
+        setTotalPages(100); // Fallback
+        setAvailablePages([]);
+      } finally {
+        setIsLoadingPages(false);
       }
-
-      setTotalPages(maxPage);
     };
 
-    if (selectedBook) {
-      detectTotalPages();
-    }
+    loadPages();
   }, [selectedBook]);
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    navigate(`/teacher/qaidah-classwork/${selectedBook}/${page}`, { replace: true });
+    // For Quran, allow any page 1-604
+    if (selectedBook === 'quran') {
+      if (page >= 1 && page <= 604) {
+        setCurrentPage(page);
+        navigate(`/teacher/qaidah-classwork/${selectedBook}/${page}`, { replace: true });
+      }
+      return;
+    }
+
+    // For Qaidah books, only allow pages that exist
+    if (availablePages.length > 0 && availablePages.includes(page)) {
+      setCurrentPage(page);
+      navigate(`/teacher/qaidah-classwork/${selectedBook}/${page}`, { replace: true });
+    }
   };
 
   // Load page from URL if available
@@ -168,87 +91,149 @@ const TeacherQaidahClasswork: React.FC = () => {
 
   if (!user || (user.role !== 'teacher' && user.role !== 'admin' && user.role !== 'superadmin')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Access denied. Teachers and admins only.</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center bg-white rounded-xl shadow-lg p-8 max-w-md">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Only teachers and admins can access this page.</p>
         </div>
       </div>
     );
   }
 
+  const selectedStudent = availableStudents.find(
+    s => (s.id || (s as any)._id) === selectedStudentId
+  );
+
   return (
-    <div className="min-h-screen bg-gray-900">
-      {/* Top Bar with Controls */}
-      <div className="bg-black/80 backdrop-blur-sm border-b border-gray-700 p-4">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center gap-4">
-          <div className="flex-1 flex flex-col md:flex-row gap-4">
-            {/* Student Selection */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Modern Header */}
+      <div className="bg-white/10 backdrop-blur-lg border-b border-white/20 shadow-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            {/* Title Section */}
             <div className="flex-1">
-              <label className="block text-white text-sm font-semibold mb-2">Select Student</label>
-              <select
-                value={selectedStudentId}
-                onChange={(e) => {
-                  setSelectedStudentId(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="">-- Select Student --</option>
-                {availableStudents.map((student) => (
-                  <option key={student.id || (student as any)._id} value={student.id || (student as any)._id}>
-                    {student.fullName || (student as any).fullName}
-                  </option>
-                ))}
-              </select>
+              <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+                <span className="text-4xl">📚</span>
+                Qaidah Classwork
+              </h1>
+              <p className="text-gray-300 text-sm">
+                Mark and review student classwork on Qaidah and Quran pages
+              </p>
             </div>
 
-            {/* Book Selection */}
-            <div className="flex-1">
-              <label className="block text-white text-sm font-semibold mb-2">Select Book</label>
-              <select
-                value={selectedBook}
-                onChange={(e) => {
-                  const book = e.target.value as 'qaidah1' | 'qaidah2' | 'quran';
-                  setSelectedBook(book);
-                  setCurrentPage(1);
-                  navigate(`/teacher/qaidah-classwork/${book}/1`, { replace: true });
-                }}
-                className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              >
-                <option value="qaidah1">Qaidah 1</option>
-                <option value="qaidah2">Qaidah 2</option>
-                <option value="quran">Quran</option>
-              </select>
+            {/* Controls Section */}
+            <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+              {/* Student Selection */}
+              <div className="flex-1 lg:flex-initial lg:min-w-[250px]">
+                <label className="block text-white text-sm font-semibold mb-2">
+                  Select Student
+                </label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => {
+                    setSelectedStudentId(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all hover:bg-white/30"
+                >
+                  <option value="" className="bg-gray-800">-- Select Student --</option>
+                  {availableStudents.map((student) => (
+                    <option 
+                      key={student.id || (student as any)._id} 
+                      value={student.id || (student as any)._id}
+                      className="bg-gray-800"
+                    >
+                      {student.fullName || (student as any).fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Book Selection */}
+              <div className="flex-1 lg:flex-initial lg:min-w-[200px]">
+                <label className="block text-white text-sm font-semibold mb-2">
+                  Select Book
+                </label>
+                <select
+                  value={selectedBook}
+                  onChange={(e) => {
+                    const book = e.target.value as 'qaidah1' | 'qaidah2' | 'quran';
+                    setSelectedBook(book);
+                    setCurrentPage(1);
+                    navigate(`/teacher/qaidah-classwork/${book}/1`, { replace: true });
+                  }}
+                  className="w-full px-4 py-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white rounded-xl focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all hover:bg-white/30"
+                >
+                  <option value="qaidah1" className="bg-gray-800">Qaidah 1</option>
+                  <option value="qaidah2" className="bg-gray-800">Qaidah 2</option>
+                  <option value="quran" className="bg-gray-800">Quran</option>
+                </select>
+              </div>
+
+              {/* Back Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  ← Dashboard
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Back Button */}
-          <div className="flex items-end">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              ← Back to Dashboard
-            </button>
-          </div>
+          {/* Student Info Card */}
+          {selectedStudent && (
+            <div className="mt-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  {selectedStudent.fullName?.charAt(0) || 'S'}
+                </div>
+                <div>
+                  <p className="text-white font-semibold">{selectedStudent.fullName}</p>
+                  <p className="text-gray-300 text-sm">
+                    {selectedBook === 'quran' ? 'Quran' : selectedBook === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} • 
+                    {isLoadingPages ? ' Loading pages...' : ` ${totalPages} pages available`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Qaidah Viewer */}
       {selectedStudentId ? (
-        <QaidahViewer
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          studentId={selectedStudentId}
-          book={selectedBook}
-        />
+        isLoadingPages ? (
+          <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-500 mx-auto mb-4"></div>
+              <p className="text-white text-lg">Loading pages...</p>
+            </div>
+          </div>
+        ) : (
+          <QaidahViewer
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            studentId={selectedStudentId}
+            book={selectedBook}
+            availablePages={availablePages}
+          />
+        )
       ) : (
-        <div className="flex items-center justify-center h-[calc(100vh-120px)]">
-          <div className="text-center text-white">
-            <div className="text-6xl mb-4">📚</div>
-            <h2 className="text-2xl font-bold mb-2">Qaidah Classwork</h2>
-            <p className="text-gray-400">Please select a student to begin marking classwork</p>
+        <div className="flex items-center justify-center h-[calc(100vh-200px)]">
+          <div className="text-center bg-white/10 backdrop-blur-lg rounded-2xl p-12 border border-white/20 shadow-2xl max-w-md">
+            <div className="text-8xl mb-6">📖</div>
+            <h2 className="text-3xl font-bold text-white mb-4">Ready to Start</h2>
+            <p className="text-gray-300 text-lg mb-6">
+              Please select a student from the dropdown above to begin marking classwork
+            </p>
+            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
+              <span>✨</span>
+              <span>Select a student to get started</span>
+            </div>
           </div>
         </div>
       )}

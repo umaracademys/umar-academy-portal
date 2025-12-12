@@ -13,6 +13,7 @@ interface QaidahViewerProps {
   onPageChange?: (page: number) => void;
   studentId?: string;
   book?: 'qaidah1' | 'qaidah2' | 'quran';
+  availablePages?: number[]; // Array of available page numbers
 }
 
 const QaidahViewer: React.FC<QaidahViewerProps> = ({
@@ -21,6 +22,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   onPageChange,
   studentId: propStudentId,
   book: propBook,
+  availablePages = [],
 }) => {
   const { user } = useAuth();
   const { students } = useData();
@@ -102,10 +104,24 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
       if (e.key === 'ArrowLeft' && currentPage > 1) {
         e.preventDefault();
-        goToPage(currentPage - 1);
+        if (selectedBook !== 'quran' && availablePages.length > 0) {
+          const currentIndex = availablePages.indexOf(currentPage);
+          if (currentIndex > 0) {
+            goToPage(availablePages[currentIndex - 1]);
+          }
+        } else {
+          goToPage(currentPage - 1);
+        }
       } else if (e.key === 'ArrowRight' && currentPage < effectiveTotalPages) {
         e.preventDefault();
-        goToPage(currentPage + 1);
+        if (selectedBook !== 'quran' && availablePages.length > 0) {
+          const currentIndex = availablePages.indexOf(currentPage);
+          if (currentIndex < availablePages.length - 1) {
+            goToPage(availablePages[currentIndex + 1]);
+          }
+        } else {
+          goToPage(currentPage + 1);
+        }
       } else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         setZoom((prev) => Math.min(5, prev + 0.25));
@@ -126,6 +142,12 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   const goToPage = (page: number) => {
     const maxPages = selectedBook === 'quran' ? 604 : totalPages;
     if (page < 1 || page > maxPages) return;
+    
+    // For Qaidah books, only allow navigation to available pages
+    if (selectedBook !== 'quran' && availablePages.length > 0 && !availablePages.includes(page)) {
+      return; // Don't navigate to unavailable pages
+    }
+    
     onPageChange?.(page);
     if (selectedBook === 'quran') {
       navigate(`/qaidah/${page}`);
@@ -194,8 +216,18 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
       {/* Navigation Controls */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2">
         <button
-          onClick={() => goToPage(currentPage - 1)}
-          disabled={currentPage <= 1}
+          onClick={() => {
+            // For Qaidah books, find previous available page
+            if (selectedBook !== 'quran' && availablePages.length > 0) {
+              const currentIndex = availablePages.indexOf(currentPage);
+              if (currentIndex > 0) {
+                goToPage(availablePages[currentIndex - 1]);
+              }
+            } else {
+              goToPage(currentPage - 1);
+            }
+          }}
+          disabled={currentPage <= 1 || (selectedBook !== 'quran' && availablePages.length > 0 && availablePages.indexOf(currentPage) === 0)}
           className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
         >
@@ -208,8 +240,18 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
         </div>
         
         <button
-          onClick={() => goToPage(currentPage + 1)}
-          disabled={currentPage >= effectiveTotalPages}
+          onClick={() => {
+            // For Qaidah books, find next available page
+            if (selectedBook !== 'quran' && availablePages.length > 0) {
+              const currentIndex = availablePages.indexOf(currentPage);
+              if (currentIndex < availablePages.length - 1) {
+                goToPage(availablePages[currentIndex + 1]);
+              }
+            } else {
+              goToPage(currentPage + 1);
+            }
+          }}
+          disabled={currentPage >= effectiveTotalPages || (selectedBook !== 'quran' && availablePages.length > 0 && availablePages.indexOf(currentPage) === availablePages.length - 1)}
           className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
