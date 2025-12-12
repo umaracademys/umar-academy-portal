@@ -9717,6 +9717,221 @@ app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req,
   }
 });
 
+// POST /api/qaidah/upload-pdf - Upload a PDF file for a book (Super Admin only)
+// MUST come before /api/qaidah/upload to avoid route conflicts
+app.post('/api/qaidah/upload-pdf', authenticateToken, async (req, res) => {
+  try {
+    console.log('📤 POST /api/qaidah/upload-pdf called');
+    console.log('📤 User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
+    
+    // Check if user is super admin
+    if (!req.user || req.user.role !== 'superadmin') {
+      console.log('❌ Access denied: User is not super admin');
+      return res.status(403).json({ error: 'Only super admins can upload PDFs' });
+    }
+
+    const { book, fileData, filename } = req.body;
+
+    // Validate inputs
+    if (!book || !['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    if (!fileData) {
+      return res.status(400).json({ error: 'No file data provided' });
+    }
+
+    // Parse base64 file data
+    let fileBuffer;
+    
+    if (fileData.startsWith('data:')) {
+      // Data URL format: data:application/pdf;base64,...
+      const matches = fileData.match(/^data:application\/pdf;base64,(.+)$/);
+      if (!matches) {
+        return res.status(400).json({ error: 'Invalid PDF file data format' });
+      }
+      fileBuffer = Buffer.from(matches[1], 'base64');
+    } else {
+      // Assume base64 string
+      fileBuffer = Buffer.from(fileData, 'base64');
+    }
+
+    // Determine target directory
+    let targetDir;
+    if (book === 'qaidah1') {
+      targetDir = publicQaidah1Dir;
+    } else if (book === 'qaidah2') {
+      targetDir = publicQaidah2Dir;
+    } else if (book === 'quran') {
+      targetDir = publicQuranDir;
+    } else {
+      targetDir = publicQaidahDir;
+    }
+
+    // Ensure directory exists
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    // Save PDF file (use book name as filename)
+    const pdfFilename = filename && filename.toLowerCase().endsWith('.pdf') 
+      ? filename 
+      : `${book}.pdf`;
+    const filePath = path.join(targetDir, pdfFilename);
+    
+    fs.writeFileSync(filePath, fileBuffer);
+    
+    console.log(`✅ PDF uploaded: ${book}/${pdfFilename} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+    
+    res.json({
+      success: true,
+      book,
+      filename: pdfFilename,
+      url: `/${book}/${pdfFilename}`,
+      size: fileBuffer.length,
+      uploadedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error uploading PDF:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/qaidah/pdf/:book - Get PDF info for a book
+app.get('/api/qaidah/pdf/:book', authenticateToken, async (req, res) => {
+  try {
+    console.log('📄 GET /api/qaidah/pdf/:book called');
+    const { book } = req.params;
+
+    // Validate book
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    // Determine target directory
+    let targetDir;
+    if (book === 'qaidah1') {
+      targetDir = publicQaidah1Dir;
+    } else if (book === 'qaidah2') {
+      targetDir = publicQaidah2Dir;
+    } else if (book === 'quran') {
+      targetDir = publicQuranDir;
+    } else {
+      targetDir = publicQaidahDir;
+    }
+
+    // Look for PDF file (try book name first, then any .pdf file)
+    const pdfFilename = `${book}.pdf`;
+    const pdfPath = path.join(targetDir, pdfFilename);
+
+    if (!fs.existsSync(pdfPath)) {
+      // Try to find any PDF file in the directory
+      const files = fs.existsSync(targetDir) ? fs.readdirSync(targetDir) : [];
+      const pdfFile = files.find(f => f.toLowerCase().endsWith('.pdf'));
+      
+      if (!pdfFile) {
+        return res.status(404).json({ error: 'PDF not found', book });
+      }
+      
+      const foundPdfPath = path.join(targetDir, pdfFile);
+      const stats = fs.statSync(foundPdfPath);
+      
+      return res.json({
+        book,
+        pdf: {
+          filename: pdfFile,
+          size: stats.size,
+          url: `/${book}/${pdfFile}`,
+          uploadedAt: stats.mtime.toISOString()
+        }
+      });
+    }
+
+    const stats = fs.statSync(pdfPath);
+    
+    res.json({
+      book,
+      pdf: {
+        filename: pdfFilename,
+        size: stats.size,
+        url: `/${book}/${pdfFilename}`,
+        uploadedAt: stats.mtime.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error getting PDF info:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/qaidah/pdf/:book - Delete PDF for a book (Super Admin only)
+app.delete('/api/qaidah/pdf/:book', authenticateToken, async (req, res) => {
+  try {
+    console.log('🗑️ DELETE /api/qaidah/pdf/:book called');
+    
+    // Check if user is super admin
+    if (!req.user || req.user.role !== 'superadmin') {
+      console.log('❌ Access denied: User is not super admin');
+      return res.status(403).json({ error: 'Only super admins can delete PDFs' });
+    }
+
+    const { book } = req.params;
+
+    // Validate book
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    // Determine target directory
+    let targetDir;
+    if (book === 'qaidah1') {
+      targetDir = publicQaidah1Dir;
+    } else if (book === 'qaidah2') {
+      targetDir = publicQaidah2Dir;
+    } else if (book === 'quran') {
+      targetDir = publicQuranDir;
+    } else {
+      targetDir = publicQaidahDir;
+    }
+
+    // Look for PDF file
+    const pdfFilename = `${book}.pdf`;
+    const pdfPath = path.join(targetDir, pdfFilename);
+
+    if (!fs.existsSync(pdfPath)) {
+      // Try to find any PDF file in the directory
+      const files = fs.existsSync(targetDir) ? fs.readdirSync(targetDir) : [];
+      const pdfFile = files.find(f => f.toLowerCase().endsWith('.pdf'));
+      
+      if (!pdfFile) {
+        return res.status(404).json({ error: 'PDF not found', book });
+      }
+      
+      const foundPdfPath = path.join(targetDir, pdfFile);
+      fs.unlinkSync(foundPdfPath);
+      console.log(`✅ PDF deleted: ${book}/${pdfFile}`);
+      
+      return res.json({
+        success: true,
+        book,
+        message: 'PDF deleted successfully'
+      });
+    }
+
+    fs.unlinkSync(pdfPath);
+    console.log(`✅ PDF deleted: ${book}/${pdfFilename}`);
+    
+    res.json({
+      success: true,
+      book,
+      message: 'PDF deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting PDF:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/qaidah/upload - Upload a Qaidah/Quran page (Super Admin only)
 // MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
 app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
