@@ -258,6 +258,12 @@ const StudentDashboard: React.FC = () => {
               >
                 View All Assignments
               </Link>
+              <Link
+                to="/student/qaidah-homework"
+                className="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-green-700 shadow-md hover:shadow-lg"
+              >
+                📚 Qaidah Homework
+              </Link>
               <button
                 onClick={() => setShowRecordings(true)}
                 className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[rgba(var(--color-primary-rgb),0.9)] shadow-md hover:shadow-lg"
@@ -375,6 +381,52 @@ const StudentDashboard: React.FC = () => {
             </Card>
           </div>
         )}
+
+        {/* Quick Access Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <Link
+            to="/student/qaidah-homework"
+            className="block rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-6 hover:border-green-600 hover:shadow-lg transition-all"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-green-600 text-2xl">
+                📚
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-primary mb-1">Qaidah Homework</h3>
+                <p className="text-xs text-gray-600">View and submit your Qaidah homework</p>
+              </div>
+            </div>
+          </Link>
+          <Link
+            to="/student/assignments"
+            className="block rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary text-2xl">
+                📝
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-primary mb-1">My Assignments</h3>
+                <p className="text-xs text-gray-600">View all your assignments and classwork</p>
+              </div>
+            </div>
+          </Link>
+          <button
+            onClick={() => setShowPersonalMushaf(true)}
+            className="block w-full text-left rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary text-2xl">
+                📖
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-primary mb-1">Personal Mushaf</h3>
+                <p className="text-xs text-gray-600">View your personal mistake history</p>
+              </div>
+            </div>
+          </button>
+        </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">

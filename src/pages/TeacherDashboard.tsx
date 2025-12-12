@@ -371,6 +371,12 @@ const TeacherDashboard: React.FC = () => {
               >
                 Manage Assignments
               </Link>
+              <Link
+                to="/qaidah-submissions"
+                className="inline-flex items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-bold text-white transition-all hover:bg-green-700 shadow-md hover:shadow-lg"
+              >
+                📚 Qaidah Submissions
+              </Link>
               <button
                 onClick={() => setShowRecitationReview(true)}
                 className="inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg"
@@ -605,6 +611,20 @@ const TeacherDashboard: React.FC = () => {
                 >
                   <div className="font-bold text-primary mb-1">Manage Assignments</div>
                   <div className="text-xs text-gray-600">Create and manage assignments</div>
+                </Link>
+                <Link
+                  to="/qaidah-submissions"
+                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-green-600 hover:bg-green-50 transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100 text-green-600 text-lg font-bold">
+                      📚
+                    </div>
+                    <div>
+                      <div className="font-bold text-primary mb-1">Qaidah Submissions</div>
+                      <div className="text-xs text-gray-600">Review student Qaidah homework</div>
+                    </div>
+                  </div>
                 </Link>
               </div>
             </Card>
