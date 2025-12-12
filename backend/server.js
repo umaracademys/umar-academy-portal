@@ -9842,7 +9842,7 @@ app.post('/api/qaidah/homework/submit', authenticateToken, async (req, res) => {
 
     // Verify student owns this homework
     const studentId = homework.student.toString();
-    const userStudentId = (req.user.studentId || (req.user as any).studentDocumentId)?.toString();
+    const userStudentId = (req.user.studentId || req.user.studentDocumentId)?.toString();
     if (studentId !== userStudentId && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
       return res.status(403).json({ error: 'You can only submit your own homework' });
     }
@@ -9885,7 +9885,7 @@ app.get('/api/qaidah/homework/submissions/:studentId', authenticateToken, async 
     }
 
     // Check permissions: students can only see their own, teachers/admins can see any
-    const userStudentId = (req.user.studentId || (req.user as any).studentDocumentId)?.toString();
+    const userStudentId = (req.user.studentId || req.user.studentDocumentId)?.toString();
     if (userRole === 'student' && studentId !== userStudentId) {
       return res.status(403).json({ error: 'You can only view your own homework' });
     }
