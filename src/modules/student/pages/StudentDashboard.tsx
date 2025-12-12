@@ -260,9 +260,10 @@ const StudentDashboard: React.FC = () => {
               </Link>
               <Link
                 to="/student/qaidah-homework"
-                className="inline-flex items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-green-700 shadow-md hover:shadow-lg"
+                className="inline-flex items-center gap-2 justify-center rounded-lg bg-gradient-to-r from-green-600 to-green-700 px-4 py-2 text-xs font-bold text-white transition-all hover:from-green-700 hover:to-green-800 shadow-md hover:shadow-lg transform hover:scale-105"
               >
-                📚 Qaidah Homework
+                <span>📚</span>
+                <span>Qaidah Homework</span>
               </Link>
               <button
                 onClick={() => setShowRecordings(true)}
@@ -382,22 +383,36 @@ const StudentDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Quick Access Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        {/* Qaidah Section */}
+        <Card title="📚 Qaidah Module" className="mb-4 border-2 border-green-200">
+          <div className="mb-4 p-3 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-green-200">
+            <p className="text-sm text-gray-700">
+              <strong>Qaidah Homework:</strong> View your assigned Qaidah pages, submit recordings, and receive teacher feedback.
+            </p>
+          </div>
           <Link
             to="/student/qaidah-homework"
-            className="block rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white p-6 hover:border-green-600 hover:shadow-lg transition-all"
+            className="block rounded-xl border-2 border-green-300 bg-gradient-to-br from-green-50 via-green-100/50 to-white p-6 hover:border-green-600 hover:shadow-xl transition-all transform hover:scale-105"
           >
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-100 text-green-600 text-2xl">
-                📚
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-green-600 text-white text-2xl shadow-lg">
+                  📚
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-gray-800 mb-1">Qaidah Homework</h3>
+                  <p className="text-xs text-gray-600">View and submit your Qaidah homework assignments</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-bold text-lg text-primary mb-1">Qaidah Homework</h3>
-                <p className="text-xs text-gray-600">View and submit your Qaidah homework</p>
-              </div>
+              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </Link>
+        </Card>
+
+        {/* Quick Access Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <Link
             to="/student/assignments"
             className="block rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
