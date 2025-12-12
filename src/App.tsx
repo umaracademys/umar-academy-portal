@@ -20,6 +20,8 @@ const StudentRouter = lazy(() => import('./modules/student/StudentRouter'));
 const ParentRegistrationForm = lazy(() => import('./pages/ParentRegistrationForm'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage'));
 const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage'));
+const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
+const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -84,8 +86,8 @@ function AppContent() {
   const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  // Skip auth loading for demo page
-  if (isLoading && location.pathname !== '/mushaf-demo') {
+  // Skip auth loading for demo page and qaidah
+  if (isLoading && location.pathname !== '/mushaf-demo' && !location.pathname.startsWith('/qaidah')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -104,6 +106,14 @@ function AppContent() {
         <Route 
           path="/mushaf-demo" 
           element={<MushafDemo />} 
+        />
+        <Route 
+          path="/qaidah" 
+          element={<QaidahIndex />} 
+        />
+        <Route 
+          path="/qaidah/:pageNumber" 
+          element={<QaidahPageViewer />} 
         />
         <Route 
           path="/register" 
