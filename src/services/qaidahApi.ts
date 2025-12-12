@@ -243,3 +243,201 @@ export async function fetchQaidahClasswork(
     };
   }
 }
+
+// ==================== QAIDAH HOMEWORK INTERFACES ====================
+
+export interface QaidahHomework {
+  id: string;
+  student: string;
+  book: 'qaidah1' | 'qaidah2' | 'quran';
+  page: number;
+  marks: QaidahMark[];
+  classworkDate?: string;
+  homeworkInstructions: string;
+  dueDate: string;
+  youtubeLink?: string;
+  teacherFeedback?: string;
+  status: 'pending' | 'submitted' | 'reviewed';
+  assignedBy?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface QaidahHomeworkList {
+  student: string;
+  homework: QaidahHomework[];
+}
+
+// ==================== QAIDAH HOMEWORK API ====================
+
+/**
+ * Submit homework (student)
+ */
+export async function submitQaidahHomework(
+  homeworkId: string,
+  youtubeLink: string
+): Promise<QaidahHomework> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const response = await fetch(`${API_BASE}/qaidah/homework/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        homeworkId,
+        youtubeLink
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `Failed to submit homework: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.homework;
+  } catch (error) {
+    console.error('Error submitting homework:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get all homework submissions for a student
+ */
+export async function fetchQaidahHomeworkSubmissions(
+  studentId: string
+): Promise<QaidahHomeworkList> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const response = await fetch(`${API_BASE}/qaidah/homework/submissions/${studentId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return {
+          student: studentId,
+          homework: []
+        };
+      }
+      throw new Error(`Failed to fetch homework submissions: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return {
+      student: data.student || studentId,
+      homework: data.homework || []
+    };
+  } catch (error) {
+    console.error('Error fetching homework submissions:', error);
+    return {
+      student: studentId,
+      homework: []
+    };
+  }
+}
+
+/**
+ * Review homework (teacher)
+ */
+export async function reviewQaidahHomework(
+  homeworkId: string,
+  teacherFeedback: string,
+  status: 'pending' | 'submitted' | 'reviewed' = 'reviewed'
+): Promise<QaidahHomework> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const response = await fetch(`${API_BASE}/qaidah/homework/review`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        homeworkId,
+        teacherFeedback,
+        status
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `Failed to review homework: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.homework;
+  } catch (error) {
+    console.error('Error reviewing homework:', error);
+    throw error;
+  }
+}
+
+/**
+ * Assign homework to student (teacher/admin)
+ */
+export async function assignQaidahHomework(
+  studentId: string,
+  book: 'qaidah1' | 'qaidah2' | 'quran',
+  page: number,
+  dueDate: Date,
+  marks?: QaidahMark[],
+  classworkDate?: Date,
+  homeworkInstructions?: string
+): Promise<QaidahHomework> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+
+    const response = await fetch(`${API_BASE}/qaidah/homework/assign`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        studentId,
+        book,
+        page,
+        marks: marks || [],
+        classworkDate: classworkDate?.toISOString(),
+        homeworkInstructions: homeworkInstructions || '',
+        dueDate: dueDate.toISOString()
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: response.statusText }));
+      throw new Error(errorData.error || `Failed to assign homework: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.homework;
+  } catch (error) {
+    console.error('Error assigning homework:', error);
+    throw error;
+  }
+}

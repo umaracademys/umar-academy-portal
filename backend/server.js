@@ -3653,6 +3653,36 @@ qaidahMarkSchema.index({ student: 1, book: 1, page: 1, classworkDate: 1 });
 
 const QaidahMark = mongoose.model('QaidahMark', qaidahMarkSchema);
 
+// Qaidah Homework Schema - for student submissions and teacher review
+const qaidahHomeworkSchema = new mongoose.Schema({
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+  book: { type: String, enum: ['qaidah1', 'qaidah2', 'quran'], required: true, index: true },
+  page: { type: Number, required: true, index: true },
+  marks: [{
+    id: { type: String, required: true }, // UUID
+    type: { type: String, enum: ['mistake', 'correct', 'note'], required: true },
+    x: { type: Number, required: true, min: 0, max: 1 }, // Normalized 0-1
+    y: { type: Number, required: true, min: 0, max: 1 }, // Normalized 0-1
+    comment: { type: String, default: '' }
+  }],
+  classworkDate: { type: Date, index: true }, // Date of class session
+  homeworkInstructions: { type: String, default: '' },
+  dueDate: { type: Date, required: true, index: true },
+  youtubeLink: { type: String, default: '' }, // Student's submission
+  teacherFeedback: { type: String, default: '' }, // Optional feedback
+  status: { type: String, enum: ['pending', 'submitted', 'reviewed'], default: 'pending', index: true },
+  assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  reviewedAt: { type: Date }
+}, { timestamps: true });
+
+// Compound index for efficient queries
+qaidahHomeworkSchema.index({ student: 1, book: 1, page: 1, classworkDate: 1 });
+qaidahHomeworkSchema.index({ student: 1, status: 1 });
+qaidahHomeworkSchema.index({ dueDate: 1 });
+
+const QaidahHomework = mongoose.model('QaidahHomework', qaidahHomeworkSchema);
+
 // --- Listening session helpers & SSE support ---
 const listeningSessionClients = new Map();
 
@@ -9782,6 +9812,245 @@ app.get('/api/qaidah/classwork/:studentId/:book/:page', authenticateToken, async
     });
   } catch (error) {
     console.error('Error fetching qaidah classwork:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== QAIDAH HOMEWORK ROUTES ====================
+
+// POST /api/qaidah/homework/submit - Student submits homework
+app.post('/api/qaidah/homework/submit', authenticateToken, async (req, res) => {
+  try {
+    const { homeworkId, youtubeLink } = req.body;
+    const userId = req.user.userId || req.user.id;
+
+    if (!homeworkId || !youtubeLink) {
+      return res.status(400).json({ error: 'Missing required fields: homeworkId, youtubeLink' });
+    }
+
+    // Validate YouTube link format
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
+    if (!youtubeRegex.test(youtubeLink)) {
+      return res.status(400).json({ error: 'Invalid YouTube link format' });
+    }
+
+    // Find homework
+    const homework = await QaidahHomework.findById(homeworkId);
+    if (!homework) {
+      return res.status(404).json({ error: 'Homework not found' });
+    }
+
+    // Verify student owns this homework
+    const studentId = homework.student.toString();
+    const userStudentId = (req.user.studentId || (req.user as any).studentDocumentId)?.toString();
+    if (studentId !== userStudentId && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'You can only submit your own homework' });
+    }
+
+    // Update homework with submission
+    homework.youtubeLink = youtubeLink;
+    homework.status = 'submitted';
+    await homework.save();
+
+    res.json({
+      success: true,
+      message: 'Homework submitted successfully',
+      homework: {
+        id: homework._id,
+        student: homework.student,
+        book: homework.book,
+        page: homework.page,
+        youtubeLink: homework.youtubeLink,
+        status: homework.status,
+        updatedAt: homework.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error submitting homework:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/qaidah/homework/submissions/:studentId - Get all homework for a student
+app.get('/api/qaidah/homework/submissions/:studentId', authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
+
+    // Verify student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Check permissions: students can only see their own, teachers/admins can see any
+    const userStudentId = (req.user.studentId || (req.user as any).studentDocumentId)?.toString();
+    if (userRole === 'student' && studentId !== userStudentId) {
+      return res.status(403).json({ error: 'You can only view your own homework' });
+    }
+
+    // Find all homework for this student (sorted by due date, newest first)
+    const homeworkList = await QaidahHomework.find({
+      student: studentId
+    }).sort({ dueDate: -1, createdAt: -1 });
+
+    res.json({
+      student: studentId,
+      homework: homeworkList.map(hw => ({
+        id: hw._id,
+        student: hw.student,
+        book: hw.book,
+        page: hw.page,
+        marks: hw.marks || [],
+        classworkDate: hw.classworkDate,
+        homeworkInstructions: hw.homeworkInstructions,
+        dueDate: hw.dueDate,
+        youtubeLink: hw.youtubeLink,
+        teacherFeedback: hw.teacherFeedback,
+        status: hw.status,
+        assignedBy: hw.assignedBy,
+        reviewedBy: hw.reviewedBy,
+        reviewedAt: hw.reviewedAt,
+        createdAt: hw.createdAt,
+        updatedAt: hw.updatedAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching homework submissions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/qaidah/homework/review - Teacher reviews homework
+app.post('/api/qaidah/homework/review', authenticateToken, async (req, res) => {
+  try {
+    const { homeworkId, teacherFeedback, status } = req.body;
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
+
+    // Only teachers/admins can review
+    if (userRole !== 'teacher' && userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ error: 'Only teachers and admins can review homework' });
+    }
+
+    if (!homeworkId) {
+      return res.status(400).json({ error: 'Missing required field: homeworkId' });
+    }
+
+    if (status && !['pending', 'submitted', 'reviewed'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be pending, submitted, or reviewed' });
+    }
+
+    // Find homework
+    const homework = await QaidahHomework.findById(homeworkId);
+    if (!homework) {
+      return res.status(404).json({ error: 'Homework not found' });
+    }
+
+    // Update homework review
+    if (teacherFeedback !== undefined) {
+      homework.teacherFeedback = teacherFeedback;
+    }
+    if (status) {
+      homework.status = status;
+      if (status === 'reviewed') {
+        homework.reviewedBy = userId;
+        homework.reviewedAt = new Date();
+      }
+    }
+    await homework.save();
+
+    res.json({
+      success: true,
+      message: 'Homework review updated successfully',
+      homework: {
+        id: homework._id,
+        student: homework.student,
+        book: homework.book,
+        page: homework.page,
+        youtubeLink: homework.youtubeLink,
+        teacherFeedback: homework.teacherFeedback,
+        status: homework.status,
+        reviewedBy: homework.reviewedBy,
+        reviewedAt: homework.reviewedAt,
+        updatedAt: homework.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error reviewing homework:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/qaidah/homework/assign - Assign homework to student (optional helper endpoint)
+app.post('/api/qaidah/homework/assign', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page, marks, classworkDate, homeworkInstructions, dueDate } = req.body;
+    const userId = req.user.userId || req.user.id;
+    const userRole = req.user.role;
+
+    // Only teachers/admins can assign
+    if (userRole !== 'teacher' && userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ error: 'Only teachers and admins can assign homework' });
+    }
+
+    if (!studentId || !book || !page || !dueDate) {
+      return res.status(400).json({ error: 'Missing required fields: studentId, book, page, dueDate' });
+    }
+
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    const pageNum = parseInt(page, 10);
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    const dueDateObj = new Date(dueDate);
+    if (isNaN(dueDateObj.getTime())) {
+      return res.status(400).json({ error: 'Invalid dueDate format' });
+    }
+
+    // Verify student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Create homework
+    const homework = new QaidahHomework({
+      student: studentId,
+      book,
+      page: pageNum,
+      marks: marks || [],
+      classworkDate: classworkDate ? new Date(classworkDate) : undefined,
+      homeworkInstructions: homeworkInstructions || '',
+      dueDate: dueDateObj,
+      status: 'pending',
+      assignedBy: userId
+    });
+    await homework.save();
+
+    res.json({
+      success: true,
+      message: 'Homework assigned successfully',
+      homework: {
+        id: homework._id,
+        student: homework.student,
+        book: homework.book,
+        page: homework.page,
+        marks: homework.marks,
+        classworkDate: homework.classworkDate,
+        homeworkInstructions: homework.homeworkInstructions,
+        dueDate: homework.dueDate,
+        status: homework.status,
+        createdAt: homework.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error assigning homework:', error);
     res.status(500).json({ error: error.message });
   }
 });
