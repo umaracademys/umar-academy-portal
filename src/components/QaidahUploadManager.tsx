@@ -57,13 +57,15 @@ const QaidahUploadManager: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to load pages');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Failed to load pages: ${response.status} ${response.statusText}`);
       }
 
       const data: BookPages = await response.json();
       setPages(data.pages || []);
     } catch (error: any) {
       console.error('Error loading pages:', error);
+      setUploadError(error.message || 'Failed to load pages. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -201,7 +203,7 @@ const QaidahUploadManager: React.FC = () => {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || 'Upload failed');
+            throw new Error(data.error || `Upload failed: ${response.status} ${response.statusText}`);
           }
 
           results.push({
@@ -271,7 +273,7 @@ const QaidahUploadManager: React.FC = () => {
           const base64Data = reader.result as string;
           const token = getAuthToken();
 
-          const response = await fetch('/api/qaidah/upload', {
+          const response = await fetch(`${API_BASE}/qaidah/upload`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -288,12 +290,13 @@ const QaidahUploadManager: React.FC = () => {
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || 'Upload failed');
+            throw new Error(data.error || `Upload failed: ${response.status} ${response.statusText}`);
           }
 
           setUploadSuccess(`Page ${pageNum} uploaded successfully!`);
           setSelectedFile(null);
           setPageNumber('');
+          setUploadError(null);
           // Reset file input
           const fileInput = document.getElementById('file-input') as HTMLInputElement;
           if (fileInput) fileInput.value = '';
