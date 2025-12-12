@@ -6,9 +6,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const SOURCE_DIR = '/Users/muhammadumar/Downloads/Part 1';
+const SOURCE_DIR = '/Users/muhammadumar/Downloads/Part 2';
 const TARGET_DIR = path.join(__dirname, '..', 'public', 'qaidah2');
-const BOOK_NAME = 'qaidah2'; // Part 1 folder contains Part 2 of Qaidah
+const BOOK_NAME = 'qaidah2'; // Part 2 folder contains Part 2 of Qaidah
 
 // Create target directory if it doesn't exist
 if (!fs.existsSync(TARGET_DIR)) {
@@ -34,7 +34,7 @@ let errors = 0;
 
 files.forEach((file, index) => {
   const sourcePath = path.join(SOURCE_DIR, file);
-  // Extract page number from filename (e.g., page-0001 -> 1)
+  // Extract page number from filename (e.g., page-0001 -> 1, or page-0044 -> 44)
   const pageMatch = file.match(/page-(\d+)/);
   const pageNum = pageMatch ? parseInt(pageMatch[1]) : (index + 1);
   
