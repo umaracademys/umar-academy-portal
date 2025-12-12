@@ -9608,7 +9608,6 @@ app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req,
       return res.status(403).json({ error: 'Only super admins can delete pages' });
     }
 
-  try {
     const { book, pageNumber } = req.params;
     const pageNum = parseInt(pageNumber, 10);
 
