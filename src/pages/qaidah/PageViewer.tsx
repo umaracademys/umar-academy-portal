@@ -81,23 +81,52 @@ const QaidahPageViewer: React.FC = () => {
         });
       };
 
-      // Try common page counts first
-      const commonCounts = [50, 100, 150, 200];
+      // Try common page counts first (starting with smaller counts)
+      // Qaidah1 has ~83 pages, Qaidah2 has ~48 pages
+      const commonCounts = [25, 48, 50, 83, 100, 150, 200];
+      let highestFound = 1;
+      
       for (const count of commonCounts) {
         const exists = await checkPageExists(count);
         if (exists) {
-          maxPage = count;
+          highestFound = count;
+          // If we found a page at this count, it might be the last one
+          // But continue checking slightly higher to be sure
+        } else if (highestFound > 1) {
+          // If we found pages before but this one doesn't exist, we've likely found the max
+          maxPage = highestFound;
           foundLastPage = true;
           break;
         }
       }
 
-      // If not found, do a binary search
+      // If we found some pages but not the last one, use the highest found as starting point
+      if (!foundLastPage && highestFound > 1) {
+        maxPage = highestFound;
+        foundLastPage = true;
+      }
+
+      // If not found, do a binary search starting from a reasonable high value
       if (!foundLastPage) {
         let low = 1;
         let high = 200;
         let lastFound = 1;
 
+        // First, find an upper bound by checking pages in increments
+        // This avoids checking every single page
+        for (let testPage = 10; testPage <= 200; testPage += 10) {
+          const exists = await checkPageExists(testPage);
+          if (exists) {
+            lastFound = testPage;
+          } else {
+            // Found the upper bound
+            high = Math.min(testPage, 200);
+            break;
+          }
+        }
+
+        // Now do binary search between lastFound and high
+        low = lastFound;
         while (low <= high) {
           const mid = Math.floor((low + high) / 2);
           const exists = await checkPageExists(mid);
