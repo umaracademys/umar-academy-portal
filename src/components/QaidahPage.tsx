@@ -8,6 +8,8 @@ interface QaidahPageProps {
   onZoomChange?: (zoom: number) => void;
   position?: { x: number; y: number };
   onPositionChange?: (position: { x: number; y: number }) => void;
+  containerRef?: React.RefObject<HTMLDivElement>;
+  imageRef?: React.RefObject<HTMLImageElement>;
 }
 
 const QaidahPage: React.FC<QaidahPageProps> = ({
@@ -18,13 +20,17 @@ const QaidahPage: React.FC<QaidahPageProps> = ({
   onZoomChange,
   position = { x: 0, y: 0 },
   onPositionChange,
+  containerRef: externalContainerRef,
+  imageRef: externalImageRef,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
+  const internalImageRef = useRef<HTMLImageElement>(null);
+  const containerRef = externalContainerRef || internalContainerRef;
+  const imageRef = externalImageRef || internalImageRef;
   const lastPinchDistance = useRef<number | null>(null);
   const lastPinchCenter = useRef<{ x: number; y: number } | null>(null);
 

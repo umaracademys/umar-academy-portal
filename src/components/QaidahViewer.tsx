@@ -1,23 +1,39 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import QaidahPage from './QaidahPage';
+import QaidahCanvas from './QaidahCanvas';
 
 interface QaidahViewerProps {
   currentPage: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
+  studentId?: string;
+  book?: 'qaidah1' | 'qaidah2';
 }
 
 const QaidahViewer: React.FC<QaidahViewerProps> = ({
   currentPage,
   totalPages = 100, // Default, can be detected or passed as prop
   onPageChange,
+  studentId: propStudentId,
+  book: propBook,
 }) => {
+  const { user } = useAuth();
+  const { students } = useData();
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [preloadedPages, setPreloadedPages] = useState<Set<number>>(new Set());
+  const [selectedStudentId, setSelectedStudentId] = useState<string>(propStudentId || '');
+  const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2'>(propBook || 'qaidah1');
   const navigate = useNavigate();
   const pageRef = useRef<number>(currentPage);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  // Check if user can mark (teacher or admin)
+  const canMark = user && (user.role === 'teacher' || user.role === 'admin' || user.role === 'superadmin');
 
   // Update ref when currentPage changes
   useEffect(() => {
@@ -115,8 +131,44 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
   const imageUrl = getImageUrl(currentPage);
 
+  // Get available students for selection (if teacher, only show assigned students)
+  const availableStudents = user?.role === 'teacher' 
+    ? students.filter(s => {
+        const teacherId = (user as any).teacherId || (user as any).id;
+        return s.assignedTeacher === teacherId || 
+               (s as any).assignedTeacher?.toString() === teacherId?.toString();
+      })
+    : students;
+
   return (
     <div className="w-full h-screen bg-gray-900 flex flex-col relative overflow-hidden">
+      {/* Student and Book Selection (for teachers/admins) */}
+      {canMark && (
+        <div className="absolute top-4 left-4 z-30 bg-black/80 backdrop-blur-sm rounded-lg p-3 flex flex-col gap-2 min-w-[200px]">
+          <div className="text-white text-sm font-semibold mb-1">Marking Mode</div>
+          <select
+            value={selectedStudentId}
+            onChange={(e) => setSelectedStudentId(e.target.value)}
+            className="px-3 py-2 bg-gray-700 text-white rounded text-sm"
+          >
+            <option value="">Select Student</option>
+            {availableStudents.map((student) => (
+              <option key={student.id || (student as any)._id} value={student.id || (student as any)._id}>
+                {student.fullName || (student as any).fullName}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedBook}
+            onChange={(e) => setSelectedBook(e.target.value as 'qaidah1' | 'qaidah2')}
+            className="px-3 py-2 bg-gray-700 text-white rounded text-sm"
+          >
+            <option value="qaidah1">Qaidah 1</option>
+            <option value="qaidah2">Qaidah 2</option>
+          </select>
+        </div>
+      )}
+
       {/* Navigation Controls */}
       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2">
         <button
@@ -172,7 +224,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
       </div>
 
       {/* Page Display */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" ref={containerRef}>
         <QaidahPage
           pageNumber={currentPage}
           imageUrl={imageUrl}
@@ -180,7 +232,24 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
           onZoomChange={setZoom}
           position={position}
           onPositionChange={setPosition}
+          containerRef={containerRef}
+          imageRef={imageRef}
         />
+        
+        {/* Qaidah Canvas Overlay for marking */}
+        {canMark && selectedStudentId && (
+          <QaidahCanvas
+            studentId={selectedStudentId}
+            book={selectedBook}
+            page={currentPage}
+            imageUrl={imageUrl}
+            zoom={zoom}
+            position={position}
+            containerRef={containerRef}
+            imageRef={imageRef}
+            enabled={true}
+          />
+        )}
       </div>
 
       {/* Page Indicator (bottom) */}

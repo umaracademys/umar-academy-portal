@@ -3631,6 +3631,26 @@ listeningSessionSchema.index({ status: 1, lastHeartbeatAt: 1 });
 
 const ListeningSession = mongoose.model('ListeningSession', listeningSessionSchema);
 
+// Qaidah Mark Schema - for teacher annotations on Qaidah pages
+const qaidahMarkSchema = new mongoose.Schema({
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+  book: { type: String, enum: ['qaidah1', 'qaidah2'], required: true, index: true },
+  page: { type: Number, required: true, index: true },
+  marks: [{
+    id: { type: String, required: true }, // UUID
+    type: { type: String, enum: ['mistake', 'correct', 'note'], required: true },
+    x: { type: Number, required: true, min: 0, max: 1 }, // Normalized 0-1
+    y: { type: Number, required: true, min: 0, max: 1 }, // Normalized 0-1
+    comment: { type: String, default: '' }
+  }],
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+
+// Compound index for efficient queries
+qaidahMarkSchema.index({ student: 1, book: 1, page: 1 }, { unique: true });
+
+const QaidahMark = mongoose.model('QaidahMark', qaidahMarkSchema);
 
 // --- Listening session helpers & SSE support ---
 const listeningSessionClients = new Map();
@@ -9467,6 +9487,140 @@ app.use((req, res) => {
     path: req.path,
     method: req.method
   });
+});
+
+// ==================== QAIDAH MARKING ROUTES ====================
+
+// GET /api/qaidah/:studentId/:book/:page - Get marks for a specific page
+app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page } = req.params;
+    const pageNum = parseInt(page, 10);
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    // Verify student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Find or create QaidahMark document
+    let qaidahMark = await QaidahMark.findOne({
+      student: studentId,
+      book,
+      page: pageNum
+    });
+
+    if (!qaidahMark) {
+      // Return empty marks array if no marks exist yet
+      return res.json({
+        student: studentId,
+        book,
+        page: pageNum,
+        marks: []
+      });
+    }
+
+    res.json({
+      student: qaidahMark.student,
+      book: qaidahMark.book,
+      page: qaidahMark.page,
+      marks: qaidahMark.marks || []
+    });
+  } catch (error) {
+    console.error('Error fetching qaidah marks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/qaidah/save - Save marks for a page
+app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page, marks } = req.body;
+    const userId = req.user.userId || req.user.id;
+
+    if (!studentId || !book || !page) {
+      return res.status(400).json({ error: 'Missing required fields: studentId, book, page' });
+    }
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    const pageNum = parseInt(page, 10);
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    // Validate marks array
+    if (!Array.isArray(marks)) {
+      return res.status(400).json({ error: 'Marks must be an array' });
+    }
+
+    // Validate each mark
+    for (const mark of marks) {
+      if (!mark.id || !mark.type || typeof mark.x !== 'number' || typeof mark.y !== 'number') {
+        return res.status(400).json({ 
+          error: 'Each mark must have: id, type, x (0-1), y (0-1)' 
+        });
+      }
+      if (!['mistake', 'correct', 'note'].includes(mark.type)) {
+        return res.status(400).json({ error: 'Mark type must be: mistake, correct, or note' });
+      }
+      if (mark.x < 0 || mark.x > 1 || mark.y < 0 || mark.y > 1) {
+        return res.status(400).json({ error: 'Mark coordinates must be between 0 and 1' });
+      }
+    }
+
+    // Verify student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Find or create QaidahMark document
+    let qaidahMark = await QaidahMark.findOne({
+      student: studentId,
+      book,
+      page: pageNum
+    });
+
+    if (qaidahMark) {
+      // Update existing document
+      qaidahMark.marks = marks;
+      qaidahMark.updatedBy = userId;
+      await qaidahMark.save();
+    } else {
+      // Create new document
+      qaidahMark = new QaidahMark({
+        student: studentId,
+        book,
+        page: pageNum,
+        marks,
+        createdBy: userId,
+        updatedBy: userId
+      });
+      await qaidahMark.save();
+    }
+
+    res.json({
+      success: true,
+      student: qaidahMark.student,
+      book: qaidahMark.book,
+      page: qaidahMark.page,
+      marks: qaidahMark.marks
+    });
+  } catch (error) {
+    console.error('Error saving qaidah marks:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Global error handler middleware (must be last)
