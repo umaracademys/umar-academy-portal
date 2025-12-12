@@ -10074,7 +10074,7 @@ const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallb
 
 // POST /api/qaidah/upload - Upload a Qaidah/Quran page (Super Admin only)
 // Accepts JSON with base64 encoded file for simplicity
-app.post('/api/qaidah/upload', authenticateToken, express.json({ limit: '50mb' }), async (req, res) => {
+app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
   try {
     // Check if user is super admin
     if (req.user.role !== 'superadmin') {
