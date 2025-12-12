@@ -3634,7 +3634,7 @@ const ListeningSession = mongoose.model('ListeningSession', listeningSessionSche
 // Qaidah Mark Schema - for teacher annotations on Qaidah pages
 const qaidahMarkSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
-  book: { type: String, enum: ['qaidah1', 'qaidah2'], required: true, index: true },
+  book: { type: String, enum: ['qaidah1', 'qaidah2', 'quran'], required: true, index: true },
   page: { type: Number, required: true, index: true },
   marks: [{
     id: { type: String, required: true }, // UUID
@@ -3643,12 +3643,13 @@ const qaidahMarkSchema = new mongoose.Schema({
     y: { type: Number, required: true, min: 0, max: 1 }, // Normalized 0-1
     comment: { type: String, default: '' }
   }],
+  classworkDate: { type: Date, index: true }, // Date of class session (optional for backward compatibility)
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-// Compound index for efficient queries
-qaidahMarkSchema.index({ student: 1, book: 1, page: 1 }, { unique: true });
+// Compound index for efficient queries - allows multiple classwork sessions per student/book/page
+qaidahMarkSchema.index({ student: 1, book: 1, page: 1, classworkDate: 1 });
 
 const QaidahMark = mongoose.model('QaidahMark', qaidahMarkSchema);
 
@@ -9619,6 +9620,168 @@ app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Error saving qaidah marks:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/qaidah/classwork - Save marks as classwork for a specific date
+app.post('/api/qaidah/classwork', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page, marks, classworkDate } = req.body;
+    const userId = req.user.userId || req.user.id;
+
+    if (!studentId || !book || !page || !classworkDate) {
+      return res.status(400).json({ error: 'Missing required fields: studentId, book, page, classworkDate' });
+    }
+
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    const pageNum = parseInt(page, 10);
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    // Validate classworkDate
+    const date = new Date(classworkDate);
+    if (isNaN(date.getTime())) {
+      return res.status(400).json({ error: 'Invalid classworkDate format' });
+    }
+
+    // Validate marks array
+    if (!Array.isArray(marks)) {
+      return res.status(400).json({ error: 'Marks must be an array' });
+    }
+
+    // Validate each mark
+    for (const mark of marks) {
+      if (!mark.id || !mark.type || typeof mark.x !== 'number' || typeof mark.y !== 'number') {
+        return res.status(400).json({ 
+          error: 'Each mark must have: id, type, x (0-1), y (0-1)' 
+        });
+      }
+      if (!['mistake', 'correct', 'note'].includes(mark.type)) {
+        return res.status(400).json({ error: 'Mark type must be: mistake, correct, or note' });
+      }
+      if (mark.x < 0 || mark.x > 1 || mark.y < 0 || mark.y > 1) {
+        return res.status(400).json({ error: 'Mark coordinates must be between 0 and 1' });
+      }
+    }
+
+    // Verify student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Check if classwork already exists for this student/book/page/date
+    const existingClasswork = await QaidahMark.findOne({
+      student: studentId,
+      book,
+      page: pageNum,
+      classworkDate: date
+    });
+
+    if (existingClasswork) {
+      // Update existing classwork
+      existingClasswork.marks = marks;
+      existingClasswork.updatedBy = userId;
+      await existingClasswork.save();
+      
+      res.json({
+        success: true,
+        message: 'Classwork updated successfully',
+        classwork: {
+          id: existingClasswork._id,
+          student: existingClasswork.student,
+          book: existingClasswork.book,
+          page: existingClasswork.page,
+          classworkDate: existingClasswork.classworkDate,
+          marks: existingClasswork.marks,
+          createdAt: existingClasswork.createdAt,
+          updatedAt: existingClasswork.updatedAt
+        }
+      });
+    } else {
+      // Create new classwork document
+      const qaidahMark = new QaidahMark({
+        student: studentId,
+        book,
+        page: pageNum,
+        marks,
+        classworkDate: date,
+        createdBy: userId,
+        updatedBy: userId
+      });
+      await qaidahMark.save();
+
+      res.json({
+        success: true,
+        message: 'Classwork saved successfully',
+        classwork: {
+          id: qaidahMark._id,
+          student: qaidahMark.student,
+          book: qaidahMark.book,
+          page: qaidahMark.page,
+          classworkDate: qaidahMark.classworkDate,
+          marks: qaidahMark.marks,
+          createdAt: qaidahMark.createdAt,
+          updatedAt: qaidahMark.updatedAt
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error saving qaidah classwork:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/qaidah/classwork/:studentId/:book/:page - Get all classwork for a student/book/page
+app.get('/api/qaidah/classwork/:studentId/:book/:page', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page } = req.params;
+    const pageNum = parseInt(page, 10);
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
+    }
+
+    // Verify student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Find all classwork for this student/book/page (sorted by date, newest first)
+    const classworkList = await QaidahMark.find({
+      student: studentId,
+      book,
+      page: pageNum,
+      classworkDate: { $exists: true, $ne: null } // Only return documents with classworkDate
+    }).sort({ classworkDate: -1 });
+
+    res.json({
+      student: studentId,
+      book,
+      page: pageNum,
+      classwork: classworkList.map(cw => ({
+        id: cw._id,
+        student: cw.student,
+        book: cw.book,
+        page: cw.page,
+        classworkDate: cw.classworkDate,
+        marks: cw.marks || [],
+        createdAt: cw.createdAt,
+        updatedAt: cw.updatedAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching qaidah classwork:', error);
     res.status(500).json({ error: error.message });
   }
 });

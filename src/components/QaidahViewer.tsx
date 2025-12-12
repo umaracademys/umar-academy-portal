@@ -10,7 +10,7 @@ interface QaidahViewerProps {
   totalPages?: number;
   onPageChange?: (page: number) => void;
   studentId?: string;
-  book?: 'qaidah1' | 'qaidah2';
+  book?: 'qaidah1' | 'qaidah2' | 'quran';
 }
 
 const QaidahViewer: React.FC<QaidahViewerProps> = ({
@@ -26,7 +26,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [preloadedPages, setPreloadedPages] = useState<Set<number>>(new Set());
   const [selectedStudentId, setSelectedStudentId] = useState<string>(propStudentId || '');
-  const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2'>(propBook || 'qaidah1');
+  const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2' | 'quran'>(propBook || 'qaidah1');
   const navigate = useNavigate();
   const pageRef = useRef<number>(currentPage);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,11 +160,12 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
           </select>
           <select
             value={selectedBook}
-            onChange={(e) => setSelectedBook(e.target.value as 'qaidah1' | 'qaidah2')}
+            onChange={(e) => setSelectedBook(e.target.value as 'qaidah1' | 'qaidah2' | 'quran')}
             className="px-3 py-2 bg-gray-700 text-white rounded text-sm"
           >
             <option value="qaidah1">Qaidah 1</option>
             <option value="qaidah2">Qaidah 2</option>
+            <option value="quran">Quran</option>
           </select>
         </div>
       )}

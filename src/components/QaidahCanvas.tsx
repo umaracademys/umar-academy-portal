@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchQaidahMarks, saveQaidahMarks, QaidahMark } from '../services/qaidahApi';
+import { fetchQaidahMarks, saveQaidahMarks, saveQaidahClasswork, QaidahMark } from '../services/qaidahApi';
 
 // Simple UUID generator
 const generateUUID = (): string => {
@@ -16,7 +16,7 @@ const generateUUID = (): string => {
 
 interface QaidahCanvasProps {
   studentId: string;
-  book: 'qaidah1' | 'qaidah2';
+  book: 'qaidah1' | 'qaidah2' | 'quran';
   page: number;
   imageUrl: string;
   zoom: number;
@@ -49,6 +49,14 @@ const QaidahCanvas: React.FC<QaidahCanvasProps> = ({
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [classworkDate, setClassworkDate] = useState<string>(() => {
+    // Default to today's date in local format for input
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
+  const [isSavingClasswork, setIsSavingClasswork] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showClassworkPanel, setShowClassworkPanel] = useState(false);
 
   // Load marks on page change
   useEffect(() => {
@@ -295,6 +303,36 @@ const QaidahCanvas: React.FC<QaidahCanvasProps> = ({
     debouncedSave(updatedMarks);
   }, [editingMark, editComment, marks, debouncedSave]);
 
+  // Handle save as classwork
+  const handleSaveClasswork = useCallback(async () => {
+    if (!studentId || marks.length === 0) {
+      setToastMessage('Please add marks before saving classwork');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
+    const date = new Date(classworkDate);
+    if (isNaN(date.getTime())) {
+      setToastMessage('Please select a valid date');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
+    setIsSavingClasswork(true);
+    try {
+      await saveQaidahClasswork(studentId, book, page, marks, date);
+      setToastMessage('Classwork saved successfully!');
+      setShowClassworkPanel(false);
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (error) {
+      console.error('Error saving classwork:', error);
+      setToastMessage('Failed to save classwork. Please try again.');
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setIsSavingClasswork(false);
+    }
+  }, [studentId, book, page, marks, classworkDate]);
+
   // Get mark icon/color
   const getMarkStyle = (type: string) => {
     switch (type) {
@@ -366,7 +404,66 @@ const QaidahCanvas: React.FC<QaidahCanvasProps> = ({
             Saving...
           </div>
         )}
+        <button
+          onClick={() => setShowClassworkPanel(!showClassworkPanel)}
+          className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors mt-2"
+          title="Save as Classwork"
+        >
+          📚 Save Classwork
+        </button>
       </div>
+
+      {/* Classwork Panel */}
+      {showClassworkPanel && (
+        <div className="absolute top-20 left-[200px] z-30 bg-black/90 backdrop-blur-sm rounded-lg p-4 min-w-[280px]">
+          <div className="text-white text-sm font-semibold mb-3">Save as Classwork</div>
+          <div className="mb-3">
+            <label className="block text-white text-xs mb-1">Classwork Date</label>
+            <input
+              type="date"
+              value={classworkDate}
+              onChange={(e) => setClassworkDate(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 text-white rounded text-sm"
+            />
+          </div>
+          <div className="text-white text-xs mb-3">
+            Marks: {marks.length}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveClasswork}
+              disabled={isSavingClasswork || marks.length === 0}
+              className="flex-1 px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSavingClasswork ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              onClick={() => setShowClassworkPanel(false)}
+              className="px-3 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div 
+          className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg"
+          style={{
+            animation: 'fadeIn 0.3s ease-in'
+          }}
+        >
+          {toastMessage}
+        </div>
+      )}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translate(-50%, 10px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
 
       {/* Canvas overlay */}
       <div
