@@ -89,7 +89,10 @@ const QaidahUploadManager: React.FC = () => {
 
   // Handle multiple file selection (folder upload)
   const handleFilesSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList) as File[];
     if (files.length === 0) return;
 
     // Validate all files
@@ -97,7 +100,7 @@ const QaidahUploadManager: React.FC = () => {
     const invalidFiles: string[] = [];
     const tooLargeFiles: string[] = [];
 
-    files.forEach(file => {
+    files.forEach((file: File) => {
       if (!allowedTypes.includes(file.type)) {
         invalidFiles.push(file.name);
       }
