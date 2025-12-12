@@ -9542,20 +9542,22 @@ const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallb
 
 // GET /api/qaidah/pages/:book - List all pages for a book (Super Admin only)
 // MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
-app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
-  console.log('📚 GET /api/qaidah/pages/:book called with book:', req.params.book);
-  
-  // Check if user is super admin
-  if (req.user.role !== 'superadmin') {
-    console.log('❌ Access denied: User is not super admin');
-    return res.status(403).json({ error: 'Only super admins can view pages' });
-  }
-
+app.get('/api/qaidah/pages/:book', authenticateToken, async (req, res) => {
   try {
+    console.log('📚 GET /api/qaidah/pages/:book called');
+    console.log('📚 Request params:', req.params);
+    console.log('📚 User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
+    
+    // Check if user is super admin
+    if (!req.user || req.user.role !== 'superadmin') {
+      console.log('❌ Access denied: User is not super admin');
+      return res.status(403).json({ error: 'Only super admins can view pages' });
+    }
+
     const { book } = req.params;
     console.log('📖 Processing request for book:', book);
     
-    if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+    if (!book || !['qaidah1', 'qaidah2', 'quran'].includes(book)) {
       return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
     }
 
@@ -9571,25 +9573,32 @@ app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
       targetDir = publicQaidahDir;
     }
 
+    console.log('📁 Target directory:', targetDir);
+
     // Read directory
     if (!fs.existsSync(targetDir)) {
-      return res.json({ book, pages: [] });
+      console.log('⚠️ Directory does not exist, creating it...');
+      fs.mkdirSync(targetDir, { recursive: true });
+      return res.json({ book, pages: [], totalPages: 0 });
     }
 
     const files = fs.readdirSync(targetDir);
+    console.log(`📄 Found ${files.length} files in directory`);
+    
     const pages = files
       .filter(file => /\.(jpg|jpeg|png)$/i.test(file))
       .map(file => {
         const pageMatch = file.match(/^(\d+)\./);
         if (pageMatch) {
           const pageNum = parseInt(pageMatch[1], 10);
-          const stats = fs.statSync(path.join(targetDir, file));
+          const filePath = path.join(targetDir, file);
+          const stats = fs.statSync(filePath);
           return {
             pageNumber: pageNum,
             filename: file,
             size: stats.size,
             url: `/${book}/${file}`,
-            uploadedAt: stats.mtime
+            uploadedAt: stats.mtime.toISOString()
           };
         }
         return null;
@@ -9597,21 +9606,28 @@ app.get('/api/qaidah/pages/:book', authenticateToken, (req, res) => {
       .filter(Boolean)
       .sort((a, b) => a.pageNumber - b.pageNumber);
 
-    console.log(`✅ Found ${pages.length} pages for ${book}`);
+    console.log(`✅ Found ${pages.length} valid pages for ${book}`);
     res.json({ book, pages, totalPages: pages.length });
   } catch (error) {
     console.error('❌ Error listing pages:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
 // DELETE /api/qaidah/pages/:book/:pageNumber - Delete a page (Super Admin only)
 // MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
 app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req, res) => {
-  // Check if user is super admin
-  if (req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Only super admins can delete pages' });
-  }
+  try {
+    console.log('🗑️ DELETE /api/qaidah/pages/:book/:pageNumber called');
+    console.log('🗑️ Request params:', req.params);
+    console.log('🗑️ User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
+    
+    // Check if user is super admin
+    if (!req.user || req.user.role !== 'superadmin') {
+      console.log('❌ Access denied: User is not super admin');
+      return res.status(403).json({ error: 'Only super admins can delete pages' });
+    }
 
   try {
     const { book, pageNumber } = req.params;
@@ -9657,10 +9673,12 @@ app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req,
       return res.status(404).json({ error: 'Page not found' });
     }
 
+    console.log(`✅ Page deleted: ${book}/${deletedFile}`);
     res.json({ success: true, book, pageNumber: pageNum, deletedFile });
   } catch (error) {
-    console.error('Error deleting page:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error deleting page:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
@@ -9668,8 +9686,12 @@ app.delete('/api/qaidah/pages/:book/:pageNumber', authenticateToken, async (req,
 // MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
 app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
   try {
+    console.log('📤 POST /api/qaidah/upload called');
+    console.log('📤 User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
+    
     // Check if user is super admin
-    if (req.user.role !== 'superadmin') {
+    if (!req.user || req.user.role !== 'superadmin') {
+      console.log('❌ Access denied: User is not super admin');
       return res.status(403).json({ error: 'Only super admins can upload pages' });
     }
 
