@@ -9,6 +9,7 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { HomeworkSubmission } from '../../../types/assignment';
 import { uploadMistakeAudio } from '../../../services/audioService';
+import StudentQaidahHomework from './StudentQaidahHomework';
 
 const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
@@ -35,6 +36,28 @@ const StudentAssignments: React.FC = () => {
   const [loadingPersonalMushaf, setLoadingPersonalMushaf] = useState(false);
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
+
+  // Check if student is in "After School Reading" program
+  const isAfterSchoolReading = useMemo(() => {
+    if (!currentStudent) return false;
+    const program = currentStudent.program || (currentStudent as any).program;
+    return program && (
+      program.toLowerCase().includes('after school') ||
+      program.toLowerCase().includes('after-school') ||
+      program === 'After School Reading' ||
+      program === 'After School'
+    );
+  }, [currentStudent]);
+
+  // If After School Reading student, show Qaidah homework instead
+  if (isAfterSchoolReading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <StudentQaidahHomework />
+      </div>
+    );
+  }
 
   // Get student's assignments from backend
   const studentAssignments = useMemo(() => {
