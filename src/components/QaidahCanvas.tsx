@@ -46,7 +46,7 @@ const QaidahCanvas: React.FC<QaidahCanvasProps> = ({
   const [editingMark, setEditingMark] = useState<string | null>(null);
   const [editComment, setEditComment] = useState('');
   const canvasRef = useRef<HTMLDivElement>(null);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [classworkDate, setClassworkDate] = useState<string>(() => {
