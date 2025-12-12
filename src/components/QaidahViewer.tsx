@@ -52,7 +52,14 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     if (selectedBook === 'quran') {
       return `/quran/${pageNum}.png`;
     }
-    // For qaidah, use qaidah path
+    // For qaidah1 and qaidah2, use separate folders
+    if (selectedBook === 'qaidah1') {
+      return `/qaidah1/${pageNum}.png`;
+    }
+    if (selectedBook === 'qaidah2') {
+      return `/qaidah2/${pageNum}.png`;
+    }
+    // Fallback to generic qaidah folder (for backward compatibility)
     return `/qaidah/${pageNum}.png`;
   }, [selectedBook]);
 

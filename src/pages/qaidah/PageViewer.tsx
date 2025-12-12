@@ -32,21 +32,47 @@ const QaidahPageViewer: React.FC = () => {
           // Try PNG first, then JPG
           const tryImage = (ext: string) => {
             const img = new Image();
-            img.onload = () => resolve(true);
+            let resolved = false;
+            
+            img.onload = () => {
+              if (!resolved) {
+                resolved = true;
+                resolve(true);
+              }
+            };
+            
             img.onerror = () => {
               if (ext === 'png') {
                 // Try JPG if PNG fails
                 tryImage('jpg');
-              } else {
+              } else if (!resolved) {
+                resolved = true;
                 resolve(false);
               }
             };
-            img.src = `/qaidah/${pageNum}.${ext}`;
+            
+            // Try qaidah2 first (most common), then qaidah1, then generic qaidah
+            const paths = [`/qaidah2/${pageNum}.${ext}`, `/qaidah1/${pageNum}.${ext}`, `/qaidah/${pageNum}.${ext}`];
+            let pathIndex = 0;
+            
+            const tryPath = () => {
+              if (pathIndex >= paths.length) {
+                if (!resolved) {
+                  resolved = true;
+                  resolve(false);
+                }
+                return;
+              }
+              img.src = paths[pathIndex];
+              pathIndex++;
+            };
+            
+            tryPath();
+            
             // Timeout after 2 seconds
             setTimeout(() => {
-              if (ext === 'png') {
-                tryImage('jpg');
-              } else {
+              if (!resolved) {
+                resolved = true;
                 resolve(false);
               }
             }, 2000);
