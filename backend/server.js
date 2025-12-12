@@ -9761,20 +9761,27 @@ app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
 // GET /api/qaidah/:studentId/:book/:page - Get marks for a specific page
 app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res) => {
   try {
+    console.log('📖 GET /api/qaidah/:studentId/:book/:page called');
     const { studentId, book, page } = req.params;
     const pageNum = parseInt(page, 10);
+    
+    console.log('📖 Request params:', { studentId, book, page: pageNum });
+    console.log('📖 User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
 
     if (isNaN(pageNum) || pageNum < 1) {
+      console.log('❌ Invalid page number:', page);
       return res.status(400).json({ error: 'Invalid page number' });
     }
 
     if (!['qaidah1', 'qaidah2', 'quran'].includes(book)) {
+      console.log('❌ Invalid book:', book);
       return res.status(400).json({ error: 'Invalid book. Must be qaidah1, qaidah2, or quran' });
     }
 
     // Verify student exists
     const student = await Student.findById(studentId);
     if (!student) {
+      console.log('❌ Student not found:', studentId);
       return res.status(404).json({ error: 'Student not found' });
     }
 
@@ -9787,6 +9794,7 @@ app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res
 
     if (!qaidahMark) {
       // Return empty marks array if no marks exist yet
+      console.log(`✅ No marks found for student ${studentId}, book ${book}, page ${pageNum}`);
       return res.json({
         student: studentId,
         book,
@@ -9795,6 +9803,7 @@ app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res
       });
     }
 
+    console.log(`✅ Found ${qaidahMark.marks?.length || 0} marks for student ${studentId}, book ${book}, page ${pageNum}`);
     res.json({
       student: qaidahMark.student,
       book: qaidahMark.book,
@@ -9802,18 +9811,24 @@ app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res
       marks: qaidahMark.marks || []
     });
   } catch (error) {
-    console.error('Error fetching qaidah marks:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error fetching qaidah marks:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
 // POST /api/qaidah/save - Save marks for a page
 app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
   try {
+    console.log('💾 POST /api/qaidah/save called');
     const { studentId, book, page, marks } = req.body;
-    const userId = req.user.userId || req.user.id;
+    const userId = req.user?.userId || req.user?.id;
+    
+    console.log('💾 Request body:', { studentId, book, page, marksCount: marks?.length || 0 });
+    console.log('💾 User:', req.user ? { role: req.user.role, id: userId } : 'No user');
 
     if (!studentId || !book || !page) {
+      console.log('❌ Missing required fields');
       return res.status(400).json({ error: 'Missing required fields: studentId, book, page' });
     }
 
@@ -9877,6 +9892,7 @@ app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
       await qaidahMark.save();
     }
 
+    console.log(`✅ Saved ${qaidahMark.marks?.length || 0} marks for student ${studentId}, book ${book}, page ${pageNum}`);
     res.json({
       success: true,
       student: qaidahMark.student,
@@ -9885,18 +9901,24 @@ app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
       marks: qaidahMark.marks
     });
   } catch (error) {
-    console.error('Error saving qaidah marks:', error);
-    res.status(500).json({ error: error.message });
+    console.error('❌ Error saving qaidah marks:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
 
 // POST /api/qaidah/classwork - Save marks as classwork for a specific date
 app.post('/api/qaidah/classwork', authenticateToken, async (req, res) => {
   try {
+    console.log('📚 POST /api/qaidah/classwork called');
     const { studentId, book, page, marks, classworkDate } = req.body;
-    const userId = req.user.userId || req.user.id;
+    const userId = req.user?.userId || req.user?.id;
+    
+    console.log('📚 Request body:', { studentId, book, page, classworkDate, marksCount: marks?.length || 0 });
+    console.log('📚 User:', req.user ? { role: req.user.role, id: userId } : 'No user');
 
     if (!studentId || !book || !page || !classworkDate) {
+      console.log('❌ Missing required fields');
       return res.status(400).json({ error: 'Missing required fields: studentId, book, page, classworkDate' });
     }
 
@@ -9951,10 +9973,12 @@ app.post('/api/qaidah/classwork', authenticateToken, async (req, res) => {
 
     if (existingClasswork) {
       // Update existing classwork
+      console.log('📚 Updating existing classwork');
       existingClasswork.marks = marks;
       existingClasswork.updatedBy = userId;
       await existingClasswork.save();
       
+      console.log(`✅ Updated classwork for student ${studentId}, book ${book}, page ${pageNum}, date ${classworkDate}`);
       res.json({
         success: true,
         message: 'Classwork updated successfully',
