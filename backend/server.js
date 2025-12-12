@@ -10293,6 +10293,29 @@ app.post('/api/qaidah/homework/assign', authenticateToken, async (req, res) => {
 });
 
 
+// 404 handler for undefined routes (but skip /uploads as they're handled by static middleware)
+// MUST be after all other routes but before global error handler
+app.use((req, res) => {
+  // Don't handle /uploads routes here - they should be handled by static middleware
+  if (req.path.startsWith('/uploads')) {
+    // If we reach here, the file doesn't exist
+    console.log(`⚠️  File not found: ${req.path}`);
+    return res.status(404).json({ 
+      error: 'File not found',
+      path: req.path,
+      method: req.method,
+      message: 'The requested file does not exist in the uploads directory'
+    });
+  }
+  
+  console.log(`⚠️  Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({ 
+    error: 'Route not found',
+    path: req.path,
+    method: req.method
+  });
+});
+
 // Global error handler middleware (must be last)
 app.use((err, req, res, next) => {
   console.error('❌ Global error handler:', err);
