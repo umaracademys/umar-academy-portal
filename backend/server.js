@@ -212,7 +212,7 @@ app.post('/api/recordings/upload', (req, res) => {
   });
 });
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' })); // Increased for Qaidah/Quran page uploads
 
 // Serve uploaded audio files - must be before 404 handler
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
