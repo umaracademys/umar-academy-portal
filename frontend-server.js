@@ -10,11 +10,33 @@ const app = express();
 const PORT = process.env.PORT || 10000;
 const HOST = process.env.HOST || '0.0.0.0';
 
+// Check if dist directory exists
+const distPath = path.join(__dirname, 'dist');
+const indexPath = path.join(distPath, 'index.html');
+
+let distExists = existsSync(distPath);
+let indexExists = existsSync(indexPath);
+
+if (!distExists) {
+  console.error('❌ Error: dist directory not found!');
+  console.error(`   Expected path: ${distPath}`);
+  console.error('   Make sure the build completed successfully.');
+  console.error('   Server will start but will return 503 until build is complete.');
+} else if (!indexExists) {
+  console.error('❌ Error: index.html not found in dist directory!');
+  console.error(`   Expected path: ${indexPath}`);
+  console.error('   Make sure the build completed successfully.');
+  console.error('   Server will start but will return 503 until build is complete.');
+} else {
+  console.log('✅ Dist directory found');
+  console.log(`📁 Serving from: ${distPath}`);
+}
+
 // Get backend URL for proxying Qaidah images
 const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const BACKEND_BASE_URL = API_BASE_URL.replace('/api', '');
 
-// Proxy Qaidah/Quran images to backend (before static file serving)
+// Proxy Qaidah/Quran images to backend (MUST be before static file serving)
 // These images are stored in backend/public directories
 app.use('/qaidah1', async (req, res) => {
   try {
@@ -92,28 +114,6 @@ app.use('/qaidah', async (req, res) => {
     res.status(500).json({ error: 'Failed to load image' });
   }
 });
-
-// Check if dist directory exists
-const distPath = path.join(__dirname, 'dist');
-const indexPath = path.join(distPath, 'index.html');
-
-let distExists = existsSync(distPath);
-let indexExists = existsSync(indexPath);
-
-if (!distExists) {
-  console.error('❌ Error: dist directory not found!');
-  console.error(`   Expected path: ${distPath}`);
-  console.error('   Make sure the build completed successfully.');
-  console.error('   Server will start but will return 503 until build is complete.');
-} else if (!indexExists) {
-  console.error('❌ Error: index.html not found in dist directory!');
-  console.error(`   Expected path: ${indexPath}`);
-  console.error('   Make sure the build completed successfully.');
-  console.error('   Server will start but will return 503 until build is complete.');
-} else {
-  console.log('✅ Dist directory found');
-  console.log(`📁 Serving from: ${distPath}`);
-}
 
 // Serve static files from the dist directory with proper MIME types
 app.use(express.static(distPath, {
