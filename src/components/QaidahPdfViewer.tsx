@@ -4,7 +4,13 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up PDF.js worker - use local worker file
-pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
+// Use absolute URL to ensure it works in all environments
+if (typeof window !== 'undefined') {
+  const workerUrl = new URL('/pdfjs/pdf.worker.min.mjs', window.location.origin).href;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+} else {
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
+}
 
 interface QaidahPdfViewerProps {
   pdfUrl: string;
