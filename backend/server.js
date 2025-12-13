@@ -231,9 +231,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 const publicDir = path.join(__dirname, '..', 'public');
 app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
   setHeaders: (res, filePath) => {
-    // Set proper cache headers for images
+    // Set proper cache headers for images and PDFs
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.setHeader('Content-Type', 'image/jpeg');
     } else if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/png');
@@ -245,7 +247,9 @@ app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
 app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000');
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.setHeader('Content-Type', 'image/jpeg');
     } else if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/png');
@@ -257,7 +261,9 @@ app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
 app.use('/quran', express.static(path.join(publicDir, 'quran'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000');
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.setHeader('Content-Type', 'image/jpeg');
     } else if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/png');
@@ -270,7 +276,9 @@ app.use('/quran', express.static(path.join(publicDir, 'quran'), {
 app.use('/qaidah', express.static(path.join(publicDir, 'qaidah'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000');
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+    if (filePath.endsWith('.pdf')) {
+      res.setHeader('Content-Type', 'application/pdf');
+    } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
       res.setHeader('Content-Type', 'image/jpeg');
     } else if (filePath.endsWith('.png')) {
       res.setHeader('Content-Type', 'image/png');

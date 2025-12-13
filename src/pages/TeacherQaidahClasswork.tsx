@@ -62,10 +62,14 @@ const TeacherQaidahClasswork: React.FC = () => {
   }, [selectedBook]);
 
   // Auto-refresh pages every 30 seconds to catch new uploads
+  // Note: For PDFs, we don't need to refresh pages since PDFs are single files
+  // This is kept for backward compatibility but won't affect PDF loading
   useEffect(() => {
     if (selectedBook === 'quran') return; // Don't auto-refresh for Quran
     
     const interval = setInterval(() => {
+      // Only refresh if we're still on a Qaidah book (not Quran)
+      // The QaidahViewer will handle PDF info refresh internally
       loadPages();
     }, 30000); // Refresh every 30 seconds
 

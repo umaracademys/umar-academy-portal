@@ -54,7 +54,13 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   };
 
   const onDocumentLoadError = (error: Error) => {
-    console.error('Error loading PDF:', error);
+    console.error('❌ Error loading PDF:', error);
+    console.error('❌ PDF URL:', pdfUrl);
+    console.error('❌ Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
     setIsLoading(false);
   };
 
@@ -185,29 +191,35 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         </div>
       )}
 
-      <div
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-          transformOrigin: 'center center',
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-        }}
-      >
-        <Document
-          file={pdfUrl}
-          onLoadSuccess={onDocumentLoadSuccess}
-          onLoadError={onDocumentLoadError}
-          loading={
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            </div>
-          }
-          error={
-            <div className="text-center p-8 text-red-600">
-              <p>Failed to load PDF</p>
-              <p className="text-sm mt-2">{pdfUrl}</p>
-            </div>
-          }
+      {!pdfUrl ? (
+        <div className="text-center p-8 text-gray-500">
+          <p>No PDF URL provided</p>
+        </div>
+      ) : (
+        <div
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+            transformOrigin: 'center center',
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+          }}
         >
+          <Document
+            file={pdfUrl}
+            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadError={onDocumentLoadError}
+            loading={
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            }
+            error={
+              <div className="text-center p-8 text-red-600">
+                <p className="font-semibold">Failed to load PDF</p>
+                <p className="text-sm mt-2 break-all">{pdfUrl}</p>
+                <p className="text-xs mt-2 text-gray-500">Check browser console for details</p>
+              </div>
+            }
+          >
           <Page
             pageNumber={currentPage}
             width={pageWidth}
@@ -220,7 +232,8 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             }
           />
         </Document>
-      </div>
+        </div>
+      )}
 
       {numPages && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-sm">
