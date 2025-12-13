@@ -176,6 +176,9 @@ app.use(express.static(distPath, {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     } else if (filePath.endsWith('.mjs')) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      // Allow CORS for worker files if needed
+      res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
     } else if (filePath.endsWith('.wasm')) {
       res.setHeader('Content-Type', 'application/wasm');
     }
