@@ -43,7 +43,14 @@ app.use('/qaidah1', async (req, res) => {
     // req.path already includes /qaidah1, so use it directly
     const fileUrl = `${BACKEND_BASE_URL}${req.path}`;
     console.log(`📄 Proxying Qaidah1: ${req.path} -> ${fileUrl}`);
-    const response = await fetch(fileUrl);
+    
+    const response = await fetch(fileUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/pdf, image/*, */*'
+      }
+    });
+    
     if (response.ok) {
       const buffer = await response.arrayBuffer();
       // Determine content type based on file extension
@@ -59,13 +66,24 @@ app.use('/qaidah1', async (req, res) => {
       }
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.send(Buffer.from(buffer));
+      console.log(`✅ Successfully proxied Qaidah1 file: ${req.path} (${(buffer.byteLength / 1024).toFixed(2)} KB)`);
     } else {
       console.log(`❌ Backend returned ${response.status} for ${fileUrl}`);
-      res.status(404).json({ error: 'File not found', path: req.path, url: fileUrl });
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.log(`❌ Backend error response: ${errorText}`);
+      res.status(response.status).json({ 
+        error: 'File not found', 
+        path: req.path, 
+        url: fileUrl,
+        backendStatus: response.status,
+        backendError: errorText
+      });
     }
   } catch (error) {
-    console.error('Error proxying Qaidah1 file:', error);
+    console.error('❌ Error proxying Qaidah1 file:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to load file', message: error?.message });
   }
 });
@@ -75,7 +93,14 @@ app.use('/qaidah2', async (req, res) => {
     // req.path already includes /qaidah2, so use it directly
     const fileUrl = `${BACKEND_BASE_URL}${req.path}`;
     console.log(`📄 Proxying Qaidah2: ${req.path} -> ${fileUrl}`);
-    const response = await fetch(fileUrl);
+    
+    const response = await fetch(fileUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/pdf, image/*, */*'
+      }
+    });
+    
     if (response.ok) {
       const buffer = await response.arrayBuffer();
       // Determine content type based on file extension
@@ -91,13 +116,24 @@ app.use('/qaidah2', async (req, res) => {
       }
       res.setHeader('Content-Type', contentType);
       res.setHeader('Cache-Control', 'public, max-age=31536000');
+      res.setHeader('Access-Control-Allow-Origin', '*');
       res.send(Buffer.from(buffer));
+      console.log(`✅ Successfully proxied Qaidah2 file: ${req.path} (${(buffer.byteLength / 1024).toFixed(2)} KB)`);
     } else {
       console.log(`❌ Backend returned ${response.status} for ${fileUrl}`);
-      res.status(404).json({ error: 'File not found', path: req.path, url: fileUrl });
+      const errorText = await response.text().catch(() => 'Unknown error');
+      console.log(`❌ Backend error response: ${errorText}`);
+      res.status(response.status).json({ 
+        error: 'File not found', 
+        path: req.path, 
+        url: fileUrl,
+        backendStatus: response.status,
+        backendError: errorText
+      });
     }
   } catch (error) {
-    console.error('Error proxying Qaidah2 file:', error);
+    console.error('❌ Error proxying Qaidah2 file:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to load file', message: error?.message });
   }
 });

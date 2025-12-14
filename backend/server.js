@@ -229,6 +229,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 // Serve Qaidah and Quran page images from public directory
 // These are uploaded via the book upload manager
 const publicDir = path.join(__dirname, '..', 'public');
+// Serve Qaidah1 files with proper error handling
 app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
   setHeaders: (res, filePath) => {
     // Set proper cache headers for images and PDFs
@@ -241,9 +242,39 @@ app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
       res.setHeader('Content-Type', 'image/png');
     }
   },
-  fallthrough: false
-}));
+  fallthrough: true // Allow fallthrough to custom handler
+}), (req, res, next) => {
+  // Custom handler for 404s - log and provide helpful error
+  if (res.statusCode === 404 || !res.headersSent) {
+    const filePath = req.path.startsWith('/qaidah1') ? req.path : `/qaidah1${req.path}`;
+    const requestedFile = path.join(publicDir, 'qaidah1', filePath.replace('/qaidah1', ''));
+    const fileExists = fs.existsSync(requestedFile);
+    
+    console.log(`📄 Qaidah1 file request: ${req.path}`);
+    console.log(`📄 Full path: ${filePath}`);
+    console.log(`📄 File system path: ${requestedFile}`);
+    console.log(`📄 File exists: ${fileExists}`);
+    
+    if (!fileExists) {
+      // List available files for debugging
+      const dirPath = path.join(publicDir, 'qaidah1');
+      if (fs.existsSync(dirPath)) {
+        const files = fs.readdirSync(dirPath);
+        console.log(`📄 Available files in qaidah1: ${files.slice(0, 10).join(', ')}${files.length > 10 ? '...' : ''}`);
+      }
+      
+      return res.status(404).json({
+        error: 'File not found',
+        path: req.path,
+        requestedFile: filePath,
+        available: fs.existsSync(dirPath) ? fs.readdirSync(dirPath).slice(0, 5) : []
+      });
+    }
+  }
+  next();
+});
 
+// Serve Qaidah2 files with proper error handling
 app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000');
@@ -255,8 +286,33 @@ app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
       res.setHeader('Content-Type', 'image/png');
     }
   },
-  fallthrough: false
-}));
+  fallthrough: true // Allow fallthrough to custom handler
+}), (req, res, next) => {
+  // Custom handler for 404s
+  if (res.statusCode === 404 || !res.headersSent) {
+    const filePath = req.path.startsWith('/qaidah2') ? req.path : `/qaidah2${req.path}`;
+    const requestedFile = path.join(publicDir, 'qaidah2', filePath.replace('/qaidah2', ''));
+    const fileExists = fs.existsSync(requestedFile);
+    
+    console.log(`📄 Qaidah2 file request: ${req.path}`);
+    console.log(`📄 File exists: ${fileExists}`);
+    
+    if (!fileExists) {
+      const dirPath = path.join(publicDir, 'qaidah2');
+      if (fs.existsSync(dirPath)) {
+        const files = fs.readdirSync(dirPath);
+        console.log(`📄 Available files in qaidah2: ${files.slice(0, 10).join(', ')}`);
+      }
+      
+      return res.status(404).json({
+        error: 'File not found',
+        path: req.path,
+        requestedFile: filePath
+      });
+    }
+  }
+  next();
+});
 
 app.use('/quran', express.static(path.join(publicDir, 'quran'), {
   setHeaders: (res, filePath) => {
