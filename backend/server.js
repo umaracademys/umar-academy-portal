@@ -9644,6 +9644,55 @@ const publicQaidah2Dir = path.join(__dirname, '..', 'public', 'qaidah2');
 const publicQuranDir = path.join(__dirname, '..', 'public', 'quran');
 const publicQaidahDir = path.join(__dirname, '..', 'public', 'qaidah'); // Fallback
 
+// Helper function to sanitize filenames: remove Arabic, spaces, convert to kebab-case ASCII
+function sanitizeFilename(filename) {
+  if (!filename) return null;
+  
+  // Remove file extension
+  const ext = path.extname(filename);
+  const nameWithoutExt = path.basename(filename, ext);
+  
+  // Remove Arabic and non-ASCII characters, keep only ASCII alphanumeric and basic punctuation
+  let sanitized = nameWithoutExt
+    .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters (including Arabic)
+    .replace(/[^a-zA-Z0-9\s\-_]/g, '') // Remove special characters except spaces, hyphens, underscores
+    .trim();
+  
+  // Convert to kebab-case: replace spaces and underscores with hyphens, lowercase
+  sanitized = sanitized
+    .replace(/[\s_]+/g, '-') // Replace spaces and underscores with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+    .toLowerCase();
+  
+  // If sanitization resulted in empty string, use a default name
+  if (!sanitized) {
+    sanitized = 'qaidah-pdf';
+  }
+  
+  // Return sanitized filename with extension
+  return `${sanitized}${ext}`;
+}
+
+// Helper function to generate absolute backend URL
+function getBackendUrl(relativePath) {
+  // Remove leading slash if present
+  const cleanPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  
+  // Get backend base URL from environment or construct from request
+  // Priority: BACKEND_URL > BACKEND_BASE_URL > production default > localhost
+  const backendBaseUrl = process.env.BACKEND_URL || 
+                        process.env.BACKEND_BASE_URL || 
+                        (isProduction 
+                          ? 'https://umar-academy-backend.onrender.com'
+                          : `http://localhost:${PORT}`);
+  
+  // Ensure no double slashes
+  const url = `${backendBaseUrl}${cleanPath}`.replace(/([^:]\/)\/+/g, '$1');
+  
+  return url;
+}
+
 [publicQaidah1Dir, publicQaidah2Dir, publicQuranDir, publicQaidahDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -9848,21 +9897,45 @@ app.post('/api/qaidah/upload-pdf', authenticateToken, async (req, res) => {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    // Save PDF file (use book name as filename)
-    const pdfFilename = filename && filename.toLowerCase().endsWith('.pdf') 
-      ? filename 
-      : `${book}.pdf`;
+    // Sanitize filename: remove Arabic, spaces, convert to kebab-case
+    let pdfFilename;
+    if (filename && filename.toLowerCase().endsWith('.pdf')) {
+      pdfFilename = sanitizeFilename(filename);
+      if (!pdfFilename) {
+        pdfFilename = `${book}.pdf`;
+      }
+    } else {
+      pdfFilename = `${book}.pdf`;
+    }
+    
     const filePath = path.join(targetDir, pdfFilename);
+    
+    // Delete any existing PDF files in the directory (only one PDF per book)
+    if (fs.existsSync(targetDir)) {
+      const existingFiles = fs.readdirSync(targetDir);
+      existingFiles.forEach(file => {
+        if (file.toLowerCase().endsWith('.pdf')) {
+          const existingPath = path.join(targetDir, file);
+          fs.unlinkSync(existingPath);
+          console.log(`🗑️ Deleted existing PDF: ${file}`);
+        }
+      });
+    }
     
     fs.writeFileSync(filePath, fileBuffer);
     
+    // Generate absolute URL for the PDF
+    const relativePath = `/${book}/${pdfFilename}`;
+    const absoluteUrl = getBackendUrl(relativePath);
+    
     console.log(`✅ PDF uploaded: ${book}/${pdfFilename} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+    console.log(`📄 PDF URL: ${absoluteUrl}`);
     
     res.json({
       success: true,
       book,
       filename: pdfFilename,
-      url: `/${book}/${pdfFilename}`,
+      url: absoluteUrl, // Return absolute URL
       size: fileBuffer.length,
       uploadedAt: new Date().toISOString()
     });
@@ -9919,12 +9992,16 @@ app.get('/api/qaidah/pdf/:book', authenticateToken, async (req, res) => {
       const foundPdfPath = path.join(targetDir, pdfFile);
       const stats = fs.statSync(foundPdfPath);
       
+      // Generate absolute URL
+      const relativePath = `/${book}/${pdfFile}`;
+      const absoluteUrl = getBackendUrl(relativePath);
+      
       return res.json({
         book,
         pdf: {
           filename: pdfFile,
           size: stats.size,
-          url: `/${book}/${pdfFile}`,
+          url: absoluteUrl, // Return absolute URL
           uploadedAt: stats.mtime.toISOString()
         }
       });
@@ -9932,12 +10009,16 @@ app.get('/api/qaidah/pdf/:book', authenticateToken, async (req, res) => {
 
     const stats = fs.statSync(pdfPath);
     
+    // Generate absolute URL
+    const relativePath = `/${book}/${pdfFilename}`;
+    const absoluteUrl = getBackendUrl(relativePath);
+    
     res.json({
       book,
       pdf: {
         filename: pdfFilename,
         size: stats.size,
-        url: `/${book}/${pdfFilename}`,
+        url: absoluteUrl, // Return absolute URL
         uploadedAt: stats.mtime.toISOString()
       }
     });

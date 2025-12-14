@@ -67,8 +67,14 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const onDocumentLoadError = (error: Error) => {
     console.error('❌ Error loading PDF:', error);
     console.error('❌ PDF URL received by Document component:', pdfUrl);
-    console.error('❌ PDF URL type:', typeof pdfUrl);
-    console.error('❌ PDF URL length:', pdfUrl?.length);
+    
+    // Validate URL format
+    if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
+      console.error('❌ Invalid PDF URL format: URL must be absolute (start with http:// or https://)');
+      console.error('❌ Received relative URL:', pdfUrl);
+      console.error('❌ Backend should return absolute URLs. Check backend configuration.');
+    }
+    
     console.error('❌ Error details:', {
       message: error.message,
       name: error.name,
