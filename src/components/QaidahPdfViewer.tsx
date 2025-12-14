@@ -3,13 +3,23 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// Set up PDF.js worker - use local worker file
-// Use absolute URL to ensure it works in all environments
+// Set up PDF.js worker - use version that matches react-pdf's pdfjs-dist
+// react-pdf uses pdfjs-dist 5.4.296, so we use the worker from that version
+// Using CDN to ensure version match, or local file if available
 if (typeof window !== 'undefined') {
-  const workerUrl = new URL('/pdfjs/pdf.worker.min.mjs', window.location.origin).href;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  // Use the version that react-pdf is actually using (5.4.296)
+  const pdfjsVersion = '5.4.296';
+  // Try local worker first, fallback to CDN
+  const localWorkerUrl = new URL('/pdfjs/pdf.worker.min.mjs', window.location.origin).href;
+  // Use jsdelivr CDN which is more reliable than cdnjs
+  const cdnWorkerUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+  
+  // Try to use local worker, but if it fails, the Document component will handle it
+  // For now, use CDN to ensure version match
+  pdfjs.GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
+  console.log(`📄 PDF.js worker configured: ${cdnWorkerUrl} (version ${pdfjsVersion})`);
 } else {
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
+  pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs';
 }
 
 interface QaidahPdfViewerProps {
