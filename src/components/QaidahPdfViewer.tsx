@@ -66,7 +66,9 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
 
   const onDocumentLoadError = (error: Error) => {
     console.error('❌ Error loading PDF:', error);
-    console.error('❌ PDF URL:', pdfUrl);
+    console.error('❌ PDF URL received by Document component:', pdfUrl);
+    console.error('❌ PDF URL type:', typeof pdfUrl);
+    console.error('❌ PDF URL length:', pdfUrl?.length);
     console.error('❌ Error details:', {
       message: error.message,
       name: error.name,
@@ -74,6 +76,14 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     });
     setIsLoading(false);
   };
+  
+  // Log when pdfUrl changes
+  useEffect(() => {
+    console.log(`📄 QaidahPdfViewer received pdfUrl:`, pdfUrl);
+    console.log(`📄 pdfUrl type:`, typeof pdfUrl);
+    console.log(`📄 pdfUrl starts with /:`, pdfUrl?.startsWith('/'));
+    console.log(`📄 pdfUrl starts with http:`, pdfUrl?.startsWith('http'));
+  }, [pdfUrl]);
 
   // Handle mouse wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
@@ -218,6 +228,11 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             file={pdfUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
+            options={{
+              httpHeaders: {
+                'Accept': 'application/pdf'
+              }
+            }}
             loading={
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>

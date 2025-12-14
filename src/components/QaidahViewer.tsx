@@ -127,13 +127,20 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     if (pdfInfo?.url) {
       // If URL is relative, it should work with frontend proxy
       // If it's already absolute, use it as-is
-      const url = pdfInfo.url;
-      if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+      let url = pdfInfo.url;
+      
+      // Ensure relative URLs start with /
+      if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
+        url = `/${url}`;
       }
-      // Relative URL - will be handled by frontend proxy
+      
+      // Log the URL being used
+      console.log(`📄 PDF URL for ${selectedBook}:`, url);
+      console.log(`📄 PDF info:`, pdfInfo);
+      
       return url;
     }
+    console.warn(`⚠️ No PDF URL available for ${selectedBook}`);
     return null;
   }, [selectedBook, pdfInfo]);
 
