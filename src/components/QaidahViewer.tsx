@@ -67,35 +67,55 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setIsLoadingPdf(true);
     setPdfError(null);
     try {
+      console.log(`📄 Loading PDF info for ${selectedBook}...`);
       const result = await fetchPdfInfo(selectedBook);
-      if (result.pdf) {
+      if (result.pdf && result.pdf.url) {
         setPdfInfo(result.pdf);
-        console.log('✅ PDF loaded:', result.pdf.url);
+        console.log('✅ PDF info loaded:', {
+          book: selectedBook,
+          url: result.pdf.url,
+          filename: result.pdf.filename,
+          size: `${(result.pdf.size / 1024 / 1024).toFixed(2)} MB`
+        });
       } else {
         setPdfInfo(null);
-        setPdfError(`No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`);
+        const errorMsg = `No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`;
+        setPdfError(errorMsg);
         console.warn(`⚠️ No PDF found for ${selectedBook}`);
       }
     } catch (error: any) {
-      console.error('Error loading PDF info:', error);
-      setPdfError(error.message || 'Failed to load PDF information');
+      console.error('❌ Error loading PDF info:', error);
+      const errorMsg = error.message || 'Failed to load PDF information';
+      setPdfError(errorMsg);
       setPdfInfo(null);
     } finally {
       setIsLoadingPdf(false);
     }
   }, [selectedBook]);
 
-  // Load PDF info when book changes
+  // Load PDF info when book changes - use selectedBook directly to avoid race conditions
   useEffect(() => {
-    loadPdfInfo();
-  }, [loadPdfInfo]);
-
-  // Reset PDF-related state when book changes
-  useEffect(() => {
+    // Reset state first
     setPdfTotalPages(null);
     setPdfError(null);
     setPdfInfo(null);
-  }, [selectedBook]);
+    setIsLoadingPdf(true);
+    
+    // Then load PDF info
+    loadPdfInfo();
+  }, [selectedBook, loadPdfInfo]); // Include loadPdfInfo but it's stable due to useCallback
+
+  // Auto-refresh PDF info every 30 seconds to catch new uploads (only for Qaidah books)
+  useEffect(() => {
+    if (selectedBook === 'quran') return; // Don't auto-refresh for Quran
+    
+    const interval = setInterval(() => {
+      console.log(`🔄 Auto-refreshing PDF info for ${selectedBook}...`);
+      loadPdfInfo();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedBook, loadPdfInfo]);
 
   // Helper to get PDF URL (uses actual PDF URL from backend)
   const getPdfUrl = useCallback((): string | null => {
@@ -103,9 +123,16 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     if (selectedBook === 'quran') {
       return null; // Mushaf handles this
     }
-    // Use the actual PDF URL from backend
+    // Use the actual PDF URL from backend - ensure it's a valid URL
     if (pdfInfo?.url) {
-      return pdfInfo.url;
+      // If URL is relative, it should work with frontend proxy
+      // If it's already absolute, use it as-is
+      const url = pdfInfo.url;
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      // Relative URL - will be handled by frontend proxy
+      return url;
     }
     return null;
   }, [selectedBook, pdfInfo]);
@@ -194,8 +221,8 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
   const pdfUrl = getPdfUrl();
   
-  // Don't render PDF viewer if PDF is not available
-  const canRenderPdf = selectedBook === 'quran' || (pdfUrl && !isLoadingPdf);
+  // Don't render PDF viewer if PDF is not available or still loading
+  const canRenderPdf = selectedBook === 'quran' || (pdfUrl && !isLoadingPdf && !pdfError);
 
   // Get available students for selection (if teacher, only show assigned students)
   const availableStudents = user?.role === 'teacher' 
@@ -285,6 +312,20 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
         >
           Reset
         </button>
+        {/* Refresh PDF button (for Qaidah books only) */}
+        {selectedBook !== 'quran' && (
+          <button
+            onClick={() => {
+              console.log('🔄 Manually refreshing PDF info...');
+              loadPdfInfo();
+            }}
+            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+            aria-label="Refresh PDF"
+            title="Refresh PDF (check for new uploads)"
+          >
+            🔄
+          </button>
+        )}
         <div className="px-3 py-1 text-white text-xs text-center border-t border-white/20 mt-1 pt-1">
           {Math.round(zoom * 100)}%
         </div>
@@ -336,6 +377,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
             ) : pdfUrl ? (
               <>
                 <QaidahPdfViewer
+                  key={`pdf-${selectedBook}-${pdfInfo?.uploadedAt || 'default'}`} // Force re-render when PDF changes
                   pdfUrl={pdfUrl}
                   currentPage={currentPage}
                   onPageChange={(page) => {
@@ -349,7 +391,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
                   onPositionChange={setPosition}
                   containerRef={containerRef}
                   onLoad={() => {
-                    console.log('✅ PDF document loaded successfully');
+                    console.log('✅ PDF document loaded successfully in viewer');
                   }}
                 />
                 

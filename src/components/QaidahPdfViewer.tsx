@@ -47,6 +47,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const lastPinchDistance = useRef<number | null>(null);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
     setNumPages(numPages);
     setIsLoading(false);
     onTotalPagesChange?.(numPages);
@@ -210,15 +211,21 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             loading={
               <div className="flex items-center justify-center p-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                <p className="ml-4 text-gray-600">Loading PDF...</p>
               </div>
             }
             error={
-              <div className="text-center p-8 text-red-600">
-                <p className="font-semibold">Failed to load PDF</p>
-                <p className="text-sm mt-2 break-all">{pdfUrl}</p>
-                <p className="text-xs mt-2 text-gray-500">Check browser console for details</p>
+              <div className="text-center p-8 text-red-600 bg-red-50 rounded-lg mx-4">
+                <p className="font-semibold text-lg mb-2">Failed to load PDF</p>
+                <p className="text-sm mt-2 break-all font-mono bg-white p-2 rounded">{pdfUrl}</p>
+                <p className="text-xs mt-3 text-gray-600">Check browser console (F12) for detailed error information</p>
+                <p className="text-xs mt-1 text-gray-500">Verify the PDF file exists and is accessible</p>
               </div>
             }
+            options={{
+              cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+              cMapPacked: true,
+            }}
           >
           <Page
             pageNumber={currentPage}

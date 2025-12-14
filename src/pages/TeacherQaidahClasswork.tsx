@@ -27,54 +27,41 @@ const TeacherQaidahClasswork: React.FC = () => {
     : students;
 
   // Fetch available pages from backend
+  // NOTE: For PDFs, this is not needed since PDFs are single files with all pages
+  // This is kept for backward compatibility but won't affect PDF loading
   const loadPages = useCallback(async () => {
-    setIsLoadingPages(true);
-    try {
-      // For Quran, use fixed 604 pages
-      if (selectedBook === 'quran') {
-        setTotalPages(604);
-        setAvailablePages([]); // All pages available for Quran
-        setIsLoadingPages(false);
-        return;
-      }
-
-      const result = await fetchAvailablePages(selectedBook);
-      setTotalPages(result.totalPages);
-      setAvailablePages(result.pages);
-      
-      // If current page is not available, go to first available page
-      if (result.pages.length > 0 && !result.pages.includes(currentPage)) {
-        setCurrentPage(result.pages[0]);
-      }
-      
-      setLastRefresh(new Date());
-    } catch (error) {
-      console.error('Error loading pages:', error);
-      setTotalPages(100); // Fallback
-      setAvailablePages([]);
-    } finally {
+    // Skip for PDF-based books - QaidahViewer handles PDF page count internally
+    if (selectedBook === 'quran') {
+      setTotalPages(604);
+      setAvailablePages([]); // All pages available for Quran
       setIsLoadingPages(false);
+      return;
     }
-  }, [selectedBook, currentPage]);
+
+    // For Qaidah books with PDFs, we don't need to fetch individual pages
+    // The PDF viewer will handle page count from the PDF itself
+    // This function is kept for backward compatibility but won't be used for PDFs
+    setIsLoadingPages(false);
+    setTotalPages(100); // Default fallback - PDF viewer will update this
+    setAvailablePages([]); // Empty array - PDF viewer handles navigation
+    setLastRefresh(new Date());
+  }, [selectedBook]);
 
   useEffect(() => {
     loadPages();
   }, [selectedBook]);
 
-  // Auto-refresh pages every 30 seconds to catch new uploads
-  // Note: For PDFs, we don't need to refresh pages since PDFs are single files
-  // This is kept for backward compatibility but won't affect PDF loading
+  // Auto-refresh PDF info every 30 seconds to catch new uploads
+  // Note: For PDFs, we refresh the PDF info (not individual pages)
+  // The QaidahViewer component handles PDF info refresh internally
+  // This effect is kept minimal to avoid race conditions
   useEffect(() => {
     if (selectedBook === 'quran') return; // Don't auto-refresh for Quran
     
-    const interval = setInterval(() => {
-      // Only refresh if we're still on a Qaidah book (not Quran)
-      // The QaidahViewer will handle PDF info refresh internally
-      loadPages();
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [selectedBook, loadPages]);
+    // For PDFs, the QaidahViewer will handle its own refresh
+    // We don't need to do anything here - the viewer component manages PDF loading
+    // This prevents race conditions between page loading and PDF loading
+  }, [selectedBook]);
 
   const handlePageChange = (page: number) => {
     // For Quran, allow any page 1-604
