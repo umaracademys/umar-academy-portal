@@ -54,6 +54,9 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   }, [currentPage]);
 
+  // Track if we've already warned about missing PDF to avoid console spam
+  const pdfWarningShown = useRef<{ [key: string]: boolean }>({});
+
   // Fetch PDF info from backend
   const loadPdfInfo = useCallback(async () => {
     // Skip for Quran (uses Mushaf)
@@ -67,24 +70,40 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setIsLoadingPdf(true);
     setPdfError(null);
     try {
-      console.log(`📄 Loading PDF info for ${selectedBook}...`);
       const result = await fetchPdfInfo(selectedBook);
       if (result.pdf && result.pdf.url) {
         setPdfInfo(result.pdf);
-        console.log('✅ PDF info loaded:', {
-          book: selectedBook,
-          url: result.pdf.url,
-          filename: result.pdf.filename,
-          size: `${(result.pdf.size / 1024 / 1024).toFixed(2)} MB`
-        });
+        // Reset warning flag when PDF is found
+        pdfWarningShown.current[selectedBook] = false;
+        // Only log success once to reduce console spam
+        if (!pdfWarningShown.current[`${selectedBook}_loaded`]) {
+          console.log('✅ PDF info loaded:', {
+            book: selectedBook,
+            url: result.pdf.url,
+            filename: result.pdf.filename,
+            size: `${(result.pdf.size / 1024 / 1024).toFixed(2)} MB`
+          });
+          pdfWarningShown.current[`${selectedBook}_loaded`] = true;
+        }
       } else {
         setPdfInfo(null);
-        const errorMsg = `No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`;
-        setPdfError(errorMsg);
-        console.warn(`⚠️ No PDF found for ${selectedBook}`);
+        // Only show warning once per book to avoid console spam
+        if (!pdfWarningShown.current[selectedBook]) {
+          const errorMsg = `No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`;
+          setPdfError(errorMsg);
+          console.warn(`⚠️ No PDF found for ${selectedBook}. Upload a PDF in the Book Upload Manager.`);
+          pdfWarningShown.current[selectedBook] = true;
+        } else {
+          // Set error message but don't log again
+          setPdfError(`No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`);
+        }
       }
     } catch (error: any) {
-      console.error('❌ Error loading PDF info:', error);
+      // Only log error once to avoid console spam
+      if (!pdfWarningShown.current[`${selectedBook}_error`]) {
+        console.error('❌ Error loading PDF info:', error);
+        pdfWarningShown.current[`${selectedBook}_error`] = true;
+      }
       const errorMsg = error.message || 'Failed to load PDF information';
       setPdfError(errorMsg);
       setPdfInfo(null);
@@ -106,16 +125,20 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   }, [selectedBook, loadPdfInfo]); // Include loadPdfInfo but it's stable due to useCallback
 
   // Auto-refresh PDF info every 30 seconds to catch new uploads (only for Qaidah books)
+  // Skip auto-refresh if PDF is null to avoid repeated failed requests
   useEffect(() => {
     if (selectedBook === 'quran') return; // Don't auto-refresh for Quran
+    if (!pdfInfo && pdfError) return; // Don't auto-refresh if PDF is missing (avoid spam)
     
     const interval = setInterval(() => {
-      console.log(`🔄 Auto-refreshing PDF info for ${selectedBook}...`);
-      loadPdfInfo();
+      // Only refresh if we have a PDF or are still loading (might have been uploaded)
+      if (pdfInfo || isLoadingPdf) {
+        loadPdfInfo();
+      }
     }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
-  }, [selectedBook, loadPdfInfo]);
+  }, [selectedBook, loadPdfInfo, pdfInfo, pdfError, isLoadingPdf]);
 
   // Helper to get PDF URL (uses actual PDF URL from backend)
   const getPdfUrl = useCallback((): string | null => {
@@ -387,15 +410,23 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
                   <p className="text-gray-600">Loading PDF...</p>
                 </div>
               </div>
-            ) : pdfError ? (
+            ) : pdfError || !pdfUrl ? (
               <div className="w-full h-full flex items-center justify-center bg-gray-100">
                 <div className="text-center bg-white rounded-lg p-8 max-w-md mx-4 shadow-lg">
                   <div className="text-6xl mb-4">📄</div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">PDF Not Available</h3>
-                  <p className="text-gray-600 mb-4">{pdfError}</p>
-                  <p className="text-sm text-gray-500">
-                    Please upload a PDF for {selectedBook === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} in the Book Upload Manager.
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">Qaidah PDF Not Uploaded Yet</h3>
+                  <p className="text-gray-600 mb-4">
+                    No PDF has been uploaded for {selectedBook === 'qaidah1' ? 'Qaidah 1' : selectedBook === 'qaidah2' ? 'Qaidah 2' : 'this book'}.
                   </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Please upload a PDF in the Book Upload Manager to view pages.
+                  </p>
+                  <button
+                    onClick={() => loadPdfInfo()}
+                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors text-sm"
+                  >
+                    Check Again
+                  </button>
                 </div>
               </div>
             ) : pdfUrl ? (

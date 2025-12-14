@@ -433,15 +433,20 @@ export async function fetchPdfInfo(
     });
 
     if (!response.ok) {
+      // Backend now returns 200 with null PDF instead of 404
+      // But handle 404 for backwards compatibility
       if (response.status === 404) {
-        // Return null PDF if not found
         return { book, pdf: null };
       }
       throw new Error(`Failed to fetch PDF info: ${response.statusText}`);
     }
 
     const data: BookPdf = await response.json();
-    return data;
+    // Ensure we return null if pdf is null (backend returns 200 with null)
+    return {
+      book: data.book || book,
+      pdf: data.pdf || null
+    };
   } catch (error) {
     console.error(`Error fetching PDF info for ${book}:`, error);
     // Return null PDF on error

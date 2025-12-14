@@ -228,6 +228,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 
 // Serve Qaidah and Quran page images from public directory
 // These are uploaded via the book upload manager
+// NOTE: On Render, the filesystem is ephemeral - files may be lost on redeploy
+// For production, consider using cloud storage (S3, R2, etc.) for persistent storage
 const publicDir = path.join(__dirname, '..', 'public');
 // Serve Qaidah1 files with proper error handling
 app.use('/qaidah1', (req, res, next) => {
@@ -9907,7 +9909,11 @@ app.get('/api/qaidah/pdf/:book', authenticateToken, async (req, res) => {
       const pdfFile = files.find(f => f.toLowerCase().endsWith('.pdf'));
       
       if (!pdfFile) {
-        return res.status(404).json({ error: 'PDF not found', book });
+        // Return 200 with null PDF instead of 404
+        return res.status(200).json({
+          book,
+          pdf: null
+        });
       }
       
       const foundPdfPath = path.join(targetDir, pdfFile);
