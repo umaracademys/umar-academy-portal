@@ -231,7 +231,9 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             options={{
               httpHeaders: {
                 'Accept': 'application/pdf'
-              }
+              },
+              cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+              cMapPacked: true,
             }}
             loading={
               <div className="flex items-center justify-center p-8">
@@ -247,10 +249,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
                 <p className="text-xs mt-1 text-gray-500">Verify the PDF file exists and is accessible</p>
               </div>
             }
-            options={{
-              cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-              cMapPacked: true,
-            }}
           >
           <Page
             pageNumber={currentPage}
