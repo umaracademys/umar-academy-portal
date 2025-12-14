@@ -127,16 +127,33 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     if (pdfInfo?.url) {
       // If URL is relative, it should work with frontend proxy
       // If it's already absolute, use it as-is
-      let url = pdfInfo.url;
+      let url = pdfInfo.url.trim();
       
       // Ensure relative URLs start with /
       if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
         url = `/${url}`;
       }
       
+      // Validate that the URL contains the book name
+      if (!url.includes(selectedBook)) {
+        console.error(`❌ PDF URL does not contain book name! URL: ${url}, Book: ${selectedBook}`);
+        // Try to fix it by prepending the book path
+        if (url.startsWith('/')) {
+          url = `/${selectedBook}${url}`;
+        } else {
+          url = `/${selectedBook}/${url}`;
+        }
+        console.log(`🔧 Fixed PDF URL: ${url}`);
+      }
+      
       // Log the URL being used
       console.log(`📄 PDF URL for ${selectedBook}:`, url);
       console.log(`📄 PDF info:`, pdfInfo);
+      console.log(`📄 URL validation:`, {
+        startsWithSlash: url.startsWith('/'),
+        containsBook: url.includes(selectedBook),
+        length: url.length
+      });
       
       return url;
     }
