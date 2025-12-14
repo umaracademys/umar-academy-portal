@@ -9871,9 +9871,13 @@ app.post('/api/qaidah/upload-pdf', authenticateToken, async (req, res) => {
 });
 
 // GET /api/qaidah/pdf/:book - Get PDF info for a book
+// MUST come before /api/qaidah/:studentId/:book/:page to avoid route conflicts
 app.get('/api/qaidah/pdf/:book', authenticateToken, async (req, res) => {
   try {
     console.log('📄 GET /api/qaidah/pdf/:book called');
+    console.log('📄 Request path:', req.path);
+    console.log('📄 Request params:', req.params);
+    console.log('📄 User:', req.user ? { role: req.user.role, id: req.user.id } : 'No user');
     const { book } = req.params;
 
     // Validate book
@@ -10104,9 +10108,21 @@ app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
 });
 
 // GET /api/qaidah/:studentId/:book/:page - Get marks for a specific page
+// MUST come after /api/qaidah/pdf/:book to avoid route conflicts
 app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res) => {
   try {
     console.log('📖 GET /api/qaidah/:studentId/:book/:page called');
+    console.log('📖 Request path:', req.path);
+    console.log('📖 Request params:', req.params);
+    
+    // Check if this is actually a PDF request that was misrouted
+    if (req.params.studentId === 'pdf') {
+      console.error('❌ PDF route was matched by general route! This should not happen.');
+      return res.status(404).json({ 
+        error: 'Route conflict detected',
+        message: 'PDF route should be matched by /api/qaidah/pdf/:book, not /api/qaidah/:studentId/:book/:page'
+      });
+    }
     const { studentId, book, page } = req.params;
     const pageNum = parseInt(page, 10);
     
