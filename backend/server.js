@@ -230,7 +230,33 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 // These are uploaded via the book upload manager
 const publicDir = path.join(__dirname, '..', 'public');
 // Serve Qaidah1 files with proper error handling
-app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
+app.use('/qaidah1', (req, res, next) => {
+  // Log all requests for debugging
+  const filePath = req.path.startsWith('/qaidah1') ? req.path.replace('/qaidah1', '') : req.path;
+  const requestedFile = path.join(publicDir, 'qaidah1', filePath);
+  
+  console.log(`📄 Qaidah1 request: ${req.path} -> ${filePath}`);
+  console.log(`📄 Looking for: ${requestedFile}`);
+  
+  // Check if file exists
+  if (fs.existsSync(requestedFile)) {
+    console.log(`✅ File exists, serving via static middleware`);
+    next(); // Let static middleware handle it
+  } else {
+    console.log(`❌ File not found: ${requestedFile}`);
+    // List available files for debugging
+    const dirPath = path.join(publicDir, 'qaidah1');
+    if (fs.existsSync(dirPath)) {
+      const files = fs.readdirSync(dirPath);
+      console.log(`📄 Available files (${files.length}): ${files.slice(0, 10).join(', ')}${files.length > 10 ? '...' : ''}`);
+    } else {
+      console.log(`❌ Directory does not exist: ${dirPath}`);
+    }
+    
+    // Still try static middleware in case it handles it differently
+    next();
+  }
+}, express.static(path.join(publicDir, 'qaidah1'), {
   setHeaders: (res, filePath) => {
     // Set proper cache headers for images and PDFs
     res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
@@ -242,40 +268,39 @@ app.use('/qaidah1', express.static(path.join(publicDir, 'qaidah1'), {
       res.setHeader('Content-Type', 'image/png');
     }
   },
-  fallthrough: true // Allow fallthrough to custom handler
-}), (req, res, next) => {
-  // Custom handler for 404s - log and provide helpful error
-  if (res.statusCode === 404 || !res.headersSent) {
-    const filePath = req.path.startsWith('/qaidah1') ? req.path : `/qaidah1${req.path}`;
-    const requestedFile = path.join(publicDir, 'qaidah1', filePath.replace('/qaidah1', ''));
-    const fileExists = fs.existsSync(requestedFile);
-    
-    console.log(`📄 Qaidah1 file request: ${req.path}`);
-    console.log(`📄 Full path: ${filePath}`);
-    console.log(`📄 File system path: ${requestedFile}`);
-    console.log(`📄 File exists: ${fileExists}`);
-    
-    if (!fileExists) {
-      // List available files for debugging
-      const dirPath = path.join(publicDir, 'qaidah1');
-      if (fs.existsSync(dirPath)) {
-        const files = fs.readdirSync(dirPath);
-        console.log(`📄 Available files in qaidah1: ${files.slice(0, 10).join(', ')}${files.length > 10 ? '...' : ''}`);
-      }
-      
-      return res.status(404).json({
-        error: 'File not found',
-        path: req.path,
-        requestedFile: filePath,
-        available: fs.existsSync(dirPath) ? fs.readdirSync(dirPath).slice(0, 5) : []
-      });
-    }
-  }
-  next();
+  fallthrough: false
+}), (req, res) => {
+  // This only runs if static middleware didn't serve the file (fallthrough: false)
+  const dirPath = path.join(publicDir, 'qaidah1');
+  const files = fs.existsSync(dirPath) ? fs.readdirSync(dirPath) : [];
+  res.status(404).json({
+    error: 'File not found',
+    path: req.path,
+    availableFiles: files.slice(0, 10)
+  });
 });
 
 // Serve Qaidah2 files with proper error handling
-app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
+app.use('/qaidah2', (req, res, next) => {
+  // Log all requests for debugging
+  const filePath = req.path.startsWith('/qaidah2') ? req.path.replace('/qaidah2', '') : req.path;
+  const requestedFile = path.join(publicDir, 'qaidah2', filePath);
+  
+  console.log(`📄 Qaidah2 request: ${req.path} -> ${filePath}`);
+  console.log(`📄 Looking for: ${requestedFile}`);
+  
+  if (fs.existsSync(requestedFile)) {
+    console.log(`✅ File exists, serving via static middleware`);
+  } else {
+    console.log(`❌ File not found: ${requestedFile}`);
+    const dirPath = path.join(publicDir, 'qaidah2');
+    if (fs.existsSync(dirPath)) {
+      const files = fs.readdirSync(dirPath);
+      console.log(`📄 Available files (${files.length}): ${files.slice(0, 10).join(', ')}`);
+    }
+  }
+  next();
+}, express.static(path.join(publicDir, 'qaidah2'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000');
     if (filePath.endsWith('.pdf')) {
@@ -286,32 +311,16 @@ app.use('/qaidah2', express.static(path.join(publicDir, 'qaidah2'), {
       res.setHeader('Content-Type', 'image/png');
     }
   },
-  fallthrough: true // Allow fallthrough to custom handler
-}), (req, res, next) => {
-  // Custom handler for 404s
-  if (res.statusCode === 404 || !res.headersSent) {
-    const filePath = req.path.startsWith('/qaidah2') ? req.path : `/qaidah2${req.path}`;
-    const requestedFile = path.join(publicDir, 'qaidah2', filePath.replace('/qaidah2', ''));
-    const fileExists = fs.existsSync(requestedFile);
-    
-    console.log(`📄 Qaidah2 file request: ${req.path}`);
-    console.log(`📄 File exists: ${fileExists}`);
-    
-    if (!fileExists) {
-      const dirPath = path.join(publicDir, 'qaidah2');
-      if (fs.existsSync(dirPath)) {
-        const files = fs.readdirSync(dirPath);
-        console.log(`📄 Available files in qaidah2: ${files.slice(0, 10).join(', ')}`);
-      }
-      
-      return res.status(404).json({
-        error: 'File not found',
-        path: req.path,
-        requestedFile: filePath
-      });
-    }
-  }
-  next();
+  fallthrough: false
+}), (req, res) => {
+  // This only runs if static middleware didn't serve the file
+  const dirPath = path.join(publicDir, 'qaidah2');
+  const files = fs.existsSync(dirPath) ? fs.readdirSync(dirPath) : [];
+  res.status(404).json({
+    error: 'File not found',
+    path: req.path,
+    availableFiles: files.slice(0, 10)
+  });
 });
 
 app.use('/quran', express.static(path.join(publicDir, 'quran'), {
