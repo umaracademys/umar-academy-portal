@@ -10696,7 +10696,18 @@ app.use((req, res) => {
     });
   }
   
-  console.log(`⚠️  Route not found: ${req.method} ${req.path}`);
+  // Special logging for API routes to help diagnose routing issues
+  if (req.path.startsWith('/api/')) {
+    console.log(`⚠️  API Route not found: ${req.method} ${req.path}`);
+    console.log(`⚠️  Request headers:`, {
+      authorization: req.headers.authorization ? 'Present' : 'Missing',
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']?.substring(0, 50)
+    });
+  } else {
+    console.log(`⚠️  Route not found: ${req.method} ${req.path}`);
+  }
+  
   res.status(404).json({ 
     error: 'Route not found',
     path: req.path,
