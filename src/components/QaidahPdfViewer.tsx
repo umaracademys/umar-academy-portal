@@ -240,7 +240,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       // Clear all pending timeouts
       timeoutRefs.current.forEach(timeout => {
         try {
-          clearTimeout(timeout);
+          window.clearTimeout(timeout);
         } catch (error) {
           // Silently handle timeout cleanup errors
         }
@@ -321,7 +321,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
 
         // Delay marking document as ready to ensure transport is stable
         // This prevents "Transport destroyed" errors from race conditions
-        const timeout = setTimeout(() => {
+        const timeout: number = window.setTimeout(() => {
           try {
             if (isMountedRef.current) {
               dispatch({
@@ -410,7 +410,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       
       // Page is loaded and ready - unlock rendering
       // Use a small delay to ensure page is fully initialized
-      const timeout = setTimeout(() => {
+      const timeout: number = window.setTimeout(() => {
         try {
           if (isMountedRef.current) {
             dispatch({
@@ -476,7 +476,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    let resizeTimeout: NodeJS.Timeout | null = null;
+    let resizeTimeout: number | null = null;
     
     const updatePageWidth = () => {
       try {
@@ -492,13 +492,13 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       }
     };
 
-    // Debounce resize events for performance
-    const handleResize = () => {
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
-      }
-      resizeTimeout = setTimeout(updatePageWidth, 150);
-    };
+      // Debounce resize events for performance
+      const handleResize = () => {
+        if (resizeTimeout !== null) {
+          window.clearTimeout(resizeTimeout);
+        }
+        resizeTimeout = window.setTimeout(updatePageWidth, 150);
+      };
 
     // Initial update
     updatePageWidth();
@@ -507,8 +507,8 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (resizeTimeout) {
-        clearTimeout(resizeTimeout);
+      if (resizeTimeout !== null) {
+        window.clearTimeout(resizeTimeout);
       }
     };
   }, [containerRef]);
