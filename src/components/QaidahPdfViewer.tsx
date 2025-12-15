@@ -249,11 +249,16 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const onPageLoadSuccess = useCallback(() => {
     if (!isMountedRef.current) return;
     
-    // Page is loaded and ready to render
-    dispatch({
-      type: 'SET_RENDERING',
-      payload: { isRendering: false },
-    });
+    // Page is loaded and ready - unlock rendering
+    // Use a small delay to ensure page is fully initialized
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        dispatch({
+          type: 'SET_RENDERING',
+          payload: { isRendering: false },
+        });
+      }
+    }, 50);
   }, []);
 
   // Page render error handler
