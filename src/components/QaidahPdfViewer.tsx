@@ -52,19 +52,73 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [pageWidth, setPageWidth] = useState(800);
+  const [isDocumentLoaded, setIsDocumentLoaded] = useState(false);
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef || internalContainerRef;
   const lastPinchDistance = useRef<number | null>(null);
+  
+  // Track component mount state to prevent state updates after unmount
+  const isMountedRef = useRef(true);
+  // Track PDF document reference to prevent duplicate loads
+  const pdfDocRef = useRef<any>(null);
+  // Track last loaded URL to prevent duplicate loads
+  const lastLoadedUrlRef = useRef<string | null>(null);
+
+  // Set up mount/unmount tracking
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Cleanup: destroy PDF document if it exists
+      if (pdfDocRef.current) {
+        try {
+          pdfDocRef.current.destroy?.();
+        } catch (error) {
+          console.warn('Error destroying PDF document:', error);
+        }
+        pdfDocRef.current = null;
+      }
+    };
+  }, []);
+
+  // Reset state when PDF URL changes
+  useEffect(() => {
+    // Only reset if URL actually changed
+    if (lastLoadedUrlRef.current !== pdfUrl) {
+      setIsLoading(true);
+      setIsDocumentLoaded(false);
+      setNumPages(null);
+      lastLoadedUrlRef.current = null;
+    }
+  }, [pdfUrl]);
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+    // Guard: only update state if component is still mounted
+    if (!isMountedRef.current) {
+      console.warn('⚠️ PDF loaded but component is unmounted, ignoring callback');
+      return;
+    }
+    
     console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
+    setIsDocumentLoaded(true);
     setNumPages(numPages);
     setIsLoading(false);
-    onTotalPagesChange?.(numPages);
-    onLoad?.();
+    lastLoadedUrlRef.current = pdfUrl;
+    
+    // Safe callback invocations
+    if (isMountedRef.current) {
+      onTotalPagesChange?.(numPages);
+      onLoad?.();
+    }
   };
 
   const onDocumentLoadError = (error: Error) => {
+    // Guard: only update state if component is still mounted
+    if (!isMountedRef.current) {
+      console.warn('⚠️ PDF load error but component is unmounted, ignoring callback');
+      return;
+    }
+    
     console.error('❌ Error loading PDF:', error);
     console.error('❌ PDF URL received by Document component:', pdfUrl);
     
@@ -80,15 +134,18 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       name: error.name,
       stack: error.stack
     });
-    setIsLoading(false);
+    
+    if (isMountedRef.current) {
+      setIsLoading(false);
+      setIsDocumentLoaded(false);
+    }
   };
   
-  // Log when pdfUrl changes
+  // Log when pdfUrl changes (only once to reduce spam)
   useEffect(() => {
-    console.log(`📄 QaidahPdfViewer received pdfUrl:`, pdfUrl);
-    console.log(`📄 pdfUrl type:`, typeof pdfUrl);
-    console.log(`📄 pdfUrl starts with /:`, pdfUrl?.startsWith('/'));
-    console.log(`📄 pdfUrl starts with http:`, pdfUrl?.startsWith('http'));
+    if (lastLoadedUrlRef.current !== pdfUrl) {
+      console.log(`📄 QaidahPdfViewer received pdfUrl:`, pdfUrl);
+    }
   }, [pdfUrl]);
 
   // Handle mouse wheel zoom
@@ -256,17 +313,33 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
               </div>
             }
           >
-          <Page
-            pageNumber={currentPage}
-            width={pageWidth}
-            renderTextLayer={true}
-            renderAnnotationLayer={true}
-            loading={
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            }
-          />
+          {/* Only render Page when document is loaded and page number is valid */}
+          {isDocumentLoaded && numPages && currentPage >= 1 && currentPage <= numPages ? (
+            <Page
+              key={`page-${currentPage}`} // Force re-render on page change
+              pageNumber={currentPage}
+              width={pageWidth}
+              renderTextLayer={true}
+              renderAnnotationLayer={true}
+              loading={
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                </div>
+              }
+              onLoadError={(error) => {
+                // Guard: only log if component is still mounted
+                if (isMountedRef.current) {
+                  console.error('❌ Error loading PDF page:', error);
+                  console.error('❌ Page number:', currentPage);
+                }
+              }}
+            />
+          ) : isDocumentLoaded && numPages ? (
+            // Document loaded but invalid page number
+            <div className="flex items-center justify-center p-8 text-gray-500">
+              <p>Invalid page number: {currentPage} (valid range: 1-{numPages})</p>
+            </div>
+          ) : null}
         </Document>
         </div>
       )}
