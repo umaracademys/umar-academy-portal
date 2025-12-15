@@ -315,25 +315,26 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
           >
           {/* Only render Page when document is loaded and page number is valid */}
           {isDocumentLoaded && numPages && currentPage >= 1 && currentPage <= numPages ? (
-            <Page
-              key={`page-${currentPage}`} // Force re-render on page change
-              pageNumber={currentPage}
-              width={pageWidth}
-              renderTextLayer={true}
-              renderAnnotationLayer={true}
-              loading={
-                <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                </div>
-              }
-              onLoadError={(error) => {
-                // Guard: only log if component is still mounted
-                if (isMountedRef.current) {
-                  console.error('❌ Error loading PDF page:', error);
-                  console.error('❌ Page number:', currentPage);
+            <div key={`page-wrapper-${currentPage}`}>
+              <Page
+                pageNumber={currentPage}
+                width={pageWidth}
+                renderTextLayer={true}
+                renderAnnotationLayer={true}
+                loading={
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  </div>
                 }
-              }}
-            />
+                onLoadError={(error) => {
+                  // Guard: only log if component is still mounted
+                  if (isMountedRef.current) {
+                    console.error('❌ Error loading PDF page:', error);
+                    console.error('❌ Page number:', currentPage);
+                  }
+                }}
+              />
+            </div>
           ) : isDocumentLoaded && numPages ? (
             // Document loaded but invalid page number
             <div className="flex items-center justify-center p-8 text-gray-500">
