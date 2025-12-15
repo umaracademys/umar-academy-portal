@@ -216,19 +216,17 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     [pdfUrl]
   );
 
-  // Page render success handler
-  const onPageRenderSuccess = useCallback(
-    ({ width }: { width: number }) => {
-      if (!isMountedRef.current) return;
-      
-      setPageWidth(width);
-      dispatch({
-        type: 'SET_RENDERING',
-        payload: { isRendering: false },
-      });
-    },
-    []
-  );
+  // Page render success handler - react-pdf Page doesn't have onRenderSuccess
+  // We'll use onLoadSuccess to track when page is ready
+  const onPageLoadSuccess = useCallback(() => {
+    if (!isMountedRef.current) return;
+    
+    // Page is loaded and ready to render
+    dispatch({
+      type: 'SET_RENDERING',
+      payload: { isRendering: false },
+    });
+  }, []);
 
   // Page render error handler
   const onPageRenderError = useCallback((error: Error) => {
@@ -238,16 +236,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     dispatch({
       type: 'SET_RENDERING',
       payload: { isRendering: false },
-    });
-  }, []);
-
-  // Page load success handler
-  const onPageLoadSuccess = useCallback(() => {
-    if (!isMountedRef.current) return;
-    
-    dispatch({
-      type: 'SET_RENDERING',
-      payload: { isRendering: true },
     });
   }, []);
 
@@ -459,7 +447,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             }
           >
             {/* Only render Page when document is loaded, not destroyed, and page number is valid */}
-            {isLoaded && !isDestroyed && !isRendering && numPages && currentPage >= 1 && currentPage <= numPages ? (
+            {isLoaded && !isDestroyed && numPages && currentPage >= 1 && currentPage <= numPages ? (
               <div key={`page-wrapper-${currentPage}`}>
                 <Page
                   pageNumber={currentPage}
@@ -468,8 +456,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
                   renderTextLayer={true}
                   renderAnnotationLayer={true}
                   onLoadSuccess={onPageLoadSuccess}
-                  onRenderSuccess={onPageRenderSuccess}
-                  onRenderError={onPageRenderError}
+                  onLoadError={onPageRenderError}
                   loading={
                     <div className="flex items-center justify-center p-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -480,7 +467,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             ) : isLoaded && numPages ? (
               <div className="flex items-center justify-center p-8 text-gray-500">
                 <p>
-                  {isDestroyed || isRendering
+                  {isDestroyed
                     ? 'Document is being reloaded...'
                     : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
                 </p>
