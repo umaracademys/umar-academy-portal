@@ -371,20 +371,6 @@ const TeacherDashboard: React.FC = () => {
               >
                 Manage Assignments
               </Link>
-              <Link
-                to="/teacher/qaidah-classwork"
-                className="inline-flex items-center gap-2 justify-center rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-bold text-white transition-all hover:from-blue-700 hover:to-blue-800 shadow-md hover:shadow-lg transform hover:scale-105"
-              >
-                <span className="text-lg">📖</span>
-                <span>Qaidah Classwork</span>
-              </Link>
-              <Link
-                to="/qaidah-submissions"
-                className="inline-flex items-center gap-2 justify-center rounded-xl bg-gradient-to-r from-green-600 to-green-700 px-6 py-3 text-sm font-bold text-white transition-all hover:from-green-700 hover:to-green-800 shadow-md hover:shadow-lg transform hover:scale-105"
-              >
-                <span className="text-lg">📚</span>
-                <span>Qaidah Submissions</span>
-              </Link>
               <button
                 onClick={() => setShowRecitationReview(true)}
                 className="inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg"
@@ -620,34 +606,6 @@ const TeacherDashboard: React.FC = () => {
                   <div className="font-bold text-primary mb-1">Manage Assignments</div>
                   <div className="text-xs text-gray-600">Create and manage assignments</div>
                 </Link>
-                <Link
-                  to="/teacher/qaidah-classwork"
-                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white hover:border-blue-600 hover:bg-blue-100 hover:shadow-lg transition-all shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-white text-xl font-bold shadow-md">
-                        📖
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-800 mb-1 text-base">Qaidah Classwork</div>
-                        <div className="text-xs text-gray-600">Mark and save classwork for students</div>
-                      </div>
-                    </div>
-                    <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </Link>
-                <Link
-                  to="/qaidah-submissions"
-                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-green-200 bg-gradient-to-br from-green-50 to-white hover:border-green-600 hover:bg-green-100 hover:shadow-lg transition-all shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-green-500 text-white text-xl font-bold shadow-md">
-                        📚
-                      </div>
                       <div>
                         <div className="font-bold text-gray-800 mb-1 text-base">Qaidah Submissions</div>
                         <div className="text-xs text-gray-600">Review student Qaidah homework</div>
