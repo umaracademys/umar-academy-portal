@@ -1,26 +1,102 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import React, {
+  useReducer,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  Document,
+  Page,
+  pdfjs,
+} from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up PDF.js worker - use version that matches react-pdf's pdfjs-dist
 // react-pdf uses pdfjs-dist 5.4.296, so we use the worker from that version
-// Using CDN to ensure version match, or local file if available
 if (typeof window !== 'undefined') {
-  // Use the version that react-pdf is actually using (5.4.296)
   const pdfjsVersion = '5.4.296';
-  // Try local worker first, fallback to CDN
-  const localWorkerUrl = new URL('/pdfjs/pdf.worker.min.mjs', window.location.origin).href;
-  // Use jsdelivr CDN which is more reliable than cdnjs
   const cdnWorkerUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-  
-  // Try to use local worker, but if it fails, the Document component will handle it
-  // For now, use CDN to ensure version match
   pdfjs.GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
   console.log(`📄 PDF.js worker configured: ${cdnWorkerUrl} (version ${pdfjsVersion})`);
 } else {
   pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs';
 }
+
+/**
+ * State Management with useReducer
+ * Centralizes complex document lifecycle and rendering state
+ */
+
+const initialState = {
+  // Document Lifecycle State
+  pdfUrl: null as string | null,
+  isLoaded: false,
+  isDestroyed: false,
+  isLoading: false,
+  error: null as string | null,
+
+  // Rendering/View State
+  numPages: 0,
+  isRendering: false,
+};
+
+type State = typeof initialState;
+
+type Action =
+  | { type: 'LOAD_START'; payload: { url: string } }
+  | { type: 'LOAD_SUCCESS'; payload: { numPages: number } }
+  | { type: 'LOAD_ERROR'; payload: { error: string } }
+  | { type: 'DESTROY_DOCUMENT' }
+  | { type: 'SET_RENDERING'; payload: { isRendering: boolean } };
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'LOAD_START':
+      return {
+        ...initialState,
+        pdfUrl: action.payload.url,
+        isLoading: true,
+        isDestroyed: false,
+        error: null,
+      };
+
+    case 'LOAD_SUCCESS':
+      return {
+        ...state,
+        numPages: action.payload.numPages,
+        isLoaded: true,
+        isLoading: false,
+        error: null,
+      };
+
+    case 'LOAD_ERROR':
+      return {
+        ...state,
+        isLoading: false,
+        error: action.payload.error,
+      };
+
+    case 'DESTROY_DOCUMENT':
+      return {
+        ...state,
+        isLoaded: false,
+        isDestroyed: true,
+        numPages: 0,
+      };
+
+    case 'SET_RENDERING':
+      return {
+        ...state,
+        isRendering: action.payload.isRendering,
+      };
+
+    default:
+      return state;
+  }
+};
 
 interface QaidahPdfViewerProps {
   pdfUrl: string;
@@ -47,154 +123,147 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   containerRef: externalContainerRef,
   onLoad,
 }) => {
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [state, dispatch] = useReducer(reducer, initialState);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [pageWidth, setPageWidth] = useState(800);
-  const [isDocumentLoaded, setIsDocumentLoaded] = useState(false);
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef || internalContainerRef;
   const lastPinchDistance = useRef<number | null>(null);
-  
-  // Track component mount state to prevent state updates after unmount
   const isMountedRef = useRef(true);
-  // Track PDF document reference to prevent duplicate loads and ensure safe access
-  const pdfDocRef = useRef<any>(null);
-  // Track last loaded URL to prevent duplicate loads
-  const lastLoadedUrlRef = useRef<string | null>(null);
-  // Track if document is currently being rendered (prevents getPage after destroy)
-  const isRenderingRef = useRef(false);
-  // Track if document is destroyed (prevents getPage calls) - ONLY set on actual unmount
-  const isDestroyedRef = useRef(false);
-  // Track if URL is changing (prevents getPage calls during transition)
-  const isUrlChangingRef = useRef(false);
 
-  // Set up mount/unmount tracking
+  const {
+    isLoaded,
+    isDestroyed,
+    isLoading,
+    error,
+    numPages,
+    isRendering,
+  } = state;
+
+  // Track component mount state
   useEffect(() => {
     isMountedRef.current = true;
-    isDestroyedRef.current = false;
-    isRenderingRef.current = false;
-    isUrlChangingRef.current = false;
-    
     return () => {
-      // Only mark as destroyed on actual component unmount
       isMountedRef.current = false;
-      isRenderingRef.current = false;
-      isDestroyedRef.current = true;
-      isUrlChangingRef.current = false;
-      
-      // Cleanup: destroy PDF document ONLY on final unmount
-      if (pdfDocRef.current) {
-        try {
-          pdfDocRef.current.destroy?.();
-        } catch (error) {
-          // Silently handle cleanup errors - component is unmounting anyway
-        }
-        pdfDocRef.current = null;
+      // Destroy document on final unmount
+      if (isLoaded && !isDestroyed) {
+        dispatch({ type: 'DESTROY_DOCUMENT' });
       }
     };
+  }, [isLoaded, isDestroyed]);
+
+  // Handle PDF URL changes - prevent duplicate loads
+  useEffect(() => {
+    // Check for redundant load
+    if (pdfUrl === state.pdfUrl && isLoaded && !isDestroyed) {
+      return;
+    }
+
+    // Start new load if URL changed
+    if (pdfUrl && pdfUrl !== state.pdfUrl) {
+      dispatch({
+        type: 'LOAD_START',
+        payload: { url: pdfUrl },
+      });
+    }
+  }, [pdfUrl, state.pdfUrl, isLoaded, isDestroyed]);
+
+  // Document load success handler
+  const onDocumentLoadSuccess = useCallback(
+    ({ numPages }: { numPages: number }) => {
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
+      
+      dispatch({
+        type: 'LOAD_SUCCESS',
+        payload: { numPages },
+      });
+
+      // Safe callback invocations
+      if (isMountedRef.current) {
+        onTotalPagesChange?.(numPages);
+        onLoad?.();
+      }
+    },
+    [onTotalPagesChange, onLoad]
+  );
+
+  // Document load error handler
+  const onDocumentLoadError = useCallback(
+    (error: Error) => {
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      console.error('❌ Error loading PDF:', error);
+      
+      // Validate URL format
+      if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
+        console.error('❌ Invalid PDF URL format: URL must be absolute');
+      }
+
+      if (isMountedRef.current) {
+        dispatch({
+          type: 'LOAD_ERROR',
+          payload: { error: error.message || 'Failed to load PDF document' },
+        });
+      }
+    },
+    [pdfUrl]
+  );
+
+  // Page render success handler
+  const onPageRenderSuccess = useCallback(
+    ({ width }: { width: number }) => {
+      if (!isMountedRef.current) return;
+      
+      setPageWidth(width);
+      dispatch({
+        type: 'SET_RENDERING',
+        payload: { isRendering: false },
+      });
+    },
+    []
+  );
+
+  // Page render error handler
+  const onPageRenderError = useCallback((error: Error) => {
+    if (!isMountedRef.current) return;
+    
+    console.error('❌ Error rendering PDF page:', error);
+    dispatch({
+      type: 'SET_RENDERING',
+      payload: { isRendering: false },
+    });
   }, []);
 
-  // Reset state when PDF URL changes (but don't mark as destroyed - it's just a reload)
-  useEffect(() => {
-    // Only reset if URL actually changed
-    if (lastLoadedUrlRef.current !== pdfUrl && pdfUrl) {
-      // Mark URL as changing to prevent getPage calls on old document
-      isUrlChangingRef.current = true;
-      isRenderingRef.current = false;
-      
-      setIsLoading(true);
-      setIsDocumentLoaded(false);
-      setNumPages(null);
-      
-      // Don't destroy here - let the new Document component handle cleanup
-      // The old document will be cleaned up by react-pdf when Document unmounts
-    }
-  }, [pdfUrl]);
-
-  const onDocumentLoadSuccess = useCallback(({ numPages, _pdfInfo }: { numPages: number; _pdfInfo?: any }) => {
-    // Guard: only update state if component is still mounted (not destroyed)
-    // isDestroyedRef is ONLY true on actual unmount, not URL changes
-    if (!isMountedRef.current || isDestroyedRef.current) {
-      // Silently ignore - component is unmounting, no need to warn
-      return;
-    }
+  // Page load success handler
+  const onPageLoadSuccess = useCallback(() => {
+    if (!isMountedRef.current) return;
     
-    // Guard: ensure this is for the current URL (prevent race conditions)
-    if (lastLoadedUrlRef.current === pdfUrl && isDocumentLoaded) {
-      // Already loaded this URL - silently ignore duplicate
-      return;
-    }
-    
-    // Reset URL changing flag since new document is loading
-    isUrlChangingRef.current = false;
-    
-    console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
-    
-    // Mark as rendering to prevent getPage calls during transition
-    isRenderingRef.current = true;
-    
-    // Store document reference if available (react-pdf may provide it)
-    // Note: react-pdf doesn't expose the document directly, but we track load state
-    
-    setIsDocumentLoaded(true);
-    setNumPages(numPages);
-    setIsLoading(false);
-    lastLoadedUrlRef.current = pdfUrl;
-    
-    // Mark rendering complete after state update
-    setTimeout(() => {
-      if (isMountedRef.current) {
-        isRenderingRef.current = false;
-      }
-    }, 100);
-    
-    // Safe callback invocations - only if still mounted
-    if (isMountedRef.current && !isDestroyedRef.current) {
-      onTotalPagesChange?.(numPages);
-      onLoad?.();
-    }
-  }, [pdfUrl, onTotalPagesChange, onLoad, isDocumentLoaded]);
-
-  const onDocumentLoadError = useCallback((error: Error) => {
-    // Guard: only update state if component is still mounted
-    if (!isMountedRef.current || isDestroyedRef.current) {
-      // Silently ignore - component is unmounting
-      return;
-    }
-    
-    isRenderingRef.current = false;
-    isUrlChangingRef.current = false;
-    
-    console.error('❌ Error loading PDF:', error);
-    console.error('❌ PDF URL received by Document component:', pdfUrl);
-    
-    // Validate URL format
-    if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
-      console.error('❌ Invalid PDF URL format: URL must be absolute (start with http:// or https://)');
-      console.error('❌ Received relative URL:', pdfUrl);
-      console.error('❌ Backend should return absolute URLs. Check backend configuration.');
-    }
-    
-    console.error('❌ Error details:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack
+    dispatch({
+      type: 'SET_RENDERING',
+      payload: { isRendering: true },
     });
-    
-    if (isMountedRef.current && !isDestroyedRef.current) {
-      setIsLoading(false);
-      setIsDocumentLoaded(false);
-    }
-  }, [pdfUrl]);
-  
-  // Log when pdfUrl changes (only once to reduce spam)
+  }, []);
+
+  // Update page width based on container
   useEffect(() => {
-    if (lastLoadedUrlRef.current !== pdfUrl) {
-      console.log(`📄 QaidahPdfViewer received pdfUrl:`, pdfUrl);
+    if (containerRef.current) {
+      const updatePageWidth = () => {
+        if (containerRef.current) {
+          setPageWidth(Math.min(containerRef.current.clientWidth - 40, 1200));
+        }
+      };
+      updatePageWidth();
+      window.addEventListener('resize', updatePageWidth);
+      return () => window.removeEventListener('resize', updatePageWidth);
     }
-  }, [pdfUrl]);
+  }, [containerRef]);
 
   // Handle mouse wheel zoom
   const handleWheel = (e: React.WheelEvent) => {
@@ -290,18 +359,36 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     }
   }, [zoom, position, onPositionChange, pageWidth, containerRef]);
 
-  // Update page width based on container
+  // Keyboard navigation
   useEffect(() => {
-    if (containerRef.current) {
-      const container = containerRef.current;
-      const updatePageWidth = () => {
-        setPageWidth(Math.min(container.clientWidth - 40, 1200));
-      };
-      updatePageWidth();
-      window.addEventListener('resize', updatePageWidth);
-      return () => window.removeEventListener('resize', updatePageWidth);
-    }
-  }, [containerRef]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && currentPage > 1) {
+        e.preventDefault();
+        onPageChange?.(currentPage - 1);
+      } else if (e.key === 'ArrowRight' && currentPage < numPages) {
+        e.preventDefault();
+        onPageChange?.(currentPage + 1);
+      } else if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        onZoomChange?.(Math.min(5, zoom + 0.25));
+      } else if (e.key === '-') {
+        e.preventDefault();
+        onZoomChange?.(Math.max(0.5, zoom - 0.25));
+      } else if (e.key === '0') {
+        e.preventDefault();
+        onZoomChange?.(1);
+        onPositionChange?.({ x: 0, y: 0 });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPage, numPages, zoom, onPageChange, onZoomChange, onPositionChange]);
+
+  // Calculate page scale based on zoom
+  const pageScale = useMemo(() => {
+    return zoom;
+  }, [zoom]);
 
   return (
     <div
@@ -319,15 +406,25 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     >
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading PDF...</p>
+          </div>
         </div>
       )}
 
-      {!pdfUrl ? (
-        <div className="text-center p-8 text-gray-500">
-          <p>No PDF URL provided</p>
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center bg-white rounded-lg p-8 max-w-md mx-4 shadow-lg">
+            <div className="text-6xl mb-4">🚫</div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">PDF Load Error</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <p className="text-sm text-gray-500">Please check the URL or try again later.</p>
+          </div>
         </div>
-      ) : (
+      )}
+
+      {!error && pdfUrl && (
         <div
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
@@ -336,13 +433,13 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
           }}
         >
           <Document
-            key={pdfUrl} // Stable key based ONLY on pdfUrl - prevents re-render on page changes
+            key={pdfUrl} // Stable key based on URL only
             file={pdfUrl}
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
             options={{
               httpHeaders: {
-                'Accept': 'application/pdf'
+                'Accept': 'application/pdf',
               },
               cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
               cMapPacked: true,
@@ -358,43 +455,38 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
                 <p className="font-semibold text-lg mb-2">Failed to load PDF</p>
                 <p className="text-sm mt-2 break-all font-mono bg-white p-2 rounded">{pdfUrl}</p>
                 <p className="text-xs mt-3 text-gray-600">Check browser console (F12) for detailed error information</p>
-                <p className="text-xs mt-1 text-gray-500">Verify the PDF file exists and is accessible</p>
               </div>
             }
           >
-          {/* Only render Page when document is loaded, not changing URL, and page number is valid */}
-          {isDocumentLoaded && !isDestroyedRef.current && !isRenderingRef.current && !isUrlChangingRef.current && numPages && currentPage >= 1 && currentPage <= numPages ? (
-            <div key={`page-wrapper-${currentPage}`}>
-              <Page
-                pageNumber={currentPage}
-                width={pageWidth}
-                renderTextLayer={true}
-                renderAnnotationLayer={true}
-                loading={
-                  <div className="flex items-center justify-center p-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  </div>
-                }
-                onLoadError={(error) => {
-                  // Guard: only log if component is still mounted and document not destroyed/changing
-                  if (isMountedRef.current && !isDestroyedRef.current && !isUrlChangingRef.current) {
-                    console.error('❌ Error loading PDF page:', error);
-                    console.error('❌ Page number:', currentPage);
+            {/* Only render Page when document is loaded, not destroyed, and page number is valid */}
+            {isLoaded && !isDestroyed && !isRendering && numPages && currentPage >= 1 && currentPage <= numPages ? (
+              <div key={`page-wrapper-${currentPage}`}>
+                <Page
+                  pageNumber={currentPage}
+                  width={pageWidth}
+                  scale={pageScale}
+                  renderTextLayer={true}
+                  renderAnnotationLayer={true}
+                  onLoadSuccess={onPageLoadSuccess}
+                  onRenderSuccess={onPageRenderSuccess}
+                  onRenderError={onPageRenderError}
+                  loading={
+                    <div className="flex items-center justify-center p-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                    </div>
                   }
-                }}
-              />
-            </div>
-          ) : isDocumentLoaded && numPages ? (
-            // Document loaded but invalid page number or document transitioning
-            <div className="flex items-center justify-center p-8 text-gray-500">
-              <p>
-                {isDestroyedRef.current || isRenderingRef.current || isUrlChangingRef.current
-                  ? 'Document is being reloaded...'
-                  : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
-              </p>
-            </div>
-          ) : null}
-        </Document>
+                />
+              </div>
+            ) : isLoaded && numPages ? (
+              <div className="flex items-center justify-center p-8 text-gray-500">
+                <p>
+                  {isDestroyed || isRendering
+                    ? 'Document is being reloaded...'
+                    : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
+                </p>
+              </div>
+            ) : null}
+          </Document>
         </div>
       )}
 
