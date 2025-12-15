@@ -419,7 +419,7 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
             ) : pdfUrl ? (
               <>
                 <QaidahPdfViewer
-                  key={`pdf-${selectedBook}-${pdfInfo?.uploadedAt || 'default'}`} // Force re-render when PDF changes
+                  key={pdfUrl} // Stable key based on PDF URL only - prevents remount on page changes
                   pdfUrl={pdfUrl}
                   currentPage={currentPage}
                   onPageChange={(page) => {
