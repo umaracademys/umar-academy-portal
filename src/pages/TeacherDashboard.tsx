@@ -606,16 +606,6 @@ const TeacherDashboard: React.FC = () => {
                   <div className="font-bold text-primary mb-1">Manage Assignments</div>
                   <div className="text-xs text-gray-600">Create and manage assignments</div>
                 </Link>
-                      <div>
-                        <div className="font-bold text-gray-800 mb-1 text-base">Qaidah Submissions</div>
-                        <div className="text-xs text-gray-600">Review student Qaidah homework</div>
-                      </div>
-                    </div>
-                    <svg className="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </Link>
               </div>
             </Card>
           </div>
