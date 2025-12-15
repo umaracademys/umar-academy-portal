@@ -121,6 +121,54 @@ interface QaidahPdfViewerProps {
   onLoad?: () => void;
 }
 
+/**
+ * Validates PDF URL format and security
+ * Prevents XSS and ensures URL is safe
+ */
+function validatePdfUrl(url: string): { isValid: boolean; error?: string } {
+  if (!url || typeof url !== 'string') {
+    return { isValid: false, error: 'PDF URL must be a non-empty string' };
+  }
+
+  // Security: Only allow http/https URLs (prevent javascript:, data:, etc.)
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return { isValid: false, error: 'PDF URL must be absolute (http:// or https://)' };
+  }
+
+  // Security: Prevent XSS by checking for script injection patterns
+  const dangerousPatterns = [
+    /javascript:/i,
+    /data:/i,
+    /vbscript:/i,
+    /on\w+\s*=/i, // Event handlers
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(url)) {
+      return { isValid: false, error: 'Invalid URL format detected' };
+    }
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Validates page number is within valid range
+ */
+function validatePageNumber(page: number, maxPages: number): boolean {
+  return Number.isInteger(page) && page >= 1 && page <= maxPages;
+}
+
+/**
+ * Validates zoom level is within acceptable range
+ */
+function validateZoom(zoom: number): number {
+  if (typeof zoom !== 'number' || isNaN(zoom)) {
+    return 1.0;
+  }
+  return Math.max(0.5, Math.min(5, zoom));
+}
+
 const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   pdfUrl,
   currentPage,
@@ -141,6 +189,37 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const containerRef = externalContainerRef || internalContainerRef;
   const lastPinchDistance = useRef<number | null>(null);
   const isMountedRef = useRef(true);
+  const timeoutRefs = useRef<NodeJS.Timeout[]>([]); // Track timeouts for cleanup
+
+  // Validate and sanitize inputs
+  const validatedZoom = useMemo(() => validateZoom(zoom), [zoom]);
+  const validatedPosition = useMemo(() => {
+    if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+      return { x: 0, y: 0 };
+    }
+    return { x: position.x, y: position.y };
+  }, [position]);
+
+  // Validate PDF URL on mount and changes
+  useEffect(() => {
+    try {
+      const validation = validatePdfUrl(pdfUrl);
+      if (!validation.isValid) {
+        console.error('❌ Invalid PDF URL:', validation.error);
+        dispatch({
+          type: 'LOAD_ERROR',
+          payload: { error: validation.error || 'Invalid PDF URL' },
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('❌ Error validating PDF URL:', error);
+      dispatch({
+        type: 'LOAD_ERROR',
+        payload: { error: 'Failed to validate PDF URL' },
+      });
+    }
+  }, [pdfUrl]);
 
   const {
     isLoaded,
@@ -152,93 +231,172 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     isDocumentReady,
   } = state;
 
-  // Track component mount state
+  // Track component mount state and cleanup timeouts
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      
+      // Clear all pending timeouts
+      timeoutRefs.current.forEach(timeout => {
+        try {
+          clearTimeout(timeout);
+        } catch (error) {
+          // Silently handle timeout cleanup errors
+        }
+      });
+      timeoutRefs.current = [];
+      
       // Destroy document on final unmount
-      if (isLoaded && !isDestroyed) {
-        dispatch({ type: 'DESTROY_DOCUMENT' });
+      try {
+        if (isLoaded && !isDestroyed) {
+          dispatch({ type: 'DESTROY_DOCUMENT' });
+        }
+      } catch (error) {
+        console.error('Error during cleanup:', error);
       }
     };
   }, [isLoaded, isDestroyed]);
 
   // Handle PDF URL changes - prevent duplicate loads
   useEffect(() => {
-    // Check for redundant load
-    if (pdfUrl === state.pdfUrl && isLoaded && !isDestroyed) {
-      return;
-    }
+    try {
+      // Validate URL before processing
+      const validation = validatePdfUrl(pdfUrl);
+      if (!validation.isValid) {
+        return; // Error already handled in validation effect
+      }
 
-    // Start new load if URL changed
-    if (pdfUrl && pdfUrl !== state.pdfUrl) {
-      // Mark document as not ready when URL changes
+      // Check for redundant load
+      if (pdfUrl === state.pdfUrl && isLoaded && !isDestroyed) {
+        return;
+      }
+
+      // Start new load if URL changed
+      if (pdfUrl && pdfUrl !== state.pdfUrl) {
+        // Mark document as not ready when URL changes
+        dispatch({
+          type: 'SET_DOCUMENT_READY',
+          payload: { ready: false },
+        });
+        
+        dispatch({
+          type: 'LOAD_START',
+          payload: { url: pdfUrl },
+        });
+      }
+    } catch (error) {
+      console.error('Error handling PDF URL change:', error);
       dispatch({
-        type: 'SET_DOCUMENT_READY',
-        payload: { ready: false },
-      });
-      
-      dispatch({
-        type: 'LOAD_START',
-        payload: { url: pdfUrl },
+        type: 'LOAD_ERROR',
+        payload: { error: 'Failed to process PDF URL change' },
       });
     }
   }, [pdfUrl, state.pdfUrl, isLoaded, isDestroyed]);
 
-  // Document load success handler
+  // Document load success handler with error handling
   const onDocumentLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
-      if (!isMountedRef.current) {
-        return;
-      }
+      try {
+        if (!isMountedRef.current) {
+          return;
+        }
 
-      console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
-      
-      dispatch({
-        type: 'LOAD_SUCCESS',
-        payload: { numPages },
-      });
+        // Validate numPages
+        if (typeof numPages !== 'number' || numPages < 1 || !Number.isInteger(numPages)) {
+          console.error('❌ Invalid numPages value:', numPages);
+          dispatch({
+            type: 'LOAD_ERROR',
+            payload: { error: 'Invalid PDF document: page count is invalid' },
+          });
+          return;
+        }
 
-      // Delay marking document as ready to ensure transport is stable
-      // This prevents "Transport destroyed" errors from race conditions
-      setTimeout(() => {
+        console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
+        
+        dispatch({
+          type: 'LOAD_SUCCESS',
+          payload: { numPages },
+        });
+
+        // Delay marking document as ready to ensure transport is stable
+        // This prevents "Transport destroyed" errors from race conditions
+        const timeout = setTimeout(() => {
+          try {
+            if (isMountedRef.current) {
+              dispatch({
+                type: 'SET_DOCUMENT_READY',
+                payload: { ready: true },
+              });
+            }
+          } catch (error) {
+            console.error('Error setting document ready:', error);
+          }
+        }, 100);
+        timeoutRefs.current.push(timeout);
+
+        // Safe callback invocations with error handling
+        if (isMountedRef.current) {
+          try {
+            onTotalPagesChange?.(numPages);
+          } catch (error) {
+            console.error('Error in onTotalPagesChange callback:', error);
+          }
+          
+          try {
+            onLoad?.();
+          } catch (error) {
+            console.error('Error in onLoad callback:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error in onDocumentLoadSuccess:', error);
         if (isMountedRef.current) {
           dispatch({
-            type: 'SET_DOCUMENT_READY',
-            payload: { ready: true },
+            type: 'LOAD_ERROR',
+            payload: { error: 'Failed to process document load' },
           });
         }
-      }, 100);
-
-      // Safe callback invocations
-      if (isMountedRef.current) {
-        onTotalPagesChange?.(numPages);
-        onLoad?.();
       }
     },
     [onTotalPagesChange, onLoad]
   );
 
-  // Document load error handler
+  // Document load error handler with robust error handling
   const onDocumentLoadError = useCallback(
-    (error: Error) => {
-      if (!isMountedRef.current) {
-        return;
-      }
+    (error: Error | unknown) => {
+      try {
+        if (!isMountedRef.current) {
+          return;
+        }
 
-      console.error('❌ Error loading PDF:', error);
-      
-      // Validate URL format
-      if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
-        console.error('❌ Invalid PDF URL format: URL must be absolute');
-      }
+        // Extract error message safely
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : typeof error === 'string' 
+            ? error 
+            : 'Failed to load PDF document';
 
-      if (isMountedRef.current) {
-        dispatch({
-          type: 'LOAD_ERROR',
-          payload: { error: error.message || 'Failed to load PDF document' },
-        });
+        console.error('❌ Error loading PDF:', error);
+        
+        // Validate URL format (non-blocking check)
+        try {
+          if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
+            console.error('❌ Invalid PDF URL format: URL must be absolute');
+          }
+        } catch (urlError) {
+          console.error('Error validating URL in error handler:', urlError);
+        }
+
+        if (isMountedRef.current) {
+          dispatch({
+            type: 'LOAD_ERROR',
+            payload: { error: errorMessage },
+          });
+        }
+      } catch (handlerError) {
+        // Last resort error handling - log but don't crash
+        console.error('Error in onDocumentLoadError handler:', handlerError);
       }
     },
     [pdfUrl]
@@ -247,182 +405,330 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   // Page render success handler - react-pdf Page doesn't have onRenderSuccess
   // We'll use onLoadSuccess to track when page is ready
   const onPageLoadSuccess = useCallback(() => {
-    if (!isMountedRef.current) return;
-    
-    // Page is loaded and ready - unlock rendering
-    // Use a small delay to ensure page is fully initialized
-    setTimeout(() => {
-      if (isMountedRef.current) {
+    try {
+      if (!isMountedRef.current) return;
+      
+      // Page is loaded and ready - unlock rendering
+      // Use a small delay to ensure page is fully initialized
+      const timeout = setTimeout(() => {
+        try {
+          if (isMountedRef.current) {
+            dispatch({
+              type: 'SET_RENDERING',
+              payload: { isRendering: false },
+            });
+          }
+        } catch (error) {
+          console.error('Error unlocking rendering state:', error);
+        }
+      }, 50);
+      timeoutRefs.current.push(timeout);
+    } catch (error) {
+      console.error('Error in onPageLoadSuccess:', error);
+    }
+  }, []);
+
+  // Page render error handler with robust error handling
+  const onPageRenderError = useCallback((error: Error | unknown) => {
+    try {
+      if (!isMountedRef.current) return;
+      
+      // Extract error message safely
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === 'string' 
+          ? error 
+          : 'Unknown error';
+      
+      // Only log non-destroy errors to avoid spam
+      if (!errorMessage.includes('Transport destroyed') && !errorMessage.includes('destroyed')) {
+        console.error('❌ Error rendering PDF page:', error);
+      }
+      
+      // Unlock rendering and mark document as not ready if transport is destroyed
+      if (errorMessage.includes('Transport destroyed') || errorMessage.includes('destroyed')) {
+        // Transport was destroyed - mark document as not ready and prevent further renders
+        try {
+          dispatch({
+            type: 'SET_DOCUMENT_READY',
+            payload: { ready: false },
+          });
+        } catch (dispatchError) {
+          console.error('Error dispatching SET_DOCUMENT_READY:', dispatchError);
+        }
+      }
+      
+      try {
         dispatch({
           type: 'SET_RENDERING',
           payload: { isRendering: false },
         });
+      } catch (dispatchError) {
+        console.error('Error dispatching SET_RENDERING:', dispatchError);
       }
-    }, 50);
+    } catch (handlerError) {
+      // Last resort error handling
+      console.error('Error in onPageRenderError handler:', handlerError);
+    }
   }, []);
 
-  // Page render error handler
-  const onPageRenderError = useCallback((error: Error) => {
-    if (!isMountedRef.current) return;
-    
-    // Only log non-destroy errors to avoid spam
-    if (!error.message?.includes('Transport destroyed') && !error.message?.includes('destroyed')) {
-      console.error('❌ Error rendering PDF page:', error);
-    }
-    
-    // Unlock rendering and mark document as not ready if transport is destroyed
-    if (error.message?.includes('Transport destroyed') || error.message?.includes('destroyed')) {
-      // Transport was destroyed - mark document as not ready and prevent further renders
-      dispatch({
-        type: 'SET_DOCUMENT_READY',
-        payload: { ready: false },
-      });
-    }
-    
-    dispatch({
-      type: 'SET_RENDERING',
-      payload: { isRendering: false },
-    });
-  }, []);
-
-  // Update page width based on container
+  // Update page width based on container with debouncing
   useEffect(() => {
-    if (containerRef.current) {
-      const updatePageWidth = () => {
+    if (!containerRef.current) return;
+
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    
+    const updatePageWidth = () => {
+      try {
         if (containerRef.current) {
-          setPageWidth(Math.min(containerRef.current.clientWidth - 40, 1200));
+          const newWidth = Math.min(containerRef.current.clientWidth - 40, 1200);
+          setPageWidth(prevWidth => {
+            // Only update if width changed significantly (avoid unnecessary re-renders)
+            return Math.abs(newWidth - prevWidth) > 5 ? newWidth : prevWidth;
+          });
         }
-      };
-      updatePageWidth();
-      window.addEventListener('resize', updatePageWidth);
-      return () => window.removeEventListener('resize', updatePageWidth);
-    }
+      } catch (error) {
+        console.error('Error updating page width:', error);
+      }
+    };
+
+    // Debounce resize events for performance
+    const handleResize = () => {
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = setTimeout(updatePageWidth, 150);
+    };
+
+    // Initial update
+    updatePageWidth();
+    
+    window.addEventListener('resize', handleResize, { passive: true });
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
+    };
   }, [containerRef]);
 
-  // Handle mouse wheel zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const newZoom = Math.max(0.5, Math.min(5, zoom + delta));
-      onZoomChange?.(newZoom);
+  // Handle mouse wheel zoom with error handling
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    try {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        const newZoom = validateZoom(validatedZoom + delta);
+        try {
+          onZoomChange?.(newZoom);
+        } catch (error) {
+          console.error('Error in onZoomChange callback:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleWheel:', error);
     }
-  };
+  }, [validatedZoom, onZoomChange]);
 
-  // Handle mouse drag
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  // Handle mouse drag with error handling
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    try {
+      if (e.button === 0) {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX - validatedPosition.x, y: e.clientY - validatedPosition.y });
+      }
+    } catch (error) {
+      console.error('Error in handleMouseDown:', error);
     }
-  };
+  }, [validatedPosition]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isDragging) {
-      const newX = e.clientX - dragStart.x;
-      const newY = e.clientY - dragStart.y;
-      onPositionChange?.({ x: newX, y: newY });
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    try {
+      if (isDragging) {
+        const newX = e.clientX - dragStart.x;
+        const newY = e.clientY - dragStart.y;
+        try {
+          onPositionChange?.({ x: newX, y: newY });
+        } catch (error) {
+          console.error('Error in onPositionChange callback:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleMouseMove:', error);
     }
-  };
+  }, [isDragging, dragStart, onPositionChange]);
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Handle touch events for pinch-to-zoom
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
-      );
-      lastPinchDistance.current = distance;
-    } else if (e.touches.length === 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
+  const handleMouseUp = useCallback(() => {
+    try {
+      setIsDragging(false);
+    } catch (error) {
+      console.error('Error in handleMouseUp:', error);
     }
-  };
+  }, []);
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && lastPinchDistance.current !== null) {
-      e.preventDefault();
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const distance = Math.hypot(
-        touch2.clientX - touch1.clientX,
-        touch2.clientY - touch1.clientY
-      );
-      
-      const scale = distance / lastPinchDistance.current;
-      const newZoom = Math.max(0.5, Math.min(5, zoom * scale));
-      onZoomChange?.(newZoom);
-      
-      lastPinchDistance.current = distance;
-    } else if (e.touches.length === 1 && isDragging) {
-      const newX = e.touches[0].clientX - dragStart.x;
-      const newY = e.touches[0].clientY - dragStart.y;
-      onPositionChange?.({ x: newX, y: newY });
+  // Handle touch events for pinch-to-zoom with error handling
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    try {
+      if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        lastPinchDistance.current = distance;
+      } else if (e.touches.length === 1) {
+        setIsDragging(true);
+        setDragStart({ x: e.touches[0].clientX - validatedPosition.x, y: e.touches[0].clientY - validatedPosition.y });
+      }
+    } catch (error) {
+      console.error('Error in handleTouchStart:', error);
     }
-  };
+  }, [validatedPosition]);
 
-  const handleTouchEnd = () => {
-    lastPinchDistance.current = null;
-    setIsDragging(false);
-  };
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    try {
+      if (e.touches.length === 2 && lastPinchDistance.current !== null) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+        
+        const scale = distance / lastPinchDistance.current;
+        const newZoom = validateZoom(validatedZoom * scale);
+        try {
+          onZoomChange?.(newZoom);
+        } catch (error) {
+          console.error('Error in onZoomChange callback:', error);
+        }
+        
+        lastPinchDistance.current = distance;
+      } else if (e.touches.length === 1 && isDragging) {
+        const newX = e.touches[0].clientX - dragStart.x;
+        const newY = e.touches[0].clientY - dragStart.y;
+        try {
+          onPositionChange?.({ x: newX, y: newY });
+        } catch (error) {
+          console.error('Error in onPositionChange callback:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleTouchMove:', error);
+    }
+  }, [validatedZoom, isDragging, dragStart, onZoomChange, onPositionChange]);
 
-  // Constrain position based on zoom level
-  useEffect(() => {
-    if (containerRef.current) {
+  const handleTouchEnd = useCallback(() => {
+    try {
+      lastPinchDistance.current = null;
+      setIsDragging(false);
+    } catch (error) {
+      console.error('Error in handleTouchEnd:', error);
+    }
+  }, []);
+
+  // Constrain position based on zoom level (memoized calculation)
+  const constrainedPosition = useMemo(() => {
+    try {
+      if (!containerRef.current) {
+        return validatedPosition;
+      }
+
       const container = containerRef.current;
       const containerWidth = container.clientWidth;
       const containerHeight = container.clientHeight;
-      const scaledWidth = pageWidth * zoom;
-      const scaledHeight = (pageWidth * 1.414) * zoom; // A4 aspect ratio
+      const scaledWidth = pageWidth * validatedZoom;
+      const scaledHeight = (pageWidth * 1.414) * validatedZoom; // A4 aspect ratio
 
       const maxX = Math.max(0, (scaledWidth - containerWidth) / 2);
       const maxY = Math.max(0, (scaledHeight - containerHeight) / 2);
 
-      const constrainedX = Math.max(-maxX, Math.min(maxX, position.x));
-      const constrainedY = Math.max(-maxY, Math.min(maxY, position.y));
+      const constrainedX = Math.max(-maxX, Math.min(maxX, validatedPosition.x));
+      const constrainedY = Math.max(-maxY, Math.min(maxY, validatedPosition.y));
 
-      if (constrainedX !== position.x || constrainedY !== position.y) {
-        onPositionChange?.({ x: constrainedX, y: constrainedY });
+      return { x: constrainedX, y: constrainedY };
+    } catch (error) {
+      console.error('Error calculating constrained position:', error);
+      return validatedPosition;
+    }
+  }, [validatedZoom, validatedPosition, pageWidth, containerRef]);
+
+  // Apply constrained position if it changed
+  useEffect(() => {
+    if (constrainedPosition.x !== validatedPosition.x || constrainedPosition.y !== validatedPosition.y) {
+      try {
+        onPositionChange?.(constrainedPosition);
+      } catch (error) {
+        console.error('Error updating position:', error);
       }
     }
-  }, [zoom, position, onPositionChange, pageWidth, containerRef]);
+  }, [constrainedPosition, validatedPosition, onPositionChange]);
 
-  // Keyboard navigation
+  // Keyboard navigation with error handling
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' && currentPage > 1) {
-        e.preventDefault();
-        onPageChange?.(currentPage - 1);
-      } else if (e.key === 'ArrowRight' && currentPage < numPages) {
-        e.preventDefault();
-        onPageChange?.(currentPage + 1);
-      } else if (e.key === '+' || e.key === '=') {
-        e.preventDefault();
-        onZoomChange?.(Math.min(5, zoom + 0.25));
-      } else if (e.key === '-') {
-        e.preventDefault();
-        onZoomChange?.(Math.max(0.5, zoom - 0.25));
-      } else if (e.key === '0') {
-        e.preventDefault();
-        onZoomChange?.(1);
-        onPositionChange?.({ x: 0, y: 0 });
+      try {
+        // Validate page number before navigation
+        if (e.key === 'ArrowLeft' && currentPage > 1 && validatePageNumber(currentPage - 1, numPages)) {
+          e.preventDefault();
+          try {
+            onPageChange?.(currentPage - 1);
+          } catch (error) {
+            console.error('Error in onPageChange callback:', error);
+          }
+        } else if (e.key === 'ArrowRight' && currentPage < numPages && validatePageNumber(currentPage + 1, numPages)) {
+          e.preventDefault();
+          try {
+            onPageChange?.(currentPage + 1);
+          } catch (error) {
+            console.error('Error in onPageChange callback:', error);
+          }
+        } else if (e.key === '+' || e.key === '=') {
+          e.preventDefault();
+          try {
+            const newZoom = validateZoom(validatedZoom + 0.25);
+            onZoomChange?.(newZoom);
+          } catch (error) {
+            console.error('Error in onZoomChange callback:', error);
+          }
+        } else if (e.key === '-') {
+          e.preventDefault();
+          try {
+            const newZoom = validateZoom(validatedZoom - 0.25);
+            onZoomChange?.(newZoom);
+          } catch (error) {
+            console.error('Error in onZoomChange callback:', error);
+          }
+        } else if (e.key === '0') {
+          e.preventDefault();
+          try {
+            onZoomChange?.(1);
+            onPositionChange?.({ x: 0, y: 0 });
+          } catch (error) {
+            console.error('Error in zoom/position callbacks:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error in keyboard handler:', error);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentPage, numPages, zoom, onPageChange, onZoomChange, onPositionChange]);
+  }, [currentPage, numPages, validatedZoom, onPageChange, onZoomChange, onPositionChange]);
 
-  // Calculate page scale based on zoom
+  // Calculate page scale based on zoom (memoized)
   const pageScale = useMemo(() => {
-    return zoom;
-  }, [zoom]);
+    return validatedZoom;
+  }, [validatedZoom]);
+
+  // Validate current page number
+  const isValidPage = useMemo(() => {
+    return numPages > 0 && validatePageNumber(currentPage, numPages);
+  }, [currentPage, numPages]);
 
   return (
     <div
@@ -461,7 +767,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       {!error && pdfUrl && (
         <div
           style={{
-            transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+            transform: `translate(${validatedPosition.x}px, ${validatedPosition.y}px) scale(${validatedZoom})`,
             transformOrigin: 'center center',
             transition: isDragging ? 'none' : 'transform 0.1s ease-out',
           }}
@@ -493,7 +799,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             }
           >
             {/* Only render Page when document is loaded, ready, not destroyed, and page number is valid */}
-            {isLoaded && isDocumentReady && !isDestroyed && !isRendering && numPages && currentPage >= 1 && currentPage <= numPages ? (
+            {isLoaded && isDocumentReady && !isDestroyed && !isRendering && isValidPage ? (
               <div key={`page-wrapper-${currentPage}`}>
                 <Page
                   pageNumber={currentPage}
