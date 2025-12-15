@@ -189,7 +189,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const containerRef = externalContainerRef || internalContainerRef;
   const lastPinchDistance = useRef<number | null>(null);
   const isMountedRef = useRef(true);
-  const timeoutRefs = useRef<NodeJS.Timeout[]>([]); // Track timeouts for cleanup
+  const timeoutRefs = useRef<number[]>([]); // Track timeouts for cleanup (browser setTimeout returns number)
 
   // Validate and sanitize inputs
   const validatedZoom = useMemo(() => validateZoom(zoom), [zoom]);
