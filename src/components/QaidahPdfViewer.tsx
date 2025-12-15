@@ -15,14 +15,11 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up PDF.js worker - use version that matches react-pdf's pdfjs-dist
-// react-pdf uses pdfjs-dist 5.4.296, so we use the worker from that version
+const pdfjsVersion = '5.4.296';
+const cdnWorkerUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+
 if (typeof window !== 'undefined') {
-  const pdfjsVersion = '5.4.296';
-  const cdnWorkerUrl = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
   pdfjs.GlobalWorkerOptions.workerSrc = cdnWorkerUrl;
-  console.log(`📄 PDF.js worker configured: ${cdnWorkerUrl} (version ${pdfjsVersion})`);
-} else {
-  pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.296/build/pdf.worker.min.mjs';
 }
 
 /**
@@ -30,21 +27,16 @@ if (typeof window !== 'undefined') {
  * Centralizes complex document lifecycle and rendering state
  */
 
-const initialState = {
-  // Document Lifecycle State
-  pdfUrl: null as string | null,
-  isLoaded: false,
-  isDestroyed: false,
-  isLoading: false,
-  error: null as string | null,
-  isDocumentReady: false, // Document is loaded AND ready for page rendering
-
-  // Rendering/View State
-  numPages: 0,
-  isRendering: false,
-};
-
-type State = typeof initialState;
+interface State {
+  pdfUrl: string | null;
+  isLoaded: boolean;
+  isDestroyed: boolean;
+  isLoading: boolean;
+  error: string | null;
+  isDocumentReady: boolean; // Document is loaded AND ready for page rendering
+  numPages: number;
+  isRendering: boolean;
+}
 
 type Action =
   | { type: 'LOAD_START'; payload: { url: string } }
@@ -53,6 +45,17 @@ type Action =
   | { type: 'DESTROY_DOCUMENT' }
   | { type: 'SET_RENDERING'; payload: { isRendering: boolean } }
   | { type: 'SET_DOCUMENT_READY'; payload: { ready: boolean } };
+
+const initialState: State = {
+  pdfUrl: null,
+  isLoaded: false,
+  isDestroyed: false,
+  isLoading: false,
+  error: null,
+  isDocumentReady: false,
+  numPages: 0,
+  isRendering: false,
+};
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
@@ -108,39 +111,26 @@ const reducer = (state: State, action: Action): State => {
   }
 };
 
-interface QaidahPdfViewerProps {
-  pdfUrl: string;
-  currentPage: number;
-  onPageChange?: (page: number) => void;
-  onTotalPagesChange?: (totalPages: number) => void;
-  zoom?: number;
-  onZoomChange?: (zoom: number) => void;
-  position?: { x: number; y: number };
-  onPositionChange?: (position: { x: number; y: number }) => void;
-  containerRef?: React.RefObject<HTMLDivElement>;
-  onLoad?: () => void;
-}
-
 /**
- * Validates PDF URL format and security
- * Prevents XSS and ensures URL is safe
+ * Validation utilities
  */
+
 function validatePdfUrl(url: string): { isValid: boolean; error?: string } {
   if (!url || typeof url !== 'string') {
     return { isValid: false, error: 'PDF URL must be a non-empty string' };
   }
 
-  // Security: Only allow http/https URLs (prevent javascript:, data:, etc.)
+  // Security: Only allow http/https URLs
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     return { isValid: false, error: 'PDF URL must be absolute (http:// or https://)' };
   }
 
-  // Security: Prevent XSS by checking for script injection patterns
+  // Security: Prevent XSS
   const dangerousPatterns = [
     /javascript:/i,
     /data:/i,
     /vbscript:/i,
-    /on\w+\s*=/i, // Event handlers
+    /on\w+\s*=/i,
   ];
 
   for (const pattern of dangerousPatterns) {
@@ -152,21 +142,35 @@ function validatePdfUrl(url: string): { isValid: boolean; error?: string } {
   return { isValid: true };
 }
 
-/**
- * Validates page number is within valid range
- */
 function validatePageNumber(page: number, maxPages: number): boolean {
   return Number.isInteger(page) && page >= 1 && page <= maxPages;
 }
 
-/**
- * Validates zoom level is within acceptable range
- */
 function validateZoom(zoom: number): number {
   if (typeof zoom !== 'number' || isNaN(zoom)) {
     return 1.0;
   }
   return Math.max(0.5, Math.min(5, zoom));
+}
+
+/**
+ * QaidahPdfViewer Component
+ * A stable, full-featured PDF viewer with proper lifecycle management
+ */
+
+interface QaidahPdfViewerProps {
+  pdfUrl: string;
+  currentPage: number;
+  onPageChange?: (page: number) => void;
+  onTotalPagesChange?: (totalPages: number) => void;
+  zoom?: number;
+  onZoomChange?: (zoom: number) => void;
+  position?: { x: number; y: number };
+  onPositionChange?: (position: { x: number; y: number }) => void;
+  containerRef?: React.RefObject<HTMLDivElement>;
+  onLoad?: () => void;
+  showDownload?: boolean;
+  showPageJump?: boolean;
 }
 
 const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
@@ -180,46 +184,21 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   onPositionChange,
   containerRef: externalContainerRef,
   onLoad,
+  showDownload = false,
+  showPageJump = true,
 }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [pageWidth, setPageWidth] = useState(800);
+  const [pageJumpInput, setPageJumpInput] = useState('');
+  
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef || internalContainerRef;
   const lastPinchDistance = useRef<number | null>(null);
   const isMountedRef = useRef(true);
-  const timeoutRefs = useRef<number[]>([]); // Track timeouts for cleanup (browser setTimeout returns number)
-
-  // Validate and sanitize inputs
-  const validatedZoom = useMemo(() => validateZoom(zoom), [zoom]);
-  const validatedPosition = useMemo(() => {
-    if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
-      return { x: 0, y: 0 };
-    }
-    return { x: position.x, y: position.y };
-  }, [position]);
-
-  // Validate PDF URL on mount and changes
-  useEffect(() => {
-    try {
-      const validation = validatePdfUrl(pdfUrl);
-      if (!validation.isValid) {
-        console.error('❌ Invalid PDF URL:', validation.error);
-        dispatch({
-          type: 'LOAD_ERROR',
-          payload: { error: validation.error || 'Invalid PDF URL' },
-        });
-        return;
-      }
-    } catch (error) {
-      console.error('❌ Error validating PDF URL:', error);
-      dispatch({
-        type: 'LOAD_ERROR',
-        payload: { error: 'Failed to validate PDF URL' },
-      });
-    }
-  }, [pdfUrl]);
+  const timeoutRefs = useRef<number[]>([]);
+  const lastLoadedUrlRef = useRef<string | null>(null);
 
   const {
     isLoaded,
@@ -231,7 +210,16 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     isDocumentReady,
   } = state;
 
-  // Track component mount state and cleanup timeouts
+  // Validate and sanitize inputs
+  const validatedZoom = useMemo(() => validateZoom(zoom), [zoom]);
+  const validatedPosition = useMemo(() => {
+    if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+      return { x: 0, y: 0 };
+    }
+    return { x: position.x, y: position.y };
+  }, [position]);
+
+  // Track component mount state and cleanup
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -258,22 +246,41 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     };
   }, [isLoaded, isDestroyed]);
 
+  // Validate PDF URL
+  useEffect(() => {
+    try {
+      const validation = validatePdfUrl(pdfUrl);
+      if (!validation.isValid) {
+        console.error('❌ Invalid PDF URL:', validation.error);
+        dispatch({
+          type: 'LOAD_ERROR',
+          payload: { error: validation.error || 'Invalid PDF URL' },
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error validating PDF URL:', error);
+      dispatch({
+        type: 'LOAD_ERROR',
+        payload: { error: 'Failed to validate PDF URL' },
+      });
+    }
+  }, [pdfUrl]);
+
   // Handle PDF URL changes - prevent duplicate loads
   useEffect(() => {
     try {
-      // Validate URL before processing
       const validation = validatePdfUrl(pdfUrl);
       if (!validation.isValid) {
-        return; // Error already handled in validation effect
+        return;
       }
 
       // Check for redundant load
-      if (pdfUrl === state.pdfUrl && isLoaded && !isDestroyed) {
+      if (pdfUrl === lastLoadedUrlRef.current && isLoaded && !isDestroyed) {
         return;
       }
 
       // Start new load if URL changed
-      if (pdfUrl && pdfUrl !== state.pdfUrl) {
+      if (pdfUrl && pdfUrl !== lastLoadedUrlRef.current) {
         // Mark document as not ready when URL changes
         dispatch({
           type: 'SET_DOCUMENT_READY',
@@ -292,9 +299,9 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         payload: { error: 'Failed to process PDF URL change' },
       });
     }
-  }, [pdfUrl, state.pdfUrl, isLoaded, isDestroyed]);
+  }, [pdfUrl, isLoaded, isDestroyed]);
 
-  // Document load success handler with error handling
+  // Document load success handler
   const onDocumentLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
       try {
@@ -319,8 +326,9 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
           payload: { numPages },
         });
 
+        lastLoadedUrlRef.current = pdfUrl;
+
         // Delay marking document as ready to ensure transport is stable
-        // This prevents "Transport destroyed" errors from race conditions
         const timeout: number = window.setTimeout(() => {
           try {
             if (isMountedRef.current) {
@@ -332,10 +340,10 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
           } catch (error) {
             console.error('Error setting document ready:', error);
           }
-        }, 100);
+        }, 150); // Increased delay for stability
         timeoutRefs.current.push(timeout);
 
-        // Safe callback invocations with error handling
+        // Safe callback invocations
         if (isMountedRef.current) {
           try {
             onTotalPagesChange?.(numPages);
@@ -359,10 +367,10 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         }
       }
     },
-    [onTotalPagesChange, onLoad]
+    [pdfUrl, onTotalPagesChange, onLoad]
   );
 
-  // Document load error handler with robust error handling
+  // Document load error handler
   const onDocumentLoadError = useCallback(
     (error: Error | unknown) => {
       try {
@@ -370,7 +378,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
           return;
         }
 
-        // Extract error message safely
         const errorMessage = error instanceof Error 
           ? error.message 
           : typeof error === 'string' 
@@ -378,15 +385,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             : 'Failed to load PDF document';
 
         console.error('❌ Error loading PDF:', error);
-        
-        // Validate URL format (non-blocking check)
-        try {
-          if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
-            console.error('❌ Invalid PDF URL format: URL must be absolute');
-          }
-        } catch (urlError) {
-          console.error('Error validating URL in error handler:', urlError);
-        }
 
         if (isMountedRef.current) {
           dispatch({
@@ -395,21 +393,18 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
           });
         }
       } catch (handlerError) {
-        // Last resort error handling - log but don't crash
         console.error('Error in onDocumentLoadError handler:', handlerError);
       }
     },
-    [pdfUrl]
+    []
   );
 
-  // Page render success handler - react-pdf Page doesn't have onRenderSuccess
-  // We'll use onLoadSuccess to track when page is ready
+  // Page load success handler
   const onPageLoadSuccess = useCallback(() => {
     try {
       if (!isMountedRef.current) return;
       
-      // Page is loaded and ready - unlock rendering
-      // Use a small delay to ensure page is fully initialized
+      // Page is loaded - unlock rendering after a delay
       const timeout: number = window.setTimeout(() => {
         try {
           if (isMountedRef.current) {
@@ -421,19 +416,18 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         } catch (error) {
           console.error('Error unlocking rendering state:', error);
         }
-      }, 50);
+      }, 100);
       timeoutRefs.current.push(timeout);
     } catch (error) {
       console.error('Error in onPageLoadSuccess:', error);
     }
   }, []);
 
-  // Page render error handler with robust error handling
+  // Page render error handler
   const onPageRenderError = useCallback((error: Error | unknown) => {
     try {
       if (!isMountedRef.current) return;
       
-      // Extract error message safely
       const errorMessage = error instanceof Error 
         ? error.message 
         : typeof error === 'string' 
@@ -445,9 +439,8 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         console.error('❌ Error rendering PDF page:', error);
       }
       
-      // Unlock rendering and mark document as not ready if transport is destroyed
+      // Mark document as not ready if transport is destroyed
       if (errorMessage.includes('Transport destroyed') || errorMessage.includes('destroyed')) {
-        // Transport was destroyed - mark document as not ready and prevent further renders
         try {
           dispatch({
             type: 'SET_DOCUMENT_READY',
@@ -467,12 +460,11 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         console.error('Error dispatching SET_RENDERING:', dispatchError);
       }
     } catch (handlerError) {
-      // Last resort error handling
       console.error('Error in onPageRenderError handler:', handlerError);
     }
   }, []);
 
-  // Update page width based on container with debouncing
+  // Update page width based on container (debounced)
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -483,7 +475,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         if (containerRef.current) {
           const newWidth = Math.min(containerRef.current.clientWidth - 40, 1200);
           setPageWidth(prevWidth => {
-            // Only update if width changed significantly (avoid unnecessary re-renders)
             return Math.abs(newWidth - prevWidth) > 5 ? newWidth : prevWidth;
           });
         }
@@ -492,17 +483,14 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       }
     };
 
-      // Debounce resize events for performance
-      const handleResize = () => {
-        if (resizeTimeout !== null) {
-          window.clearTimeout(resizeTimeout);
-        }
-        resizeTimeout = window.setTimeout(updatePageWidth, 150);
-      };
+    const handleResize = () => {
+      if (resizeTimeout !== null) {
+        window.clearTimeout(resizeTimeout);
+      }
+      resizeTimeout = window.setTimeout(updatePageWidth, 150);
+    };
 
-    // Initial update
     updatePageWidth();
-    
     window.addEventListener('resize', handleResize, { passive: true });
     
     return () => {
@@ -513,7 +501,44 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     };
   }, [containerRef]);
 
-  // Handle mouse wheel zoom with error handling
+  // Constrain position based on zoom level (memoized)
+  const constrainedPosition = useMemo(() => {
+    try {
+      if (!containerRef.current) {
+        return validatedPosition;
+      }
+
+      const container = containerRef.current;
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      const scaledWidth = pageWidth * validatedZoom;
+      const scaledHeight = (pageWidth * 1.414) * validatedZoom;
+
+      const maxX = Math.max(0, (scaledWidth - containerWidth) / 2);
+      const maxY = Math.max(0, (scaledHeight - containerHeight) / 2);
+
+      const constrainedX = Math.max(-maxX, Math.min(maxX, validatedPosition.x));
+      const constrainedY = Math.max(-maxY, Math.min(maxY, validatedPosition.y));
+
+      return { x: constrainedX, y: constrainedY };
+    } catch (error) {
+      console.error('Error calculating constrained position:', error);
+      return validatedPosition;
+    }
+  }, [validatedZoom, validatedPosition, pageWidth, containerRef]);
+
+  // Apply constrained position if it changed
+  useEffect(() => {
+    if (constrainedPosition.x !== validatedPosition.x || constrainedPosition.y !== validatedPosition.y) {
+      try {
+        onPositionChange?.(constrainedPosition);
+      } catch (error) {
+        console.error('Error updating position:', error);
+      }
+    }
+  }, [constrainedPosition, validatedPosition, onPositionChange]);
+
+  // Event handlers with error handling
   const handleWheel = useCallback((e: React.WheelEvent) => {
     try {
       if (e.ctrlKey || e.metaKey) {
@@ -531,7 +556,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     }
   }, [validatedZoom, onZoomChange]);
 
-  // Handle mouse drag with error handling
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     try {
       if (e.button === 0) {
@@ -567,7 +591,6 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     }
   }, []);
 
-  // Handle touch events for pinch-to-zoom with error handling
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     try {
       if (e.touches.length === 2) {
@@ -630,48 +653,10 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     }
   }, []);
 
-  // Constrain position based on zoom level (memoized calculation)
-  const constrainedPosition = useMemo(() => {
-    try {
-      if (!containerRef.current) {
-        return validatedPosition;
-      }
-
-      const container = containerRef.current;
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-      const scaledWidth = pageWidth * validatedZoom;
-      const scaledHeight = (pageWidth * 1.414) * validatedZoom; // A4 aspect ratio
-
-      const maxX = Math.max(0, (scaledWidth - containerWidth) / 2);
-      const maxY = Math.max(0, (scaledHeight - containerHeight) / 2);
-
-      const constrainedX = Math.max(-maxX, Math.min(maxX, validatedPosition.x));
-      const constrainedY = Math.max(-maxY, Math.min(maxY, validatedPosition.y));
-
-      return { x: constrainedX, y: constrainedY };
-    } catch (error) {
-      console.error('Error calculating constrained position:', error);
-      return validatedPosition;
-    }
-  }, [validatedZoom, validatedPosition, pageWidth, containerRef]);
-
-  // Apply constrained position if it changed
-  useEffect(() => {
-    if (constrainedPosition.x !== validatedPosition.x || constrainedPosition.y !== validatedPosition.y) {
-      try {
-        onPositionChange?.(constrainedPosition);
-      } catch (error) {
-        console.error('Error updating position:', error);
-      }
-    }
-  }, [constrainedPosition, validatedPosition, onPositionChange]);
-
-  // Keyboard navigation with error handling
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       try {
-        // Validate page number before navigation
         if (e.key === 'ArrowLeft' && currentPage > 1 && validatePageNumber(currentPage - 1, numPages)) {
           e.preventDefault();
           try {
@@ -720,7 +705,83 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPage, numPages, validatedZoom, onPageChange, onZoomChange, onPositionChange]);
 
-  // Calculate page scale based on zoom (memoized)
+  // Navigation handlers
+  const handlePrevPage = useCallback(() => {
+    try {
+      if (currentPage > 1 && validatePageNumber(currentPage - 1, numPages)) {
+        onPageChange?.(currentPage - 1);
+      }
+    } catch (error) {
+      console.error('Error in handlePrevPage:', error);
+    }
+  }, [currentPage, numPages, onPageChange]);
+
+  const handleNextPage = useCallback(() => {
+    try {
+      if (currentPage < numPages && validatePageNumber(currentPage + 1, numPages)) {
+        onPageChange?.(currentPage + 1);
+      }
+    } catch (error) {
+      console.error('Error in handleNextPage:', error);
+    }
+  }, [currentPage, numPages, onPageChange]);
+
+  const handleZoomIn = useCallback(() => {
+    try {
+      const newZoom = validateZoom(validatedZoom + 0.25);
+      onZoomChange?.(newZoom);
+    } catch (error) {
+      console.error('Error in handleZoomIn:', error);
+    }
+  }, [validatedZoom, onZoomChange]);
+
+  const handleZoomOut = useCallback(() => {
+    try {
+      const newZoom = validateZoom(validatedZoom - 0.25);
+      onZoomChange?.(newZoom);
+    } catch (error) {
+      console.error('Error in handleZoomOut:', error);
+    }
+  }, [validatedZoom, onZoomChange]);
+
+  const handleResetZoom = useCallback(() => {
+    try {
+      onZoomChange?.(1);
+      onPositionChange?.({ x: 0, y: 0 });
+    } catch (error) {
+      console.error('Error in handleResetZoom:', error);
+    }
+  }, [onZoomChange, onPositionChange]);
+
+  const handlePageJump = useCallback(() => {
+    try {
+      const pageNum = parseInt(pageJumpInput, 10);
+      if (!isNaN(pageNum) && validatePageNumber(pageNum, numPages)) {
+        onPageChange?.(pageNum);
+        setPageJumpInput('');
+      }
+    } catch (error) {
+      console.error('Error in handlePageJump:', error);
+    }
+  }, [pageJumpInput, numPages, onPageChange]);
+
+  const handleDownload = useCallback(() => {
+    try {
+      if (pdfUrl) {
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `qaidah-page-${currentPage}.pdf`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
+  }, [pdfUrl, currentPage]);
+
+  // Calculate page scale
   const pageScale = useMemo(() => {
     return validatedZoom;
   }, [validatedZoom]);
@@ -733,103 +794,195 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden bg-gray-100 flex items-center justify-center relative"
-      onWheel={handleWheel}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      className="w-full h-full overflow-hidden bg-gray-100 flex flex-col relative"
     >
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading PDF...</p>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center bg-white rounded-lg p-8 max-w-md mx-4 shadow-lg">
-            <div className="text-6xl mb-4">🚫</div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">PDF Load Error</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <p className="text-sm text-gray-500">Please check the URL or try again later.</p>
-          </div>
-        </div>
-      )}
-
-      {!error && pdfUrl && (
-        <div
-          style={{
-            transform: `translate(${validatedPosition.x}px, ${validatedPosition.y}px) scale(${validatedZoom})`,
-            transformOrigin: 'center center',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-          }}
-        >
-          <Document
-            key={pdfUrl} // Stable key based on URL only
-            file={pdfUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
-            options={{
-              httpHeaders: {
-                'Accept': 'application/pdf',
-              },
-              cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-              cMapPacked: true,
-            }}
-            loading={
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                <p className="ml-4 text-gray-600">Loading PDF...</p>
-              </div>
-            }
-            error={
-              <div className="text-center p-8 text-red-600 bg-red-50 rounded-lg mx-4">
-                <p className="font-semibold text-lg mb-2">Failed to load PDF</p>
-                <p className="text-sm mt-2 break-all font-mono bg-white p-2 rounded">{pdfUrl}</p>
-                <p className="text-xs mt-3 text-gray-600">Check browser console (F12) for detailed error information</p>
-              </div>
-            }
+      {/* Controls Bar */}
+      <div className="flex-shrink-0 bg-gray-800 text-white px-4 py-2 flex items-center justify-between flex-wrap gap-2 z-30">
+        <div className="flex items-center gap-2">
+          {/* Page Navigation */}
+          <button
+            onClick={handlePrevPage}
+            disabled={currentPage <= 1 || isRendering || !isDocumentReady}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+            aria-label="Previous Page"
           >
-            {/* Only render Page when document is loaded, ready, not destroyed, and page number is valid */}
-            {isLoaded && isDocumentReady && !isDestroyed && !isRendering && isValidPage ? (
-              <div key={`page-wrapper-${currentPage}`}>
-                <Page
-                  pageNumber={currentPage}
-                  width={pageWidth}
-                  scale={pageScale}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  onLoadSuccess={onPageLoadSuccess}
-                  onLoadError={onPageRenderError}
-                  loading={
-                    <div className="flex items-center justify-center p-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                    </div>
-                  }
-                />
-              </div>
-            ) : isLoaded && numPages ? (
-              <div className="flex items-center justify-center p-8 text-gray-500">
-                <p>
-                  {!isDocumentReady || isDestroyed || isRendering
-                    ? 'Preparing document...'
-                    : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
-                </p>
-              </div>
-            ) : null}
-          </Document>
+            ← Prev
+          </button>
+          
+          {showPageJump && (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="1"
+                max={numPages}
+                value={pageJumpInput}
+                onChange={(e) => setPageJumpInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handlePageJump()}
+                placeholder={`${currentPage}`}
+                className="w-16 px-2 py-1 text-gray-900 rounded text-center text-sm"
+                disabled={!isDocumentReady}
+              />
+              <span className="text-sm">/ {numPages}</span>
+            </div>
+          )}
+          
+          <button
+            onClick={handleNextPage}
+            disabled={currentPage >= numPages || isRendering || !isDocumentReady}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+            aria-label="Next Page"
+          >
+            Next →
+          </button>
         </div>
-      )}
 
-      {numPages && (
+        <div className="flex items-center gap-2">
+          {/* Zoom Controls */}
+          <button
+            onClick={handleZoomOut}
+            disabled={isRendering || !isDocumentReady}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+            aria-label="Zoom Out"
+          >
+            −
+          </button>
+          
+          <span className="px-3 py-1 text-sm min-w-[60px] text-center">
+            {Math.round(validatedZoom * 100)}%
+          </span>
+          
+          <button
+            onClick={handleZoomIn}
+            disabled={isRendering || !isDocumentReady}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors"
+            aria-label="Zoom In"
+          >
+            +
+          </button>
+          
+          <button
+            onClick={handleResetZoom}
+            disabled={isRendering || !isDocumentReady}
+            className="px-3 py-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors text-sm"
+            aria-label="Reset Zoom"
+          >
+            Reset
+          </button>
+
+          {showDownload && (
+            <button
+              onClick={handleDownload}
+              disabled={!isDocumentReady}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded transition-colors text-sm"
+              aria-label="Download PDF"
+            >
+              ⬇ Download
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* PDF Viewer Area */}
+      <div
+        className="flex-1 relative overflow-hidden"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      >
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading PDF...</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="text-center bg-white rounded-lg p-8 max-w-md mx-4 shadow-lg">
+              <div className="text-6xl mb-4">🚫</div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">PDF Load Error</h3>
+              <p className="text-gray-600 mb-4">{error}</p>
+              <p className="text-sm text-gray-500">Please check the URL or try again later.</p>
+            </div>
+          </div>
+        )}
+
+        {!error && pdfUrl && (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{
+              transform: `translate(${validatedPosition.x}px, ${validatedPosition.y}px) scale(${validatedZoom})`,
+              transformOrigin: 'center center',
+              transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            }}
+          >
+            <Document
+              key={pdfUrl} // Stable key - only remounts when URL changes
+              file={pdfUrl}
+              onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={onDocumentLoadError}
+              options={{
+                httpHeaders: {
+                  'Accept': 'application/pdf',
+                },
+                cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+                cMapPacked: true,
+              }}
+              loading={
+                <div className="flex items-center justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <p className="ml-4 text-gray-600">Loading PDF...</p>
+                </div>
+              }
+              error={
+                <div className="text-center p-8 text-red-600 bg-red-50 rounded-lg mx-4">
+                  <p className="font-semibold text-lg mb-2">Failed to load PDF</p>
+                  <p className="text-sm mt-2 break-all font-mono bg-white p-2 rounded">{pdfUrl}</p>
+                </div>
+              }
+            >
+              {/* Only render Page when document is fully ready */}
+              {isLoaded && isDocumentReady && !isDestroyed && !isRendering && isValidPage ? (
+                <div key={`page-wrapper-${currentPage}`}>
+                  <Page
+                    pageNumber={currentPage}
+                    width={pageWidth}
+                    scale={pageScale}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={true}
+                    onLoadSuccess={onPageLoadSuccess}
+                    onLoadError={onPageRenderError}
+                    loading={
+                      <div className="flex items-center justify-center p-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                      </div>
+                    }
+                  />
+                </div>
+              ) : isLoaded && numPages ? (
+                <div className="flex items-center justify-center p-8 text-gray-500">
+                  <p>
+                    {!isDocumentReady || isDestroyed || isRendering
+                      ? 'Preparing document...'
+                      : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
+                  </p>
+                </div>
+              ) : null}
+            </Document>
+          </div>
+        )}
+      </div>
+
+      {/* Page Indicator */}
+      {numPages > 0 && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-20 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-sm">
           Page {currentPage} of {numPages}
         </div>
