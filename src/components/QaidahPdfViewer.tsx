@@ -65,38 +65,43 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const lastLoadedUrlRef = useRef<string | null>(null);
   // Track if document is currently being rendered (prevents getPage after destroy)
   const isRenderingRef = useRef(false);
-  // Track if document is destroyed (prevents getPage calls)
+  // Track if document is destroyed (prevents getPage calls) - ONLY set on actual unmount
   const isDestroyedRef = useRef(false);
+  // Track if URL is changing (prevents getPage calls during transition)
+  const isUrlChangingRef = useRef(false);
 
   // Set up mount/unmount tracking
   useEffect(() => {
     isMountedRef.current = true;
     isDestroyedRef.current = false;
     isRenderingRef.current = false;
+    isUrlChangingRef.current = false;
     
     return () => {
+      // Only mark as destroyed on actual component unmount
       isMountedRef.current = false;
       isRenderingRef.current = false;
       isDestroyedRef.current = true;
+      isUrlChangingRef.current = false;
       
       // Cleanup: destroy PDF document ONLY on final unmount
       if (pdfDocRef.current) {
         try {
           pdfDocRef.current.destroy?.();
         } catch (error) {
-          console.warn('Error destroying PDF document on unmount:', error);
+          // Silently handle cleanup errors - component is unmounting anyway
         }
         pdfDocRef.current = null;
       }
     };
   }, []);
 
-  // Reset state when PDF URL changes (but don't destroy existing document until new one loads)
+  // Reset state when PDF URL changes (but don't mark as destroyed - it's just a reload)
   useEffect(() => {
     // Only reset if URL actually changed
     if (lastLoadedUrlRef.current !== pdfUrl && pdfUrl) {
-      // Mark as destroyed to prevent getPage calls on old document
-      isDestroyedRef.current = true;
+      // Mark URL as changing to prevent getPage calls on old document
+      isUrlChangingRef.current = true;
       isRenderingRef.current = false;
       
       setIsLoading(true);
@@ -109,23 +114,26 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   }, [pdfUrl]);
 
   const onDocumentLoadSuccess = useCallback(({ numPages, _pdfInfo }: { numPages: number; _pdfInfo?: any }) => {
-    // Guard: only update state if component is still mounted and not destroyed
+    // Guard: only update state if component is still mounted (not destroyed)
+    // isDestroyedRef is ONLY true on actual unmount, not URL changes
     if (!isMountedRef.current || isDestroyedRef.current) {
-      console.warn('⚠️ PDF loaded but component is unmounted or destroyed, ignoring callback');
+      // Silently ignore - component is unmounting, no need to warn
       return;
     }
     
     // Guard: ensure this is for the current URL (prevent race conditions)
-    if (lastLoadedUrlRef.current === pdfUrl && pdfDocRef.current) {
-      console.warn('⚠️ PDF already loaded for this URL, ignoring duplicate load');
+    if (lastLoadedUrlRef.current === pdfUrl && isDocumentLoaded) {
+      // Already loaded this URL - silently ignore duplicate
       return;
     }
+    
+    // Reset URL changing flag since new document is loading
+    isUrlChangingRef.current = false;
     
     console.log(`✅ PDF document loaded successfully: ${numPages} pages`);
     
     // Mark as rendering to prevent getPage calls during transition
     isRenderingRef.current = true;
-    isDestroyedRef.current = false;
     
     // Store document reference if available (react-pdf may provide it)
     // Note: react-pdf doesn't expose the document directly, but we track load state
@@ -137,24 +145,27 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     
     // Mark rendering complete after state update
     setTimeout(() => {
-      isRenderingRef.current = false;
+      if (isMountedRef.current) {
+        isRenderingRef.current = false;
+      }
     }, 100);
     
-    // Safe callback invocations
+    // Safe callback invocations - only if still mounted
     if (isMountedRef.current && !isDestroyedRef.current) {
       onTotalPagesChange?.(numPages);
       onLoad?.();
     }
-  }, [pdfUrl, onTotalPagesChange, onLoad]);
+  }, [pdfUrl, onTotalPagesChange, onLoad, isDocumentLoaded]);
 
   const onDocumentLoadError = useCallback((error: Error) => {
     // Guard: only update state if component is still mounted
-    if (!isMountedRef.current) {
-      console.warn('⚠️ PDF load error but component is unmounted, ignoring callback');
+    if (!isMountedRef.current || isDestroyedRef.current) {
+      // Silently ignore - component is unmounting
       return;
     }
     
     isRenderingRef.current = false;
+    isUrlChangingRef.current = false;
     
     console.error('❌ Error loading PDF:', error);
     console.error('❌ PDF URL received by Document component:', pdfUrl);
@@ -172,7 +183,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
       stack: error.stack
     });
     
-    if (isMountedRef.current) {
+    if (isMountedRef.current && !isDestroyedRef.current) {
       setIsLoading(false);
       setIsDocumentLoaded(false);
     }
@@ -351,8 +362,8 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
               </div>
             }
           >
-          {/* Only render Page when document is loaded, not destroyed, and page number is valid */}
-          {isDocumentLoaded && !isDestroyedRef.current && !isRenderingRef.current && numPages && currentPage >= 1 && currentPage <= numPages ? (
+          {/* Only render Page when document is loaded, not changing URL, and page number is valid */}
+          {isDocumentLoaded && !isDestroyedRef.current && !isRenderingRef.current && !isUrlChangingRef.current && numPages && currentPage >= 1 && currentPage <= numPages ? (
             <div key={`page-wrapper-${currentPage}`}>
               <Page
                 pageNumber={currentPage}
@@ -365,21 +376,19 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
                   </div>
                 }
                 onLoadError={(error) => {
-                  // Guard: only log if component is still mounted and document not destroyed
-                  if (isMountedRef.current && !isDestroyedRef.current) {
+                  // Guard: only log if component is still mounted and document not destroyed/changing
+                  if (isMountedRef.current && !isDestroyedRef.current && !isUrlChangingRef.current) {
                     console.error('❌ Error loading PDF page:', error);
                     console.error('❌ Page number:', currentPage);
-                    console.error('❌ Document destroyed:', isDestroyedRef.current);
-                    console.error('❌ Is rendering:', isRenderingRef.current);
                   }
                 }}
               />
             </div>
           ) : isDocumentLoaded && numPages ? (
-            // Document loaded but invalid page number or document destroyed
+            // Document loaded but invalid page number or document transitioning
             <div className="flex items-center justify-center p-8 text-gray-500">
               <p>
-                {isDestroyedRef.current || isRenderingRef.current
+                {isDestroyedRef.current || isRenderingRef.current || isUrlChangingRef.current
                   ? 'Document is being reloaded...'
                   : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
               </p>
