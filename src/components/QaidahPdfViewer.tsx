@@ -37,6 +37,7 @@ const initialState = {
   isDestroyed: false,
   isLoading: false,
   error: null as string | null,
+  isDocumentReady: false, // Document is loaded AND ready for page rendering
 
   // Rendering/View State
   numPages: 0,
@@ -50,7 +51,8 @@ type Action =
   | { type: 'LOAD_SUCCESS'; payload: { numPages: number } }
   | { type: 'LOAD_ERROR'; payload: { error: string } }
   | { type: 'DESTROY_DOCUMENT' }
-  | { type: 'SET_RENDERING'; payload: { isRendering: boolean } };
+  | { type: 'SET_RENDERING'; payload: { isRendering: boolean } }
+  | { type: 'SET_DOCUMENT_READY'; payload: { ready: boolean } };
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
@@ -69,7 +71,14 @@ const reducer = (state: State, action: Action): State => {
         numPages: action.payload.numPages,
         isLoaded: true,
         isLoading: false,
+        isDocumentReady: false, // Will be set to true after a brief delay
         error: null,
+      };
+
+    case 'SET_DOCUMENT_READY':
+      return {
+        ...state,
+        isDocumentReady: action.payload.ready,
       };
 
     case 'LOAD_ERROR':
@@ -84,6 +93,7 @@ const reducer = (state: State, action: Action): State => {
         ...state,
         isLoaded: false,
         isDestroyed: true,
+        isDocumentReady: false,
         numPages: 0,
       };
 
@@ -139,6 +149,7 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
     error,
     numPages,
     isRendering,
+    isDocumentReady,
   } = state;
 
   // Track component mount state
@@ -162,6 +173,12 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
 
     // Start new load if URL changed
     if (pdfUrl && pdfUrl !== state.pdfUrl) {
+      // Mark document as not ready when URL changes
+      dispatch({
+        type: 'SET_DOCUMENT_READY',
+        payload: { ready: false },
+      });
+      
       dispatch({
         type: 'LOAD_START',
         payload: { url: pdfUrl },
@@ -182,6 +199,17 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
         type: 'LOAD_SUCCESS',
         payload: { numPages },
       });
+
+      // Delay marking document as ready to ensure transport is stable
+      // This prevents "Transport destroyed" errors from race conditions
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          dispatch({
+            type: 'SET_DOCUMENT_READY',
+            payload: { ready: true },
+          });
+        }
+      }, 100);
 
       // Safe callback invocations
       if (isMountedRef.current) {
@@ -232,7 +260,20 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
   const onPageRenderError = useCallback((error: Error) => {
     if (!isMountedRef.current) return;
     
-    console.error('❌ Error rendering PDF page:', error);
+    // Only log non-destroy errors to avoid spam
+    if (!error.message?.includes('Transport destroyed') && !error.message?.includes('destroyed')) {
+      console.error('❌ Error rendering PDF page:', error);
+    }
+    
+    // Unlock rendering and mark document as not ready if transport is destroyed
+    if (error.message?.includes('Transport destroyed') || error.message?.includes('destroyed')) {
+      // Transport was destroyed - mark document as not ready and prevent further renders
+      dispatch({
+        type: 'SET_DOCUMENT_READY',
+        payload: { ready: false },
+      });
+    }
+    
     dispatch({
       type: 'SET_RENDERING',
       payload: { isRendering: false },
@@ -446,8 +487,8 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
               </div>
             }
           >
-            {/* Only render Page when document is loaded, not destroyed, and page number is valid */}
-            {isLoaded && !isDestroyed && numPages && currentPage >= 1 && currentPage <= numPages ? (
+            {/* Only render Page when document is loaded, ready, not destroyed, and page number is valid */}
+            {isLoaded && isDocumentReady && !isDestroyed && !isRendering && numPages && currentPage >= 1 && currentPage <= numPages ? (
               <div key={`page-wrapper-${currentPage}`}>
                 <Page
                   pageNumber={currentPage}
@@ -467,8 +508,8 @@ const QaidahPdfViewer: React.FC<QaidahPdfViewerProps> = ({
             ) : isLoaded && numPages ? (
               <div className="flex items-center justify-center p-8 text-gray-500">
                 <p>
-                  {isDestroyed
-                    ? 'Document is being reloaded...'
+                  {!isDocumentReady || isDestroyed || isRendering
+                    ? 'Preparing document...'
                     : `Invalid page number: ${currentPage} (valid range: 1-${numPages})`}
                 </p>
               </div>
