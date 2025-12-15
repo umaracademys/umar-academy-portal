@@ -35,27 +35,43 @@ const QaidahPage: React.FC<QaidahPageProps> = ({
   const lastPinchCenter = useRef<{ x: number; y: number } | null>(null);
 
   // Handle image load with fallback to alternative format
+  // NOTE: This component is NOT used for Qaidah books (qaidah1, qaidah2, quran)
+  // Those books use QaidahPdfViewer exclusively
   useEffect(() => {
+    // Skip image loading for Qaidah books to prevent 404 errors
+    const isQaidahBook = imageUrl.includes('/qaidah1/') || 
+                        imageUrl.includes('/qaidah2/') || 
+                        imageUrl.includes('/quran/') ||
+                        imageUrl.includes('/qaidah/');
+    
+    if (isQaidahBook) {
+      // Don't attempt to load images for Qaidah books
+      setIsLoading(false);
+      setImageError(true);
+      console.warn(`⚠️ QaidahPage component should not be used for Qaidah books. Use QaidahPdfViewer instead. URL: ${imageUrl}`);
+      return;
+    }
+    
     setIsLoading(true);
     setImageError(false);
     
     const img = new Image();
-      const tryAlternativeFormat = () => {
-        // Try alternative format based on page number
-        // Determine base path from current imageUrl (preserve qaidah1/qaidah2/quran)
-        let basePath = '/qaidah'; // default fallback
-        if (imageUrl.includes('/quran/')) {
-          basePath = '/quran';
-        } else if (imageUrl.includes('/qaidah1/')) {
-          basePath = '/qaidah1';
-        } else if (imageUrl.includes('/qaidah2/')) {
-          basePath = '/qaidah2';
-        }
-        const baseUrl = `${basePath}/${pageNumber}`;
-        const altUrl = imageUrl.endsWith('.png') 
-          ? `${baseUrl}.jpg`
-          : `${baseUrl}.png`;
-      
+    const tryAlternativeFormat = () => {
+      // Try alternative format based on page number
+      // Determine base path from current imageUrl
+      let basePath = '/qaidah'; // default fallback
+      if (imageUrl.includes('/quran/')) {
+        basePath = '/quran';
+      } else if (imageUrl.includes('/qaidah1/')) {
+        basePath = '/qaidah1';
+      } else if (imageUrl.includes('/qaidah2/')) {
+        basePath = '/qaidah2';
+      }
+      const baseUrl = `${basePath}/${pageNumber}`;
+      const altUrl = imageUrl.endsWith('.png') 
+        ? `${baseUrl}.jpg`
+        : `${baseUrl}.png`;
+    
       const altImg = new Image();
       altImg.onload = () => {
         setIsLoading(false);
