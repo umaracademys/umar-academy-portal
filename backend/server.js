@@ -3411,6 +3411,8 @@ const assignmentSchema = new mongoose.Schema({
     enabled: { type: Boolean, default: false },
     content: { type: String, default: '' }, // Text content
     link: { type: String, default: '' }, // Optional link
+    pdfId: { type: String }, // ID of uploaded PDF document
+    pdfAnnotations: { type: Object }, // Teacher's annotations on the PDF
     // Homework submission
     submission: {
       submitted: { type: Boolean, default: false },
@@ -3783,6 +3785,60 @@ const qaidahMarkSchema = new mongoose.Schema({
 qaidahMarkSchema.index({ student: 1, book: 1, page: 1, classworkDate: 1 });
 
 const QaidahMark = mongoose.model('QaidahMark', qaidahMarkSchema);
+
+// PDF Document Schema - for uploaded PDFs (Super Admin only)
+const pdfDocumentSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  filename: { type: String, required: true },
+  originalFilename: { type: String, required: true },
+  filePath: { type: String, required: true },
+  fileUrl: { type: String, required: true },
+  fileSize: { type: Number, required: true },
+  uploadedBy: { type: String, required: true }, // User ID
+  uploadedByName: { type: String, required: true }, // User name
+  description: { type: String, default: '' },
+  tags: { type: [String], default: [] },
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
+pdfDocumentSchema.index({ isActive: 1, createdAt: -1 });
+pdfDocumentSchema.index({ uploadedBy: 1 });
+
+const PdfDocument = mongoose.model('PdfDocument', pdfDocumentSchema);
+
+// PDF Annotation Schema - for teacher annotations on PDFs
+const pdfAnnotationSchema = new mongoose.Schema({
+  pdfId: { type: String, required: true, index: true }, // PDF document ID
+  teacherId: { type: String, required: true, index: true },
+  teacherName: { type: String, required: true },
+  annotations: [{
+    id: { type: String, required: true }, // Unique annotation ID
+    page: { type: Number, required: true },
+    type: { type: String, enum: ['highlight', 'text', 'drawing', 'arrow', 'note'], required: true },
+    x: { type: Number, required: true }, // Position (0-1 normalized)
+    y: { type: Number, required: true }, // Position (0-1 normalized)
+    width: { type: Number, default: 0 }, // For shapes
+    height: { type: Number, default: 0 }, // For shapes
+    color: { type: String, default: '#FF0000' },
+    text: { type: String, default: '' }, // Text content for text/note annotations
+    note: { type: String, default: '' }, // Additional notes
+    points: [{ x: Number, y: Number }], // For drawing/freehand
+    createdAt: { type: Date, default: Date.now }
+  }],
+  notes: { type: String, default: '' }, // General notes about the PDF
+  savedAsHomework: { type: Boolean, default: false },
+  assignedToStudents: [{
+    studentId: { type: String, required: true },
+    studentName: { type: String, required: true },
+    assignmentId: { type: String }, // Assignment ID if saved as homework
+    assignedAt: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+
+pdfAnnotationSchema.index({ pdfId: 1, teacherId: 1 });
+pdfAnnotationSchema.index({ 'assignedToStudents.studentId': 1 });
+
+const PdfAnnotation = mongoose.model('PdfAnnotation', pdfAnnotationSchema);
 
 // --- Listening session helpers & SSE support ---
 const listeningSessionClients = new Map();
@@ -10059,6 +10115,371 @@ app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
+
+// ============================================
+// PDF DOCUMENT & ANNOTATION API ENDPOINTS
+// ============================================
+
+// Create PDF documents directory
+const pdfDocumentsDir = path.join(__dirname, '..', 'public', 'pdf-documents');
+if (!fs.existsSync(pdfDocumentsDir)) {
+  fs.mkdirSync(pdfDocumentsDir, { recursive: true });
+}
+
+// Helper function to get backend URL
+function getBackendUrl(relativePath) {
+  const backendUrl = process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:3001';
+  return `${backendUrl}${relativePath.startsWith('/') ? relativePath : '/' + relativePath}`;
+}
+
+// POST /api/pdfs/upload - Upload PDF document (Super Admin only)
+app.post('/api/pdfs/upload', authenticateToken, async (req, res) => {
+  try {
+    console.log('📤 POST /api/pdfs/upload called');
+    
+    // Check if user is super admin
+    if (!req.user || req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can upload PDFs' });
+    }
+
+    const { title, fileData, filename, description, tags } = req.body;
+
+    if (!title || !fileData || !filename) {
+      return res.status(400).json({ error: 'Title, file data, and filename are required' });
+    }
+
+    // Parse base64 file data
+    let fileBuffer;
+    if (fileData.startsWith('data:')) {
+      const matches = fileData.match(/^data:application\/pdf;base64,(.+)$/);
+      if (!matches) {
+        return res.status(400).json({ error: 'Invalid PDF file data format' });
+      }
+      fileBuffer = Buffer.from(matches[1], 'base64');
+    } else {
+      fileBuffer = Buffer.from(fileData, 'base64');
+    }
+
+    // Sanitize filename
+    const sanitizedFilename = sanitizeFilename(filename) || `pdf-${Date.now()}.pdf`;
+    const filePath = path.join(pdfDocumentsDir, sanitizedFilename);
+    
+    // Save file
+    fs.writeFileSync(filePath, fileBuffer);
+    
+    // Generate URL
+    const relativePath = `/pdf-documents/${sanitizedFilename}`;
+    const absoluteUrl = getBackendUrl(relativePath);
+    
+    // Create PDF document record
+    const pdfDoc = new PdfDocument({
+      title,
+      filename: sanitizedFilename,
+      originalFilename: filename,
+      filePath: relativePath,
+      fileUrl: absoluteUrl,
+      fileSize: fileBuffer.length,
+      uploadedBy: req.user.userId || req.user.id,
+      uploadedByName: req.user.name || req.user.email,
+      description: description || '',
+      tags: tags || [],
+      isActive: true
+    });
+    
+    await pdfDoc.save();
+    
+    console.log(`✅ PDF uploaded: ${title} (${(fileBuffer.length / 1024 / 1024).toFixed(2)} MB)`);
+    
+    res.json({
+      success: true,
+      pdf: {
+        id: pdfDoc._id.toString(),
+        title: pdfDoc.title,
+        filename: pdfDoc.filename,
+        fileUrl: pdfDoc.fileUrl,
+        fileSize: pdfDoc.fileSize,
+        uploadedBy: pdfDoc.uploadedBy,
+        uploadedByName: pdfDoc.uploadedByName,
+        description: pdfDoc.description,
+        tags: pdfDoc.tags,
+        createdAt: pdfDoc.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading PDF:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/pdfs - Get all PDF documents
+app.get('/api/pdfs', authenticateToken, async (req, res) => {
+  try {
+    const { activeOnly = 'true' } = req.query;
+    const query = activeOnly === 'true' ? { isActive: true } : {};
+    
+    const pdfs = await PdfDocument.find(query)
+      .sort({ createdAt: -1 })
+      .select('-filePath');
+    
+    res.json({ pdfs });
+  } catch (error) {
+    console.error('Error fetching PDFs:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/pdfs/:id - Get single PDF document
+app.get('/api/pdfs/:id', authenticateToken, async (req, res) => {
+  try {
+    const pdf = await PdfDocument.findById(req.params.id).select('-filePath');
+    if (!pdf) {
+      return res.status(404).json({ error: 'PDF not found' });
+    }
+    res.json({ pdf });
+  } catch (error) {
+    console.error('Error fetching PDF:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/pdfs/:id - Delete PDF document (Super Admin only)
+app.delete('/api/pdfs/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only super admins can delete PDFs' });
+    }
+
+    const pdf = await PdfDocument.findById(req.params.id);
+    if (!pdf) {
+      return res.status(404).json({ error: 'PDF not found' });
+    }
+
+    // Delete file
+    const fullPath = path.join(__dirname, '..', 'public', pdf.filePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+    }
+
+    // Delete document
+    await PdfDocument.findByIdAndDelete(req.params.id);
+    
+    // Delete associated annotations
+    await PdfAnnotation.deleteMany({ pdfId: req.params.id });
+    
+    console.log(`✅ PDF deleted: ${pdf.title}`);
+    res.json({ success: true, message: 'PDF deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting PDF:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/pdfs/:pdfId/annotations - Save or update PDF annotations (Teacher only)
+app.post('/api/pdfs/:pdfId/annotations', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can save annotations' });
+    }
+
+    const { annotations, notes } = req.body;
+    const teacherId = req.user.userId || req.user.id;
+    const teacherName = req.user.name || req.user.email;
+
+    // Find or create annotation record
+    let pdfAnnotation = await PdfAnnotation.findOne({ 
+      pdfId: req.params.pdfId, 
+      teacherId: teacherId 
+    });
+
+    if (!pdfAnnotation) {
+      pdfAnnotation = new PdfAnnotation({
+        pdfId: req.params.pdfId,
+        teacherId: teacherId,
+        teacherName: teacherName,
+        annotations: [],
+        notes: notes || ''
+      });
+    } else {
+      pdfAnnotation.annotations = annotations || [];
+      if (notes !== undefined) pdfAnnotation.notes = notes;
+    }
+
+    await pdfAnnotation.save();
+    
+    res.json({
+      success: true,
+      annotation: {
+        id: pdfAnnotation._id.toString(),
+        pdfId: pdfAnnotation.pdfId,
+        teacherId: pdfAnnotation.teacherId,
+        annotations: pdfAnnotation.annotations,
+        notes: pdfAnnotation.notes,
+        savedAsHomework: pdfAnnotation.savedAsHomework,
+        assignedToStudents: pdfAnnotation.assignedToStudents
+      }
+    });
+  } catch (error) {
+    console.error('Error saving PDF annotations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/pdfs/:pdfId/annotations - Get PDF annotations for teacher
+app.get('/api/pdfs/:pdfId/annotations', authenticateToken, async (req, res) => {
+  try {
+    const teacherId = req.user?.userId || req.user?.id;
+    
+    let annotation = null;
+    if (req.user?.role === 'teacher') {
+      annotation = await PdfAnnotation.findOne({ 
+        pdfId: req.params.pdfId, 
+        teacherId: teacherId 
+      });
+    } else if (req.user?.role === 'student') {
+      // Students can view annotations if assigned to them
+      const studentId = teacherId; // Reusing teacherId variable for student ID
+      annotation = await PdfAnnotation.findOne({
+        pdfId: req.params.pdfId,
+        'assignedToStudents.studentId': studentId
+      });
+    } else if (req.user?.role === 'admin' || req.user?.role === 'superadmin') {
+      // Admins can view all annotations
+      annotation = await PdfAnnotation.findOne({ pdfId: req.params.pdfId });
+    }
+
+    res.json({ annotation: annotation || null });
+  } catch (error) {
+    console.error('Error fetching PDF annotations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/pdfs/:pdfId/annotations/assign - Assign annotated PDF as homework to student
+app.post('/api/pdfs/:pdfId/annotations/assign', authenticateToken, async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Only teachers can assign homework' });
+    }
+
+    const { studentId, studentName } = req.body;
+    if (!studentId || !studentName) {
+      return res.status(400).json({ error: 'Student ID and name are required' });
+    }
+
+    const teacherId = req.user.userId || req.user.id;
+    const teacherName = req.user.name || req.user.email;
+
+    // Get or create annotation
+    let pdfAnnotation = await PdfAnnotation.findOne({ 
+      pdfId: req.params.pdfId, 
+      teacherId: teacherId 
+    });
+
+    if (!pdfAnnotation) {
+      return res.status(404).json({ error: 'No annotations found. Please annotate the PDF first.' });
+    }
+
+    // Check if already assigned to this student
+    const existingAssignment = pdfAnnotation.assignedToStudents.find(
+      a => a.studentId === studentId
+    );
+
+    if (!existingAssignment) {
+      // Create assignment for student
+      const newAssignment = {
+        studentId: studentId,
+        studentName: studentName,
+        assignedAt: new Date()
+      };
+
+      // Save annotation with assignment
+      pdfAnnotation.assignedToStudents.push(newAssignment);
+      pdfAnnotation.savedAsHomework = true;
+      await pdfAnnotation.save();
+
+      // Create or update assignment record
+      const assignment = new Assignment({
+        studentId: studentId,
+        studentName: studentName,
+        assignedBy: teacherId,
+        assignedByName: teacherName,
+        assignedByRole: 'teacher',
+        homework: {
+          enabled: true,
+          content: pdfAnnotation.notes || 'Complete the annotated PDF assignment',
+          pdfId: req.params.pdfId,
+          pdfAnnotations: {
+            annotations: pdfAnnotation.annotations,
+            notes: pdfAnnotation.notes,
+            annotatedBy: teacherName,
+            annotatedAt: pdfAnnotation.updatedAt
+          }
+        },
+        status: 'active'
+      });
+
+      await assignment.save();
+
+      console.log(`✅ Annotated PDF assigned as homework to ${studentName}`);
+      
+      res.json({
+        success: true,
+        assignmentId: assignment._id.toString(),
+        message: 'Homework assigned successfully'
+      });
+    } else {
+      res.json({
+        success: true,
+        message: 'Already assigned to this student'
+      });
+    }
+  } catch (error) {
+    console.error('Error assigning homework:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/students/:studentId/pdf-homework - Get PDF homework assignments for student
+app.get('/api/students/:studentId/pdf-homework', authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    // Verify access
+    if (req.user?.role === 'student' && (req.user?.userId || req.user?.id) !== studentId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Find assignments with PDF homework
+    const assignments = await Assignment.find({
+      studentId: studentId,
+      'homework.enabled': true,
+      'homework.pdfId': { $exists: true, $ne: null }
+    }).sort({ createdAt: -1 });
+
+    // Enrich with PDF details
+    const homeworkList = await Promise.all(assignments.map(async (assignment) => {
+      const pdfId = assignment.homework.pdfId;
+      const pdf = await PdfDocument.findById(pdfId).select('-filePath');
+      
+      return {
+        assignmentId: assignment._id.toString(),
+        pdf: pdf,
+        annotations: assignment.homework.pdfAnnotations,
+        assignedByName: assignment.assignedByName,
+        assignedAt: assignment.createdAt,
+        status: assignment.status
+      };
+    }));
+
+    res.json({ homework: homeworkList });
+  } catch (error) {
+    console.error('Error fetching PDF homework:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Serve PDF documents
+app.use('/pdf-documents', express.static(pdfDocumentsDir));
 
 // 404 handler for undefined routes (but skip /uploads as they're handled by static middleware)
 // MUST be after all other routes but before global error handler
