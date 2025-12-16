@@ -131,59 +131,6 @@ export async function saveQaidahMarks(
 /**
  * Fetch available pages for a book
  */
-export interface PdfInfo {
-  filename: string;
-  size: number;
-  url: string;
-  uploadedAt: string;
-}
-
-export interface BookPdf {
-  book: string;
-  pdf: PdfInfo | null;
-}
-
-/**
- * Fetch PDF info for a book
- */
-export async function fetchPdfInfo(
-  book: 'qaidah1' | 'qaidah2' | 'quran'
-): Promise<BookPdf> {
-  try {
-    const token = getAuthToken();
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
-
-    const response = await fetch(`${API_BASE}/qaidah/pdf/${book}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      // Backend now returns 200 with null PDF instead of 404
-      // But handle 404 for backwards compatibility
-      if (response.status === 404) {
-        return { book, pdf: null };
-      }
-      throw new Error(`Failed to fetch PDF info: ${response.statusText}`);
-    }
-
-    const data: BookPdf = await response.json();
-    // Ensure we return null if pdf is null (backend returns 200 with null)
-    return {
-      book: data.book || book,
-      pdf: data.pdf || null
-    };
-  } catch (error) {
-    console.error(`Error fetching PDF info for ${book}:`, error);
-    // Return null PDF on error
-    return { book, pdf: null };
-  }
-}
 
 export async function fetchAvailablePages(
   book: 'qaidah1' | 'qaidah2' | 'quran'

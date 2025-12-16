@@ -4,9 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
-import QaidahPdfViewer from './QaidahPdfViewer';
 import QaidahCanvas from './QaidahCanvas';
-import { fetchPdfInfo, PdfInfo } from '../services/qaidahApi';
 
 interface QaidahViewerProps {
   currentPage: number;
@@ -29,16 +27,11 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
   const { students } = useData();
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [pdfTotalPages, setPdfTotalPages] = useState<number | null>(null);
-  const [pdfInfo, setPdfInfo] = useState<PdfInfo | null>(null);
-  const [isLoadingPdf, setIsLoadingPdf] = useState(false);
-  const [pdfError, setPdfError] = useState<string | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string>(propStudentId || '');
   const [selectedBook, setSelectedBook] = useState<'qaidah1' | 'qaidah2' | 'quran'>(propBook || 'qaidah1');
   const navigate = useNavigate();
   const pageRef = useRef<number>(currentPage);
   const containerRef = useRef<HTMLDivElement>(null);
-  const pdfViewerRef = useRef<HTMLDivElement>(null);
 
   // Check if user can mark (teacher or admin)
   const canMark = user && (user.role === 'teacher' || user.role === 'admin' || user.role === 'superadmin');
@@ -54,128 +47,12 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   }, [currentPage]);
 
-  // Track if we've already warned about missing PDF to avoid console spam
-  const pdfWarningShown = useRef<{ [key: string]: boolean }>({});
-
-  // Fetch PDF info from backend
-  const loadPdfInfo = useCallback(async () => {
-    // Skip for Quran (uses Mushaf)
-    if (selectedBook === 'quran') {
-      setPdfInfo(null);
-      setPdfError(null);
-      setIsLoadingPdf(false);
-      return;
-    }
-
-    setIsLoadingPdf(true);
-    setPdfError(null);
-    try {
-      const result = await fetchPdfInfo(selectedBook);
-      if (result.pdf && result.pdf.url) {
-        setPdfInfo(result.pdf);
-        // Reset warning flag when PDF is found
-        pdfWarningShown.current[selectedBook] = false;
-        // Only log success once to reduce console spam
-        if (!pdfWarningShown.current[`${selectedBook}_loaded`]) {
-          console.log('✅ PDF info loaded:', {
-            book: selectedBook,
-            url: result.pdf.url,
-            filename: result.pdf.filename,
-            size: `${(result.pdf.size / 1024 / 1024).toFixed(2)} MB`
-          });
-          pdfWarningShown.current[`${selectedBook}_loaded`] = true;
-        }
-      } else {
-        setPdfInfo(null);
-        // Only show warning once per book to avoid console spam
-        if (!pdfWarningShown.current[selectedBook]) {
-          const errorMsg = `No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`;
-          setPdfError(errorMsg);
-          console.warn(`⚠️ No PDF found for ${selectedBook}. Upload a PDF in the Book Upload Manager.`);
-          pdfWarningShown.current[selectedBook] = true;
-        } else {
-          // Set error message but don't log again
-          setPdfError(`No PDF uploaded for ${selectedBook}. Please upload a PDF in the Book Upload Manager.`);
-        }
-      }
-    } catch (error: any) {
-      // Only log error once to avoid console spam
-      if (!pdfWarningShown.current[`${selectedBook}_error`]) {
-        console.error('❌ Error loading PDF info:', error);
-        pdfWarningShown.current[`${selectedBook}_error`] = true;
-      }
-      const errorMsg = error.message || 'Failed to load PDF information';
-      setPdfError(errorMsg);
-      setPdfInfo(null);
-    } finally {
-      setIsLoadingPdf(false);
-    }
-  }, [selectedBook]);
-
-  // Load PDF info when book changes - use selectedBook directly to avoid race conditions
-  useEffect(() => {
-    // Reset state first
-    setPdfTotalPages(null);
-    setPdfError(null);
-    setPdfInfo(null);
-    setIsLoadingPdf(true);
-    
-    // Then load PDF info
-    loadPdfInfo();
-  }, [selectedBook, loadPdfInfo]); // Include loadPdfInfo but it's stable due to useCallback
-
-  // Auto-refresh PDF info every 30 seconds to catch new uploads (only for Qaidah books)
-  // Skip auto-refresh if PDF is null to avoid repeated failed requests
-  useEffect(() => {
-    if (selectedBook === 'quran') return; // Don't auto-refresh for Quran
-    if (!pdfInfo && pdfError) return; // Don't auto-refresh if PDF is missing (avoid spam)
-    
-    const interval = setInterval(() => {
-      // Only refresh if we have a PDF or are still loading (might have been uploaded)
-      if (pdfInfo || isLoadingPdf) {
-        loadPdfInfo();
-      }
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [selectedBook, loadPdfInfo, pdfInfo, pdfError, isLoadingPdf]);
-
-  // Helper to get PDF URL (uses actual PDF URL from backend)
-  const getPdfUrl = useCallback((): string | null => {
-    // For quran, use Mushaf (no PDF needed)
-    if (selectedBook === 'quran') {
-      return null; // Mushaf handles this
-    }
-    // Use the actual PDF URL from backend - must be absolute (http/https)
-    if (pdfInfo?.url) {
-      const url = pdfInfo.url.trim();
-      
-      // Validate URL: must start with http:// or https://
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        console.error(`❌ Invalid PDF URL: URL must be absolute (start with http:// or https://)`);
-        console.error(`❌ Received URL: ${url}`);
-        console.error(`❌ Book: ${selectedBook}`);
-        console.error(`❌ PDF info:`, pdfInfo);
-        // Don't return relative URLs - they won't work in production
-        return null;
-      }
-      
-      // Log the URL being used (only once to reduce spam)
-      if (!pdfWarningShown.current[`${selectedBook}_url_logged`]) {
-        console.log(`✅ PDF URL for ${selectedBook}:`, url);
-        pdfWarningShown.current[`${selectedBook}_url_logged`] = true;
-      }
-      
-      return url;
-    }
-    return null;
-  }, [selectedBook, pdfInfo]);
 
   // For Quran, set total pages to 604 (standard Mushaf)
-  // For PDFs, use the PDF's page count, otherwise fall back to totalPages prop
+  // For Qaidah books, use totalPages prop
   const effectiveTotalPages = selectedBook === 'quran' 
     ? 604 
-    : (pdfTotalPages || totalPages);
+    : totalPages;
 
   const goToPage = useCallback((page: number) => {
     const maxPages = selectedBook === 'quran' ? 604 : totalPages;
@@ -194,10 +71,6 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     }
   }, [selectedBook, totalPages, availablePages, onPageChange, navigate]);
 
-  // Handle PDF load to get total pages
-  const handlePdfTotalPages = useCallback((totalPages: number) => {
-    setPdfTotalPages(totalPages);
-  }, []);
 
   // Keyboard navigation
   useEffect(() => {
@@ -213,16 +86,10 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
 
       if (e.key === 'ArrowLeft' && currentPage > 1) {
         e.preventDefault();
-        // For PDFs, just go to previous page (no availablePages filtering needed)
         goToPage(currentPage - 1);
       } else if (e.key === 'ArrowRight' && currentPage < effectiveTotalPages) {
         e.preventDefault();
-        // For PDFs, just go to next page (no availablePages filtering needed)
-        if (selectedBook === 'quran') {
-          goToPage(currentPage + 1);
-        } else {
-          goToPage(currentPage + 1);
-        }
+        goToPage(currentPage + 1);
       } else if (e.key === '+' || e.key === '=') {
         e.preventDefault();
         setZoom((prev) => Math.min(5, prev + 0.25));
@@ -253,10 +120,6 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
     setPosition({ x: 0, y: 0 });
   };
 
-  const pdfUrl = getPdfUrl();
-  
-  // Don't render PDF viewer if PDF is not available or still loading
-  const canRenderPdf = selectedBook === 'quran' || (pdfUrl && !isLoadingPdf && !pdfError);
 
   // Get available students for selection (if teacher, only show assigned students)
   const availableStudents = user?.role === 'teacher' 
@@ -346,20 +209,6 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
         >
           Reset
         </button>
-        {/* Refresh PDF button (for Qaidah books only) */}
-        {selectedBook !== 'quran' && (
-          <button
-            onClick={() => {
-              console.log('🔄 Manually refreshing PDF info...');
-              loadPdfInfo();
-            }}
-            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
-            aria-label="Refresh PDF"
-            title="Refresh PDF (check for new uploads)"
-          >
-            🔄
-          </button>
-        )}
         <div className="px-3 py-1 text-white text-xs text-center border-t border-white/20 mt-1 pt-1">
           {Math.round(zoom * 100)}%
         </div>
@@ -388,82 +237,21 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
             {/* QaidahCanvas is disabled for Quran as Mushaf has its own marking interface */}
           </div>
         ) : (
-          /* Use QaidahPdfViewer for Qaidah 1 and 2 */
-          <>
-            {isLoadingPdf ? (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Loading PDF...</p>
-                </div>
-              </div>
-            ) : pdfError || !pdfUrl ? (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                <div className="text-center bg-white rounded-lg p-8 max-w-md mx-4 shadow-lg">
-                  <div className="text-6xl mb-4">📄</div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Qaidah PDF Not Uploaded Yet</h3>
-                  <p className="text-gray-600 mb-4">
-                    No PDF has been uploaded for {selectedBook === 'qaidah1' ? 'Qaidah 1' : selectedBook === 'qaidah2' ? 'Qaidah 2' : 'this book'}.
-                  </p>
-                  <p className="text-sm text-gray-500 mb-4">
-                    Please upload a PDF in the Book Upload Manager to view pages.
-                  </p>
-                  <button
-                    onClick={() => loadPdfInfo()}
-                    className="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors text-sm"
-                  >
-                    Check Again
-                  </button>
-                </div>
-              </div>
-            ) : pdfUrl ? (
-              <>
-                <QaidahPdfViewer
-                  key={pdfUrl} // Stable key based on PDF URL only - prevents remount on page changes
-                  pdfUrl={pdfUrl}
-                  currentPage={currentPage}
-                  onPageChange={(page) => {
-                    onPageChange?.(page);
-                    navigate(`/qaidah/${page}`);
-                  }}
-                  onTotalPagesChange={handlePdfTotalPages}
-                  zoom={zoom}
-                  onZoomChange={setZoom}
-                  position={position}
-                  onPositionChange={setPosition}
-                  containerRef={containerRef}
-                  onLoad={() => {
-                    console.log('✅ PDF document loaded successfully in viewer');
-                  }}
-                />
-                
-                {/* Qaidah Canvas Overlay for marking - Note: May need updates for PDF coordinate system */}
-                {canMark && selectedStudentId && (
-                  <QaidahCanvas
-                    studentId={selectedStudentId}
-                    book={selectedBook}
-                    page={currentPage}
-                    imageUrl={pdfUrl} // Pass PDF URL for reference
-                    zoom={zoom}
-                    position={position}
-                    containerRef={containerRef}
-                    imageRef={pdfViewerRef as any}
-                    enabled={true}
-                  />
-                )}
-              </>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                <div className="text-center">
-                  <p className="text-gray-600">No PDF available</p>
-                </div>
-              </div>
-            )}
-          </>
+          /* Qaidah books - PDF viewing has been removed */
+          <div className="w-full h-full flex items-center justify-center bg-gray-100">
+            <div className="text-center bg-white rounded-lg p-8 max-w-md mx-4 shadow-lg">
+              <div className="text-6xl mb-4">📄</div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">PDF Viewing Unavailable</h3>
+              <p className="text-gray-600 mb-4">
+                PDF viewing for {selectedBook === 'qaidah1' ? 'Qaidah 1' : selectedBook === 'qaidah2' ? 'Qaidah 2' : 'this book'} is not available.
+              </p>
+              <p className="text-sm text-gray-500">
+                Please use the page images instead.
+              </p>
+            </div>
+          </div>
         )}
       </div>
-
-      {/* Page Indicator is handled by QaidahPdfViewer for PDFs */}
 
       {/* Keyboard Shortcuts Hint */}
       <div className="absolute bottom-4 right-4 z-20 bg-black/70 backdrop-blur-sm rounded-lg px-3 py-2 text-white text-xs opacity-60 hover:opacity-100 transition-opacity">

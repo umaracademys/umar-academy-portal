@@ -35,11 +35,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
     { id: 'messages', icon: 'MS', label: 'Messages', badge: null, isLink: true, href: '/messages' },
   ];
 
-  // Add Book Uploads for super admin only
-  const bookUploadsItem: MenuItem | null = 
-    user?.role === 'superadmin'
-      ? { id: 'book-uploads', icon: '📚', label: 'Book Uploads', badge: null, isLink: false }
-      : null;
 
   // Add AI Library based on role
   const aiLibraryItem: MenuItem | null = 
@@ -66,11 +61,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
     // Add AI Library if available
     if (aiLibraryItem) {
       items.push(aiLibraryItem);
-    }
-    
-    // Add Book Uploads for super admin
-    if (bookUploadsItem) {
-      items.push(bookUploadsItem);
     }
     
     // Add remaining items
