@@ -1,7 +1,10 @@
-// Check if a user exists by email
-const mongoose = require('mongoose');
+/**
+ * Script to check if a user exists in the database
+ * 
+ * Usage: node backend/checkUser.js <email>
+ */
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
+const mongoose = require('mongoose');
 
 // User Schema (matching server.js)
 const userSchema = new mongoose.Schema({
@@ -9,123 +12,72 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   role: String,
   password: String,
-  avatar: String
+  avatar: String,
+  loginEnabled: { type: Boolean, default: true },
+  twoFactorEnabled: { type: Boolean, default: false },
+  emailNotifications: { type: Boolean, default: true },
+  smsNotifications: { type: Boolean, default: false },
+  contact: String,
+  phoneNumber: String,
+  isDeveloper: { type: Boolean, default: false },
+  isTestAccount: { type: Boolean, default: false },
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
 
-const checkUser = async () => {
+// MongoDB connection string
+const MONGODB_URI = process.env.MONGODB_URI || 
+  process.env.MONGO_URI || 
+  'mongodb://localhost:27017/umar-academy-portal';
+
+async function checkUser(email) {
   try {
-    console.log('🔧 Connecting to MongoDB...');
-    console.log('   URI:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Hide credentials
+    console.log('🔌 Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
     console.log('✅ Connected to MongoDB\n');
 
-    const emailToCheck = 'Rabyya@live.com';
-    
-    // Also check login status
-    console.log('\n🔐 Checking login status...');
-    console.log(`🔍 Searching for user: ${emailToCheck}\n`);
-
-    // First, show recent users to see what's in the database
-    const db = mongoose.connection.db;
-    const recentUsers = await db.collection('users').find({})
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .toArray();
-    
-    console.log(`📊 Recent users in database (last 10):`);
-    if (recentUsers.length === 0) {
-      console.log('   No users found in database');
-    } else {
-      recentUsers.forEach((u, idx) => {
-        console.log(`   ${idx + 1}. ${u.email} - ${u.name || 'N/A'} - ${u.role || 'N/A'} - Created: ${u.createdAt || 'N/A'}`);
-      });
-    }
-    console.log('');
-
-    // Search in users collection (case-insensitive)
+    // Search for user (case-insensitive)
     const user = await User.findOne({ 
-      email: { $regex: new RegExp(`^${emailToCheck}$`, 'i') }
+      email: { $regex: new RegExp(`^${email}$`, 'i') } 
     });
-    
+
     if (user) {
-      console.log('✅ USER FOUND IN USERS COLLECTION:');
-      console.log('   Email:', user.email);
-      console.log('   Name:', user.name || user.fullName || 'N/A');
-      console.log('   Role:', user.role || 'N/A');
+      console.log('✅ User found!');
+      console.log('\n📋 User Details:');
       console.log('   ID:', user._id);
+      console.log('   Name:', user.name || user.fullName || 'Not set');
+      console.log('   Email:', user.email);
+      console.log('   Role:', user.role);
+      console.log('   Login Enabled:', user.loginEnabled);
       console.log('   Created:', user.createdAt);
-      console.log('   Login Enabled:', user.loginEnabled !== false ? '✅ YES' : '❌ NO');
-      console.log('   Has Password:', user.password ? '✅ YES' : '❌ NO');
-      console.log('   Password Hash:', user.password ? (user.password.substring(0, 20) + '...') : 'N/A');
-      console.log('   Full document:', JSON.stringify(user.toObject(), null, 2));
+      console.log('   Updated:', user.updatedAt);
+      if (user.isDeveloper) console.log('   ⚠️  Developer Account');
+      if (user.isTestAccount) console.log('   ⚠️  Test Account');
     } else {
-      console.log('❌ USER NOT FOUND in users collection (case-insensitive search)');
-      
-      // Also check students collection
-      const Student = mongoose.model('Student', new mongoose.Schema({
-        email: String,
-        fullName: String
-      }, { strict: false }));
-      
-      const student = await Student.findOne({ 
-        email: { $regex: new RegExp(`^${emailToCheck}$`, 'i') }
-      });
-      if (student) {
-        console.log('\n✅ FOUND IN STUDENTS COLLECTION:');
-        console.log('   Email:', student.email);
-        console.log('   Full Name:', student.fullName || 'N/A');
-        console.log('   ID:', student._id);
-        console.log('   Full document:', JSON.stringify(student.toObject(), null, 2));
-      } else {
-        console.log('\n❌ Also not found in students collection');
-      }
-      
-      // Check teachers collection
-      const Teacher = mongoose.model('Teacher', new mongoose.Schema({
-        email: String,
-        fullName: String
-      }, { strict: false }));
-      
-      const teacher = await Teacher.findOne({ 
-        email: { $regex: new RegExp(`^${emailToCheck}$`, 'i') }
-      });
-      if (teacher) {
-        console.log('\n✅ FOUND IN TEACHERS COLLECTION:');
-        console.log('   Email:', teacher.email);
-        console.log('   Full Name:', teacher.fullName || 'N/A');
-        console.log('   ID:', teacher._id);
-        console.log('   Full document:', JSON.stringify(teacher.toObject(), null, 2));
-      }
-      
-      // Check all collections for any email containing "rabyya"
-      console.log('\n🔍 Searching all collections for emails containing "rabyya"...');
-      const collections = await db.listCollections().toArray();
-      
-      for (const collectionInfo of collections) {
-        const collection = db.collection(collectionInfo.name);
-        const docs = await collection.find({
-          email: { $regex: /rabyya/i }
-        }).limit(5).toArray();
-        
-        if (docs.length > 0) {
-          console.log(`\n📁 Found ${docs.length} document(s) in "${collectionInfo.name}" collection:`);
-          docs.forEach((doc, idx) => {
-            console.log(`   ${idx + 1}. Email: ${doc.email || 'N/A'}, Name: ${doc.name || doc.fullName || 'N/A'}, Role: ${doc.role || 'N/A'}`);
-          });
-        }
-      }
+      console.log('❌ User not found');
+      console.log(`\n   No user with email "${email}" exists in the database.`);
+      console.log('\n💡 To create this user, you can:');
+      console.log('   1. Use the Super Admin dashboard to create a new admin');
+      console.log('   2. Or modify/create a script to add this user');
     }
 
     await mongoose.disconnect();
     console.log('\n✅ Disconnected from MongoDB');
+    process.exit(0);
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error checking user:', error);
+    await mongoose.disconnect();
     process.exit(1);
   }
-};
+}
 
-checkUser();
+// Get email from command line argument
+const email = process.argv[2] || 'Azfar@gmail.com';
 
+if (!email) {
+  console.error('❌ Please provide an email address');
+  console.log('Usage: node backend/checkUser.js <email>');
+  process.exit(1);
+}
 
+checkUser(email);
