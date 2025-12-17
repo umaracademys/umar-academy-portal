@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import StatCard from '../../../components/StatCard';
 import Card from '../../../components/Card';
@@ -12,6 +12,7 @@ import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Assignment } from '../../../types/index';
+import { getStudentPdfHomework } from '../../../services/pdfApi';
 
 const StudentDashboard: React.FC = () => {
   const { students, getStudentByEmail, updateStudent, teachers } = useData();
@@ -27,6 +28,9 @@ const StudentDashboard: React.FC = () => {
   const [selectedTeacherForMessage, setSelectedTeacherForMessage] = useState<any>(null);
   const [pairInfo, setPairInfo] = useState<any>(null);
   const [pairDailyReports, setPairDailyReports] = useState<any[]>([]);
+  const [pdfHomework, setPdfHomework] = useState<any[]>([]);
+  const [loadingPdfHomework, setLoadingPdfHomework] = useState(false);
+  const navigate = useNavigate();
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
 
@@ -59,6 +63,28 @@ const StudentDashboard: React.FC = () => {
     
     loadPairInfo();
   }, [currentStudent, getPairStudents, getPairDailyReports]);
+
+  // Load PDF homework assignments
+  useEffect(() => {
+    const loadPdfHomework = async () => {
+      if (!currentStudent?.id) return;
+      try {
+        setLoadingPdfHomework(true);
+        const studentId = currentStudent.id || (currentStudent as any)?._id;
+        if (studentId) {
+          const homeworkList = await getStudentPdfHomework(studentId.toString());
+          setPdfHomework(homeworkList || []);
+        }
+      } catch (error) {
+        console.error('Error loading PDF homework:', error);
+        setPdfHomework([]);
+      } finally {
+        setLoadingPdfHomework(false);
+      }
+    };
+    
+    loadPdfHomework();
+  }, [currentStudent]);
 
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
@@ -407,6 +433,26 @@ const StudentDashboard: React.FC = () => {
               </div>
             </div>
           </button>
+          <button
+            onClick={() => navigate('/student/pdf-homework')}
+            className="block w-full text-left rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary text-2xl">
+                📄
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-primary mb-1">PDF Homework</h3>
+                <p className="text-xs text-gray-600">
+                  {loadingPdfHomework 
+                    ? 'Loading...' 
+                    : pdfHomework.length > 0 
+                      ? `${pdfHomework.length} assignment${pdfHomework.length > 1 ? 's' : ''} assigned`
+                      : 'View PDF homework assignments'}
+                </p>
+              </div>
+            </div>
+          </button>
         </div>
 
         {/* Main Content Grid */}
@@ -455,7 +501,7 @@ const StudentDashboard: React.FC = () => {
 
           {/* Recent Assignments - Takes 2 columns */}
           <div className="lg:col-span-2">
-            <Card title={`Recent Assignments (${studentAssignments.length})`}>
+            <Card title={`Recent Assignments (${studentAssignments.length}${pdfHomework.length > 0 ? ` + ${pdfHomework.length} PDF` : ''})`}>
               {studentAssignments.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
@@ -574,6 +620,65 @@ const StudentDashboard: React.FC = () => {
                   })}
                 </div>
               )}
+              
+              {/* PDF Homework Section */}
+              {pdfHomework.length > 0 && (
+                <div className="mt-6 border-t-2 border-gray-200 pt-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-bold text-sm text-primary">PDF Homework Assignments</h4>
+                    <button
+                      onClick={() => navigate('/student/pdf-homework')}
+                      className="text-xs text-primary hover:underline font-semibold"
+                    >
+                      View All →
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {pdfHomework.slice(0, 3).map((item: any) => (
+                      <div
+                        key={item.assignmentId}
+                        onClick={() => navigate('/student/pdf-homework')}
+                        className="bg-white rounded-xl border-2 border-gray-200 p-4 shadow-sm hover:shadow-md hover:border-primary transition-all cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-lg">📄</span>
+                              <h5 className="text-sm font-bold text-primary">{item.pdf?.title || 'PDF Assignment'}</h5>
+                            </div>
+                            <p className="text-xs text-gray-600 mb-1">
+                              Assigned by {item.assignedByName || 'Teacher'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(item.assignedAt).toLocaleDateString()}
+                            </p>
+                            {item.annotations?.notes && (
+                              <p className="text-xs text-gray-600 mt-2 italic line-clamp-2">
+                                "{item.annotations.notes.substring(0, 80)}..."
+                              </p>
+                            )}
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                            item.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {item.status || 'Active'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    {pdfHomework.length > 3 && (
+                      <button
+                        onClick={() => navigate('/student/pdf-homework')}
+                        className="w-full text-center py-2 text-sm text-primary hover:underline font-semibold"
+                      >
+                        View {pdfHomework.length - 3} more PDF assignment{pdfHomework.length - 3 > 1 ? 's' : ''} →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
           </div>
         </div>
@@ -621,6 +726,16 @@ const StudentDashboard: React.FC = () => {
                 <div className="font-bold text-primary mb-1">My Assignments</div>
                 <div className="text-xs text-gray-600">View all assignments</div>
               </Link>
+              
+              <button
+                onClick={() => navigate('/student/pdf-homework')}
+                className="p-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm text-center"
+              >
+                <div className="font-bold text-primary mb-1">PDF Homework</div>
+                <div className="text-xs text-gray-600">
+                  {pdfHomework.length > 0 ? `${pdfHomework.length} assignment${pdfHomework.length > 1 ? 's' : ''}` : 'View PDF homework'}
+                </div>
+              </button>
               
               <Link
                 to="/student/courses"
