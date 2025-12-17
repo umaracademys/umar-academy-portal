@@ -73,6 +73,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [annotations, setAnnotations] = useState<Annotation[]>(externalAnnotations);
   const [selectedTool, setSelectedTool] = useState<'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | null>(null);
   const [selectedColor, setSelectedColor] = useState('#FF0000');
+  const [strokeWidth, setStrokeWidth] = useState(2); // Stroke width for drawing/arrow tools
+  const [highlightOpacity, setHighlightOpacity] = useState(0.3); // Opacity for highlights
   const [notes, setNotes] = useState(initialNotes);
   const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -328,7 +330,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         color: selectedColor,
         width: 0,
         height: 0,
-      };
+        ...(selectedTool === 'highlight' ? { opacity: highlightOpacity } : {}),
+        ...(selectedTool === 'arrow' || selectedTool === 'drawing' ? { strokeWidth: strokeWidth } : {}),
+      } as any;
       setCurrentAnnotation(newAnnotation);
       updateAnnotations(prev => [...prev, newAnnotation], false); // Don't save to history yet
     } else if (selectedTool === 'text') {
@@ -446,7 +450,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         y: smoothedPoints[0].y,
         color: selectedColor,
         points: smoothedPoints,
-      };
+        strokeWidth: strokeWidth,
+      } as any;
       updateAnnotations(prev => [...prev, newAnnotation], true); // Save to history
     }
 
@@ -585,7 +590,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       ctx.save();
       ctx.strokeStyle = annotation.color;
       ctx.fillStyle = annotation.color;
-      ctx.lineWidth = 2;
+      // Use strokeWidth from annotation if available, otherwise default to 2
+      ctx.lineWidth = (annotation as any).strokeWidth || strokeWidth;
 
       const x = annotation.x * canvas.width;
       const y = annotation.y * canvas.height;
@@ -610,7 +616,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
       switch (annotation.type) {
         case 'highlight':
-          ctx.globalAlpha = 0.3;
+          ctx.globalAlpha = (annotation as any).opacity || highlightOpacity;
           const highlightWidth = (annotation.width || 0.1) * canvas.width;
           const highlightHeight = (annotation.height || 0.05) * canvas.height;
           if (highlightWidth > 0 && highlightHeight > 0) {
@@ -622,22 +628,25 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         case 'arrow':
           const arrowWidth = (annotation.width || 0.1) * canvas.width;
           const arrowHeight = (annotation.height || 0.05) * canvas.height;
+          const arrowStrokeWidth = (annotation as any).strokeWidth || strokeWidth;
           if (arrowWidth !== 0 || arrowHeight !== 0) {
+            ctx.lineWidth = arrowStrokeWidth;
             ctx.beginPath();
             ctx.moveTo(x, y);
             ctx.lineTo(x + arrowWidth, y + arrowHeight);
             ctx.stroke();
             if (Math.abs(arrowWidth) > 5 || Math.abs(arrowHeight) > 5) {
               const angle = Math.atan2(arrowHeight, arrowWidth);
+              const arrowheadSize = Math.max(8, arrowStrokeWidth * 2);
               ctx.beginPath();
               ctx.moveTo(x + arrowWidth, y + arrowHeight);
               ctx.lineTo(
-                x + arrowWidth - 10 * Math.cos(angle - Math.PI / 6),
-                y + arrowHeight - 10 * Math.sin(angle - Math.PI / 6)
+                x + arrowWidth - arrowheadSize * Math.cos(angle - Math.PI / 6),
+                y + arrowHeight - arrowheadSize * Math.sin(angle - Math.PI / 6)
               );
               ctx.lineTo(
-                x + arrowWidth - 10 * Math.cos(angle + Math.PI / 6),
-                y + arrowHeight - 10 * Math.sin(angle + Math.PI / 6)
+                x + arrowWidth - arrowheadSize * Math.cos(angle + Math.PI / 6),
+                y + arrowHeight - arrowheadSize * Math.sin(angle + Math.PI / 6)
               );
               ctx.closePath();
               ctx.fill();
@@ -746,158 +755,300 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [readOnly, handleUndo, handleRedo, selectionState, handleDeleteSelected]);
 
-  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#000000'];
+  // Extended color palette
+  const colors = [
+    '#FF0000', '#FF6B6B', '#FFA500', '#FFD700', '#FFFF00', '#ADFF2F', '#00FF00', '#00CED1',
+    '#00BFFF', '#0000FF', '#8A2BE2', '#FF00FF', '#FF1493', '#DC143C', '#000000', '#808080',
+    '#FFFFFF', '#F5F5F5', '#D3D3D3', '#A9A9A9'
+  ];
+
+  // Helper to deselect tool and clear selection
+  const deselectTool = useCallback(() => {
+    setSelectedTool(null);
+    setSelectionState({
+      selectedAnnotation: null,
+      isResizing: false,
+      resizeHandle: null,
+      startPoint: null,
+      originalAnnotation: null,
+    });
+  }, []);
 
   return (
-    <div className="w-full h-full flex flex-col bg-gray-100">
+    <div className="w-full h-full flex flex-col bg-gray-50">
       {showControls && !readOnly && (
-        <div className="bg-white border-b p-2 flex items-center gap-2 flex-wrap">
-          {/* Undo/Redo buttons */}
-          <div className="flex gap-1 border-r pr-2">
-            <button
-              onClick={handleUndo}
-              disabled={!canUndo}
-              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Undo (Ctrl+Z)"
-            >
-              ↶ Undo
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!canRedo}
-              className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Redo (Ctrl+Shift+Z)"
-            >
-              ↷ Redo
-            </button>
-          </div>
+        <div className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 shadow-sm">
+          <div className="p-3 space-y-3">
+            {/* Top Row: History & Selection Tools */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              {/* Left: History Controls */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-white rounded-lg border border-gray-200 p-1 shadow-sm">
+                  <button
+                    onClick={handleUndo}
+                    disabled={!canUndo}
+                    className={`px-3 py-2 rounded-md transition-all ${
+                      canUndo 
+                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200' 
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Undo (Ctrl+Z)"
+                  >
+                    <span className="text-lg">↶</span> Undo
+                  </button>
+                  <button
+                    onClick={handleRedo}
+                    disabled={!canRedo}
+                    className={`px-3 py-2 rounded-md transition-all ${
+                      canRedo 
+                        ? 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200' 
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                    title="Redo (Ctrl+Shift+Z)"
+                  >
+                    <span className="text-lg">↷</span> Redo
+                  </button>
+                </div>
 
-          {/* Annotation tools */}
-          <div className="flex gap-1">
-            <button
-              onClick={() => {
-                setSelectedTool(selectedTool === 'highlight' ? null : 'highlight');
-                setSelectionState({
-                  selectedAnnotation: null,
-                  isResizing: false,
-                  resizeHandle: null,
-                  startPoint: null,
-                  originalAnnotation: null,
-                });
-              }}
-              className={`px-3 py-1 rounded ${selectedTool === 'highlight' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              title="Highlight"
-            >
-              ✏️ Highlight
-            </button>
-            <button
-              onClick={() => {
-                setSelectedTool(selectedTool === 'text' ? null : 'text');
-                setSelectionState({
-                  selectedAnnotation: null,
-                  isResizing: false,
-                  resizeHandle: null,
-                  startPoint: null,
-                  originalAnnotation: null,
-                });
-              }}
-              className={`px-3 py-1 rounded ${selectedTool === 'text' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              title="Text"
-            >
-              📝 Text
-            </button>
-            <button
-              onClick={() => {
-                setSelectedTool(selectedTool === 'drawing' ? null : 'drawing');
-                setSelectionState({
-                  selectedAnnotation: null,
-                  isResizing: false,
-                  resizeHandle: null,
-                  startPoint: null,
-                  originalAnnotation: null,
-                });
-              }}
-              className={`px-3 py-1 rounded ${selectedTool === 'drawing' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              title="Draw"
-            >
-              ✍️ Draw
-            </button>
-            <button
-              onClick={() => {
-                setSelectedTool(selectedTool === 'arrow' ? null : 'arrow');
-                setSelectionState({
-                  selectedAnnotation: null,
-                  isResizing: false,
-                  resizeHandle: null,
-                  startPoint: null,
-                  originalAnnotation: null,
-                });
-              }}
-              className={`px-3 py-1 rounded ${selectedTool === 'arrow' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              title="Arrow"
-            >
-              ➡️ Arrow
-            </button>
-            <button
-              onClick={() => {
-                setSelectedTool(selectedTool === 'note' ? null : 'note');
-                setSelectionState({
-                  selectedAnnotation: null,
-                  isResizing: false,
-                  resizeHandle: null,
-                  startPoint: null,
-                  originalAnnotation: null,
-                });
-              }}
-              className={`px-3 py-1 rounded ${selectedTool === 'note' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-              title="Note"
-            >
-              📌 Note
-            </button>
-          </div>
+                {/* Selection Mode Button */}
+                <button
+                  onClick={deselectTool}
+                  className={`px-4 py-2 rounded-lg border transition-all ${
+                    !selectedTool
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Selection Mode - Click annotations to select and edit"
+                >
+                  <span className="text-lg mr-1">👆</span> Select
+                </button>
+              </div>
 
-          {/* Color picker */}
-          <div className="flex gap-1 items-center border-r pr-2">
-            <span>Color:</span>
-            {colors.map(color => (
-              <button
-                key={color}
-                onClick={() => {
-                  setSelectedColor(color);
-                  if (selectionState.selectedAnnotation) {
-                    handleChangeColor(color);
-                  }
-                }}
-                className={`w-6 h-6 rounded border-2 ${selectedColor === color ? 'border-gray-800' : 'border-gray-300'}`}
-                style={{ backgroundColor: color }}
-                title={color}
-              />
-            ))}
-          </div>
-
-          {/* Edit tools (shown when annotation is selected) */}
-          {selectionState.selectedAnnotation && (
-            <div className="flex gap-1 border-r pr-2">
-              <button
-                onClick={handleDeleteSelected}
-                className="px-3 py-1 rounded bg-red-500 text-white hover:bg-red-600"
-                title="Delete (Del)"
-              >
-                🗑️ Delete
-              </button>
+              {/* Right: Save Button */}
+              {onSave && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`px-5 py-2 rounded-lg font-semibold transition-all shadow-md ${
+                    isSaving
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700 hover:shadow-lg'
+                  }`}
+                >
+                  {isSaving ? '⏳ Saving...' : '💾 Save Annotations'}
+                </button>
+              )}
             </div>
-          )}
 
-          {/* Save button */}
-          {onSave && (
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="ml-auto px-4 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-            >
-              {isSaving ? 'Saving...' : 'Save Annotations'}
-            </button>
-          )}
+            {/* Middle Row: Annotation Tools */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="text-sm font-semibold text-gray-700 px-2">Tools:</div>
+              <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2 shadow-sm flex-wrap">
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'highlight' ? null : 'highlight';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all border-2 ${
+                    selectedTool === 'highlight'
+                      ? 'bg-yellow-100 text-yellow-800 border-yellow-400 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Highlight - Drag to create highlight box"
+                >
+                  <span className="text-xl mr-2">🖍️</span>
+                  <span className="font-medium">Highlight</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'text' ? null : 'text';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all border-2 ${
+                    selectedTool === 'text'
+                      ? 'bg-blue-100 text-blue-800 border-blue-400 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Text - Click to add text annotation"
+                >
+                  <span className="text-xl mr-2">📝</span>
+                  <span className="font-medium">Text</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'drawing' ? null : 'drawing';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all border-2 ${
+                    selectedTool === 'drawing'
+                      ? 'bg-purple-100 text-purple-800 border-purple-400 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Draw - Click and drag to draw freehand"
+                >
+                  <span className="text-xl mr-2">✍️</span>
+                  <span className="font-medium">Draw</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'arrow' ? null : 'arrow';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all border-2 ${
+                    selectedTool === 'arrow'
+                      ? 'bg-red-100 text-red-800 border-red-400 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Arrow - Drag to create arrow"
+                >
+                  <span className="text-xl mr-2">➡️</span>
+                  <span className="font-medium">Arrow</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'note' ? null : 'note';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`px-4 py-2 rounded-lg transition-all border-2 ${
+                    selectedTool === 'note'
+                      ? 'bg-green-100 text-green-800 border-green-400 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title="Note - Drag to create sticky note"
+                >
+                  <span className="text-xl mr-2">📌</span>
+                  <span className="font-medium">Note</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom Row: Color, Stroke, Opacity, Edit Tools */}
+            <div className="flex items-center gap-4 flex-wrap">
+              {/* Color Picker */}
+              <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2 shadow-sm">
+                <span className="text-sm font-semibold text-gray-700">Color:</span>
+                <div className="flex gap-1 flex-wrap max-w-md">
+                  {colors.map(color => (
+                    <button
+                      key={color}
+                      onClick={() => {
+                        setSelectedColor(color);
+                        if (selectionState.selectedAnnotation) {
+                          handleChangeColor(color);
+                        }
+                      }}
+                      className={`w-8 h-8 rounded-md border-2 transition-all hover:scale-110 ${
+                        selectedColor === color 
+                          ? 'border-gray-900 shadow-lg ring-2 ring-offset-2 ring-gray-400' 
+                          : 'border-gray-300 hover:border-gray-500'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Stroke Width (for drawing/arrow) */}
+              {(selectedTool === 'drawing' || selectedTool === 'arrow') && (
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2 shadow-sm">
+                  <span className="text-sm font-semibold text-gray-700">Width:</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={strokeWidth}
+                    onChange={(e) => setStrokeWidth(Number(e.target.value))}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-gray-600 w-8">{strokeWidth}px</span>
+                </div>
+              )}
+
+              {/* Opacity (for highlight) */}
+              {selectedTool === 'highlight' && (
+                <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2 shadow-sm">
+                  <span className="text-sm font-semibold text-gray-700">Opacity:</span>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.1"
+                    value={highlightOpacity}
+                    onChange={(e) => setHighlightOpacity(Number(e.target.value))}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-gray-600 w-12">{Math.round(highlightOpacity * 100)}%</span>
+                </div>
+              )}
+
+              {/* Edit Tools (when annotation selected) */}
+              {selectionState.selectedAnnotation && (
+                <div className="flex items-center gap-2 bg-red-50 rounded-lg border border-red-200 p-2 shadow-sm">
+                  <span className="text-sm font-semibold text-red-700">Edit:</span>
+                  <button
+                    onClick={handleDeleteSelected}
+                    className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all shadow-md font-medium"
+                    title="Delete Selected (Del)"
+                  >
+                    🗑️ Delete
+                  </button>
+                  <button
+                    onClick={deselectTool}
+                    className="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 transition-all"
+                    title="Deselect"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
