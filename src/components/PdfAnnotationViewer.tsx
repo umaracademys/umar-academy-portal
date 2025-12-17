@@ -1801,6 +1801,66 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         </div>
       </div>
 
+      {/* Page Navigation - Always Visible */}
+      {showControls && (
+        <div className="bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-t border-gray-900 p-2 sm:p-2 shadow-2xl flex-shrink-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* TOC Toggle Button */}
+              {tocItems.length > 0 && (
+                <button
+                  onClick={() => setShowTOC(!showTOC)}
+                  className="hidden lg:flex px-3 py-2 sm:px-3 sm:py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 transition-all text-sm font-medium min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation items-center justify-center"
+                  title="Toggle Table of Contents"
+                >
+                  📑
+                </button>
+              )}
+              
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className="px-3 py-2 sm:px-3 sm:py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm sm:text-sm font-medium min-w-[60px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation"
+                title="Previous Page"
+              >
+                ← Prev
+              </button>
+              <span className="px-2 sm:px-3 py-2 sm:py-1.5 text-gray-300 font-semibold bg-gray-900/40 rounded-md border border-gray-600/30 text-xs sm:text-sm">
+                Page {currentPage} of {numPages || '?'}
+              </span>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= (numPages || 1)}
+                className="px-3 py-2 sm:px-3 sm:py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm sm:text-sm font-medium min-w-[60px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation"
+                title="Next Page"
+              >
+                Next →
+              </button>
+              
+              {/* Page Jump Input */}
+              {numPages && numPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max={numPages}
+                    value={currentPage}
+                    onChange={(e) => {
+                      const page = parseInt(e.target.value);
+                      if (page >= 1 && page <= numPages) {
+                        handlePageChange(page);
+                      }
+                    }}
+                    className="w-16 px-2 py-1.5 text-sm bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                    title="Jump to page"
+                  />
+                  <span className="text-xs text-gray-400">/ {numPages}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {!readOnly && (
         <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-t border-gray-900 p-3 shadow-2xl">
