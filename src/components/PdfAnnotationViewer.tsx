@@ -869,79 +869,64 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     });
   }, []);
 
+  // Reset zoom to 100%
+  const handleResetZoom = useCallback(() => {
+    setZoom(1);
+  }, []);
+
   return (
     <div className="w-full h-full flex flex-col bg-gray-50">
       {showControls && !readOnly && (
-        <div className="relative bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-b border-gray-900 shadow-2xl">
+        <div className="relative bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-b border-gray-900 shadow-2xl flex-shrink-0">
           {/* Vertical Light Strip on Left */}
-          <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-gray-400 via-gray-500 to-transparent opacity-30 blur-sm"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-400 via-gray-500 to-transparent opacity-30 blur-sm"></div>
           
-          <div className="relative p-4 space-y-4">
-            {/* Top Row: History & Selection Tools */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              {/* Left: History Controls */}
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 bg-gray-900/50 backdrop-blur-sm rounded-lg border border-gray-600/30 p-1.5 shadow-lg">
-                  <button
-                    onClick={handleUndo}
-                    disabled={!canUndo}
-                    className={`px-4 py-2 rounded-md transition-all font-medium ${
-                      canUndo 
-                        ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 border border-gray-500/50 shadow-md hover:shadow-lg' 
-                        : 'bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/30'
-                    }`}
-                    title="Undo (Ctrl+Z)"
-                  >
-                    <span className="text-lg mr-1.5">↶</span> Undo
-                  </button>
-                  <button
-                    onClick={handleRedo}
-                    disabled={!canRedo}
-                    className={`px-4 py-2 rounded-md transition-all font-medium ${
-                      canRedo 
-                        ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 border border-gray-500/50 shadow-md hover:shadow-lg' 
-                        : 'bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/30'
-                    }`}
-                    title="Redo (Ctrl+Shift+Z)"
-                  >
-                    <span className="text-lg mr-1.5">↷</span> Redo
-                  </button>
-                </div>
-
-                {/* Selection Mode Button */}
+          <div className="relative p-2 space-y-2 overflow-x-auto">
+            {/* Compact Single Row: All Controls */}
+            <div className="flex items-center gap-2 flex-nowrap min-w-max">
+              {/* History Controls */}
+              <div className="flex items-center gap-1 bg-gray-900/50 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 shadow-lg flex-shrink-0">
                 <button
-                  onClick={deselectTool}
-                  className={`px-5 py-2.5 rounded-lg border transition-all font-medium shadow-lg ${
-                    !selectedTool
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500 shadow-blue-500/50 hover:from-blue-500 hover:to-blue-600'
-                      : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white'
+                  onClick={handleUndo}
+                  disabled={!canUndo}
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                    canUndo 
+                      ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 border border-gray-500/50' 
+                      : 'bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/30'
                   }`}
-                  title="Selection Mode - Click annotations to select and edit"
+                  title="Undo (Ctrl+Z)"
                 >
-                  <span className="text-lg mr-1.5">👆</span> Select
+                  <span className="text-base">↶</span>
+                </button>
+                <button
+                  onClick={handleRedo}
+                  disabled={!canRedo}
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                    canRedo 
+                      ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 border border-gray-500/50' 
+                      : 'bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/30'
+                  }`}
+                  title="Redo (Ctrl+Shift+Z)"
+                >
+                  <span className="text-base">↷</span>
                 </button>
               </div>
 
-              {/* Right: Save Button */}
-              {onSave && (
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className={`px-6 py-2.5 rounded-lg font-semibold transition-all shadow-lg ${
-                    isSaving
-                      ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed border border-gray-700/30'
-                      : 'bg-gradient-to-r from-green-600 to-green-700 text-white border border-green-500/50 hover:from-green-500 hover:to-green-600 shadow-green-500/30 hover:shadow-xl'
-                  }`}
-                >
-                  {isSaving ? '⏳ Saving...' : '💾 Save Annotations'}
-                </button>
-              )}
-            </div>
+              {/* Selection Mode Button */}
+              <button
+                onClick={deselectTool}
+                className={`px-3 py-1.5 rounded-md border transition-all text-sm font-medium flex-shrink-0 ${
+                  !selectedTool
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500'
+                    : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white'
+                }`}
+                title="Selection Mode"
+              >
+                👆
+              </button>
 
-            {/* Middle Row: Annotation Tools */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="text-sm font-semibold text-gray-300 px-2">Tools:</div>
-              <div className="flex items-center gap-2 bg-gray-900/40 backdrop-blur-sm rounded-lg border border-gray-600/30 p-2.5 shadow-lg flex-wrap">
+              {/* Annotation Tools */}
+              <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
                 <button
                   onClick={() => {
                     const newTool = selectedTool === 'highlight' ? null : 'highlight';
@@ -956,15 +941,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-4 py-2.5 rounded-lg transition-all border font-medium ${
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
                     selectedTool === 'highlight'
-                      ? 'bg-gradient-to-r from-yellow-500/80 to-yellow-600/80 text-white border-yellow-400/50 shadow-lg shadow-yellow-500/20'
-                      : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white hover:border-gray-500/50'
+                      ? 'bg-gradient-to-r from-yellow-500/80 to-yellow-600/80 text-white border border-yellow-400/50'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
                   }`}
-                  title="Highlight - Drag to create highlight box"
+                  title="Highlight"
                 >
-                  <span className="text-xl mr-2">🖍️</span>
-                  <span>Highlight</span>
+                  🖍️
                 </button>
                 <button
                   onClick={() => {
@@ -980,15 +964,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-4 py-2.5 rounded-lg transition-all border font-medium ${
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
                     selectedTool === 'text'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-blue-400/50 shadow-lg shadow-blue-500/20'
-                      : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white hover:border-gray-500/50'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border border-blue-400/50'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
                   }`}
-                  title="Text - Click to add text annotation"
+                  title="Text"
                 >
-                  <span className="text-xl mr-2">📝</span>
-                  <span>Text</span>
+                  📝
                 </button>
                 <button
                   onClick={() => {
@@ -1004,15 +987,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-4 py-2.5 rounded-lg transition-all border font-medium ${
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
                     selectedTool === 'drawing'
-                      ? 'bg-gradient-to-r from-purple-500/80 to-purple-600/80 text-white border-purple-400/50 shadow-lg shadow-purple-500/20'
-                      : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white hover:border-gray-500/50'
+                      ? 'bg-gradient-to-r from-purple-500/80 to-purple-600/80 text-white border border-purple-400/50'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
                   }`}
-                  title="Draw - Click and drag to draw freehand"
+                  title="Draw"
                 >
-                  <span className="text-xl mr-2">✍️</span>
-                  <span>Draw</span>
+                  ✍️
                 </button>
                 <button
                   onClick={() => {
@@ -1028,15 +1010,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-4 py-2.5 rounded-lg transition-all border font-medium ${
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
                     selectedTool === 'arrow'
-                      ? 'bg-gradient-to-r from-red-500/80 to-red-600/80 text-white border-red-400/50 shadow-lg shadow-red-500/20'
-                      : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white hover:border-gray-500/50'
+                      ? 'bg-gradient-to-r from-red-500/80 to-red-600/80 text-white border border-red-400/50'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
                   }`}
-                  title="Arrow - Drag to create arrow"
+                  title="Arrow"
                 >
-                  <span className="text-xl mr-2">➡️</span>
-                  <span>Arrow</span>
+                  ➡️
                 </button>
                 <button
                   onClick={() => {
@@ -1052,25 +1033,21 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-4 py-2.5 rounded-lg transition-all border font-medium ${
+                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
                     selectedTool === 'note'
-                      ? 'bg-gradient-to-r from-green-500/80 to-green-600/80 text-white border-green-400/50 shadow-lg shadow-green-500/20'
-                      : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white hover:border-gray-500/50'
+                      ? 'bg-gradient-to-r from-green-500/80 to-green-600/80 text-white border border-green-400/50'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
                   }`}
-                  title="Note - Drag to create sticky note"
+                  title="Note"
                 >
-                  <span className="text-xl mr-2">📌</span>
-                  <span>Note</span>
+                  📌
                 </button>
               </div>
-            </div>
 
-            {/* Bottom Row: Color, Stroke, Opacity, Edit Tools */}
-            <div className="flex items-center gap-4 flex-wrap">
-              {/* Color Picker */}
-              <div className="flex items-center gap-3 bg-gray-900/40 backdrop-blur-sm rounded-lg border border-gray-600/30 p-3 shadow-lg">
-                <span className="text-sm font-semibold text-gray-300">Color:</span>
-                <div className="flex gap-1.5 flex-wrap max-w-md">
+              {/* Color Picker - Compact */}
+              <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+                <span className="text-xs font-semibold text-gray-300">Color:</span>
+                <div className="flex gap-1 max-w-xs overflow-x-auto">
                   {colors.map(color => (
                     <button
                       key={color}
@@ -1080,9 +1057,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                           handleChangeColor(color);
                         }
                       }}
-                      className={`w-9 h-9 rounded-lg border-2 transition-all hover:scale-110 shadow-md ${
+                      className={`w-6 h-6 rounded border-2 transition-all hover:scale-110 flex-shrink-0 ${
                         selectedColor === color 
-                          ? 'border-gray-200 shadow-xl ring-2 ring-offset-2 ring-gray-400/50 scale-110' 
+                          ? 'border-gray-200 ring-1 ring-offset-1 ring-gray-400/50 scale-110' 
                           : 'border-gray-600/50 hover:border-gray-500/70'
                       }`}
                       style={{ backgroundColor: color }}
@@ -1092,26 +1069,26 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 </div>
               </div>
 
-              {/* Stroke Width (for drawing/arrow) */}
+              {/* Stroke Width - Compact */}
               {(selectedTool === 'drawing' || selectedTool === 'arrow') && (
-                <div className="flex items-center gap-3 bg-gray-900/40 backdrop-blur-sm rounded-lg border border-gray-600/30 p-3 shadow-lg">
-                  <span className="text-sm font-semibold text-gray-300">Width:</span>
+                <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+                  <span className="text-xs font-semibold text-gray-300">W:</span>
                   <input
                     type="range"
                     min="1"
                     max="10"
                     value={strokeWidth}
                     onChange={(e) => setStrokeWidth(Number(e.target.value))}
-                    className="w-28 accent-gray-500"
+                    className="w-20 accent-gray-500"
                   />
-                  <span className="text-sm text-gray-300 w-10 font-medium">{strokeWidth}px</span>
+                  <span className="text-xs text-gray-300 w-6 font-medium">{strokeWidth}</span>
                 </div>
               )}
 
-              {/* Opacity (for highlight) */}
+              {/* Opacity - Compact */}
               {selectedTool === 'highlight' && (
-                <div className="flex items-center gap-3 bg-gray-900/40 backdrop-blur-sm rounded-lg border border-gray-600/30 p-3 shadow-lg">
-                  <span className="text-sm font-semibold text-gray-300">Opacity:</span>
+                <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+                  <span className="text-xs font-semibold text-gray-300">Op:</span>
                   <input
                     type="range"
                     min="0.1"
@@ -1119,38 +1096,79 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                     step="0.1"
                     value={highlightOpacity}
                     onChange={(e) => setHighlightOpacity(Number(e.target.value))}
-                    className="w-28 accent-gray-500"
+                    className="w-20 accent-gray-500"
                   />
-                  <span className="text-sm text-gray-300 w-12 font-medium">{Math.round(highlightOpacity * 100)}%</span>
+                  <span className="text-xs text-gray-300 w-8 font-medium">{Math.round(highlightOpacity * 100)}%</span>
                 </div>
               )}
 
-              {/* Edit Tools (when annotation selected) */}
+              {/* Edit Tools - Compact */}
               {selectionState.selectedAnnotation && (
-                <div className="flex items-center gap-3 bg-red-900/30 backdrop-blur-sm rounded-lg border border-red-600/30 p-3 shadow-lg">
-                  <span className="text-sm font-semibold text-red-300">Edit:</span>
+                <div className="flex items-center gap-1.5 bg-red-900/30 backdrop-blur-sm rounded-md border border-red-600/30 p-1.5 shadow-lg flex-shrink-0">
                   <button
                     onClick={handleDeleteSelected}
-                    className="px-4 py-2.5 rounded-lg bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 transition-all shadow-lg shadow-red-500/20 font-medium border border-red-500/50"
-                    title="Delete Selected (Del)"
+                    className="px-2.5 py-1.5 rounded bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 transition-all text-sm font-medium border border-red-500/50"
+                    title="Delete (Del)"
                   >
-                    🗑️ Delete
+                    🗑️
                   </button>
                   <button
                     onClick={deselectTool}
-                    className="px-3 py-2.5 rounded-lg bg-gray-700/60 text-gray-300 hover:bg-gray-600/60 hover:text-white transition-all border border-gray-600/50"
+                    className="px-2 py-1.5 rounded bg-gray-700/60 text-gray-300 hover:bg-gray-600/60 hover:text-white transition-all text-sm border border-gray-600/50"
                     title="Deselect"
                   >
                     ✕
                   </button>
                 </div>
               )}
+
+              {/* Zoom Controls - Compact */}
+              <div className="flex items-center gap-1 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 shadow-lg flex-shrink-0 ml-auto">
+                <button
+                  onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
+                  className="px-2.5 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all text-sm font-semibold"
+                  title="Zoom Out"
+                >
+                  −
+                </button>
+                <button
+                  onClick={handleResetZoom}
+                  className="px-2.5 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all text-xs font-medium min-w-[45px]"
+                  title="Reset to 100%"
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+                <button
+                  onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+                  className="px-2.5 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all text-sm font-semibold"
+                  title="Zoom In"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Save Button - Always Visible */}
+              {onSave && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className={`px-3 py-1.5 rounded-md font-semibold transition-all text-sm flex-shrink-0 ${
+                    isSaving
+                      ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed border border-gray-700/30'
+                      : 'bg-gradient-to-r from-green-600 to-green-700 text-white border border-green-500/50 hover:from-green-500 hover:to-green-600'
+                  }`}
+                  title="Save Annotations"
+                >
+                  {isSaving ? '⏳' : '💾'} Save
+                </button>
+              )}
             </div>
+
           </div>
         </div>
       )}
 
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 min-h-0">
         <div className="flex justify-center">
           <div className="relative" ref={pageRef}>
             <Document
@@ -1208,40 +1226,25 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       </div>
 
       {showControls && (
-        <div className="bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-t border-gray-900 p-3 shadow-2xl">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-t border-gray-900 p-2 shadow-2xl flex-shrink-0">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage <= 1}
-                className="px-4 py-2 bg-gray-700/60 text-gray-300 rounded-lg border border-gray-600/50 hover:bg-gray-600/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium shadow-md"
+                className="px-3 py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-medium"
               >
                 ← Prev
               </button>
-              <span className="px-4 py-2 text-gray-300 font-semibold bg-gray-900/40 rounded-lg border border-gray-600/30">
+              <span className="px-3 py-1.5 text-gray-300 font-semibold bg-gray-900/40 rounded-md border border-gray-600/30 text-sm">
                 Page {currentPage} of {numPages || '?'}
               </span>
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= (numPages || 1)}
-                className="px-4 py-2 bg-gray-700/60 text-gray-300 rounded-lg border border-gray-600/50 hover:bg-gray-600/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all font-medium shadow-md"
+                className="px-3 py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-medium"
               >
                 Next →
-              </button>
-            </div>
-            <div className="flex items-center gap-2 bg-gray-900/40 backdrop-blur-sm rounded-lg border border-gray-600/30 px-3 py-2 shadow-lg">
-              <button
-                onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
-                className="px-3 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all font-semibold"
-              >
-                −
-              </button>
-              <span className="px-3 text-gray-300 font-semibold min-w-[60px] text-center">{Math.round(zoom * 100)}%</span>
-              <button
-                onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-                className="px-3 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all font-semibold"
-              >
-                +
               </button>
             </div>
           </div>
