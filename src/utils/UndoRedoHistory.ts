@@ -31,6 +31,11 @@ export interface Annotation {
   isFilled?: boolean;
   rotation?: number;
   createdAt?: Date;
+  // Heart (like) feature
+  hearts?: number; // Total heart count
+  heartedBy?: string[]; // Array of user IDs who hearted this annotation
+  // Star (important) feature
+  starredBy?: string[]; // Array of user IDs who starred this annotation
 }
 
 interface HistoryState {

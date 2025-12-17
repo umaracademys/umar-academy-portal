@@ -32,6 +32,7 @@ import {
   moveAnnotation,
   SelectionState 
 } from '../utils/AnnotationSelection';
+import { useAuth } from '../contexts/AuthContext';
 
 // Set up PDF.js worker
 const pdfjsVersion = '5.4.296';
@@ -51,6 +52,7 @@ interface PdfAnnotationViewerProps {
   initialPage?: number;
   initialNotes?: string;
   autosaveInterval?: number; // Autosave interval in seconds (default: 10)
+  currentUserId?: string; // Current user ID for heart/star tracking
 }
 
 const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
@@ -64,7 +66,12 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     initialPage = 1,
     initialNotes = '',
     autosaveInterval = 10, // Default 10 seconds
+    currentUserId, // Optional user ID prop, falls back to auth context
   } = props;
+
+  // Get current user ID from auth context or prop
+  const { user } = useAuth();
+  const userId = currentUserId || user?.id || user?._id || 'anonymous';
 
   // Core state
   const [numPages, setNumPages] = useState<number | null>(null);
@@ -643,6 +650,69 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       true
     );
   }, [readOnly, selectionState, updateAnnotations]);
+
+  // Handle heart (like) click
+  const handleHeartClick = useCallback((annotationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    updateAnnotations(prev => 
+      prev.map(a => {
+        if (a.id !== annotationId) return a;
+        
+        const heartedBy = a.heartedBy || [];
+        const isHearted = heartedBy.includes(userId);
+        
+        if (isHearted) {
+          // Remove heart
+          const newHeartedBy = heartedBy.filter(id => id !== userId);
+          return {
+            ...a,
+            hearts: Math.max(0, (a.hearts || 0) - 1),
+            heartedBy: newHeartedBy,
+          };
+        } else {
+          // Add heart
+          return {
+            ...a,
+            hearts: (a.hearts || 0) + 1,
+            heartedBy: [...heartedBy, userId],
+          };
+        }
+      }),
+      true // Save to history
+    );
+  }, [userId, updateAnnotations]);
+
+  // Handle star (important) click
+  const handleStarClick = useCallback((annotationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    updateAnnotations(prev => 
+      prev.map(a => {
+        if (a.id !== annotationId) return a;
+        
+        const starredBy = a.starredBy || [];
+        const isStarred = starredBy.includes(userId);
+        
+        if (isStarred) {
+          // Remove star
+          return {
+            ...a,
+            starredBy: starredBy.filter(id => id !== userId),
+          };
+        } else {
+          // Add star
+          return {
+            ...a,
+            starredBy: [...starredBy, userId],
+          };
+        }
+      }),
+      true // Save to history
+    );
+  }, [userId, updateAnnotations]);
 
   // Autosave function
   const performAutosave = useCallback(async () => {
@@ -1524,6 +1594,67 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 pointerEvents: readOnly ? 'none' : 'auto' 
               }}
             />
+            {/* Heart and Star buttons overlay */}
+            {annotations
+              .filter(a => a.page === currentPage && (a.width || a.height || a.type === 'text'))
+              .map(annotation => {
+                if (!pageRef.current) return null;
+                
+                const rect = pageRef.current.getBoundingClientRect();
+                const annX = annotation.x * rect.width;
+                const annY = annotation.y * rect.height;
+                const annWidth = (annotation.width || 0) * rect.width;
+                const annHeight = (annotation.height || 0) * rect.height;
+                
+                // Position buttons at top-right of annotation (or near text)
+                const buttonX = annX + Math.max(annWidth, 20);
+                const buttonY = annY - 30;
+                
+                const isHearted = annotation.heartedBy?.includes(userId) || false;
+                const isStarred = annotation.starredBy?.includes(userId) || false;
+                const heartCount = annotation.hearts || 0;
+                
+                return (
+                  <div
+                    key={`actions-${annotation.id}`}
+                    className="absolute z-20 flex items-center gap-1"
+                    style={{
+                      left: `${buttonX}px`,
+                      top: `${buttonY}px`,
+                      pointerEvents: 'auto',
+                    }}
+                  >
+                    {/* Heart Button */}
+                    <button
+                      onClick={(e) => handleHeartClick(annotation.id, e)}
+                      className={`px-2 py-1 rounded-md transition-all text-sm flex items-center gap-1 shadow-lg ${
+                        isHearted
+                          ? 'bg-red-500/90 text-white hover:bg-red-600'
+                          : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700'
+                      }`}
+                      title={isHearted ? 'Unlike' : 'Like'}
+                    >
+                      <span className="text-base">❤️</span>
+                      {heartCount > 0 && (
+                        <span className="text-xs font-semibold">{heartCount}</span>
+                      )}
+                    </button>
+                    
+                    {/* Star Button */}
+                    <button
+                      onClick={(e) => handleStarClick(annotation.id, e)}
+                      className={`px-2 py-1 rounded-md transition-all text-sm shadow-lg ${
+                        isStarred
+                          ? 'bg-yellow-500/90 text-white hover:bg-yellow-600'
+                          : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700'
+                      }`}
+                      title={isStarred ? 'Unmark as important' : 'Mark as important'}
+                    >
+                      <span className="text-base">⭐</span>
+                    </button>
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>
