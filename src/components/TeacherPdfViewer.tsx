@@ -18,6 +18,7 @@ const TeacherPdfViewer: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [annotations, setAnnotations] = useState<any[]>([]);
   const [loadingAnnotations, setLoadingAnnotations] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadPdfs();
@@ -37,17 +38,25 @@ const TeacherPdfViewer: React.FC = () => {
       const teacherId = (user as any).teacherId || (user as any).id;
       const assigned = getStudentsByTeacher(teacherId);
       setAssignedStudents(assigned);
+      console.log('📚 TeacherPdfViewer - Assigned students:', assigned.length, assigned);
     }
   }, [user, students, getStudentsByTeacher]);
 
   const loadPdfs = async () => {
     try {
       setLoading(true);
+      setError(null);
       const pdfList = await getPdfs(true);
+      console.log('📚 Loaded PDFs:', pdfList.length, pdfList);
       setPdfs(pdfList);
+      if (pdfList.length === 0) {
+        setError('No PDFs available. Please ask a super admin to upload PDFs.');
+      }
     } catch (error) {
       console.error('Error loading PDFs:', error);
-      alert('Failed to load PDFs');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load PDFs';
+      setError(errorMessage);
+      alert(`Failed to load PDFs: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -57,16 +66,26 @@ const TeacherPdfViewer: React.FC = () => {
     if (!selectedPdf) return;
     try {
       setLoadingAnnotations(true);
-      const annotation = await getPdfAnnotations(selectedPdf.id);
+      setError(null);
+      const pdfId = selectedPdf.id || selectedPdf._id;
+      if (!pdfId) {
+        throw new Error('PDF ID is missing');
+      }
+      console.log('📚 Loading annotations for PDF:', pdfId);
+      const annotation = await getPdfAnnotations(pdfId);
       if (annotation) {
         setNotes(annotation.notes || '');
         setAnnotations(annotation.annotations || []);
+        console.log('📚 Loaded annotations:', annotation.annotations?.length || 0);
       } else {
         setNotes('');
         setAnnotations([]);
+        console.log('📚 No annotations found for this PDF');
       }
     } catch (error) {
       console.error('Error loading annotations:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load annotations';
+      setError(errorMessage);
       setNotes('');
       setAnnotations([]);
     } finally {
@@ -79,13 +98,20 @@ const TeacherPdfViewer: React.FC = () => {
     
     try {
       setSaving(true);
-      await savePdfAnnotations(selectedPdf.id, newAnnotations, notesText);
+      setError(null);
+      const pdfId = selectedPdf.id || selectedPdf._id;
+      if (!pdfId) {
+        throw new Error('PDF ID is missing');
+      }
+      await savePdfAnnotations(pdfId, newAnnotations, notesText);
       setNotes(notesText);
       setAnnotations(newAnnotations);
       alert('Annotations saved successfully!');
     } catch (error: any) {
       console.error('Error saving annotations:', error);
-      alert(error.message || 'Failed to save annotations');
+      const errorMessage = error.message || 'Failed to save annotations';
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -96,21 +122,46 @@ const TeacherPdfViewer: React.FC = () => {
   };
 
   const handleAssignToStudent = async () => {
-    if (!selectedPdf || !selectedStudentId) {
+    if (!selectedPdf) {
+      alert('Please select a PDF first');
+      return;
+    }
+    
+    if (!selectedStudentId) {
       alert('Please select a student');
       return;
     }
 
-    const student = assignedStudents.find(s => (s.id || (s as any)._id) === selectedStudentId);
+    const studentIdStr = selectedStudentId.toString();
+    const student = assignedStudents.find(s => {
+      const sId = (s.id || (s as any)._id)?.toString();
+      return sId === studentIdStr;
+    });
+    
     if (!student) {
-      alert('Student not found');
+      console.error('Student not found. Selected ID:', selectedStudentId, 'Available students:', assignedStudents.map(s => ({
+        id: s.id || (s as any)._id,
+        name: s.fullName || (s as any).fullName
+      })));
+      alert('Student not found. Please try selecting again.');
       return;
     }
 
     try {
+      const pdfId = selectedPdf.id || selectedPdf._id;
+      if (!pdfId) {
+        throw new Error('PDF ID is missing');
+      }
+      
+      console.log('📚 Assigning PDF homework:', {
+        pdfId,
+        studentId: studentIdStr,
+        studentName: student.fullName || (student as any).fullName
+      });
+      
       await assignPdfAsHomework(
-        selectedPdf.id,
-        selectedStudentId,
+        pdfId,
+        studentIdStr,
         student.fullName || (student as any).fullName
       );
       alert(`Homework assigned to ${student.fullName || (student as any).fullName} successfully!`);
@@ -144,21 +195,35 @@ const TeacherPdfViewer: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <select
-            value={selectedPdf?.id || ''}
+            value={selectedPdf?.id || selectedPdf?._id || ''}
             onChange={(e) => {
-              const pdf = pdfs.find(p => p.id === e.target.value);
-              setSelectedPdf(pdf || null);
+              const selectedId = e.target.value;
+              console.log('📚 PDF selected:', selectedId);
+              const pdf = pdfs.find(p => (p.id || p._id) === selectedId);
+              console.log('📚 Found PDF:', pdf);
+              if (pdf) {
+                setSelectedPdf(pdf);
+                setError(null);
+              } else {
+                setSelectedPdf(null);
+                setError('PDF not found');
+              }
             }}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
           >
             <option value="">Select a PDF...</option>
             {pdfs.map((pdf) => (
-              <option key={pdf.id} value={pdf.id}>
+              <option key={pdf.id || pdf._id} value={pdf.id || pdf._id}>
                 {pdf.title}
               </option>
             ))}
           </select>
         </div>
+        {error && (
+          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -176,7 +241,7 @@ const TeacherPdfViewer: React.FC = () => {
               <p className="text-gray-600">Loading annotations...</p>
             </Card>
           </div>
-        ) : (
+        ) : selectedPdf.fileUrl ? (
           <PdfAnnotationViewer
             pdfUrl={selectedPdf.fileUrl}
             annotations={annotations}
@@ -187,6 +252,13 @@ const TeacherPdfViewer: React.FC = () => {
             initialPage={1}
             initialNotes={notes}
           />
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <Card className="p-8 text-center">
+              <p className="text-red-600 text-lg">PDF file URL is missing</p>
+              <p className="text-gray-500 text-sm mt-2">Please contact support if this issue persists.</p>
+            </Card>
+          </div>
         )}
       </div>
 
@@ -201,19 +273,31 @@ const TeacherPdfViewer: React.FC = () => {
                 </label>
                 <select
                   value={selectedStudentId}
-                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  onChange={(e) => {
+                    const studentId = e.target.value;
+                    console.log('📚 Student selected:', studentId);
+                    setSelectedStudentId(studentId);
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 >
                   <option value="">Choose a student...</option>
-                  {assignedStudents.map((student) => (
-                    <option
-                      key={student.id || (student as any)._id}
-                      value={student.id || (student as any)._id}
-                    >
-                      {student.fullName || (student as any).fullName}
-                    </option>
-                  ))}
+                  {assignedStudents.length === 0 ? (
+                    <option value="" disabled>No students assigned to you</option>
+                  ) : (
+                    assignedStudents.map((student) => {
+                      const studentId = (student.id || (student as any)._id)?.toString();
+                      const studentName = student.fullName || (student as any).fullName || 'Unknown';
+                      return (
+                        <option key={studentId} value={studentId}>
+                          {studentName}
+                        </option>
+                      );
+                    })
+                  )}
                 </select>
+                {assignedStudents.length === 0 && (
+                  <p className="text-xs text-gray-500 mt-1">You need to have students assigned to you to assign PDF homework.</p>
+                )}
               </div>
               <div className="flex gap-2 justify-end">
                 <button
