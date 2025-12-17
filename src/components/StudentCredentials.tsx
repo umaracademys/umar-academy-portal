@@ -169,13 +169,66 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
       }
 
       if (!userId) {
-        // Don't show error immediately - try to continue with available data
-        // The error will be shown only if critical operations fail
-        if (import.meta.env.DEV) {
-          console.warn('⚠️ User ID not found for student, but continuing...');
+        // Try to create User account if it doesn't exist
+        if (userEmail) {
+          try {
+            console.log('⚠️ User account not found. Attempting to create User account for student...');
+            const createUserResponse = await fetch(`${API_BASE}/users`, {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                name: student.fullName || student.name || 'Student',
+                email: userEmail,
+                role: 'student',
+                password: 'password123', // Default password - should be changed
+              })
+            });
+            
+            if (createUserResponse.ok) {
+              const newUser = await createUserResponse.json();
+              userId = newUser._id || newUser.id;
+              console.log('✅ Created User account for student:', userId);
+              
+              // Update student with userId if possible
+              if (student.id || student._id) {
+                try {
+                  await fetch(`${API_BASE}/students/${student.id || student._id}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ userId: userId })
+                  });
+                } catch (err) {
+                  console.warn('Could not update student with userId:', err);
+                }
+              }
+            } else {
+              const errorData = await createUserResponse.json().catch(() => ({ error: 'Unknown error' }));
+              if (errorData.error && !errorData.error.includes('already exists')) {
+                throw new Error(errorData.error || 'Failed to create User account');
+              }
+              // If user already exists, try to find it
+              const usersResponse = await fetch(`${API_BASE}/users`, {
+                headers: getAuthHeaders()
+              });
+              if (usersResponse.ok) {
+                const users = await usersResponse.json();
+                const existingUser = users.find((u: any) => u.email === userEmail);
+                if (existingUser) {
+                  userId = existingUser._id || existingUser.id;
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error creating/finding User account:', err);
+            setError('User account not found and could not be created. Please contact an administrator.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          setError('Student email not found. Cannot create User account.');
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
       }
 
       try {
