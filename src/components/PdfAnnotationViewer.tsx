@@ -719,7 +719,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       ctx.strokeStyle = annotation.color;
       ctx.fillStyle = annotation.color;
       // Use strokeWidth from annotation if available, otherwise default to 2
-      ctx.lineWidth = (annotation as any).strokeWidth || strokeWidth;
+      const annStrokeWidth = (annotation as any).strokeWidth !== undefined ? (annotation as any).strokeWidth : strokeWidth;
+      ctx.lineWidth = annStrokeWidth;
 
       const x = annotation.x * canvas.width;
       const y = annotation.y * canvas.height;
@@ -727,6 +728,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
       // Draw selection highlight
       if (isSelected && !readOnly) {
+        const savedStrokeStyle = ctx.strokeStyle;
+        const savedLineWidth = ctx.lineWidth;
         ctx.strokeStyle = '#0066FF';
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]);
@@ -739,7 +742,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
           );
         }
         ctx.setLineDash([]);
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = savedStrokeStyle;
+        ctx.lineWidth = savedLineWidth;
       }
 
       switch (annotation.type) {
@@ -812,9 +816,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
           break;
 
         case 'line':
-          const lineWidth = (annotation.width || 0.1) * canvas.width;
-          const lineHeight = (annotation.height || 0.05) * canvas.height;
-          if (lineWidth !== 0 || lineHeight !== 0) {
+          const lineWidth = (annotation.width || 0) * canvas.width;
+          const lineHeight = (annotation.height || 0) * canvas.height;
+          if (Math.abs(lineWidth) > 0.1 || Math.abs(lineHeight) > 0.1) {
             ctx.beginPath();
             ctx.moveTo(x, y);
             ctx.lineTo(x + lineWidth, y + lineHeight);
@@ -824,9 +828,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
         case 'rectangle':
         case 'filled-rectangle': {
-          const rectWidth = (annotation.width || 0.1) * canvas.width;
-          const rectHeight = (annotation.height || 0.05) * canvas.height;
-          if (rectWidth > 0 && rectHeight > 0) {
+          const rectWidth = (annotation.width || 0) * canvas.width;
+          const rectHeight = (annotation.height || 0) * canvas.height;
+          if (Math.abs(rectWidth) > 0.1 && Math.abs(rectHeight) > 0.1) {
             if (annotation.isFilled || annotation.type === 'filled-rectangle') {
               ctx.fillRect(x, y, rectWidth, rectHeight);
             } else {
@@ -838,15 +842,15 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
         case 'circle':
         case 'filled-circle': {
-          const circleWidth = (annotation.width || 0.1) * canvas.width;
-          const circleHeight = (annotation.height || 0.05) * canvas.height;
+          const circleWidth = (annotation.width || 0) * canvas.width;
+          const circleHeight = (annotation.height || 0) * canvas.height;
           const radiusX = Math.abs(circleWidth) / 2;
           const radiusY = Math.abs(circleHeight) / 2;
           const centerX = x + circleWidth / 2;
           const centerY = y + circleHeight / 2;
           const radius = Math.max(radiusX, radiusY);
           
-          if (radius > 0) {
+          if (radius > 0.5) {
             ctx.beginPath();
             ctx.ellipse(centerX, centerY, radius, radius, 0, 0, 2 * Math.PI);
             if (annotation.isFilled || annotation.type === 'filled-circle') {
@@ -860,9 +864,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
         case 'diamond':
         case 'filled-diamond': {
-          const diamondWidth = (annotation.width || 0.1) * canvas.width;
-          const diamondHeight = (annotation.height || 0.05) * canvas.height;
-          if (diamondWidth > 0 && diamondHeight > 0) {
+          const diamondWidth = (annotation.width || 0) * canvas.width;
+          const diamondHeight = (annotation.height || 0) * canvas.height;
+          if (Math.abs(diamondWidth) > 0.1 && Math.abs(diamondHeight) > 0.1) {
             const centerX = x + diamondWidth / 2;
             const centerY = y + diamondHeight / 2;
             ctx.beginPath();
