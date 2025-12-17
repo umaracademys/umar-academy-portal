@@ -100,7 +100,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [canRedo, setCanRedo] = useState(false);
 
   // Autosave
-  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSaveRef = useRef<Annotation[]>([]);
   const hasUnsavedChangesRef = useRef(false);
 
