@@ -573,16 +573,25 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
     // Finalize dragging new annotation
     if (isDragging && currentAnnotation && startPoint) {
-      const finalWidth = currentAnnotation.width || 0;
-      const finalHeight = currentAnnotation.height || 0;
-      
-      // Remove tiny annotations (accidental clicks)
-      if (finalWidth < 0.01 && finalHeight < 0.01) {
-        updateAnnotations(prev => prev.filter(a => a.id !== currentAnnotation.id), true);
-      } else {
-        // Save to history when drag completes
-        updateAnnotations(prev => prev, true);
-      }
+      // Use a function to get the latest state
+      updateAnnotations(prev => {
+        const latestAnnotation = prev.find(a => a.id === currentAnnotation.id);
+        if (!latestAnnotation) return prev;
+        
+        const finalWidth = latestAnnotation.width || 0;
+        const finalHeight = latestAnnotation.height || 0;
+        
+        // Remove tiny annotations (accidental clicks) - but be more lenient for shapes
+        const isShape = ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(latestAnnotation.type);
+        const minSize = isShape ? 0.005 : 0.01; // More lenient threshold for shapes
+        
+        if (finalWidth < minSize && finalHeight < minSize) {
+          // Remove the annotation
+          return prev.filter(a => a.id !== currentAnnotation.id);
+        }
+        // Keep the annotation (it's already in the array with updated values)
+        return prev;
+      }, true); // Save to history when drag completes
     }
 
     // Finalize resize/move
