@@ -1659,31 +1659,6 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         </div>
       </div>
 
-      {showControls && (
-        <div className="bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-t border-gray-900 p-2 shadow-2xl flex-shrink-0">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage <= 1}
-                className="px-3 py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-medium"
-              >
-                ← Prev
-              </button>
-              <span className="px-3 py-1.5 text-gray-300 font-semibold bg-gray-900/40 rounded-md border border-gray-600/30 text-sm">
-                Page {currentPage} of {numPages || '?'}
-              </span>
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= (numPages || 1)}
-                className="px-3 py-1.5 bg-gray-700/60 text-gray-300 rounded-md border border-gray-600/50 hover:bg-gray-600/60 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-sm font-medium"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {!readOnly && (
         <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-t border-gray-900 p-3 shadow-2xl">
