@@ -482,42 +482,127 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
             </div>
           )}
 
-          {activeTab === 'overview' && userDetails && (
+          {activeTab === 'overview' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {!userDetails && error && error.includes('not found') ? (
                 <Card>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Account Status:</span>
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                        userDetails.accountStatus === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {userDetails.accountStatus === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Login Enabled:</span>
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                        userDetails.loginEnabled
-                          ? 'bg-blue-100 text-blue-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {userDetails.loginEnabled ? 'Yes' : 'No'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Last Login:</span>
-                      <span className="text-gray-900">{formatDate(userDetails.lastLogin)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Password Changed:</span>
-                      <span className="text-gray-900">{formatDate(userDetails.passwordChanged)}</span>
-                    </div>
+                  <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800 font-semibold mb-2">
+                      ⚠️ User account not found for this student
+                    </p>
+                    <p className="text-xs text-yellow-700 mb-3">
+                      The student needs a User account to login. Click the button below to create one.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          setError(null);
+                          const userEmail = getUserEmail();
+                          if (!userEmail) {
+                            alert('Student email is required to create User account');
+                            return;
+                          }
+                          
+                          const createUserResponse = await fetch(`${API_BASE}/users`, {
+                            method: 'POST',
+                            headers: getAuthHeaders(),
+                            body: JSON.stringify({
+                              name: student.fullName || student.name || 'Student',
+                              email: userEmail,
+                              role: 'student',
+                              password: 'password123', // Default password
+                            })
+                          });
+                          
+                          if (createUserResponse.ok) {
+                            const newUser = await createUserResponse.json();
+                            const userId = newUser._id || newUser.id;
+                            alert('✅ User account created successfully! Default password: password123');
+                            
+                            // Update student with userId if possible
+                            if (student.id || student._id) {
+                              try {
+                                await fetch(`${API_BASE}/students/${student.id || student._id}`, {
+                                  method: 'PUT',
+                                  headers: getAuthHeaders(),
+                                  body: JSON.stringify({ userId: userId })
+                                });
+                              } catch (err) {
+                                console.warn('Could not update student with userId:', err);
+                              }
+                            }
+                            
+                            // Refresh user details
+                            const detailsResponse = await fetch(`${API_BASE}/users/${userId}/details`, {
+                              headers: getAuthHeaders()
+                            });
+                            if (detailsResponse.ok) {
+                              const detailsData = await detailsResponse.json();
+                              setUserDetails(detailsData);
+                              setAccountSettings({
+                                loginEnabled: detailsData.loginEnabled !== false,
+                                twoFactorEnabled: detailsData.twoFactorEnabled || false,
+                                emailNotifications: detailsData.emailNotifications !== false,
+                                smsNotifications: detailsData.smsNotifications || false
+                              });
+                              setStudentUserId(userId);
+                              setError(null);
+                            }
+                          } else {
+                            const errorData = await createUserResponse.json().catch(() => ({ error: 'Unknown error' }));
+                            throw new Error(errorData.error || 'Failed to create User account');
+                          }
+                        } catch (err) {
+                          console.error('Error creating User account:', err);
+                          setError(err instanceof Error ? err.message : 'Failed to create User account');
+                          alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to create User account'}`);
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? 'Creating...' : 'Create User Account'}
+                    </button>
                   </div>
                 </Card>
+              ) : userDetails ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Account Status:</span>
+                        <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                          userDetails.accountStatus === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {userDetails.accountStatus === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Login Enabled:</span>
+                        <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                          userDetails.loginEnabled
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {userDetails.loginEnabled ? 'Yes' : 'No'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Last Login:</span>
+                        <span className="text-gray-900">{formatDate(userDetails.lastLogin)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Password Changed:</span>
+                        <span className="text-gray-900">{formatDate(userDetails.passwordChanged)}</span>
+                      </div>
+                    </div>
+                  </Card>
 
                 <Card>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Security Features</h3>
