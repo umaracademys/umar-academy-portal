@@ -67,14 +67,15 @@ export class UndoRedoHistory {
 
     pageHistory.push(newState);
 
-    // Limit history size
-    if (pageHistory.length > this.maxHistorySize) {
+    // Limit history size (remove oldest entries)
+    // Track how many items we remove to adjust index if needed
+    const itemsRemoved = Math.max(0, pageHistory.length - this.maxHistorySize);
+    while (pageHistory.length > this.maxHistorySize) {
       pageHistory.shift();
-    } else {
-      this.currentIndex.set(page, pageHistory.length - 1);
     }
 
-    // Update index
+    // Always update index to point to the latest state
+    // After removing items, index should be length - 1
     this.currentIndex.set(page, pageHistory.length - 1);
   }
 

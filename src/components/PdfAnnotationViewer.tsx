@@ -109,16 +109,19 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const renderRequestRef = useRef<number | null>(null);
 
-  // Update annotations when external annotations change
+  // Initialize annotations from external source
   useEffect(() => {
     if (externalAnnotations && externalAnnotations.length >= 0) {
       setAnnotations(externalAnnotations);
       lastSaveRef.current = externalAnnotations;
-      // Initialize history for current page
-      historyRef.current.saveState(currentPage, externalAnnotations);
-      updateUndoRedoState();
+      // Initialize history for current page with full annotations array
+      // Only initialize if history is empty for this page
+      if (!historyRef.current.canUndo(currentPage) && !historyRef.current.canRedo(currentPage)) {
+        historyRef.current.saveState(currentPage, externalAnnotations);
+        updateUndoRedoState();
+      }
     }
-  }, [externalAnnotations, currentPage]);
+  }, [externalAnnotations, currentPage, updateUndoRedoState]);
 
   // Update undo/redo button states
   const updateUndoRedoState = useCallback(() => {
@@ -203,9 +206,13 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       
       // Save to history if requested
       if (saveToHistory) {
+        // Save the NEW state (after change) to history
+        // This allows undo to go back to the previous state
+        console.log('💾 Saving to history - page:', currentPage, 'annotations:', updated.length);
         historyRef.current.saveState(currentPage, updated);
         updateUndoRedoState();
         hasUnsavedChangesRef.current = true;
+        console.log('✅ History saved. Can undo?', historyRef.current.canUndo(currentPage));
       }
 
       // Notify parent
@@ -217,12 +224,17 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   // Undo action
   const handleUndo = useCallback(() => {
     if (readOnly) return;
+    console.log('🔄 Undo called for page', currentPage);
+    console.log('📊 Can undo?', historyRef.current.canUndo(currentPage));
     const previousState = historyRef.current.undo(currentPage);
+    console.log('📦 Previous state:', previousState ? previousState.length + ' annotations' : 'null');
     if (previousState) {
       setAnnotations(previousState);
       onAnnotationsChange?.(previousState);
       updateUndoRedoState();
       hasUnsavedChangesRef.current = true;
+    } else {
+      console.log('⚠️ No previous state to undo to');
     }
   }, [readOnly, currentPage, onAnnotationsChange, updateUndoRedoState]);
 
