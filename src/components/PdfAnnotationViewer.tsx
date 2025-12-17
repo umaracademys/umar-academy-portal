@@ -1063,55 +1063,55 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     <div className="w-full h-full flex flex-col bg-gray-50">
       {showControls && !readOnly && (
         <div className="relative bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-b border-gray-900 shadow-2xl flex-shrink-0">
-          {/* Vertical Light Strip on Left */}
-          <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-400 via-gray-500 to-transparent opacity-30 blur-sm"></div>
+          {/* Vertical Light Strip on Left - Hidden on mobile */}
+          <div className="hidden sm:block absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-400 via-gray-500 to-transparent opacity-30 blur-sm"></div>
           
-          <div className="relative p-2 space-y-2 overflow-x-auto">
+          <div className="relative p-2 sm:p-2 space-y-2 overflow-x-auto overflow-y-hidden">
             {/* Compact Single Row: All Controls */}
-            <div className="flex items-center gap-2 flex-nowrap min-w-max">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap min-w-max">
               {/* History Controls */}
               <div className="flex items-center gap-1 bg-gray-900/50 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 shadow-lg flex-shrink-0">
                 <button
                   onClick={handleUndo}
                   disabled={!canUndo}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-3 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     canUndo 
-                      ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 border border-gray-500/50' 
+                      ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 active:bg-gray-500 border border-gray-500/50' 
                       : 'bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/30'
                   }`}
                   title="Undo (Ctrl+Z)"
                 >
-                  <span className="text-base">↶</span>
+                  <span className="text-lg sm:text-base">↶</span>
                 </button>
                 <button
                   onClick={handleRedo}
                   disabled={!canRedo}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-3 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     canRedo 
-                      ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 border border-gray-500/50' 
+                      ? 'bg-gray-700/80 text-gray-200 hover:bg-gray-600 active:bg-gray-500 border border-gray-500/50' 
                       : 'bg-gray-800/50 text-gray-500 cursor-not-allowed border border-gray-700/30'
                   }`}
                   title="Redo (Ctrl+Shift+Z)"
                 >
-                  <span className="text-base">↷</span>
+                  <span className="text-lg sm:text-base">↷</span>
                 </button>
               </div>
 
               {/* Selection Mode Button */}
               <button
                 onClick={deselectTool}
-                className={`px-3 py-1.5 rounded-md border transition-all text-sm font-medium flex-shrink-0 ${
+                className={`px-3 py-2 sm:px-3 sm:py-1.5 rounded-md border transition-all text-base sm:text-sm font-medium flex-shrink-0 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                   !selectedTool
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500'
-                    : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500 active:from-blue-500 active:to-blue-600'
+                    : 'bg-gray-700/60 text-gray-300 border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60'
                 }`}
                 title="Selection Mode"
               >
-                👆
+                <span className="text-xl sm:text-base">👆</span>
               </button>
 
               {/* Annotation Tools */}
-              <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
                 <button
                   onClick={() => {
                     const newTool = selectedTool === 'highlight' ? null : 'highlight';
@@ -1126,14 +1126,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-2.5 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     selectedTool === 'highlight'
-                      ? 'bg-gradient-to-r from-yellow-500/80 to-yellow-600/80 text-white border border-yellow-400/50'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-yellow-500/80 to-yellow-600/80 text-white border border-yellow-400/50 active:from-yellow-400 active:to-yellow-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Highlight"
                 >
-                  🖍️
+                  <span className="text-xl sm:text-base">🖍️</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1149,14 +1149,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-2.5 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     selectedTool === 'text'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border border-blue-400/50'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border border-blue-400/50 active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Text"
                 >
-                  📝
+                  <span className="text-xl sm:text-base">📝</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1172,14 +1172,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-2.5 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     selectedTool === 'drawing'
-                      ? 'bg-gradient-to-r from-purple-500/80 to-purple-600/80 text-white border border-purple-400/50'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-purple-500/80 to-purple-600/80 text-white border border-purple-400/50 active:from-purple-400 active:to-purple-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Draw"
                 >
-                  ✍️
+                  <span className="text-xl sm:text-base">✍️</span>
                 </button>
                 <button
                   onClick={() => {
@@ -1195,20 +1195,20 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-2.5 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     selectedTool === 'arrow'
-                      ? 'bg-gradient-to-r from-red-500/80 to-red-600/80 text-white border border-red-400/50'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-red-500/80 to-red-600/80 text-white border border-red-400/50 active:from-red-400 active:to-red-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Arrow"
                 >
-                  ➡️
+                  <span className="text-xl sm:text-base">➡️</span>
                 </button>
               </div>
 
               {/* Shapes Section */}
-              <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
-                <span className="text-xs font-semibold text-gray-400 px-1">Shapes:</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
+                <span className="hidden sm:inline text-xs font-semibold text-gray-400 px-1">Shapes:</span>
                 {/* Line */}
                 <button
                   onClick={() => {
@@ -1224,10 +1224,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'line'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Line"
                 >
@@ -1250,10 +1250,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'rectangle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Rectangle"
                 >
@@ -1276,10 +1276,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'circle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Circle"
                 >
@@ -1302,10 +1302,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'diamond'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Diamond"
                 >
@@ -1328,10 +1328,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'filled-rectangle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Filled Rectangle"
                 >
@@ -1354,10 +1354,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'filled-circle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Filled Circle"
                 >
@@ -1380,10 +1380,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
                     selectedTool === 'filled-diamond'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Filled Diamond"
                 >
@@ -1405,20 +1405,20 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                       });
                     }
                   }}
-                  className={`px-2.5 py-1.5 rounded transition-all text-sm ${
+                  className={`px-2.5 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     selectedTool === 'note'
-                      ? 'bg-gradient-to-r from-green-500/80 to-green-600/80 text-white border border-green-400/50'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                      ? 'bg-gradient-to-r from-green-500/80 to-green-600/80 text-white border border-green-400/50 active:from-green-400 active:to-green-500'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
                   }`}
                   title="Note"
                 >
-                  📌
+                  <span className="text-xl sm:text-base">📌</span>
                 </button>
               </div>
 
               {/* Color Picker - Compact */}
-              <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
-                <span className="text-xs font-semibold text-gray-300">Color:</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
+                <span className="hidden sm:inline text-xs font-semibold text-gray-300">Color:</span>
                 <div className="flex gap-1 max-w-xs overflow-x-auto">
                   {colors.map(color => (
                     <button
@@ -1429,7 +1429,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                           handleChangeColor(color);
                         }
                       }}
-                      className={`w-6 h-6 rounded border-2 transition-all hover:scale-110 flex-shrink-0 ${
+                      className={`w-7 h-7 sm:w-6 sm:h-6 rounded border-2 transition-all hover:scale-110 active:scale-95 flex-shrink-0 touch-manipulation ${
                         selectedColor === color 
                           ? 'border-gray-200 ring-1 ring-offset-1 ring-gray-400/50 scale-110' 
                           : 'border-gray-600/50 hover:border-gray-500/70'
@@ -1444,7 +1444,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
               {/* Stroke Width - Compact */}
               {(selectedTool === 'drawing' || selectedTool === 'arrow' || 
                 (selectedTool && ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool))) && (
-                <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
                   <span className="text-xs font-semibold text-gray-300">W:</span>
                   <input
                     type="range"
@@ -1452,7 +1452,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                     max="10"
                     value={strokeWidth}
                     onChange={(e) => setStrokeWidth(Number(e.target.value))}
-                    className="w-20 accent-gray-500"
+                    className="w-16 sm:w-20 accent-gray-500 touch-manipulation"
                   />
                   <span className="text-xs text-gray-300 w-6 font-medium">{strokeWidth}</span>
                 </div>
@@ -1460,7 +1460,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
               {/* Opacity - Compact */}
               {selectedTool === 'highlight' && (
-                <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
                   <span className="text-xs font-semibold text-gray-300">Op:</span>
                   <input
                     type="range"
@@ -1469,7 +1469,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                     step="0.1"
                     value={highlightOpacity}
                     onChange={(e) => setHighlightOpacity(Number(e.target.value))}
-                    className="w-20 accent-gray-500"
+                    className="w-16 sm:w-20 accent-gray-500 touch-manipulation"
                   />
                   <span className="text-xs text-gray-300 w-8 font-medium">{Math.round(highlightOpacity * 100)}%</span>
                 </div>
@@ -1477,20 +1477,20 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
               {/* Edit Tools - Compact */}
               {selectionState.selectedAnnotation && (
-                <div className="flex items-center gap-1.5 bg-red-900/30 backdrop-blur-sm rounded-md border border-red-600/30 p-1.5 shadow-lg flex-shrink-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 bg-red-900/30 backdrop-blur-sm rounded-md border border-red-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
                   <button
                     onClick={handleDeleteSelected}
-                    className="px-2.5 py-1.5 rounded bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 transition-all text-sm font-medium border border-red-500/50"
+                    className="px-3 py-2 sm:px-2.5 sm:py-1.5 rounded bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-500 hover:to-red-600 active:from-red-400 active:to-red-500 transition-all text-base sm:text-sm font-medium border border-red-500/50 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation"
                     title="Delete (Del)"
                   >
-                    🗑️
+                    <span className="text-lg sm:text-base">🗑️</span>
                   </button>
                   <button
                     onClick={deselectTool}
-                    className="px-2 py-1.5 rounded bg-gray-700/60 text-gray-300 hover:bg-gray-600/60 hover:text-white transition-all text-sm border border-gray-600/50"
+                    className="px-3 py-2 sm:px-2 sm:py-1.5 rounded bg-gray-700/60 text-gray-300 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 transition-all text-base sm:text-sm border border-gray-600/50 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation"
                     title="Deselect"
                   >
-                    ✕
+                    <span className="text-lg sm:text-base">✕</span>
                   </button>
                 </div>
               )}
@@ -1499,21 +1499,21 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
               <div className="flex items-center gap-1 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 shadow-lg flex-shrink-0 ml-auto">
                 <button
                   onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}
-                  className="px-2.5 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all text-sm font-semibold"
+                  className="px-3 py-2 sm:px-2.5 sm:py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 transition-all text-base sm:text-sm font-semibold min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation"
                   title="Zoom Out"
                 >
                   −
                 </button>
                 <button
                   onClick={handleResetZoom}
-                  className="px-2.5 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all text-xs font-medium min-w-[45px]"
+                  className="px-3 py-2 sm:px-2.5 sm:py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 transition-all text-xs sm:text-xs font-medium min-w-[50px] sm:min-w-[45px] min-h-[44px] sm:min-h-0 touch-manipulation"
                   title="Reset to 100%"
                 >
                   {Math.round(zoom * 100)}%
                 </button>
                 <button
                   onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-                  className="px-2.5 py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white transition-all text-sm font-semibold"
+                  className="px-3 py-2 sm:px-2.5 sm:py-1.5 bg-gray-700/60 text-gray-300 rounded border border-gray-600/50 hover:bg-gray-600/60 hover:text-white active:bg-gray-500/60 transition-all text-base sm:text-sm font-semibold min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation"
                   title="Zoom In"
                 >
                   +
@@ -1525,14 +1525,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className={`px-3 py-1.5 rounded-md font-semibold transition-all text-sm flex-shrink-0 ${
+                  className={`px-3 py-2 sm:px-3 sm:py-1.5 rounded-md font-semibold transition-all text-base sm:text-sm flex-shrink-0 min-w-[80px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                     isSaving
                       ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed border border-gray-700/30'
-                      : 'bg-gradient-to-r from-green-600 to-green-700 text-white border border-green-500/50 hover:from-green-500 hover:to-green-600'
+                      : 'bg-gradient-to-r from-green-600 to-green-700 text-white border border-green-500/50 hover:from-green-500 hover:to-green-600 active:from-green-400 active:to-green-500'
                   }`}
                   title="Save Annotations"
                 >
-                  {isSaving ? '⏳' : '💾'} Save
+                  <span className="text-base sm:text-sm">{isSaving ? '⏳' : '💾'}</span> <span className="hidden sm:inline">Save</span>
                 </button>
               )}
             </div>
@@ -1627,30 +1627,30 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                     {/* Heart Button */}
                     <button
                       onClick={(e) => handleHeartClick(annotation.id, e)}
-                      className={`px-2 py-1 rounded-md transition-all text-sm flex items-center gap-1 shadow-lg ${
+                      className={`px-2.5 py-2 sm:px-2 sm:py-1 rounded-md transition-all text-base sm:text-sm flex items-center gap-1 shadow-lg min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                         isHearted
-                          ? 'bg-red-500/90 text-white hover:bg-red-600'
-                          : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700'
+                          ? 'bg-red-500/90 text-white hover:bg-red-600 active:bg-red-700'
+                          : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700 active:bg-gray-600'
                       }`}
                       title={isHearted ? 'Unlike' : 'Like'}
                     >
-                      <span className="text-base">❤️</span>
+                      <span className="text-lg sm:text-base">❤️</span>
                       {heartCount > 0 && (
-                        <span className="text-xs font-semibold">{heartCount}</span>
+                        <span className="text-xs sm:text-xs font-semibold">{heartCount}</span>
                       )}
                     </button>
                     
                     {/* Star Button */}
                     <button
                       onClick={(e) => handleStarClick(annotation.id, e)}
-                      className={`px-2 py-1 rounded-md transition-all text-sm shadow-lg ${
+                      className={`px-2.5 py-2 sm:px-2 sm:py-1 rounded-md transition-all text-base sm:text-sm shadow-lg min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
                         isStarred
-                          ? 'bg-yellow-500/90 text-white hover:bg-yellow-600'
-                          : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700'
+                          ? 'bg-yellow-500/90 text-white hover:bg-yellow-600 active:bg-yellow-700'
+                          : 'bg-gray-800/90 text-gray-300 hover:bg-gray-700 active:bg-gray-600'
                       }`}
                       title={isStarred ? 'Unmark as important' : 'Mark as important'}
                     >
-                      <span className="text-base">⭐</span>
+                      <span className="text-lg sm:text-base">⭐</span>
                     </button>
                   </div>
                 );

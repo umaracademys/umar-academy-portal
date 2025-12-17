@@ -182,13 +182,13 @@ const TeacherPdfViewer: React.FC = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="bg-white border-b p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-800">📄 PDF Teaching Materials</h1>
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="bg-white border-b p-3 sm:p-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">📄 PDF Teaching Materials</h1>
           <button
             onClick={() => setShowStudentSelector(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="px-4 py-2.5 text-base sm:text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 touch-manipulation min-h-[44px] sm:min-h-0"
           >
             Assign to Student
           </button>
@@ -209,7 +209,7 @@ const TeacherPdfViewer: React.FC = () => {
                 setError('PDF not found');
               }
             }}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+            className="flex-1 px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 touch-manipulation"
           >
             <option value="">Select a PDF...</option>
             {pdfs.map((pdf) => (
@@ -263,9 +263,9 @@ const TeacherPdfViewer: React.FC = () => {
       </div>
 
       {showStudentSelector && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Assign to Student</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <Card className="p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">Assign to Student</h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -278,7 +278,7 @@ const TeacherPdfViewer: React.FC = () => {
                     console.log('📚 Student selected:', studentId);
                     setSelectedStudentId(studentId);
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 touch-manipulation"
                 >
                   <option value="">Choose a student...</option>
                   {assignedStudents.length === 0 ? (
@@ -299,20 +299,20 @@ const TeacherPdfViewer: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">You need to have students assigned to you to assign PDF homework.</p>
                 )}
               </div>
-              <div className="flex gap-2 justify-end">
+              <div className="flex flex-col sm:flex-row gap-2 justify-end">
                 <button
                   onClick={() => {
                     setShowStudentSelector(false);
                     setSelectedStudentId('');
                   }}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  className="w-full sm:w-auto px-4 py-2.5 text-base sm:text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 active:bg-gray-400 touch-manipulation min-h-[44px] sm:min-h-0"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAssignToStudent}
                   disabled={!selectedStudentId}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2.5 text-base sm:text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px] sm:min-h-0"
                 >
                   Assign
                 </button>
