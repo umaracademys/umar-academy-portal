@@ -78,6 +78,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [zoom, setZoom] = useState(1);
   const [annotations, setAnnotations] = useState<Annotation[]>(externalAnnotations);
+  const [showTOC, setShowTOC] = useState(false);
+  const [tocItems, setTocItems] = useState<Array<{ title: string; page: number; level: number }>>([]);
   const [selectedTool, setSelectedTool] = useState<'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | 'line' | 'rectangle' | 'circle' | 'diamond' | 'filled-rectangle' | 'filled-circle' | 'filled-diamond' | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#FF0000');
@@ -1541,12 +1543,152 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         </div>
       )}
 
-      <div className="flex-1 overflow-auto p-4 min-h-0">
-        <div className="flex justify-center">
+      <div className="flex-1 overflow-auto p-2 sm:p-4 min-h-0 flex">
+        {/* Table of Contents Sidebar */}
+        {showTOC && tocItems.length > 0 && (
+          <div className="hidden lg:block w-64 bg-gray-900 border-r border-gray-700 flex-shrink-0 overflow-y-auto p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-200">Table of Contents</h3>
+              <button
+                onClick={() => setShowTOC(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+                title="Close TOC"
+              >
+                ✕
+              </button>
+            </div>
+            <nav className="space-y-1">
+              {tocItems.map((item, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setCurrentPage(item.page);
+                    handlePageChange(item.page);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-md transition-all ${
+                    currentPage === item.page
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  }`}
+                  style={{ paddingLeft: `${item.level * 16 + 12}px` }}
+                >
+                  <span className="text-sm">{item.title}</span>
+                  <span className="text-xs text-gray-400 ml-2">(p. {item.page})</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        )}
+        
+        {/* TOC Toggle Button (Mobile) */}
+        {tocItems.length > 0 && (
+          <button
+            onClick={() => setShowTOC(!showTOC)}
+            className="lg:hidden fixed top-20 left-2 z-30 px-3 py-2 bg-gray-800 text-gray-200 rounded-md shadow-lg hover:bg-gray-700 transition-all"
+            title="Toggle Table of Contents"
+          >
+            📑
+          </button>
+        )}
+        
+        {/* Mobile TOC Overlay */}
+        {showTOC && tocItems.length > 0 && (
+          <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowTOC(false)}>
+            <div className="w-64 h-full bg-gray-900 border-r border-gray-700 overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-200">Table of Contents</h3>
+                <button
+                  onClick={() => setShowTOC(false)}
+                  className="text-gray-400 hover:text-gray-200 transition-colors"
+                  title="Close TOC"
+                >
+                  ✕
+                </button>
+              </div>
+              <nav className="space-y-1">
+                {tocItems.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setCurrentPage(item.page);
+                      handlePageChange(item.page);
+                      setShowTOC(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md transition-all ${
+                      currentPage === item.page
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    }`}
+                    style={{ paddingLeft: `${item.level * 16 + 12}px` }}
+                  >
+                    <span className="text-sm">{item.title}</span>
+                    <span className="text-xs text-gray-400 ml-2">(p. {item.page})</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex-1 flex justify-center">
           <div className="relative" ref={pageRef}>
             <Document
               file={pdfUrl}
-              onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              onLoadSuccess={async (document) => {
+                const { numPages } = document;
+                setNumPages(numPages);
+                
+                // Extract table of contents
+                try {
+                  if (document.getOutline) {
+                    const outline = await document.getOutline();
+                    if (outline && outline.length > 0) {
+                      const tocItemsList: Array<{ title: string; page: number; level: number }> = [];
+                      
+                      const extractOutline = (items: any[], level: number = 0) => {
+                        items.forEach((item: any) => {
+                          if (item.title) {
+                            // Extract page number from destination
+                            let pageNum = 1;
+                            if (item.dest) {
+                              if (Array.isArray(item.dest)) {
+                                // Destination array format - first element might be page reference
+                                const destRef = item.dest[0];
+                                if (destRef && typeof destRef === 'object' && 'num' in destRef) {
+                                  pageNum = destRef.num || 1;
+                                } else if (typeof destRef === 'number') {
+                                  pageNum = destRef;
+                                } else if (item.dest.length > 0 && typeof item.dest[0] === 'number') {
+                                  pageNum = item.dest[0];
+                                }
+                              } else if (typeof item.dest === 'number') {
+                                pageNum = item.dest;
+                              }
+                            }
+                            
+                            tocItemsList.push({
+                              title: item.title,
+                              page: Math.max(1, Math.min(pageNum, numPages || 1)),
+                              level,
+                            });
+                          }
+                          if (item.items && item.items.length > 0) {
+                            extractOutline(item.items, level + 1);
+                          }
+                        });
+                      };
+                      
+                      extractOutline(outline);
+                      setTocItems(tocItemsList);
+                      if (tocItemsList.length > 0) {
+                        setShowTOC(true); // Auto-show TOC if available
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.log('No table of contents available:', error);
+                }
+              }}
               loading={<div>Loading PDF...</div>}
               error={<div>Error loading PDF</div>}
             >
