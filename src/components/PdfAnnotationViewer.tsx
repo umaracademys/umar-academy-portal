@@ -109,6 +109,12 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
   const renderRequestRef = useRef<number | null>(null);
 
+  // Update undo/redo button states
+  const updateUndoRedoState = useCallback(() => {
+    setCanUndo(historyRef.current.canUndo(currentPage));
+    setCanRedo(historyRef.current.canRedo(currentPage));
+  }, [currentPage]);
+
   // Initialize annotations from external source
   useEffect(() => {
     if (externalAnnotations && externalAnnotations.length >= 0) {
@@ -122,12 +128,6 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       }
     }
   }, [externalAnnotations, currentPage, updateUndoRedoState]);
-
-  // Update undo/redo button states
-  const updateUndoRedoState = useCallback(() => {
-    setCanUndo(historyRef.current.canUndo(currentPage));
-    setCanRedo(historyRef.current.canRedo(currentPage));
-  }, [currentPage]);
 
   // Handle page change
   const handlePageChange = useCallback((page: number) => {
