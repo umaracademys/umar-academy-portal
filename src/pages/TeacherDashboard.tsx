@@ -606,6 +606,20 @@ const TeacherDashboard: React.FC = () => {
                   <div className="font-bold text-primary mb-1">Manage Assignments</div>
                   <div className="text-xs text-gray-600">Create and manage assignments</div>
                 </Link>
+                <Link
+                  to="/pdf-teaching"
+                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
+                      📚
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">PDF Teaching</p>
+                      <p className="text-xs text-gray-600">Annotate PDFs and assign as homework</p>
+                    </div>
+                  </div>
+                </Link>
               </div>
             </Card>
           </div>
