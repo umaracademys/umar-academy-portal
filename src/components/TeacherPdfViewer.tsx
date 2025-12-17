@@ -153,6 +153,16 @@ const TeacherPdfViewer: React.FC = () => {
         throw new Error('PDF ID is missing');
       }
       
+      // Save annotations first (even if empty) to ensure they exist in the backend
+      console.log('📚 Saving annotations before assignment...');
+      try {
+        await savePdfAnnotations(pdfId, annotations, notes);
+        console.log('✅ Annotations saved successfully');
+      } catch (saveError: any) {
+        console.warn('⚠️ Warning: Failed to save annotations before assignment:', saveError);
+        // Continue with assignment anyway - backend might allow it
+      }
+      
       console.log('📚 Assigning PDF homework:', {
         pdfId,
         studentId: studentIdStr,
@@ -169,7 +179,14 @@ const TeacherPdfViewer: React.FC = () => {
       setSelectedStudentId('');
     } catch (error: any) {
       console.error('Error assigning homework:', error);
-      alert(error.message || 'Failed to assign homework');
+      const errorMessage = error.message || 'Failed to assign homework';
+      
+      // Provide more helpful error message
+      if (errorMessage.includes('No annotations found') || errorMessage.includes('annotate')) {
+        alert('Please add at least one annotation to the PDF before assigning it as homework. You can add highlights, text, drawings, or shapes.');
+      } else {
+        alert(errorMessage);
+      }
     }
   };
 
