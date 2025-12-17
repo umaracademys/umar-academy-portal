@@ -645,30 +645,31 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                     </div>
                   </div>
                 </Card>
-              </div>
+                </div>
 
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setShowPasswordReset(true)}
-                  className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
-                >
-                  Reset password
-                </button>
-                <button
-                  onClick={() => setShowAccountSettings(true)}
-                  className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
-                >
-                  Account settings
-                </button>
-                <button 
-                  onClick={() => {
-                    alert('Report generation: This would generate a credentials report for this student. API integration needed.');
-                  }}
-                  className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
-                >
-                  Generate report
-                </button>
-              </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowPasswordReset(true)}
+                    className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                  >
+                    Reset password
+                  </button>
+                  <button
+                    onClick={() => setShowAccountSettings(true)}
+                    className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                  >
+                    Account settings
+                  </button>
+                  <button 
+                    onClick={() => {
+                      alert('Report generation: This would generate a credentials report for this student. API integration needed.');
+                    }}
+                    className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                  >
+                    Generate report
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
 
