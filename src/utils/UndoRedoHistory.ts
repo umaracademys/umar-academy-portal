@@ -18,7 +18,7 @@
 export interface Annotation {
   id: string;
   page: number;
-  type: 'highlight' | 'text' | 'drawing' | 'arrow' | 'note';
+  type: 'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | 'line' | 'rectangle' | 'circle' | 'diamond' | 'filled-rectangle' | 'filled-circle' | 'filled-diamond';
   x: number;
   y: number;
   width?: number;
@@ -27,6 +27,9 @@ export interface Annotation {
   text?: string;
   note?: string;
   points?: Array<{ x: number; y: number }>;
+  strokeWidth?: number;
+  isFilled?: boolean;
+  rotation?: number;
   createdAt?: Date;
 }
 

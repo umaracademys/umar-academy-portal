@@ -71,7 +71,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [zoom, setZoom] = useState(1);
   const [annotations, setAnnotations] = useState<Annotation[]>(externalAnnotations);
-  const [selectedTool, setSelectedTool] = useState<'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | null>(null);
+  const [selectedTool, setSelectedTool] = useState<'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | 'line' | 'rectangle' | 'circle' | 'diamond' | 'filled-rectangle' | 'filled-circle' | 'filled-diamond' | null>(null);
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#FF0000');
   const [strokeWidth, setStrokeWidth] = useState(2); // Stroke width for drawing/arrow tools
   const [highlightOpacity, setHighlightOpacity] = useState(0.3); // Opacity for highlights
@@ -367,6 +368,24 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       } as any;
       setCurrentAnnotation(newAnnotation);
       updateAnnotations(prev => [...prev, newAnnotation], false); // Don't save to history yet
+    } else if (['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool)) {
+      // Shape drawing
+      setIsDragging(true);
+      const isFilled = selectedTool.startsWith('filled-');
+      const newAnnotation: Annotation = {
+        id: `${Date.now()}-${Math.random()}`,
+        page: currentPage,
+        type: selectedTool as any,
+        x,
+        y,
+        color: selectedColor,
+        width: 0,
+        height: 0,
+        strokeWidth: strokeWidth,
+        isFilled: isFilled,
+      } as any;
+      setCurrentAnnotation(newAnnotation);
+      updateAnnotations(prev => [...prev, newAnnotation], false); // Don't save to history yet
     } else if (selectedTool === 'text') {
       const newAnnotation: Annotation = {
         id: `${Date.now()}-${Math.random()}`,
@@ -486,11 +505,22 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     }
 
     // Handle dragging new annotation
-    if ((selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note') && isDragging && startPoint && currentAnnotation) {
-      const width = Math.abs(x - startPoint.x);
-      const height = Math.abs(y - startPoint.y);
-      const newX = Math.min(x, startPoint.x);
-      const newY = Math.min(y, startPoint.y);
+    if ((selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note' || 
+         (selectedTool && ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool))) 
+        && isDragging && startPoint && currentAnnotation) {
+      let width = Math.abs(x - startPoint.x);
+      let height = Math.abs(y - startPoint.y);
+      let newX = Math.min(x, startPoint.x);
+      let newY = Math.min(y, startPoint.y);
+      
+      // Perfect square/circle when Shift is pressed
+      if (isShiftPressed && selectedTool && (selectedTool === 'rectangle' || selectedTool === 'circle' || 
+          selectedTool === 'filled-rectangle' || selectedTool === 'filled-circle' ||
+          selectedTool === 'diamond' || selectedTool === 'filled-diamond')) {
+        const size = Math.max(width, height);
+        width = size;
+        height = size;
+      }
       
       updateAnnotations(prev => 
         prev.map(a => 
@@ -542,10 +572,13 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     }
 
     // Finalize dragging new annotation
-    if (isDragging && currentAnnotation) {
-      if (currentAnnotation.width && currentAnnotation.width < 0.01 && currentAnnotation.height && currentAnnotation.height < 0.01) {
-        // Remove tiny annotations (accidental clicks)
-        updateAnnotations(prev => prev.filter(a => a.id !== currentAnnotation.id), false);
+    if (isDragging && currentAnnotation && startPoint) {
+      const finalWidth = currentAnnotation.width || 0;
+      const finalHeight = currentAnnotation.height || 0;
+      
+      // Remove tiny annotations (accidental clicks)
+      if (finalWidth < 0.01 && finalHeight < 0.01) {
+        updateAnnotations(prev => prev.filter(a => a.id !== currentAnnotation.id), true);
       } else {
         // Save to history when drag completes
         updateAnnotations(prev => prev, true);
@@ -777,6 +810,75 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
             ctx.fillText(annotation.text, x * canvas.width, y * canvas.height);
           }
           break;
+
+        case 'line':
+          const lineWidth = (annotation.width || 0.1) * canvas.width;
+          const lineHeight = (annotation.height || 0.05) * canvas.height;
+          if (lineWidth !== 0 || lineHeight !== 0) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + lineWidth, y + lineHeight);
+            ctx.stroke();
+          }
+          break;
+
+        case 'rectangle':
+        case 'filled-rectangle': {
+          const rectWidth = (annotation.width || 0.1) * canvas.width;
+          const rectHeight = (annotation.height || 0.05) * canvas.height;
+          if (rectWidth > 0 && rectHeight > 0) {
+            if (annotation.isFilled || annotation.type === 'filled-rectangle') {
+              ctx.fillRect(x, y, rectWidth, rectHeight);
+            } else {
+              ctx.strokeRect(x, y, rectWidth, rectHeight);
+            }
+          }
+          break;
+        }
+
+        case 'circle':
+        case 'filled-circle': {
+          const circleWidth = (annotation.width || 0.1) * canvas.width;
+          const circleHeight = (annotation.height || 0.05) * canvas.height;
+          const radiusX = Math.abs(circleWidth) / 2;
+          const radiusY = Math.abs(circleHeight) / 2;
+          const centerX = x + circleWidth / 2;
+          const centerY = y + circleHeight / 2;
+          const radius = Math.max(radiusX, radiusY);
+          
+          if (radius > 0) {
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY, radius, radius, 0, 0, 2 * Math.PI);
+            if (annotation.isFilled || annotation.type === 'filled-circle') {
+              ctx.fill();
+            } else {
+              ctx.stroke();
+            }
+          }
+          break;
+        }
+
+        case 'diamond':
+        case 'filled-diamond': {
+          const diamondWidth = (annotation.width || 0.1) * canvas.width;
+          const diamondHeight = (annotation.height || 0.05) * canvas.height;
+          if (diamondWidth > 0 && diamondHeight > 0) {
+            const centerX = x + diamondWidth / 2;
+            const centerY = y + diamondHeight / 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, y); // Top
+            ctx.lineTo(x + diamondWidth, centerY); // Right
+            ctx.lineTo(centerX, y + diamondHeight); // Bottom
+            ctx.lineTo(x, centerY); // Left
+            ctx.closePath();
+            if (annotation.isFilled || annotation.type === 'filled-diamond') {
+              ctx.fill();
+            } else {
+              ctx.stroke();
+            }
+          }
+          break;
+        }
       }
 
       // Draw resize handles for selected annotation
@@ -1019,6 +1121,193 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 >
                   ➡️
                 </button>
+              </div>
+
+              {/* Shapes Section */}
+              <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
+                <span className="text-xs font-semibold text-gray-400 px-1">Shapes:</span>
+                {/* Line */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'line' ? null : 'line';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'line'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Line"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="2" y1="10" x2="18" y2="10" />
+                  </svg>
+                </button>
+                {/* Rectangle */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'rectangle' ? null : 'rectangle';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'rectangle'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Rectangle"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="4" width="12" height="12" />
+                  </svg>
+                </button>
+                {/* Circle */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'circle' ? null : 'circle';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'circle'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Circle"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="10" cy="10" r="6" />
+                  </svg>
+                </button>
+                {/* Diamond */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'diamond' ? null : 'diamond';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'diamond'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Diamond"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 4 L16 10 L10 16 L4 10 Z" />
+                  </svg>
+                </button>
+                {/* Filled Rectangle */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'filled-rectangle' ? null : 'filled-rectangle';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'filled-rectangle'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Filled Rectangle"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <rect x="4" y="4" width="12" height="12" />
+                  </svg>
+                </button>
+                {/* Filled Circle */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'filled-circle' ? null : 'filled-circle';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'filled-circle'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Filled Circle"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <circle cx="10" cy="10" r="6" />
+                  </svg>
+                </button>
+                {/* Filled Diamond */}
+                <button
+                  onClick={() => {
+                    const newTool = selectedTool === 'filled-diamond' ? null : 'filled-diamond';
+                    setSelectedTool(newTool);
+                    if (newTool) {
+                      setSelectionState({
+                        selectedAnnotation: null,
+                        isResizing: false,
+                        resizeHandle: null,
+                        startPoint: null,
+                        originalAnnotation: null,
+                      });
+                    }
+                  }}
+                  className={`w-10 h-10 rounded transition-all flex items-center justify-center ${
+                    selectedTool === 'filled-diamond'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md'
+                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                  }`}
+                  title="Filled Diamond"
+                >
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 4 L16 10 L10 16 L4 10 Z" />
+                  </svg>
+                </button>
                 <button
                   onClick={() => {
                     const newTool = selectedTool === 'note' ? null : 'note';
@@ -1070,7 +1359,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
               </div>
 
               {/* Stroke Width - Compact */}
-              {(selectedTool === 'drawing' || selectedTool === 'arrow') && (
+              {(selectedTool === 'drawing' || selectedTool === 'arrow' || 
+                (selectedTool && ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool))) && (
                 <div className="flex items-center gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1.5 shadow-lg flex-shrink-0">
                   <span className="text-xs font-semibold text-gray-300">W:</span>
                   <input

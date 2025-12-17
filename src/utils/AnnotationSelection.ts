@@ -82,6 +82,55 @@ export function hitTestAnnotation(
           }
         }
         break;
+
+      case 'line':
+        // Line hit test (with tolerance)
+        const lineEndX = annX + annWidth;
+        const lineEndY = annY + annHeight;
+        const lineDistance = pointToLineDistance(x, y, annX, annY, lineEndX, lineEndY);
+        if (lineDistance < 10) { // 10px tolerance
+          return annotation;
+        }
+        break;
+
+      case 'rectangle':
+      case 'filled-rectangle':
+        // Rectangle hit test
+        if (x >= annX && x <= annX + annWidth && y >= annY && y <= annY + annHeight) {
+          return annotation;
+        }
+        break;
+
+      case 'circle':
+      case 'filled-circle': {
+        // Circle hit test
+        const centerX = annX + annWidth / 2;
+        const centerY = annY + annHeight / 2;
+        const radiusX = Math.abs(annWidth) / 2;
+        const radiusY = Math.abs(annHeight) / 2;
+        const radius = Math.max(radiusX, radiusY);
+        const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        if (distance <= radius) {
+          return annotation;
+        }
+        break;
+      }
+
+      case 'diamond':
+      case 'filled-diamond': {
+        // Diamond hit test (rotated square)
+        const centerX = annX + annWidth / 2;
+        const centerY = annY + annHeight / 2;
+        const halfWidth = Math.abs(annWidth) / 2;
+        const halfHeight = Math.abs(annHeight) / 2;
+        // Check if point is inside diamond using cross product
+        const dx = Math.abs(x - centerX);
+        const dy = Math.abs(y - centerY);
+        if (dx / halfWidth + dy / halfHeight <= 1) {
+          return annotation;
+        }
+        break;
+      }
     }
   }
 
