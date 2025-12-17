@@ -23,7 +23,6 @@ const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage
 const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
 const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
-const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
 const StudentPdfHomework = lazy(() => import('./components/StudentPdfHomework'));
 
 // Loading component for Suspense
