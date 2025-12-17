@@ -4,6 +4,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import StudentProfile from './pages/StudentProfile';
 import StudentCourses from './pages/StudentCourses';
 import StudentAssignments from './pages/StudentAssignments';
+import StudentPdfHomework from '../../components/StudentPdfHomework';
 
 const StudentRouter: React.FC = () => {
   console.log('🔍 StudentRouter - Component is rendering!');
@@ -14,6 +15,7 @@ const StudentRouter: React.FC = () => {
       <Route path="profile" element={<StudentProfile />} />
       <Route path="courses" element={<StudentCourses />} />
       <Route path="assignments" element={<StudentAssignments />} />
+      <Route path="pdf-homework" element={<StudentPdfHomework />} />
       <Route path="progress" element={<div>Student Progress Page - Coming Soon</div>} />
       <Route path="payments" element={<div>Student Payments Page - Coming Soon</div>} />
       <Route path="messages" element={<div>Student Messages Page - Coming Soon</div>} />

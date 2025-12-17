@@ -10,6 +10,7 @@ const StudentSidebar: React.FC<StudentSidebarProps> = ({ isOpen, onClose }) => {
   const navigation = [
     { name: 'Dashboard', href: '/student/dashboard', icon: 'DB' },
     { name: 'My Assignments', href: '/student/assignments', icon: 'AS' },
+    { name: 'PDF Homework', href: '/student/pdf-homework', icon: '📄' },
     { name: 'My Courses', href: '/student/courses', icon: 'CR' },
     { name: 'My Progress', href: '/student/progress', icon: 'PR' },
     { name: 'My Payments', href: '/student/payments', icon: 'PY' },

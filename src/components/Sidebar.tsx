@@ -50,12 +50,34 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       ? { id: 'qaidah', icon: 'QA', label: 'Qaidah', badge: null, isLink: true, href: '/qaidah-submissions' }
       : null;
 
+  // Add PDF Management for super admin (to upload/manage PDFs)
+  const pdfManagementItem: MenuItem | null = 
+    user?.role === 'superadmin'
+      ? { id: 'pdf-management', icon: '📄', label: 'PDF Documents', badge: null, isLink: false }
+      : null;
+
+  // Add PDF Teaching Materials for teachers
+  const pdfTeachingItem: MenuItem | null = 
+    user?.role === 'teacher'
+      ? { id: 'pdf-teaching', icon: '📚', label: 'PDF Teaching', badge: null, isLink: true, href: '/pdf-teaching' }
+      : null;
+
   const menuItems: MenuItem[] = (() => {
     const items = [...baseMenuItems];
     
     // Add Qaidah if available
     if (qaidahItem) {
       items.push(qaidahItem);
+    }
+    
+    // Add PDF Management for super admin
+    if (pdfManagementItem) {
+      items.push(pdfManagementItem);
+    }
+    
+    // Add PDF Teaching for teachers
+    if (pdfTeachingItem) {
+      items.push(pdfTeachingItem);
     }
     
     // Add AI Library if available

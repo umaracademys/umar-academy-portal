@@ -98,8 +98,8 @@ const PdfManagement: React.FC = () => {
   return (
     <div className="space-y-6 p-6">
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl shadow-lg p-6 text-white">
-        <h1 className="text-3xl font-bold mb-2">📄 PDF Document Management</h1>
-        <p className="text-primary-100">Upload and manage PDF documents for teachers and students</p>
+        <h1 className="text-3xl font-bold mb-2">📄 PDF Document Portal</h1>
+        <p className="text-primary-100">Upload and manage PDF documents. Teachers can annotate and assign them to students.</p>
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-6">
@@ -196,8 +196,16 @@ const PdfManagement: React.FC = () => {
                       rel="noopener noreferrer"
                       className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                     >
-                      View
+                      View PDF
                     </a>
+                    <button
+                      onClick={() => {
+                        window.open(pdf.fileUrl, '_blank');
+                      }}
+                      className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                    >
+                      Open
+                    </button>
                     <button
                       onClick={() => handleDelete(pdf.id, pdf.title)}
                       className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"

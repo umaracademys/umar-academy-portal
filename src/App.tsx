@@ -22,6 +22,9 @@ const MessagesPage = lazy(() => import('./pages/MessagesPage'));
 const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage'));
 const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
 const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
+const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
+const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
+const StudentPdfHomework = lazy(() => import('./components/StudentPdfHomework'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -184,6 +187,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <MessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pdf-teaching"
+          element={
+            <ProtectedRoute>
+              <TeacherPdfViewer />
             </ProtectedRoute>
           }
         />
