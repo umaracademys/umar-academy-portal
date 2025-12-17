@@ -109,7 +109,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   // Refs
   const pageRef = useRef<HTMLDivElement>(null);
   const annotationCanvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingCanvasRef = useRef<HTMLCanvasElement>(null); // Temporary canvas for real-time drawing preview
   const renderRequestRef = useRef<number | null>(null);
+  const drawingPointsRef = useRef<Array<{ x: number; y: number }>>([]); // Use ref to avoid state updates during drawing
 
   // Update undo/redo button states
   const updateUndoRedoState = useCallback(() => {
@@ -137,6 +139,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       setCurrentPage(page);
       setIsDrawing(false);
       setDrawingPoints([]);
+      drawingPointsRef.current = [];
       setSelectionState({
         selectedAnnotation: null,
         isResizing: false,
@@ -144,6 +147,13 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         startPoint: null,
         originalAnnotation: null,
       });
+      // Clear drawing canvas
+      if (drawingCanvasRef.current) {
+        const ctx = drawingCanvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
+        }
+      }
       updateUndoRedoState();
     }
   }, [numPages, updateUndoRedoState]);
@@ -166,39 +176,40 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   }, []);
 
   // Smooth drawing points using point reduction (improves performance)
+  // Only smooth if we have many points to avoid unnecessary processing
   const smoothDrawingPoints = useCallback((points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> => {
-    if (points.length <= 2) return points;
+    if (points.length <= 3) return points;
+    
+    // For small drawings, just return points as-is
+    if (points.length < 20) return points;
 
-    // Reduce points using Douglas-Peucker algorithm (simplified)
-    const threshold = 0.002; // Normalized threshold
-    const reduced: Array<{ x: number; y: number }> = [points[0]];
-
+    // Use a simpler smoothing algorithm for better performance
+    // Average nearby points to create smoother curves
+    const smoothed: Array<{ x: number; y: number }> = [points[0]];
+    const windowSize = 3;
+    
     for (let i = 1; i < points.length - 1; i++) {
-      const prev = points[i - 1];
-      const curr = points[i];
-      const next = points[i + 1];
-
-      // Calculate distance from current point to line between prev and next
-      const dx = next.x - prev.x;
-      const dy = next.y - prev.y;
-      const length = Math.sqrt(dx * dx + dy * dy);
-
-      if (length > 0) {
-        const t = ((curr.x - prev.x) * dx + (curr.y - prev.y) * dy) / (length * length);
-        const projX = prev.x + t * dx;
-        const projY = prev.y + t * dy;
-        const dist = Math.sqrt(Math.pow(curr.x - projX, 2) + Math.pow(curr.y - projY, 2));
-
-        if (dist > threshold) {
-          reduced.push(curr);
-        }
-      } else {
-        reduced.push(curr);
+      const start = Math.max(0, i - Math.floor(windowSize / 2));
+      const end = Math.min(points.length, i + Math.ceil(windowSize / 2));
+      
+      let sumX = 0;
+      let sumY = 0;
+      let count = 0;
+      
+      for (let j = start; j < end; j++) {
+        sumX += points[j].x;
+        sumY += points[j].y;
+        count++;
       }
+      
+      smoothed.push({
+        x: sumX / count,
+        y: sumY / count
+      });
     }
-
-    reduced.push(points[points.length - 1]);
-    return reduced;
+    
+    smoothed.push(points[points.length - 1]);
+    return smoothed;
   }, []);
 
   // Update annotations with history tracking
@@ -318,7 +329,28 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
     if (selectedTool === 'drawing') {
       setIsDrawing(true);
+      drawingPointsRef.current = [{ x, y }];
       setDrawingPoints([{ x, y }]);
+      
+      // Initialize drawing canvas for real-time preview
+      if (drawingCanvasRef.current && pageRef.current) {
+        const canvas = drawingCanvasRef.current;
+        const rect = pageRef.current.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.strokeStyle = selectedColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.beginPath();
+          const startX = x * rect.width;
+          const startY = y * rect.height;
+          ctx.moveTo(startX, startY);
+        }
+      }
     } else if (selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note') {
       setIsDragging(true);
       const newAnnotation: Annotation = {
@@ -404,16 +436,52 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       return;
     }
 
-    // Handle drawing
+    // Handle drawing - use ref for performance, render directly to canvas
     if (selectedTool === 'drawing' && isDrawing) {
-      setDrawingPoints(prev => {
-        const newPoints = [...prev, { x, y }];
-        // Throttle point addition for performance (every 3rd point)
-        if (newPoints.length % 3 === 0 || newPoints.length < 10) {
-          return newPoints;
+      if (!pageRef.current || !drawingCanvasRef.current) return;
+      
+      const rect = pageRef.current.getBoundingClientRect();
+      const canvas = drawingCanvasRef.current;
+      
+      // Ensure canvas is properly sized
+      if (canvas.width !== rect.width || canvas.height !== rect.height) {
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.strokeStyle = selectedColor;
+          ctx.lineWidth = strokeWidth;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          // Redraw all points if canvas was resized
+          if (drawingPointsRef.current.length > 0) {
+            ctx.beginPath();
+            const firstPoint = drawingPointsRef.current[0];
+            ctx.moveTo(firstPoint.x * rect.width, firstPoint.y * rect.height);
+            for (let i = 1; i < drawingPointsRef.current.length; i++) {
+              const pt = drawingPointsRef.current[i];
+              ctx.lineTo(pt.x * rect.width, pt.y * rect.height);
+            }
+            ctx.stroke();
+          }
         }
-        return prev;
-      });
+      }
+      
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        const screenX = x * rect.width;
+        const screenY = y * rect.height;
+        
+        // Add point to ref (for final annotation)
+        drawingPointsRef.current.push({ x, y });
+        
+        // Draw line segment in real-time with smooth rendering
+        ctx.lineTo(screenX, screenY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(screenX, screenY);
+      }
+      
       return;
     }
 
@@ -440,19 +508,37 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     if (readOnly) return;
 
     // Finalize drawing
-    if (selectedTool === 'drawing' && isDrawing && drawingPoints.length > 1) {
-      const smoothedPoints = smoothDrawingPoints(drawingPoints);
-      const newAnnotation: Annotation = {
-        id: `${Date.now()}-${Math.random()}`,
-        page: currentPage,
-        type: 'drawing',
-        x: smoothedPoints[0].x,
-        y: smoothedPoints[0].y,
-        color: selectedColor,
-        points: smoothedPoints,
-        strokeWidth: strokeWidth,
-      } as any;
-      updateAnnotations(prev => [...prev, newAnnotation], true); // Save to history
+    if (selectedTool === 'drawing' && isDrawing) {
+      // Clear drawing canvas
+      if (drawingCanvasRef.current) {
+        const ctx = drawingCanvasRef.current.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
+        }
+      }
+      
+      // Use points from ref (captured all points during drawing)
+      const finalPoints = drawingPointsRef.current.length > 0 ? drawingPointsRef.current : drawingPoints;
+      
+      if (finalPoints.length > 1) {
+        // Smooth points for better appearance
+        const smoothedPoints = smoothDrawingPoints(finalPoints);
+        
+        const newAnnotation: Annotation = {
+          id: `${Date.now()}-${Math.random()}`,
+          page: currentPage,
+          type: 'drawing',
+          x: smoothedPoints[0].x,
+          y: smoothedPoints[0].y,
+          color: selectedColor,
+          points: smoothedPoints,
+          strokeWidth: strokeWidth,
+        } as any;
+        updateAnnotations(prev => [...prev, newAnnotation], true); // Save to history
+      }
+      
+      // Reset drawing ref
+      drawingPointsRef.current = [];
     }
 
     // Finalize dragging new annotation
@@ -476,8 +562,17 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     setIsDragging(false);
     setIsMoving(false);
     setDrawingPoints([]);
+    drawingPointsRef.current = [];
     setCurrentAnnotation(null);
     setStartPoint(null);
+    
+    // Clear drawing canvas
+    if (drawingCanvasRef.current) {
+      const ctx = drawingCanvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, drawingCanvasRef.current.width, drawingCanvasRef.current.height);
+      }
+    }
     setSelectionState(prev => ({
       ...prev,
       isResizing: false,
@@ -1066,6 +1161,13 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 scale={zoom}
                 onLoadSuccess={(page) => {
                   setPageDimensions({ width: page.width, height: page.height });
+                  // Resize drawing canvas when page loads
+                  if (drawingCanvasRef.current && pageRef.current) {
+                    const canvas = drawingCanvasRef.current;
+                    const rect = pageRef.current.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                  }
                 }}
                 renderTextLayer={true}
                 renderAnnotationLayer={true}
@@ -1074,6 +1176,11 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
             <canvas
               ref={annotationCanvasRef}
               className="absolute top-0 left-0 pointer-events-none z-0"
+              style={{ width: '100%', height: '100%' }}
+            />
+            <canvas
+              ref={drawingCanvasRef}
+              className="absolute top-0 left-0 pointer-events-none z-5"
               style={{ width: '100%', height: '100%' }}
             />
             <div
