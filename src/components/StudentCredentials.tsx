@@ -569,106 +569,108 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                   </div>
                 </Card>
               ) : userDetails ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Account Status:</span>
-                        <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                          userDetails.accountStatus === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {userDetails.accountStatus === 'active' ? 'Active' : 'Inactive'}
-                        </span>
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Account Status:</span>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            userDetails.accountStatus === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {userDetails.accountStatus === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Login Enabled:</span>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            userDetails.loginEnabled
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {userDetails.loginEnabled ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Last Login:</span>
+                          <span className="text-gray-900">{formatDate(userDetails.lastLogin)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Password Changed:</span>
+                          <span className="text-gray-900">{formatDate(userDetails.passwordChanged)}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Login Enabled:</span>
-                        <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                          userDetails.loginEnabled
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {userDetails.loginEnabled ? 'Yes' : 'No'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Last Login:</span>
-                        <span className="text-gray-900">{formatDate(userDetails.lastLogin)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Password Changed:</span>
-                        <span className="text-gray-900">{formatDate(userDetails.passwordChanged)}</span>
-                      </div>
-                    </div>
-                  </Card>
+                    </Card>
 
-                <Card>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Security Features</h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Two-Factor Auth:</span>
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                        userDetails.twoFactorEnabled
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {userDetails.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Security Questions:</span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
-                        Not Available
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Email Verified:</span>
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                        userDetails.emailVerified
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {userDetails.emailVerified ? 'Yes' : 'Pending'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Phone Verified:</span>
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                        userDetails.phoneVerified
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {userDetails.phoneVerified ? 'Yes' : 'Pending'}
-                      </span>
-                    </div>
+                    <Card>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Security Features</h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Two-Factor Auth:</span>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            userDetails.twoFactorEnabled
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {userDetails.twoFactorEnabled ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Security Questions:</span>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                            Not Available
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Email Verified:</span>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            userDetails.emailVerified
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {userDetails.emailVerified ? 'Yes' : 'Pending'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Phone Verified:</span>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            userDetails.phoneVerified
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {userDetails.phoneVerified ? 'Yes' : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+                    </Card>
                   </div>
-                </Card>
-                </div>
 
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => setShowPasswordReset(true)}
-                    className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
-                  >
-                    Reset password
-                  </button>
-                  <button
-                    onClick={() => setShowAccountSettings(true)}
-                    className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
-                  >
-                    Account settings
-                  </button>
-                  <button 
-                    onClick={() => {
-                      alert('Report generation: This would generate a credentials report for this student. API integration needed.');
-                    }}
-                    className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
-                  >
-                    Generate report
-                  </button>
-                </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setShowPasswordReset(true)}
+                      className="rounded-full bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[rgba(var(--color-primary-rgb),0.85)]"
+                    >
+                      Reset password
+                    </button>
+                    <button
+                      onClick={() => setShowAccountSettings(true)}
+                      className="rounded-full border border-[rgba(var(--color-accent-rgb),0.45)] px-4 py-2 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-soft-accent"
+                    >
+                      Account settings
+                    </button>
+                    <button 
+                      onClick={() => {
+                        alert('Report generation: This would generate a credentials report for this student. API integration needed.');
+                      }}
+                      className="rounded-full border border-[rgba(var(--color-primary-rgb),0.25)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-soft-primary"
+                    >
+                      Generate report
+                    </button>
+                  </div>
+                </>
               ) : null}
             </div>
           )}
