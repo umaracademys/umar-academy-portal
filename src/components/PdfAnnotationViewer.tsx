@@ -66,6 +66,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([]);
   const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [currentAnnotation, setCurrentAnnotation] = useState<Annotation | null>(null);
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   
   const pageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -98,13 +101,18 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   // Handle mouse events for annotations
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (readOnly || !selectedTool || !pageRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
 
     const { x, y } = screenToNormalized(e.clientX, e.clientY, pageRef.current);
+    setStartPoint({ x, y });
     
     if (selectedTool === 'drawing') {
       setIsDrawing(true);
       setDrawingPoints([{ x, y }]);
     } else if (selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note') {
+      setIsDragging(true);
       const newAnnotation: Annotation = {
         id: `${Date.now()}-${Math.random()}`,
         page: currentPage,
@@ -112,28 +120,84 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         x,
         y,
         color: selectedColor,
-        width: 0.1,
+        width: 0,
+        height: 0,
+      };
+      setCurrentAnnotation(newAnnotation);
+      setAnnotations(prev => {
+        const updated = [...prev, newAnnotation];
+        onAnnotationsChange?.(updated);
+        return updated;
+      });
+    } else if (selectedTool === 'text') {
+      // For text, create annotation and allow editing
+      const newAnnotation: Annotation = {
+        id: `${Date.now()}-${Math.random()}`,
+        page: currentPage,
+        type: 'text',
+        x,
+        y,
+        color: selectedColor,
+        text: '',
+        width: 0.2,
         height: 0.05,
       };
-      setAnnotations(prev => [...prev, newAnnotation]);
-      onAnnotationsChange?.(prev => [...prev, newAnnotation]);
+      setAnnotations(prev => {
+        const updated = [...prev, newAnnotation];
+        onAnnotationsChange?.(updated);
+        return updated;
+      });
+      // Prompt for text
+      const text = prompt('Enter text:');
+      if (text !== null) {
+        setAnnotations(prev => {
+          const updated = prev.map(a => a.id === newAnnotation.id ? { ...a, text, note: text } : a);
+          onAnnotationsChange?.(updated);
+          return updated;
+        });
+      } else {
+        // Remove annotation if cancelled
+        setAnnotations(prev => {
+          const updated = prev.filter(a => a.id !== newAnnotation.id);
+          onAnnotationsChange?.(updated);
+          return updated;
+        });
+      }
     }
   }, [readOnly, selectedTool, currentPage, selectedColor, screenToNormalized, onAnnotationsChange]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (readOnly || !isDrawing || !selectedTool || !pageRef.current) return;
+    if (readOnly || !selectedTool || !pageRef.current) return;
+    
+    if (!isDrawing && !isDragging) return;
 
     const { x, y } = screenToNormalized(e.clientX, e.clientY, pageRef.current);
     
-    if (selectedTool === 'drawing') {
+    if (selectedTool === 'drawing' && isDrawing) {
       setDrawingPoints(prev => [...prev, { x, y }]);
+    } else if ((selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note') && isDragging && startPoint && currentAnnotation) {
+      // Update annotation size based on drag
+      const width = Math.abs(x - startPoint.x);
+      const height = Math.abs(y - startPoint.y);
+      const newX = Math.min(x, startPoint.x);
+      const newY = Math.min(y, startPoint.y);
+      
+      setAnnotations(prev => {
+        const updated = prev.map(a => 
+          a.id === currentAnnotation.id 
+            ? { ...a, x: newX, y: newY, width, height }
+            : a
+        );
+        onAnnotationsChange?.(updated);
+        return updated;
+      });
     }
-  }, [readOnly, isDrawing, selectedTool, screenToNormalized]);
+  }, [readOnly, isDrawing, isDragging, selectedTool, screenToNormalized, startPoint, currentAnnotation, onAnnotationsChange]);
 
-  const handleMouseUp = useCallback(() => {
-    if (readOnly || !isDrawing || !selectedTool) return;
+  const handleMouseUp = useCallback((e?: React.MouseEvent) => {
+    if (readOnly || !selectedTool) return;
 
-    if (selectedTool === 'drawing' && drawingPoints.length > 1) {
+    if (selectedTool === 'drawing' && isDrawing && drawingPoints.length > 1) {
       const newAnnotation: Annotation = {
         id: `${Date.now()}-${Math.random()}`,
         page: currentPage,
@@ -143,13 +207,31 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         color: selectedColor,
         points: [...drawingPoints],
       };
-      setAnnotations(prev => [...prev, newAnnotation]);
-      onAnnotationsChange?.(prev => [...prev, newAnnotation]);
+      setAnnotations(prev => {
+        const updated = [...prev, newAnnotation];
+        onAnnotationsChange?.(updated);
+        return updated;
+      });
+    }
+    
+    // Clean up dragging state
+    if (isDragging && currentAnnotation) {
+      // Remove annotation if it's too small (likely accidental click)
+      if (currentAnnotation.width < 0.01 && currentAnnotation.height < 0.01) {
+        setAnnotations(prev => {
+          const updated = prev.filter(a => a.id !== currentAnnotation.id);
+          onAnnotationsChange?.(updated);
+          return updated;
+        });
+      }
     }
     
     setIsDrawing(false);
+    setIsDragging(false);
     setDrawingPoints([]);
-  }, [readOnly, isDrawing, selectedTool, drawingPoints, currentPage, selectedColor, onAnnotationsChange]);
+    setCurrentAnnotation(null);
+    setStartPoint(null);
+  }, [readOnly, isDrawing, isDragging, selectedTool, drawingPoints, currentPage, selectedColor, currentAnnotation, onAnnotationsChange]);
 
   // Delete annotation
   const deleteAnnotation = useCallback((id: string) => {
@@ -197,28 +279,38 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       switch (annotation.type) {
         case 'highlight':
           ctx.globalAlpha = 0.3;
-          ctx.fillRect(x, y, (annotation.width || 0.1) * canvas.width, (annotation.height || 0.05) * canvas.height);
+          const highlightWidth = (annotation.width || 0.1) * canvas.width;
+          const highlightHeight = (annotation.height || 0.05) * canvas.height;
+          if (highlightWidth > 0 && highlightHeight > 0) {
+            ctx.fillRect(x, y, highlightWidth, highlightHeight);
+          }
           ctx.globalAlpha = 1;
           break;
         case 'arrow':
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(x + (annotation.width || 0.1) * canvas.width, y + (annotation.height || 0.05) * canvas.height);
-          ctx.stroke();
-          // Draw arrowhead
-          const angle = Math.atan2((annotation.height || 0.05) * canvas.height, (annotation.width || 0.1) * canvas.width);
-          ctx.beginPath();
-          ctx.moveTo(x + (annotation.width || 0.1) * canvas.width, y + (annotation.height || 0.05) * canvas.height);
-          ctx.lineTo(
-            x + (annotation.width || 0.1) * canvas.width - 10 * Math.cos(angle - Math.PI / 6),
-            y + (annotation.height || 0.05) * canvas.height - 10 * Math.sin(angle - Math.PI / 6)
-          );
-          ctx.lineTo(
-            x + (annotation.width || 0.1) * canvas.width - 10 * Math.cos(angle + Math.PI / 6),
-            y + (annotation.height || 0.05) * canvas.height - 10 * Math.sin(angle + Math.PI / 6)
-          );
-          ctx.closePath();
-          ctx.fill();
+          const arrowWidth = (annotation.width || 0.1) * canvas.width;
+          const arrowHeight = (annotation.height || 0.05) * canvas.height;
+          if (arrowWidth !== 0 || arrowHeight !== 0) {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + arrowWidth, y + arrowHeight);
+            ctx.stroke();
+            // Draw arrowhead
+            if (Math.abs(arrowWidth) > 5 || Math.abs(arrowHeight) > 5) {
+              const angle = Math.atan2(arrowHeight, arrowWidth);
+              ctx.beginPath();
+              ctx.moveTo(x + arrowWidth, y + arrowHeight);
+              ctx.lineTo(
+                x + arrowWidth - 10 * Math.cos(angle - Math.PI / 6),
+                y + arrowHeight - 10 * Math.sin(angle - Math.PI / 6)
+              );
+              ctx.lineTo(
+                x + arrowWidth - 10 * Math.cos(angle + Math.PI / 6),
+                y + arrowHeight - 10 * Math.sin(angle + Math.PI / 6)
+              );
+              ctx.closePath();
+              ctx.fill();
+            }
+          }
           break;
         case 'drawing':
           if (annotation.points && annotation.points.length > 1) {
@@ -237,6 +329,18 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
             ctx.fillStyle = '#000000';
             ctx.font = '12px Arial';
             ctx.fillText(annotation.text, x + 25, y + 15);
+          }
+          break;
+        case 'text':
+          if (annotation.text) {
+            ctx.fillStyle = annotation.color || '#000000';
+            ctx.font = '14px Arial';
+            ctx.fillText(annotation.text, x * canvas.width, y * canvas.height);
+          } else {
+            // Show placeholder
+            ctx.fillStyle = '#CCCCCC';
+            ctx.font = '12px Arial';
+            ctx.fillText('Text', x * canvas.width, y * canvas.height);
           }
           break;
       }
@@ -346,14 +450,15 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
             </Document>
             <canvas
               ref={annotationCanvasRef}
-              className="absolute top-0 left-0 pointer-events-none"
+              className="absolute top-0 left-0 pointer-events-none z-0"
               style={{ width: '100%', height: '100%' }}
             />
             <div
-              className="absolute inset-0"
+              className="absolute inset-0 z-10"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onMouseLeave={(e) => handleMouseUp(e)}
               style={{ cursor: selectedTool ? 'crosshair' : 'default', pointerEvents: readOnly ? 'none' : 'auto' }}
             />
           </div>
