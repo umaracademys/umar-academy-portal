@@ -24,9 +24,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
   subtitle,
   badge,
   pendingCount,
-  actions = [],
-  quickLinks = [],
+  actions,
+  quickLinks,
 }) => {
+  const safeActions = actions || [];
+  const safeQuickLinks = quickLinks || [];
   return (
     <div className="rounded-xl border-2 border-gray-200 bg-white px-4 py-4 sm:px-6 sm:py-5 flex flex-col gap-3 sm:gap-4 md:flex-row md:items-center md:justify-between shadow-md">
       <div className="space-y-1.5 flex-1">
@@ -48,9 +50,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
         )}
       </div>
       
-      {(actions.length > 0 || quickLinks.length > 0) && (
+      {(safeActions.length > 0 || safeQuickLinks.length > 0) && (
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
-          {quickLinks.map((link, idx) => (
+          {safeQuickLinks.map((link, idx) => (
             <a
               key={idx}
               href={link.to}
@@ -59,7 +61,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = React.memo(({
               {link.label}
             </a>
           ))}
-          {actions.map((action, idx) => (
+          {safeActions.map((action, idx) => (
             <Button
               key={idx}
               variant={action.variant || 'primary'}

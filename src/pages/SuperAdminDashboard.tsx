@@ -417,9 +417,6 @@ const SuperAdminDashboard: React.FC = () => {
     },
   ];
 
-  // Import centralized formatter
-  import { formatTimeAgo } from '../utils/formatters';
-
   // Calculate additional metrics
   const inactiveStudentCount = totalStudents - activeStudentCount;
   const inactiveTeacherCount = totalTeachers - activeTeacherCount;
