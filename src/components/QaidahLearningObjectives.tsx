@@ -151,6 +151,8 @@ const QaidahLearningObjectives: React.FC<QaidahLearningObjectivesProps> = ({
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
       const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
       
+      console.log('📚 Loading history for:', { studentId: selectedStudentId, book, page });
+      
       const response = await fetch(`${API_BASE}/qaidah/student-learning/history/${selectedStudentId}/${book}/${page}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -160,7 +162,21 @@ const QaidahLearningObjectives: React.FC<QaidahLearningObjectivesProps> = ({
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ History loaded:', data.length, 'entries');
         setHistory(data);
+      } else {
+        const errorText = await response.text();
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { error: errorText || 'Unknown error' };
+        }
+        console.error('❌ Error loading history:', response.status, error);
+        // Don't show alert for empty history (404/400 might be expected if no history exists)
+        if (response.status !== 404) {
+          console.warn('⚠️ Failed to load history:', error.error || 'Unknown error');
+        }
       }
     } catch (error) {
       console.error('❌ Error loading history:', error);
