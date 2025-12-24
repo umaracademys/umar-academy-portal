@@ -4,7 +4,8 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
-import DebugPanel from '../components/DebugPanel';
+// DebugPanel only in development
+const DebugPanel = process.env.NODE_ENV === 'development' ? require('../components/DebugPanel').default : null;
 import StudentList from '../components/StudentList';
 import StudentProfile from '../components/StudentProfile';
 import StudentEnrollment from '../components/StudentEnrollment';
@@ -527,7 +528,7 @@ const AdminDashboard: React.FC = () => {
         />
       )}
 
-      <DebugPanel />
+      {process.env.NODE_ENV === 'development' && DebugPanel && <DebugPanel />}
 
       {/* Student Management Modals */}
         {showStudentProfile && selectedStudent && (

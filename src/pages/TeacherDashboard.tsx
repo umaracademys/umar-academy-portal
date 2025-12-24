@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
-import DebugPanel from '../components/DebugPanel';
+// DebugPanel only in development
+const DebugPanel = process.env.NODE_ENV === 'development' ? require('../components/DebugPanel').default : null;
 import TeacherRecitationReview from '../components/TeacherRecitationReview';
 import StudentReports from '../components/StudentReports';
 import TeacherTicketReview from '../components/TeacherTicketReview';
@@ -1405,7 +1406,7 @@ const TeacherDashboard: React.FC = () => {
         />
       )}
       
-      <DebugPanel />
+      {process.env.NODE_ENV === 'development' && DebugPanel && <DebugPanel />}
     </div>
   );
 };

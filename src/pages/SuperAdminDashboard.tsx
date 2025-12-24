@@ -31,7 +31,8 @@ const TeacherCommunication = lazy(() => import('../components/TeacherCommunicati
 const TeacherCredentials = lazy(() => import('../components/TeacherCredentials'));
 const TeacherAnalytics = lazy(() => import('../components/TeacherAnalytics'));
 const TeacherBulkOperations = lazy(() => import('../components/TeacherBulkOperations'));
-const DebugPanel = lazy(() => import('../components/DebugPanel'));
+// DebugPanel removed - only show in development
+const DebugPanel = process.env.NODE_ENV === 'development' ? lazy(() => import('../components/DebugPanel')) : null;
 const AdminRecitationReview = lazy(() => import('../components/AdminRecitationReview'));
 const StudentReports = lazy(() => import('../components/StudentReports'));
 const AdminTicketReview = lazy(() => import('../components/AdminTicketReview'));
@@ -1760,9 +1761,11 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      <Suspense fallback={null}>
-        <DebugPanel />
-      </Suspense>
+      {process.env.NODE_ENV === 'development' && DebugPanel && (
+        <Suspense fallback={null}>
+          <DebugPanel />
+        </Suspense>
+      )}
     </div>
   );
 };
