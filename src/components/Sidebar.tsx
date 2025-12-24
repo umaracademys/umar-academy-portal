@@ -72,11 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       items.push(pdfTeachingItem);
     }
     
-    // Add AI Library if available
-    if (aiLibraryItem) {
-      items.push(aiLibraryItem);
-    }
-    
     // Add remaining items
     items.push(
       { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
