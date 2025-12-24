@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, memo } from 'react';
 
 interface CardProps {
   title?: string;
@@ -6,7 +6,7 @@ interface CardProps {
   className?: string;
 }
 
-const Card: React.FC<CardProps> = ({ title, children, className = '' }) => {
+const Card: React.FC<CardProps> = memo(({ title, children, className = '' }) => {
   return (
     <div className={`bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-200 p-6 ${className}`}>
       {title && (
@@ -17,6 +17,8 @@ const Card: React.FC<CardProps> = ({ title, children, className = '' }) => {
       {children}
     </div>
   );
-};
+});
+
+Card.displayName = 'Card';
 
 export default Card;

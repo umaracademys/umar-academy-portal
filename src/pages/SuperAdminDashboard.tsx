@@ -186,14 +186,14 @@ const SuperAdminDashboard: React.FC = () => {
   const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
   const totalAdmins = admins.length;
 
-  const overviewQuickActions = [
+  const overviewQuickActions = useMemo(() => [
     {
       id: 'manage-assignments',
       label: 'Manage Assignments',
       description: 'Create and manage assignments with multi-phase classwork.',
       onClick: () => navigate('/assignments'),
       badge: null,
-      emphasis: 'primary',
+      emphasis: 'primary' as const,
     },
     {
       id: 'review-recitations',
@@ -201,7 +201,7 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'Approve sabq, sabqi, and manzil submissions.',
       onClick: () => setShowRecitationReview(true),
       badge: pendingReviewsCount,
-      emphasis: 'neutral',
+      emphasis: 'neutral' as const,
     },
     {
       id: 'review-tickets',
@@ -209,7 +209,7 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'Review and approve submitted tickets from teachers.',
       onClick: () => setShowTicketReview(true),
       badge: pendingTicketCount,
-      emphasis: 'primary',
+      emphasis: 'primary' as const,
     },
     {
       id: 'review-homework',

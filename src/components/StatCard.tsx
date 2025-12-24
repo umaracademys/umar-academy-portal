@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 interface StatCardProps {
   title: string;
@@ -14,7 +14,7 @@ interface StatCardProps {
   className?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ 
+const StatCard: React.FC<StatCardProps> = React.memo(({ 
   title, 
   value, 
   icon, 
@@ -23,7 +23,7 @@ const StatCard: React.FC<StatCardProps> = ({
   onClick,
   className = ''
 }) => {
-  const badgeLabel = icon?.trim() || title.slice(0, 2).toUpperCase();
+  const badgeLabel = useMemo(() => icon?.trim() || title.slice(0, 2).toUpperCase(), [icon, title]);
 
   return (
     <div 
@@ -54,6 +54,8 @@ const StatCard: React.FC<StatCardProps> = ({
       </div>
     </div>
   );
-};
+});
+
+StatCard.displayName = 'StatCard';
 
 export default StatCard;
