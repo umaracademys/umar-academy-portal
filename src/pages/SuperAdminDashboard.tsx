@@ -503,59 +503,6 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Quick Actions - Better Organized */}
-      <section className="rounded-2xl border border-gray-200 bg-white px-6 py-6 shadow-md">
-        <div className="mb-4">
-          <h2 className="text-xl font-bold text-primary mb-2">Quick Actions</h2>
-          <p className="text-sm text-gray-600">Access frequently used workflows and management tools</p>
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          {overviewQuickActions.map((action) => {
-            const commonClasses =
-              'flex h-full flex-col justify-between rounded-xl border-2 px-4 py-3.5 text-left shadow-sm transition-all duration-200 group';
-            const activeButtonClasses = {
-              primary: `${commonClasses} border-primary/30 bg-white hover:bg-gradient-to-br hover:from-soft-primary hover:to-white hover:border-primary/50 hover:shadow-md`,
-              neutral: `${commonClasses} border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 hover:shadow-md`,
-              accent: `${commonClasses} border-accent/30 bg-white hover:bg-gradient-to-br hover:from-soft-accent hover:to-white hover:border-accent/50 hover:shadow-md`,
-              'accent-solid': `${commonClasses} border-transparent bg-gradient-to-br from-accent to-accent/90 text-white hover:from-accent/90 hover:to-accent shadow-md hover:shadow-lg`,
-            };
-
-            const badge =
-              action.badge !== null && action.badge !== undefined && action.badge > 0 ? (
-                <span className="ml-auto rounded-full bg-red-500 text-white px-2.5 py-1 text-xs font-bold shadow-sm animate-pulse">
-                  {action.badge}
-                </span>
-              ) : null;
-
-            const isDisabled = (action as any).disabled;
-            const isFixing = action.id === 'fix-assignment-ids' && isFixingIds;
-            
-            return (
-              <button
-                key={action.id}
-                onClick={action.onClick}
-                disabled={isDisabled}
-                className={`${activeButtonClasses[action.emphasis || 'neutral']} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className={`text-sm font-bold leading-tight ${action.emphasis === 'accent-solid' ? 'text-white' : 'text-primary'}`}>
-                      {isFixing ? 'Fixing...' : action.label}
-                    </p>
-                    {badge}
-                  </div>
-                  <p className={`text-xs leading-relaxed ${action.emphasis === 'accent-solid' ? 'text-white/90' : 'text-gray-600'}`}>
-                    {action.description}
-                  </p>
-                </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider mt-2 ${action.emphasis === 'accent-solid' ? 'text-white/80' : 'text-gray-500'}`}>
-                  {isFixing ? 'Processing...' : '→ Open'}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
 
       {/* System Management - Simplified */}
       <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
