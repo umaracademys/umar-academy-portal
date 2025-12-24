@@ -88,12 +88,12 @@ const StudentPdfHomework: React.FC = () => {
           ) : (
             <div className="space-y-2">
               {homework.map((item) => (
-                <Card
+                <div
                   key={item.assignmentId}
-                  className={`p-4 cursor-pointer hover:shadow-md transition-shadow ${
+                  onClick={() => setSelectedHomework(item)}
+                  className={`bg-white rounded-xl shadow-md border border-gray-200 hover:shadow-lg transition-all duration-200 p-4 cursor-pointer ${
                     selectedHomework?.assignmentId === item.assignmentId ? 'border-primary-500 border-2' : ''
                   }`}
-                  onClick={() => setSelectedHomework(item)}
                 >
                   <h3 className="font-semibold text-gray-800">{item.pdf.title}</h3>
                   <p className="text-sm text-gray-600 mt-1">
@@ -107,7 +107,7 @@ const StudentPdfHomework: React.FC = () => {
                       "{item.annotations.notes.substring(0, 50)}..."
                     </p>
                   )}
-                </Card>
+                </div>
               ))}
             </div>
           )}
@@ -146,7 +146,7 @@ const StudentPdfHomework: React.FC = () => {
               <div className="flex-1 overflow-hidden">
                 <PdfAnnotationViewer
                   pdfUrl={selectedHomework.pdf.fileUrl}
-                  annotations={selectedHomework.annotations?.annotations || []}
+                  annotations={(selectedHomework.annotations?.annotations || []) as any}
                   readOnly={true}
                   showControls={true}
                   initialPage={1}

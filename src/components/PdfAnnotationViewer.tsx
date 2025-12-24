@@ -1380,24 +1380,37 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       )}
       
       {showControls && !readOnly && showToolbar && (
-        <div className="relative bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-b border-gray-900 shadow-2xl flex-shrink-0">
+        <div className={`relative bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-b border-gray-900 shadow-2xl flex-shrink-0 transition-all duration-300 ease-in-out ${isToolbarCollapsed ? 'max-h-12 overflow-hidden' : ''}`}>
           {/* Vertical Light Strip on Left - Hidden on mobile */}
           <div className="hidden sm:block absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-400 via-gray-500 to-transparent opacity-30 blur-sm"></div>
           
           <div className="relative p-2 sm:p-2 space-y-2 overflow-x-auto overflow-y-hidden">
-            {/* Toolbar Toggle Button */}
-            <div className="flex justify-start mb-1">
+            {/* Phase 5: Collapsible Toolbar Header */}
+            <div className="flex justify-between items-center mb-1">
               <button
-                onClick={() => setShowToolbar(false)}
-                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
-                title="Hide Toolbar"
+                onClick={() => setIsToolbarCollapsed(!isToolbarCollapsed)}
+                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-200 transition-colors duration-200"
+                title={isToolbarCollapsed ? 'Expand Toolbar' : 'Collapse Toolbar'}
               >
-                ▲ Hide
+                {isToolbarCollapsed ? '▼' : '▲'} {isToolbarCollapsed ? 'Show' : 'Hide'}
+              </button>
+              <button
+                onClick={() => {
+                  setShowToolbar(false);
+                  setShowFloatingToolbar(true);
+                }}
+                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-200 transition-colors duration-200"
+                title="Switch to Floating Toolbar"
+              >
+                ⭕ Float
               </button>
             </div>
             
-            {/* Compact Single Row: All Controls */}
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap min-w-max">
+            {/* Phase 5: Collapsible Content */}
+            {!isToolbarCollapsed && (
+              <div className="transition-all duration-300 ease-in-out">
+                {/* Compact Single Row: All Controls */}
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap min-w-max">
               {/* History Controls */}
               <div className="flex items-center gap-1 bg-gray-900/50 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 shadow-lg flex-shrink-0">
                 <button
@@ -1792,6 +1805,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                   <span className="text-base sm:text-sm">{isSaving ? '⏳' : '💾'}</span> <span className="hidden sm:inline">Save</span>
                 </button>
               )}
+                </div>
               </div>
             )}
           </div>
