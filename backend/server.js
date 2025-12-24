@@ -3413,6 +3413,22 @@ const assignmentSchema = new mongoose.Schema({
     link: { type: String, default: '' }, // Optional link
     pdfId: { type: String }, // ID of uploaded PDF document
     pdfAnnotations: { type: Object }, // Teacher's annotations on the PDF
+    // Qaidah-specific homework (for After School Students)
+    qaidahHomework: {
+      book: { type: String, enum: ['qaidah1', 'qaidah2'] }, // Qaidah book
+      page: { type: Number }, // Page number
+      teachingDate: { type: Date }, // Date when this was taught
+      qaidahMarkId: { type: mongoose.Schema.Types.ObjectId, ref: 'QaidahMark' }, // Reference to QaidahMark
+      learningObjectiveId: { type: mongoose.Schema.Types.ObjectId, ref: 'QaidahStudentLearning' }, // Reference to learning objectives
+      letters: [{ type: String }], // Letters to work on (copied from learning objectives)
+      rules: [{ type: String }], // Rules to understand (copied from learning objectives)
+      learningObjectives: { type: String }, // Learning objectives text (copied)
+      links: [{ // Links shared by teacher
+        title: { type: String },
+        url: { type: String },
+        description: { type: String }
+      }]
+    },
     // Homework submission
     submission: {
       submitted: { type: Boolean, default: false },
@@ -3785,6 +3801,74 @@ const qaidahMarkSchema = new mongoose.Schema({
 qaidahMarkSchema.index({ student: 1, book: 1, page: 1, classworkDate: 1 });
 
 const QaidahMark = mongoose.model('QaidahMark', qaidahMarkSchema);
+
+// Qaidah Page Learning Objectives Schema - for teaching letters and rules per page (legacy - kept for backward compatibility)
+const qaidahPageLearningSchema = new mongoose.Schema({
+  book: { type: String, enum: ['qaidah1', 'qaidah2'], required: true, index: true },
+  page: { type: Number, required: true, index: true },
+  letters: [{ 
+    type: String, // Arabic letters to work on (e.g., "ب", "ت", "ث")
+    trim: true 
+  }],
+  rules: [{ 
+    type: String, // Rules to understand (e.g., "Fatha", "Kasra", "Damma")
+    trim: true 
+  }],
+  learningObjectives: { 
+    type: String, // General learning objectives for this page
+    default: '' 
+  },
+  notes: { 
+    type: String, // Additional teaching notes
+    default: '' 
+  },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+
+// Compound index for efficient queries
+qaidahPageLearningSchema.index({ book: 1, page: 1 }, { unique: true });
+
+const QaidahPageLearning = mongoose.model('QaidahPageLearning', qaidahPageLearningSchema);
+
+// Qaidah Student Learning Objectives Schema - per student, per day, per page
+const qaidahStudentLearningSchema = new mongoose.Schema({
+  student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true, index: true },
+  studentName: { type: String, required: true }, // Denormalized for easier queries
+  book: { type: String, enum: ['qaidah1', 'qaidah2'], required: true, index: true },
+  page: { type: Number, required: true, index: true },
+  teachingDate: { type: Date, required: true, index: true }, // Date when this was taught
+  letters: [{ 
+    type: String, // Arabic letters to work on (e.g., "ب", "ت", "ث")
+    trim: true 
+  }],
+  rules: [{ 
+    type: String, // Rules to understand (e.g., "Fatha", "Kasra", "Damma")
+    trim: true 
+  }],
+  learningObjectives: { 
+    type: String, // Learning objectives for this student on this day
+    default: '' 
+  },
+  notes: { 
+    type: String, // Additional teaching notes
+    default: '' 
+  },
+  links: [{ // Optional links shared by teacher
+    title: { type: String, trim: true },
+    url: { type: String, required: true },
+    description: { type: String, default: '' }
+  }],
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+}, { timestamps: true });
+
+// Compound indexes for efficient queries
+qaidahStudentLearningSchema.index({ student: 1, teachingDate: -1 }); // Get history for a student
+qaidahStudentLearningSchema.index({ student: 1, book: 1, page: 1, teachingDate: -1 }); // Get specific page history
+qaidahStudentLearningSchema.index({ createdBy: 1, teachingDate: -1 }); // Get teacher's teaching history
+
+const QaidahStudentLearning = mongoose.model('QaidahStudentLearning', qaidahStudentLearningSchema);
 
 // PDF Document Schema - for uploaded PDFs (Super Admin only)
 const pdfDocumentSchema = new mongoose.Schema({
@@ -9964,6 +10048,443 @@ app.post('/api/qaidah/upload', authenticateToken, async (req, res) => {
   }
 });
 
+// ============================================
+// QAIDAH PAGE LEARNING OBJECTIVES API
+// IMPORTANT: These routes must be defined BEFORE /api/qaidah/:studentId/:book/:page
+// to avoid route conflicts (Express matches routes in order)
+// ============================================
+
+// GET /api/qaidah/student-learning/:studentId/:book/:page/:date - Get learning objectives for a student on a specific date
+app.get('/api/qaidah/student-learning/:studentId/:book/:page/:date', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page, date } = req.params;
+    const pageNum = parseInt(page, 10);
+    const teachingDate = new Date(date);
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    if (isNaN(teachingDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    // Normalize date to start of day for comparison
+    const dateStart = new Date(teachingDate);
+    dateStart.setHours(0, 0, 0, 0);
+    const dateEnd = new Date(dateStart);
+    dateEnd.setHours(23, 59, 59, 999);
+
+    const learning = await QaidahStudentLearning.findOne({
+      student: studentId,
+      book,
+      page: pageNum,
+      teachingDate: { $gte: dateStart, $lte: dateEnd }
+    }).sort({ teachingDate: -1 });
+
+    if (!learning) {
+      return res.json({
+        student: studentId,
+        book,
+        page: pageNum,
+        teachingDate: dateStart.toISOString(),
+        letters: [],
+        rules: [],
+        learningObjectives: '',
+        notes: '',
+        links: []
+      });
+    }
+
+    res.json({
+      id: learning._id,
+      student: learning.student,
+      studentName: learning.studentName,
+      book: learning.book,
+      page: learning.page,
+      teachingDate: learning.teachingDate,
+      letters: learning.letters || [],
+      rules: learning.rules || [],
+      learningObjectives: learning.learningObjectives || '',
+      notes: learning.notes || '',
+      links: learning.links || []
+    });
+  } catch (error) {
+    console.error('Error fetching student learning objectives:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// GET /api/qaidah/student-learning/history/:studentId/:book/:page - Get learning objectives history for a student
+app.get('/api/qaidah/student-learning/history/:studentId/:book/:page', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page } = req.params;
+    const pageNum = parseInt(page, 10);
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    const history = await QaidahStudentLearning.find({
+      student: studentId,
+      book,
+      page: pageNum
+    }).sort({ teachingDate: -1 }).limit(30); // Last 30 sessions
+
+    res.json(history.map(item => ({
+      id: item._id,
+      student: item.student,
+      studentName: item.studentName,
+      book: item.book,
+      page: item.page,
+      teachingDate: item.teachingDate,
+      letters: item.letters || [],
+      rules: item.rules || [],
+      learningObjectives: item.learningObjectives || '',
+      notes: item.notes || '',
+      links: item.links || [],
+      createdAt: item.createdAt
+    })));
+  } catch (error) {
+    console.error('Error fetching learning objectives history:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /api/qaidah/student-learning/:studentId/:book/:page/:date - Save learning objectives for a student on a specific date
+app.post('/api/qaidah/student-learning/:studentId/:book/:page/:date', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page, date } = req.params;
+    const pageNum = parseInt(page, 10);
+    const teachingDate = new Date(date);
+    const { letters, rules, learningObjectives, notes, links } = req.body;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Only teachers, admins, and super admins can save learning objectives
+    if (!req.user || !['teacher', 'admin', 'superadmin'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    if (isNaN(teachingDate.getTime())) {
+      return res.status(400).json({ error: 'Invalid date format' });
+    }
+
+    // Validate student exists
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Validate arrays
+    if (letters && !Array.isArray(letters)) {
+      return res.status(400).json({ error: 'Letters must be an array' });
+    }
+
+    if (rules && !Array.isArray(rules)) {
+      return res.status(400).json({ error: 'Rules must be an array' });
+    }
+
+    if (links && !Array.isArray(links)) {
+      return res.status(400).json({ error: 'Links must be an array' });
+    }
+
+    // Normalize date to start of day
+    const dateStart = new Date(teachingDate);
+    dateStart.setHours(0, 0, 0, 0);
+
+    // Find or create learning objectives for this student/date/page
+    let learning = await QaidahStudentLearning.findOne({
+      student: studentId,
+      book,
+      page: pageNum,
+      teachingDate: { 
+        $gte: new Date(dateStart),
+        $lt: new Date(dateStart.getTime() + 24 * 60 * 60 * 1000)
+      }
+    });
+
+    if (learning) {
+      // Update existing
+      learning.letters = letters || [];
+      learning.rules = rules || [];
+      learning.learningObjectives = learningObjectives || '';
+      learning.notes = notes || '';
+      learning.links = links || [];
+      learning.updatedBy = userId;
+      await learning.save();
+    } else {
+      // Create new
+      learning = new QaidahStudentLearning({
+        student: studentId,
+        studentName: student.fullName || student.name || 'Unknown',
+        book,
+        page: pageNum,
+        teachingDate: dateStart,
+        letters: letters || [],
+        rules: rules || [],
+        learningObjectives: learningObjectives || '',
+        notes: notes || '',
+        links: links || [],
+        createdBy: userId,
+        updatedBy: userId
+      });
+      await learning.save();
+    }
+
+    res.json({
+      id: learning._id,
+      student: learning.student,
+      studentName: learning.studentName,
+      book: learning.book,
+      page: learning.page,
+      teachingDate: learning.teachingDate,
+      letters: learning.letters || [],
+      rules: learning.rules || [],
+      learningObjectives: learning.learningObjectives || '',
+      notes: learning.notes || '',
+      links: learning.links || []
+    });
+  } catch (error) {
+    console.error('Error saving student learning objectives:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /api/qaidah/homework/create - Create homework assignment from Qaidah marks and learning objectives
+app.post('/api/qaidah/homework/create', authenticateToken, async (req, res) => {
+  try {
+    const { studentId, book, page, teachingDate, learningObjectiveId, qaidahMarkId, links } = req.body;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Only teachers, admins, and super admins can create homework
+    if (!req.user || !['teacher', 'admin', 'superadmin'].includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // Validate required fields
+    if (!studentId || !book || !page || !teachingDate) {
+      return res.status(400).json({ error: 'Missing required fields: studentId, book, page, teachingDate' });
+    }
+
+    // Get student
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Get learning objectives
+    let learningObjectives = null;
+    if (learningObjectiveId) {
+      learningObjectives = await QaidahStudentLearning.findById(learningObjectiveId);
+      if (!learningObjectives) {
+        return res.status(404).json({ error: 'Learning objectives not found' });
+      }
+    }
+
+    // Get Qaidah marks if provided
+    let qaidahMarks = null;
+    if (qaidahMarkId) {
+      qaidahMarks = await QaidahMark.findById(qaidahMarkId);
+      if (!qaidahMarks) {
+        return res.status(404).json({ error: 'Qaidah marks not found' });
+      }
+    }
+
+    // Get teacher info
+    const teacher = await User.findById(userId);
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    // Create homework assignment
+    const assignment = new Assignment({
+      studentId: studentId,
+      studentName: student.fullName || student.name || 'Unknown',
+      assignedBy: userId,
+      assignedByName: teacher.name || teacher.fullName || 'Unknown',
+      assignedByRole: req.user.role === 'superadmin' ? 'super_admin' : req.user.role,
+      homework: {
+        enabled: true,
+        qaidahHomework: {
+          book,
+          page: parseInt(page, 10),
+          teachingDate: new Date(teachingDate),
+          qaidahMarkId: qaidahMarkId || null,
+          learningObjectiveId: learningObjectiveId || null,
+          letters: learningObjectives?.letters || [],
+          rules: learningObjectives?.rules || [],
+          learningObjectives: learningObjectives?.learningObjectives || '',
+          links: links || learningObjectives?.links || []
+        }
+      },
+      status: 'active'
+    });
+
+    await assignment.save();
+
+    res.json({
+      success: true,
+      assignment: {
+        id: assignment._id,
+        studentId: assignment.studentId,
+        studentName: assignment.studentName,
+        homework: assignment.homework
+      }
+    });
+  } catch (error) {
+    console.error('Error creating Qaidah homework:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// GET /api/qaidah/learning/:book/:page - Get learning objectives for a page (legacy endpoint - kept for backward compatibility)
+app.get('/api/qaidah/learning/:book/:page', authenticateToken, async (req, res) => {
+  try {
+    const { book, page } = req.params;
+    const pageNum = parseInt(page, 10);
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    const learning = await QaidahPageLearning.findOne({ book, page: pageNum });
+
+    if (!learning) {
+      return res.json({
+        book,
+        page: pageNum,
+        letters: [],
+        rules: [],
+        learningObjectives: '',
+        notes: ''
+      });
+    }
+
+    res.json({
+      book: learning.book,
+      page: learning.page,
+      letters: learning.letters || [],
+      rules: learning.rules || [],
+      learningObjectives: learning.learningObjectives || '',
+      notes: learning.notes || ''
+    });
+  } catch (error) {
+    console.error('Error fetching learning objectives:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
+// POST /api/qaidah/learning/:book/:page - Save learning objectives for a page (Teachers, Admins, Super Admins)
+app.post('/api/qaidah/learning/:book/:page', authenticateToken, async (req, res) => {
+  try {
+    const { book, page } = req.params;
+    const pageNum = parseInt(page, 10);
+    const { letters, rules, learningObjectives, notes } = req.body;
+    const userId = req.user?.userId || req.user?.id;
+
+    // Debug logging
+    console.log('📚 POST /api/qaidah/learning - User:', {
+      userId,
+      role: req.user?.role,
+      email: req.user?.email,
+      userObject: req.user
+    });
+
+    // Only teachers, admins, and super admins can save learning objectives
+    if (!req.user) {
+      console.log('❌ No user object in request');
+      return res.status(403).json({ error: 'Authentication required' });
+    }
+
+    if (!req.user.role) {
+      console.log('❌ No role in user object:', req.user);
+      return res.status(403).json({ error: 'User role not found in token' });
+    }
+
+    if (!['teacher', 'admin', 'superadmin'].includes(req.user.role)) {
+      console.log('❌ Invalid role:', req.user.role, 'Expected: teacher, admin, or superadmin');
+      return res.status(403).json({ 
+        error: `Access denied. Your role (${req.user.role}) does not have permission to save learning objectives. Only teachers, admins, and super admins can perform this action.` 
+      });
+    }
+
+    if (!['qaidah1', 'qaidah2'].includes(book)) {
+      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    }
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    // Validate letters array
+    if (letters && !Array.isArray(letters)) {
+      return res.status(400).json({ error: 'Letters must be an array' });
+    }
+
+    // Validate rules array
+    if (rules && !Array.isArray(rules)) {
+      return res.status(400).json({ error: 'Rules must be an array' });
+    }
+
+    let learning = await QaidahPageLearning.findOne({ book, page: pageNum });
+
+    if (learning) {
+      // Update existing
+      learning.letters = letters || [];
+      learning.rules = rules || [];
+      learning.learningObjectives = learningObjectives || '';
+      learning.notes = notes || '';
+      learning.updatedBy = userId;
+      await learning.save();
+    } else {
+      // Create new
+      learning = new QaidahPageLearning({
+        book,
+        page: pageNum,
+        letters: letters || [],
+        rules: rules || [],
+        learningObjectives: learningObjectives || '',
+        notes: notes || '',
+        createdBy: userId,
+        updatedBy: userId
+      });
+      await learning.save();
+    }
+
+    res.json({
+      book: learning.book,
+      page: learning.page,
+      letters: learning.letters || [],
+      rules: learning.rules || [],
+      learningObjectives: learning.learningObjectives || '',
+      notes: learning.notes || ''
+    });
+  } catch (error) {
+    console.error('Error saving learning objectives:', error);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // GET /api/qaidah/:studentId/:book/:page - Get marks for a specific page
 app.get('/api/qaidah/:studentId/:book/:page', authenticateToken, async (req, res) => {
   try {
@@ -10115,6 +10636,7 @@ app.post('/api/qaidah/save', authenticateToken, async (req, res) => {
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
+
 
 // ============================================
 // PDF DOCUMENT & ANNOTATION API ENDPOINTS
@@ -10443,11 +10965,64 @@ app.post('/api/pdfs/:pdfId/annotations/assign', authenticateToken, async (req, r
 app.get('/api/students/:studentId/pdf-homework', authenticateToken, async (req, res) => {
   try {
     const { studentId } = req.params;
+    const userId = req.user?.userId || req.user?.id;
+    const userEmail = req.user?.email?.toLowerCase();
+    const userRole = req.user?.role;
     
-    // Verify access
-    if (req.user?.role === 'student' && (req.user?.userId || req.user?.id) !== studentId) {
-      return res.status(403).json({ error: 'Access denied' });
+    console.log('📚 GET /api/students/:studentId/pdf-homework', {
+      studentId,
+      userId,
+      userEmail,
+      userRole
+    });
+    
+    // Verify access for students
+    if (userRole === 'student') {
+      // Find the student record
+      const student = await Student.findById(studentId);
+      if (student) {
+        const studentUserId = student.userId?.toString();
+        const studentEmail = student.email?.toLowerCase();
+        
+        console.log('📚 Student record found:', {
+          studentId: student._id.toString(),
+          studentUserId,
+          studentEmail,
+          loggedInUserId: userId?.toString(),
+          loggedInUserEmail: userEmail
+        });
+        
+        // Check if student's userId matches the logged-in user's userId
+        // Also check if student email matches logged-in user's email (for cases where userId might not be set correctly)
+        const hasAccess = 
+          (studentUserId && studentUserId === userId?.toString()) || // userId matches
+          (studentEmail && userEmail && studentEmail === userEmail) || // email matches
+          (studentId === userId?.toString()); // studentId directly matches userId (backward compatibility)
+        
+        console.log('📚 Access check:', {
+          userIdMatch: studentUserId === userId?.toString(),
+          emailMatch: studentEmail === userEmail,
+          directMatch: studentId === userId?.toString(),
+          hasAccess
+        });
+        
+        if (!hasAccess) {
+          console.log('❌ Access denied for student');
+          return res.status(403).json({ error: 'Access denied. You can only view your own homework.' });
+        }
+      } else {
+        console.log('❌ Student record not found');
+        // If no student record found, check if studentId matches userId directly
+        if (studentId !== userId?.toString()) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+      }
     }
+    
+    // Teachers, admins, and superadmins can view any student's homework
+    console.log('✅ Access granted, fetching assignments...');
+    
+    // Teachers, admins, and superadmins can view any student's homework
 
     // Find assignments with PDF homework
     const assignments = await Assignment.find({

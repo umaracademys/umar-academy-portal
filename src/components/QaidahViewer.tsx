@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import QaidahCanvas from './QaidahCanvas';
+import QaidahLearningObjectives from './QaidahLearningObjectives';
 
 interface QaidahViewerProps {
   currentPage: number;
@@ -250,6 +251,14 @@ const QaidahViewer: React.FC<QaidahViewerProps> = ({
               </p>
             </div>
           </div>
+        )}
+        
+        {/* Learning Objectives Panel - Only show for Qaidah 1 and 2 */}
+        {(selectedBook === 'qaidah1' || selectedBook === 'qaidah2') && (
+          <QaidahLearningObjectives
+            book={selectedBook}
+            page={currentPage}
+          />
         )}
       </div>
 

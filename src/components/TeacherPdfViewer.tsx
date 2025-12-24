@@ -268,6 +268,8 @@ const TeacherPdfViewer: React.FC = () => {
             showControls={true}
             initialPage={1}
             initialNotes={notes}
+            pdfTitle={selectedPdf.title}
+            pdfFilename={selectedPdf.filename || selectedPdf.originalFilename || ''}
           />
         ) : (
           <div className="h-full flex items-center justify-center">

@@ -313,10 +313,13 @@ export async function getStudentPdfHomework(studentId: string): Promise<Array<{
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch PDF homework');
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      console.error('❌ Failed to fetch PDF homework:', response.status, errorData);
+      throw new Error(errorData.error || `Failed to fetch PDF homework: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('✅ PDF homework fetched successfully:', data.homework?.length || 0, 'items');
     return data.homework || [];
   } catch (error) {
     console.error('Error fetching PDF homework:', error);

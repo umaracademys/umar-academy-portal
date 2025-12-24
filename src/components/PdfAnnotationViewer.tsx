@@ -33,6 +33,7 @@ import {
   SelectionState 
 } from '../utils/AnnotationSelection';
 import { useAuth } from '../contexts/AuthContext';
+import QaidahLearningObjectives from './QaidahLearningObjectives';
 
 // Set up PDF.js worker
 const pdfjsVersion = '5.4.296';
@@ -53,6 +54,8 @@ interface PdfAnnotationViewerProps {
   initialNotes?: string;
   autosaveInterval?: number; // Autosave interval in seconds (default: 10)
   currentUserId?: string; // Current user ID for heart/star tracking
+  pdfTitle?: string; // PDF title to detect Qaidah books
+  pdfFilename?: string; // PDF filename to detect Qaidah books
 }
 
 const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
@@ -67,15 +70,58 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     initialNotes = '',
     autosaveInterval = 10, // Default 10 seconds
     currentUserId, // Optional user ID prop, falls back to auth context
+    pdfTitle = '', // PDF title to detect Qaidah books
+    pdfFilename = '', // PDF filename to detect Qaidah books
   } = props;
 
   // Get current user ID from auth context or prop
   const { user } = useAuth();
-  const userId = currentUserId || user?.id || user?._id || 'anonymous';
+  const userId = currentUserId || user?.id || (user as any)?._id || 'anonymous';
+
+  // Detect Qaidah book from PDF title or filename
+  const detectQaidahBook = (): 'qaidah1' | 'qaidah2' | null => {
+    const searchText = `${pdfTitle} ${pdfFilename} ${pdfUrl}`.toLowerCase();
+    console.log('📚 Checking for Qaidah:', { pdfTitle, pdfFilename, pdfUrl, searchText });
+    
+    // Check for Qaidah 1 patterns: "qaidah 1", "qaidah1", "qaidah-1", "qaidah part 1", "part 1"
+    if (
+      searchText.includes('qaidah 1') || 
+      searchText.includes('qaidah1') || 
+      searchText.includes('qaidah-1') ||
+      searchText.includes('qaidah part 1') ||
+      (searchText.includes('qaidah') && searchText.includes('part 1'))
+    ) {
+      console.log('✅ Detected Qaidah 1');
+      return 'qaidah1';
+    }
+    
+    // Check for Qaidah 2 patterns: "qaidah 2", "qaidah2", "qaidah-2", "qaidah part 2", "part 2"
+    if (
+      searchText.includes('qaidah 2') || 
+      searchText.includes('qaidah2') || 
+      searchText.includes('qaidah-2') ||
+      searchText.includes('qaidah part 2') ||
+      (searchText.includes('qaidah') && searchText.includes('part 2'))
+    ) {
+      console.log('✅ Detected Qaidah 2');
+      return 'qaidah2';
+    }
+    
+    console.log('❌ Not a Qaidah book');
+    return null;
+  };
+
+  const qaidahBook = detectQaidahBook();
 
   // Core state
   const [numPages, setNumPages] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(initialPage);
+  
+  useEffect(() => {
+    if (qaidahBook) {
+      console.log('📚 Qaidah Learning Objectives panel should be visible for:', qaidahBook, 'page', currentPage);
+    }
+  }, [qaidahBook, currentPage]);
   const [zoom, setZoom] = useState(1);
   const [annotations, setAnnotations] = useState<Annotation[]>(externalAnnotations);
   const [showTOC, setShowTOC] = useState(false);
@@ -88,6 +134,15 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [notes, setNotes] = useState(initialNotes);
   const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Annotation visibility and compact mode controls
+  const [showBlackAnnotations, setShowBlackAnnotations] = useState(true);
+  const [annotationMode, setAnnotationMode] = useState<'compact' | 'full'>('compact'); // Default to compact mode
+  const [showAnnotationMenu, setShowAnnotationMenu] = useState(false);
+  
+  // UI visibility controls
+  const [showToolbar, setShowToolbar] = useState(true);
+  const [showBottomBar, setShowBottomBar] = useState(true);
 
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -373,7 +428,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         width: 0,
         height: 0,
         ...(selectedTool === 'highlight' ? { opacity: highlightOpacity } : {}),
-        ...(selectedTool === 'arrow' || selectedTool === 'drawing' ? { strokeWidth: strokeWidth } : {}),
+        ...(selectedTool === 'arrow' ? { strokeWidth: strokeWidth } : {}),
       } as any;
       setCurrentAnnotation(newAnnotation);
       updateAnnotations(prev => [...prev, newAnnotation], false); // Don't save to history yet
@@ -777,6 +832,50 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     }
   }, [onSave, annotations, notes, isSaving]);
 
+  // Helper function to check if a color is black or very dark
+  const isBlackOrDark = useCallback((color: string): boolean => {
+    if (!color) return false;
+    
+    // Normalize color string
+    const normalizedColor = color.toLowerCase().trim();
+    
+    // Check for common black color values
+    if (normalizedColor === '#000000' || normalizedColor === '#000' || normalizedColor === 'black') {
+      return true;
+    }
+    
+    // Check for dark grays (threshold: brightness < 30%)
+    if (normalizedColor.startsWith('#')) {
+      const hex = normalizedColor.slice(1);
+      if (hex.length === 3) {
+        // Handle 3-digit hex
+        const r = parseInt(hex[0] + hex[0], 16);
+        const g = parseInt(hex[1] + hex[1], 16);
+        const b = parseInt(hex[2] + hex[2], 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 76;
+      } else if (hex.length === 6) {
+        const r = parseInt(hex.slice(0, 2), 16);
+        const g = parseInt(hex.slice(2, 4), 16);
+        const b = parseInt(hex.slice(4, 6), 16);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        return brightness < 76;
+      }
+    }
+    
+    // Check for rgb/rgba values
+    const rgbMatch = normalizedColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (rgbMatch) {
+      const r = parseInt(rgbMatch[1]);
+      const g = parseInt(rgbMatch[2]);
+      const b = parseInt(rgbMatch[3]);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      return brightness < 76;
+    }
+    
+    return false;
+  }, []);
+
   // Optimized rendering with requestAnimationFrame
   const renderAnnotations = useCallback(() => {
     if (!annotationCanvasRef.current || !pageRef.current || !pageDimensions) return;
@@ -792,19 +891,54 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw annotations for current page
-    const pageAnnotations = annotations.filter(a => a.page === currentPage);
+    let pageAnnotations = annotations.filter(a => a.page === currentPage);
+    
+    // Filter out black annotations if hidden
+    if (!showBlackAnnotations) {
+      pageAnnotations = pageAnnotations.filter(a => !isBlackOrDark(a.color || '#000000'));
+    }
     
     // Batch render for better performance
     pageAnnotations.forEach(annotation => {
       ctx.save();
+      
+      const isBlack = isBlackOrDark(annotation.color || '#000000');
+      const isCompact = annotationMode === 'compact' && isBlack;
+      
+      // Apply compact mode scaling for black annotations (60-70% reduction = 0.35 scale)
+      const compactScale = isCompact ? 0.35 : 1.0;
+      
       ctx.strokeStyle = annotation.color;
       ctx.fillStyle = annotation.color;
+      
       // Use strokeWidth from annotation if available, otherwise default to 2
-      const annStrokeWidth = (annotation as any).strokeWidth !== undefined ? (annotation as any).strokeWidth : strokeWidth;
+      // In compact mode, reduce stroke width for black annotations
+      let annStrokeWidth = (annotation as any).strokeWidth !== undefined ? (annotation as any).strokeWidth : strokeWidth;
+      if (isCompact) {
+        annStrokeWidth = Math.max(0.5, annStrokeWidth * 0.3); // Reduce to 30% of original
+      }
       ctx.lineWidth = annStrokeWidth;
 
+      // Apply scaling transform for compact mode
       const x = annotation.x * canvas.width;
       const y = annotation.y * canvas.height;
+      const width = (annotation.width || 0) * canvas.width;
+      const height = (annotation.height || 0) * canvas.height;
+      
+      // For compact mode, center the scaled annotation
+      let scaledX = x;
+      let scaledY = y;
+      let scaledWidth = width;
+      let scaledHeight = height;
+      
+      if (isCompact) {
+        scaledWidth = width * compactScale;
+        scaledHeight = height * compactScale;
+        // Center the scaled annotation
+        scaledX = x + (width - scaledWidth) / 2;
+        scaledY = y + (height - scaledHeight) / 2;
+      }
+      
       const isSelected = selectionState.selectedAnnotation?.id === annotation.id;
 
       // Draw selection highlight
@@ -815,11 +949,15 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         ctx.lineWidth = 3;
         ctx.setLineDash([5, 5]);
         if (annotation.width && annotation.height) {
+          const selX = isCompact ? scaledX : x;
+          const selY = isCompact ? scaledY : y;
+          const selWidth = isCompact ? scaledWidth : width;
+          const selHeight = isCompact ? scaledHeight : height;
           ctx.strokeRect(
-            x - 2,
-            y - 2,
-            annotation.width * canvas.width + 4,
-            annotation.height * canvas.height + 4
+            selX - 2,
+            selY - 2,
+            selWidth + 4,
+            selHeight + 4
           );
         }
         ctx.setLineDash([]);
@@ -830,36 +968,34 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       switch (annotation.type) {
         case 'highlight':
           ctx.globalAlpha = (annotation as any).opacity || highlightOpacity;
-          const highlightWidth = (annotation.width || 0.1) * canvas.width;
-          const highlightHeight = (annotation.height || 0.05) * canvas.height;
+          const highlightWidth = isCompact ? scaledWidth : width;
+          const highlightHeight = isCompact ? scaledHeight : (annotation.height || 0.05) * canvas.height;
           if (highlightWidth > 0 && highlightHeight > 0) {
-            ctx.fillRect(x, y, highlightWidth, highlightHeight);
+            ctx.fillRect(scaledX, scaledY, highlightWidth, highlightHeight);
           }
           ctx.globalAlpha = 1;
           break;
 
         case 'arrow':
-          const arrowWidth = (annotation.width || 0.1) * canvas.width;
-          const arrowHeight = (annotation.height || 0.05) * canvas.height;
-          const arrowStrokeWidth = (annotation as any).strokeWidth || strokeWidth;
+          const arrowWidth = isCompact ? scaledWidth : width;
+          const arrowHeight = isCompact ? scaledHeight : height;
           if (arrowWidth !== 0 || arrowHeight !== 0) {
-            ctx.lineWidth = arrowStrokeWidth;
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + arrowWidth, y + arrowHeight);
+            ctx.moveTo(scaledX, scaledY);
+            ctx.lineTo(scaledX + arrowWidth, scaledY + arrowHeight);
             ctx.stroke();
             if (Math.abs(arrowWidth) > 5 || Math.abs(arrowHeight) > 5) {
               const angle = Math.atan2(arrowHeight, arrowWidth);
-              const arrowheadSize = Math.max(8, arrowStrokeWidth * 2);
+              const arrowheadSize = Math.max(8, annStrokeWidth * 2);
               ctx.beginPath();
-              ctx.moveTo(x + arrowWidth, y + arrowHeight);
+              ctx.moveTo(scaledX + arrowWidth, scaledY + arrowHeight);
               ctx.lineTo(
-                x + arrowWidth - arrowheadSize * Math.cos(angle - Math.PI / 6),
-                y + arrowHeight - arrowheadSize * Math.sin(angle - Math.PI / 6)
+                scaledX + arrowWidth - arrowheadSize * Math.cos(angle - Math.PI / 6),
+                scaledY + arrowHeight - arrowheadSize * Math.sin(angle - Math.PI / 6)
               );
               ctx.lineTo(
-                x + arrowWidth - arrowheadSize * Math.cos(angle + Math.PI / 6),
-                y + arrowHeight - arrowheadSize * Math.sin(angle + Math.PI / 6)
+                scaledX + arrowWidth - arrowheadSize * Math.cos(angle + Math.PI / 6),
+                scaledY + arrowHeight - arrowheadSize * Math.sin(angle + Math.PI / 6)
               );
               ctx.closePath();
               ctx.fill();
@@ -870,52 +1006,61 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         case 'drawing':
           if (annotation.points && annotation.points.length > 1) {
             ctx.beginPath();
-            ctx.moveTo(annotation.points[0].x * canvas.width, annotation.points[0].y * canvas.height);
+            const firstPoint = annotation.points[0];
+            const firstX = isCompact ? scaledX + (firstPoint.x * canvas.width - x) * compactScale : firstPoint.x * canvas.width;
+            const firstY = isCompact ? scaledY + (firstPoint.y * canvas.height - y) * compactScale : firstPoint.y * canvas.height;
+            ctx.moveTo(firstX, firstY);
             for (let i = 1; i < annotation.points.length; i++) {
-              ctx.lineTo(annotation.points[i].x * canvas.width, annotation.points[i].y * canvas.height);
+              const pt = annotation.points[i];
+              const ptX = isCompact ? scaledX + (pt.x * canvas.width - x) * compactScale : pt.x * canvas.width;
+              const ptY = isCompact ? scaledY + (pt.y * canvas.height - y) * compactScale : pt.y * canvas.height;
+              ctx.lineTo(ptX, ptY);
             }
             ctx.stroke();
           }
           break;
 
         case 'note':
+          const noteSize = isCompact ? 20 * compactScale : 20;
           ctx.fillStyle = '#FFFF00';
-          ctx.fillRect(x, y, 20, 20);
+          ctx.fillRect(scaledX, scaledY, noteSize, noteSize);
           if (annotation.text) {
             ctx.fillStyle = '#000000';
-            ctx.font = '12px Arial';
-            ctx.fillText(annotation.text, x + 25, y + 15);
+            const fontSize = isCompact ? Math.max(8, 12 * compactScale) : 12;
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillText(annotation.text, scaledX + noteSize + 5, scaledY + noteSize * 0.75);
           }
           break;
 
         case 'text':
           if (annotation.text) {
             ctx.fillStyle = annotation.color || '#000000';
-            ctx.font = '14px Arial';
-            ctx.fillText(annotation.text, x * canvas.width, y * canvas.height);
+            const fontSize = isCompact ? Math.max(8, 14 * compactScale) : 14;
+            ctx.font = `${fontSize}px Arial`;
+            ctx.fillText(annotation.text, scaledX, scaledY);
           }
           break;
 
         case 'line':
-          const lineWidth = (annotation.width || 0) * canvas.width;
-          const lineHeight = (annotation.height || 0) * canvas.height;
+          const lineWidth = isCompact ? scaledWidth : width;
+          const lineHeight = isCompact ? scaledHeight : height;
           if (Math.abs(lineWidth) > 0.1 || Math.abs(lineHeight) > 0.1) {
             ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + lineWidth, y + lineHeight);
+            ctx.moveTo(scaledX, scaledY);
+            ctx.lineTo(scaledX + lineWidth, scaledY + lineHeight);
             ctx.stroke();
           }
           break;
 
         case 'rectangle':
         case 'filled-rectangle': {
-          const rectWidth = (annotation.width || 0) * canvas.width;
-          const rectHeight = (annotation.height || 0) * canvas.height;
+          const rectWidth = isCompact ? scaledWidth : width;
+          const rectHeight = isCompact ? scaledHeight : height;
           if (Math.abs(rectWidth) > 0.1 && Math.abs(rectHeight) > 0.1) {
             if (annotation.isFilled || annotation.type === 'filled-rectangle') {
-              ctx.fillRect(x, y, rectWidth, rectHeight);
+              ctx.fillRect(scaledX, scaledY, rectWidth, rectHeight);
             } else {
-              ctx.strokeRect(x, y, rectWidth, rectHeight);
+              ctx.strokeRect(scaledX, scaledY, rectWidth, rectHeight);
             }
           }
           break;
@@ -923,12 +1068,12 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
         case 'circle':
         case 'filled-circle': {
-          const circleWidth = (annotation.width || 0) * canvas.width;
-          const circleHeight = (annotation.height || 0) * canvas.height;
+          const circleWidth = isCompact ? scaledWidth : width;
+          const circleHeight = isCompact ? scaledHeight : height;
           const radiusX = Math.abs(circleWidth) / 2;
           const radiusY = Math.abs(circleHeight) / 2;
-          const centerX = x + circleWidth / 2;
-          const centerY = y + circleHeight / 2;
+          const centerX = scaledX + circleWidth / 2;
+          const centerY = scaledY + circleHeight / 2;
           const radius = Math.max(radiusX, radiusY);
           
           if (radius > 0.5) {
@@ -945,16 +1090,16 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
         case 'diamond':
         case 'filled-diamond': {
-          const diamondWidth = (annotation.width || 0) * canvas.width;
-          const diamondHeight = (annotation.height || 0) * canvas.height;
+          const diamondWidth = isCompact ? scaledWidth : width;
+          const diamondHeight = isCompact ? scaledHeight : height;
           if (Math.abs(diamondWidth) > 0.1 && Math.abs(diamondHeight) > 0.1) {
-            const centerX = x + diamondWidth / 2;
-            const centerY = y + diamondHeight / 2;
+            const centerX = scaledX + diamondWidth / 2;
+            const centerY = scaledY + diamondHeight / 2;
             ctx.beginPath();
-            ctx.moveTo(centerX, y); // Top
-            ctx.lineTo(x + diamondWidth, centerY); // Right
-            ctx.lineTo(centerX, y + diamondHeight); // Bottom
-            ctx.lineTo(x, centerY); // Left
+            ctx.moveTo(centerX, scaledY); // Top
+            ctx.lineTo(scaledX + diamondWidth, centerY); // Right
+            ctx.lineTo(centerX, scaledY + diamondHeight); // Bottom
+            ctx.lineTo(scaledX, centerY); // Left
             ctx.closePath();
             if (annotation.isFilled || annotation.type === 'filled-diamond') {
               ctx.fill();
@@ -968,11 +1113,16 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
       // Draw resize handles for selected annotation
       if (isSelected && !readOnly && annotation.width && annotation.height) {
+        const handleX = isCompact ? scaledX : x;
+        const handleY = isCompact ? scaledY : y;
+        const handleWidth = isCompact ? scaledWidth : width;
+        const handleHeight = isCompact ? scaledHeight : height;
+        
         const handles = [
-          { x: x, y: y, type: 'nw' },
-          { x: x + annotation.width * canvas.width, y: y, type: 'ne' },
-          { x: x, y: y + annotation.height * canvas.height, type: 'sw' },
-          { x: x + annotation.width * canvas.width, y: y + annotation.height * canvas.height, type: 'se' },
+          { x: handleX, y: handleY, type: 'nw' },
+          { x: handleX + handleWidth, y: handleY, type: 'ne' },
+          { x: handleX, y: handleY + handleHeight, type: 'sw' },
+          { x: handleX + handleWidth, y: handleY + handleHeight, type: 'se' },
         ];
 
         ctx.fillStyle = '#0066FF';
@@ -983,7 +1133,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
       ctx.restore();
     });
-  }, [annotations, currentPage, pageDimensions, selectionState, readOnly]);
+  }, [annotations, currentPage, pageDimensions, selectionState, readOnly, showBlackAnnotations, annotationMode, isBlackOrDark, strokeWidth]);
 
   // Render with requestAnimationFrame for smooth updates
   useEffect(() => {
@@ -1062,13 +1212,39 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   }, []);
 
   return (
-    <div className="w-full h-full flex flex-col bg-gray-50">
-      {showControls && !readOnly && (
+    <div className="w-full h-full flex flex-col bg-gray-50 relative">
+      {/* Floating toggle button when toolbar is hidden */}
+      {showControls && !readOnly && !showToolbar && (
+        <button
+          onClick={() => setShowToolbar(true)}
+          className="fixed top-4 left-4 z-50 px-5 py-3 bg-gradient-to-r from-primary-700 via-primary-600 to-primary-700 text-white rounded-xl shadow-2xl hover:shadow-primary-500/50 hover:from-primary-800 hover:via-primary-700 hover:to-primary-800 transition-all duration-300 flex items-center gap-3 border-2 border-accent-400/40 hover:border-accent-300/60 transform hover:scale-105 active:scale-95"
+          title="Show Toolbar"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="text-sm font-bold tracking-wide">Show Tools</span>
+        </button>
+      )}
+      
+      {showControls && !readOnly && showToolbar && (
         <div className="relative bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-b border-gray-900 shadow-2xl flex-shrink-0">
           {/* Vertical Light Strip on Left - Hidden on mobile */}
           <div className="hidden sm:block absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-gray-400 via-gray-500 to-transparent opacity-30 blur-sm"></div>
           
           <div className="relative p-2 sm:p-2 space-y-2 overflow-x-auto overflow-y-hidden">
+            {/* Toolbar Toggle Button */}
+            <div className="flex justify-start mb-1">
+              <button
+                onClick={() => setShowToolbar(false)}
+                className="px-2 py-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+                title="Hide Toolbar"
+              >
+                ▲ Hide
+              </button>
+            </div>
+            
             {/* Compact Single Row: All Controls */}
             <div className="flex items-center gap-1.5 sm:gap-2 flex-nowrap min-w-max">
               {/* History Controls */}
@@ -1497,6 +1673,85 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 </div>
               )}
 
+              {/* Annotation Visibility & Mode Controls - Always visible when controls are shown */}
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border-2 border-blue-500/50 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAnnotationMenu(!showAnnotationMenu)}
+                    className={`px-3 py-2 sm:px-3 sm:py-2 rounded-md transition-all text-sm font-bold min-w-[44px] min-h-[44px] sm:min-w-[140px] sm:min-h-0 touch-manipulation flex items-center justify-center gap-2 ${
+                      showBlackAnnotations && annotationMode === 'compact'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-2 border-blue-400 shadow-lg'
+                        : showBlackAnnotations && annotationMode === 'full'
+                        ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white border-2 border-purple-400 shadow-lg'
+                        : 'bg-gradient-to-r from-gray-700 to-gray-800 text-gray-200 border-2 border-gray-600 hover:from-gray-600 hover:to-gray-700'
+                    }`}
+                    title="Annotation Settings - Toggle black annotation visibility and display mode"
+                  >
+                    <span className="text-lg">📌</span>
+                    <span className="text-xs font-bold hidden sm:inline">Annotations</span>
+                    <span className={`text-xs transition-transform duration-200 ${showAnnotationMenu ? 'rotate-180' : ''}`}>▼</span>
+                  </button>
+                  
+                  {/* Dropdown Menu */}
+                  {showAnnotationMenu && (
+                    <>
+                      {/* Backdrop to close menu */}
+                      <div 
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowAnnotationMenu(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 w-56 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 transition-all duration-200">
+                        <div className="p-2 space-y-1">
+                          {/* Show/Hide Black Annotations Toggle */}
+                          <label className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-700/50 cursor-pointer transition-colors">
+                            <span className="text-sm text-gray-200">Show Black Annotations</span>
+                            <input
+                              type="checkbox"
+                              checked={showBlackAnnotations}
+                              onChange={(e) => setShowBlackAnnotations(e.target.checked)}
+                              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                            />
+                          </label>
+                          
+                          {/* Mode Toggle */}
+                          <div className="px-3 py-2">
+                            <span className="text-xs text-gray-400 mb-2 block">Display Mode:</span>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setAnnotationMode('compact');
+                                  setShowAnnotationMenu(false);
+                                }}
+                                className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                                  annotationMode === 'compact'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                }`}
+                              >
+                                Compact
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setAnnotationMode('full');
+                                  setShowAnnotationMenu(false);
+                                }}
+                                className={`flex-1 px-2 py-1.5 rounded text-xs font-medium transition-all ${
+                                  annotationMode === 'full'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                                }`}
+                              >
+                                Full
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
               {/* Zoom Controls - Compact */}
               <div className="flex items-center gap-1 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 shadow-lg flex-shrink-0 ml-auto">
                 <button
@@ -1711,7 +1966,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
             </Document>
             <canvas
               ref={annotationCanvasRef}
-              className="absolute top-0 left-0 pointer-events-none z-0"
+              className="absolute top-0 left-0 pointer-events-none z-0 transition-opacity duration-300"
               style={{ width: '100%', height: '100%' }}
             />
             <canvas
@@ -1801,9 +2056,33 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         </div>
       </div>
 
-      {/* Page Navigation - Always Visible */}
-      {showControls && (
+      {/* Floating toggle button when bottom bar is hidden */}
+      {showControls && !showBottomBar && (
+        <button
+          onClick={() => setShowBottomBar(true)}
+          className="fixed bottom-4 left-4 z-50 px-5 py-3 bg-gradient-to-r from-accent-500 via-accent-400 to-accent-500 text-primary-900 rounded-xl shadow-2xl hover:shadow-accent-500/50 hover:from-accent-600 hover:via-accent-500 hover:to-accent-600 transition-all duration-300 flex items-center gap-3 border-2 border-primary-400/30 hover:border-primary-300/50 transform hover:scale-105 active:scale-95"
+          title="Show Navigation"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span className="text-sm font-bold tracking-wide">Show Navigation</span>
+        </button>
+      )}
+
+      {/* Page Navigation - Collapsible */}
+      {showControls && showBottomBar && (
         <div className="bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-t border-gray-900 p-2 sm:p-2 shadow-2xl flex-shrink-0">
+          {/* Toggle Button */}
+          <div className="flex justify-start mb-1">
+            <button
+              onClick={() => setShowBottomBar(false)}
+              className="px-2 py-1 text-xs text-gray-400 hover:text-gray-200 transition-colors"
+              title="Hide Navigation"
+            >
+              ▼ Hide
+            </button>
+          </div>
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             <div className="flex items-center gap-1.5 sm:gap-2">
               {/* TOC Toggle Button */}
@@ -1874,7 +2153,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         </div>
       )}
 
-      {readOnly && annotations.some(a => a.note || a.text) && (
+      {readOnly && showBottomBar && annotations.some(a => a.note || a.text) && (
         <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-t border-gray-900 p-4 shadow-2xl">
           <h3 className="font-semibold mb-3 text-gray-300">Notes:</h3>
           {annotations
@@ -1886,6 +2165,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
               </div>
             ))}
         </div>
+      )}
+
+      {/* Learning Objectives Panel - Only show for Qaidah 1 and 2 */}
+      {qaidahBook && (
+        <QaidahLearningObjectives
+          book={qaidahBook}
+          page={currentPage}
+        />
       )}
     </div>
   );

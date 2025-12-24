@@ -107,7 +107,13 @@ const StudentDashboard: React.FC = () => {
           (assignment.classwork?.manzil?.length || 0);
         
         let title = 'Assignment';
-        if (classworkCount > 0) {
+        
+        // Check for Qaidah homework
+        const isQaidahHomework = assignment.homework?.qaidahHomework;
+        if (isQaidahHomework) {
+          const bookName = isQaidahHomework.book === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2';
+          title = `${bookName} - Page ${isQaidahHomework.page}`;
+        } else if (classworkCount > 0) {
           const sections: string[] = [];
           if (assignment.classwork?.sabq?.length > 0) {
             sections.push(`${assignment.classwork.sabq.length} Sabq`);
@@ -121,7 +127,7 @@ const StudentDashboard: React.FC = () => {
           title = sections.join(', ');
         }
         
-        if (assignment.homework?.enabled) {
+        if (assignment.homework?.enabled && !isQaidahHomework) {
           title += (classworkCount > 0 ? ' + ' : '') + 'Homework';
         }
         
@@ -143,6 +149,7 @@ const StudentDashboard: React.FC = () => {
           createdAt: createdAt,
           classwork: assignment.classwork || { sabq: [], sabqi: [], manzil: [] },
           homework: assignment.homework || { enabled: false, content: '', link: '' },
+          qaidahHomework: assignment.homework?.qaidahHomework || null,
           comment: assignment.comment || '',
           mushafMistakes: assignment.mushafMistakes || [],
           assignedByName: assignment.assignedByName,
@@ -589,8 +596,119 @@ const StudentDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Homework Section */}
-                        {hasHomework && (
+                        {/* Qaidah Homework Section */}
+                        {assignment.qaidahHomework && (
+                          <div className="mb-4 p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border-2 border-accent/30">
+                            <h5 className="text-sm font-bold text-primary mb-3 uppercase tracking-wide flex items-center gap-2">
+                              <span>📚</span>
+                              <span>Qaidah Homework</span>
+                            </h5>
+                            
+                            {/* Page Preview */}
+                            <div className="mb-4">
+                              <div className="bg-white rounded-lg border border-gray-300 p-2 mb-2">
+                                <img
+                                  src={`/${assignment.qaidahHomework.book}/${assignment.qaidahHomework.page}.jpg`}
+                                  alt={`Page ${assignment.qaidahHomework.page}`}
+                                  className="w-full h-auto rounded shadow-sm"
+                                  onError={(e) => {
+                                    // Try PNG if JPG fails
+                                    (e.target as HTMLImageElement).src = `/${assignment.qaidahHomework.book}/${assignment.qaidahHomework.page}.png`;
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-gray-600 text-center">
+                                {assignment.qaidahHomework.book === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} - Page {assignment.qaidahHomework.page}
+                                {assignment.qaidahHomework.teachingDate && (
+                                  <span className="ml-2">
+                                    • Taught on {new Date(assignment.qaidahHomework.teachingDate).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </p>
+                            </div>
+
+                            {/* Learning Objectives */}
+                            {(assignment.qaidahHomework.letters?.length > 0 || 
+                              assignment.qaidahHomework.rules?.length > 0 || 
+                              assignment.qaidahHomework.learningObjectives) && (
+                              <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                                <h6 className="text-xs font-bold text-primary mb-2 uppercase">Learning Objectives</h6>
+                                
+                                {assignment.qaidahHomework.letters?.length > 0 && (
+                                  <div className="mb-2">
+                                    <span className="text-xs font-semibold text-gray-600">Letters:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {assignment.qaidahHomework.letters.map((letter: string, idx: number) => (
+                                        <span key={idx} className="px-2 py-0.5 bg-accent/20 text-primary-800 rounded-full text-sm font-medium">
+                                          {letter}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {assignment.qaidahHomework.rules?.length > 0 && (
+                                  <div className="mb-2">
+                                    <span className="text-xs font-semibold text-gray-600">Rules:</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {assignment.qaidahHomework.rules.map((rule: string, idx: number) => (
+                                        <span key={idx} className="px-2 py-0.5 bg-primary/20 text-primary-800 rounded text-xs font-medium">
+                                          {rule}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {assignment.qaidahHomework.learningObjectives && (
+                                  <div className="mt-2">
+                                    <p className="text-xs text-gray-700">{assignment.qaidahHomework.learningObjectives}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Links */}
+                            {assignment.qaidahHomework.links?.length > 0 && (
+                              <div className="mb-3">
+                                <h6 className="text-xs font-bold text-primary mb-2 uppercase">Resources</h6>
+                                <div className="space-y-1">
+                                  {assignment.qaidahHomework.links.map((link: any, idx: number) => (
+                                    <a
+                                      key={idx}
+                                      href={link.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-primary/5 hover:border-primary transition-colors"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm">🔗</span>
+                                        <span className="text-xs text-primary hover:underline font-medium truncate">
+                                          {link.url}
+                                        </span>
+                                      </div>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* View Full Page Button */}
+                            <button
+                              onClick={() => {
+                                const book = assignment.qaidahHomework.book;
+                                const page = assignment.qaidahHomework.page;
+                                navigate(`/qaidah/${page}?book=${book}&student=${currentStudent.id}&assignment=${assignment.id}`);
+                              }}
+                              className="w-full px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all font-semibold text-sm shadow-md"
+                            >
+                              📄 View Full Page with Marks
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Regular Homework Section */}
+                        {hasHomework && !assignment.qaidahHomework && (
                           <div className="mb-4 p-4 bg-soft-accent rounded-lg border border-gray-200">
                             <h5 className="text-sm font-bold text-primary mb-2 uppercase tracking-wide">Homework</h5>
                             {assignment.homework.content && (
