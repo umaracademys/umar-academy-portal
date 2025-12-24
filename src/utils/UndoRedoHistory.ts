@@ -15,10 +15,11 @@
  * - Add history merging for batch operations
  */
 
+// Phase 1: Simplified to core 4 annotation types
 export interface Annotation {
   id: string;
   page: number;
-  type: 'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | 'line' | 'rectangle' | 'circle' | 'diamond' | 'filled-rectangle' | 'filled-circle' | 'filled-diamond';
+  type: 'highlight' | 'drawing' | 'arrow' | 'note'; // Core tools only
   x: number;
   y: number;
   width?: number;
@@ -26,16 +27,41 @@ export interface Annotation {
   color: string;
   text?: string;
   note?: string;
-  points?: Array<{ x: number; y: number }>;
-  strokeWidth?: number;
-  isFilled?: boolean;
-  rotation?: number;
+  points?: Array<{ x: number; y: number }>; // For drawing/pen tool
+  strokeWidth?: number; // For drawing and arrow
+  opacity?: number; // For highlight
   createdAt?: Date;
   // Heart (like) feature
   hearts?: number; // Total heart count
   heartedBy?: string[]; // Array of user IDs who hearted this annotation
   // Star (important) feature
   starredBy?: string[]; // Array of user IDs who starred this annotation
+  
+  // Phase 6: Future-Ready Extensions (Not Implemented Yet)
+  // AI Detection
+  aiDetectedMistakes?: Array<{
+    type: string;
+    confidence: number;
+    detectedAt: Date;
+    isConfirmed?: boolean;
+  }>;
+  manualMistakes?: string[]; // Teacher-marked mistakes
+  
+  // Collaboration
+  createdBy?: string; // User ID who created
+  lastModifiedBy?: string; // User ID who last modified
+  collaborationId?: string; // Collaboration session ID
+  
+  // Audio Notes
+  audioNoteId?: string; // Reference to audio note
+  audioNote?: {
+    audioUrl: string;
+    duration: number;
+    transcript?: string;
+  };
+  
+  // Lesson Replay
+  replayTimestamp?: number; // Relative timestamp for replay
 }
 
 interface HistoryState {

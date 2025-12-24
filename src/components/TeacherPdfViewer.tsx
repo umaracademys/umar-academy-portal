@@ -121,6 +121,36 @@ const TeacherPdfViewer: React.FC = () => {
     setAnnotations(newAnnotations);
   };
 
+  // Phase 4: Refactored assignment function for reuse
+  const handleAssignToStudentWithId = async (studentId: string, studentName: string) => {
+    if (!selectedPdf) {
+      throw new Error('Please select a PDF first');
+    }
+
+    const pdfId = selectedPdf.id || selectedPdf._id;
+    if (!pdfId) {
+      throw new Error('PDF ID is missing');
+    }
+    
+    // Save annotations first (even if empty) to ensure they exist in the backend
+    console.log('📚 Saving annotations before assignment...');
+    try {
+      await savePdfAnnotations(pdfId, annotations, notes);
+      console.log('✅ Annotations saved successfully');
+    } catch (saveError: any) {
+      console.warn('⚠️ Warning: Failed to save annotations before assignment:', saveError);
+      // Continue with assignment anyway - backend might allow it
+    }
+    
+    console.log('📚 Assigning PDF homework:', {
+      pdfId,
+      studentId,
+      studentName
+    });
+    
+    await assignPdfAsHomework(pdfId, studentId, studentName);
+  };
+
   const handleAssignToStudent = async () => {
     if (!selectedPdf) {
       alert('Please select a PDF first');
@@ -148,32 +178,7 @@ const TeacherPdfViewer: React.FC = () => {
     }
 
     try {
-      const pdfId = selectedPdf.id || selectedPdf._id;
-      if (!pdfId) {
-        throw new Error('PDF ID is missing');
-      }
-      
-      // Save annotations first (even if empty) to ensure they exist in the backend
-      console.log('📚 Saving annotations before assignment...');
-      try {
-        await savePdfAnnotations(pdfId, annotations, notes);
-        console.log('✅ Annotations saved successfully');
-      } catch (saveError: any) {
-        console.warn('⚠️ Warning: Failed to save annotations before assignment:', saveError);
-        // Continue with assignment anyway - backend might allow it
-      }
-      
-      console.log('📚 Assigning PDF homework:', {
-        pdfId,
-        studentId: studentIdStr,
-        studentName: student.fullName || (student as any).fullName
-      });
-      
-      await assignPdfAsHomework(
-        pdfId,
-        studentIdStr,
-        student.fullName || (student as any).fullName
-      );
+      await handleAssignToStudentWithId(studentIdStr, student.fullName || (student as any).fullName);
       alert(`Homework assigned to ${student.fullName || (student as any).fullName} successfully!`);
       setShowStudentSelector(false);
       setSelectedStudentId('');
@@ -270,6 +275,11 @@ const TeacherPdfViewer: React.FC = () => {
             initialNotes={notes}
             pdfTitle={selectedPdf.title}
             pdfFilename={selectedPdf.filename || selectedPdf.originalFilename || ''}
+            pdfId={selectedPdf.id || selectedPdf._id}
+            onAssignHomework={async (studentId: string, studentName: string) => {
+              await handleAssignToStudentWithId(studentId, studentName);
+            }}
+            assignedStudents={assignedStudents}
           />
         ) : (
           <div className="h-full flex items-center justify-center">

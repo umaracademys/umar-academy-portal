@@ -34,6 +34,7 @@ import {
 } from '../utils/AnnotationSelection';
 import { useAuth } from '../contexts/AuthContext';
 import QaidahLearningObjectives from './QaidahLearningObjectives';
+import { debounce } from '../utils/debounce';
 
 // Set up PDF.js worker
 const pdfjsVersion = '5.4.296';
@@ -56,6 +57,18 @@ interface PdfAnnotationViewerProps {
   currentUserId?: string; // Current user ID for heart/star tracking
   pdfTitle?: string; // PDF title to detect Qaidah books
   pdfFilename?: string; // PDF filename to detect Qaidah books
+  pdfId?: string; // Phase 4: PDF ID for homework assignment
+  onAssignHomework?: (studentId: string, studentName: string) => Promise<void>; // Phase 4: Homework assignment callback
+  assignedStudents?: Array<{ id?: string; _id?: string; fullName?: string }>; // Phase 4: List of assigned students
+  
+  // Phase 6: Future-Ready Props (Not Implemented Yet - Architectural Hooks)
+  // replayMode?: boolean; // Enable lesson replay mode
+  // replayData?: any; // Lesson replay data
+  // onReplayComplete?: () => void; // Callback when replay finishes
+  // collaborationSessionId?: string; // Real-time collaboration session ID
+  // onMistakeDetected?: (mistake: any) => void; // AI mistake detection callback
+  // enableAudioNotes?: boolean; // Enable audio recording per annotation
+  // performanceTracking?: boolean; // Track performance metrics
 }
 
 const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
@@ -72,6 +85,9 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     currentUserId, // Optional user ID prop, falls back to auth context
     pdfTitle = '', // PDF title to detect Qaidah books
     pdfFilename = '', // PDF filename to detect Qaidah books
+    pdfId, // Phase 4: PDF ID for homework assignment
+    onAssignHomework, // Phase 4: Homework assignment callback
+    assignedStudents = [], // Phase 4: List of assigned students
   } = props;
 
   // Get current user ID from auth context or prop
@@ -126,7 +142,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [annotations, setAnnotations] = useState<Annotation[]>(externalAnnotations);
   const [showTOC, setShowTOC] = useState(false);
   const [tocItems, setTocItems] = useState<Array<{ title: string; page: number; level: number }>>([]);
-  const [selectedTool, setSelectedTool] = useState<'highlight' | 'text' | 'drawing' | 'arrow' | 'note' | 'line' | 'rectangle' | 'circle' | 'diamond' | 'filled-rectangle' | 'filled-circle' | 'filled-diamond' | null>(null);
+  // Phase 1: Simplified to core 4 tools: Highlight, Pen (drawing), Arrow, Notes
+  const [selectedTool, setSelectedTool] = useState<'highlight' | 'drawing' | 'arrow' | 'note' | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
   const [selectedColor, setSelectedColor] = useState('#FF0000');
   const [strokeWidth, setStrokeWidth] = useState(2); // Stroke width for drawing/arrow tools
@@ -137,8 +154,15 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   
   // Annotation visibility and compact mode controls
   const [showBlackAnnotations, setShowBlackAnnotations] = useState(true);
-  const [annotationMode, setAnnotationMode] = useState<'compact' | 'full'>('compact'); // Default to compact mode
+  const [annotationMode, setAnnotationMode] = useState<'compact' | 'full'>('compact'); // Phase 2: Default to compact mode
   const [showAnnotationMenu, setShowAnnotationMenu] = useState(false);
+  
+  // Phase 5: Collapsible panels
+  const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false);
+  const [isNotesCollapsed, setIsNotesCollapsed] = useState(false);
+  
+  // Phase 5: Floating radial toolbar (alternative to fixed toolbar)
+  const [showFloatingToolbar, setShowFloatingToolbar] = useState(false);
   
   // UI visibility controls
   const [showToolbar, setShowToolbar] = useState(true);
@@ -150,6 +174,18 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [isDragging, setIsDragging] = useState(false);
   const [currentAnnotation, setCurrentAnnotation] = useState<Annotation | null>(null);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  
+  // Phase 2: Gesture-based interactions
+  const [isLongPress, setIsLongPress] = useState(false);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; annotation?: Annotation } | null>(null);
+  const [isGestureDragging, setIsGestureDragging] = useState(false); // For click+drag highlight gesture
+  
+  // Phase 4: Homework assignment
+  const [showHomeworkModal, setShowHomeworkModal] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
+  const [studentFilter, setStudentFilter] = useState<string>('');
+  const [isAssigning, setIsAssigning] = useState(false);
 
   // Edit/Selection state
   const [selectionState, setSelectionState] = useState<SelectionState>({
@@ -166,8 +202,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
-  // Autosave
-  const autosaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Autosave with debounce (Phase 1: Replace interval with debounce)
+  const autosaveDebouncedRef = useRef<ReturnType<typeof debounce> | null>(null);
   const lastSaveRef = useRef<Annotation[]>([]);
   const hasUnsavedChangesRef = useRef(false);
 
@@ -291,6 +327,41 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         updateUndoRedoState();
         hasUnsavedChangesRef.current = true;
         console.log('✅ History saved. Can undo?', historyRef.current.canUndo(currentPage));
+        
+        // Phase 6: Future Hook - Event Tracking for Lesson Replay
+        // Future: Emit event for lesson replay recording
+        // if (replayMode && replayRecorder) {
+        //   replayRecorder.record({
+        //     timestamp: Date.now() - replayStartTime,
+        //     type: 'annotation_update',
+        //     data: { annotations: updated, page: currentPage },
+        //     userId: currentUserId
+        //   });
+        // }
+        
+        // Phase 6: Future Hook - Performance Tracking
+        // Future: Track annotation metrics for teacher insights
+        // if (performanceTracking && analyticsService) {
+        //   analyticsService.trackEvent({
+        //     type: 'annotation_update',
+        //     count: updated.length,
+        //     page: currentPage,
+        //     teacherId: currentUserId,
+        //     timestamp: Date.now()
+        //   });
+        // }
+        
+        // Phase 6: Future Hook - Real-Time Collaboration
+        // Future: Broadcast changes to collaboration session
+        // if (collaborationSessionId && collaborationService) {
+        //   collaborationService.sendEvent({
+        //     type: 'annotation_update',
+        //     userId: currentUserId,
+        //     data: updated,
+        //     sessionId: collaborationSessionId,
+        //     timestamp: new Date()
+        //   });
+        // }
       }
 
       // Notify parent
@@ -328,6 +399,100 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     }
   }, [readOnly, currentPage, onAnnotationsChange, updateUndoRedoState]);
 
+  // Phase 2: Handle long press for mistake marking
+  const handleLongPressStart = useCallback((x: number, y: number) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    longPressTimerRef.current = setTimeout(() => {
+      setIsLongPress(true);
+      // Create mistake marker annotation
+      const mistakeAnnotation: Annotation = {
+        id: `${Date.now()}-${Math.random()}`,
+        page: currentPage,
+        type: 'note',
+        x,
+        y,
+        color: '#FF0000',
+        width: 0.02,
+        height: 0.02,
+        note: 'Mistake',
+        text: '❌',
+      };
+      updateAnnotations(prev => [...prev, mistakeAnnotation], true);
+      setIsLongPress(false);
+    }, 500); // 500ms for long press
+  }, [currentPage, updateAnnotations]);
+
+  const handleLongPressCancel = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setIsLongPress(false);
+  }, []);
+
+  // Phase 2: Handle double-click for note
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (readOnly || !pageRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = pageRef.current.getBoundingClientRect();
+    const { x, y } = screenToNormalized(e.clientX, e.clientY, pageRef.current);
+    
+    // Create note annotation
+    const noteAnnotation: Annotation = {
+      id: `${Date.now()}-${Math.random()}`,
+      page: currentPage,
+      type: 'note',
+      x,
+      y,
+      color: '#FFFF00',
+      width: 0.02,
+      height: 0.02,
+      note: '',
+      text: '',
+    };
+    updateAnnotations(prev => [...prev, noteAnnotation], true);
+    
+    // Prompt for note text
+    const text = prompt('Enter note text:');
+    if (text !== null && text.trim()) {
+      updateAnnotations(prev => 
+        prev.map(a => a.id === noteAnnotation.id ? { ...a, note: text, text: text } : a),
+        true
+      );
+    } else {
+      // Remove note if no text entered
+      updateAnnotations(prev => prev.filter(a => a.id !== noteAnnotation.id), true);
+    }
+  }, [readOnly, currentPage, screenToNormalized, updateAnnotations]);
+
+  // Phase 2: Handle right-click for contextual menu
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (readOnly || !pageRef.current) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const rect = pageRef.current.getBoundingClientRect();
+    const screenX = e.clientX;
+    const screenY = e.clientY;
+    const { x, y } = screenToNormalized(screenX, screenY, pageRef.current);
+    
+    // Check if clicking on an existing annotation
+    const pageAnnotations = annotations.filter(a => a.page === currentPage);
+    const hitAnnotation = hitTestAnnotation(screenX - rect.left, screenY - rect.top, pageAnnotations, rect.width, rect.height);
+    
+    setContextMenu({
+      x: screenX,
+      y: screenY,
+      annotation: hitAnnotation || undefined,
+    });
+  }, [readOnly, currentPage, annotations, screenToNormalized]);
+
   // Handle mouse down
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (readOnly || !pageRef.current) return;
@@ -345,7 +510,10 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     const canvasWidth = rect.width;
     const canvasHeight = rect.height;
 
-    // Check if clicking on an existing annotation (edit mode)
+    // Phase 2: Start long press timer
+    handleLongPressStart(x, y);
+
+    // Phase 2: Gesture-based highlight (click + drag when no tool selected)
     if (!selectedTool && !readOnly) {
       const hitAnnotation = hitTestAnnotation(screenX - rect.left, screenY - rect.top, pageAnnotations, canvasWidth, canvasHeight);
       
@@ -376,14 +544,23 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
           return;
         }
       } else {
-        // Deselect
-        setSelectionState({
-          selectedAnnotation: null,
-          isResizing: false,
-          resizeHandle: null,
-          startPoint: null,
-          originalAnnotation: null,
-        });
+        // Phase 2: Start gesture-based highlight (click + drag)
+        setIsGestureDragging(true);
+        setStartPoint({ x, y });
+        const gestureHighlight: Annotation = {
+          id: `${Date.now()}-${Math.random()}`,
+          page: currentPage,
+          type: 'highlight',
+          x,
+          y,
+          color: selectedColor,
+          width: 0,
+          height: 0,
+          opacity: highlightOpacity,
+        } as any;
+        setCurrentAnnotation(gestureHighlight);
+        updateAnnotations(prev => [...prev, gestureHighlight], false);
+        return;
       }
     }
 
@@ -432,47 +609,6 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       } as any;
       setCurrentAnnotation(newAnnotation);
       updateAnnotations(prev => [...prev, newAnnotation], false); // Don't save to history yet
-    } else if (['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool)) {
-      // Shape drawing
-      setIsDragging(true);
-      const isFilled = selectedTool.startsWith('filled-');
-      const newAnnotation: Annotation = {
-        id: `${Date.now()}-${Math.random()}`,
-        page: currentPage,
-        type: selectedTool as any,
-        x,
-        y,
-        color: selectedColor,
-        width: 0,
-        height: 0,
-        strokeWidth: strokeWidth,
-        isFilled: isFilled,
-      } as any;
-      setCurrentAnnotation(newAnnotation);
-      updateAnnotations(prev => [...prev, newAnnotation], false); // Don't save to history yet
-    } else if (selectedTool === 'text') {
-      const newAnnotation: Annotation = {
-        id: `${Date.now()}-${Math.random()}`,
-        page: currentPage,
-        type: 'text',
-        x,
-        y,
-        color: selectedColor,
-        text: '',
-        width: 0.2,
-        height: 0.05,
-      };
-      updateAnnotations(prev => [...prev, newAnnotation], false);
-      
-      const text = prompt('Enter text:');
-      if (text !== null && text.trim()) {
-        updateAnnotations(prev => 
-          prev.map(a => a.id === newAnnotation.id ? { ...a, text, note: text } : a),
-          true
-        );
-      } else {
-        updateAnnotations(prev => prev.filter(a => a.id !== newAnnotation.id), false);
-      }
     }
   }, [readOnly, selectedTool, currentPage, selectedColor, screenToNormalized, annotations, updateAnnotations]);
 
@@ -568,23 +704,31 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       return;
     }
 
-    // Handle dragging new annotation
-    if ((selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note' || 
-         (selectedTool && ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool))) 
-        && isDragging && startPoint && currentAnnotation) {
+    // Phase 2: Handle gesture-based highlight (click + drag when no tool selected)
+    if (isGestureDragging && startPoint && currentAnnotation) {
       let width = Math.abs(x - startPoint.x);
       let height = Math.abs(y - startPoint.y);
       let newX = Math.min(x, startPoint.x);
       let newY = Math.min(y, startPoint.y);
       
-      // Perfect square/circle when Shift is pressed
-      if (isShiftPressed && selectedTool && (selectedTool === 'rectangle' || selectedTool === 'circle' || 
-          selectedTool === 'filled-rectangle' || selectedTool === 'filled-circle' ||
-          selectedTool === 'diamond' || selectedTool === 'filled-diamond')) {
-        const size = Math.max(width, height);
-        width = size;
-        height = size;
-      }
+      updateAnnotations(prev => 
+        prev.map(a => 
+          a.id === currentAnnotation.id 
+            ? { ...a, x: newX, y: newY, width, height }
+            : a
+        ),
+        false // Don't save to history during drag
+      );
+      return;
+    }
+
+    // Handle dragging new annotation (Phase 1: Only core tools)
+    if ((selectedTool === 'highlight' || selectedTool === 'arrow' || selectedTool === 'note') 
+        && isDragging && startPoint && currentAnnotation) {
+      let width = Math.abs(x - startPoint.x);
+      let height = Math.abs(y - startPoint.y);
+      let newX = Math.min(x, startPoint.x);
+      let newY = Math.min(y, startPoint.y);
       
       updateAnnotations(prev => 
         prev.map(a => 
@@ -645,9 +789,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         const finalWidth = latestAnnotation.width || 0;
         const finalHeight = latestAnnotation.height || 0;
         
-        // Remove tiny annotations (accidental clicks) - but be more lenient for shapes
-        const isShape = ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(latestAnnotation.type);
-        const minSize = isShape ? 0.005 : 0.01; // More lenient threshold for shapes
+        // Remove tiny annotations (accidental clicks)
+        const minSize = 0.01;
         
         if (finalWidth < minSize && finalHeight < minSize) {
           // Remove the annotation
@@ -663,6 +806,18 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       updateAnnotations(prev => prev, true); // Save to history
     }
 
+    // Phase 2: Clean up gesture dragging
+    if (isGestureDragging && currentAnnotation) {
+      const finalWidth = currentAnnotation.width || 0;
+      const finalHeight = currentAnnotation.height || 0;
+      if (finalWidth < 0.01 && finalHeight < 0.01) {
+        updateAnnotations(prev => prev.filter(a => a.id !== currentAnnotation.id), false);
+      } else {
+        updateAnnotations(prev => prev, true); // Save to history
+      }
+      setIsGestureDragging(false);
+    }
+
     // Clean up
     setIsDrawing(false);
     setIsDragging(false);
@@ -671,6 +826,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     drawingPointsRef.current = [];
     setCurrentAnnotation(null);
     setStartPoint(null);
+    handleLongPressCancel(); // Cancel long press timer
     
     // Clear drawing canvas
     if (drawingCanvasRef.current) {
@@ -684,7 +840,7 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       isResizing: false,
       startPoint: null,
     }));
-  }, [readOnly, selectedTool, isDrawing, isDragging, isMoving, drawingPoints, currentPage, selectedColor, currentAnnotation, selectionState, smoothDrawingPoints, updateAnnotations]);
+  }, [readOnly, selectedTool, isDrawing, isDragging, isMoving, isGestureDragging, drawingPoints, currentPage, selectedColor, currentAnnotation, selectionState, smoothDrawingPoints, updateAnnotations, handleLongPressCancel]);
 
   // Delete selected annotation
   const handleDeleteSelected = useCallback(() => {
@@ -771,20 +927,21 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     );
   }, [userId, updateAnnotations]);
 
-  // Autosave function
+  // Autosave function (Phase 1: Debounced instead of interval-based)
   const performAutosave = useCallback(async () => {
-    if (!onSave || isSaving || !hasUnsavedChangesRef.current) return;
+    if (!onSave || isSaving) return;
 
     const currentAnnotations = annotations;
     // Only save if annotations actually changed
     if (JSON.stringify(currentAnnotations) === JSON.stringify(lastSaveRef.current)) {
+      hasUnsavedChangesRef.current = false;
       return;
     }
 
     try {
       setIsSaving(true);
       await onSave(currentAnnotations, notes);
-      lastSaveRef.current = currentAnnotations;
+      lastSaveRef.current = JSON.parse(JSON.stringify(currentAnnotations)); // Deep clone
       hasUnsavedChangesRef.current = false;
       console.log('✅ Autosaved annotations');
     } catch (error) {
@@ -795,26 +952,25 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
     }
   }, [onSave, annotations, notes, isSaving]);
 
-  // Setup autosave timer
+  // Setup debounced autosave (Phase 1: Debounce instead of interval)
   useEffect(() => {
     if (readOnly || !onSave) return;
 
-    // Clear existing timer
-    if (autosaveTimerRef.current) {
-      clearInterval(autosaveTimerRef.current);
-    }
-
-    // Set up new timer
-    autosaveTimerRef.current = setInterval(() => {
-      performAutosave();
-    }, autosaveInterval * 1000);
+    // Create debounced autosave function (2 second delay)
+    autosaveDebouncedRef.current = debounce(performAutosave, 2000);
 
     return () => {
-      if (autosaveTimerRef.current) {
-        clearInterval(autosaveTimerRef.current);
-      }
+      // Cleanup handled by debounce function
     };
-  }, [readOnly, onSave, autosaveInterval, performAutosave]);
+  }, [readOnly, onSave, performAutosave]);
+
+  // Trigger debounced autosave when annotations change
+  useEffect(() => {
+    if (readOnly || !onSave || !autosaveDebouncedRef.current) return;
+    
+    hasUnsavedChangesRef.current = true;
+    autosaveDebouncedRef.current();
+  }, [annotations, notes, readOnly, onSave]);
 
   // Manual save
   const handleSave = useCallback(async () => {
@@ -911,11 +1067,14 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       ctx.strokeStyle = annotation.color;
       ctx.fillStyle = annotation.color;
       
-      // Use strokeWidth from annotation if available, otherwise default to 2
-      // In compact mode, reduce stroke width for black annotations
+      // Phase 5: Use strokeWidth from annotation if available, otherwise default to 2
+      // In compact mode, reduce stroke width more aggressively (thinner strokes)
       let annStrokeWidth = (annotation as any).strokeWidth !== undefined ? (annotation as any).strokeWidth : strokeWidth;
       if (isCompact) {
-        annStrokeWidth = Math.max(0.5, annStrokeWidth * 0.3); // Reduce to 30% of original
+        annStrokeWidth = Math.max(0.3, annStrokeWidth * 0.2); // Phase 5: Thinner strokes (20% of original)
+        ctx.globalAlpha = 0.6; // Phase 5: Reduced opacity for compact mode
+      } else {
+        ctx.globalAlpha = 1.0;
       }
       ctx.lineWidth = annStrokeWidth;
 
@@ -1032,83 +1191,11 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
           }
           break;
 
-        case 'text':
-          if (annotation.text) {
-            ctx.fillStyle = annotation.color || '#000000';
-            const fontSize = isCompact ? Math.max(8, 14 * compactScale) : 14;
-            ctx.font = `${fontSize}px Arial`;
-            ctx.fillText(annotation.text, scaledX, scaledY);
-          }
+        // Phase 1: Removed text, line, rectangle, circle, diamond shapes
+        // Keeping rendering code for backward compatibility with existing annotations
+        default:
+          // Unknown annotation type - skip rendering
           break;
-
-        case 'line':
-          const lineWidth = isCompact ? scaledWidth : width;
-          const lineHeight = isCompact ? scaledHeight : height;
-          if (Math.abs(lineWidth) > 0.1 || Math.abs(lineHeight) > 0.1) {
-            ctx.beginPath();
-            ctx.moveTo(scaledX, scaledY);
-            ctx.lineTo(scaledX + lineWidth, scaledY + lineHeight);
-            ctx.stroke();
-          }
-          break;
-
-        case 'rectangle':
-        case 'filled-rectangle': {
-          const rectWidth = isCompact ? scaledWidth : width;
-          const rectHeight = isCompact ? scaledHeight : height;
-          if (Math.abs(rectWidth) > 0.1 && Math.abs(rectHeight) > 0.1) {
-            if (annotation.isFilled || annotation.type === 'filled-rectangle') {
-              ctx.fillRect(scaledX, scaledY, rectWidth, rectHeight);
-            } else {
-              ctx.strokeRect(scaledX, scaledY, rectWidth, rectHeight);
-            }
-          }
-          break;
-        }
-
-        case 'circle':
-        case 'filled-circle': {
-          const circleWidth = isCompact ? scaledWidth : width;
-          const circleHeight = isCompact ? scaledHeight : height;
-          const radiusX = Math.abs(circleWidth) / 2;
-          const radiusY = Math.abs(circleHeight) / 2;
-          const centerX = scaledX + circleWidth / 2;
-          const centerY = scaledY + circleHeight / 2;
-          const radius = Math.max(radiusX, radiusY);
-          
-          if (radius > 0.5) {
-            ctx.beginPath();
-            ctx.ellipse(centerX, centerY, radius, radius, 0, 0, 2 * Math.PI);
-            if (annotation.isFilled || annotation.type === 'filled-circle') {
-              ctx.fill();
-            } else {
-              ctx.stroke();
-            }
-          }
-          break;
-        }
-
-        case 'diamond':
-        case 'filled-diamond': {
-          const diamondWidth = isCompact ? scaledWidth : width;
-          const diamondHeight = isCompact ? scaledHeight : height;
-          if (Math.abs(diamondWidth) > 0.1 && Math.abs(diamondHeight) > 0.1) {
-            const centerX = scaledX + diamondWidth / 2;
-            const centerY = scaledY + diamondHeight / 2;
-            ctx.beginPath();
-            ctx.moveTo(centerX, scaledY); // Top
-            ctx.lineTo(scaledX + diamondWidth, centerY); // Right
-            ctx.lineTo(centerX, scaledY + diamondHeight); // Bottom
-            ctx.lineTo(scaledX, centerY); // Left
-            ctx.closePath();
-            if (annotation.isFilled || annotation.type === 'filled-diamond') {
-              ctx.fill();
-            } else {
-              ctx.stroke();
-            }
-          }
-          break;
-        }
       }
 
       // Draw resize handles for selected annotation
@@ -1132,6 +1219,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
       }
 
       ctx.restore();
+      // Phase 5: Reset global alpha after each annotation
+      ctx.globalAlpha = 1.0;
     });
   }, [annotations, currentPage, pageDimensions, selectionState, readOnly, showBlackAnnotations, annotationMode, isBlackOrDark, strokeWidth]);
 
@@ -1213,19 +1302,81 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
 
   return (
     <div className="w-full h-full flex flex-col bg-gray-50 relative">
-      {/* Floating toggle button when toolbar is hidden */}
-      {showControls && !readOnly && !showToolbar && (
+      {/* Phase 5: Floating toggle button when toolbar is hidden - Smooth transitions */}
+      {showControls && !readOnly && !showToolbar && !showFloatingToolbar && (
         <button
           onClick={() => setShowToolbar(true)}
-          className="fixed top-4 left-4 z-50 px-5 py-3 bg-gradient-to-r from-primary-700 via-primary-600 to-primary-700 text-white rounded-xl shadow-2xl hover:shadow-primary-500/50 hover:from-primary-800 hover:via-primary-700 hover:to-primary-800 transition-all duration-300 flex items-center gap-3 border-2 border-accent-400/40 hover:border-accent-300/60 transform hover:scale-105 active:scale-95"
+          className="fixed top-4 left-4 z-50 px-5 py-3 bg-gradient-to-r from-primary-700 via-primary-600 to-primary-700 text-white rounded-xl shadow-2xl hover:shadow-primary-500/50 hover:from-primary-800 hover:via-primary-700 hover:to-primary-800 transition-all duration-300 ease-in-out flex items-center gap-3 border-2 border-accent-400/40 hover:border-accent-300/60 transform hover:scale-105 active:scale-95"
           title="Show Toolbar"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span className="text-sm font-bold tracking-wide">Show Tools</span>
         </button>
+      )}
+
+      {/* Phase 5: Floating Radial Toolbar */}
+      {showControls && !readOnly && showFloatingToolbar && !showToolbar && (
+        <div className="fixed bottom-6 right-6 z-50 animate-fade-in">
+          <div className="bg-gray-800 rounded-full p-2 shadow-2xl border-2 border-gray-600 flex flex-col gap-2 transition-all duration-300">
+            <button
+              onClick={() => {
+                setSelectedTool('highlight');
+                setShowFloatingToolbar(false);
+                setShowToolbar(true);
+              }}
+              className="w-12 h-12 rounded-full bg-yellow-500/80 hover:bg-yellow-500 text-white flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg"
+              title="Highlight"
+            >
+              🖍️
+            </button>
+            <button
+              onClick={() => {
+                setSelectedTool('drawing');
+                setShowFloatingToolbar(false);
+                setShowToolbar(true);
+              }}
+              className="w-12 h-12 rounded-full bg-purple-500/80 hover:bg-purple-500 text-white flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg"
+              title="Pen"
+            >
+              ✍️
+            </button>
+            <button
+              onClick={() => {
+                setSelectedTool('arrow');
+                setShowFloatingToolbar(false);
+                setShowToolbar(true);
+              }}
+              className="w-12 h-12 rounded-full bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg"
+              title="Arrow"
+            >
+              ➡️
+            </button>
+            <button
+              onClick={() => {
+                setSelectedTool('note');
+                setShowFloatingToolbar(false);
+                setShowToolbar(true);
+              }}
+              className="w-12 h-12 rounded-full bg-green-500/80 hover:bg-green-500 text-white flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 shadow-lg"
+              title="Note"
+            >
+              📌
+            </button>
+            <button
+              onClick={() => {
+                setShowFloatingToolbar(false);
+                setShowToolbar(true);
+              }}
+              className="w-12 h-12 rounded-full bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+              title="Show Full Toolbar"
+            >
+              ⚙️
+            </button>
+          </div>
+        </div>
       )}
       
       {showControls && !readOnly && showToolbar && (
@@ -1315,29 +1466,6 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 </button>
                 <button
                   onClick={() => {
-                    const newTool = selectedTool === 'text' ? null : 'text';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`px-2.5 py-2 sm:px-2.5 sm:py-1.5 rounded transition-all text-base sm:text-sm min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
-                    selectedTool === 'text'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border border-blue-400/50 active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Text"
-                >
-                  <span className="text-xl sm:text-base">📝</span>
-                </button>
-                <button
-                  onClick={() => {
                     const newTool = selectedTool === 'drawing' ? null : 'drawing';
                     setSelectedTool(newTool);
                     if (newTool) {
@@ -1382,193 +1510,6 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 >
                   <span className="text-xl sm:text-base">➡️</span>
                 </button>
-              </div>
-
-              {/* Shapes Section */}
-              <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
-                <span className="hidden sm:inline text-xs font-semibold text-gray-400 px-1">Shapes:</span>
-                {/* Line */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'line' ? null : 'line';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'line'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Line"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="2" y1="10" x2="18" y2="10" />
-                  </svg>
-                </button>
-                {/* Rectangle */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'rectangle' ? null : 'rectangle';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'rectangle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Rectangle"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="4" y="4" width="12" height="12" />
-                  </svg>
-                </button>
-                {/* Circle */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'circle' ? null : 'circle';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'circle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Circle"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="10" cy="10" r="6" />
-                  </svg>
-                </button>
-                {/* Diamond */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'diamond' ? null : 'diamond';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'diamond'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Diamond"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M10 4 L16 10 L10 16 L4 10 Z" />
-                  </svg>
-                </button>
-                {/* Filled Rectangle */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'filled-rectangle' ? null : 'filled-rectangle';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'filled-rectangle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Filled Rectangle"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <rect x="4" y="4" width="12" height="12" />
-                  </svg>
-                </button>
-                {/* Filled Circle */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'filled-circle' ? null : 'filled-circle';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'filled-circle'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Filled Circle"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <circle cx="10" cy="10" r="6" />
-                  </svg>
-                </button>
-                {/* Filled Diamond */}
-                <button
-                  onClick={() => {
-                    const newTool = selectedTool === 'filled-diamond' ? null : 'filled-diamond';
-                    setSelectedTool(newTool);
-                    if (newTool) {
-                      setSelectionState({
-                        selectedAnnotation: null,
-                        isResizing: false,
-                        resizeHandle: null,
-                        startPoint: null,
-                        originalAnnotation: null,
-                      });
-                    }
-                  }}
-                  className={`w-11 h-11 sm:w-10 sm:h-10 rounded transition-all flex items-center justify-center touch-manipulation ${
-                    selectedTool === 'filled-diamond'
-                      ? 'bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white border-2 border-blue-400/50 shadow-md active:from-blue-400 active:to-blue-500'
-                      : 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60 active:bg-gray-500/60'
-                  }`}
-                  title="Filled Diamond"
-                >
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10 4 L16 10 L10 16 L4 10 Z" />
-                  </svg>
-                </button>
                 <button
                   onClick={() => {
                     const newTool = selectedTool === 'note' ? null : 'note';
@@ -1591,6 +1532,42 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                   title="Note"
                 >
                   <span className="text-xl sm:text-base">📌</span>
+                </button>
+              </div>
+
+              {/* Phase 2: Preset Chips for Common Actions */}
+              <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
+                <span className="hidden sm:inline text-xs font-semibold text-gray-300">Quick:</span>
+                <button
+                  onClick={() => {
+                    setSelectedTool('highlight');
+                    setSelectedColor('#FFFF00');
+                    setHighlightOpacity(0.3);
+                  }}
+                  className="px-2 py-1 text-xs rounded bg-yellow-500/20 text-yellow-200 border border-yellow-500/30 hover:bg-yellow-500/30 transition-all"
+                  title="Quick Highlight"
+                >
+                  ⚡ Highlight
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedTool('note');
+                    setSelectedColor('#FFFF00');
+                  }}
+                  className="px-2 py-1 text-xs rounded bg-green-500/20 text-green-200 border border-green-500/30 hover:bg-green-500/30 transition-all"
+                  title="Quick Note"
+                >
+                  ⚡ Note
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedTool('arrow');
+                    setSelectedColor('#FF0000');
+                  }}
+                  className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-200 border border-red-500/30 hover:bg-red-500/30 transition-all"
+                  title="Quick Arrow"
+                >
+                  ⚡ Arrow
                 </button>
               </div>
 
@@ -1618,10 +1595,22 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                   ))}
                 </div>
               </div>
+              
+              {/* Phase 2: Hide/Show Annotations Toggle */}
+              <button
+                onClick={() => setShowBlackAnnotations(!showBlackAnnotations)}
+                className={`px-3 py-2 sm:px-2.5 sm:py-1.5 rounded-md transition-all text-base sm:text-sm flex-shrink-0 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation ${
+                  showBlackAnnotations
+                    ? 'bg-gray-700/60 text-gray-300 border border-gray-600/50 hover:bg-gray-600/60'
+                    : 'bg-gray-800/60 text-gray-500 border border-gray-700/50 hover:bg-gray-700/60'
+                }`}
+                title={showBlackAnnotations ? 'Hide Annotations' : 'Show Annotations'}
+              >
+                <span className="text-xl sm:text-base">{showBlackAnnotations ? '👁️' : '👁️‍🗨️'}</span>
+              </button>
 
-              {/* Stroke Width - Compact */}
-              {(selectedTool === 'drawing' || selectedTool === 'arrow' || 
-                (selectedTool && ['line', 'rectangle', 'circle', 'diamond', 'filled-rectangle', 'filled-circle', 'filled-diamond'].includes(selectedTool))) && (
+              {/* Stroke Width - Compact (Phase 1: Only for Pen and Arrow) */}
+              {(selectedTool === 'drawing' || selectedTool === 'arrow') && (
                 <div className="flex items-center gap-1 sm:gap-1.5 bg-gray-900/40 backdrop-blur-sm rounded-md border border-gray-600/30 p-1 sm:p-1.5 shadow-lg flex-shrink-0">
                   <span className="text-xs font-semibold text-gray-300">W:</span>
                   <input
@@ -1777,6 +1766,17 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                 </button>
               </div>
 
+              {/* Phase 4: Mark as Homework Button */}
+              {!readOnly && onAssignHomework && assignedStudents.length > 0 && (
+                <button
+                  onClick={() => setShowHomeworkModal(true)}
+                  className="px-3 py-2 sm:px-3 sm:py-1.5 rounded-md font-semibold transition-all text-base sm:text-sm flex-shrink-0 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 touch-manipulation bg-gradient-to-r from-blue-600 to-blue-700 text-white border border-blue-500/50 hover:from-blue-500 hover:to-blue-600 active:from-blue-400 active:to-blue-500"
+                  title="Mark as Homework"
+                >
+                  <span className="text-base sm:text-sm">📚</span> <span className="hidden sm:inline">Homework</span>
+                </button>
+              )}
+
               {/* Save Button - Always Visible */}
               {onSave && (
                 <button
@@ -1792,8 +1792,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                   <span className="text-base sm:text-sm">{isSaving ? '⏳' : '💾'}</span> <span className="hidden sm:inline">Save</span>
                 </button>
               )}
-            </div>
-
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1980,6 +1980,8 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onDoubleClick={handleDoubleClick}
+              onContextMenu={handleContextMenu}
               style={{ 
                 cursor: selectionState.isResizing 
                   ? `${selectionState.resizeHandle || 'default'}-resize` 
@@ -1987,13 +1989,126 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
                   ? 'move'
                   : selectedTool 
                   ? 'crosshair' 
+                  : isGestureDragging
+                  ? 'crosshair'
                   : 'default',
                 pointerEvents: readOnly ? 'none' : 'auto' 
               }}
             />
+            
+            {/* Phase 2: Contextual Menu */}
+            {contextMenu && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40"
+                  onClick={() => setContextMenu(null)}
+                />
+                <div
+                  className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-2 min-w-[200px]"
+                  style={{
+                    left: `${contextMenu.x}px`,
+                    top: `${contextMenu.y}px`,
+                  }}
+                >
+                  {contextMenu.annotation ? (
+                    // Menu for existing annotation
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => {
+                          if (contextMenu.annotation) {
+                            handleDeleteSelected();
+                          }
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>🗑️</span> Delete
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (contextMenu.annotation) {
+                            setSelectedColor('#FF0000');
+                            handleChangeColor('#FF0000');
+                          }
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>🔴</span> Red
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (contextMenu.annotation) {
+                            setSelectedColor('#00FF00');
+                            handleChangeColor('#00FF00');
+                          }
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>🟢</span> Green
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (contextMenu.annotation) {
+                            setSelectedColor('#0000FF');
+                            handleChangeColor('#0000FF');
+                          }
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>🔵</span> Blue
+                      </button>
+                    </div>
+                  ) : (
+                    // Menu for empty space - quick actions
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => {
+                          setSelectedTool('highlight');
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>🖍️</span> Highlight
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTool('drawing');
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>✍️</span> Pen
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTool('arrow');
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>➡️</span> Arrow
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedTool('note');
+                          setContextMenu(null);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded hover:bg-gray-700 text-gray-200 text-sm flex items-center gap-2"
+                      >
+                        <span>📌</span> Note
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+            
             {/* Heart and Star buttons overlay */}
             {annotations
-              .filter(a => a.page === currentPage && (a.width || a.height || a.type === 'text'))
+              .filter(a => a.page === currentPage && (a.width || a.height || a.type === 'note'))
               .map(annotation => {
                 if (!pageRef.current) return null;
                 
@@ -2141,15 +2256,28 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         </div>
       )}
 
+      {/* Phase 5: Collapsible Notes Panel */}
       {!readOnly && (
-        <div className="bg-gradient-to-b from-gray-800 to-gray-900 border-t border-gray-900 p-3 shadow-2xl">
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add general notes about this PDF..."
-            className="w-full p-3 bg-gray-900/60 text-gray-200 border border-gray-600/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 placeholder-gray-500 shadow-inner"
-            rows={3}
-          />
+        <div className={`bg-gradient-to-b from-gray-800 to-gray-900 border-t border-gray-900 shadow-2xl transition-all duration-300 ${isNotesCollapsed ? 'p-2' : 'p-3'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-300">Notes</h3>
+            <button
+              onClick={() => setIsNotesCollapsed(!isNotesCollapsed)}
+              className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
+              title={isNotesCollapsed ? 'Expand Notes' : 'Collapse Notes'}
+            >
+              {isNotesCollapsed ? '▼' : '▲'}
+            </button>
+          </div>
+          {!isNotesCollapsed && (
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add general notes about this PDF..."
+              className="w-full p-3 bg-gray-900/60 text-gray-200 border border-gray-600/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 placeholder-gray-500 shadow-inner transition-all duration-300"
+              rows={3}
+            />
+          )}
         </div>
       )}
 
@@ -2172,6 +2300,29 @@ const PdfAnnotationViewer: React.FC<PdfAnnotationViewerProps> = (props) => {
         <QaidahLearningObjectives
           book={qaidahBook}
           page={currentPage}
+          annotations={annotations.filter(a => a.page === currentPage)}
+          onMistakeMark={(mistakeType: string) => {
+            // Phase 3: One-tap mistake marking - place at center of visible area
+            if (!pageRef.current) return;
+            const rect = pageRef.current.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const { x, y } = screenToNormalized(centerX, centerY, pageRef.current);
+            
+            const mistakeAnnotation: Annotation = {
+              id: `${Date.now()}-${Math.random()}`,
+              page: currentPage,
+              type: 'note',
+              x: Math.max(0, Math.min(1, x - 0.01)),
+              y: Math.max(0, Math.min(1, y - 0.01)),
+              color: '#FF0000',
+              width: 0.02,
+              height: 0.02,
+              note: mistakeType,
+              text: `❌ ${mistakeType}`,
+            };
+            updateAnnotations(prev => [...prev, mistakeAnnotation], true);
+          }}
         />
       )}
     </div>

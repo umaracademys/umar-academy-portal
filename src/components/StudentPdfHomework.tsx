@@ -142,6 +142,7 @@ const StudentPdfHomework: React.FC = () => {
                   </span>
                 </div>
               </div>
+              {/* Phase 4: Read-only student view - Highlights + comments visible, no editing */}
               <div className="flex-1 overflow-hidden">
                 <PdfAnnotationViewer
                   pdfUrl={selectedHomework.pdf.fileUrl}
@@ -150,8 +151,18 @@ const StudentPdfHomework: React.FC = () => {
                   showControls={true}
                   initialPage={1}
                   initialNotes={selectedHomework.annotations?.notes || ''}
+                  pdfTitle={selectedHomework.pdf.title}
+                  pdfFilename={selectedHomework.pdf.filename || selectedHomework.pdf.originalFilename || ''}
                 />
               </div>
+              
+              {/* Phase 4: Display teacher notes prominently */}
+              {selectedHomework.annotations?.notes && (
+                <div className="bg-blue-50 border-t border-blue-200 p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">📝 Teacher's Notes:</h3>
+                  <p className="text-blue-800 whitespace-pre-wrap">{selectedHomework.annotations.notes}</p>
+                </div>
+              )}
             </div>
           )}
         </div>
