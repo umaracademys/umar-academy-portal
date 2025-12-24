@@ -10123,21 +10123,37 @@ app.get('/api/qaidah/student-learning/:studentId/:book/:page/:date', authenticat
 app.get('/api/qaidah/student-learning/history/:studentId/:book/:page', authenticateToken, async (req, res) => {
   try {
     const { studentId, book, page } = req.params;
+    console.log('📚 GET /api/qaidah/student-learning/history - Params:', { studentId, book, page });
+    
     const pageNum = parseInt(page, 10);
 
-    if (!['qaidah1', 'qaidah2'].includes(book)) {
-      return res.status(400).json({ error: 'Invalid book. Must be qaidah1 or qaidah2' });
+    // Validate studentId format (MongoDB ObjectId)
+    if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
+      console.log('❌ Invalid studentId format:', studentId);
+      return res.status(400).json({ error: 'Invalid student ID format' });
+    }
+
+    // Normalize book parameter (handle case variations)
+    const normalizedBook = book.toLowerCase();
+    if (!['qaidah1', 'qaidah2'].includes(normalizedBook)) {
+      console.log('❌ Invalid book:', book, 'Expected: qaidah1 or qaidah2');
+      return res.status(400).json({ error: `Invalid book. Must be qaidah1 or qaidah2, received: ${book}` });
     }
 
     if (isNaN(pageNum) || pageNum < 1) {
-      return res.status(400).json({ error: 'Invalid page number' });
+      console.log('❌ Invalid page number:', page);
+      return res.status(400).json({ error: `Invalid page number: ${page}` });
     }
 
+    console.log('✅ Validated params - Fetching history for:', { studentId, book: normalizedBook, page: pageNum });
+
     const history = await QaidahStudentLearning.find({
-      student: studentId,
-      book,
+      student: new mongoose.Types.ObjectId(studentId),
+      book: normalizedBook,
       page: pageNum
     }).sort({ teachingDate: -1 }).limit(30); // Last 30 sessions
+
+    console.log(`✅ Found ${history.length} history entries`);
 
     res.json(history.map(item => ({
       id: item._id,
@@ -10154,7 +10170,7 @@ app.get('/api/qaidah/student-learning/history/:studentId/:book/:page', authentic
       createdAt: item.createdAt
     })));
   } catch (error) {
-    console.error('Error fetching learning objectives history:', error);
+    console.error('❌ Error fetching learning objectives history:', error);
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
