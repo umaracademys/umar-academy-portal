@@ -32,7 +32,8 @@ const TeacherCredentials = lazy(() => import('../components/TeacherCredentials')
 const TeacherAnalytics = lazy(() => import('../components/TeacherAnalytics'));
 const TeacherBulkOperations = lazy(() => import('../components/TeacherBulkOperations'));
 // DebugPanel removed - only show in development
-const DebugPanel = process.env.NODE_ENV === 'development' ? lazy(() => import('../components/DebugPanel')) : null;
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
 const AdminRecitationReview = lazy(() => import('../components/AdminRecitationReview'));
 const StudentReports = lazy(() => import('../components/StudentReports'));
 const AdminTicketReview = lazy(() => import('../components/AdminTicketReview'));
@@ -84,7 +85,7 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Track tickets with missing assignment IDs (production-safe)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.log('🔍 SuperAdminDashboard - Pending review tickets:', getPendingReviewTickets().length);
     }
     
@@ -1739,7 +1740,7 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {process.env.NODE_ENV === 'development' && DebugPanel && (
+      {isDevelopment && DebugPanel && (
         <Suspense fallback={null}>
           <DebugPanel />
         </Suspense>

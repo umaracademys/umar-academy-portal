@@ -3,14 +3,16 @@
  * Only logs in development mode
  */
 
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+
 export const logger = {
   log: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.log(...args);
     }
   },
   warn: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.warn(...args);
     }
   },
@@ -19,7 +21,7 @@ export const logger = {
     console.error(...args);
   },
   debug: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (isDevelopment) {
       console.debug(...args);
     }
   },

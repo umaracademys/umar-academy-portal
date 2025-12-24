@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
 // DebugPanel only in development
-const DebugPanel = process.env.NODE_ENV === 'development' ? require('../components/DebugPanel').default : null;
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
 import StudentList from '../components/StudentList';
 import StudentProfile from '../components/StudentProfile';
 import StudentEnrollment from '../components/StudentEnrollment';
@@ -528,7 +529,11 @@ const AdminDashboard: React.FC = () => {
         />
       )}
 
-      {process.env.NODE_ENV === 'development' && DebugPanel && <DebugPanel />}
+      {isDevelopment && DebugPanel && (
+        <Suspense fallback={null}>
+          <DebugPanel />
+        </Suspense>
+      )}
 
       {/* Student Management Modals */}
         {showStudentProfile && selectedStudent && (

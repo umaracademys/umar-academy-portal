@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import StatCard from '../../../components/StatCard';
 import Card from '../../../components/Card';
 // DebugPanel only in development
-const DebugPanel = process.env.NODE_ENV === 'development' ? require('../../../components/DebugPanel').default : null;
+const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
+const DebugPanel = isDevelopment ? lazy(() => import('../../../components/DebugPanel')) : null;
 import StudentRecordings from '../../../components/StudentRecordings';
 import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import StudentTestResults from '../../../components/StudentTestResults';
@@ -1017,7 +1018,11 @@ const StudentDashboard: React.FC = () => {
         />
       )}
       
-      {process.env.NODE_ENV === 'development' && DebugPanel && <DebugPanel />}
+      {isDevelopment && DebugPanel && (
+        <Suspense fallback={null}>
+          <DebugPanel />
+        </Suspense>
+      )}
     </div>
   );
 };
