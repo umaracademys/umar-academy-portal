@@ -267,11 +267,6 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowEvaluationResults(true),
     },
     {
-      id: 'ai-library',
-      label: 'AI Phrase Library',
-      onClick: () => navigate('/super-admin/ai-library'),
-    },
-    {
       id: 'teacher-pairs',
       label: 'Manage Teacher Pairs',
       onClick: () => setShowTeacherPairManagement(true),

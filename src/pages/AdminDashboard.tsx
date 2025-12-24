@@ -83,12 +83,6 @@ const AdminDashboard: React.FC = () => {
           >
             View Teachers
           </button>
-          <Link
-            to="/admin/ai-library"
-            className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
-          >
-            AI Library
-          </Link>
         </div>
       </div>
 
