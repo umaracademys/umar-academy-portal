@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import StatCard from '../../../components/StatCard';
 import Card from '../../../components/Card';
-import DebugPanel from '../../../components/DebugPanel';
+// DebugPanel only in development
+const DebugPanel = process.env.NODE_ENV === 'development' ? require('../../../components/DebugPanel').default : null;
 import StudentRecordings from '../../../components/StudentRecordings';
 import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import StudentTestResults from '../../../components/StudentTestResults';
@@ -1016,7 +1017,7 @@ const StudentDashboard: React.FC = () => {
         />
       )}
       
-      <DebugPanel />
+      {process.env.NODE_ENV === 'development' && DebugPanel && <DebugPanel />}
     </div>
   );
 };
