@@ -6,6 +6,7 @@ import StatCard from '../components/StatCard';
 import Card from '../components/Card';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { formatTimeAgo } from '../utils/formatters';
 
 // Lazy load heavy components for better performance
 const StudentRegistrationForm = lazy(() => import('../components/StudentRegistrationForm'));
@@ -658,7 +659,7 @@ const SuperAdminDashboard: React.FC = () => {
               .slice(0, 5)
               .forEach((review: any) => {
                 const date = review.submittedAt ? new Date(review.submittedAt) : new Date();
-                const timeAgo = getTimeAgo(date);
+                const timeAgo = formatTimeAgo(date);
                 activities.push({
                   id: `review-${review.id}`,
                   type: 'recitation',
@@ -677,7 +678,7 @@ const SuperAdminDashboard: React.FC = () => {
               .slice(0, 5)
               .forEach((ticket: any) => {
                 const date = ticket.submittedAt ? new Date(ticket.submittedAt) : new Date();
-                const timeAgo = getTimeAgo(date);
+                const timeAgo = formatTimeAgo(date);
                 activities.push({
                   id: `ticket-${ticket.id}`,
                   type: 'ticket',
@@ -696,7 +697,7 @@ const SuperAdminDashboard: React.FC = () => {
               .slice(0, 3)
               .forEach((notification: any) => {
                 const date = notification.createdAt ? new Date(notification.createdAt) : new Date();
-                const timeAgo = getTimeAgo(date);
+                const timeAgo = formatTimeAgo(date);
                 activities.push({
                   id: `notif-${notification.id}`,
                   type: 'notification',
