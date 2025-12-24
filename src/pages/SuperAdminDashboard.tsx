@@ -680,15 +680,13 @@ const SuperAdminDashboard: React.FC = () => {
             <div
               key={activity.id}
               onClick={activity.onClick}
-              className={`flex items-start gap-3 p-3 rounded-lg border-l-4 ${activity.color} cursor-pointer hover:shadow-md transition-all duration-200 ${
-                activity.onClick ? 'hover:scale-[1.01]' : ''
-              }`}
+              className={`flex items-start gap-2 rounded-lg border-l-2 ${activity.color} bg-white px-3 py-2 transition-all hover:shadow-sm cursor-pointer`}
             >
-              <span className="text-2xl flex-shrink-0">{activity.icon}</span>
+              <div className="text-lg">{activity.icon}</div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-primary text-sm mb-0.5">{activity.title}</p>
-                <p className="text-xs text-gray-600 truncate">{activity.description}</p>
-                <p className="text-xs text-gray-400 mt-1">{activity.time}</p>
+                <p className="text-xs font-bold text-primary mb-0.5">{activity.title}</p>
+                <p className="text-[10px] text-gray-600 truncate">{activity.description}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{activity.time}</p>
               </div>
             </div>
           ))}
