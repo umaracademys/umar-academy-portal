@@ -36,14 +36,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
   ];
 
 
-  // Add AI Library based on role
-  const aiLibraryItem: MenuItem | null = 
-    user?.role === 'superadmin' 
-      ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/super-admin/ai-library' }
-      : user?.role === 'admin'
-      ? { id: 'ai-library', icon: 'AI', label: 'AI Library', badge: null, isLink: true, href: '/admin/ai-library' }
-      : null;
-
   // Add Qaidah Submissions for teachers/admins/superadmins
   const qaidahItem: MenuItem | null = 
     (user?.role === 'teacher' || user?.role === 'admin' || user?.role === 'superadmin')

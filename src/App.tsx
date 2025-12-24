@@ -166,22 +166,6 @@ function AppContent() {
           }
         />
         <Route
-          path="/super-admin/ai-library"
-          element={
-            <ProtectedRoute>
-              <SuperAdminAiLibrary />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/ai-library"
-          element={
-            <ProtectedRoute>
-              <AdminAiLibrary />
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/messages"
           element={
             <ProtectedRoute>
