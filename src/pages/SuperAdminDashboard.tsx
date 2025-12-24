@@ -324,7 +324,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: null,
       emphasis: 'primary',
     },
-  ];
+  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowRecitationReview, setShowTicketReview, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin]);
 
   const managementActions = [
     {
