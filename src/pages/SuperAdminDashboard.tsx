@@ -188,22 +188,15 @@ const SuperAdminDashboard: React.FC = () => {
   const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
   const totalAdmins = admins.length;
 
-  const overviewQuickActions = useMemo(() => [
-    {
-      id: 'manage-assignments',
-      label: 'Manage Assignments',
-      description: 'Create and manage assignments with multi-phase classwork.',
-      onClick: () => navigate('/assignments'),
-      badge: null,
-      emphasis: 'primary' as const,
-    },
+  // Simplified: Show only priority actions, rest in "More" menu
+  const priorityActions = useMemo(() => [
     {
       id: 'review-recitations',
       label: 'Review Recitations',
       description: 'Approve sabq, sabqi, and manzil submissions.',
       onClick: () => setShowRecitationReview(true),
       badge: pendingReviewsCount,
-      emphasis: 'neutral' as const,
+      emphasis: 'accent-solid' as const,
     },
     {
       id: 'review-tickets',
@@ -214,119 +207,86 @@ const SuperAdminDashboard: React.FC = () => {
       emphasis: 'primary' as const,
     },
     {
-      id: 'review-homework',
-      label: 'Review Homework',
-      description: 'Review and grade submitted homework assignments.',
+      id: 'manage-assignments',
+      label: 'Manage Assignments',
+      description: 'Create and manage assignments with multi-phase classwork.',
       onClick: () => navigate('/assignments'),
       badge: pendingHomeworkCount,
-      emphasis: 'primary',
+      emphasis: 'primary' as const,
     },
+  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, setShowRecitationReview, setShowTicketReview]);
+
+  const [showMoreActions, setShowMoreActions] = useState(false);
+  
+  const moreActions = useMemo(() => [
     {
       id: 'student-reports',
       label: 'Student Reports',
-      description: 'View and manage student assignment history by program.',
       onClick: () => setShowStudentReports(true),
-      badge: null,
-      emphasis: 'neutral',
     },
     {
       id: 'teacher-attendance',
       label: 'Take Teacher Attendance',
-      description: 'Record attendance for teachers (Full Time & Part Time).',
       onClick: () => setShowTeacherAttendanceForm(true),
-      badge: null,
-      emphasis: 'primary',
     },
     {
       id: 'teacher-attendance-report',
       label: 'Teacher Attendance Report',
-      description: 'View attendance history, statistics, and paid days.',
       onClick: () => setShowTeacherAttendanceReport(true),
-      badge: null,
-      emphasis: 'neutral',
     },
     {
       id: 'activity-log',
       label: 'Activity Log',
-      description: 'Monitor security events, login attempts, and user activities.',
       onClick: () => setShowActivityLog(true),
-      badge: null,
-      emphasis: 'accent-solid',
     },
     {
       id: 'fix-assignment-ids',
       label: 'Fix Missing Assignment IDs',
-      description: 'Fix tickets that are missing their assignment ID references.',
       onClick: handleFixMissingIds,
       badge: ticketsWithMissingIds > 0 ? ticketsWithMissingIds : null,
-      emphasis: ticketsWithMissingIds > 0 ? 'accent-solid' : 'neutral',
       disabled: ticketsWithMissingIds === 0 || isFixingIds,
     },
     {
       id: 'student-testing',
       label: 'Student Testing',
-      description: 'Test students on Memory, Tajweed, and Fluency with Mushaf integration.',
       onClick: () => setShowTestingModule(true),
-      badge: null,
-      emphasis: 'primary',
     },
     {
       id: 'test-results',
       label: 'Test Results',
-      description: 'View, edit, and manage student test results.',
       onClick: () => setShowTestResults(true),
-      badge: null,
-      emphasis: 'neutral',
     },
     {
       id: 'teacher-evaluations',
       label: 'Teacher Evaluations',
-      description: 'Create and manage teacher evaluation forms.',
       onClick: () => setShowEvaluationManagement(true),
-      badge: null,
-      emphasis: 'primary',
     },
     {
       id: 'evaluation-results',
       label: 'Evaluation Results',
-      description: 'View and analyze teacher evaluation results.',
       onClick: () => setShowEvaluationResults(true),
-      badge: null,
-      emphasis: 'neutral',
     },
     {
       id: 'ai-library',
       label: 'AI Phrase Library',
-      description: 'Manage AI phrase suggestions across the application.',
       onClick: () => navigate('/super-admin/ai-library'),
-      badge: null,
-      emphasis: 'primary',
     },
     {
       id: 'teacher-pairs',
       label: 'Manage Teacher Pairs',
-      description: 'Create and manage teacher pairs for collaborative teaching.',
       onClick: () => setShowTeacherPairManagement(true),
-      badge: null,
-      emphasis: 'primary',
     },
     {
       id: 'pair-messages',
       label: 'Pair Teacher Messages',
-      description: 'View all messages between teachers in pairs (Admin oversight).',
       onClick: () => setShowPairMessagesAdmin(true),
-      badge: null,
-      emphasis: 'accent',
     },
     {
       id: 'teacher-student-messages',
       label: 'Teacher-Student Messages',
-      description: 'View and manage all messages between teachers and students (Admin oversight).',
       onClick: () => setShowTeacherStudentMessagesAdmin(true),
-      badge: null,
-      emphasis: 'primary',
     },
-  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowRecitationReview, setShowTicketReview, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin]);
+  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin]);
 
   const managementActions = [
     {
@@ -597,39 +557,32 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Management Actions - Enhanced */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-xl font-bold text-primary">System Management</h3>
-          <div className="h-px flex-1 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {/* System Management - Simplified */}
+      <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+        <h3 className="text-lg font-bold text-primary mb-3">System Management</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
           {managementActions.map((item) => (
             <button
               key={item.id}
               onClick={item.action}
-              className="flex h-full flex-col gap-3 rounded-xl border-2 border-gray-200 bg-white px-4 py-4 text-left shadow-sm transition-all duration-200 hover:shadow-lg hover:border-primary/40 hover:-translate-y-0.5"
+              className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-center transition-all hover:bg-soft-primary hover:border-primary/40"
             >
-              <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-soft-primary to-primary/10 text-sm font-bold text-primary shadow-sm">
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-soft-primary to-primary/10 text-sm font-bold text-primary">
                 {item.badge}
               </div>
               <div className="flex-1">
-                <h4 className="text-base font-bold text-primary mb-1">{item.title}</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">{item.description}</p>
+                <h4 className="text-xs font-bold text-primary leading-tight">{item.title}</h4>
+                <p className="text-[10px] text-gray-500 mt-1">{item.footer}</p>
               </div>
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">{item.footer}</span>
             </button>
           ))}
         </div>
       </section>
 
-      {/* Recent Activity Feed */}
-      <section className="rounded-2xl border-2 border-gray-200 bg-white px-6 py-6 shadow-md">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-primary mb-1">Recent Activity</h3>
-            <p className="text-sm text-gray-600">Latest system events and user actions</p>
-          </div>
+      {/* Recent Activity Feed - Simplified */}
+      <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-bold text-primary">Recent Activity</h3>
           <button
             onClick={() => setShowActivityLog(true)}
             className="text-xs font-semibold text-primary hover:text-accent transition-colors"
@@ -637,7 +590,7 @@ const SuperAdminDashboard: React.FC = () => {
             View All →
           </button>
         </div>
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-2 max-h-64 overflow-y-auto">
           {useMemo(() => {
             const activities: Array<{
               id: string;
