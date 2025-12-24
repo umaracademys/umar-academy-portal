@@ -82,37 +82,16 @@ const SuperAdminDashboard: React.FC = () => {
   const [ticketsWithMissingIds, setTicketsWithMissingIds] = useState<number>(0);
   const [isFixingIds, setIsFixingIds] = useState(false);
 
-  // Debug: Log ticket statuses
+  // Track tickets with missing assignment IDs (production-safe)
   useEffect(() => {
-    console.log('🔍 SuperAdminDashboard - All tickets:', recitationTickets.map(t => ({
-      id: t.id,
-      status: t.status,
-      type: t.type,
-      studentName: t.studentName,
-      submittedAt: t.submittedAt,
-      sentToAssignmentId: t.sentToAssignmentId,
-      sentAt: t.sentAt
-    })));
-    console.log('🔍 SuperAdminDashboard - Pending review tickets:', getPendingReviewTickets().length);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔍 SuperAdminDashboard - Pending review tickets:', getPendingReviewTickets().length);
+    }
     
     // Check for tickets that were sent to assignment
     const sentTickets = recitationTickets.filter(t => t.status === 'sent_to_assignment');
-    if (sentTickets.length > 0) {
-      console.log('📋 Tickets sent to assignment:', sentTickets.length);
-      const missingIds = sentTickets.filter(t => !t.sentToAssignmentId || t.sentToAssignmentId === 'N/A');
-      setTicketsWithMissingIds(missingIds.length);
-      
-      sentTickets.forEach(t => {
-        console.log('  -', t.type, 'for', t.studentName, '-> Assignment ID:', t.sentToAssignmentId || 'N/A');
-      });
-      
-      // Log if there are tickets with missing IDs
-      if (missingIds.length > 0) {
-        console.log(`⚠️ Found ${missingIds.length} tickets with missing assignment IDs. Use the "Fix Missing Assignment IDs" button to fix them.`);
-      }
-    } else {
-      setTicketsWithMissingIds(0);
-    }
+    const missingIds = sentTickets.filter(t => !t.sentToAssignmentId || t.sentToAssignmentId === 'N/A');
+    setTicketsWithMissingIds(missingIds.length);
   }, [recitationTickets, getPendingReviewTickets]);
 
   // Handle fixing missing assignment IDs
@@ -1377,7 +1356,6 @@ const SuperAdminDashboard: React.FC = () => {
             setSelectedTeacher(null);
           }}
           onEdit={(teacher) => {
-            console.log('🔍 Edit Profile button clicked for teacher:', teacher);
             setShowTeacherProfile(false);
             setSelectedTeacher(teacher);
             setShowTeacherForm(true);
