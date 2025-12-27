@@ -4,6 +4,7 @@ import { useData } from '../contexts/DataContext';
 import PdfAnnotationViewer from './PdfAnnotationViewer';
 import { getPdfs, getPdfAnnotations, savePdfAnnotations, assignPdfAsHomework, PdfDocument } from '../services/pdfApi';
 import Card from './Card';
+import Header from './Header';
 
 const TeacherPdfViewer: React.FC = () => {
   const { user } = useAuth();
@@ -121,7 +122,6 @@ const TeacherPdfViewer: React.FC = () => {
     setAnnotations(newAnnotations);
   };
 
-  // Phase 4: Refactored assignment function for reuse
   const handleAssignToStudentWithId = async (studentId: string, studentName: string) => {
     if (!selectedPdf) {
       throw new Error('Please select a PDF first');
@@ -132,14 +132,12 @@ const TeacherPdfViewer: React.FC = () => {
       throw new Error('PDF ID is missing');
     }
     
-    // Save annotations first (even if empty) to ensure they exist in the backend
     console.log('📚 Saving annotations before assignment...');
     try {
       await savePdfAnnotations(pdfId, annotations, notes);
       console.log('✅ Annotations saved successfully');
     } catch (saveError: any) {
       console.warn('⚠️ Warning: Failed to save annotations before assignment:', saveError);
-      // Continue with assignment anyway - backend might allow it
     }
     
     console.log('📚 Assigning PDF homework:', {
@@ -186,7 +184,6 @@ const TeacherPdfViewer: React.FC = () => {
       console.error('Error assigning homework:', error);
       const errorMessage = error.message || 'Failed to assign homework';
       
-      // Provide more helpful error message
       if (errorMessage.includes('No annotations found') || errorMessage.includes('annotate')) {
         alert('Please add at least one annotation to the PDF before assigning it as homework. You can add highlights, text, drawings, or shapes.');
       } else {
@@ -197,107 +194,177 @@ const TeacherPdfViewer: React.FC = () => {
 
   if (user?.role !== 'teacher') {
     return (
-      <div className="p-6 bg-white rounded-xl shadow-md">
-        <p className="text-red-600">Access denied. Teachers only.</p>
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <Card className="p-6">
+            <p className="text-red-600 font-medium">Access denied. Teachers only.</p>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <div className="bg-white border-b p-3 sm:p-4 flex-shrink-0">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">📄 PDF Teaching Materials</h1>
-          <button
-            onClick={() => setShowStudentSelector(true)}
-            className="px-4 py-2.5 text-base sm:text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 touch-manipulation min-h-[44px] sm:min-h-0"
-          >
-            Assign to Student
-          </button>
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={selectedPdf?.id || selectedPdf?._id || ''}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              console.log('📚 PDF selected:', selectedId);
-              const pdf = pdfs.find(p => (p.id || p._id) === selectedId);
-              console.log('📚 Found PDF:', pdf);
-              if (pdf) {
-                setSelectedPdf(pdf);
-                setError(null);
-              } else {
-                setSelectedPdf(null);
-                setError('PDF not found');
-              }
-            }}
-            className="flex-1 px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 touch-manipulation"
-          >
-            <option value="">Select a PDF...</option>
-            {pdfs.map((pdf) => (
-              <option key={pdf.id || pdf._id} value={pdf.id || pdf._id}>
-                {pdf.title}
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header Section */}
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">PDF Teaching Materials</h1>
+              <p className="text-sm text-gray-600">
+                Annotate PDFs and assign them as homework to your students
+              </p>
+            </div>
+            {selectedPdf && (
+              <button
+                onClick={() => setShowStudentSelector(true)}
+                className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Assign to Student
+              </button>
+            )}
+          </div>
+
+          {/* PDF Selection */}
+          <Card className="p-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select PDF Document
+            </label>
+            <select
+              value={selectedPdf?.id || selectedPdf?._id || ''}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                console.log('📚 PDF selected:', selectedId);
+                const pdf = pdfs.find(p => (p.id || p._id) === selectedId);
+                console.log('📚 Found PDF:', pdf);
+                if (pdf) {
+                  setSelectedPdf(pdf);
+                  setError(null);
+                } else {
+                  setSelectedPdf(null);
+                  setError('PDF not found');
+                }
+              }}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white shadow-sm"
+              disabled={loading}
+            >
+              <option value="">
+                {loading ? 'Loading PDFs...' : 'Select a PDF document...'}
               </option>
-            ))}
-          </select>
+              {pdfs.map((pdf) => (
+                <option key={pdf.id || pdf._id} value={pdf.id || pdf._id}>
+                  {pdf.title}
+                </option>
+              ))}
+            </select>
+            
+            {error && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            )}
+          </Card>
         </div>
-        {error && (
-          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-            {error}
-          </div>
-        )}
+
+        {/* PDF Viewer Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          {!selectedPdf ? (
+            <div className="h-[600px] flex items-center justify-center p-12">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No PDF Selected</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Select a PDF document from the dropdown above to start annotating
+                </p>
+                {loading && (
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    <span>Loading PDFs...</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : loadingAnnotations ? (
+            <div className="h-[600px] flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-sm text-gray-600">Loading annotations...</p>
+              </div>
+            </div>
+          ) : selectedPdf.fileUrl ? (
+            <PdfAnnotationViewer
+              pdfUrl={selectedPdf.fileUrl}
+              annotations={annotations}
+              readOnly={false}
+              onAnnotationsChange={handleAnnotationsChange}
+              onSave={handleSaveAnnotations}
+              showControls={true}
+              initialPage={1}
+              initialNotes={notes}
+              pdfTitle={selectedPdf.title}
+              pdfFilename={selectedPdf.filename || selectedPdf.originalFilename || ''}
+              pdfId={selectedPdf.id || selectedPdf._id}
+              onAssignHomework={async (studentId: string, studentName: string) => {
+                await handleAssignToStudentWithId(studentId, studentName);
+              }}
+              assignedStudents={assignedStudents}
+            />
+          ) : (
+            <div className="h-[600px] flex items-center justify-center p-12">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">PDF File Missing</h3>
+                <p className="text-sm text-gray-600">
+                  The PDF file URL is missing. Please contact support if this issue persists.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        {!selectedPdf ? (
-          <div className="h-full flex items-center justify-center">
-            <Card className="p-8 text-center">
-              <p className="text-gray-500 text-lg">Select a PDF to start teaching</p>
-              {loading && <p className="text-gray-400 text-sm mt-2">Loading PDFs...</p>}
-            </Card>
-          </div>
-        ) : loadingAnnotations ? (
-          <div className="h-full flex items-center justify-center">
-            <Card className="p-8 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading annotations...</p>
-            </Card>
-          </div>
-        ) : selectedPdf.fileUrl ? (
-          <PdfAnnotationViewer
-            pdfUrl={selectedPdf.fileUrl}
-            annotations={annotations}
-            readOnly={false}
-            onAnnotationsChange={handleAnnotationsChange}
-            onSave={handleSaveAnnotations}
-            showControls={true}
-            initialPage={1}
-            initialNotes={notes}
-            pdfTitle={selectedPdf.title}
-            pdfFilename={selectedPdf.filename || selectedPdf.originalFilename || ''}
-            pdfId={selectedPdf.id || selectedPdf._id}
-            onAssignHomework={async (studentId: string, studentName: string) => {
-              await handleAssignToStudentWithId(studentId, studentName);
-            }}
-            assignedStudents={assignedStudents}
-          />
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <Card className="p-8 text-center">
-              <p className="text-red-600 text-lg">PDF file URL is missing</p>
-              <p className="text-gray-500 text-sm mt-2">Please contact support if this issue persists.</p>
-            </Card>
-          </div>
-        )}
-      </div>
-
+      {/* Student Selector Modal */}
       {showStudentSelector && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <Card className="p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg sm:text-xl font-bold mb-4">Assign to Student</h2>
+          <Card className="p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Assign to Student</h2>
+              <button
+                onClick={() => {
+                  setShowStudentSelector(false);
+                  setSelectedStudentId('');
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Student
                 </label>
                 <select
@@ -307,7 +374,7 @@ const TeacherPdfViewer: React.FC = () => {
                     console.log('📚 Student selected:', studentId);
                     setSelectedStudentId(studentId);
                   }}
-                  className="w-full px-3 py-2.5 text-base sm:text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 touch-manipulation"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white shadow-sm"
                 >
                   <option value="">Choose a student...</option>
                   {assignedStudents.length === 0 ? (
@@ -325,25 +392,28 @@ const TeacherPdfViewer: React.FC = () => {
                   )}
                 </select>
                 {assignedStudents.length === 0 && (
-                  <p className="text-xs text-gray-500 mt-1">You need to have students assigned to you to assign PDF homework.</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    You need to have students assigned to you to assign PDF homework.
+                  </p>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 justify-end">
+              
+              <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
                 <button
                   onClick={() => {
                     setShowStudentSelector(false);
                     setSelectedStudentId('');
                   }}
-                  className="w-full sm:w-auto px-4 py-2.5 text-base sm:text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 active:bg-gray-400 touch-manipulation min-h-[44px] sm:min-h-0"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleAssignToStudent}
                   disabled={!selectedStudentId}
-                  className="w-full sm:w-auto px-4 py-2.5 text-base sm:text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 active:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation min-h-[44px] sm:min-h-0"
+                  className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                 >
-                  Assign
+                  Assign Homework
                 </button>
               </div>
             </div>
@@ -355,4 +425,3 @@ const TeacherPdfViewer: React.FC = () => {
 };
 
 export default TeacherPdfViewer;
-
