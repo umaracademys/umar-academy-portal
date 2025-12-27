@@ -22,13 +22,11 @@ const AssignmentManagement: React.FC = () => {
   const [prefillTicket, setPrefillTicket] = useState<Ticket | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Check if current user is a teacher
   const currentTeacher = useMemo(() => {
     if (!user || !teachers) return null;
     return teachers.find(t => t.email === user.email) || null;
   }, [user, teachers]);
 
-  // Load pair students for teacher
   useEffect(() => {
     const loadPairStudents = async () => {
       if (!currentTeacher) {
@@ -38,7 +36,6 @@ const AssignmentManagement: React.FC = () => {
       
       try {
         const pairs = await getTeacherPairs();
-        // Use Teacher document ID for filtering
         const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
         const teacherIdStr = teacherDocId.toString();
         
@@ -48,7 +45,6 @@ const AssignmentManagement: React.FC = () => {
           return pairTeacher1Id === teacherIdStr || pairTeacher2Id === teacherIdStr;
         });
         
-        // Get all pair students from these pairs
         const allPairStudents: any[] = [];
         for (const pair of filteredPairs) {
           try {
@@ -68,25 +64,20 @@ const AssignmentManagement: React.FC = () => {
     loadPairStudents();
   }, [currentTeacher, getTeacherPairs, getPairStudents]);
 
-  // Get assigned students for teacher (including pair students)
   const assignedStudents = useMemo(() => {
-    if (!currentTeacher?.id) return allStudents; // If not a teacher, show all students
+    if (!currentTeacher?.id) return allStudents;
     
     const directAssigned = getStudentsByTeacher(currentTeacher.id);
-    
-    // Get pair student IDs
     const pairStudentIds = new Set(
       pairStudents
         .map(ps => ps.student?._id?.toString() || ps.student?.toString() || ps.student)
         .filter(Boolean)
     );
     
-    // Get pair students from allStudents
     const pairStudentsList = allStudents.filter(s => 
       pairStudentIds.has(s.id?.toString()) || pairStudentIds.has((s as any)._id?.toString())
     );
     
-    // Combine direct assigned and pair students, remove duplicates
     const allAssigned = [...directAssigned, ...pairStudentsList];
     const uniqueAssigned = allAssigned.filter((student, index, self) => 
       index === self.findIndex(s => s.id === student.id || (s as any)._id === (student as any)._id)
@@ -95,7 +86,6 @@ const AssignmentManagement: React.FC = () => {
     return uniqueAssigned;
   }, [currentTeacher, allStudents, getStudentsByTeacher, pairStudents]);
 
-  // Get unique programs from assigned students
   const programs = useMemo(() => {
     const programSet = new Set<ProgramType>();
     assignedStudents.forEach(student => {
@@ -106,16 +96,13 @@ const AssignmentManagement: React.FC = () => {
     return Array.from(programSet);
   }, [assignedStudents]);
 
-  // Filter students by program and search
   const filteredStudents = useMemo(() => {
     let filtered = assignedStudents;
     
-    // Filter by program
     if (selectedProgram !== 'all') {
       filtered = filtered.filter(student => student.program === selectedProgram);
     }
     
-    // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(student => 
@@ -128,7 +115,6 @@ const AssignmentManagement: React.FC = () => {
     return filtered;
   }, [assignedStudents, selectedProgram, searchQuery]);
 
-  // Calculate statistics (only for assigned students if teacher)
   const stats = useMemo(() => {
     const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
     const relevantAssignments = assignments.filter(a => assignedStudentIds.has(a.studentId));
@@ -144,7 +130,6 @@ const AssignmentManagement: React.FC = () => {
     };
   }, [assignments, assignedStudents]);
 
-  // Get student initials
   const getInitials = (name: string) => {
     const parts = name.trim().split(' ');
     if (parts.length >= 2) {
@@ -170,13 +155,11 @@ const AssignmentManagement: React.FC = () => {
   };
 
   const handleTicketSuccess = (ticket: Ticket) => {
-    // If sabq ticket, pre-fill assignment form
     if (ticket.type === 'sabq') {
       setPrefillTicket(ticket);
       setShowTicketForm(false);
       setShowAssignmentForm(true);
     } else {
-      // For sabqi/manzil, just close the form (ticket goes to teacher)
       setShowTicketForm(false);
     }
   };
@@ -193,167 +176,75 @@ const AssignmentManagement: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
-      {/* Content Area */}
-      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-6 lg:px-8">
-        {/* Modern Prominent Header */}
-        <div className="mb-4 rounded-xl border-2 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] px-3 py-3 sm:px-4 sm:py-4 shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <span className="text-lg">📋</span>
-                </div>
-                <div>
-                  <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-white/90">Assignment Management System</span>
-                  <h1 className="text-xl sm:text-2xl font-extrabold text-white drop-shadow-lg mt-0.5">Assignment Management</h1>
-                </div>
-              </div>
-              <p className="text-xs sm:text-sm text-white/95 max-w-2xl font-bold">
-                {currentTeacher 
-                  ? `Manage assignments, tickets, and classwork for your assigned students` 
-                  : `Manage assignments, tickets, and classwork for all students`}
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => {
-                  if (filteredStudents.length > 0) {
-                    handleCreateTicket(filteredStudents[0].id);
-                    setSelectedStudent(filteredStudents[0].id);
-                  }
-                }}
-                className="px-3 py-1.5 bg-accent text-primary rounded-lg font-extrabold shadow-lg hover:scale-105 transition-all text-xs border-2 border-white/30"
-                disabled={filteredStudents.length === 0}
-              >
-                + Create Ticket
-              </button>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {/* Simple Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Assignments</h1>
+          <p className="text-sm text-gray-600">
+            {currentTeacher 
+              ? `${stats.totalStudents} assigned students` 
+              : `${stats.totalStudents} total students`}
+          </p>
+        </div>
+
+        {/* Simple Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-600 mb-1">Total</p>
+            <p className="text-xl font-bold text-gray-900">{stats.totalAssignments}</p>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-600 mb-1">Active</p>
+            <p className="text-xl font-bold text-blue-600">{stats.activeAssignments}</p>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-600 mb-1">Students</p>
+            <p className="text-xl font-bold text-green-600">{stats.studentsWithAssignments}</p>
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4">
-          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Total Students</p>
-                <p className="text-lg font-extrabold text-primary">{stats.totalStudents}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-soft-primary flex items-center justify-center">
-                <span className="text-sm">👥</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Total Assignments</p>
-                <p className="text-lg font-extrabold text-primary">{stats.totalAssignments}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-soft-primary flex items-center justify-center">
-                <span className="text-sm">📝</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Active Assignments</p>
-                <p className="text-lg font-extrabold text-primary">{stats.activeAssignments}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-soft-accent flex items-center justify-center">
-                <span className="text-sm">✅</span>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl border-2 border-primary/20 p-3 shadow-md hover:shadow-lg transition-all">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-medium text-primary-soft mb-0.5">Students with Assignments</p>
-                <p className="text-lg font-extrabold text-primary">{stats.studentsWithAssignments}</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-soft-primary flex items-center justify-center">
-                <span className="text-sm">📚</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-white rounded-xl border-2 border-primary/20 p-3 sm:p-4 shadow-md mb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3">
-            {/* Search */}
-            <div>
-              <label className="block text-xs font-extrabold text-primary mb-1.5">
-                🔍 Search Students
-              </label>
+        {/* Simple Search Bar */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, email, or ID..."
-                className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg bg-white text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition shadow-sm text-xs font-medium"
+                placeholder="Search students..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
               />
             </div>
-            
-            {/* Program Filter */}
-            <div>
-              <label className="block text-xs font-extrabold text-primary mb-1.5">
-                📋 Filter by Program
-              </label>
-              <select
-                value={selectedProgram}
-                onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
-                className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg bg-white text-primary focus:ring-2 focus:ring-primary/20 focus:border-primary transition shadow-sm text-xs font-medium"
-              >
-                <option value="all">All Programs</option>
-                {programs.map(program => (
-                  <option key={program} value={program}>{program}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedProgram}
+              onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+            >
+              <option value="all">All Programs</option>
+              {programs.map(program => (
+                <option key={program} value={program}>{program}</option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Students Grid */}
-        <div className="bg-white rounded-xl border-2 border-primary/20 p-3 sm:p-4 shadow-md">
-          <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-primary mb-1">
-                {currentTeacher ? 'My Assigned Students' : 'Students'}
-              </h2>
-              <p className="text-xs text-primary-soft font-medium">
-                {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} found
-                {currentTeacher && ' (your assigned students)'}
-                {selectedProgram !== 'all' && ` in ${selectedProgram}`}
-                {searchQuery && ` matching "${searchQuery}"`}
-              </p>
-              {currentTeacher && (
-                <div className="mt-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                  <p className="text-xs font-semibold text-primary">
-                    👤 Viewing only students assigned to you: <span className="font-bold">{currentTeacher.fullName}</span>
-                  </p>
-                </div>
-              )}
-            </div>
+        {/* Students List - Simple Table Style */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {currentTeacher ? 'My Students' : 'All Students'}
+            </h2>
           </div>
 
           {filteredStudents.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-4xl mb-2">📭</div>
-              <p className="text-sm font-semibold text-primary mb-1">No students found</p>
-              <p className="text-xs text-primary-soft">
-                {searchQuery ? 'Try adjusting your search query' : 'No students match the selected filters'}
-              </p>
+            <div className="text-center py-12 px-4">
+              <p className="text-gray-600">No students found</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
+            <div className="divide-y divide-gray-200">
               {filteredStudents.map(student => {
                 const studentAssignments = assignments.filter(a => a.studentId === student.id);
                 const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
@@ -362,81 +253,58 @@ const AssignmentManagement: React.FC = () => {
                 return (
                   <div
                     key={student.id}
-                    className="relative group"
+                    className="px-4 py-3 hover:bg-gray-50 transition-colors"
                   >
-                    {/* Student Card */}
-                    <button
-                      onClick={() => handleStudentClick(student.id)}
-                      className="w-full aspect-square flex flex-col items-center justify-center bg-gradient-to-br from-white to-soft-primary rounded-xl border-2 border-primary/20 hover:border-primary transition-all duration-300 shadow-md hover:shadow-lg relative overflow-hidden"
-                    >
-                      {/* Hover gradient overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      
-                      {/* Avatar/Initials */}
-                      <div className="relative z-10 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-primary to-[rgba(var(--color-primary-rgb),0.8)] text-white flex items-center justify-center text-sm sm:text-base font-extrabold mb-2 shadow-md group-hover:scale-110 transition-transform duration-300">
-                        {student.avatar ? (
-                          <img
-                            src={student.avatar}
-                            alt={student.fullName}
-                            className="w-full h-full rounded-full object-cover"
-                          />
-                        ) : (
-                          initials
-                        )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {/* Avatar */}
+                        <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                          {student.avatar ? (
+                            <img
+                              src={student.avatar}
+                              alt={student.fullName}
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            initials
+                          )}
+                        </div>
+                        
+                        {/* Student Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{student.fullName}</p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            {student.program && <span>{student.program}</span>}
+                            {studentAssignments.length > 0 && (
+                              <span className="text-primary font-medium">
+                                {activeAssignments > 0 ? activeAssignments : studentAssignments.length} assignment{studentAssignments.length !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      
-                      {/* Name */}
-                      <p className="relative z-10 text-[10px] sm:text-xs font-extrabold text-primary text-center px-1 truncate w-full mb-0.5">
-                        {student.fullName}
-                      </p>
-                      
-                      {/* Program Badge */}
-                      {student.program && (
-                        <p className="relative z-10 text-[9px] font-semibold text-primary text-center px-1 truncate w-full">
-                          {student.program}
-                        </p>
-                      )}
-                      
-                      {/* Assignment Count Badge */}
-                      {studentAssignments.length > 0 && (
-                        <span className="absolute top-1.5 right-1.5 bg-accent text-primary text-[10px] font-extrabold rounded-full w-5 h-5 flex items-center justify-center shadow-md border-2 border-white z-10">
-                          {activeAssignments > 0 ? activeAssignments : studentAssignments.length}
-                        </span>
-                      )}
-                    </button>
 
-                    {/* Quick Actions (on hover) */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/95 to-[rgba(var(--color-primary-rgb),0.95)] rounded-xl flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20 p-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCreateTicket(student.id);
-                        }}
-                        className="w-full px-2 py-1.5 bg-accent text-primary text-[10px] font-extrabold rounded-lg shadow-lg hover:scale-105 transition-all whitespace-nowrap"
-                        title="Create Ticket (Sabq/Sabqi/Manzil)"
-                      >
-                        + Create Ticket
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCreateAssignment(student.id);
-                        }}
-                        className="w-full px-2 py-1.5 bg-white border-2 border-accent text-primary text-[10px] font-extrabold rounded-lg shadow-lg hover:scale-105 transition-all whitespace-nowrap"
-                        title="Manual Assignment"
-                      >
-                        + Assignment
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStudentClick(student.id);
-                        }}
-                        className="w-full px-2 py-1.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 text-primary text-[10px] font-extrabold rounded-lg shadow-lg hover:scale-105 transition-all whitespace-nowrap"
-                        title="View Assignments"
-                      >
-                        View History
-                      </button>
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleCreateTicket(student.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                        >
+                          Ticket
+                        </button>
+                        <button
+                          onClick={() => handleCreateAssignment(student.id)}
+                          className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                          Assignment
+                        </button>
+                        <button
+                          onClick={() => handleStudentClick(student.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                        >
+                          View
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -446,7 +314,7 @@ const AssignmentManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Student Assignment History Modal */}
+      {/* Modals */}
       {selectedStudent && !showAssignmentForm && (
         <StudentAssignmentHistory
           studentId={selectedStudent}
@@ -459,7 +327,6 @@ const AssignmentManagement: React.FC = () => {
         />
       )}
 
-      {/* Ticket Creation Form Modal */}
       {showTicketForm && selectedStudent && (
         <TicketCreationForm
           studentId={selectedStudent}
@@ -470,7 +337,6 @@ const AssignmentManagement: React.FC = () => {
         />
       )}
 
-      {/* Assignment Form Modal */}
       {showAssignmentForm && (
         <AssignmentForm
           studentId={selectedStudent || ''}
@@ -496,4 +362,3 @@ const AssignmentManagement: React.FC = () => {
 };
 
 export default AssignmentManagement;
-
