@@ -27,6 +27,7 @@ const TeacherPdfViewer: React.FC = () => {
 
   useEffect(() => {
     if (selectedPdf) {
+      // Load annotations in background, but don't block PDF display
       loadAnnotations();
     } else {
       setAnnotations([]);
@@ -279,7 +280,7 @@ const TeacherPdfViewer: React.FC = () => {
         </div>
 
         {/* PDF Viewer Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden" style={{ minHeight: '600px' }}>
           {!selectedPdf ? (
             <div className="h-[600px] flex items-center justify-center p-12">
               <div className="text-center">
@@ -300,31 +301,32 @@ const TeacherPdfViewer: React.FC = () => {
                 )}
               </div>
             </div>
-          ) : loadingAnnotations ? (
-            <div className="h-[600px] flex items-center justify-center">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-sm text-gray-600">Loading annotations...</p>
-              </div>
+          ) : (selectedPdf.fileUrl || (selectedPdf as any).url) ? (
+            <div className="h-[calc(100vh-300px)] min-h-[600px] relative">
+              {loadingAnnotations && (
+                <div className="absolute top-4 right-4 z-50 bg-white rounded-lg shadow-lg px-4 py-2 flex items-center gap-2 border border-gray-200">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  <span className="text-sm text-gray-600">Loading annotations...</span>
+                </div>
+              )}
+              <PdfAnnotationViewer
+                pdfUrl={selectedPdf.fileUrl || (selectedPdf as any).url}
+                annotations={annotations}
+                readOnly={false}
+                onAnnotationsChange={handleAnnotationsChange}
+                onSave={handleSaveAnnotations}
+                showControls={true}
+                initialPage={1}
+                initialNotes={notes}
+                pdfTitle={selectedPdf.title}
+                pdfFilename={selectedPdf.filename || selectedPdf.originalFilename || ''}
+                pdfId={selectedPdf.id || selectedPdf._id}
+                onAssignHomework={async (studentId: string, studentName: string) => {
+                  await handleAssignToStudentWithId(studentId, studentName);
+                }}
+                assignedStudents={assignedStudents}
+              />
             </div>
-          ) : selectedPdf.fileUrl ? (
-            <PdfAnnotationViewer
-              pdfUrl={selectedPdf.fileUrl}
-              annotations={annotations}
-              readOnly={false}
-              onAnnotationsChange={handleAnnotationsChange}
-              onSave={handleSaveAnnotations}
-              showControls={true}
-              initialPage={1}
-              initialNotes={notes}
-              pdfTitle={selectedPdf.title}
-              pdfFilename={selectedPdf.filename || selectedPdf.originalFilename || ''}
-              pdfId={selectedPdf.id || selectedPdf._id}
-              onAssignHomework={async (studentId: string, studentName: string) => {
-                await handleAssignToStudentWithId(studentId, studentName);
-              }}
-              assignedStudents={assignedStudents}
-            />
           ) : (
             <div className="h-[600px] flex items-center justify-center p-12">
               <div className="text-center">
@@ -334,8 +336,11 @@ const TeacherPdfViewer: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">PDF File Missing</h3>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mb-2">
                   The PDF file URL is missing. Please contact support if this issue persists.
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Debug: PDF ID: {selectedPdf.id || selectedPdf._id}, Has fileUrl: {selectedPdf.fileUrl ? 'Yes' : 'No'}
                 </p>
               </div>
             </div>
