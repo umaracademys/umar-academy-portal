@@ -53,6 +53,7 @@ const TeacherStudentMessage = lazy(() => import('../components/TeacherStudentMes
 const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStudentMessagesAdmin'));
 const PdfManagement = lazy(() => import('../components/PdfManagement'));
 const StudentPersonalMushaf = lazy(() => import('../components/StudentPersonalMushaf'));
+const WeeklyEvaluationsAdmin = lazy(() => import('../components/WeeklyEvaluationsAdmin'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -169,6 +170,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
   const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
+  const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -184,6 +186,34 @@ const SuperAdminDashboard: React.FC = () => {
       assignment.homework?.submission?.status === 'submitted'
     ).length;
   }, [assignments]);
+
+  // Get pending weekly evaluations count
+  const [pendingWeeklyEvaluationsCount, setPendingWeeklyEvaluationsCount] = useState(0);
+  
+  useEffect(() => {
+    const loadPendingCount = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/weekly-evaluations?status=under_review`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setPendingWeeklyEvaluationsCount(data.length);
+        }
+      } catch (error) {
+        console.error('Error loading pending weekly evaluations count:', error);
+      }
+    };
+    loadPendingCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(loadPendingCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const totalStudents = students.length;
   const activeStudentCount = students.filter((student) => student.status === 'active').length;
@@ -284,7 +314,13 @@ const SuperAdminDashboard: React.FC = () => {
       label: 'Teacher-Student Messages',
       onClick: () => setShowTeacherStudentMessagesAdmin(true),
     },
-  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin]);
+    {
+      id: 'weekly-evaluations',
+      label: 'Weekly Evaluations',
+      onClick: () => setShowWeeklyEvaluations(true),
+      badge: pendingWeeklyEvaluationsCount > 0 ? pendingWeeklyEvaluationsCount : null,
+    },
+  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, pendingWeeklyEvaluationsCount]);
 
   const managementActions = [
     {
@@ -1621,6 +1657,15 @@ const SuperAdminDashboard: React.FC = () => {
             }}
             adminView={true}
             adminCanInitiate={true}
+          />
+        </Suspense>
+      )}
+
+      {/* Weekly Evaluations Admin Modal */}
+      {showWeeklyEvaluations && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <WeeklyEvaluationsAdmin
+            onClose={() => setShowWeeklyEvaluations(false)}
           />
         </Suspense>
       )}
