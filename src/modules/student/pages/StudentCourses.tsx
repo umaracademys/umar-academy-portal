@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useData } from '../../../contexts/DataContext';
 import StudentHeader from '../components/StudentHeader';
 import StudentSidebar from '../components/StudentSidebar';
 
 const StudentCourses: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
+  const { students, getStudentByEmail } = useData();
+  
+  const currentStudent = getStudentByEmail(user?.email || '') || students[0];
+  const isAfterSchool = currentStudent?.program === 'After School';
 
-  // Mock data - in real app, this would come from API
-  const courses = [
+  // Mock data - different courses for After School vs regular students
+  const regularCourses = [
     {
       id: 1,
       title: 'Quran Recitation',
@@ -47,6 +54,37 @@ const StudentCourses: React.FC = () => {
       materials: ['Sahih Bukhari', 'Hadith Commentary', 'Study Guide']
     }
   ];
+
+  const afterSchoolCourses = [
+    {
+      id: 1,
+      title: 'Quran Reading',
+      instructor: 'Ustadh Ahmad',
+      description: 'Learn to read Quran with proper pronunciation and basic rules',
+      progress: 60,
+      totalLessons: 15,
+      completedLessons: 9,
+      nextClass: '2024-02-12',
+      status: 'active',
+      schedule: 'Mon, Wed, Fri - 4:00 PM',
+      materials: ['Quran Text', 'Reading Guide', 'Practice Sheets']
+    },
+    {
+      id: 2,
+      title: 'Basic Arabic',
+      instructor: 'Ustadh Ali',
+      description: 'Introduction to Arabic alphabet and basic vocabulary',
+      progress: 40,
+      totalLessons: 20,
+      completedLessons: 8,
+      nextClass: '2024-02-13',
+      status: 'active',
+      schedule: 'Tue, Thu - 5:00 PM',
+      materials: ['Arabic Alphabet Book', 'Workbook', 'Flashcards']
+    }
+  ];
+
+  const courses = isAfterSchool ? afterSchoolCourses : regularCourses;
 
   const getStatusColor = (status: string) => {
     switch (status) {

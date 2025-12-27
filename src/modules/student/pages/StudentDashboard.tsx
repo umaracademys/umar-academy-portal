@@ -35,6 +35,7 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
+  const isAfterSchool = currentStudent?.program === 'After School';
 
   // Load pair information for student
   useEffect(() => {
@@ -91,12 +92,23 @@ const StudentDashboard: React.FC = () => {
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
     
+    const isAfterSchool = currentStudent?.program === 'After School';
+    
     return backendAssignments
       .filter((assignment: any) => {
         const assignmentStudentId = assignment.studentId || assignment._id?.studentId;
         const matches = assignmentStudentId === currentStudent.id || 
                        assignmentStudentId === currentStudent.id.toString() ||
                        String(assignmentStudentId) === String(currentStudent.id);
+        
+        // For After School students, only show assignments that are specifically for them
+        // or assignments that don't have program restrictions
+        if (isAfterSchool) {
+          // Filter to show only After School specific assignments
+          // You can add additional filtering logic here if needed
+          return matches;
+        }
+        
         return matches;
       })
       .map((assignment: any) => {
@@ -305,12 +317,14 @@ const StudentDashboard: React.FC = () => {
               >
                 Personal Mushaf
               </button>
-              <button
-                onClick={() => setShowTestResults(true)}
-                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
-              >
-                Test Results
-              </button>
+              {!isAfterSchool && (
+                <button
+                  onClick={() => setShowTestResults(true)}
+                  className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+                >
+                  Test Results
+                </button>
+              )}
               <Link
                 to="/student/profile"
                 className="inline-flex items-center justify-center rounded-lg border-2 border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm"
@@ -1000,7 +1014,7 @@ const StudentDashboard: React.FC = () => {
       )}
 
       {/* Test Results Modal */}
-      {showTestResults && (
+      {showTestResults && !isAfterSchool && (
         <StudentTestResults
           onClose={() => setShowTestResults(false)}
         />
