@@ -336,11 +336,8 @@ const TeacherPdfViewer: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">PDF File Missing</h3>
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-gray-600">
                   The PDF file URL is missing. Please contact support if this issue persists.
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Debug: PDF ID: {selectedPdf.id || selectedPdf._id}, Has fileUrl: {selectedPdf.fileUrl ? 'Yes' : 'No'}
                 </p>
               </div>
             </div>
