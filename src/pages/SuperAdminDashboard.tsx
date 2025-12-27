@@ -52,6 +52,7 @@ const PairTeacherMessagesAdmin = lazy(() => import('../components/PairTeacherMes
 const TeacherStudentMessage = lazy(() => import('../components/TeacherStudentMessage'));
 const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStudentMessagesAdmin'));
 const PdfManagement = lazy(() => import('../components/PdfManagement'));
+const StudentPersonalMushaf = lazy(() => import('../components/StudentPersonalMushaf'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -166,6 +167,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
   const [selectedTeacherForMessage, setSelectedTeacherForMessage] = useState<any>(null);
   const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
+  const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
+  const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
