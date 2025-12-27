@@ -136,32 +136,34 @@ const TeacherStudentMessagesAdmin: React.FC<TeacherStudentMessagesAdminProps> = 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b-2 border-primary px-6 py-4 flex justify-between items-center rounded-t-2xl">
+        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center rounded-t-lg">
           <div>
-            <h2 className="text-2xl font-bold text-primary">Teacher-Student Messages</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Teacher-Student Messages</h2>
             <p className="text-sm text-gray-600 mt-1">
-              View all messages between teachers and students (Admin Oversight)
+              View all messages between teachers and students
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
           >
-            ×
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
         {/* Filters */}
-        <div className="px-6 py-4 border-b-2 border-gray-200 bg-gray-50">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-primary mb-1">Filter by Teacher</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Teacher</label>
               <select
                 value={selectedTeacher}
                 onChange={(e) => setSelectedTeacher(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white shadow-sm"
               >
                 <option value="all">All Teachers</option>
                 {uniqueTeachers.map((teacher: any) => (
@@ -172,11 +174,11 @@ const TeacherStudentMessagesAdmin: React.FC<TeacherStudentMessagesAdminProps> = 
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-primary mb-1">Filter by Student</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Student</label>
               <select
                 value={selectedStudent}
                 onChange={(e) => setSelectedStudent(e.target.value)}
-                className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white shadow-sm"
               >
                 <option value="all">All Students</option>
                 {uniqueStudents.map((student: any) => (
@@ -200,10 +202,10 @@ const TeacherStudentMessagesAdmin: React.FC<TeacherStudentMessagesAdminProps> = 
             </div>
           ) : (
             Object.entries(messagesByConversation).map(([key, convData]: [string, any]) => (
-              <div key={key} className="bg-white rounded-lg border-2 border-gray-200 p-4">
-                <div className="mb-4 pb-3 border-b-2 border-gray-200 flex justify-between items-center">
+              <div key={key} className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
+                <div className="mb-4 pb-4 border-b border-gray-200 flex justify-between items-center">
                   <div>
-                    <h3 className="font-bold text-lg text-primary">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-1">
                       {convData.teacher?.fullName || 'Teacher'} ↔ {convData.student?.fullName || 'Student'}
                     </h3>
                     <p className="text-sm text-gray-600">
@@ -213,9 +215,9 @@ const TeacherStudentMessagesAdmin: React.FC<TeacherStudentMessagesAdminProps> = 
                   {onInitiateMessage && (
                     <button
                       onClick={() => onInitiateMessage(convData.teacher, convData.student)}
-                      className="px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition text-sm"
+                      className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition text-sm shadow-sm"
                     >
-                      Initiate Message
+                      Open Conversation
                     </button>
                   )}
                 </div>
@@ -223,25 +225,25 @@ const TeacherStudentMessagesAdmin: React.FC<TeacherStudentMessagesAdminProps> = 
                   {convData.messages.map((msg: any) => (
                     <div
                       key={msg._id || msg.id}
-                      className="rounded-lg p-4 bg-gray-50 border border-gray-200"
+                      className="rounded-lg p-4 bg-gray-50 border border-gray-200 mb-3"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-600">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-medium text-gray-700">
                             {msg.fromTeacher ? msg.fromTeacher.fullName : msg.fromStudent?.fullName || 'Student'} → {msg.toTeacher ? msg.toTeacher.fullName : msg.toStudent?.fullName || 'Student'}
                           </span>
                           {!msg.read && (
-                            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs font-bold">
+                            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-medium">
                               Unread
                             </span>
                           )}
                           {msg.adminInitiated && (
-                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold">
+                            <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                               Admin Initiated
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 whitespace-nowrap">
                           {formatDate(msg.createdAt)}
                         </span>
                       </div>
@@ -281,14 +283,14 @@ const TeacherStudentMessagesAdmin: React.FC<TeacherStudentMessagesAdminProps> = 
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t-2 border-primary px-6 py-4 rounded-b-2xl">
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-lg">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-600">
-              Total: {messages.length} message{messages.length !== 1 ? 's' : ''}
+              Total: <span className="font-medium">{messages.length}</span> message{messages.length !== 1 ? 's' : ''}
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 transition"
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition shadow-sm"
             >
               Close
             </button>
