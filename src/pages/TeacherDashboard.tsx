@@ -1150,6 +1150,7 @@ const TeacherDashboard: React.FC = () => {
       {showStudentReports && (
         <StudentReports
           onClose={() => setShowStudentReports(false)}
+          teacherView={true}
         />
       )}
 

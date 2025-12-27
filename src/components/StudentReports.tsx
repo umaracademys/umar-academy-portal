@@ -1,15 +1,31 @@
 import React, { useState, useMemo } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { useAuth } from '../contexts/AuthContext';
 import StudentAssignmentHistory from './StudentAssignmentHistory';
 import { useNavigate } from 'react-router-dom';
 
 interface StudentReportsProps {
   onClose: () => void;
+  teacherView?: boolean; // If true, only show students assigned to current teacher
 }
 
-const StudentReports: React.FC<StudentReportsProps> = ({ onClose }) => {
-  const { students, getStudentAssignments } = useBackendData();
+const StudentReports: React.FC<StudentReportsProps> = ({ onClose, teacherView = false }) => {
+  const { students: allStudents, getStudentAssignments, teachers, getStudentsByTeacher } = useBackendData();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Get current teacher if in teacher view
+  const currentTeacher = teacherView && user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
+  const assignedStudentIds = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id).map(s => s.id) : [];
+  
+  // Filter students based on view type
+  const students = useMemo(() => {
+    if (teacherView && currentTeacher) {
+      // Only show students assigned to this teacher
+      return allStudents.filter(student => assignedStudentIds.includes(student.id));
+    }
+    return allStudents;
+  }, [allStudents, teacherView, currentTeacher, assignedStudentIds]);
   
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
