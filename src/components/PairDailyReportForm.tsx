@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface PairDailyReportFormProps {
   onClose: () => void;
@@ -178,73 +177,67 @@ const PairDailyReportForm: React.FC<PairDailyReportFormProps> = ({ onClose, onSu
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Sabq</label>
-            <AiSuggestionsInput
+            <textarea
               value={formData.sabq}
-              onChange={(value) => setFormData({ ...formData, sabq: value })}
-              category="general"
+              onChange={(e) => setFormData({ ...formData, sabq: e.target.value })}
               placeholder="Enter sabq details..."
-              multiline
               rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white"
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Sabqi</label>
-            <AiSuggestionsInput
+            <textarea
               value={formData.sabqi}
-              onChange={(value) => setFormData({ ...formData, sabqi: value })}
-              category="general"
+              onChange={(e) => setFormData({ ...formData, sabqi: e.target.value })}
               placeholder="Enter sabqi details..."
-              multiline
               rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white"
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Manzil</label>
-            <AiSuggestionsInput
+            <textarea
               value={formData.manzil}
-              onChange={(value) => setFormData({ ...formData, manzil: value })}
-              category="general"
+              onChange={(e) => setFormData({ ...formData, manzil: e.target.value })}
               placeholder="Enter manzil details..."
-              multiline
               rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white"
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Mistakes</label>
-            <AiSuggestionsInput
+            <textarea
               value={formData.mistakes}
-              onChange={(value) => setFormData({ ...formData, mistakes: value })}
-              category="mistakes"
+              onChange={(e) => setFormData({ ...formData, mistakes: e.target.value })}
               placeholder="Describe mistakes observed..."
-              multiline
               rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white"
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Correction Method</label>
-            <AiSuggestionsInput
+            <textarea
               value={formData.correctionMethod}
-              onChange={(value) => setFormData({ ...formData, correctionMethod: value })}
-              category="tajweed"
+              onChange={(e) => setFormData({ ...formData, correctionMethod: e.target.value })}
               placeholder="How were mistakes corrected..."
-              multiline
               rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white"
             />
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Behavior Note</label>
-            <AiSuggestionsInput
+            <textarea
               value={formData.behaviorNote}
-              onChange={(value) => setFormData({ ...formData, behaviorNote: value })}
-              category="evaluation"
+              onChange={(e) => setFormData({ ...formData, behaviorNote: e.target.value })}
               placeholder="Behavior observations..."
-              multiline
               rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-gray-900 bg-white"
             />
           </div>
 
