@@ -240,6 +240,14 @@ const SuperAdminDashboard: React.FC = () => {
       emphasis: 'primary' as const,
     },
     {
+      id: 'weekly-evaluations',
+      label: 'Weekly Evaluations',
+      description: 'Review and provide feedback on teacher-submitted evaluations.',
+      onClick: () => setShowWeeklyEvaluations(true),
+      badge: pendingWeeklyEvaluationsCount,
+      emphasis: 'primary' as const,
+    },
+    {
       id: 'manage-assignments',
       label: 'Manage Assignments',
       description: 'Create and manage assignments with multi-phase classwork.',
@@ -247,7 +255,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: pendingHomeworkCount,
       emphasis: 'primary' as const,
     },
-  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, setShowRecitationReview, setShowTicketReview]);
+  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations]);
 
   const [showMoreActions, setShowMoreActions] = useState(false);
   
@@ -409,6 +417,14 @@ const SuperAdminDashboard: React.FC = () => {
       action: () => setShowRecitationReview(true),
       footer: `${pendingReviewsCount} pending`,
     },
+    {
+      id: 'weekly-evaluations',
+      badge: 'WE',
+      title: 'Weekly Evaluations',
+      description: 'Review and provide feedback on teacher-submitted evaluations.',
+      action: () => setShowWeeklyEvaluations(true),
+      footer: `${pendingWeeklyEvaluationsCount} pending`,
+    },
   ];
 
   // Calculate additional metrics
@@ -470,6 +486,24 @@ const SuperAdminDashboard: React.FC = () => {
               <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 border border-blue-200">
                 {pendingTicketCount} pending tickets
               </span>
+              {pendingWeeklyEvaluationsCount > 0 && (
+                <span className="rounded-full bg-purple-100 px-3 py-1.5 text-purple-700 border border-purple-200">
+                  {pendingWeeklyEvaluationsCount} weekly evaluations
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <button
+                onClick={() => setShowWeeklyEvaluations(true)}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-4 py-2 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary"
+              >
+                Weekly Evaluations
+                {pendingWeeklyEvaluationsCount > 0 && (
+                  <span className="ml-2 rounded-full bg-red-500 text-white px-2 py-0.5 text-xs font-bold">
+                    {pendingWeeklyEvaluationsCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
