@@ -1022,3 +1022,4 @@ const StudentAssignments: React.FC = () => {
 
 export default StudentAssignments;
 
+// Simplified student assignments with integrated Mushaf
