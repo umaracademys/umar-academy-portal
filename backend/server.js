@@ -3739,13 +3739,14 @@ const EvaluationUpload = mongoose.model('EvaluationUpload', evaluationUploadSche
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
-  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request', 'student_registration_request'], required: true },
+  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request', 'student_registration_request', 'weekly_evaluation_submitted', 'weekly_evaluation_feedback', 'weekly_evaluation_approved'], required: true },
   title: { type: String, required: true },
   message: { type: String, required: true },
   recitationReviewId: { type: String },
   assignmentId: { type: String },
   studentId: { type: String },
   teacherId: { type: String }, // For profile_update_request
+  weeklyEvaluationId: { type: String }, // For weekly evaluation notifications
   read: { type: Boolean, default: false },
   priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
   registrationData: { type: mongoose.Schema.Types.Mixed } // Store full registration data for student_registration_request
@@ -5602,6 +5603,19 @@ app.post('/api/weekly-evaluations', async (req, res) => {
       } else if (status === 'submitted' && evaluation.status === 'draft') {
         evaluation.submittedAt = new Date();
         evaluation.status = 'under_review';
+        
+        // Create notification for admin when evaluation is submitted
+        const notification = new AdminNotification({
+          type: 'weekly_evaluation_submitted',
+          title: 'New Weekly Evaluation Submitted',
+          message: `${evaluation.teacherName} submitted a weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
+          weeklyEvaluationId: evaluation.id,
+          studentId: evaluation.studentId,
+          teacherId: evaluation.teacherId,
+          priority: 'high',
+          read: false
+        });
+        await notification.save();
       }
     } else {
       // Create new evaluation
@@ -5627,6 +5641,19 @@ app.post('/api/weekly-evaluations', async (req, res) => {
       if (status === 'submitted') {
         evaluation.submittedAt = new Date();
         evaluation.status = 'under_review';
+        
+        // Create notification for admin when new evaluation is submitted
+        const notification = new AdminNotification({
+          type: 'weekly_evaluation_submitted',
+          title: 'New Weekly Evaluation Submitted',
+          message: `${evaluation.teacherName} submitted a weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
+          weeklyEvaluationId: evaluation.id,
+          studentId: evaluation.studentId,
+          teacherId: evaluation.teacherId,
+          priority: 'high',
+          read: false
+        });
+        await notification.save();
       }
     }
 
@@ -5749,6 +5776,19 @@ app.post('/api/weekly-evaluations/:id/review', async (req, res) => {
         student.evaluations.push(approvedEvaluation);
         await student.save();
       }
+
+      // Create notification for admin dashboard
+      const notification = new AdminNotification({
+        type: 'weekly_evaluation_approved',
+        title: 'Weekly Evaluation Approved',
+        message: `${reviewedByName || 'Admin'} approved weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
+        weeklyEvaluationId: evaluation.id,
+        studentId: evaluation.studentId,
+        teacherId: evaluation.teacherId,
+        priority: 'high',
+        read: false
+      });
+      await notification.save();
     } else if (action === 'request_changes') {
       evaluation.status = 'feedback_provided';
       evaluation.adminFeedback = feedback || '';
@@ -5788,8 +5828,23 @@ app.post('/api/weekly-evaluations/:id/admin-feedback', async (req, res) => {
     if (reviewedBy) evaluation.reviewedBy = reviewedBy;
     if (reviewedByName) evaluation.reviewedByName = reviewedByName;
     evaluation.reviewedAt = new Date();
+    evaluation.status = 'feedback_provided';
 
     await evaluation.save();
+
+    // Create notification for admin dashboard
+    const notification = new AdminNotification({
+      type: 'weekly_evaluation_feedback',
+      title: 'Evaluation Feedback Provided',
+      message: `${reviewedByName || 'Admin'} provided feedback on weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
+      weeklyEvaluationId: evaluation.id,
+      studentId: evaluation.studentId,
+      teacherId: evaluation.teacherId,
+      priority: 'medium',
+      read: false
+    });
+    await notification.save();
+
     res.json(evaluation);
   } catch (error) {
     console.error('Error updating admin feedback:', error);

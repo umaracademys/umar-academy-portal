@@ -441,13 +441,14 @@ export interface AssignmentTicket {
 
 export interface AdminNotification {
   id: string;
-  type: 'recitation_review_pending' | 'assignment_submitted' | 'student_enrolled' | 'payment_received' | 'profile_update_request' | 'student_registration_request';
+  type: 'recitation_review_pending' | 'assignment_submitted' | 'student_enrolled' | 'payment_received' | 'profile_update_request' | 'student_registration_request' | 'weekly_evaluation_submitted' | 'weekly_evaluation_feedback' | 'weekly_evaluation_approved';
   title: string;
   message: string;
   recitationReviewId?: string; // If type is recitation_review_pending
   assignmentId?: string;
   studentId?: string;
   teacherId?: string; // If type is profile_update_request
+  weeklyEvaluationId?: string; // If type is weekly_evaluation_feedback or weekly_evaluation_approved
   read: boolean;
   createdAt: Date;
   priority: 'low' | 'medium' | 'high';
