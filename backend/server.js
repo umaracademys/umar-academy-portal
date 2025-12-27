@@ -530,35 +530,45 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   weekStartDate: { type: Date, required: true }, // Start of the week being evaluated
   weekEndDate: { type: Date, required: true }, // End of the week being evaluated
   
-  // Tajweed evaluation
+  // Level and Surah
+  level: { type: String, enum: ['Qaidah 1', 'Qaidah 2', 'Reading'], required: true },
+  selectedSurah: String, // Surah name if level is Reading
+  
+  // Common Mistakes and Fixing Etiquette
+  commonMistakes: { type: String, required: true },
+  fixingEtiquette: { type: String, required: true },
+  
+  // Admin feedback fields
+  adminFeedback: String, // Feedback from admin
+  gamePlan: String, // Game plan shared by admin
+  sharedLinks: [String], // Links shared by admin
+  
+  // Legacy fields (kept for backward compatibility)
   tajweedEvaluation: {
     overallRating: { type: Number, min: 1, max: 10 },
-    strengths: String, // What the student did well in tajweed
-    areasForImprovement: String, // Areas that need work
-    specificNotes: String // Detailed tajweed notes
+    strengths: String,
+    areasForImprovement: String,
+    specificNotes: String
   },
   
-  // Memory evaluation
   memoryEvaluation: {
     overallRating: { type: Number, min: 1, max: 10 },
-    memorizedPages: String, // What was memorized this week
-    retentionQuality: String, // How well they retained previous memorization
-    specificNotes: String // Detailed memory notes
+    memorizedPages: String,
+    retentionQuality: String,
+    specificNotes: String
   },
   
-  // Mistakes section
   mistakes: {
     mistakesMade: [{
-      type: String, // Type of mistake (madd, memory, ikhfa, etc.)
-      description: String, // Description of the mistake
-      location: String, // Where it occurred (surah, ayah, page)
-      frequency: Number // How often it occurred
+      type: String,
+      description: String,
+      location: String,
+      frequency: Number
     }],
-    howFixed: String, // How the teacher helped fix the mistakes
-    improvement: String // Progress made in fixing mistakes
+    howFixed: String,
+    improvement: String
   },
   
-  // General notes
   generalNotes: String,
   
   // Approval workflow
@@ -5538,6 +5548,10 @@ app.post('/api/weekly-evaluations', async (req, res) => {
       teacherName,
       weekStartDate,
       weekEndDate,
+      level,
+      selectedSurah,
+      commonMistakes,
+      fixingEtiquette,
       tajweedEvaluation,
       memoryEvaluation,
       mistakes,
@@ -5545,8 +5559,12 @@ app.post('/api/weekly-evaluations', async (req, res) => {
       status
     } = req.body;
 
-    if (!studentId || !teacherId || !weekStartDate || !weekEndDate) {
+    if (!studentId || !teacherId || !weekStartDate || !weekEndDate || !level || !commonMistakes || !fixingEtiquette) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    if (level === 'Reading' && !selectedSurah) {
+      return res.status(400).json({ error: 'Surah is required when level is Reading' });
     }
 
     let evaluation;
@@ -5568,6 +5586,10 @@ app.post('/api/weekly-evaluations', async (req, res) => {
       evaluation.teacherName = teacherName;
       evaluation.weekStartDate = new Date(weekStartDate);
       evaluation.weekEndDate = new Date(weekEndDate);
+      evaluation.level = level;
+      evaluation.selectedSurah = selectedSurah || '';
+      evaluation.commonMistakes = commonMistakes;
+      evaluation.fixingEtiquette = fixingEtiquette;
       evaluation.tajweedEvaluation = tajweedEvaluation || {};
       evaluation.memoryEvaluation = memoryEvaluation || {};
       evaluation.mistakes = mistakes || {};
@@ -5591,6 +5613,10 @@ app.post('/api/weekly-evaluations', async (req, res) => {
         teacherName,
         weekStartDate: new Date(weekStartDate),
         weekEndDate: new Date(weekEndDate),
+        level,
+        selectedSurah: selectedSurah || '',
+        commonMistakes,
+        fixingEtiquette,
         tajweedEvaluation: tajweedEvaluation || {},
         memoryEvaluation: memoryEvaluation || {},
         mistakes: mistakes || {},
@@ -5741,6 +5767,32 @@ app.post('/api/weekly-evaluations/:id/review', async (req, res) => {
     res.json(evaluation);
   } catch (error) {
     console.error('Error reviewing weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin provide feedback, game plan, and links
+app.post('/api/weekly-evaluations/:id/admin-feedback', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adminFeedback, gamePlan, sharedLinks, reviewedBy, reviewedByName } = req.body;
+
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    if (adminFeedback) evaluation.adminFeedback = adminFeedback;
+    if (gamePlan) evaluation.gamePlan = gamePlan;
+    if (sharedLinks && Array.isArray(sharedLinks)) evaluation.sharedLinks = sharedLinks;
+    if (reviewedBy) evaluation.reviewedBy = reviewedBy;
+    if (reviewedByName) evaluation.reviewedByName = reviewedByName;
+    evaluation.reviewedAt = new Date();
+
+    await evaluation.save();
+    res.json(evaluation);
+  } catch (error) {
+    console.error('Error updating admin feedback:', error);
     res.status(500).json({ error: error.message });
   }
 });

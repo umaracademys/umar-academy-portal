@@ -6,6 +6,7 @@ import { ProgramType } from '../types';
 import StudentAssignmentHistory from '../components/StudentAssignmentHistory';
 import AssignmentForm from '../components/AssignmentForm';
 import TicketCreationForm from '../components/TicketCreationForm';
+import AfterSchoolStudentView from '../components/AfterSchoolStudentView';
 import { Ticket } from '../types/ticket';
 import Header from '../components/Header';
 
@@ -141,6 +142,9 @@ const AssignmentManagement: React.FC = () => {
   const handleStudentClick = (studentId: string) => {
     setSelectedStudent(studentId);
   };
+
+  // Check if After School is selected
+  const isAfterSchoolSelected = selectedProgram === 'After School';
 
   const handleCreateAssignment = (studentId: string) => {
     setSelectedStudent(studentId);
@@ -286,23 +290,27 @@ const AssignmentManagement: React.FC = () => {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleCreateTicket(student.id)}
-                          className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
-                        >
-                          Ticket
-                        </button>
-                        <button
-                          onClick={() => handleCreateAssignment(student.id)}
-                          className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                        >
-                          Assignment
-                        </button>
+                        {!isAfterSchoolSelected && (
+                          <button
+                            onClick={() => handleCreateTicket(student.id)}
+                            className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                          >
+                            Ticket
+                          </button>
+                        )}
+                        {!isAfterSchoolSelected && (
+                          <button
+                            onClick={() => handleCreateAssignment(student.id)}
+                            className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            Assignment
+                          </button>
+                        )}
                         <button
                           onClick={() => handleStudentClick(student.id)}
                           className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
                         >
-                          View
+                          {isAfterSchoolSelected ? 'Review' : 'View'}
                         </button>
                       </div>
                     </div>
@@ -315,7 +323,16 @@ const AssignmentManagement: React.FC = () => {
       </div>
 
       {/* Modals */}
-      {selectedStudent && !showAssignmentForm && (
+      {/* After School Student View */}
+      {selectedStudent && !showAssignmentForm && isAfterSchoolSelected && (
+        <AfterSchoolStudentView
+          studentId={selectedStudent}
+          onClose={handleCloseModal}
+        />
+      )}
+
+      {/* Regular Student Assignment History (for non-After School) */}
+      {selectedStudent && !showAssignmentForm && !isAfterSchoolSelected && (
         <StudentAssignmentHistory
           studentId={selectedStudent}
           onClose={handleCloseModal}

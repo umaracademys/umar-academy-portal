@@ -10,6 +10,7 @@ interface StudentProfileProps {
   onPayments?: () => void;
   onProgress?: () => void;
   onCommunication?: () => void;
+  onWeeklyEvaluations?: () => void;
 }
 
 const StudentProfile: React.FC<StudentProfileProps> = ({
@@ -20,6 +21,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   onPayments,
   onProgress,
   onCommunication,
+  onWeeklyEvaluations,
 }) => {
   const { students, teachers, assignments } = useData();
   const { assignments: backendAssignments, tickets, recitationReviews, getPairStudents, getTeacherPairs } = useBackendData();
@@ -795,6 +797,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
                     ))}
                   </ul>
                 )}
+              </SectionCard>
+            )}
+
+            {activeTab === 'overview' && onWeeklyEvaluations && (
+              <SectionCard title="Weekly Evaluations" icon="📋" actionLabel="View Evaluations" onAction={onWeeklyEvaluations}>
+                <div className="text-sm text-primary">
+                  <p>View and provide feedback on weekly evaluations for this student.</p>
+                </div>
               </SectionCard>
             )}
 

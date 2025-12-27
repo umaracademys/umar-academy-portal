@@ -11,6 +11,7 @@ import StudentPayments from '../components/StudentPayments';
 import StudentProgress from '../components/StudentProgress';
 import StudentCommunication from '../components/StudentCommunication';
 import StudentPersonalMushaf from '../components/StudentPersonalMushaf';
+import StudentWeeklyEvaluations from '../components/StudentWeeklyEvaluations';
 import Card from '../components/Card';
 
 const StudentsPage: React.FC = () => {
@@ -26,6 +27,7 @@ const StudentsPage: React.FC = () => {
   const [showStudentProgress, setShowStudentProgress] = useState(false);
   const [showStudentCommunication, setShowStudentCommunication] = useState(false);
   const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
+  const [showStudentWeeklyEvaluations, setShowStudentWeeklyEvaluations] = useState(false);
 
   const handleStudentSelect = (student: any) => {
     setSelectedStudent(student);
@@ -138,6 +140,10 @@ const StudentsPage: React.FC = () => {
             setShowStudentProfile(false);
             setShowStudentCommunication(true);
           }}
+          onWeeklyEvaluations={() => {
+            setShowStudentProfile(false);
+            setShowStudentWeeklyEvaluations(true);
+          }}
         />
       )}
 
@@ -218,6 +224,17 @@ const StudentsPage: React.FC = () => {
           studentName={selectedStudent.fullName}
           onClose={() => {
             setShowStudentPersonalMushaf(false);
+            setSelectedStudent(null);
+          }}
+        />
+      )}
+
+      {showStudentWeeklyEvaluations && selectedStudent && (
+        <StudentWeeklyEvaluations
+          studentId={selectedStudent.id}
+          studentName={selectedStudent.fullName}
+          onClose={() => {
+            setShowStudentWeeklyEvaluations(false);
             setSelectedStudent(null);
           }}
         />
