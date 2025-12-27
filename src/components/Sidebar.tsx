@@ -72,15 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       items.push(pdfTeachingItem);
     }
     
-    // Add remaining items
-    items.push(
-      { id: 'courses', icon: 'CR', label: 'Courses', badge: '45', isLink: false },
-      { id: 'financials', icon: 'FN', label: 'Financials', badge: null, isLink: false },
-      { id: 'reports', icon: 'RP', label: 'Reports', badge: null, isLink: false },
-      { id: 'activities', icon: 'AC', label: 'Activities', badge: '12', isLink: false },
-      { id: 'settings', icon: 'SE', label: 'Settings', badge: null, isLink: false }
-    );
-    
     return items;
   })();
 
