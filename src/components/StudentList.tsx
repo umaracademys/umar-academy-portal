@@ -254,7 +254,9 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
             const result = await response.json();
             newPasswords[student.id || student.email] = newPassword;
             successCount++;
-            console.log(`✅ Password reset for ${student.email}`);
+            console.log(`✅ Password reset for ${student.email} - Saved to MongoDB`);
+            console.log(`   Password: ${newPassword} (will be hashed in database)`);
+            console.log(`   User ID: ${userId}`);
           } else {
             const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
             const reason = errorData.error || errorData.details || `HTTP ${response.status}`;
