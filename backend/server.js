@@ -423,10 +423,48 @@ console.log(`📁 Quran directory: ${path.join(publicDir, 'quran')}`);
 console.log(`📁 Mistakes directory: ${uploadsDir}`);
 console.log(`📁 Recordings directory: ${recordingsDir}`);
 
+// Connect to MongoDB with connection options
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 10000, // 10 seconds
+  socketTimeoutMS: 45000,
+  connectTimeoutMS: 10000,
+  maxPoolSize: 10,
+  retryWrites: true,
+  w: 'majority'
+};
+
+// Connection event handlers
+mongoose.connection.on('connected', () => {
+  console.log(`✅ MongoDB connected successfully`);
+  console.log(`   Database: ${mongoose.connection.name}`);
+  console.log(`   Host: ${mongoose.connection.host}:${mongoose.connection.port}`);
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️  MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});
+
 // Connect to MongoDB (don't exit on failure - allow graceful degradation)
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, mongooseOptions)
 .then(async () => {
   console.log(`📊 Connected to MongoDB`);
+  console.log(`   Connection State: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
+  
+  // Verify connection with a test query
+  try {
+    const testResult = await mongoose.connection.db.admin().ping();
+    console.log(`✅ MongoDB connection verified: ${JSON.stringify(testResult)}`);
+  } catch (error) {
+    console.error('⚠️  MongoDB connection verification failed:', error.message);
+  }
   
   // Auto-initialize AI Phrase categories if they don't exist
   try {
@@ -1537,9 +1575,19 @@ app.get('/api/activity-logs/stats', apiLimiter, authenticateToken, async (req, r
 // Get all users (optional auth - for backward compatibility, but passwords are always excluded)
 app.get('/api/users', apiLimiter, async (req, res) => {
   try {
+    // Check MongoDB connection
+    if (mongoose.connection.readyState !== 1) {
+      console.error('❌ MongoDB not connected. ReadyState:', mongoose.connection.readyState);
+      return res.status(503).json({ 
+        error: 'Database connection unavailable. Please try again in a moment.',
+        details: 'MongoDB connection is not established'
+      });
+    }
+
     const users = await User.find({}).select('-password'); // Always exclude passwords
     res.json(users);
   } catch (error) {
+    console.error('❌ Error fetching users:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -8776,24 +8824,54 @@ app.get('/', (req, res) => {
 // Health check - improved with database connectivity check
 app.get('/api/health', async (req, res) => {
   try {
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    const readyState = mongoose.connection.readyState;
+    const dbStatus = readyState === 1 ? 'connected' : 
+                     readyState === 2 ? 'connecting' :
+                     readyState === 3 ? 'disconnecting' : 'disconnected';
+    
+    // Try to ping the database to verify actual connectivity
+    let dbPing = false;
+    let dbError = null;
+    if (readyState === 1) {
+      try {
+        await mongoose.connection.db.admin().ping();
+        dbPing = true;
+      } catch (error) {
+        dbError = error.message;
+      }
+    }
+    
     const healthStatus = {
-      status: 'OK',
-      message: 'Backend is running',
+      status: dbPing ? 'OK' : (readyState === 1 ? 'WARNING' : 'ERROR'),
+      message: dbPing ? 'Backend is running and database is accessible' : 
+               (readyState === 1 ? 'Backend is running but database ping failed' : 'Backend is running but database is not connected'),
       timestamp: new Date().toISOString(),
-      database: dbStatus,
+      database: {
+        status: dbStatus,
+        readyState: readyState,
+        ping: dbPing,
+        error: dbError,
+        host: mongoose.connection.host,
+        port: mongoose.connection.port,
+        name: mongoose.connection.name
+      },
       uptime: process.uptime(),
       version: '1.0.0'
     };
     
-    // If database is not connected, still return 200 but indicate the issue
-    res.json(healthStatus);
+    // Return 200 but with status indicating health
+    const statusCode = dbPing ? 200 : (readyState === 1 ? 200 : 503);
+    res.status(statusCode).json(healthStatus);
   } catch (error) {
     console.error('Health check error:', error);
     res.status(500).json({ 
       status: 'ERROR', 
       message: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      database: {
+        status: 'unknown',
+        readyState: mongoose.connection.readyState
+      }
     });
   }
 });
