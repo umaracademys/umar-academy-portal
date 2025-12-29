@@ -7,6 +7,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
+const helmet = require('helmet');
+const { validatePassword, sanitizeObject, validateEmail, getAccountLockoutConfig } = require('./security');
 
 // Use axios for making HTTP requests
 const axios = require('axios');
@@ -25,6 +27,24 @@ const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Validate critical environment variables in production
+if (isProduction) {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-this-in-production') {
+    console.error('❌ CRITICAL: JWT_SECRET must be set to a secure value in production!');
+    console.error('   Please set JWT_SECRET environment variable with a strong random string.');
+    process.exit(1);
+  }
+  
+  if (!process.env.MONGODB_URI) {
+    console.error('❌ CRITICAL: MONGODB_URI must be set in production!');
+    process.exit(1);
+  }
+  
+  if (JWT_SECRET.length < 32) {
+    console.error('❌ WARNING: JWT_SECRET should be at least 32 characters long for security!');
+  }
+}
 
 // Conditional logging - disable non-critical logs in production
 const logger = {
@@ -46,6 +66,29 @@ if (isProduction) {
 
 // Trust proxy for accurate IP addresses (important for rate limiting and logging)
 app.set('trust proxy', 1);
+
+// Security headers with Helmet
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow cross-origin resources
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
 
 // Middleware
 app.use(cors({
@@ -212,7 +255,20 @@ app.post('/api/recordings/upload', (req, res) => {
   });
 });
 
-app.use(express.json({ limit: '50mb' })); // Increased for Qaidah/Quran page uploads
+// JSON and URL-encoded middleware with size limits (after file upload routes)
+app.use(express.json({ limit: '10mb' })); // Limit JSON payloads to 10MB
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-encoded payloads
+
+// Input sanitization middleware (after JSON parsing)
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    req.body = sanitizeObject(req.body);
+  }
+  if (req.query && typeof req.query === 'object') {
+    req.query = sanitizeObject(req.query);
+  }
+  next();
+});
 
 // Serve uploaded audio files - must be before 404 handler
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
@@ -473,7 +529,11 @@ const userSchema = new mongoose.Schema({
   emailNotifications: { type: Boolean, default: true },
   smsNotifications: { type: Boolean, default: false },
   contact: String,
-  phoneNumber: String
+  phoneNumber: String,
+  // Account lockout fields
+  failedLoginAttempts: { type: Number, default: 0 },
+  accountLockedUntil: Date,
+  lastFailedLoginAttempt: Date
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -1072,6 +1132,42 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(403).json({ error: 'Login is disabled for this account. Please contact an administrator.' });
     }
 
+    // Check if account is locked
+    const lockoutConfig = getAccountLockoutConfig();
+    if (user.accountLockedUntil && new Date() < user.accountLockedUntil) {
+      const minutesLeft = Math.ceil((user.accountLockedUntil - new Date()) / 60000);
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        userId: user._id.toString(),
+        status: 'failure',
+        errorMessage: `Account locked. Try again in ${minutesLeft} minute(s)`
+      });
+      return res.status(403).json({ 
+        error: `Account is temporarily locked due to too many failed login attempts. Please try again in ${minutesLeft} minute(s).` 
+      });
+    }
+
+    // Reset lockout if lockout period has expired
+    if (user.accountLockedUntil && new Date() >= user.accountLockedUntil) {
+      user.failedLoginAttempts = 0;
+      user.accountLockedUntil = null;
+      user.lastFailedLoginAttempt = null;
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      await logActivity('login_failure', {
+        req,
+        email,
+        role,
+        status: 'failure',
+        errorMessage: 'Invalid email format'
+      });
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
     // Verify password
     let isPasswordValid = false;
     if (!user.password) {
@@ -1103,16 +1199,54 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     }
 
     if (!isPasswordValid) {
+      // Increment failed login attempts
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      user.lastFailedLoginAttempt = new Date();
+
+      // Lock account if max attempts exceeded
+      if (user.failedLoginAttempts >= lockoutConfig.maxAttempts) {
+        user.accountLockedUntil = new Date(Date.now() + lockoutConfig.lockoutDuration);
+        await user.save();
+        
+        await logActivity('login_failure', {
+          req,
+          email,
+          role,
+          userId: user._id.toString(),
+          status: 'failure',
+          errorMessage: 'Invalid password - Account locked',
+          details: { failedAttempts: user.failedLoginAttempts, lockedUntil: user.accountLockedUntil }
+        });
+        
+        const minutesLocked = Math.ceil(lockoutConfig.lockoutDuration / 60000);
+        return res.status(403).json({ 
+          error: `Too many failed login attempts. Account locked for ${minutesLocked} minutes. Please try again later.` 
+        });
+      }
+
+      await user.save();
+
       await logActivity('login_failure', {
         req,
         email,
         role,
         userId: user._id.toString(),
         status: 'failure',
-        errorMessage: 'Invalid password'
+        errorMessage: 'Invalid password',
+        details: { failedAttempts: user.failedLoginAttempts, remainingAttempts: lockoutConfig.maxAttempts - user.failedLoginAttempts }
       });
-      return res.status(401).json({ error: 'Invalid email, password, or role' });
+      
+      const remainingAttempts = lockoutConfig.maxAttempts - user.failedLoginAttempts;
+      return res.status(401).json({ 
+        error: `Invalid email, password, or role. ${remainingAttempts} attempt(s) remaining before account lockout.` 
+      });
     }
+
+    // Reset failed login attempts on successful login
+    user.failedLoginAttempts = 0;
+    user.accountLockedUntil = null;
+    user.lastFailedLoginAttempt = null;
+    await user.save();
 
     // Generate JWT token
     const token = jwt.sign(
@@ -1266,6 +1400,22 @@ app.post('/api/auth/password-reset', loginLimiter, async (req, res) => {
         errorMessage: 'Missing required fields'
       });
       return res.status(400).json({ error: 'Email, token, and new password are required' });
+    }
+
+    // Validate password complexity
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      await logActivity('password_reset_failure', {
+        req,
+        email,
+        status: 'failure',
+        errorMessage: 'Password does not meet requirements',
+        details: passwordValidation.errors
+      });
+      return res.status(400).json({ 
+        error: 'Password does not meet security requirements',
+        details: passwordValidation.errors
+      });
     }
 
     // Find user
@@ -1726,6 +1876,22 @@ app.post('/api/users', apiLimiter, authenticateToken, async (req, res) => {
     // Validate input
     if (!email || !role) {
       return res.status(400).json({ error: 'Email and role are required' });
+    }
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Validate password if provided
+    if (password) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          error: 'Password does not meet requirements',
+          details: passwordValidation.errors
+        });
+      }
     }
 
     // Hash password if provided
@@ -2991,57 +3157,155 @@ app.delete('/api/teacher-attendance/:id', authenticateToken, async (req, res) =>
   }
 });
 
-// Update user
-app.put('/api/users/:id', async (req, res) => {
+// Update user - users can update their own profile, admins can update any user
+app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(user);
+    const requestingUser = await User.findById(req.user.userId);
+    if (!requestingUser) {
+      return res.status(404).json({ error: 'Requesting user not found' });
+    }
+
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Users can only update their own profile unless they're admin/superadmin
+    const isSelfUpdate = req.user.userId === req.params.id;
+    const isAdmin = requestingUser.role === 'superadmin' || requestingUser.role === 'admin';
+
+    if (!isSelfUpdate && !isAdmin) {
+      return res.status(403).json({ error: 'Access denied. You can only update your own profile.' });
+    }
+
+    // Don't allow updating password or sensitive fields through this endpoint
+    const { password, role, ...updateData } = req.body;
+    
+    // Don't allow users to change their own role
+    if (!isAdmin && req.body.role && req.body.role !== targetUser.role) {
+      return res.status(403).json({ error: 'You cannot change your own role' });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, select: '-password' }
+    );
+
+    // Log the update
+    await logActivity('user_updated', {
+      req,
+      email: updatedUser.email,
+      userId: updatedUser._id.toString(),
+      role: updatedUser.role,
+      status: 'success',
+      details: {
+        updatedBy: requestingUser.email,
+        updatedByRole: requestingUser.role,
+        isSelfUpdate,
+        fieldsUpdated: Object.keys(updateData)
+      }
+    });
+
+    res.json(updatedUser);
   } catch (error) {
+    console.error('❌ Error updating user:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Admin password reset endpoint (for admin use - resets student/teacher password)
+// Password update endpoint - supports both self-update (with current password) and admin reset
 app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
   try {
-    // Check if user has admin permissions
-    const adminUser = await User.findById(req.user.userId);
-    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
-      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    const { password, currentPassword } = req.body;
+    const requestingUser = await User.findById(req.user.userId);
+    
+    if (!requestingUser) {
+      return res.status(404).json({ error: 'Requesting user not found' });
     }
 
-    const { password } = req.body;
-    if (!password || password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
-    }
-
-    const user = await User.findById(req.params.id);
-    if (!user) {
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
       return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user is updating their own password or is an admin
+    const isSelfUpdate = req.user.userId === req.params.id;
+    const isAdmin = requestingUser.role === 'superadmin' || requestingUser.role === 'admin';
+
+    // If updating own password, require current password
+    if (isSelfUpdate) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to update your password' });
+      }
+
+      // Verify current password
+      if (!targetUser.password) {
+        return res.status(400).json({ error: 'No password set for this account. Please contact an administrator.' });
+      }
+
+      const isBcryptHash = targetUser.password.startsWith('$2a$') || targetUser.password.startsWith('$2b$') || targetUser.password.startsWith('$2y$');
+      let isCurrentPasswordValid = false;
+
+      if (isBcryptHash) {
+        isCurrentPasswordValid = await bcrypt.compare(currentPassword, targetUser.password);
+      } else {
+        // Legacy plain text password
+        isCurrentPasswordValid = currentPassword === targetUser.password;
+      }
+
+      if (!isCurrentPasswordValid) {
+        await logActivity('password_reset_failure', {
+          req,
+          email: targetUser.email,
+          userId: targetUser._id.toString(),
+          role: targetUser.role,
+          status: 'failure',
+          errorMessage: 'Current password is incorrect'
+        });
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    } else if (!isAdmin) {
+      // Non-admin trying to update someone else's password
+      return res.status(403).json({ error: 'Access denied. You can only update your own password.' });
+    }
+
+    // Validate new password
+    if (!password) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: 'Password does not meet security requirements',
+        details: passwordValidation.errors
+      });
     }
 
     // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
-    await user.save();
+    targetUser.password = hashedPassword;
+    await targetUser.save();
 
-    // Log password reset
-    await logActivity('password_reset_success', {
+    // Log password update
+    await logActivity(isSelfUpdate ? 'password_reset_success' : 'password_reset_success', {
       req,
-      email: user.email,
-      userId: user._id.toString(),
-      role: user.role,
+      email: targetUser.email,
+      userId: targetUser._id.toString(),
+      role: targetUser.role,
       status: 'success',
       details: { 
         timestamp: new Date(),
-        resetBy: adminUser.email,
-        resetByRole: adminUser.role
+        resetBy: isSelfUpdate ? targetUser.email : requestingUser.email,
+        resetByRole: isSelfUpdate ? 'self' : requestingUser.role,
+        isSelfUpdate
       }
     });
 
-    res.json({ message: 'Password reset successfully', success: true });
+    res.json({ message: 'Password updated successfully', success: true });
   } catch (error) {
-    console.error('❌ Password reset error:', error);
+    console.error('❌ Password update error:', error);
     await logActivity('password_reset_failure', {
       req,
       status: 'failure',
@@ -11217,11 +11481,20 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('❌ Global error handler:', err);
   console.error('Stack:', err.stack);
-  res.status(500).json({ 
+  
+  // Don't expose error details in production
+  const errorResponse = {
     error: 'Internal server error',
-    message: err.message,
     timestamp: new Date().toISOString()
-  });
+  };
+  
+  // Only include error message in development
+  if (!isProduction) {
+    errorResponse.message = err.message;
+    errorResponse.stack = err.stack;
+  }
+  
+  res.status(500).json(errorResponse);
 });
 
 // Start server regardless of MongoDB connection status

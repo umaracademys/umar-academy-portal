@@ -54,6 +54,7 @@ const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStud
 const PdfManagement = lazy(() => import('../components/PdfManagement'));
 const StudentPersonalMushaf = lazy(() => import('../components/StudentPersonalMushaf'));
 const WeeklyEvaluationsAdmin = lazy(() => import('../components/WeeklyEvaluationsAdmin'));
+const SuperAdminProfile = lazy(() => import('../components/SuperAdminProfile'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -171,6 +172,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
+  const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -224,6 +226,13 @@ const SuperAdminDashboard: React.FC = () => {
   // Simplified: Show only priority actions, rest in "More" menu
   const priorityActions = useMemo(() => [
     {
+      id: 'my-profile',
+      label: 'My Profile & Credentials',
+      description: 'Update profile information and manage credentials.',
+      onClick: () => setShowSuperAdminProfile(true),
+      emphasis: 'primary' as const,
+    },
+    {
       id: 'review-recitations',
       label: 'Review Recitations',
       description: 'Approve sabq, sabqi, and manzil submissions.',
@@ -255,7 +264,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: pendingHomeworkCount,
       emphasis: 'primary' as const,
     },
-  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations]);
+  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations, setShowSuperAdminProfile]);
 
   const [showMoreActions, setShowMoreActions] = useState(false);
   
@@ -1700,6 +1709,15 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <WeeklyEvaluationsAdmin
             onClose={() => setShowWeeklyEvaluations(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Super Admin Profile & Credentials Modal */}
+      {showSuperAdminProfile && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <SuperAdminProfile
+            onClose={() => setShowSuperAdminProfile(false)}
           />
         </Suspense>
       )}
