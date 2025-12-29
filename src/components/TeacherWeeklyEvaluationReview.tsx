@@ -70,8 +70,8 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
     );
   };
 
-  const statusCounts = evaluations.reduce((acc, eval) => {
-    acc[eval.status || 'draft'] = (acc[eval.status || 'draft'] || 0) + 1;
+  const statusCounts = evaluations.reduce((acc, evaluation) => {
+    acc[evaluation.status || 'draft'] = (acc[evaluation.status || 'draft'] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
