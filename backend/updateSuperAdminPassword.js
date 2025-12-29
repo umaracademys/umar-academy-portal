@@ -2,7 +2,13 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
+// Get MongoDB URI from environment variable (required on production)
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('❌ Error: MONGODB_URI environment variable is not set!');
+  console.error('   Please set MONGODB_URI environment variable with your MongoDB connection string.');
+  process.exit(1);
+}
 
 // User Schema
 const userSchema = new mongoose.Schema({
