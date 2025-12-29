@@ -3,7 +3,13 @@
  * Usage: node backend/verifyStudentList.js
  */
 
-require('dotenv').config();
+// Load dotenv if available (for local development)
+try {
+  require('dotenv').config();
+} catch (e) {
+  // dotenv not installed, that's okay - use environment variables directly
+}
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
