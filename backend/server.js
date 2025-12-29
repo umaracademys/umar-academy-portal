@@ -3519,6 +3519,56 @@ app.put('/api/users/:id/settings', authenticateToken, async (req, res) => {
   }
 });
 
+// Unlock user account endpoint (admin/superadmin only)
+app.post('/api/users/:id/unlock', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Reset lockout fields
+    targetUser.failedLoginAttempts = 0;
+    targetUser.accountLockedUntil = null;
+    targetUser.lastFailedLoginAttempt = null;
+    await targetUser.save();
+
+    // Log the unlock action
+    await logActivity('user_updated', {
+      req,
+      email: targetUser.email,
+      userId: targetUser._id.toString(),
+      role: targetUser.role,
+      status: 'success',
+      details: {
+        action: 'account_unlocked',
+        unlockedBy: adminUser.email,
+        unlockedByRole: adminUser.role
+      }
+    });
+
+    res.json({ 
+      message: 'Account unlocked successfully',
+      success: true,
+      user: {
+        id: targetUser._id,
+        email: targetUser.email,
+        failedLoginAttempts: 0,
+        accountLockedUntil: null
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error unlocking account:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user details including settings
 app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
   try {
@@ -3549,17 +3599,25 @@ app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
     const userResponse = user.toObject();
     delete userResponse.password;
 
+    // Check if account is locked
+    const isLocked = user.accountLockedUntil && new Date() < user.accountLockedUntil;
+    const minutesLeft = isLocked ? Math.ceil((user.accountLockedUntil - new Date()) / 60000) : null;
+
     res.json({
       ...userResponse,
       lastLogin: lastLoginLog?.timestamp || null,
       passwordChanged: lastPasswordReset?.timestamp || null,
-      accountStatus: user.loginEnabled !== false ? 'active' : 'inactive',
+      accountStatus: user.loginEnabled !== false ? (isLocked ? 'locked' : 'active') : 'inactive',
       loginEnabled: user.loginEnabled !== false,
       twoFactorEnabled: user.twoFactorEnabled || false,
       emailNotifications: user.emailNotifications !== false,
       smsNotifications: user.smsNotifications || false,
       emailVerified: !!user.email,
-      phoneVerified: !!user.contact || !!user.phoneNumber
+      phoneVerified: !!user.contact || !!user.phoneNumber,
+      isLocked,
+      accountLockedUntil: user.accountLockedUntil || null,
+      failedLoginAttempts: user.failedLoginAttempts || 0,
+      minutesUntilUnlock: minutesLeft
     });
   } catch (error) {
     console.error('❌ Get user details error:', error);

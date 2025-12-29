@@ -22,6 +22,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ onClose }) => {
   const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [unlocking, setUnlocking] = useState<string | null>(null); // Track which user is being unlocked
   const [filters, setFilters] = useState({
     eventType: '',
     email: '',
@@ -97,6 +98,43 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ onClose }) => {
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.days]);
+
+  const unlockAccount = async (userId: string, userEmail: string) => {
+    if (!userId) {
+      alert('❌ User ID not found');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to unlock the account for ${userEmail}?`)) {
+      return;
+    }
+
+    try {
+      setUnlocking(userId);
+      const response = await fetch(`${API_BASE}/users/${userId}/unlock`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to unlock account');
+      }
+
+      alert(`✅ Account unlocked successfully for ${userEmail}`);
+      // Refresh logs to show updated status
+      fetchLogs();
+      fetchStats();
+    } catch (error) {
+      console.error('Error unlocking account:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to unlock account'}`);
+    } finally {
+      setUnlocking(null);
+    }
+  };
 
   const getEventTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
@@ -348,50 +386,72 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ onClose }) => {
                         <th className="px-4 py-3 text-left text-xs sm:text-sm font-extrabold">IP Address</th>
                         <th className="px-4 py-3 text-left text-xs sm:text-sm font-extrabold">Status</th>
                         <th className="px-4 py-3 text-left text-xs sm:text-sm font-extrabold">Details</th>
+                        <th className="px-4 py-3 text-left text-xs sm:text-sm font-extrabold">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {logs.map((log) => (
-                        <tr key={log._id} className="hover:bg-soft-primary transition-colors">
-                          <td className="px-4 py-3 text-xs sm:text-sm text-primary whitespace-nowrap">
-                            {formatDate(log.timestamp)}
-                          </td>
-                          <td className="px-4 py-3 text-xs sm:text-sm">
-                            <span className={`font-extrabold ${getEventTypeColor(log.eventType)}`}>
-                              {getEventTypeLabel(log.eventType)}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-xs sm:text-sm text-primary">
-                            <div>
-                              {log.userEmail && (
-                                <div className="font-semibold">{log.userEmail}</div>
-                              )}
-                              {log.userRole && (
-                                <div className="text-primary/70 text-[10px]">{log.userRole}</div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-xs sm:text-sm text-primary font-mono">
-                            {log.ipAddress || 'N/A'}
-                          </td>
-                          <td className="px-4 py-3 text-xs sm:text-sm">
-                            <span className={`px-2 py-1 rounded-full border-2 font-extrabold text-xs ${getStatusColor(log.status)}`}>
-                              {log.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-xs sm:text-sm text-primary">
-                            {log.errorMessage && (
-                              <div className="text-red-600 font-semibold">{log.errorMessage}</div>
-                            )}
-                            {log.details && Object.keys(log.details).length > 0 && (
-                              <div className="text-primary/70 text-[10px] mt-1">
-                                {JSON.stringify(log.details, null, 2).substring(0, 100)}
-                                {JSON.stringify(log.details, null, 2).length > 100 && '...'}
+                      {logs.map((log) => {
+                        // Check if this log indicates a locked account
+                        const isLockedAccount = log.errorMessage && (
+                          log.errorMessage.includes('locked') || 
+                          log.errorMessage.includes('Account is temporarily locked') ||
+                          log.errorMessage.includes('Too many failed login attempts')
+                        ) && log.userId;
+
+                        return (
+                          <tr key={log._id} className="hover:bg-soft-primary transition-colors">
+                            <td className="px-4 py-3 text-xs sm:text-sm text-primary whitespace-nowrap">
+                              {formatDate(log.timestamp)}
+                            </td>
+                            <td className="px-4 py-3 text-xs sm:text-sm">
+                              <span className={`font-extrabold ${getEventTypeColor(log.eventType)}`}>
+                                {getEventTypeLabel(log.eventType)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs sm:text-sm text-primary">
+                              <div>
+                                {log.userEmail && (
+                                  <div className="font-semibold">{log.userEmail}</div>
+                                )}
+                                {log.userRole && (
+                                  <div className="text-primary/70 text-[10px]">{log.userRole}</div>
+                                )}
                               </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                            <td className="px-4 py-3 text-xs sm:text-sm text-primary font-mono">
+                              {log.ipAddress || 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 text-xs sm:text-sm">
+                              <span className={`px-2 py-1 rounded-full border-2 font-extrabold text-xs ${getStatusColor(log.status)}`}>
+                                {log.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs sm:text-sm text-primary">
+                              {log.errorMessage && (
+                                <div className="text-red-600 font-semibold">{log.errorMessage}</div>
+                              )}
+                              {log.details && Object.keys(log.details).length > 0 && (
+                                <div className="text-primary/70 text-[10px] mt-1">
+                                  {JSON.stringify(log.details, null, 2).substring(0, 100)}
+                                  {JSON.stringify(log.details, null, 2).length > 100 && '...'}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-xs sm:text-sm">
+                              {isLockedAccount && log.userId && (
+                                <button
+                                  onClick={() => unlockAccount(log.userId!, log.userEmail || 'user')}
+                                  disabled={unlocking === log.userId}
+                                  className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                  title="Unlock this account"
+                                >
+                                  {unlocking === log.userId ? 'Unlocking...' : '🔓 Unlock'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
