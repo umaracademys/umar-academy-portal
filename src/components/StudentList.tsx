@@ -23,6 +23,8 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFields, setExportFields] = useState({ fullName: true, email: true });
 
   // Helper function to get teacher name from ID
   const getTeacherName = (teacherId: string | undefined | null): string => {
@@ -101,6 +103,48 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         {status}
       </span>
     );
+  };
+
+  // Export function
+  const handleExport = () => {
+    if (!exportFields.fullName && !exportFields.email) {
+      alert('Please select at least one field to export');
+      return;
+    }
+
+    // Prepare headers
+    const headers: string[] = [];
+    if (exportFields.fullName) headers.push('Full Name');
+    if (exportFields.email) headers.push('Email');
+
+    // Prepare data rows
+    const rows = filteredStudents.map(student => {
+      const row: string[] = [];
+      if (exportFields.fullName) row.push(`"${(student.fullName || '').replace(/"/g, '""')}"`);
+      if (exportFields.email) row.push(`"${(student.email || '').replace(/"/g, '""')}"`);
+      return row.join(',');
+    });
+
+    // Create CSV content
+    const csvContent = [
+      headers.join(','),
+      ...rows
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `students-export-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    // Close modal
+    setShowExportModal(false);
   };
 
   const getPaymentStatus = (student: any) => {
@@ -205,7 +249,10 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
               Add Sample
             </button>
             )}
-            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs">
+            <button 
+              onClick={() => setShowExportModal(true)}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs"
+            >
               Export
             </button>
             <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs">
@@ -515,6 +562,73 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           </div>
         )}
       </Card>
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Export Students</h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Fields to Export</label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={exportFields.fullName}
+                      onChange={(e) => setExportFields({ ...exportFields, fullName: e.target.checked })}
+                      className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                    />
+                    <span className="text-sm font-medium text-gray-900">Full Name</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={exportFields.email}
+                      onChange={(e) => setExportFields({ ...exportFields, email: e.target.checked })}
+                      className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                    />
+                    <span className="text-sm font-medium text-gray-900">Email</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> The export will include all {filteredStudents.length} filtered students.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleExport}
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all shadow-md"
+                >
+                  Generate for All & Export
+                </button>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
