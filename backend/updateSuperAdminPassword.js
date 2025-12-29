@@ -32,8 +32,8 @@ const updatePassword = async () => {
       process.exit(1);
     }
 
-    // Hash new password
-    const newPassword = 'Password!!!';
+    // Hash new password (must meet requirements: 8+ chars, uppercase, lowercase, number, special char)
+    const newPassword = 'Password123!!!';
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     superAdmin.password = hashedPassword;
     await superAdmin.save();
