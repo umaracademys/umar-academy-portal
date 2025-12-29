@@ -182,7 +182,18 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const failures: Array<{ email: string; reason: string }> = [];
 
     try {
-      // First, get all users to find userIds for students
+      // First, check database connection
+      const healthResponse = await fetch(`${API_BASE}/health`);
+      if (healthResponse.ok) {
+        const health = await healthResponse.json();
+        if (health.database?.status !== 'connected' || !health.database?.ping) {
+          alert(`⚠️ Database Connection Issue:\n\nStatus: ${health.database?.status || 'unknown'}\nPing: ${health.database?.ping ? 'OK' : 'Failed'}\n\nPlease ensure MongoDB is connected and try again.`);
+          setResettingPasswords(false);
+          return;
+        }
+      }
+
+      // Get all users to find userIds for students
       const usersResponse = await fetch(`${API_BASE}/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -191,6 +202,10 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       });
 
       if (!usersResponse.ok) {
+        if (usersResponse.status === 503) {
+          const errorData = await usersResponse.json().catch(() => ({}));
+          throw new Error(`Database connection unavailable: ${errorData.details || 'MongoDB is not connected'}`);
+        }
         const errorText = await usersResponse.text();
         throw new Error(`Failed to fetch users: ${usersResponse.status} ${errorText}`);
       }
