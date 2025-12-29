@@ -3341,6 +3341,10 @@ app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
     targetUser.password = hashedPassword;
     await targetUser.save();
 
+    console.log(`✅ Password updated for user: ${targetUser.email} (${targetUser.role})`);
+    console.log(`   Updated by: ${isSelfUpdate ? 'self' : requestingUser.email} (${requestingUser.role})`);
+    console.log(`   Password hash saved to MongoDB: ${hashedPassword.substring(0, 20)}...`);
+
     // Log password update
     await logActivity(isSelfUpdate ? 'password_reset_success' : 'password_reset_success', {
       req,
@@ -3356,7 +3360,12 @@ app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
       }
     });
 
-    res.json({ message: 'Password updated successfully', success: true });
+    res.json({ 
+      message: 'Password updated successfully', 
+      success: true,
+      email: targetUser.email,
+      userId: targetUser._id.toString()
+    });
   } catch (error) {
     console.error('❌ Password update error:', error);
     await logActivity('password_reset_failure', {
