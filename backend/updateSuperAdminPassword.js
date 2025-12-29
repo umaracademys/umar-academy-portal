@@ -33,7 +33,7 @@ const updatePassword = async () => {
     }
 
     // Hash new password
-    const newPassword = 'Admin123!';
+    const newPassword = 'Password!!!';
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     superAdmin.password = hashedPassword;
     await superAdmin.save();
