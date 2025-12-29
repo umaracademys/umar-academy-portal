@@ -7,9 +7,10 @@ interface SidebarProps {
   onSectionChange: (section: string) => void;
   isMobileOpen?: boolean;
   onMobileToggle?: () => void;
+  onHelpClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle, onHelpClick }) => {
   const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
@@ -197,7 +198,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       <div className="p-4 border-t border-gray-700">
         {!isCollapsed ? (
           <div className="space-y-2">
-            <button className="w-full flex items-center space-x-3 p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition">
+            <button 
+              onClick={onHelpClick}
+              className="w-full flex items-center space-x-3 p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition"
+            >
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[rgba(255,255,255,0.08)] text-xs font-semibold uppercase">
                 HP
               </span>
@@ -212,7 +216,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
           </div>
         ) : (
           <div className="space-y-2">
-            <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xs font-semibold uppercase">
+            <button 
+              onClick={onHelpClick}
+              className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xs font-semibold uppercase"
+              title="Help & Support"
+            >
               HP
             </button>
             <button className="w-full p-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-lg transition text-xs font-semibold uppercase">

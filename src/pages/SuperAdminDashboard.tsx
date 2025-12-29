@@ -55,6 +55,7 @@ const PdfManagement = lazy(() => import('../components/PdfManagement'));
 const StudentPersonalMushaf = lazy(() => import('../components/StudentPersonalMushaf'));
 const WeeklyEvaluationsAdmin = lazy(() => import('../components/WeeklyEvaluationsAdmin'));
 const SuperAdminProfile = lazy(() => import('../components/SuperAdminProfile'));
+const HelpAndSupport = lazy(() => import('../components/HelpAndSupport'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -173,6 +174,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
+  const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Get pending recitation reviews count
@@ -1129,7 +1131,11 @@ const SuperAdminDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <Sidebar 
+          activeSection={activeSection} 
+          onSectionChange={setActiveSection}
+          onHelpClick={() => setShowHelpAndSupport(true)}
+        />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onNotificationClick={() => setShowNotificationCenter(true)} />
           <main className="flex-1 overflow-y-auto">
@@ -1214,7 +1220,11 @@ const SuperAdminDashboard: React.FC = () => {
   if (error) {
     return (
       <div className="flex h-screen bg-background">
-        <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        <Sidebar 
+          activeSection={activeSection} 
+          onSectionChange={setActiveSection}
+          onHelpClick={() => setShowHelpAndSupport(true)}
+        />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header onNotificationClick={() => setShowNotificationCenter(true)} />
           <main className="flex-1 overflow-y-auto">
@@ -1718,6 +1728,15 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <SuperAdminProfile
             onClose={() => setShowSuperAdminProfile(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Help & Support Modal */}
+      {showHelpAndSupport && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <HelpAndSupport
+            onClose={() => setShowHelpAndSupport(false)}
           />
         </Suspense>
       )}
