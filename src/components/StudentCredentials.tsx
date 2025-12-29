@@ -277,16 +277,37 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   }, [student]);
 
   const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    // Generate secure password that meets complexity requirements
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*';
+    const allChars = uppercase + lowercase + numbers + special;
+    
     let password = '';
-    for (let i = 0; i < 12; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    // Ensure at least one of each required character type
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+    
+    // Fill the rest randomly (total 12 characters)
+    for (let i = password.length; i < 12; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
     }
+    
+    // Shuffle the password to avoid predictable patterns
+    password = password.split('').sort(() => Math.random() - 0.5).join('');
     setNewPassword(password);
   };
 
   const resetPassword = async () => {
-    if (!newPassword) return;
+    if (!newPassword) {
+      setError('Please generate or enter a password');
+      return;
+    }
+
+    // Validate password complexity (should already be met by generatePassword, but check anyway)
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
@@ -307,10 +328,9 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
       setLoading(true);
       setError(null);
       
-      if (import.meta.env.DEV) {
-        console.log('🔄 Resetting password for userId:', userId);
-        console.log('   New password length:', newPassword.length);
-      }
+      console.log('🔄 Resetting password for userId:', userId);
+      console.log('   Student:', student.fullName || student.name);
+      console.log('   Email:', student.email);
       
       const response = await fetch(`${API_BASE}/users/${userId}/password`, {
         method: 'PUT',
@@ -320,18 +340,21 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}: ${response.statusText}` }));
-        if (import.meta.env.DEV) {
-          console.error('❌ Password reset failed:', response.status, errorData);
+        console.error('❌ Password reset failed:', response.status, errorData);
+        
+        // Check if it's a password validation error
+        if (errorData.details && Array.isArray(errorData.details)) {
+          const validationErrors = errorData.details.join(', ');
+          throw new Error(`Password does not meet requirements: ${validationErrors}`);
         }
+        
         throw new Error(errorData.error || `Failed to reset password: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      if (import.meta.env.DEV) {
-        console.log('✅ Password reset response:', data);
-      }
+      console.log('✅ Password reset successful:', data);
       
-      alert(`✅ Password reset successfully for ${student.fullName || student.name}`);
+      alert(`✅ Password reset successfully for ${student.fullName || student.name}\n\nNew password: ${newPassword}\n\n⚠️ Please save this password securely!`);
       setShowPasswordReset(false);
       setNewPassword('');
       
@@ -344,7 +367,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
         setUserDetails(detailsData);
       }
     } catch (err) {
-      console.error('Error resetting password:', err);
+      console.error('❌ Error resetting password:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to reset password';
       setError(errorMessage);
       alert(`❌ Error: ${errorMessage}`);
@@ -896,14 +919,23 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
             </p>
 
             <div className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                 <div className="flex space-x-2">
                   <input
                     type="text"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setError(null); // Clear error when user types
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
                     placeholder="Click Generate to create password"
                   />
                   <button
@@ -913,6 +945,9 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                     Generate
                   </button>
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Password must be at least 8 characters with uppercase, lowercase, number, and special character
+                </p>
               </div>
               
               <div className="flex space-x-3">
