@@ -17,6 +17,7 @@ import { Ticket } from '../types/ticket';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
+import TeacherWeeklyEvaluationReview from '../components/TeacherWeeklyEvaluationReview';
 import PairDailyReportForm from '../components/PairDailyReportForm';
 import PairTeacherMessage from '../components/PairTeacherMessage';
 import TeacherStudentMessage from '../components/TeacherStudentMessage';
@@ -29,6 +30,7 @@ const TeacherDashboard: React.FC = () => {
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showWeeklyEvaluationForm, setShowWeeklyEvaluationForm] = useState(false);
+  const [showWeeklyEvaluationReview, setShowWeeklyEvaluationReview] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
@@ -566,6 +568,20 @@ const TeacherDashboard: React.FC = () => {
                   </div>
                 </button>
                 <button
+                  onClick={() => setShowWeeklyEvaluationReview(true)}
+                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
+                      📋
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">Weekly Evaluations</p>
+                      <p className="text-xs text-gray-600">Review your weekly evaluations</p>
+                    </div>
+                  </div>
+                </button>
+                <button
                   onClick={() => setShowRecitationReview(true)}
                   className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
                 >
@@ -1052,6 +1068,14 @@ const TeacherDashboard: React.FC = () => {
             if (refreshData) refreshData();
             setRefreshKey(prev => prev + 1);
           }}
+        />
+      )}
+
+      {/* Weekly Evaluation Review Modal */}
+      {showWeeklyEvaluationReview && currentTeacher && (
+        <TeacherWeeklyEvaluationReview
+          teacherId={(currentTeacher as any)?._id || (currentTeacher as any)?.teacherDocumentId || currentTeacher?.id || user?.id || ''}
+          onClose={() => setShowWeeklyEvaluationReview(false)}
         />
       )}
 

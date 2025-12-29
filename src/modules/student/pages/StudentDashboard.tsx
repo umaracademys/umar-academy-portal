@@ -10,6 +10,7 @@ import StudentRecordings from '../../../components/StudentRecordings';
 import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import StudentTestResults from '../../../components/StudentTestResults';
 import TeacherStudentMessage from '../../../components/TeacherStudentMessage';
+import StudentWeeklyEvaluationReview from '../../../components/StudentWeeklyEvaluationReview';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -28,6 +29,7 @@ const StudentDashboard: React.FC = () => {
   const [showTestResults, setShowTestResults] = useState(false);
   const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
   const [selectedTeacherForMessage, setSelectedTeacherForMessage] = useState<any>(null);
+  const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [pairInfo, setPairInfo] = useState<any>(null);
   const [pairDailyReports, setPairDailyReports] = useState<any[]>([]);
   const [pdfHomework, setPdfHomework] = useState<any[]>([]);
@@ -325,6 +327,12 @@ const StudentDashboard: React.FC = () => {
                   Test Results
                 </button>
               )}
+              <button
+                onClick={() => setShowWeeklyEvaluations(true)}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+              >
+                Weekly Evaluations
+              </button>
               <Link
                 to="/student/profile"
                 className="inline-flex items-center justify-center rounded-lg border-2 border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm"
@@ -473,6 +481,20 @@ const StudentDashboard: React.FC = () => {
                       ? `${pdfHomework.length} assignment${pdfHomework.length > 1 ? 's' : ''} assigned`
                       : 'View PDF homework assignments'}
                 </p>
+              </div>
+            </div>
+          </button>
+          <button
+            onClick={() => setShowWeeklyEvaluations(true)}
+            className="block w-full text-left rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary text-2xl">
+                📋
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-primary mb-1">Weekly Evaluations</h3>
+                <p className="text-xs text-gray-600">View your approved weekly evaluations</p>
               </div>
             </div>
           </button>
@@ -1029,6 +1051,14 @@ const StudentDashboard: React.FC = () => {
             setShowTeacherStudentMessage(false);
             setSelectedTeacherForMessage(null);
           }}
+        />
+      )}
+
+      {/* Weekly Evaluations Modal */}
+      {showWeeklyEvaluations && currentStudent && (
+        <StudentWeeklyEvaluationReview
+          studentId={currentStudent.id}
+          onClose={() => setShowWeeklyEvaluations(false)}
         />
       )}
       
