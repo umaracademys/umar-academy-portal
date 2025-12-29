@@ -179,6 +179,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const newPasswords: Record<string, string> = {};
     let successCount = 0;
     let failCount = 0;
+    const failures: Array<{ email: string; reason: string }> = [];
 
     try {
       // First, get all users to find userIds for students
@@ -190,7 +191,8 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       });
 
       if (!usersResponse.ok) {
-        throw new Error('Failed to fetch users');
+        const errorText = await usersResponse.text();
+        throw new Error(`Failed to fetch users: ${usersResponse.status} ${errorText}`);
       }
 
       const users = await usersResponse.json();
@@ -204,7 +206,9 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           );
 
           if (!user) {
-            console.warn(`No user found for student ${student.email}`);
+            const reason = `No User account found for email ${student.email}`;
+            console.warn(reason);
+            failures.push({ email: student.email || 'Unknown', reason });
             failCount++;
             continue;
           }
@@ -213,7 +217,15 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           const newPassword = generateSecurePassword();
           const userId = user._id || user.id;
 
-          // Reset password via API
+          if (!userId) {
+            const reason = `No user ID found for ${student.email}`;
+            console.error(reason);
+            failures.push({ email: student.email || 'Unknown', reason });
+            failCount++;
+            continue;
+          }
+
+          // Reset password via API (admin reset - no current password needed)
           const response = await fetch(`${API_BASE}/users/${userId}/password`, {
             method: 'PUT',
             headers: {
@@ -224,15 +236,21 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           });
 
           if (response.ok) {
+            const result = await response.json();
             newPasswords[student.id || student.email] = newPassword;
             successCount++;
+            console.log(`✅ Password reset for ${student.email}`);
           } else {
-            const errorData = await response.json();
-            console.error(`Failed to reset password for ${student.email}:`, errorData);
+            const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+            const reason = errorData.error || errorData.details || `HTTP ${response.status}`;
+            console.error(`❌ Failed to reset password for ${student.email}:`, errorData);
+            failures.push({ email: student.email || 'Unknown', reason });
             failCount++;
           }
         } catch (error) {
-          console.error(`Error resetting password for ${student.email}:`, error);
+          const reason = error instanceof Error ? error.message : 'Unknown error';
+          console.error(`❌ Error resetting password for ${student.email}:`, error);
+          failures.push({ email: student.email || 'Unknown', reason });
           failCount++;
         }
       }
@@ -240,16 +258,35 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       setGeneratedPasswords(newPasswords);
       
       if (successCount > 0) {
-        alert(`✅ Successfully reset passwords for ${successCount} student(s). ${failCount > 0 ? `${failCount} failed.` : ''}`);
+        let message = `✅ Successfully reset passwords for ${successCount} student(s).\n\n`;
+        if (failCount > 0) {
+          message += `❌ ${failCount} failed:\n`;
+          failures.slice(0, 5).forEach(f => {
+            message += `• ${f.email}: ${f.reason}\n`;
+          });
+          if (failures.length > 5) {
+            message += `... and ${failures.length - 5} more\n`;
+          }
+          message += `\nCheck browser console for full details.`;
+        }
+        alert(message);
         // Enable password in export fields
         setExportFields({ ...exportFields, password: true });
         setShowPasswordModal(false);
       } else {
-        alert(`❌ Failed to reset passwords. Please try again.`);
+        let message = `❌ Failed to reset passwords for all students:\n\n`;
+        failures.slice(0, 10).forEach(f => {
+          message += `• ${f.email}: ${f.reason}\n`;
+        });
+        if (failures.length > 10) {
+          message += `... and ${failures.length - 10} more\n`;
+        }
+        message += `\nCheck browser console for full details.`;
+        alert(message);
       }
     } catch (error) {
-      console.error('Error resetting passwords:', error);
-      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to reset passwords'}`);
+      console.error('❌ Error resetting passwords:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to reset passwords'}\n\nCheck browser console for details.`);
     } finally {
       setResettingPasswords(false);
     }
