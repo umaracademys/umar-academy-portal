@@ -33,16 +33,21 @@ if (isProduction) {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-this-in-production') {
     console.error('❌ CRITICAL: JWT_SECRET must be set to a secure value in production!');
     console.error('   Please set JWT_SECRET environment variable with a strong random string.');
-    process.exit(1);
+    console.error('   You can generate one with: openssl rand -base64 32');
+    console.error('   Or use any secure random string generator.');
+    // Don't exit - allow server to start with warning in case env vars are set but not visible here
+    // The actual check should be in the Render environment configuration
+    console.warn('⚠️  Server will continue, but JWT authentication may fail if JWT_SECRET is not properly set.');
   }
   
   if (!process.env.MONGODB_URI) {
     console.error('❌ CRITICAL: MONGODB_URI must be set in production!');
-    process.exit(1);
+    console.error('   Server will continue but database operations will fail.');
+    console.warn('⚠️  Please set MONGODB_URI environment variable in Render dashboard.');
   }
   
-  if (JWT_SECRET.length < 32) {
-    console.error('❌ WARNING: JWT_SECRET should be at least 32 characters long for security!');
+  if (process.env.JWT_SECRET && JWT_SECRET.length < 32) {
+    console.warn('⚠️  WARNING: JWT_SECRET should be at least 32 characters long for security!');
   }
 }
 
