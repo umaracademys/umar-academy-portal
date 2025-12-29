@@ -25,7 +25,10 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportFields, setExportFields] = useState({ fullName: true, email: true });
+  const [exportFields, setExportFields] = useState({ fullName: true, email: true, password: false });
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [generatedPasswords, setGeneratedPasswords] = useState<Record<string, string>>({});
+  const [resettingPasswords, setResettingPasswords] = useState(false);
 
   // Helper function to get teacher name from ID
   const getTeacherName = (teacherId: string | undefined | null): string => {
@@ -134,10 +137,134 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     );
   };
 
+  // Generate secure password
+  const generateSecurePassword = () => {
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*';
+    const allChars = uppercase + lowercase + numbers + special;
+    
+    let password = '';
+    // Ensure at least one of each required character type
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+    
+    // Fill the rest randomly
+    for (let i = password.length; i < 12; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  // Reset passwords for all filtered students
+  const handleResetPasswords = async () => {
+    if (filteredStudents.length === 0) {
+      alert('No students to reset passwords for');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to generate new passwords for ${filteredStudents.length} student(s)? This will reset their current passwords.`)) {
+      return;
+    }
+
+    setResettingPasswords(true);
+    const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+    const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+    
+    const newPasswords: Record<string, string> = {};
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      // First, get all users to find userIds for students
+      const usersResponse = await fetch(`${API_BASE}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!usersResponse.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const users = await usersResponse.json();
+
+      // Process each filtered student
+      for (const student of filteredStudents) {
+        try {
+          // Find user by email
+          const user = users.find((u: any) => 
+            u.email?.toLowerCase() === student.email?.toLowerCase()
+          );
+
+          if (!user) {
+            console.warn(`No user found for student ${student.email}`);
+            failCount++;
+            continue;
+          }
+
+          // Generate new password
+          const newPassword = generateSecurePassword();
+          const userId = user._id || user.id;
+
+          // Reset password via API
+          const response = await fetch(`${API_BASE}/users/${userId}/password`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password: newPassword })
+          });
+
+          if (response.ok) {
+            newPasswords[student.id || student.email] = newPassword;
+            successCount++;
+          } else {
+            const errorData = await response.json();
+            console.error(`Failed to reset password for ${student.email}:`, errorData);
+            failCount++;
+          }
+        } catch (error) {
+          console.error(`Error resetting password for ${student.email}:`, error);
+          failCount++;
+        }
+      }
+
+      setGeneratedPasswords(newPasswords);
+      
+      if (successCount > 0) {
+        alert(`✅ Successfully reset passwords for ${successCount} student(s). ${failCount > 0 ? `${failCount} failed.` : ''}`);
+        // Enable password in export fields
+        setExportFields({ ...exportFields, password: true });
+        setShowPasswordModal(false);
+      } else {
+        alert(`❌ Failed to reset passwords. Please try again.`);
+      }
+    } catch (error) {
+      console.error('Error resetting passwords:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to reset passwords'}`);
+    } finally {
+      setResettingPasswords(false);
+    }
+  };
+
   // Export function
   const handleExport = () => {
-    if (!exportFields.fullName && !exportFields.email) {
+    if (!exportFields.fullName && !exportFields.email && !exportFields.password) {
       alert('Please select at least one field to export');
+      return;
+    }
+
+    // Check if password is selected but not generated
+    if (exportFields.password && Object.keys(generatedPasswords).length === 0) {
+      alert('Please generate/reset passwords first before exporting with password field');
       return;
     }
 
@@ -145,12 +272,17 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const headers: string[] = [];
     if (exportFields.fullName) headers.push('Full Name');
     if (exportFields.email) headers.push('Email');
+    if (exportFields.password) headers.push('Password');
 
     // Prepare data rows
     const rows = filteredStudents.map(student => {
       const row: string[] = [];
       if (exportFields.fullName) row.push(`"${(student.fullName || '').replace(/"/g, '""')}"`);
       if (exportFields.email) row.push(`"${(student.email || '').replace(/"/g, '""')}"`);
+      if (exportFields.password) {
+        const password = generatedPasswords[student.id || student.email] || 'N/A';
+        row.push(`"${password.replace(/"/g, '""')}"`);
+      }
       return row.join(',');
     });
 
@@ -165,7 +297,10 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `students-export-${new Date().toISOString().split('T')[0]}.csv`);
+    const filename = exportFields.password 
+      ? `students-with-passwords-${new Date().toISOString().split('T')[0]}.csv`
+      : `students-export-${new Date().toISOString().split('T')[0]}.csv`;
+    link.setAttribute('download', filename);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -278,6 +413,12 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
               Add Sample
             </button>
             )}
+            <button 
+              onClick={() => setShowPasswordModal(true)}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-full font-bold hover:bg-green-700 transition-all shadow-md hover:scale-105 text-xs"
+            >
+              {Object.keys(generatedPasswords).length > 0 ? '🔑 Passwords Generated' : '🔑 Generate Passwords'}
+            </button>
             <button 
               onClick={() => setShowExportModal(true)}
               className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs"
@@ -608,6 +749,71 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         )}
       </Card>
 
+      {/* Generate/Reset Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Generate/Reset Passwords</h3>
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>⚠️ Warning:</strong> This will reset passwords for <strong>{filteredStudents.length}</strong> student(s). 
+                  Generated passwords will be available for export. Make sure to export and save them securely.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Password Requirements:</strong>
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Minimum 8 characters</li>
+                    <li>Uppercase, lowercase, number, and special character</li>
+                    <li>Passwords will be generated automatically</li>
+                  </ul>
+                </p>
+              </div>
+
+              {Object.keys(generatedPasswords).length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800">
+                    <strong>✅ Success:</strong> {Object.keys(generatedPasswords).length} password(s) have been generated. 
+                    You can now export them with student data.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleResetPasswords}
+                  disabled={resettingPasswords}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resettingPasswords ? 'Generating...' : 'Generate Passwords for All'}
+                </button>
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                >
+                  {Object.keys(generatedPasswords).length > 0 ? 'Done' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -647,8 +853,28 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                     />
                     <span className="text-sm font-medium text-gray-900">Email</span>
                   </label>
+                  <label className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200 ${Object.keys(generatedPasswords).length === 0 ? 'opacity-50' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={exportFields.password}
+                      onChange={(e) => setExportFields({ ...exportFields, password: e.target.checked })}
+                      disabled={Object.keys(generatedPasswords).length === 0}
+                      className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary disabled:opacity-50"
+                    />
+                    <span className="text-sm font-medium text-gray-900">
+                      Password {Object.keys(generatedPasswords).length > 0 && `(${Object.keys(generatedPasswords).length} generated)`}
+                    </span>
+                  </label>
                 </div>
               </div>
+
+              {Object.keys(generatedPasswords).length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800">
+                    <strong>✅ Passwords Generated:</strong> {Object.keys(generatedPasswords).length} password(s) have been generated and can be included in the export.
+                  </p>
+                </div>
+              )}
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
