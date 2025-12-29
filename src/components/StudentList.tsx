@@ -17,6 +17,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const { students, teachers, addStudent } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('all');
+  const [selectedProgram, setSelectedProgram] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('all');
   const [sortBy, setSortBy] = useState('name');
@@ -42,39 +43,67 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   };
 
   // Get unique values for filters
-  const uniqueTeachers = Array.from(new Set(students.map(s => s.assignedTeacher)));
-  const uniqueStatuses = Array.from(new Set(students.map(s => s.status)));
-  const uniquePrograms = Array.from(new Set(students.map(s => s.program)));
+  const uniqueTeachers = useMemo(() => {
+    const teacherMap = new Map<string, string>();
+    students.forEach(student => {
+      if (student.assignedTeacher) {
+        const teacherName = getTeacherName(student.assignedTeacher);
+        if (!teacherMap.has(student.assignedTeacher)) {
+          teacherMap.set(student.assignedTeacher, teacherName);
+        }
+      }
+    });
+    return Array.from(teacherMap.entries()).map(([id, name]) => ({ id, name }));
+  }, [students, teachers]);
+
+  const uniqueStatuses = Array.from(new Set(students.map(s => s.status).filter(Boolean)));
+  const uniquePrograms = Array.from(new Set(students.map(s => s.program).filter(Boolean)));
 
   // Filter and sort students
   const filteredStudents = useMemo(() => {
     let filtered = students.filter(student => {
-      const matchesSearch = student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           student.id.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           student.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           false;
       const matchesTeacher = selectedTeacher === 'all' || student.assignedTeacher === selectedTeacher;
+      const matchesProgram = selectedProgram === 'all' || student.program === selectedProgram;
       const matchesStatus = selectedStatus === 'all' || student.status === selectedStatus;
       
-      return matchesSearch && matchesTeacher && matchesStatus;
+      return matchesSearch && matchesTeacher && matchesProgram && matchesStatus;
     });
 
-    // Sort students: first by program, then A-Z by name
+    // Sort students based on sortBy and sortOrder
     filtered.sort((a, b) => {
-      // First sort by program
-      const programA = (a.program || '').toLowerCase();
-      const programB = (b.program || '').toLowerCase();
-      if (programA !== programB) {
-        return programA.localeCompare(programB);
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'name':
+          const nameA = (a.fullName || '').toLowerCase();
+          const nameB = (b.fullName || '').toLowerCase();
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case 'email':
+          const emailA = (a.email || '').toLowerCase();
+          const emailB = (b.email || '').toLowerCase();
+          comparison = emailA.localeCompare(emailB);
+          break;
+        case 'tuitionFee':
+          const feeA = a.tuitionFee || 0;
+          const feeB = b.tuitionFee || 0;
+          comparison = feeA - feeB;
+          break;
+        default:
+          const defaultNameA = (a.fullName || '').toLowerCase();
+          const defaultNameB = (b.fullName || '').toLowerCase();
+          comparison = defaultNameA.localeCompare(defaultNameB);
       }
       
-      // If programs are the same, sort by name A-Z
-      const nameA = (a.fullName || '').toLowerCase();
-      const nameB = (b.fullName || '').toLowerCase();
-      return nameA.localeCompare(nameB);
+      return sortOrder === 'asc' ? comparison : -comparison;
     });
 
     return filtered;
-  }, [students, searchTerm, selectedTeacher, selectedStatus]);
+  }, [students, searchTerm, selectedTeacher, selectedProgram, selectedStatus, sortBy, sortOrder]);
 
   // Pagination
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -265,7 +294,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       {/* Enhanced Filters and Search */}
       <Card>
         <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-xl p-3 sm:p-4 border-2 border-primary/20">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 mb-3">
             {/* Search */}
             <div className="sm:col-span-2 lg:col-span-2">
               <label className="block text-xs font-bold text-primary mb-1.5">Search Students</label>
@@ -278,6 +307,21 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
               />
             </div>
 
+            {/* Program Filter */}
+            <div>
+              <label className="block text-xs font-bold text-primary mb-1.5">Program</label>
+              <select
+                value={selectedProgram}
+                onChange={(e) => setSelectedProgram(e.target.value)}
+                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
+              >
+                <option value="all">All Programs</option>
+                {uniquePrograms.map(program => (
+                  <option key={program} value={program}>{program}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Teacher Filter */}
             <div>
               <label className="block text-xs font-bold text-primary mb-1.5">Teacher</label>
@@ -288,7 +332,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
               >
                 <option value="all">All Teachers</option>
                 {uniqueTeachers.map(teacher => (
-                  <option key={teacher} value={teacher}>{teacher}</option>
+                  <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
                 ))}
               </select>
             </div>
@@ -316,6 +360,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                 onClick={() => {
                   setSearchTerm('');
                   setSelectedTeacher('all');
+                  setSelectedProgram('all');
                   setSelectedStatus('all');
                   setSelectedPaymentStatus('all');
                 }}
