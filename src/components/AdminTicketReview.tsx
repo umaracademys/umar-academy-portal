@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Ticket } from '../types/ticket';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,7 +35,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mushafPage, setMushafPage] = useState(1);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
-  const previousTicketIdRef = React.useRef<string | null>(null); // Track previous ticket ID to prevent unnecessary mushaf page resets
+  const previousTicketIdRef = useRef<string | null>(null); // Track previous ticket ID to prevent unnecessary mushaf page resets
 
   // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
