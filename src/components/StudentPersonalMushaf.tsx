@@ -75,20 +75,41 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         
         if (data && data.mistakes) {
           // Convert to MushafMistake format
-          const convertedMistakes: MushafMistake[] = data.mistakes.map((m: any) => ({
-            id: m.id,
-            type: m.type,
-            page: m.page,
-            surah: m.surah,
-            ayah: m.ayah,
-            wordIndex: m.wordIndex,
-            letterIndex: m.letterIndex,
-            position: m.position,
-            note: m.note,
-            audioUrl: m.audioUrl,
-            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-            workflowStep: m.workflowStep // Include workflow step for filtering
-          } as MushafMistake & { workflowStep?: string }));
+          const convertedMistakes: MushafMistake[] = data.mistakes.map((m: any) => {
+            // Process audioUrl to ensure it's a full URL
+            let audioUrl = m.audioUrl;
+            if (audioUrl && !audioUrl.startsWith('http')) {
+              // Fix URLs that incorrectly include /api/uploads
+              audioUrl = audioUrl.replace('/api/uploads/', '/uploads/');
+              
+              // Get base URL
+              let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+              // Remove /api from base URL if present (uploads are served from root, not /api)
+              if (baseUrl.endsWith('/api')) {
+                baseUrl = baseUrl.replace('/api', '');
+              }
+              // Ensure base URL doesn't end with /
+              baseUrl = baseUrl.replace(/\/$/, '');
+              // Ensure audio URL starts with /
+              const audioPath = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
+              audioUrl = `${baseUrl}${audioPath}`;
+            }
+            
+            return {
+              id: m.id,
+              type: m.type,
+              page: m.page,
+              surah: m.surah,
+              ayah: m.ayah,
+              wordIndex: m.wordIndex,
+              letterIndex: m.letterIndex,
+              position: m.position,
+              note: m.note,
+              audioUrl: audioUrl,
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+              workflowStep: m.workflowStep // Include workflow step for filtering
+            } as MushafMistake & { workflowStep?: string };
+          });
           
           setMistakes(convertedMistakes);
           
@@ -193,20 +214,41 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         const data = await getStudentPersonalMushaf(studentId);
         
         if (data && data.mistakes) {
-          const convertedMistakes: MushafMistake[] = data.mistakes.map((m: any) => ({
-            id: m.id,
-            type: m.type,
-            page: m.page,
-            surah: m.surah,
-            ayah: m.ayah,
-            wordIndex: m.wordIndex,
-            letterIndex: m.letterIndex,
-            position: m.position,
-            note: m.note,
-            audioUrl: m.audioUrl,
-            timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
-            workflowStep: m.workflowStep
-          } as MushafMistake & { workflowStep?: string }));
+          const convertedMistakes: MushafMistake[] = data.mistakes.map((m: any) => {
+            // Process audioUrl to ensure it's a full URL
+            let audioUrl = m.audioUrl;
+            if (audioUrl && !audioUrl.startsWith('http')) {
+              // Fix URLs that incorrectly include /api/uploads
+              audioUrl = audioUrl.replace('/api/uploads/', '/uploads/');
+              
+              // Get base URL
+              let baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+              // Remove /api from base URL if present (uploads are served from root, not /api)
+              if (baseUrl.endsWith('/api')) {
+                baseUrl = baseUrl.replace('/api', '');
+              }
+              // Ensure base URL doesn't end with /
+              baseUrl = baseUrl.replace(/\/$/, '');
+              // Ensure audio URL starts with /
+              const audioPath = audioUrl.startsWith('/') ? audioUrl : `/${audioUrl}`;
+              audioUrl = `${baseUrl}${audioPath}`;
+            }
+            
+            return {
+              id: m.id,
+              type: m.type,
+              page: m.page,
+              surah: m.surah,
+              ayah: m.ayah,
+              wordIndex: m.wordIndex,
+              letterIndex: m.letterIndex,
+              position: m.position,
+              note: m.note,
+              audioUrl: audioUrl,
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+              workflowStep: m.workflowStep
+            } as MushafMistake & { workflowStep?: string };
+          });
           
           setMistakes(convertedMistakes);
           
