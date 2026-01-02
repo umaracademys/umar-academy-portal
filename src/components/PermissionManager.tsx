@@ -1401,18 +1401,18 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     );
 
   return (
-      <div className="space-y-6">
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
+      <div className="space-y-4 sm:space-y-6">
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img
                 src={teacherAvatar}
                 alt={selectedTeacher.fullName}
-                className="h-14 w-14 rounded-full border border-gray-200 object-cover"
+                className="h-12 w-12 sm:h-14 sm:w-14 rounded-full border border-gray-200 object-cover flex-shrink-0"
               />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-semibold text-gray-900">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
                     {selectedTeacher.fullName}
                   </h3>
                   <span
@@ -1427,7 +1427,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       : 'Inactive'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600">
+                <p className="text-xs sm:text-sm text-gray-600 truncate">
                   {selectedTeacher.department} • {selectedTeacher.email}
                 </p>
                 <p className="text-xs text-gray-500">
@@ -1435,12 +1435,12 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 </p>
               </div>
         </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => handleTeacherPreset('all')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:opacity-50"
               >
                 Grant full access
               </button>
@@ -1448,7 +1448,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 type="button"
                 onClick={() => handleTeacherPreset('view')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
               >
                 Apply view-only
               </button>
@@ -1456,19 +1456,19 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 type="button"
                 onClick={() => handleTeacherPreset('none')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
               >
                 Revoke all
               </button>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-3">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Active permissions
               </p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold text-gray-900">
                 {teacherSummary.activeCount}/{totalPermissions}
               </p>
               <div className="mt-3 h-2 w-full rounded-full bg-gray-200">
@@ -1481,22 +1481,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 {activePercentage}% of capabilities in use
               </p>
             </div>
-            <div className="rounded-lg border border-red-100 bg-red-50 p-4">
+            <div className="rounded-lg border border-red-100 bg-red-50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-red-500">
                 High-impact toggles
               </p>
-              <p className="mt-2 text-2xl font-semibold text-red-700">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold text-red-700">
                 {teacherSummary.highImpactCount}
               </p>
               <p className="mt-1 text-xs text-red-600">
                 Financial and scheduling access is closely monitored.
               </p>
             </div>
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">
                 Guardian comms
               </p>
-              <p className="mt-2 text-2xl font-semibold text-blue-700">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold text-blue-700">
                 {teacherSummary.communicationEnabled ? 'Allowed' : 'Restricted'}
               </p>
               <p className="mt-1 text-xs text-blue-600">
@@ -1521,40 +1521,40 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           return (
             <section
               key={group.name}
-              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
             >
-              <header className="mb-4 flex items-start gap-3">
-                <span className="text-xl">{metadata.icon}</span>
-                <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+              <header className="mb-3 sm:mb-4 flex items-start gap-2 sm:gap-3">
+                <span className="text-lg sm:text-xl flex-shrink-0">{metadata.icon}</span>
+                <div className="min-w-0">
+                  <h4 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-gray-500">
                     {group.name}
                   </h4>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600">
                     {metadata.description}
                   </p>
                 </div>
               </header>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {sortedItems.map(({ definition }) => {
                   const value = teacherPermissions[definition.key];
                   return (
                     <div
                       key={definition.key}
-                      className={`rounded-lg border px-4 py-3 transition ${
+                      className={`rounded-lg border px-3 py-2 sm:px-4 sm:py-3 transition ${
                         value
                           ? 'border-purple-200 bg-purple-50'
                           : 'border-gray-200 bg-white'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-2 sm:gap-3">
                         {definition.icon && (
-                          <span className="mt-1 text-base text-gray-500">
+                          <span className="mt-0.5 sm:mt-1 text-sm sm:text-base text-gray-500 flex-shrink-0">
                             {definition.icon}
                           </span>
                         )}
-                    <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-gray-900">
+                    <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <p className="text-xs sm:text-sm font-semibold text-gray-900">
                               {definition.label}
                             </p>
                             {definition.risk === 'high' && (
@@ -1568,11 +1568,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                               </span>
                             )}
                           </div>
-                          <p className="mt-1 text-sm text-gray-600">
+                          <p className="mt-1 text-xs sm:text-sm text-gray-600">
                             {definition.description}
                           </p>
                           {definition.helper && (
-                            <p className="mt-2 text-xs text-gray-500">
+                            <p className="mt-1.5 sm:mt-2 text-xs text-gray-500">
                               {definition.helper}
                             </p>
                           )}
@@ -1588,13 +1588,13 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                           disabled={isSaving}
                           role="switch"
                           aria-checked={value}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                          className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition flex-shrink-0 ${
                             value ? 'bg-purple-600' : 'bg-gray-300'
                           } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                         >
                           <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                              value ? 'translate-x-5' : 'translate-x-1'
+                            className={`inline-block h-3.5 w-3.5 sm:h-4 sm:w-4 transform rounded-full bg-white transition ${
+                              value ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5 sm:translate-x-1'
                             }`}
                           />
                         </button>
@@ -1653,9 +1653,9 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     );
 
     return (
-      <div className="space-y-6">
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-4 sm:space-y-6">
+        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <img
                 src={adminAvatar}
@@ -1677,18 +1677,18 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                     {selectedAdmin.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
                     </div>
-                <p className="text-sm text-amber-900/80">{selectedAdmin.email}</p>
+                <p className="text-xs sm:text-sm text-amber-900/80 truncate">{selectedAdmin.email}</p>
                 <p className="text-xs text-amber-900/60">
                   Departments: {selectedAdmin.assignedDepartments.join(', ')}
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => handleAdminPreset('all')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-400 bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-200 disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-amber-400 bg-amber-100 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-amber-800 transition hover:bg-amber-200 disabled:opacity-50"
               >
                 Full control
               </button>
@@ -1696,7 +1696,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 type="button"
                 onClick={() => handleAdminPreset('financeReports')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg border border-blue-300 bg-blue-100 px-3 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-200 disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-blue-300 bg-blue-100 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-blue-800 transition hover:bg-blue-200 disabled:opacity-50"
               >
                 Finance & reports
               </button>
@@ -1704,19 +1704,19 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 type="button"
                 onClick={() => handleAdminPreset('none')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
               >
                 Lock down
               </button>
             </div>
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-amber-200 bg-white p-4">
+          <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-3">
+            <div className="rounded-lg border border-amber-200 bg-white p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
                 Active permissions
               </p>
-              <p className="mt-2 text-2xl font-semibold text-amber-900">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold text-amber-900">
                 {adminSummary.activeCount}/{totalPermissions}
               </p>
               <div className="mt-3 h-2 w-full rounded-full bg-amber-100">
@@ -1729,22 +1729,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 {activePercentage}% of admin capabilities granted
               </p>
             </div>
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
                 High impact toggles
               </p>
-              <p className="mt-2 text-2xl font-semibold text-red-700">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold text-red-700">
                 {adminSummary.highImpactCount}
               </p>
               <p className="mt-1 text-xs text-red-600">
                 Includes finance access and permission delegation.
               </p>
             </div>
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 sm:p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
                 Permission admin
               </p>
-              <p className="mt-2 text-2xl font-semibold text-indigo-700">
+              <p className="mt-2 text-xl sm:text-2xl font-semibold text-indigo-700">
                 {adminSummary.isPermissionAdmin ? 'Yes' : 'No'}
               </p>
               <p className="mt-1 text-xs text-indigo-600">
@@ -1770,38 +1770,38 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           return (
             <section
               key={group.name}
-              className="rounded-xl border border-amber-200 bg-white p-5 shadow-sm"
+              className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm sm:p-5"
             >
-              <header className="mb-4 flex items-start gap-3">
-                <span className="text-xl">{metadata.icon}</span>
-                <div>
-                  <h4 className="text-sm font-semibold uppercase tracking-wide text-amber-700">
+              <header className="mb-3 sm:mb-4 flex items-start gap-2 sm:gap-3">
+                <span className="text-lg sm:text-xl flex-shrink-0">{metadata.icon}</span>
+                <div className="min-w-0">
+                  <h4 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-amber-700">
                     {group.name}
                   </h4>
-                  <p className="text-sm text-amber-900/80">
+                  <p className="text-xs sm:text-sm text-amber-900/80">
                     {metadata.description}
                   </p>
                 </div>
               </header>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {sortedItems.map(({ definition, value }) => (
                   <div
                     key={definition.key}
-                    className={`rounded-lg border px-4 py-3 transition ${
+                    className={`rounded-lg border px-3 py-2 sm:px-4 sm:py-3 transition ${
                       value
                         ? 'border-amber-300 bg-amber-100'
                         : 'border-amber-100 bg-white'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-2 sm:gap-3">
                       {definition.icon && (
-                        <span className="mt-1 text-base text-amber-600">
+                        <span className="mt-0.5 sm:mt-1 text-sm sm:text-base text-amber-600 flex-shrink-0">
                           {definition.icon}
                         </span>
                       )}
-                    <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-amber-900">
+                    <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                          <p className="text-xs sm:text-sm font-semibold text-amber-900">
                             {definition.label}
                           </p>
                           {definition.risk === 'high' && (
@@ -1815,11 +1815,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-amber-900/80">
+                        <p className="mt-1 text-xs sm:text-sm text-amber-900/80">
                           {definition.description}
                         </p>
                         {definition.helper && (
-                          <p className="mt-2 text-xs text-amber-900/70">
+                          <p className="mt-1.5 sm:mt-2 text-xs text-amber-900/70">
                             {definition.helper}
                           </p>
                         )}
@@ -1832,13 +1832,13 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                         disabled={isSaving}
                         role="switch"
                         aria-checked={value}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
+                        className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition flex-shrink-0 ${
                           value ? 'bg-amber-600' : 'bg-amber-200'
                         } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                            value ? 'translate-x-5' : 'translate-x-1'
+                          className={`inline-block h-3.5 w-3.5 sm:h-4 sm:w-4 transform rounded-full bg-white transition ${
+                            value ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5 sm:translate-x-1'
                           }`}
                         />
                       </button>
@@ -1854,22 +1854,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6">
-      <div className="flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="bg-gradient-to-r from-red-600 to-red-800 px-6 py-6 text-white sm:px-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 md:p-6">
+      <div className="flex h-full w-full max-h-[95vh] max-w-[95vw] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:max-w-7xl lg:max-w-[90vw] xl:max-w-7xl">
+        <div className="flex-shrink-0 bg-gradient-to-r from-red-600 to-red-800 px-4 py-4 text-white sm:px-6 sm:py-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <span className="text-sm uppercase tracking-widest text-red-200">
+            <div className="min-w-0 flex-1">
+              <span className="text-xs sm:text-sm uppercase tracking-widest text-red-200">
                 Control Center
               </span>
-              <h2 className="text-3xl font-bold">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
                 🔐 Permission Management Center
               </h2>
-              <p className="mt-1 text-sm text-red-100">
+              <p className="mt-1 text-xs sm:text-sm text-red-100">
                 Micro-manage user access, reduce risk, and keep teams aligned.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm text-red-50 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm text-red-50 sm:grid-cols-4 lg:flex-shrink-0">
               <div>
                 <p className="font-semibold text-white">Teachers</p>
                 <p className="text-red-100">{teachers.length}</p>
@@ -1894,15 +1894,15 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           </div>
         </div>
 
-        <div className="grid flex-1 gap-6 overflow-y-auto bg-gray-50 px-6 py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
-          <aside className="space-y-6">
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">Role type</p>
+        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-gray-50 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="flex flex-col space-y-4 overflow-y-auto sm:space-y-6">
+            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+              <p className="text-xs sm:text-sm font-semibold text-gray-900">Role type</p>
               <p className="mt-1 text-xs text-gray-500">
                 Switch between teacher and admin directories to start managing
                 their access.
               </p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1936,14 +1936,14 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
               </div>
             </section>
 
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <label className="text-sm font-semibold text-gray-900">
+            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+              <label className="text-xs sm:text-sm font-semibold text-gray-900">
                 Select {selectedType === 'teacher' ? 'teacher' : 'admin'}
               </label>
               <select
                 value={selectedUser}
                 onChange={(event) => setSelectedUser(event.target.value)}
-                className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+                className="mt-2 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
               >
                 <option value="">— Choose a user —</option>
                 {selectedType === 'teacher'
@@ -1965,11 +1965,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
               </p>
             </section>
 
-            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <p className="text-sm font-semibold text-gray-900">
+            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+              <p className="text-xs sm:text-sm font-semibold text-gray-900">
                 Safety checklist
               </p>
-              <ul className="mt-3 space-y-2 text-xs text-gray-600">
+              <ul className="mt-2 sm:mt-3 space-y-1.5 sm:space-y-2 text-xs text-gray-600">
                 <li>• Review high-impact toggles regularly.</li>
                 <li>• Pair communication access with accountability.</li>
                 <li>• Keep permission presets aligned with school policy.</li>
@@ -1977,10 +1977,10 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
             </section>
           </aside>
 
-          <main className="space-y-6">
+          <main className="min-h-0 overflow-y-auto space-y-4 sm:space-y-6">
             {feedback && (
               <div
-                className={`rounded-lg border px-4 py-3 text-sm ${
+                className={`flex-shrink-0 rounded-lg border px-3 py-2 text-xs sm:px-4 sm:py-3 sm:text-sm ${
                   feedback.tone === 'success'
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                     : feedback.tone === 'error'
@@ -1997,11 +1997,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           </main>
         </div>
 
-        <div className="flex justify-end border-t border-gray-200 bg-white px-6 py-4">
+        <div className="flex-shrink-0 flex justify-end border-t border-gray-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
             <button
             type="button"
               onClick={onClose}
-            className="rounded-lg bg-gray-900 px-6 py-2 text-sm font-semibold text-white transition hover:bg-gray-700"
+            className="rounded-lg bg-gray-900 px-4 py-1.5 text-xs sm:px-6 sm:py-2 sm:text-sm font-semibold text-white transition hover:bg-gray-700"
             >
               Done
             </button>
