@@ -378,6 +378,28 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         {/* Filters - Enhanced Design with Surah Index Toggle */}
         <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-white via-gray-50 to-white border-b-2 border-gray-200 flex flex-wrap gap-3 sm:gap-4 items-center shadow-sm">
           <div className="flex items-center gap-2">
+            <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Date:</label>
+            <select
+              value={filterDate || ''}
+              onChange={(e) => setFilterDate(e.target.value || null)}
+              className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
+            >
+              <option value="">All Dates</option>
+              {mistakeDates.map(date => {
+                const dateObj = new Date(date);
+                const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                });
+                return (
+                  <option key={date} value={date}>{formattedDate}</option>
+                );
+              })}
+            </select>
+          </div>
+          
+          <div className="flex items-center gap-2">
             <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Type:</label>
             <select
               value={filterType}
