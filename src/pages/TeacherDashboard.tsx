@@ -21,6 +21,7 @@ import TeacherWeeklyEvaluationReview from '../components/TeacherWeeklyEvaluation
 import PairDailyReportForm from '../components/PairDailyReportForm';
 import PairTeacherMessage from '../components/PairTeacherMessage';
 import TeacherStudentMessage from '../components/TeacherStudentMessage';
+import TeacherPersonalMushaf from '../components/TeacherPersonalMushaf';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
@@ -46,6 +47,8 @@ const TeacherDashboard: React.FC = () => {
   const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
   const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
   const [selectedStudentForTSMessage, setSelectedStudentForTSMessage] = useState<any>(null);
+  const [showPersonalMushaf, setShowPersonalMushaf] = useState(false);
+  const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<Student | null>(null);
   const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
   const [pairStudentsMap, setPairStudentsMap] = useState<Record<string, any[]>>({});
 
@@ -913,6 +916,16 @@ const TeacherDashboard: React.FC = () => {
                     <div className="mt-4 flex gap-2 flex-wrap">
                       <button
                         onClick={() => {
+                          setSelectedStudentForMushaf(student);
+                          setShowPersonalMushaf(true);
+                        }}
+                        className="rounded-lg border-2 border-green-500 bg-green-50 px-4 py-2 text-xs font-bold text-green-700 transition hover:bg-green-100 shadow-sm flex items-center gap-1"
+                        title="View and mark mistakes in student's Personal Mushaf"
+                      >
+                        <span>📖</span> Personal Mushaf
+                      </button>
+                      <button
+                        onClick={() => {
                           setHistoryStudent(student);
                           setShowStudentHistory(true);
                         }}
@@ -1428,6 +1441,23 @@ const TeacherDashboard: React.FC = () => {
           onClose={() => {
             setShowTeacherStudentMessage(false);
             setSelectedStudentForTSMessage(null);
+          }}
+        />
+      )}
+
+      {/* Personal Mushaf Modal */}
+      {showPersonalMushaf && selectedStudentForMushaf && (
+        <TeacherPersonalMushaf
+          studentId={selectedStudentForMushaf.id}
+          studentName={selectedStudentForMushaf.fullName}
+          onClose={() => {
+            setShowPersonalMushaf(false);
+            setSelectedStudentForMushaf(null);
+          }}
+          onSessionComplete={(newMistakes) => {
+            console.log(`Session completed with ${newMistakes.length} new mistakes`);
+            // Refresh data if needed
+            refreshData();
           }}
         />
       )}

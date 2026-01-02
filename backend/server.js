@@ -6144,7 +6144,7 @@ app.post('/api/students/:studentId/personal-mushaf/mistakes', async (req, res) =
     }
     
     // Check for duplicates (same page, surah, ayah, wordIndex, type)
-    const isDuplicate = personalMushaf.mistakes.some(existing => 
+    const existingMistakeIndex = personalMushaf.mistakes.findIndex(existing => 
       existing.page === mistake.page &&
       existing.surah === mistake.surah &&
       existing.ayah === mistake.ayah &&
@@ -6153,41 +6153,65 @@ app.post('/api/students/:studentId/personal-mushaf/mistakes', async (req, res) =
       (mistake.letterIndex === undefined || existing.letterIndex === mistake.letterIndex)
     );
     
-    if (isDuplicate) {
-      return res.status(400).json({ error: 'This mistake already exists' });
+    let newMistake;
+    let isUpdate = false;
+    
+    if (existingMistakeIndex >= 0) {
+      // Mistake already exists - update it but keep history
+      const existingMistake = personalMushaf.mistakes[existingMistakeIndex];
+      
+      // Update the existing mistake with new information
+      existingMistake.note = mistake.note || existingMistake.note;
+      existingMistake.audioUrl = mistake.audioUrl || existingMistake.audioUrl;
+      existingMistake.position = mistake.position || existingMistake.position;
+      existingMistake.markedBy = markedBy || existingMistake.markedBy;
+      existingMistake.markedByName = markedByName || existingMistake.markedByName;
+      existingMistake.timestamp = mistake.timestamp ? new Date(mistake.timestamp) : new Date();
+      // Keep original createdAt, but update timestamp to show it was re-marked
+      
+      newMistake = existingMistake;
+      isUpdate = true;
+    } else {
+      // Create new mistake entry
+      newMistake = {
+        id: mistake.id || `mistake-${Date.now()}-${Math.random()}`,
+        type: mistake.type,
+        page: mistake.page,
+        surah: mistake.surah,
+        ayah: mistake.ayah,
+        wordIndex: mistake.wordIndex,
+        letterIndex: mistake.letterIndex,
+        position: mistake.position || { x: 50, y: 50 },
+        note: mistake.note || '',
+        audioUrl: mistake.audioUrl,
+        ticketId: null, // Direct addition, not from ticket
+        workflowStep: mistake.workflowStep || 'direct', // Use provided workflow step or 'direct'
+        markedBy: markedBy || null,
+        markedByName: markedByName || null,
+        timestamp: mistake.timestamp ? new Date(mistake.timestamp) : new Date(),
+        createdAt: new Date()
+      };
+      
+      personalMushaf.mistakes.push(newMistake);
     }
     
-    // Create new mistake entry
-    const newMistake = {
-      id: mistake.id || `mistake-${Date.now()}-${Math.random()}`,
-      type: mistake.type,
-      page: mistake.page,
-      surah: mistake.surah,
-      ayah: mistake.ayah,
-      wordIndex: mistake.wordIndex,
-      letterIndex: mistake.letterIndex,
-      position: mistake.position || { x: 50, y: 50 },
-      note: mistake.note || '',
-      audioUrl: mistake.audioUrl,
-      ticketId: null, // Direct addition, not from ticket
-      workflowStep: 'direct', // Mark as directly added
-      markedBy: markedBy || null,
-      markedByName: markedByName || null,
-      timestamp: mistake.timestamp ? new Date(mistake.timestamp) : new Date(),
-      createdAt: new Date()
-    };
-    
-    personalMushaf.mistakes.push(newMistake);
     await personalMushaf.save();
     
-    console.log('✅ Added mistake to Personal Mushaf:', {
+    console.log(`✅ ${isUpdate ? 'Updated' : 'Added'} mistake to Personal Mushaf:`, {
       studentId,
       mistakeId: newMistake.id,
       type: newMistake.type,
-      page: newMistake.page
+      page: newMistake.page,
+      isUpdate
     });
     
-    res.json({ success: true, mistake: newMistake, personalMushaf });
+    res.json({ 
+      success: true, 
+      mistake: newMistake, 
+      personalMushaf,
+      isUpdate, // Indicate if this was an update or new mistake
+      existingMistake: isUpdate ? personalMushaf.mistakes[existingMistakeIndex] : null
+    });
   } catch (error) {
     console.error('Error adding mistake to personal Mushaf:', error);
     res.status(500).json({ error: error.message });
