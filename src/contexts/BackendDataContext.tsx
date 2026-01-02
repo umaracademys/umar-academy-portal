@@ -1495,52 +1495,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
-  // Helper function to generate a secure default password
-  const generateSecurePassword = (): string => {
-    // Generate a password that meets all requirements:
-    // - At least 8 characters
-    // - At least one uppercase letter
-    // - At least one lowercase letter
-    // - At least one number
-    // - At least one special character
-    // - Not a common weak password
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-    const numbers = '0123456789';
-    const special = '!@#$%^&*';
-    
-    // Generate random characters from each category
-    const getRandomChar = (chars: string) => chars[Math.floor(Math.random() * chars.length)];
-    const upper = getRandomChar(uppercase);
-    const lower = getRandomChar(lowercase);
-    const num = getRandomChar(numbers);
-    const spec = getRandomChar(special);
-    
-    // Fill remaining length with random characters from all categories
-    const allChars = uppercase + lowercase + numbers + special;
-    const remainingLength = 8 - 4; // We already have 4 characters, need 4 more for 8 total
-    let remaining = '';
-    for (let i = 0; i < remainingLength; i++) {
-      remaining += getRandomChar(allChars);
-    }
-    
-    // Combine and shuffle
-    const passwordArray = (upper + lower + num + spec + remaining).split('');
-    for (let i = passwordArray.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [passwordArray[i], passwordArray[j]] = [passwordArray[j], passwordArray[i]];
-    }
-    
-    return passwordArray.join('');
-  };
-
   // Teacher operations
   const addTeacher = async (teacher: Teacher) => {
     try {
-      // Generate a secure default password that meets all requirements
-      const defaultPassword = generateSecurePassword();
-      
       // Create user first - use fetchWithTimeout with authentication
+      // Password is optional - teacher can set it later via password reset
       const userResponse = await fetchWithTimeout(
         `${API_BASE}/users`,
         {
@@ -1549,7 +1508,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             name: teacher.fullName,
             email: teacher.email,
             role: 'teacher',
-            password: defaultPassword, // Secure default password for teachers
+            // No password - teacher will set it later via password reset or initial login flow
             avatar: teacher.avatar
           }),
         },
@@ -1784,10 +1743,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Admin operations
   const addAdmin = async (admin: Admin) => {
     try {
-      // Generate a secure default password that meets all requirements
-      const defaultPassword = generateSecurePassword();
-      
       // Step 1: Create User account first
+      // Password is optional - admin can set it later via password reset
       const userResponse = await fetchWithTimeout(
         `${API_BASE}/users`,
         {
@@ -1797,7 +1754,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             name: admin.fullName,
             email: admin.email,
             role: 'admin',
-            password: defaultPassword, // Secure default password for admins
+            // No password - admin will set it later via password reset or initial login flow
             avatar: admin.avatar,
             contact: admin.contact
           }),
