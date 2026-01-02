@@ -142,7 +142,8 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
         score: scoreNum,
         maxScore: maxScoreNum,
         notes: notes.trim(),
-        date: assessmentDate // Assessment.date expects a string
+        date: assessmentDate, // Assessment.date expects a string
+        conductedBy: currentTeacher?.id || user?.id || ''
       };
 
       // Get existing assessments
