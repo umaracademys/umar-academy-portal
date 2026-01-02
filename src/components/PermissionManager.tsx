@@ -135,7 +135,7 @@ const ADMIN_PERMISSION_GROUP_METADATA: Record<
   'Security & Governance': {
     icon: '🛡️',
     description:
-      'Delegate who can elevate roles or alter other administrators' access.',
+      'Delegate who can elevate roles or alter other administrators\' access.',
   },
   'Messages Module': {
     icon: '💌',
