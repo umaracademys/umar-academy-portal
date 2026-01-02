@@ -105,14 +105,14 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
   }, [studentId, getStudentPersonalMushaf]);
 
   // Combine existing and new mistakes for display
-  const allMistakes = useMemo(() => {
+  const allMistakes = useMemo((): MistakeWithStatus[] => {
     const combined: MistakeWithStatus[] = [
-      ...existingMistakes.map(m => ({
+      ...existingMistakes.map((m: MushafMistake): MistakeWithStatus => ({
         ...m,
         isExisting: true,
         isNew: false
       })),
-      ...newMistakes.map(m => ({
+      ...newMistakes.map((m: MistakeWithStatus): MistakeWithStatus => ({
         ...m,
         isNew: true,
         isExisting: false
@@ -121,8 +121,14 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
     
     // Remove duplicates (if a mistake was re-marked, keep the new one)
     const uniqueMistakes = new Map<string, MistakeWithStatus>();
-    combined.forEach(mistake => {
-      const key = `${mistake.page}-${mistake.surah}-${mistake.ayah}-${mistake.wordIndex}-${mistake.type}`;
+    combined.forEach((mistake: MistakeWithStatus) => {
+      // Access properties from MushafMistake base type
+      const page = (mistake as MushafMistake).page;
+      const surah = (mistake as MushafMistake).surah;
+      const ayah = (mistake as MushafMistake).ayah;
+      const wordIndex = (mistake as MushafMistake).wordIndex;
+      const type = (mistake as MushafMistake).type;
+      const key = `${page}-${surah}-${ayah}-${wordIndex}-${type}`;
       if (!uniqueMistakes.has(key) || mistake.isNew) {
         uniqueMistakes.set(key, mistake);
       }
@@ -274,17 +280,17 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
 
       if (!result || !result.success) {
         // Rollback if save failed
-        setNewMistakes(prev => prev.filter(m => m.id !== newMistakeWithStatus.id));
+        setNewMistakes(prev => prev.filter((m: MistakeWithStatus) => (m as MushafMistake).id !== (newMistakeWithStatus as MushafMistake).id));
         alert('Failed to save mistake. Please try again.');
       } else if (result.isUpdate) {
         // If it was an update, update the existing mistake in the list
-        setExistingMistakes(prev => prev.map(m => 
+        setExistingMistakes(prev => prev.map((m: MushafMistake) => 
           m.id === result.existingMistake?.id 
-            ? { ...m, ...newMistakeWithStatus, isExisting: true, isNew: false }
+            ? { ...m, ...newMistakeWithStatus, isExisting: true, isNew: false } as MushafMistake
             : m
         ));
         // Remove from new mistakes since it's an update
-        setNewMistakes(prev => prev.filter(m => m.id !== newMistakeWithStatus.id));
+        setNewMistakes(prev => prev.filter((m: MistakeWithStatus) => (m as MushafMistake).id !== (newMistakeWithStatus as MushafMistake).id));
       }
     } catch (err) {
       console.error('Error saving mistake:', err);
