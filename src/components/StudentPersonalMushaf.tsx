@@ -175,6 +175,19 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     isLoadingRef.current = false;
   }, [studentId]);
 
+  // Get unique dates from mistakes
+  const mistakeDates = useMemo(() => {
+    const dates = new Set<string>();
+    mistakes.forEach(m => {
+      if (m.timestamp) {
+        const date = new Date(m.timestamp);
+        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        dates.add(dateStr);
+      }
+    });
+    return Array.from(dates).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
+  }, [mistakes]);
+
   // Filter mistakes based on selected filters
   const filteredMistakes = useMemo(() => {
     let filtered = mistakes;
@@ -187,8 +200,17 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
       filtered = filtered.filter(m => m.page === filterPage);
     }
     
+    // Filter by date if selected
+    if (filterDate) {
+      filtered = filtered.filter(m => {
+        if (!m.timestamp) return false;
+        const mistakeDate = new Date(m.timestamp).toISOString().split('T')[0];
+        return mistakeDate === filterDate;
+      });
+    }
+    
     return filtered;
-  }, [mistakes, filterType, filterPage]);
+  }, [mistakes, filterType, filterPage, filterDate]);
 
   // Get unique pages with mistakes
   const pagesWithMistakes = useMemo(() => {
