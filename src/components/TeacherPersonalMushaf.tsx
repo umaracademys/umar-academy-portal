@@ -520,6 +520,8 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
                   readOnly={!sessionActive}
                   mode="marking"
                   showHistorical={true}
+                  showSurahIndexDefault={true}
+                  studentName={studentName}
                 />
               </div>
             </div>

@@ -59,6 +59,7 @@ interface InteractiveMushafProps {
   studentName?: string;
   onBack?: () => void;
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
+  showSurahIndexDefault?: boolean; // Default state for surah index visibility
   onVerseSelect?: (surah: number, ayah: number, page: number) => void; // Callback when a verse is clicked for question selection
   selectedVerses?: Array<{ surah: number; ayah: number }>; // Array of verses that are selected as questions
 }
@@ -1730,6 +1731,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   studentName,
   onBack,
   showHistorical: showHistoricalProp = true,
+  showSurahIndexDefault = false, // Default to hidden unless specified
   onVerseSelect,
   selectedVerses = [] as Array<{ surah: number; ayah: number }>
 }) => {
@@ -1737,7 +1739,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
   const [selectedLetterIndex, setSelectedLetterIndex] = useState<number | undefined>(undefined);
   const [localMistakes, setLocalMistakes] = useState<Mistake[]>([]);
-  const [showSurahIndex, setShowSurahIndex] = useState(false); // Hidden by default, user can toggle
+  const [showSurahIndex, setShowSurahIndex] = useState(showSurahIndexDefault); // Use prop default
   const [chapters, setChapters] = useState<Chapter[]>(FALLBACK_CHAPTERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [showHistorical, setShowHistorical] = useState(showHistoricalProp);
