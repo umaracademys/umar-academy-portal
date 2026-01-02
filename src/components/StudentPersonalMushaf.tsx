@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,46 +30,64 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     manzil: 0,
     byType: {} as Record<string, number>
   });
+  
+  // Ref to prevent concurrent loads
+  const isLoadingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
 
   // Get current student ID from props, user context, or student lookup
   const studentId = useMemo(() => {
     if (propStudentId) return propStudentId;
     
     // Try to get from student lookup
-    const currentStudent = getStudentByEmail(user?.email || '');
-    if (currentStudent?.id) return currentStudent.id;
+    if (user?.email) {
+      const currentStudent = getStudentByEmail(user.email);
+      if (currentStudent?.id) return currentStudent.id;
+    }
     
     // Fallback to user ID
     return user?.id || '';
-  }, [propStudentId, user, getStudentByEmail]);
+  }, [propStudentId, user?.id, user?.email]); // Removed getStudentByEmail to prevent infinite loop
 
-  // Get student name from students list if not provided
+  // Get student name from students list if not provided (only once)
   useEffect(() => {
-    if (propStudentName) {
+    if (propStudentName && propStudentName !== studentName) {
       setStudentName(propStudentName);
-    } else if (studentId) {
+    } else if (studentId && !propStudentName && !studentName) {
+      // Only look up student name if we don't have one yet
       const student = students.find(s => s.id === studentId);
       if (student?.fullName) {
         setStudentName(student.fullName);
       }
     }
-  }, [studentId, propStudentName, students]);
+  }, [studentId, propStudentName]); // Removed students and studentName from deps to prevent infinite loop
 
   useEffect(() => {
     const loadPersonalMushaf = async () => {
+      // Prevent concurrent loads
+      if (isLoadingRef.current) {
+        return;
+      }
+      
       if (!studentId) {
         setError('Student ID not found');
         setLoading(false);
         return;
       }
 
+      // Prevent reloading if already loaded for this studentId
+      if (hasLoadedRef.current) {
+        return;
+      }
+
       try {
+        isLoadingRef.current = true;
         setLoading(true);
         setError(null);
         const data = await getStudentPersonalMushaf(studentId);
         
-        // Update student name from API response if available
-        if (data?.studentName && !studentName) {
+        // Update student name from API response if available (only if not already set)
+        if (data?.studentName && !studentName && !propStudentName) {
           setStudentName(data.studentName);
         }
         
@@ -140,12 +158,21 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         console.error('Error loading personal Mushaf:', err);
         setError(err instanceof Error ? err.message : 'Failed to load personal Mushaf');
       } finally {
+        isLoadingRef.current = false;
+        hasLoadedRef.current = true;
         setLoading(false);
       }
     };
 
     loadPersonalMushaf();
-  }, [studentId, getStudentPersonalMushaf]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId]); // Only depend on studentId to prevent infinite loops
+  
+  // Reset loading ref when studentId changes
+  useEffect(() => {
+    hasLoadedRef.current = false;
+    isLoadingRef.current = false;
+  }, [studentId]);
 
   // Filter mistakes based on selected filters
   const filteredMistakes = useMemo(() => {
