@@ -7,9 +7,11 @@ import RegistrationRequestModal from './RegistrationRequestModal';
 
 interface AdminNotificationCenterProps {
   onClose: () => void;
+  onOpenTicketReview?: () => void;
+  onOpenRecitationReview?: () => void;
 }
 
-const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClose }) => {
+const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClose, onOpenTicketReview, onOpenRecitationReview }) => {
   const { adminNotifications, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications, assignments, recitationTickets, recitationReviews } = useBackendData();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -133,8 +135,17 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       navigate(notification.actionUrl);
       onClose();
     } else if (notification.type === 'recitation_review_pending' && notification.recitationReviewId) {
-      // Navigate to recitation review - this will be handled by the parent component
-      onClose();
+      // Check if it's a ticket notification (starts with 'ticket-')
+      if (notification.id?.startsWith('ticket-') && onOpenTicketReview) {
+        onOpenTicketReview();
+        onClose();
+      } else if (onOpenRecitationReview) {
+        // Open recitation review modal
+        onOpenRecitationReview();
+        onClose();
+      } else {
+        onClose();
+      }
     } else if (notification.type === 'assignment_submitted' && notification.assignmentId) {
       navigate('/assignments');
       onClose();

@@ -1584,6 +1584,14 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <AdminNotificationCenter
             onClose={() => setShowNotificationCenter(false)}
+            onOpenTicketReview={() => {
+              setShowNotificationCenter(false);
+              setShowTicketReview(true);
+            }}
+            onOpenRecitationReview={() => {
+              setShowNotificationCenter(false);
+              setShowRecitationReview(true);
+            }}
           />
         </Suspense>
       )}
