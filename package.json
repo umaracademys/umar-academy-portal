@@ -18,7 +18,9 @@
     "start": "node frontend-server.js",
     "seed": "tsx src/scripts/seedData.ts",
     "test-db": "tsx src/scripts/testConnection.ts",
-    "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts"
+    "setup-mistakes-db": "tsx src/scripts/setupMistakesDb.ts",
+    "test:production": "node backend/production-test.js",
+    "test:production:remote": "API_BASE_URL=https://umar-academy-backend.onrender.com/api node backend/production-test.js"
   },
   "dependencies": {
     "@umar-academy/mushaf": "workspace:*",

@@ -10,7 +10,8 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => {
   const { user, logout } = useAuth();
-  const { adminNotifications, assignments, recitationTickets, recitationReviews } = useBackendData();
+  const { adminNotifications, assignments, recitationTickets, recitationReviews, refreshDataLight, loading } = useBackendData();
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   
   // Only show notification bell for admins/super admins
   const showNotificationBell = user?.role === 'admin' || user?.role === 'superadmin';
@@ -68,6 +69,37 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
             </div>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+            {/* Refresh Button */}
+            <button
+              onClick={async () => {
+                setIsRefreshing(true);
+                try {
+                  await refreshDataLight(); // Use lightweight refresh for faster updates
+                } finally {
+                  setTimeout(() => setIsRefreshing(false), 500);
+                }
+              }}
+              disabled={loading || isRefreshing}
+              className="relative p-2 text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors touch-manipulation disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Refresh Data"
+              aria-label="Refresh Data"
+            >
+              <svg
+                className={`w-5 h-5 sm:w-6 sm:h-6 ${isRefreshing ? 'animate-spin' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+            
             {/* Notification Bell */}
             {showNotificationBell && onNotificationClick && (
               <button

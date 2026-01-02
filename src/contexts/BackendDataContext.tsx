@@ -348,7 +348,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load users from backend with timeout (no auth required for backward compatibility)
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
+      setLoadingStep('Loading users...');
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000, false);
       if (import.meta.env.DEV) {
         console.log('📡 Backend response status:', usersResponse.status);
@@ -363,7 +363,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load actual teacher records from /api/teachers endpoint (with sync to ensure assignedStudents arrays are up to date)
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
+      setLoadingStep('Loading teachers...');
       let teacherRecords: any[] = [];
       try {
       const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 10000);
@@ -395,53 +395,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.warn('⚠️ Could not load teacher records:', err);
       }
 
-      // Load assignments from backend
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      try {
-        if (import.meta.env.DEV) {
-          console.log('📡 Fetching assignments from:', `${API_BASE}/assignments`);
-        }
-        const assignmentsResponse = await fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000); // Reduced timeout
-        if (import.meta.env.DEV) {
-          console.log('📡 Assignments response status:', assignmentsResponse.status, assignmentsResponse.ok);
-        }
-        if (assignmentsResponse.ok) {
-          const assignmentsData = await assignmentsResponse.json();
+      // Load assignments, reviews, notifications, and tickets in parallel for faster loading
+      setLoadingStep('Loading assignments, reviews, notifications, and tickets...');
+      const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000),
+        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000)
+      ]);
+
+      // Process assignments
+      if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok) {
+        try {
+          const assignmentsData = await assignmentsResponse.value.json();
           if (import.meta.env.DEV) {
             console.log('📝 Assignments loaded from backend:', assignmentsData.length);
-            if (assignmentsData.length > 0) {
-              console.log('📝 Sample assignment:', {
-                id: assignmentsData[0]._id || assignmentsData[0].id,
-                studentId: assignmentsData[0].studentId,
-                studentName: assignmentsData[0].studentName,
-                sabqCount: assignmentsData[0].classwork?.sabq?.length || 0,
-                sabqiCount: assignmentsData[0].classwork?.sabqi?.length || 0,
-                manzilCount: assignmentsData[0].classwork?.manzil?.length || 0,
-                status: assignmentsData[0].status
-              });
-              // Log first 5 assignments only to avoid console spam
-              assignmentsData.slice(0, 5).forEach((a: any, idx: number) => {
-                console.log(`📝 Assignment ${idx + 1}:`, {
-                  id: a._id || a.id,
-                  studentId: a.studentId,
-                  studentName: a.studentName,
-                  sabq: a.classwork?.sabq?.length || 0,
-                  sabqi: a.classwork?.sabqi?.length || 0,
-                  manzil: a.classwork?.manzil?.length || 0
-                });
-              });
-            }
-          } else {
-            // Only log this warning once per session to reduce console noise
-            if (import.meta.env.DEV) {
-              const hasWarnedAboutAssignments = sessionStorage.getItem('warned_about_no_assignments');
-              if (!hasWarnedAboutAssignments) {
-                console.info('ℹ️ No assignments found in database. This is normal if no assignments have been created yet.');
-                sessionStorage.setItem('warned_about_no_assignments', 'true');
-              }
-            }
           }
-          // Map MongoDB _id to id for frontend compatibility
           const mappedAssignments = assignmentsData.map((assignment: any) => ({
             ...assignment,
             id: assignment._id || assignment.id,
@@ -450,26 +419,21 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
           }));
           setAssignments(mappedAssignments);
-        } else {
-          const errorText = await assignmentsResponse.text().catch(() => 'Unknown error');
-          console.error('❌ Failed to load assignments:', assignmentsResponse.status, errorText);
-          setAssignments([]); // Set empty array on error
+        } catch (err) {
+          console.error('❌ Error processing assignments:', err);
+          setAssignments([]);
         }
-      } catch (assignmentsError: any) {
-        console.error('❌ Error loading assignments:', assignmentsError?.message || assignmentsError);
-        setAssignments([]); // Set empty array on error to prevent hanging
+      } else {
+        setAssignments([]);
       }
 
-      // Load recitation reviews
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      try {
-        const reviewsResponse = await fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000);
-        if (reviewsResponse.ok) {
-          const reviewsData = await reviewsResponse.json();
+      // Process recitation reviews
+      if (reviewsResponse.status === 'fulfilled' && reviewsResponse.value.ok) {
+        try {
+          const reviewsData = await reviewsResponse.value.json();
           if (import.meta.env.DEV) {
             console.log('📖 Recitation reviews loaded:', reviewsData.length);
           }
-          // Normalize recitation reviews to map _id to id
           const normalizedReviews = Array.isArray(reviewsData) ? reviewsData.map((review: any) => ({
             ...review,
             id: review._id || review.id,
@@ -482,40 +446,34 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : undefined,
           })) : [];
           setRecitationReviews(normalizedReviews);
-        } else {
-          console.warn('⚠️ Failed to load recitation reviews:', reviewsResponse.status);
+        } catch (err) {
+          console.error('❌ Error processing reviews:', err);
           setRecitationReviews([]);
         }
-      } catch (reviewsError: any) {
-        console.error('❌ Error loading recitation reviews:', reviewsError?.message || reviewsError);
+      } else {
         setRecitationReviews([]);
       }
 
-      // Load admin notifications
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      try {
-        const notificationsResponse = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000);
-        if (notificationsResponse.ok) {
-          const notificationsData = await notificationsResponse.json();
+      // Process notifications
+      if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok) {
+        try {
+          const notificationsData = await notificationsResponse.value.json();
           if (import.meta.env.DEV) {
             console.log('🔔 Admin notifications loaded:', notificationsData.length);
           }
           setAdminNotifications(notificationsData);
-        } else {
-          console.warn('⚠️ Failed to load notifications:', notificationsResponse.status);
+        } catch (err) {
+          console.error('❌ Error processing notifications:', err);
           setAdminNotifications([]);
         }
-      } catch (notificationsError: any) {
-        console.error('❌ Error loading notifications:', notificationsError?.message || notificationsError);
+      } else {
         setAdminNotifications([]);
       }
 
-      // Load tickets (old system)
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
-      try {
-        const ticketsResponse = await fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000);
-        if (ticketsResponse.ok) {
-          const ticketsData = await ticketsResponse.json();
+      // Process tickets
+      if (ticketsResponse.status === 'fulfilled' && ticketsResponse.value.ok) {
+        try {
+          const ticketsData = await ticketsResponse.value.json();
           if (import.meta.env.DEV) {
             console.log('🎫 Tickets loaded:', ticketsData.length);
           }
@@ -553,34 +511,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           if (import.meta.env.DEV) {
             console.log('🎫 Recitation tickets loaded:', recitationTicketsData.length);
           }
-          const ticketsWithRecordings = recitationTicketsData.filter((t: any) => t.recordingUrl);
-          console.log('🎙️ Tickets with recordings:', ticketsWithRecordings.length);
-          if (ticketsWithRecordings.length > 0) {
-            console.log('📋 Sample tickets with recordings:');
-            ticketsWithRecordings.slice(0, 3).forEach((t: any) => {
-              console.log('  -', {
-                id: t.id,
-                studentName: t.studentName,
-                type: t.type,
-                recordingUrl: t.recordingUrl,
-                recordingFormat: t.recordingFormat,
-                recordingDuration: t.recordingDuration
-              });
-            });
-          }
-        } else {
-          console.warn('⚠️ Failed to load tickets:', ticketsResponse.status);
+        } catch (err) {
+          console.error('❌ Error processing tickets:', err);
           setTickets([]);
           setRecitationTickets([]);
         }
-      } catch (ticketsError: any) {
-        console.error('❌ Error loading tickets:', ticketsError?.message || ticketsError);
+      } else {
         setTickets([]);
         setRecitationTickets([]);
       }
 
       // Load actual student records from /api/students endpoint
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
+      setLoadingStep('Loading students...');
       let studentRecords: any[] = [];
       try {
         const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 10000);
@@ -1127,6 +1069,43 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
     }
   }, [loadData]);
+
+  // Auto-refresh when window becomes visible (user switches back to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && hasLoadedRef.current) {
+        // Use lightweight refresh when tab becomes visible (faster)
+        const lastRefresh = sessionStorage.getItem('lastDataRefresh');
+        const now = Date.now();
+        if (!lastRefresh || (now - parseInt(lastRefresh)) > 30000) {
+          if (import.meta.env.DEV) {
+            console.log('👁️ Tab became visible - refreshing data');
+          }
+          refreshDataLight(); // Use lightweight refresh for better UX
+          sessionStorage.setItem('lastDataRefresh', now.toString());
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refreshDataLight]);
+
+  // Periodic auto-refresh (every 2 minutes when tab is active) - lightweight
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isLoadingRef.current) {
+        if (import.meta.env.DEV) {
+          console.log('🔄 Periodic auto-refresh triggered');
+        }
+        refreshDataLight(); // Use lightweight refresh for periodic updates
+      }
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(interval);
+  }, [refreshDataLight]);
 
   // Re-apply masking when user changes (e.g., after login)
   useEffect(() => {
@@ -1914,14 +1893,84 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     return students.find(student => student.email === email);
   };
 
+  // Lightweight refresh - only refresh assignments, tickets, and notifications (faster)
+  const refreshDataLight = useCallback(async () => {
+    if (isLoadingRef.current) {
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Light refresh skipped - data load already in progress');
+      }
+      return;
+    }
+
+    try {
+      isLoadingRef.current = true;
+      setLoadingStep('Refreshing...');
+      
+      // Refresh only critical data in parallel
+      const [assignmentsRes, ticketsRes, notificationsRes] = await Promise.all([
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 5000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 5000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => null)
+      ]);
+
+      if (assignmentsRes?.ok) {
+        const assignmentsData = await assignmentsRes.json();
+        const mappedAssignments = assignmentsData.map((assignment: any) => ({
+          ...assignment,
+          id: assignment._id || assignment.id,
+          createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+        }));
+        setAssignments(mappedAssignments);
+      }
+
+      if (ticketsRes?.ok) {
+        const ticketsData = await ticketsRes.json();
+        const mappedTickets = ticketsData.map((ticket: any) => ({
+          ...ticket,
+          id: ticket._id || ticket.id,
+          createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+        }));
+        setTickets(mappedTickets);
+        
+        const recitationTicketsData = ticketsData
+          .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
+          .map((ticket: any) => ({
+            ...ticket,
+            id: ticket._id || ticket.id,
+            createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+          }));
+        setRecitationTickets(recitationTicketsData);
+      }
+
+      if (notificationsRes?.ok) {
+        const notificationsData = await notificationsRes.json();
+        setAdminNotifications(notificationsData);
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('✅ Light refresh completed');
+      }
+    } catch (error) {
+      console.error('❌ Light refresh error:', error);
+    } finally {
+      isLoadingRef.current = false;
+      setLoadingStep('');
+    }
+  }, []);
+
   // Memoized refreshData to prevent unnecessary re-renders and concurrent calls
   const refreshData = useCallback(async () => {
     if (isLoadingRef.current) {
-      console.log('⏸️ Refresh skipped - data load already in progress');
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Refresh skipped - data load already in progress');
+      }
       return;
     }
+    // Reset the hasLoadedRef to allow refresh
+    hasLoadedRef.current = false;
     await loadData();
-  }, []); // Empty deps array since loadData doesn't change
+  }, [loadData]); // Include loadData in deps
 
   // Assignment management functions
   const addAssignment = async (assignment: Assignment) => {
@@ -3284,6 +3333,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     loadingStep,
     error,
     refreshData,
+    refreshDataLight,
     assignments,
     addAssignment,
     updateAssignment,
