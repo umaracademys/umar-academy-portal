@@ -22,6 +22,7 @@ import PairDailyReportForm from '../components/PairDailyReportForm';
 import PairTeacherMessage from '../components/PairTeacherMessage';
 import TeacherStudentMessage from '../components/TeacherStudentMessage';
 import TeacherPersonalMushaf from '../components/TeacherPersonalMushaf';
+import TeacherAssessmentForm from '../components/TeacherAssessmentForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
@@ -188,60 +189,11 @@ const TeacherDashboard: React.FC = () => {
     canViewStudentPersonalInfo: true,
   };
 
-  const [assessmentData, setAssessmentData] = useState({
-    type: '',
-    score: 0,
-    maxScore: 100,
-    notes: '',
-  });
-
   const [evaluationData, setEvaluationData] = useState({
     category: '',
     rating: 5,
     comments: '',
   });
-
-  const handleAddAssessment = async () => {
-    if (!selectedStudent || !permissions.canEditAssessments) return;
-    
-    if (!assessmentData.type.trim()) {
-      setSaveError('Please enter an assessment type');
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveError(null);
-    setSaveSuccess(null);
-
-    try {
-      const newAssessment: Assessment = {
-        id: `ASS${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
-        type: assessmentData.type,
-        score: assessmentData.score,
-        maxScore: assessmentData.maxScore,
-        notes: assessmentData.notes,
-        conductedBy: currentTeacher?.id || '',
-      };
-
-      const updatedAssessments = [...(Array.isArray(selectedStudent.assessments) ? selectedStudent.assessments : []), newAssessment];
-      
-      await updateStudent(selectedStudent.id, { assessments: updatedAssessments });
-      await refreshData();
-      
-      setSaveSuccess('Assessment added successfully!');
-      setShowAssessmentForm(false);
-      setAssessmentData({ type: '', score: 0, maxScore: 100, notes: '' });
-      
-      setTimeout(() => setSaveSuccess(null), 3000);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add assessment';
-      setSaveError(errorMessage);
-      console.error('Error adding assessment:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const formatDate = (date: string | Date | undefined | null): string => {
     if (!date) return 'Not set';
@@ -982,91 +934,25 @@ const TeacherDashboard: React.FC = () => {
 
       {/* Assessment Form Modal */}
       {showAssessmentForm && selectedStudent && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center p-4 z-50"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setShowAssessmentForm(false)}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-6 pb-4 border-b-2 border-primary">
-              <h3 className="text-2xl font-bold text-primary">Add Assessment</h3>
-              <p className="text-sm text-gray-600 mt-1">For {selectedStudent.fullName}</p>
-            </div>
-            
-            {saveError && (
-              <div className="mb-4 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3">
-                <p className="text-xs font-bold text-red-800">{saveError}</p>
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Assessment Type</label>
-                <input
-                  type="text"
-                  value={assessmentData.type}
-                  onChange={(e) => setAssessmentData({ ...assessmentData, type: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
-                  placeholder="e.g., Quran Recitation, Math Quiz"
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Score</label>
-                  <input
-                    type="number"
-                    value={assessmentData.score}
-                    onChange={(e) => setAssessmentData({ ...assessmentData, score: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Max Score</label>
-                  <input
-                    type="number"
-                    value={assessmentData.maxScore}
-                    onChange={(e) => setAssessmentData({ ...assessmentData, maxScore: parseInt(e.target.value) || 100 })}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition"
-                    placeholder="100"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Notes</label>
-                <textarea
-                  value={assessmentData.notes}
-                  onChange={(e) => setAssessmentData({ ...assessmentData, notes: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition resize-none"
-                  rows={4}
-                  placeholder="Add notes about this assessment..."
-                />
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => setShowAssessmentForm(false)}
-                  className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-bold transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddAssessment}
-                  disabled={isSaving}
-                  className="px-6 py-3 bg-primary text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? 'Saving...' : 'Add Assessment'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TeacherAssessmentForm
+          student={selectedStudent}
+          onClose={() => {
+            setShowAssessmentForm(false);
+            setSelectedStudent(null);
+            setSaveError(null);
+            setSaveSuccess(null);
+          }}
+          onSave={() => {
+            setShowAssessmentForm(false);
+            setSelectedStudent(null);
+            setSaveError(null);
+            setSaveSuccess('Assessment added successfully!');
+            refreshData();
+            setTimeout(() => setSaveSuccess(null), 3000);
+          }}
+        />
       )}
+
 
       {/* Weekly Evaluation Form Modal */}
       {showWeeklyEvaluationForm && selectedStudent && (
