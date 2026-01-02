@@ -1656,15 +1656,15 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       <div className="space-y-4 sm:space-y-6">
         <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <img
                 src={adminAvatar}
                 alt={selectedAdmin.fullName}
-                className="h-14 w-14 rounded-full border border-amber-300 object-cover"
+                className="h-12 w-12 sm:h-14 sm:w-14 rounded-full border border-amber-300 object-cover flex-shrink-0"
               />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-semibold text-amber-900">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <h3 className="text-lg sm:text-xl font-semibold text-amber-900">
                     {selectedAdmin.fullName}
                   </h3>
                   <span
