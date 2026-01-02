@@ -363,6 +363,8 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                   readOnly={false}
                   mode="marking"
                   showHistorical={true}
+                  showSurahIndexDefault={true}
+                  studentName={studentName}
                 />
               </div>
             </div>
