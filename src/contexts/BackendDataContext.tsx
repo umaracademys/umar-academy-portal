@@ -1974,19 +1974,6 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     await loadData();
   }, [loadData]); // Include loadData in deps
 
-  // Memoized refreshData to prevent unnecessary re-renders and concurrent calls
-  const refreshData = useCallback(async () => {
-    if (isLoadingRef.current) {
-      if (import.meta.env.DEV) {
-        console.log('⏸️ Refresh skipped - data load already in progress');
-      }
-      return;
-    }
-    // Reset the hasLoadedRef to allow refresh
-    hasLoadedRef.current = false;
-    await loadData();
-  }, [loadData]); // Include loadData in deps
-
   // Assignment management functions
   const addAssignment = async (assignment: Assignment) => {
     try {
