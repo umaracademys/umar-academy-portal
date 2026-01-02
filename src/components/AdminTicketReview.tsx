@@ -35,6 +35,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mushafPage, setMushafPage] = useState(1);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const previousTicketIdRef = React.useRef<string | null>(null); // Track previous ticket ID to prevent unnecessary mushaf page resets
 
   // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
@@ -70,15 +71,24 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     return ticket || null;
   }, [selectedTicketId, recitationTickets]);
 
-  // Initialize mushaf page when ticket is selected
+  // Initialize mushaf page ONLY when a different ticket is selected (not on data refresh)
   useEffect(() => {
-    if (selectedTicket?.mistakes && selectedTicket.mistakes.length > 0) {
-      const firstMistake = selectedTicket.mistakes[0];
-      if (firstMistake?.page) {
-        setMushafPage(firstMistake.page);
+    // Only reset mushaf page if this is a different ticket than before
+    if (selectedTicketId && selectedTicketId !== previousTicketIdRef.current) {
+      previousTicketIdRef.current = selectedTicketId;
+      if (selectedTicket?.mistakes && selectedTicket.mistakes.length > 0) {
+        const firstMistake = selectedTicket.mistakes[0];
+        if (firstMistake?.page) {
+          setMushafPage(firstMistake.page);
+        }
       }
+    } else if (!selectedTicketId) {
+      // Reset ref when no ticket is selected
+      previousTicketIdRef.current = null;
     }
-  }, [selectedTicket]);
+    // Don't include selectedTicket in dependencies - we only want to reset when ticket ID changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTicketId]);
 
   const handleTicketClick = (ticketId: string) => {
     console.log('🎫 Clicking ticket:', ticketId);
