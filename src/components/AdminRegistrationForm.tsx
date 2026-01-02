@@ -17,11 +17,76 @@ const AdminRegistrationForm: React.FC<AdminRegistrationFormProps> = ({ onClose }
   });
 
   const [permissions, setPermissions] = useState<AdminPermissions>({
+    // People Operations
     canManageTeachers: true,
     canManageStudents: true,
+    
+    // Finance & Billing
     canManageFinancials: false,
+    
+    // Insights
     canViewReports: true,
+    
+    // Security & Governance
     canManagePermissions: false,
+    
+    // Module Permissions - Messages
+    canAccessMessages: false,
+    canViewAllMessages: false,
+    canModerateMessages: false,
+    
+    // Module Permissions - PDF
+    canAccessPdf: false,
+    canManagePdfLibrary: false,
+    canViewAllPdfAnnotations: false,
+    
+    // Module Permissions - Homework
+    canAccessHomework: false,
+    canManageHomework: false,
+    canViewAllHomework: false,
+    
+    // Module Permissions - Evaluation
+    canAccessEvaluations: false,
+    canManageEvaluations: false,
+    canApproveEvaluations: false,
+    
+    // Module Permissions - Tickets
+    canAccessTickets: false,
+    canCreateTickets: false,
+    canReviewTickets: false,
+    canApproveTickets: false,
+    canFinalizeTickets: false,
+    canManageTicketWorkflow: false,
+    
+    // Module Permissions - Attendance
+    canAccessAttendance: false,
+    canManageAttendance: false,
+    canViewAttendanceReports: false,
+    
+    // Module Permissions - Recordings
+    canAccessRecordings: false,
+    canManageRecordings: false,
+    canViewAllRecordings: false,
+    
+    // Module Permissions - Mushaf
+    canAccessMushaf: false,
+    canManageMushaf: false,
+    canViewAllMistakes: false,
+    
+    // Module Permissions - Qaidah
+    canAccessQaidah: false,
+    canManageQaidah: false,
+    canViewQaidahReports: false,
+    
+    // Module Permissions - Assignments
+    canAccessAssignments: false,
+    canManageAssignments: false,
+    canBulkCreateAssignments: false,
+    
+    // Module Permissions - Reports & Analytics
+    canViewAnalytics: false,
+    canExportReports: false,
+    canViewSystemStats: false,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -691,16 +691,88 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Ensure permissions are properly loaded with all fields
           const permissionsFromRecord = teacherRecord?.permissions || teacherProfile.permissions || {};
           const permissions: TeacherPermissions = {
+            // Assessments & Evaluations
             canViewAssessments: permissionsFromRecord.canViewAssessments ?? true,
             canEditAssessments: permissionsFromRecord.canEditAssessments ?? true,
             canViewEvaluations: permissionsFromRecord.canViewEvaluations ?? true,
             canEditEvaluations: permissionsFromRecord.canEditEvaluations ?? true,
+            
+            // Financial & Billing
             canViewFinancials: permissionsFromRecord.canViewFinancials ?? false,
+            
+            // Scheduling & Logistics
             canManageSchedule: permissionsFromRecord.canManageSchedule ?? true,
+            
+            // Communication
             canContactParents: permissionsFromRecord.canContactParents ?? true,
+            
+            // Student Information
             canViewStudentEmail: permissionsFromRecord.canViewStudentEmail ?? true,
             canViewStudentContact: permissionsFromRecord.canViewStudentContact ?? true,
             canViewStudentPersonalInfo: permissionsFromRecord.canViewStudentPersonalInfo ?? true,
+            
+            // Module Permissions - Messages
+            canAccessMessages: permissionsFromRecord.canAccessMessages ?? true,
+            canSendMessages: permissionsFromRecord.canSendMessages ?? true,
+            canViewAllMessages: permissionsFromRecord.canViewAllMessages ?? false,
+            
+            // Module Permissions - PDF
+            canAccessPdf: permissionsFromRecord.canAccessPdf ?? true,
+            canUploadPdf: permissionsFromRecord.canUploadPdf ?? false,
+            canAnnotatePdf: permissionsFromRecord.canAnnotatePdf ?? true,
+            canViewPdfAnnotations: permissionsFromRecord.canViewPdfAnnotations ?? true,
+            
+            // Module Permissions - Homework
+            canAccessHomework: permissionsFromRecord.canAccessHomework ?? true,
+            canCreateHomework: permissionsFromRecord.canCreateHomework ?? true,
+            canGradeHomework: permissionsFromRecord.canGradeHomework ?? true,
+            canViewHomeworkSubmissions: permissionsFromRecord.canViewHomeworkSubmissions ?? true,
+            
+            // Module Permissions - Evaluation
+            canAccessEvaluations: permissionsFromRecord.canAccessEvaluations ?? true,
+            canCreateEvaluations: permissionsFromRecord.canCreateEvaluations ?? false,
+            canReviewEvaluations: permissionsFromRecord.canReviewEvaluations ?? false,
+            canApproveEvaluations: permissionsFromRecord.canApproveEvaluations ?? false,
+            
+            // Module Permissions - Tickets
+            canAccessTickets: permissionsFromRecord.canAccessTickets ?? true,
+            canCreateTickets: permissionsFromRecord.canCreateTickets ?? false,
+            canReviewTickets: permissionsFromRecord.canReviewTickets ?? true,
+            canApproveTickets: permissionsFromRecord.canApproveTickets ?? false,
+            canFinalizeTickets: permissionsFromRecord.canFinalizeTickets ?? false,
+            
+            // Module Permissions - Attendance
+            canAccessAttendance: permissionsFromRecord.canAccessAttendance ?? true,
+            canRecordAttendance: permissionsFromRecord.canRecordAttendance ?? true,
+            canViewAttendanceReports: permissionsFromRecord.canViewAttendanceReports ?? true,
+            
+            // Module Permissions - Recordings
+            canAccessRecordings: permissionsFromRecord.canAccessRecordings ?? true,
+            canUploadRecordings: permissionsFromRecord.canUploadRecordings ?? true,
+            canDeleteRecordings: permissionsFromRecord.canDeleteRecordings ?? false,
+            canViewAllRecordings: permissionsFromRecord.canViewAllRecordings ?? false,
+            
+            // Module Permissions - Mushaf
+            canAccessMushaf: permissionsFromRecord.canAccessMushaf ?? true,
+            canMarkMistakes: permissionsFromRecord.canMarkMistakes ?? true,
+            canViewMistakeHistory: permissionsFromRecord.canViewMistakeHistory ?? true,
+            canManageMistakeLibrary: permissionsFromRecord.canManageMistakeLibrary ?? false,
+            
+            // Module Permissions - Qaidah
+            canAccessQaidah: permissionsFromRecord.canAccessQaidah ?? true,
+            canManageQaidah: permissionsFromRecord.canManageQaidah ?? false,
+            canViewQaidahProgress: permissionsFromRecord.canViewQaidahProgress ?? true,
+            
+            // Module Permissions - Assignments
+            canAccessAssignments: permissionsFromRecord.canAccessAssignments ?? true,
+            canCreateAssignments: permissionsFromRecord.canCreateAssignments ?? true,
+            canEditAssignments: permissionsFromRecord.canEditAssignments ?? false,
+            canDeleteAssignments: permissionsFromRecord.canDeleteAssignments ?? false,
+            
+            // Module Permissions - Reports & Analytics
+            canViewReports: permissionsFromRecord.canViewReports ?? true,
+            canViewAnalytics: permissionsFromRecord.canViewAnalytics ?? true,
+            canExportReports: permissionsFromRecord.canExportReports ?? false,
           };
           
           return {
@@ -777,11 +849,76 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               email: adminRecord.email || '',
               contact: adminRecord.contact || '',
               permissions: adminRecord.permissions || {
+                // People Operations
                 canManageTeachers: false,
                 canManageStudents: false,
+                
+                // Finance & Billing
                 canManageFinancials: false,
+                
+                // Insights
                 canViewReports: false,
-                canManagePermissions: false
+                
+                // Security & Governance
+                canManagePermissions: false,
+                
+                // Module Permissions - Messages
+                canAccessMessages: false,
+                canViewAllMessages: false,
+                canModerateMessages: false,
+                
+                // Module Permissions - PDF
+                canAccessPdf: false,
+                canManagePdfLibrary: false,
+                canViewAllPdfAnnotations: false,
+                
+                // Module Permissions - Homework
+                canAccessHomework: false,
+                canManageHomework: false,
+                canViewAllHomework: false,
+                
+                // Module Permissions - Evaluation
+                canAccessEvaluations: false,
+                canManageEvaluations: false,
+                canApproveEvaluations: false,
+                
+                // Module Permissions - Tickets
+                canAccessTickets: false,
+                canCreateTickets: false,
+                canReviewTickets: false,
+                canApproveTickets: false,
+                canFinalizeTickets: false,
+                canManageTicketWorkflow: false,
+                
+                // Module Permissions - Attendance
+                canAccessAttendance: false,
+                canManageAttendance: false,
+                canViewAttendanceReports: false,
+                
+                // Module Permissions - Recordings
+                canAccessRecordings: false,
+                canManageRecordings: false,
+                canViewAllRecordings: false,
+                
+                // Module Permissions - Mushaf
+                canAccessMushaf: false,
+                canManageMushaf: false,
+                canViewAllMistakes: false,
+                
+                // Module Permissions - Qaidah
+                canAccessQaidah: false,
+                canManageQaidah: false,
+                canViewQaidahReports: false,
+                
+                // Module Permissions - Assignments
+                canAccessAssignments: false,
+                canManageAssignments: false,
+                canBulkCreateAssignments: false,
+                
+                // Module Permissions - Reports & Analytics
+                canViewAnalytics: false,
+                canExportReports: false,
+                canViewSystemStats: false
               },
               assignedDepartments: adminRecord.assignedDepartments || [],
               hireDate: adminRecord.hireDate ? new Date(adminRecord.hireDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -818,11 +955,76 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             email: user.email,
             contact: user.phone || user.contact || '',
             permissions: user.permissions || {
+              // People Operations
               canManageTeachers: false,
               canManageStudents: false,
+              
+              // Finance & Billing
               canManageFinancials: false,
+              
+              // Insights
               canViewReports: false,
-              canManagePermissions: false
+              
+              // Security & Governance
+              canManagePermissions: false,
+              
+              // Module Permissions - Messages
+              canAccessMessages: false,
+              canViewAllMessages: false,
+              canModerateMessages: false,
+              
+              // Module Permissions - PDF
+              canAccessPdf: false,
+              canManagePdfLibrary: false,
+              canViewAllPdfAnnotations: false,
+              
+              // Module Permissions - Homework
+              canAccessHomework: false,
+              canManageHomework: false,
+              canViewAllHomework: false,
+              
+              // Module Permissions - Evaluation
+              canAccessEvaluations: false,
+              canManageEvaluations: false,
+              canApproveEvaluations: false,
+              
+              // Module Permissions - Tickets
+              canAccessTickets: false,
+              canCreateTickets: false,
+              canReviewTickets: false,
+              canApproveTickets: false,
+              canFinalizeTickets: false,
+              canManageTicketWorkflow: false,
+              
+              // Module Permissions - Attendance
+              canAccessAttendance: false,
+              canManageAttendance: false,
+              canViewAttendanceReports: false,
+              
+              // Module Permissions - Recordings
+              canAccessRecordings: false,
+              canManageRecordings: false,
+              canViewAllRecordings: false,
+              
+              // Module Permissions - Mushaf
+              canAccessMushaf: false,
+              canManageMushaf: false,
+              canViewAllMistakes: false,
+              
+              // Module Permissions - Qaidah
+              canAccessQaidah: false,
+              canManageQaidah: false,
+              canViewQaidahReports: false,
+              
+              // Module Permissions - Assignments
+              canAccessAssignments: false,
+              canManageAssignments: false,
+              canBulkCreateAssignments: false,
+              
+              // Module Permissions - Reports & Analytics
+              canViewAnalytics: false,
+              canExportReports: false,
+              canViewSystemStats: false
             },
             assignedDepartments: user.assignedDepartments || [],
             hireDate: user.hireDate || new Date().toISOString().split('T')[0],

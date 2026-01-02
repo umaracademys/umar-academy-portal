@@ -72,16 +72,88 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
 
   // Permissions
   const [permissions, setPermissions] = useState<TeacherPermissions>({
+    // Assessments & Evaluations
     canViewAssessments: true,
     canEditAssessments: true,
     canViewEvaluations: true,
     canEditEvaluations: true,
+    
+    // Financial & Billing
     canViewFinancials: false,
+    
+    // Scheduling & Logistics
     canManageSchedule: true,
+    
+    // Communication
     canContactParents: true,
+    
+    // Student Information
     canViewStudentEmail: true,
     canViewStudentContact: true,
     canViewStudentPersonalInfo: true,
+    
+    // Module Permissions - Messages
+    canAccessMessages: true,
+    canSendMessages: true,
+    canViewAllMessages: false,
+    
+    // Module Permissions - PDF
+    canAccessPdf: true,
+    canUploadPdf: false,
+    canAnnotatePdf: true,
+    canViewPdfAnnotations: true,
+    
+    // Module Permissions - Homework
+    canAccessHomework: true,
+    canCreateHomework: true,
+    canGradeHomework: true,
+    canViewHomeworkSubmissions: true,
+    
+    // Module Permissions - Evaluation
+    canAccessEvaluations: true,
+    canCreateEvaluations: false,
+    canReviewEvaluations: false,
+    canApproveEvaluations: false,
+    
+    // Module Permissions - Tickets
+    canAccessTickets: true,
+    canCreateTickets: false,
+    canReviewTickets: true,
+    canApproveTickets: false,
+    canFinalizeTickets: false,
+    
+    // Module Permissions - Attendance
+    canAccessAttendance: true,
+    canRecordAttendance: true,
+    canViewAttendanceReports: true,
+    
+    // Module Permissions - Recordings
+    canAccessRecordings: true,
+    canUploadRecordings: true,
+    canDeleteRecordings: false,
+    canViewAllRecordings: false,
+    
+    // Module Permissions - Mushaf
+    canAccessMushaf: true,
+    canMarkMistakes: true,
+    canViewMistakeHistory: true,
+    canManageMistakeLibrary: false,
+    
+    // Module Permissions - Qaidah
+    canAccessQaidah: true,
+    canManageQaidah: false,
+    canViewQaidahProgress: true,
+    
+    // Module Permissions - Assignments
+    canAccessAssignments: true,
+    canCreateAssignments: true,
+    canEditAssignments: false,
+    canDeleteAssignments: false,
+    
+    // Module Permissions - Reports & Analytics
+    canViewReports: true,
+    canViewAnalytics: true,
+    canExportReports: false,
   });
 
   // Form submission state
@@ -309,17 +381,89 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       
       // Initialize permissions - ensure all permission fields are present
       if (teacher.permissions) {
-        const initializedPermissions = {
+        const initializedPermissions: TeacherPermissions = {
+          // Assessments & Evaluations
           canViewAssessments: teacher.permissions.canViewAssessments ?? true,
           canEditAssessments: teacher.permissions.canEditAssessments ?? true,
           canViewEvaluations: teacher.permissions.canViewEvaluations ?? true,
           canEditEvaluations: teacher.permissions.canEditEvaluations ?? true,
+          
+          // Financial & Billing
           canViewFinancials: teacher.permissions.canViewFinancials ?? false,
+          
+          // Scheduling & Logistics
           canManageSchedule: teacher.permissions.canManageSchedule ?? true,
+          
+          // Communication
           canContactParents: teacher.permissions.canContactParents ?? true,
+          
+          // Student Information
           canViewStudentEmail: teacher.permissions.canViewStudentEmail ?? true,
           canViewStudentContact: teacher.permissions.canViewStudentContact ?? true,
           canViewStudentPersonalInfo: teacher.permissions.canViewStudentPersonalInfo ?? true,
+          
+          // Module Permissions - Messages
+          canAccessMessages: teacher.permissions.canAccessMessages ?? true,
+          canSendMessages: teacher.permissions.canSendMessages ?? true,
+          canViewAllMessages: teacher.permissions.canViewAllMessages ?? false,
+          
+          // Module Permissions - PDF
+          canAccessPdf: teacher.permissions.canAccessPdf ?? true,
+          canUploadPdf: teacher.permissions.canUploadPdf ?? false,
+          canAnnotatePdf: teacher.permissions.canAnnotatePdf ?? true,
+          canViewPdfAnnotations: teacher.permissions.canViewPdfAnnotations ?? true,
+          
+          // Module Permissions - Homework
+          canAccessHomework: teacher.permissions.canAccessHomework ?? true,
+          canCreateHomework: teacher.permissions.canCreateHomework ?? true,
+          canGradeHomework: teacher.permissions.canGradeHomework ?? true,
+          canViewHomeworkSubmissions: teacher.permissions.canViewHomeworkSubmissions ?? true,
+          
+          // Module Permissions - Evaluation
+          canAccessEvaluations: teacher.permissions.canAccessEvaluations ?? true,
+          canCreateEvaluations: teacher.permissions.canCreateEvaluations ?? false,
+          canReviewEvaluations: teacher.permissions.canReviewEvaluations ?? false,
+          canApproveEvaluations: teacher.permissions.canApproveEvaluations ?? false,
+          
+          // Module Permissions - Tickets
+          canAccessTickets: teacher.permissions.canAccessTickets ?? true,
+          canCreateTickets: teacher.permissions.canCreateTickets ?? false,
+          canReviewTickets: teacher.permissions.canReviewTickets ?? true,
+          canApproveTickets: teacher.permissions.canApproveTickets ?? false,
+          canFinalizeTickets: teacher.permissions.canFinalizeTickets ?? false,
+          
+          // Module Permissions - Attendance
+          canAccessAttendance: teacher.permissions.canAccessAttendance ?? true,
+          canRecordAttendance: teacher.permissions.canRecordAttendance ?? true,
+          canViewAttendanceReports: teacher.permissions.canViewAttendanceReports ?? true,
+          
+          // Module Permissions - Recordings
+          canAccessRecordings: teacher.permissions.canAccessRecordings ?? true,
+          canUploadRecordings: teacher.permissions.canUploadRecordings ?? true,
+          canDeleteRecordings: teacher.permissions.canDeleteRecordings ?? false,
+          canViewAllRecordings: teacher.permissions.canViewAllRecordings ?? false,
+          
+          // Module Permissions - Mushaf
+          canAccessMushaf: teacher.permissions.canAccessMushaf ?? true,
+          canMarkMistakes: teacher.permissions.canMarkMistakes ?? true,
+          canViewMistakeHistory: teacher.permissions.canViewMistakeHistory ?? true,
+          canManageMistakeLibrary: teacher.permissions.canManageMistakeLibrary ?? false,
+          
+          // Module Permissions - Qaidah
+          canAccessQaidah: teacher.permissions.canAccessQaidah ?? true,
+          canManageQaidah: teacher.permissions.canManageQaidah ?? false,
+          canViewQaidahProgress: teacher.permissions.canViewQaidahProgress ?? true,
+          
+          // Module Permissions - Assignments
+          canAccessAssignments: teacher.permissions.canAccessAssignments ?? true,
+          canCreateAssignments: teacher.permissions.canCreateAssignments ?? true,
+          canEditAssignments: teacher.permissions.canEditAssignments ?? false,
+          canDeleteAssignments: teacher.permissions.canDeleteAssignments ?? false,
+          
+          // Module Permissions - Reports & Analytics
+          canViewReports: teacher.permissions.canViewReports ?? true,
+          canViewAnalytics: teacher.permissions.canViewAnalytics ?? true,
+          canExportReports: teacher.permissions.canExportReports ?? false,
         };
         console.log('✅ Setting permissions:', initializedPermissions);
         setPermissions(initializedPermissions);
@@ -443,17 +587,6 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         assignedStudents: isEdit ? teacher?.assignedStudents || [] : [],
         permissions: {
           ...permissions,
-          // Ensure all permission fields are included
-          canViewAssessments: permissions.canViewAssessments ?? true,
-          canEditAssessments: permissions.canEditAssessments ?? true,
-          canViewEvaluations: permissions.canViewEvaluations ?? true,
-          canEditEvaluations: permissions.canEditEvaluations ?? true,
-          canViewFinancials: permissions.canViewFinancials ?? false,
-          canManageSchedule: permissions.canManageSchedule ?? true,
-          canContactParents: permissions.canContactParents ?? true,
-          canViewStudentEmail: permissions.canViewStudentEmail ?? true,
-          canViewStudentContact: permissions.canViewStudentContact ?? true,
-          canViewStudentPersonalInfo: permissions.canViewStudentPersonalInfo ?? true,
         },
         schedule: employmentInfo.employmentType === 'Full Time' ? {
           days: fullTimeSchedule.workingDays,
