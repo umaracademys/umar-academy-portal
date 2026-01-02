@@ -276,12 +276,54 @@ app.use((req, res, next) => {
 });
 
 // Serve uploaded audio files - must be before 404 handler
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', (req, res, next) => {
+  // Set CORS headers for all uploads
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    process.env.FRONTEND_URL,
+    'https://umar-academy-frontend-m2at.onrender.com'
+  ].filter(Boolean);
+  
+  if (origin && (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Range');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+  }
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+}, express.static(path.join(__dirname, 'uploads'), {
   setHeaders: (res, filePath) => {
     // Set proper headers for audio files
     if (filePath.endsWith('.webm') || filePath.endsWith('.mp4') || filePath.endsWith('.mp3')) {
       res.setHeader('Content-Type', 'audio/webm');
       res.setHeader('Accept-Ranges', 'bytes');
+      // Ensure CORS headers are set for audio files
+      const origin = res.req?.headers?.origin;
+      const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:5174',
+        'http://localhost:5175',
+        process.env.FRONTEND_URL,
+        'https://umar-academy-frontend-m2at.onrender.com'
+      ].filter(Boolean);
+      
+      if (origin && (process.env.NODE_ENV !== 'production' || allowedOrigins.includes(origin))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Range');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
+      }
     }
   },
   fallthrough: false // Don't fall through to next middleware if file not found
