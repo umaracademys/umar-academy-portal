@@ -107,7 +107,8 @@ app.use(cors({
       'http://localhost:3000',
       'http://localhost:5174',
       'http://localhost:5175',
-      process.env.FRONTEND_URL
+      process.env.FRONTEND_URL,
+      'https://umar-academy-frontend-m2at.onrender.com'
     ].filter(Boolean); // Remove undefined values
     
     // In development, allow all localhost origins
@@ -119,7 +120,8 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['Content-Range', 'Content-Length', 'Accept-Ranges']
 }));
 
 // Create uploads directories if they don't exist (must be before route that uses it)
