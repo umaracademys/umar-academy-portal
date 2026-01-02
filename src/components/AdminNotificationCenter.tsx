@@ -131,22 +131,23 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
     }
 
     // Navigate based on notification type
-    if (notification.actionUrl) {
-      navigate(notification.actionUrl);
-      onClose();
-    } else if (notification.type === 'recitation_review_pending' && notification.recitationReviewId) {
+    // Check for ticket notifications first (before actionUrl check)
+    if (notification.type === 'recitation_review_pending' && notification.recitationReviewId) {
       // Check if it's a ticket notification (starts with 'ticket-')
       if (notification.id?.startsWith('ticket-') && onOpenTicketReview) {
         onOpenTicketReview();
         onClose();
+        return;
       } else if (onOpenRecitationReview) {
         // Open recitation review modal
         onOpenRecitationReview();
         onClose();
-      } else {
-        onClose();
+        return;
       }
-    } else if (notification.type === 'assignment_submitted' && notification.assignmentId) {
+    }
+    
+    // Handle other notification types
+    if (notification.type === 'assignment_submitted' && notification.assignmentId) {
       navigate('/assignments');
       onClose();
     } else if (notification.type === 'profile_update_request' && notification.teacherId) {
@@ -157,6 +158,10 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       // Show registration request modal
       setSelectedRegistrationNotification(notification);
       // Don't close the notification center, just show the modal
+    } else if (notification.actionUrl) {
+      // Fallback to actionUrl navigation
+      navigate(notification.actionUrl);
+      onClose();
     } else {
       onClose();
     }
