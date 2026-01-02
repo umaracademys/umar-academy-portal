@@ -243,23 +243,28 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)]">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[98vw] sm:max-w-[95vw] lg:max-w-[98vw] max-h-[98vh] sm:max-h-[95vh] overflow-hidden flex flex-col border-2 border-primary/20">
+        {/* Header - Enhanced Design */}
+        <div className="px-4 sm:px-6 py-4 border-b-2 border-primary/30 bg-gradient-to-r from-primary via-[rgba(var(--color-primary-rgb),0.9)] to-primary shadow-lg">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-white">
-                {studentName ? `${studentName}'s Personal Mushaf` : 'My Personal Mushaf'}
-              </h2>
-              <p className="text-white/80 text-sm mt-1">
-                {studentName ? `All mistakes from ${studentName}'s recitation reviews` : 'All mistakes from your recitation reviews'}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                <span className="text-2xl">📖</span>
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
+                  {studentName ? `${studentName}'s Personal Mushaf` : 'My Personal Mushaf'}
+                </h2>
+                <p className="text-white/90 text-xs sm:text-sm mt-0.5 font-medium">
+                  {studentName ? `All mistakes from ${studentName}'s recitation reviews` : 'All mistakes from your recitation reviews'}
+                </p>
+              </div>
             </div>
             {onClose && (
               <button
                 onClick={onClose}
-                className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-xl font-bold"
+                className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-xl transition-all text-xl font-bold shadow-lg hover:scale-110"
                 title="Close"
               >
                 ×
@@ -268,40 +273,40 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
         </div>
 
-        {/* Statistics Bar - Compact Design */}
-        <div className="px-4 py-2 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b border-gray-200">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-primary/20 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
-              <div className="text-xl font-bold text-primary leading-tight">{stats.total}</div>
-              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Total Mistakes</div>
+        {/* Statistics Bar - Enhanced Design */}
+        <div className="px-3 sm:px-4 py-3 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200 shadow-sm">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
+            <div className="text-center px-3 py-2 rounded-xl bg-gradient-to-br from-white to-primary/5 border-2 border-primary/30 shadow-md hover:shadow-lg transition-all h-[70px] flex flex-col justify-center group cursor-pointer">
+              <div className="text-2xl font-bold text-primary leading-tight group-hover:scale-110 transition-transform">{stats.total}</div>
+              <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wide leading-tight mt-1">Total Mistakes</div>
             </div>
-            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-blue-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
-              <div className="text-xl font-bold text-blue-600 leading-tight">{stats.sabq}</div>
-              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Sabq</div>
+            <div className="text-center px-3 py-2 rounded-xl bg-gradient-to-br from-white to-blue-50 border-2 border-blue-300 shadow-md hover:shadow-lg transition-all h-[70px] flex flex-col justify-center group cursor-pointer">
+              <div className="text-2xl font-bold text-blue-600 leading-tight group-hover:scale-110 transition-transform">{stats.sabq}</div>
+              <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wide leading-tight mt-1">Sabq</div>
             </div>
-            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-green-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
-              <div className="text-xl font-bold text-green-600 leading-tight">{stats.sabqi}</div>
-              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Sabqi</div>
+            <div className="text-center px-3 py-2 rounded-xl bg-gradient-to-br from-white to-green-50 border-2 border-green-300 shadow-md hover:shadow-lg transition-all h-[70px] flex flex-col justify-center group cursor-pointer">
+              <div className="text-2xl font-bold text-green-600 leading-tight group-hover:scale-110 transition-transform">{stats.sabqi}</div>
+              <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wide leading-tight mt-1">Sabqi</div>
             </div>
-            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-purple-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
-              <div className="text-xl font-bold text-purple-600 leading-tight">{stats.manzil}</div>
-              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Manzil</div>
+            <div className="text-center px-3 py-2 rounded-xl bg-gradient-to-br from-white to-purple-50 border-2 border-purple-300 shadow-md hover:shadow-lg transition-all h-[70px] flex flex-col justify-center group cursor-pointer">
+              <div className="text-2xl font-bold text-purple-600 leading-tight group-hover:scale-110 transition-transform">{stats.manzil}</div>
+              <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wide leading-tight mt-1">Manzil</div>
             </div>
-            <div className="text-center px-2 py-1.5 rounded-lg bg-white border border-orange-200 shadow-sm hover:shadow transition-all h-[60px] flex flex-col justify-center">
-              <div className="text-xl font-bold text-orange-600 leading-tight">{pagesWithMistakes.length}</div>
-              <div className="text-[10px] font-semibold text-gray-600 uppercase tracking-wide leading-tight mt-0.5">Pages</div>
+            <div className="text-center px-3 py-2 rounded-xl bg-gradient-to-br from-white to-orange-50 border-2 border-orange-300 shadow-md hover:shadow-lg transition-all h-[70px] flex flex-col justify-center group cursor-pointer">
+              <div className="text-2xl font-bold text-orange-600 leading-tight group-hover:scale-110 transition-transform">{pagesWithMistakes.length}</div>
+              <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wide leading-tight mt-1">Pages</div>
             </div>
           </div>
         </div>
 
-        {/* Filters - Enhanced Design */}
-        <div className="px-6 py-4 bg-white border-b-2 border-gray-200 flex flex-wrap gap-4 items-center">
+        {/* Filters - Enhanced Design with Surah Index Toggle */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-white via-gray-50 to-white border-b-2 border-gray-200 flex flex-wrap gap-3 sm:gap-4 items-center shadow-sm">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-700">Filter by Type:</label>
+            <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Type:</label>
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
             >
               <option value="all">All Types</option>
               <option value="sabq">Sabq</option>
@@ -311,11 +316,11 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
           
           <div className="flex items-center gap-2">
-            <label className="text-sm font-semibold text-gray-700">Filter by Page:</label>
+            <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Page:</label>
             <select
               value={filterPage || ''}
               onChange={(e) => setFilterPage(e.target.value ? parseInt(e.target.value) : null)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
             >
               <option value="">All Pages</option>
               {pagesWithMistakes.map(page => (
@@ -323,10 +328,17 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
               ))}
             </select>
           </div>
+
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border-2 border-green-300 rounded-lg shadow-sm">
+            <span className="text-lg">📑</span>
+            <span className="text-xs sm:text-sm font-bold text-green-700">
+              Surah Index Active
+            </span>
+          </div>
           
-          <div className="ml-auto px-4 py-2 bg-primary/10 rounded-lg border border-primary/20">
-            <span className="text-sm font-semibold text-primary">
-              Showing <span className="font-bold">{filteredMistakes.length}</span> of <span className="font-bold">{stats.total}</span> mistakes
+          <div className="ml-auto px-3 sm:px-4 py-1.5 sm:py-2 bg-primary/10 rounded-lg border-2 border-primary/30 shadow-sm">
+            <span className="text-xs sm:text-sm font-bold text-primary">
+              Showing <span className="font-extrabold text-lg">{filteredMistakes.length}</span> of <span className="font-extrabold text-lg">{stats.total}</span> mistakes
             </span>
           </div>
         </div>
@@ -338,45 +350,32 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
         )}
 
-        {/* Content - No padding on left */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: '0' }}>
-          {mistakes.length === 0 ? (
-            <div className="text-center py-12 px-6">
-              <div className="text-6xl mb-4">📖</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Mistakes Yet</h3>
-              <p className="text-gray-600 mb-4">
-                {studentName ? `${studentName}'s personal Mushaf will show all mistakes from recitation reviews.` : 'Your personal Mushaf will show all mistakes from your recitation reviews.'}
-              </p>
-              <p className="text-sm text-gray-500">
-                Click on any word to mark a mistake.
-              </p>
+        {/* Content - Always show Mushaf with surah index */}
+        <div className="flex-1 overflow-y-auto bg-gray-50" style={{ padding: '0', position: 'relative' }}>
+          <div className="w-full h-full p-2 sm:p-4 lg:p-6" style={{ position: 'relative', minHeight: '500px' }}>
+            <div className="w-full h-full max-w-full">
+              <InteractiveMushaf
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                mistakes={mistakes.length > 0 ? filteredMistakes.filter(m => m.page === currentPage) : []}
+                historicalMistakes={mistakes.length > 0 ? mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m)) : []}
+                onMistakeMark={handleMistakeMark}
+                readOnly={false}
+                mode="marking"
+                showHistorical={true}
+                showSurahIndexDefault={true}
+                studentName={studentName}
+              />
             </div>
-          ) : (
-            <div className="w-full flex justify-center items-center min-h-full" style={{ padding: '0' }}>
-              <div className="w-full max-w-7xl mx-auto flex justify-center" style={{ padding: '0' }}>
-                <InteractiveMushaf
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                  mistakes={filteredMistakes.filter(m => m.page === currentPage)}
-                  historicalMistakes={mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m))}
-                  onMistakeMark={handleMistakeMark}
-                  readOnly={false}
-                  mode="marking"
-                  showHistorical={true}
-                  showSurahIndexDefault={true}
-                  studentName={studentName}
-                />
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Mistake List Footer (if mistakes exist) - Enhanced Design */}
         {filteredMistakes.length > 0 && (
-          <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t-2 border-gray-200">
-            <div className="max-h-40 overflow-y-auto custom-scrollbar">
-              <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-t-2 border-gray-200 shadow-lg">
+            <div className="max-h-48 overflow-y-auto custom-scrollbar">
+              <h3 className="text-sm sm:text-base font-bold text-primary mb-3 flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Mistakes on Page {currentPage} ({filteredMistakes.filter(m => m.page === currentPage).length})
@@ -387,22 +386,22 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                   .map((mistake) => (
                     <div
                       key={mistake.id}
-                      className="flex items-start gap-2 p-3 bg-white rounded-lg border-2 border-gray-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
+                      className="flex items-start gap-2 p-3 bg-white rounded-xl border-2 border-gray-200 shadow-md hover:shadow-lg hover:border-primary/40 transition-all hover:scale-[1.02]"
                     >
-                      <span className={`px-3 py-1 rounded-full text-white text-xs font-bold shadow-sm ${
+                      <span className={`px-3 py-1 rounded-full text-white text-xs font-bold shadow-md ${
                         (mistake as any).workflowStep === 'sabq' ? 'bg-blue-500' :
                         (mistake as any).workflowStep === 'sabqi' ? 'bg-green-500' :
                         (mistake as any).workflowStep === 'manzil' ? 'bg-purple-500' : 'bg-gray-500'
                       }`}>
                         {(mistake as any).workflowStep?.toUpperCase() || 'N/A'}
                       </span>
-                      <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold shadow-sm">
+                      <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold shadow-md">
                         {mistake.type}
                       </span>
                       {mistake.note && (
-                        <span className="text-gray-700 text-xs italic ml-auto">"{mistake.note}"</span>
+                        <span className="text-gray-700 text-xs sm:text-sm italic ml-auto font-medium">"{mistake.note}"</span>
                       )}
-                      <span className="text-gray-400 text-xs ml-auto">
+                      <span className="text-gray-500 text-xs sm:text-sm ml-auto font-semibold">
                         Surah {mistake.surah}:{mistake.ayah}
                       </span>
                     </div>

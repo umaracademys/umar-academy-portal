@@ -6,7 +6,6 @@ import Card from '../components/Card';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
-import TeacherRecitationReview from '../components/TeacherRecitationReview';
 import StudentReports from '../components/StudentReports';
 import TeacherTicketReview from '../components/TeacherTicketReview';
 import { useData } from '../contexts/DataContext';
@@ -33,7 +32,6 @@ const TeacherDashboard: React.FC = () => {
   const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showWeeklyEvaluationForm, setShowWeeklyEvaluationForm] = useState(false);
   const [showWeeklyEvaluationReview, setShowWeeklyEvaluationReview] = useState(false);
-  const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
   const [historyStudent, setHistoryStudent] = useState<Student | null>(null);
@@ -331,12 +329,6 @@ const TeacherDashboard: React.FC = () => {
                 Manage Assignments
               </Link>
               <button
-                onClick={() => setShowRecitationReview(true)}
-                className="inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg"
-              >
-                Submit Review
-              </button>
-              <button
                 onClick={() => setShowStudentReports(true)}
                 className="inline-flex items-center justify-center rounded-xl border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
               >
@@ -535,13 +527,6 @@ const TeacherDashboard: React.FC = () => {
                       <p className="text-xs text-gray-600">Review your weekly evaluations</p>
                     </div>
                   </div>
-                </button>
-                <button
-                  onClick={() => setShowRecitationReview(true)}
-                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
-                >
-                  <div className="font-bold text-primary mb-1">Submit Recitation Review</div>
-                  <div className="text-xs text-gray-600">Record student recitation feedback</div>
                 </button>
                 <button
                   onClick={() => setShowStudentReports(true)}
@@ -1059,15 +1044,6 @@ const TeacherDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Recitation Review Modal */}
-      {showRecitationReview && (
-        <TeacherRecitationReview
-          onClose={() => setShowRecitationReview(false)}
-          onSuccess={() => {
-            setShowRecitationReview(false);
-          }}
-        />
-      )}
 
       {/* Student Reports Modal */}
       {showStudentReports && (

@@ -479,53 +479,40 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
           </div>
         )}
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto" style={{ padding: '0' }}>
-          {allMistakes.length === 0 ? (
-            <div className="text-center py-12 px-6">
-              <div className="text-6xl mb-4">📖</div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No Mistakes Yet</h3>
-              <p className="text-gray-600 mb-4">
-                {studentName}'s personal Mushaf will show all mistakes from recitation reviews.
-              </p>
-              <p className="text-sm text-gray-500">
-                Click on any word to mark a mistake.
-              </p>
+        {/* Content - Always show Mushaf with surah index */}
+        <div className="flex-1 overflow-y-auto bg-gray-50" style={{ padding: '0', position: 'relative' }}>
+          <div className="w-full h-full p-2 sm:p-4 lg:p-6" style={{ position: 'relative', minHeight: '500px' }}>
+            <div className="w-full h-full max-w-full">
+              <InteractiveMushaf
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                mistakes={allMistakes.length > 0 ? filteredMistakes.filter(m => m.page === currentPage).map(m => ({
+                  ...m,
+                  // Highlight new mistakes differently
+                  ...(m.isNew && { 
+                    // Add visual indicator for new mistakes
+                    note: m.note ? `🆕 ${m.note}` : '🆕 New mistake'
+                  })
+                })) : []}
+                historicalMistakes={allMistakes.length > 0 ? existingMistakes.filter(m => 
+                  m.page === currentPage && 
+                  !filteredMistakes.some(fm => 
+                    fm.page === m.page &&
+                    fm.surah === m.surah &&
+                    fm.ayah === m.ayah &&
+                    fm.wordIndex === m.wordIndex &&
+                    fm.type === m.type
+                  )
+                ) : []}
+                onMistakeMark={sessionActive ? handleMistakeMark : undefined}
+                readOnly={!sessionActive}
+                mode="marking"
+                showHistorical={true}
+                showSurahIndexDefault={true}
+                studentName={studentName}
+              />
             </div>
-          ) : (
-            <div className="w-full flex justify-center items-center min-h-full" style={{ padding: '0' }}>
-              <div className="w-full max-w-7xl mx-auto flex justify-center" style={{ padding: '0' }}>
-                <InteractiveMushaf
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                  mistakes={filteredMistakes.filter(m => m.page === currentPage).map(m => ({
-                    ...m,
-                    // Highlight new mistakes differently
-                    ...(m.isNew && { 
-                      // Add visual indicator for new mistakes
-                      note: m.note ? `🆕 ${m.note}` : '🆕 New mistake'
-                    })
-                  }))}
-                  historicalMistakes={existingMistakes.filter(m => 
-                    m.page === currentPage && 
-                    !filteredMistakes.some(fm => 
-                      fm.page === m.page &&
-                      fm.surah === m.surah &&
-                      fm.ayah === m.ayah &&
-                      fm.wordIndex === m.wordIndex &&
-                      fm.type === m.type
-                    )
-                  )}
-                  onMistakeMark={sessionActive ? handleMistakeMark : undefined}
-                  readOnly={!sessionActive}
-                  mode="marking"
-                  showHistorical={true}
-                  showSurahIndexDefault={true}
-                  studentName={studentName}
-                />
-              </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Mistake List Footer */}

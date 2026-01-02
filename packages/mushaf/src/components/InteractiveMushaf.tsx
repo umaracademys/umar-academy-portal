@@ -81,29 +81,14 @@ interface Mistake {
 }
 
 const mistakeTypes = [
-  "Memory Mistake",
-  "Mad (Elongation) Mistake",
-  "Ikhfa Mistake",
-  "Ghunna Mistake",
-  "Holding/Fluency Mistake",
-  "Letter Mistake",
-  "Heavy Letter",
-  "No Rounding Lips",
-  "Heavy H",
-  "Light L",
+  "Mistake",
   "Atkee",
-  "Other Mistake",
+  "Tajweed Mistake",
 ];
 
 // Letter-level mistake types that require letter selection
-const letterMistakeTypes = [
-  "Letter Mistake",
-  "Heavy Letter",
-  "No Rounding Lips",
-  "Heavy H",
-  "Light L",
-  "Atkee",
-];
+// Note: All mistake types can potentially require letter selection
+const letterMistakeTypes: string[] = [];
 
 // Function to split Arabic text into letters properly (handles diacritics and combining characters)
 // This function should be used consistently throughout the component
@@ -199,20 +184,20 @@ const splitArabicText = (text: string): string[] => {
 // Function to get mistake type label (used by multiple components)
 const getMistakeTypeLabel = (type: string): string => {
   const typeMap: Record<string, string> = {
-    "memory": "Memory Mistake",
-    "madd": "Mad (Elongation) Mistake",
-    "ikhfa": "Ikhfa Mistake",
-    "holding": "Holding/Fluency Mistake",
-    "tech": "Ghunna Mistake",
-    "letter": "Letter Mistake",
-    "heavy_letter": "Heavy Letter",
-    "no_rounding_lips": "No Rounding Lips",
-    "heavy_h": "Heavy H",
-    "light_l": "Light L",
+    "memory": "Mistake",
+    "madd": "Tajweed Mistake",
+    "ikhfa": "Tajweed Mistake",
+    "holding": "Mistake",
+    "tech": "Tajweed Mistake",
+    "letter": "Mistake",
+    "heavy_letter": "Tajweed Mistake",
+    "no_rounding_lips": "Tajweed Mistake",
+    "heavy_h": "Tajweed Mistake",
+    "light_l": "Tajweed Mistake",
     "atkee": "Atkee",
-    "other": "Other Mistake",
+    "other": "Mistake",
   };
-  return typeMap[type] || type;
+  return typeMap[type] || "Mistake";
 };
 
 export const MistakeModal: React.FC<MistakeModalProps> = ({
@@ -1674,29 +1659,9 @@ export const WordByWordPage: React.FC<{
           </div>
 
 
-          {/* Page Navigation Buttons - Centered, RTL */}
+          {/* Page Navigation Buttons - Centered */}
           {onPageChange && (
-            <div className="mt-4 sm:mt-6 flex justify-center items-center gap-4" dir="rtl">
-              <button
-                onClick={() => onPageChange(Math.min(604, pageNumber + 1))}
-                disabled={pageNumber >= 604}
-                className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
-                style={{
-                  backgroundColor: 'var(--color-primary)',
-                  minWidth: '120px'
-                }}
-                dir="rtl"
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                <span>التالي</span>
-              </button>
-              
-              <span className="px-3 sm:px-4 py-2 text-sm sm:text-base font-semibold text-primary" dir="ltr">
-                Page {pageNumber} / 604
-              </span>
-              
+            <div className="mt-4 sm:mt-6 flex justify-center items-center gap-4" dir="ltr">
               <button
                 onClick={() => onPageChange(Math.max(1, pageNumber - 1))}
                 disabled={pageNumber <= 1}
@@ -1705,9 +1670,29 @@ export const WordByWordPage: React.FC<{
                   backgroundColor: 'var(--color-primary)',
                   minWidth: '120px'
                 }}
-                dir="rtl"
+                dir="ltr"
               >
-                <span>السابق</span>
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Previous</span>
+              </button>
+              
+              <span className="px-3 sm:px-4 py-2 text-sm sm:text-base font-semibold text-primary" dir="ltr">
+                Page {pageNumber} / 604
+              </span>
+              
+              <button
+                onClick={() => onPageChange(Math.min(604, pageNumber + 1))}
+                disabled={pageNumber >= 604}
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm sm:text-base"
+                style={{
+                  backgroundColor: 'var(--color-primary)',
+                  minWidth: '120px'
+                }}
+                dir="ltr"
+              >
+                <span>Next</span>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -1744,6 +1729,13 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [showHistorical, setShowHistorical] = useState(showHistoricalProp);
   const [isIndexMinimized, setIsIndexMinimized] = useState(false);
+
+  // Sync showSurahIndex with prop changes
+  useEffect(() => {
+    if (showSurahIndexDefault) {
+      setShowSurahIndex(true);
+    }
+  }, [showSurahIndexDefault]);
 
   // Load chapters/surahs on mount
   useEffect(() => {
@@ -1960,7 +1952,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const currentJuz = getJuzFromPage(currentPage);
 
   return (
-    <div className="relative w-full overflow-x-hidden" dir="rtl">
+    <div className="relative w-full" dir="rtl">
       {/* Compact Controls Bar - Only show controls, no duplicate navigation - Mobile responsive */}
       <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap" dir="ltr">
         <div className="flex items-center gap-2">
@@ -2017,19 +2009,19 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
       <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full" dir="rtl">
-        {/* Surah Index Sidebar - Modal on mobile, sidebar on desktop */}
+        {/* Surah Index Sidebar - Sidebar on all screens, doesn't cover entire page */}
         {showSurahIndex && (
           <>
-            {/* Mobile Overlay */}
+            {/* Mobile Overlay - Lighter, allows content to show */}
             <div 
-              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              className="fixed inset-0 bg-black/20 z-40 lg:hidden pointer-events-auto"
               onClick={() => setShowSurahIndex(false)}
             />
-            {/* Index Container - Elegant Design */}
-            <div className={`bg-gradient-to-br from-white to-gray-50 border-2 border-primary/20 rounded-xl shadow-2xl transition-all duration-300 flex flex-col ${
-              isIndexMinimized ? 'w-12' : 'w-[calc(100%-2.5rem)] sm:w-64 lg:w-72'
+            {/* Index Container - Sidebar style, doesn't cover entire page */}
+            <div className={`bg-gradient-to-br from-white to-gray-50 border-2 border-primary/20 rounded-xl shadow-xl transition-all duration-300 flex flex-col ${
+              isIndexMinimized ? 'w-12' : 'w-64 sm:w-72 lg:w-80'
             } flex-shrink-0 ${
-              'fixed lg:relative left-4 right-4 sm:left-auto sm:right-auto top-16 sm:top-20 lg:inset-x-0 lg:top-0 z-50 lg:z-auto lg:sticky lg:top-4 max-h-[70vh] lg:max-h-[calc(100vh-8rem)]'
+              'fixed lg:relative right-0 left-auto sm:left-auto top-16 sm:top-20 lg:inset-x-0 lg:top-0 z-[60] lg:z-auto lg:sticky lg:top-4 max-h-[85vh] lg:max-h-[calc(100vh-8rem)]'
             }`}>
               {/* Header */}
               <div className="p-4 border-b-2 border-primary/10 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 flex-shrink-0">
@@ -2170,8 +2162,10 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           </>
         )}
 
-        {/* Mushaf Content - Centered */}
-        <div className="flex-1 min-w-0 w-full overflow-hidden flex justify-center items-start">
+        {/* Mushaf Content - Always visible alongside index */}
+        <div className={`flex-1 min-w-0 overflow-hidden flex justify-center items-start transition-all duration-300 ${
+          showSurahIndex && !isIndexMinimized ? 'lg:ml-4' : ''
+        }`}>
 
           <div className="w-full max-w-7xl flex justify-center">
             <WordByWordPage
@@ -2198,84 +2192,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           onSave={handleSaveMistake}
         />
 
-        {localMistakes.length > 0 && (() => {
-          // Categorize mistakes - check both codes and labels
-          const regularMistakes = localMistakes.filter(m => {
-            const type = m.type.toLowerCase();
-            const isAtkee = type === 'atkee' || type.includes('atkee');
-            const isTajweed = ['madd', 'ikhfa', 'holding', 'tech', 'mad (elongation) mistake', 'ikhfa mistake', 'ghunna mistake', 'holding/fluency mistake'].some(t => type.includes(t));
-            return !isAtkee && !isTajweed;
-          });
-          const atkeeMistakes = localMistakes.filter(m => {
-            const type = m.type.toLowerCase();
-            return type === 'atkee' || type.includes('atkee');
-          });
-          const tajweedMistakes = localMistakes.filter(m => {
-            const type = m.type.toLowerCase();
-            return ['madd', 'ikhfa', 'holding', 'tech', 'mad (elongation) mistake', 'ikhfa mistake', 'ghunna mistake', 'holding/fluency mistake'].some(t => type.includes(t));
-          });
-
-          return (
-            <div className="mt-4 bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="mb-3">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Mistake Report
-                </h3>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {regularMistakes.length > 0 && (
-                    <span className="px-2 py-1 bg-red-100 text-red-800 rounded font-semibold">
-                      Mistakes: {regularMistakes.length}
-                    </span>
-                  )}
-                  {atkeeMistakes.length > 0 && (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-semibold">
-                      Atkee: {atkeeMistakes.length}
-                    </span>
-                  )}
-                  {tajweedMistakes.length > 0 && (
-                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-semibold">
-                      Tajweed: {tajweedMistakes.length}
-                    </span>
-                  )}
-                </div>
-              </div>
-            <div className="space-y-2">
-              {localMistakes.map((m, i) => (
-                <div key={i} className="text-xs text-gray-700 p-2 bg-gray-50 rounded border border-gray-200">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <span 
-                        className="font-semibold text-gray-900"
-                        style={{
-                          fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif',
-                          direction: 'rtl',
-                          display: 'inline-block',
-                          whiteSpace: 'nowrap',
-                          letterSpacing: '0',
-                          wordSpacing: '0.15em',
-                          fontFeatureSettings: '"liga" 1, "kern" 1'
-                        }}
-                      >
-                        {m.text}
-                      </span>
-                      <span className="text-gray-600"> — {m.type}</span>
-                      <span className="text-gray-500 text-[10px] ml-2">
-                        (Surah {m.surah}, Ayah {m.ayah})
-                      </span>
-                    </div>
-                  </div>
-                  {m.note && (
-                    <p className="text-gray-600 mt-1 text-[10px] italic">"{m.note}"</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          );
-        })()}
+        {/* Mistake Report removed - should be rendered outside the Mushaf component */}
         </div>
       </div>
     </div>

@@ -14,7 +14,6 @@ import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Assignment } from '../../../types/index';
-import { getStudentPdfHomework } from '../../../services/pdfApi';
 
 const StudentDashboard: React.FC = () => {
   const { students, getStudentByEmail, updateStudent, teachers } = useData();
@@ -30,12 +29,26 @@ const StudentDashboard: React.FC = () => {
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [pairInfo, setPairInfo] = useState<any>(null);
   const [pairDailyReports, setPairDailyReports] = useState<any[]>([]);
-  const [pdfHomework, setPdfHomework] = useState<any[]>([]);
-  const [loadingPdfHomework, setLoadingPdfHomework] = useState(false);
   const navigate = useNavigate();
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
   const isAfterSchool = currentStudent?.program === 'After School';
+  const isFullTimeHQ = currentStudent?.program === 'Full-Time HQ';
+  const isPartTimeHQ = currentStudent?.program === 'Part-Time HQ';
+  const shouldHideQaidah = isFullTimeHQ || isPartTimeHQ;
+  
+  // Debug logging
+  useEffect(() => {
+    if (currentStudent) {
+      console.log('🔍 Student Program Check:', {
+        email: currentStudent.email,
+        program: currentStudent.program,
+        isFullTimeHQ,
+        isPartTimeHQ,
+        shouldHideQaidah
+      });
+    }
+  }, [currentStudent, isFullTimeHQ, isPartTimeHQ, shouldHideQaidah]);
 
   // Load pair information for student
   useEffect(() => {
@@ -67,27 +80,6 @@ const StudentDashboard: React.FC = () => {
     loadPairInfo();
   }, [currentStudent, getPairStudents, getPairDailyReports]);
 
-  // Load PDF homework assignments
-  useEffect(() => {
-    const loadPdfHomework = async () => {
-      if (!currentStudent?.id) return;
-      try {
-        setLoadingPdfHomework(true);
-        const studentId = currentStudent.id || (currentStudent as any)?._id;
-        if (studentId) {
-          const homeworkList = await getStudentPdfHomework(studentId.toString());
-          setPdfHomework(homeworkList || []);
-        }
-      } catch (error) {
-        console.error('Error loading PDF homework:', error);
-        setPdfHomework([]);
-      } finally {
-        setLoadingPdfHomework(false);
-      }
-    };
-    
-    loadPdfHomework();
-  }, [currentStudent]);
 
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
@@ -109,6 +101,18 @@ const StudentDashboard: React.FC = () => {
           return matches;
         }
         
+        // Filter out assignments that ONLY have Qaidah homework
+        const hasQaidahHomework = assignment.homework?.qaidahHomework;
+        const hasClasswork = (assignment.classwork?.sabq?.length || 0) +
+                            (assignment.classwork?.sabqi?.length || 0) +
+                            (assignment.classwork?.manzil?.length || 0) > 0;
+        const hasRegularHomework = assignment.homework?.enabled && !hasQaidahHomework;
+        
+        // If assignment only has Qaidah homework and nothing else, hide it
+        if (hasQaidahHomework && !hasClasswork && !hasRegularHomework) {
+          return false;
+        }
+        
         return matches;
       })
       .map((assignment: any) => {
@@ -122,12 +126,8 @@ const StudentDashboard: React.FC = () => {
         
         let title = 'Assignment';
         
-        // Check for Qaidah homework
-        const isQaidahHomework = assignment.homework?.qaidahHomework;
-        if (isQaidahHomework) {
-          const bookName = isQaidahHomework.book === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2';
-          title = `${bookName} - Page ${isQaidahHomework.page}`;
-        } else if (classworkCount > 0) {
+        // Set title based on classwork
+        if (classworkCount > 0) {
           const sections: string[] = [];
           if (assignment.classwork?.sabq?.length > 0) {
             sections.push(`${assignment.classwork.sabq.length} Sabq`);
@@ -141,7 +141,7 @@ const StudentDashboard: React.FC = () => {
           title = sections.join(', ');
         }
         
-        if (assignment.homework?.enabled && !isQaidahHomework) {
+        if (assignment.homework?.enabled && !assignment.homework?.qaidahHomework) {
           title += (classworkCount > 0 ? ' + ' : '') + 'Homework';
         }
         
@@ -162,8 +162,16 @@ const StudentDashboard: React.FC = () => {
           studentId: currentStudent.id,
           createdAt: createdAt,
           classwork: assignment.classwork || { sabq: [], sabqi: [], manzil: [] },
-          homework: assignment.homework || { enabled: false, content: '', link: '' },
-          qaidahHomework: assignment.homework?.qaidahHomework || null,
+          homework: (() => {
+            const hw = assignment.homework || { enabled: false, content: '', link: '' };
+            // Remove qaidahHomework from homework object
+            if (hw.qaidahHomework) {
+              const { qaidahHomework, ...rest } = hw;
+              return rest;
+            }
+            return hw;
+          })(),
+          qaidahHomework: null,
           comment: assignment.comment || '',
           mushafMistakes: assignment.mushafMistakes || [],
           assignedByName: assignment.assignedByName,
@@ -457,26 +465,6 @@ const StudentDashboard: React.FC = () => {
             </div>
           </button>
           <button
-            onClick={() => navigate('/student/pdf-homework')}
-            className="block w-full text-left rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary text-2xl">
-                📄
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-primary mb-1">PDF Homework</h3>
-                <p className="text-xs text-gray-600">
-                  {loadingPdfHomework 
-                    ? 'Loading...' 
-                    : pdfHomework.length > 0 
-                      ? `${pdfHomework.length} assignment${pdfHomework.length > 1 ? 's' : ''} assigned`
-                      : 'View PDF homework assignments'}
-                </p>
-              </div>
-            </div>
-          </button>
-          <button
             onClick={() => setShowWeeklyEvaluations(true)}
             className="block w-full text-left rounded-xl border-2 border-primary/20 bg-gradient-to-br from-soft-primary to-white p-6 hover:border-primary hover:shadow-lg transition-all"
           >
@@ -538,7 +526,7 @@ const StudentDashboard: React.FC = () => {
 
           {/* Recent Assignments - Takes 2 columns */}
           <div className="lg:col-span-2">
-            <Card title={`Recent Assignments (${studentAssignments.length}${pdfHomework.length > 0 ? ` + ${pdfHomework.length} PDF` : ''})`}>
+            <Card title={`Recent Assignments (${studentAssignments.length})`}>
               {studentAssignments.length === 0 ? (
                 <div className="text-center py-12 text-gray-500">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
@@ -626,119 +614,8 @@ const StudentDashboard: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Qaidah Homework Section */}
-                        {assignment.qaidahHomework && (
-                          <div className="mb-4 p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-lg border-2 border-accent/30">
-                            <h5 className="text-sm font-bold text-primary mb-3 uppercase tracking-wide flex items-center gap-2">
-                              <span>📚</span>
-                              <span>Qaidah Homework</span>
-                            </h5>
-                            
-                            {/* Page Preview */}
-                            <div className="mb-4">
-                              <div className="bg-white rounded-lg border border-gray-300 p-2 mb-2">
-                                <img
-                                  src={`/${assignment.qaidahHomework.book}/${assignment.qaidahHomework.page}.jpg`}
-                                  alt={`Page ${assignment.qaidahHomework.page}`}
-                                  className="w-full h-auto rounded shadow-sm"
-                                  onError={(e) => {
-                                    // Try PNG if JPG fails
-                                    (e.target as HTMLImageElement).src = `/${assignment.qaidahHomework.book}/${assignment.qaidahHomework.page}.png`;
-                                  }}
-                                />
-                              </div>
-                              <p className="text-xs text-gray-600 text-center">
-                                {assignment.qaidahHomework.book === 'qaidah1' ? 'Qaidah 1' : 'Qaidah 2'} - Page {assignment.qaidahHomework.page}
-                                {assignment.qaidahHomework.teachingDate && (
-                                  <span className="ml-2">
-                                    • Taught on {new Date(assignment.qaidahHomework.teachingDate).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-
-                            {/* Learning Objectives */}
-                            {(assignment.qaidahHomework.letters?.length > 0 || 
-                              assignment.qaidahHomework.rules?.length > 0 || 
-                              assignment.qaidahHomework.learningObjectives) && (
-                              <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
-                                <h6 className="text-xs font-bold text-primary mb-2 uppercase">Learning Objectives</h6>
-                                
-                                {assignment.qaidahHomework.letters?.length > 0 && (
-                                  <div className="mb-2">
-                                    <span className="text-xs font-semibold text-gray-600">Letters:</span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {assignment.qaidahHomework.letters.map((letter: string, idx: number) => (
-                                        <span key={idx} className="px-2 py-0.5 bg-accent/20 text-primary-800 rounded-full text-sm font-medium">
-                                          {letter}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {assignment.qaidahHomework.rules?.length > 0 && (
-                                  <div className="mb-2">
-                                    <span className="text-xs font-semibold text-gray-600">Rules:</span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {assignment.qaidahHomework.rules.map((rule: string, idx: number) => (
-                                        <span key={idx} className="px-2 py-0.5 bg-primary/20 text-primary-800 rounded text-xs font-medium">
-                                          {rule}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {assignment.qaidahHomework.learningObjectives && (
-                                  <div className="mt-2">
-                                    <p className="text-xs text-gray-700">{assignment.qaidahHomework.learningObjectives}</p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            {/* Links */}
-                            {assignment.qaidahHomework.links?.length > 0 && (
-                              <div className="mb-3">
-                                <h6 className="text-xs font-bold text-primary mb-2 uppercase">Resources</h6>
-                                <div className="space-y-1">
-                                  {assignment.qaidahHomework.links.map((link: any, idx: number) => (
-                                    <a
-                                      key={idx}
-                                      href={link.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="block px-3 py-2 bg-white border border-gray-300 rounded-lg hover:bg-primary/5 hover:border-primary transition-colors"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm">🔗</span>
-                                        <span className="text-xs text-primary hover:underline font-medium truncate">
-                                          {link.url}
-                                        </span>
-                                      </div>
-                                    </a>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* View Full Page Button */}
-                            <button
-                              onClick={() => {
-                                const book = assignment.qaidahHomework.book;
-                                const page = assignment.qaidahHomework.page;
-                                navigate(`/qaidah/${page}?book=${book}&student=${currentStudent.id}&assignment=${assignment.id}`);
-                              }}
-                              className="w-full px-4 py-2 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-lg hover:from-primary-700 hover:to-primary-800 transition-all font-semibold text-sm shadow-md"
-                            >
-                              📄 View Full Page with Marks
-                            </button>
-                          </div>
-                        )}
-
                         {/* Regular Homework Section */}
-                        {hasHomework && !assignment.qaidahHomework && (
+                        {hasHomework && (
                           <div className="mb-4 p-4 bg-soft-accent rounded-lg border border-gray-200">
                             <h5 className="text-sm font-bold text-primary mb-2 uppercase tracking-wide">Homework</h5>
                             {assignment.homework.content && (
@@ -769,64 +646,6 @@ const StudentDashboard: React.FC = () => {
                 </div>
               )}
               
-              {/* PDF Homework Section */}
-              {pdfHomework.length > 0 && (
-                <div className="mt-6 border-t-2 border-gray-200 pt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-bold text-sm text-primary">PDF Homework Assignments</h4>
-                    <button
-                      onClick={() => navigate('/student/pdf-homework')}
-                      className="text-xs text-primary hover:underline font-semibold"
-                    >
-                      View All →
-                    </button>
-                  </div>
-                  <div className="space-y-3">
-                    {pdfHomework.slice(0, 3).map((item: any) => (
-                      <div
-                        key={item.assignmentId}
-                        onClick={() => navigate('/student/pdf-homework')}
-                        className="bg-white rounded-xl border-2 border-gray-200 p-4 shadow-sm hover:shadow-md hover:border-primary transition-all cursor-pointer"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-lg">📄</span>
-                              <h5 className="text-sm font-bold text-primary">{item.pdf?.title || 'PDF Assignment'}</h5>
-                            </div>
-                            <p className="text-xs text-gray-600 mb-1">
-                              Assigned by {item.assignedByName || 'Teacher'}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {new Date(item.assignedAt).toLocaleDateString()}
-                            </p>
-                            {item.annotations?.notes && (
-                              <p className="text-xs text-gray-600 mt-2 italic line-clamp-2">
-                                "{item.annotations.notes.substring(0, 80)}..."
-                              </p>
-                            )}
-                          </div>
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                            item.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
-                            {item.status || 'Active'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {pdfHomework.length > 3 && (
-                      <button
-                        onClick={() => navigate('/student/pdf-homework')}
-                        className="w-full text-center py-2 text-sm text-primary hover:underline font-semibold"
-                      >
-                        View {pdfHomework.length - 3} more PDF assignment{pdfHomework.length - 3 > 1 ? 's' : ''} →
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
             </Card>
           </div>
         </div>
@@ -874,16 +693,6 @@ const StudentDashboard: React.FC = () => {
                 <div className="font-bold text-primary mb-1">My Assignments</div>
                 <div className="text-xs text-gray-600">View all assignments</div>
               </Link>
-              
-              <button
-                onClick={() => navigate('/student/pdf-homework')}
-                className="p-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm text-center"
-              >
-                <div className="font-bold text-primary mb-1">PDF Homework</div>
-                <div className="text-xs text-gray-600">
-                  {pdfHomework.length > 0 ? `${pdfHomework.length} assignment${pdfHomework.length > 1 ? 's' : ''}` : 'View PDF homework'}
-                </div>
-              </button>
               
               <Link
                 to="/student/courses"

@@ -5,6 +5,7 @@ import { useData } from '../contexts/DataContext';
 import { Student, Assessment } from '../types';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
+import Card from './Card';
 
 interface TeacherAssessmentFormProps {
   student: Student;
@@ -169,43 +170,41 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div className="bg-gradient-to-r from-primary to-primary/90 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                Add Assessment
-              </h2>
-              <p className="text-sm text-gray-600 mt-0.5">
+              <h2 className="text-2xl font-extrabold text-white">Add Assessment</h2>
+              <p className="text-accent text-sm mt-1 font-semibold">
                 {student?.fullName || 'Student'} • {new Date(assessmentDate).toLocaleDateString()}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200"
+              className="text-white/80 hover:text-white transition"
             >
-              ×
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 max-h-[calc(90vh-120px)]">
           {error && (
-            <div className="mb-4 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3">
-              <p className="text-sm font-bold text-red-800">{error}</p>
+            <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+              <p className="text-red-800 text-sm font-semibold">{error}</p>
             </div>
           )}
 
           {/* Assessment Details Section */}
-          <div className="mb-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Assessment Details</h3>
-            
+          <Card title="Assessment Details" className="mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Assessment Type *
                 </label>
                 <input
@@ -213,20 +212,20 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
                   value={assessmentType}
                   onChange={(e) => setAssessmentType(e.target.value)}
                   placeholder="e.g., Quran Recitation, Memorization Test"
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-4 py-2.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary text-primary font-medium"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Date *
                 </label>
                 <input
                   type="date"
                   value={assessmentDate}
                   onChange={(e) => setAssessmentDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-4 py-2.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary text-primary font-medium"
                   required
                 />
               </div>
@@ -234,7 +233,7 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Score *
                 </label>
                 <input
@@ -244,13 +243,13 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
                   placeholder="0"
                   min="0"
                   step="0.1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-4 py-2.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary text-primary font-medium"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-semibold text-primary mb-2">
                   Max Score *
                 </label>
                 <input
@@ -260,39 +259,39 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
                   placeholder="100"
                   min="1"
                   step="0.1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                  className="w-full px-4 py-2.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary text-primary font-medium"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-semibold text-primary mb-2">
                 Notes (optional)
               </label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
+                className="w-full px-4 py-2.5 border-2 border-primary rounded-xl focus:ring-2 focus:ring-primary focus:border-primary resize-none text-primary font-medium"
                 placeholder="Add any additional notes or feedback..."
               />
             </div>
-          </div>
+          </Card>
 
           {/* Mushaf Mistakes Section */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-gray-900">
+              <h3 className="text-lg font-extrabold text-primary">
                 Mushaf Mistakes for Today
               </h3>
               <button
                 type="button"
                 onClick={() => setShowMushaf(!showMushaf)}
-                className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
+                className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors ${
                   showMushaf
-                    ? 'bg-primary text-white hover:bg-primary/90'
-                    : 'border border-primary text-primary hover:bg-primary/10'
+                    ? 'bg-primary text-white hover:bg-primary/90 shadow-md'
+                    : 'border-2 border-primary text-primary hover:bg-primary/10'
                 }`}
               >
                 {showMushaf ? 'Hide Mushaf' : 'Mark Mistakes'}
@@ -300,7 +299,7 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
             </div>
 
             {showMushaf && (
-              <div className="border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className="border-2 border-primary/20 rounded-xl p-4 bg-gray-50">
                 <div className="mb-3">
                   <p className="text-sm text-gray-600 mb-2">
                     Click on words in the Mushaf to mark mistakes. Mistakes will be saved to {student.fullName}'s Personal Mushaf.
@@ -310,7 +309,7 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
                   </div>
                 </div>
                 
-                <div className="border border-gray-300 rounded-lg overflow-hidden bg-white" style={{ minHeight: '500px', maxHeight: '600px' }}>
+                <div className="border-2 border-primary/20 rounded-xl overflow-hidden bg-white shadow-sm" style={{ minHeight: '500px', maxHeight: '600px' }}>
                   <InteractiveMushaf
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
@@ -326,19 +325,19 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
                 </div>
 
                 {mistakes.length > 0 && (
-                  <div className="mt-4 p-3 bg-white rounded border border-gray-200">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                  <div className="mt-4 p-4 bg-white rounded-xl border-2 border-primary/20 shadow-sm">
+                    <h4 className="text-sm font-extrabold text-primary mb-3">
                       Mistakes Marked ({mistakes.length})
                     </h4>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
                       {mistakes.map((mistake, index) => (
-                        <div key={mistake.id || index} className="text-xs text-gray-600 flex items-center gap-2">
-                          <span className="px-2 py-0.5 bg-primary/10 text-primary rounded font-medium">
+                        <div key={mistake.id || index} className="text-xs text-primary flex items-center gap-2 p-2 bg-primary/5 rounded-lg">
+                          <span className="px-3 py-1 bg-primary text-white rounded-lg font-semibold">
                             {mistake.type}
                           </span>
-                          <span>Page {mistake.page}, Surah {mistake.surah}:{mistake.ayah}</span>
+                          <span className="font-medium">Page {mistake.page}, Surah {mistake.surah}:{mistake.ayah}</span>
                           {mistake.note && (
-                            <span className="text-gray-500 italic">- {mistake.note}</span>
+                            <span className="text-primary/70 italic ml-auto">- {mistake.note}</span>
                           )}
                         </div>
                       ))}
@@ -349,8 +348,8 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
             )}
 
             {!showMushaf && mistakes.length > 0 && (
-              <div className="border border-gray-200 rounded-lg p-3 bg-blue-50">
-                <p className="text-sm text-blue-700">
+              <div className="border-2 border-primary/20 rounded-xl p-4 bg-primary/5">
+                <p className="text-sm text-primary font-semibold">
                   <strong>{mistakes.length}</strong> mistake(s) marked. Click "Mark Mistakes" to add more or review.
                 </p>
               </div>
@@ -358,18 +357,18 @@ const TeacherAssessmentForm: React.FC<TeacherAssessmentFormProps> = ({
           </div>
 
           {/* Submit Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-3 pt-4 border-t-2 border-primary/20">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
+              className="px-6 py-2.5 border-2 border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/10 transition-colors"
               disabled={isSaving}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
               disabled={isSaving}
             >
               {isSaving ? 'Saving...' : 'Save Assessment'}
