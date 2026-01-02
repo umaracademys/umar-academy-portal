@@ -147,9 +147,15 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     return Array.from(pages).sort((a, b) => a - b);
   }, [mistakes]);
 
-  // Get current user info for marking mistakes
+  // Check if current user is a student (should be read-only)
+  const isStudent = useMemo(() => {
+    if (!user) return true; // Default to read-only if no user
+    return user.role === 'student';
+  }, [user]);
+
+  // Get current user info for marking mistakes (only for teachers/admins)
   const getCurrentUserInfo = useMemo(() => {
-    if (!user) return { id: '', name: '' };
+    if (!user || isStudent) return { id: '', name: '' };
     
     // Check if user is a teacher
     const teacher = teachers.find(t => t.id === user.id || t.email === user.email);
@@ -164,7 +170,7 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     }
     
     return { id: user.id || '', name: user.name || user.email || 'User' };
-  }, [user, teachers, admins]);
+  }, [user, teachers, admins, isStudent]);
 
   // Handle mistake marking
   const handleMistakeMark = async (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => {
@@ -359,9 +365,9 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                 onPageChange={setCurrentPage}
                 mistakes={mistakes.length > 0 ? filteredMistakes.filter(m => m.page === currentPage) : []}
                 historicalMistakes={mistakes.length > 0 ? mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m)) : []}
-                onMistakeMark={handleMistakeMark}
-                readOnly={false}
-                mode="marking"
+                onMistakeMark={isStudent ? undefined : handleMistakeMark}
+                readOnly={isStudent}
+                mode={isStudent ? "viewing" : "marking"}
                 showHistorical={true}
                 showSurahIndexDefault={true}
                 studentName={studentName}
