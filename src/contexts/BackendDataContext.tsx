@@ -1784,6 +1784,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Admin operations
   const addAdmin = async (admin: Admin) => {
     try {
+      // Generate a secure default password that meets all requirements
+      const defaultPassword = generateSecurePassword();
+      
       // Step 1: Create User account first
       const userResponse = await fetchWithTimeout(
         `${API_BASE}/users`,
@@ -1794,7 +1797,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             name: admin.fullName,
             email: admin.email,
             role: 'admin',
-            password: 'password123', // Default password for admins
+            password: defaultPassword, // Secure default password for admins
             avatar: admin.avatar,
             contact: admin.contact
           }),
