@@ -49,6 +49,7 @@ interface BackendDataContextType {
   loadingStep: string;
   error: string | null;
   refreshData: () => Promise<void>;
+  refreshDataLight: () => Promise<void>; // Lightweight refresh - only critical data
   // Assignment management (new multi-phase system)
   assignments: Assignment[];
   addAssignment: (assignment: Assignment) => Promise<void>;
@@ -1070,6 +1071,73 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, [loadData]);
 
+  // Lightweight refresh - only refresh assignments, tickets, and notifications (faster)
+  // Defined here before useEffect hooks that use it
+  const refreshDataLight = useCallback(async () => {
+    if (isLoadingRef.current) {
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Light refresh skipped - data load already in progress');
+      }
+      return;
+    }
+
+    try {
+      isLoadingRef.current = true;
+      setLoadingStep('Refreshing...');
+      
+      // Refresh only critical data in parallel
+      const [assignmentsRes, ticketsRes, notificationsRes] = await Promise.all([
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 5000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 5000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => null)
+      ]);
+
+      if (assignmentsRes?.ok) {
+        const assignmentsData = await assignmentsRes.json();
+        const mappedAssignments = assignmentsData.map((assignment: any) => ({
+          ...assignment,
+          id: assignment._id || assignment.id,
+          createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+        }));
+        setAssignments(mappedAssignments);
+      }
+
+      if (ticketsRes?.ok) {
+        const ticketsData = await ticketsRes.json();
+        const mappedTickets = ticketsData.map((ticket: any) => ({
+          ...ticket,
+          id: ticket._id || ticket.id,
+          createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+        }));
+        setTickets(mappedTickets);
+        
+        const recitationTicketsData = ticketsData
+          .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
+          .map((ticket: any) => ({
+            ...ticket,
+            id: ticket._id || ticket.id,
+            createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
+          }));
+        setRecitationTickets(recitationTicketsData);
+      }
+
+      if (notificationsRes?.ok) {
+        const notificationsData = await notificationsRes.json();
+        setAdminNotifications(notificationsData);
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('✅ Light refresh completed');
+      }
+    } catch (error) {
+      console.error('❌ Light refresh error:', error);
+    } finally {
+      isLoadingRef.current = false;
+      setLoadingStep('');
+    }
+  }, []);
+
   // Auto-refresh when window becomes visible (user switches back to tab)
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1893,71 +1961,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     return students.find(student => student.email === email);
   };
 
-  // Lightweight refresh - only refresh assignments, tickets, and notifications (faster)
-  const refreshDataLight = useCallback(async () => {
+  // Memoized refreshData to prevent unnecessary re-renders and concurrent calls
+  const refreshData = useCallback(async () => {
     if (isLoadingRef.current) {
       if (import.meta.env.DEV) {
-        console.log('⏸️ Light refresh skipped - data load already in progress');
+        console.log('⏸️ Refresh skipped - data load already in progress');
       }
       return;
     }
-
-    try {
-      isLoadingRef.current = true;
-      setLoadingStep('Refreshing...');
-      
-      // Refresh only critical data in parallel
-      const [assignmentsRes, ticketsRes, notificationsRes] = await Promise.all([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 5000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 5000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => null)
-      ]);
-
-      if (assignmentsRes?.ok) {
-        const assignmentsData = await assignmentsRes.json();
-        const mappedAssignments = assignmentsData.map((assignment: any) => ({
-          ...assignment,
-          id: assignment._id || assignment.id,
-          createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
-          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
-        }));
-        setAssignments(mappedAssignments);
-      }
-
-      if (ticketsRes?.ok) {
-        const ticketsData = await ticketsRes.json();
-        const mappedTickets = ticketsData.map((ticket: any) => ({
-          ...ticket,
-          id: ticket._id || ticket.id,
-          createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
-        }));
-        setTickets(mappedTickets);
-        
-        const recitationTicketsData = ticketsData
-          .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
-          .map((ticket: any) => ({
-            ...ticket,
-            id: ticket._id || ticket.id,
-            createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
-          }));
-        setRecitationTickets(recitationTicketsData);
-      }
-
-      if (notificationsRes?.ok) {
-        const notificationsData = await notificationsRes.json();
-        setAdminNotifications(notificationsData);
-      }
-
-      if (import.meta.env.DEV) {
-        console.log('✅ Light refresh completed');
-      }
-    } catch (error) {
-      console.error('❌ Light refresh error:', error);
-    } finally {
-      isLoadingRef.current = false;
-      setLoadingStep('');
-    }
-  }, []);
+    // Reset the hasLoadedRef to allow refresh
+    hasLoadedRef.current = false;
+    await loadData();
+  }, [loadData]); // Include loadData in deps
 
   // Memoized refreshData to prevent unnecessary re-renders and concurrent calls
   const refreshData = useCallback(async () => {
