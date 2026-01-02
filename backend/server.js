@@ -589,11 +589,77 @@ const adminSchema = new mongoose.Schema({
   email: { type: String, unique: true, sparse: true },
   contact: String,
   permissions: {
+    // People Operations
     canManageTeachers: { type: Boolean, default: false },
     canManageStudents: { type: Boolean, default: false },
+    
+    // Finance & Billing
     canManageFinancials: { type: Boolean, default: false },
+    
+    // Insights
     canViewReports: { type: Boolean, default: false },
-    canManagePermissions: { type: Boolean, default: false }
+    
+    // Security & Governance
+    canManagePermissions: { type: Boolean, default: false },
+    
+    // Module Permissions
+    // Messages Module
+    canAccessMessages: { type: Boolean, default: false },
+    canViewAllMessages: { type: Boolean, default: false },
+    canModerateMessages: { type: Boolean, default: false },
+    
+    // PDF Module
+    canAccessPdf: { type: Boolean, default: false },
+    canManagePdfLibrary: { type: Boolean, default: false },
+    canViewAllPdfAnnotations: { type: Boolean, default: false },
+    
+    // Homework Module
+    canAccessHomework: { type: Boolean, default: false },
+    canManageHomework: { type: Boolean, default: false },
+    canViewAllHomework: { type: Boolean, default: false },
+    
+    // Evaluation Module
+    canAccessEvaluations: { type: Boolean, default: false },
+    canManageEvaluations: { type: Boolean, default: false },
+    canApproveEvaluations: { type: Boolean, default: false },
+    
+    // Tickets Module
+    canAccessTickets: { type: Boolean, default: false },
+    canCreateTickets: { type: Boolean, default: false },
+    canReviewTickets: { type: Boolean, default: false },
+    canApproveTickets: { type: Boolean, default: false },
+    canFinalizeTickets: { type: Boolean, default: false },
+    canManageTicketWorkflow: { type: Boolean, default: false },
+    
+    // Attendance Module
+    canAccessAttendance: { type: Boolean, default: false },
+    canManageAttendance: { type: Boolean, default: false },
+    canViewAttendanceReports: { type: Boolean, default: false },
+    
+    // Recordings Module
+    canAccessRecordings: { type: Boolean, default: false },
+    canManageRecordings: { type: Boolean, default: false },
+    canViewAllRecordings: { type: Boolean, default: false },
+    
+    // Mushaf Module
+    canAccessMushaf: { type: Boolean, default: false },
+    canManageMushaf: { type: Boolean, default: false },
+    canViewAllMistakes: { type: Boolean, default: false },
+    
+    // Qaidah Module
+    canAccessQaidah: { type: Boolean, default: false },
+    canManageQaidah: { type: Boolean, default: false },
+    canViewQaidahReports: { type: Boolean, default: false },
+    
+    // Assignments Module
+    canAccessAssignments: { type: Boolean, default: false },
+    canManageAssignments: { type: Boolean, default: false },
+    canBulkCreateAssignments: { type: Boolean, default: false },
+    
+    // Reports & Analytics
+    canViewAnalytics: { type: Boolean, default: false },
+    canExportReports: { type: Boolean, default: false },
+    canViewSystemStats: { type: Boolean, default: false }
   },
   assignedDepartments: [String], // Array of programs: Full Time HQ, Part Time HQ, After School Reading
   hireDate: { type: Date, default: Date.now },
@@ -863,16 +929,89 @@ const teacherSchema = new mongoose.Schema({
   assignedStudents: [String],
   idDocument: String, // Base64 encoded document
   permissions: {
+    // Assessments & Evaluations
     canViewAssessments: Boolean,
     canEditAssessments: Boolean,
     canViewEvaluations: Boolean,
     canEditEvaluations: Boolean,
+    
+    // Financial & Billing
     canViewFinancials: Boolean,
+    
+    // Scheduling & Logistics
     canManageSchedule: Boolean,
+    
+    // Communication
     canContactParents: Boolean,
+    
+    // Student Information
     canViewStudentEmail: Boolean,
     canViewStudentContact: Boolean,
-    canViewStudentPersonalInfo: Boolean
+    canViewStudentPersonalInfo: Boolean,
+    
+    // Module Permissions
+    // Messages Module
+    canAccessMessages: Boolean,
+    canSendMessages: Boolean,
+    canViewAllMessages: Boolean,
+    
+    // PDF Module
+    canAccessPdf: Boolean,
+    canUploadPdf: Boolean,
+    canAnnotatePdf: Boolean,
+    canViewPdfAnnotations: Boolean,
+    
+    // Homework Module
+    canAccessHomework: Boolean,
+    canCreateHomework: Boolean,
+    canGradeHomework: Boolean,
+    canViewHomeworkSubmissions: Boolean,
+    
+    // Evaluation Module
+    canAccessEvaluations: Boolean,
+    canCreateEvaluations: Boolean,
+    canReviewEvaluations: Boolean,
+    canApproveEvaluations: Boolean,
+    
+    // Tickets Module
+    canAccessTickets: Boolean,
+    canCreateTickets: Boolean,
+    canReviewTickets: Boolean,
+    canApproveTickets: Boolean,
+    canFinalizeTickets: Boolean,
+    
+    // Attendance Module
+    canAccessAttendance: Boolean,
+    canRecordAttendance: Boolean,
+    canViewAttendanceReports: Boolean,
+    
+    // Recordings Module
+    canAccessRecordings: Boolean,
+    canUploadRecordings: Boolean,
+    canDeleteRecordings: Boolean,
+    canViewAllRecordings: Boolean,
+    
+    // Mushaf Module
+    canAccessMushaf: Boolean,
+    canMarkMistakes: Boolean,
+    canViewMistakeHistory: Boolean,
+    canManageMistakeLibrary: Boolean,
+    
+    // Qaidah Module
+    canAccessQaidah: Boolean,
+    canManageQaidah: Boolean,
+    canViewQaidahProgress: Boolean,
+    
+    // Assignments Module
+    canAccessAssignments: Boolean,
+    canCreateAssignments: Boolean,
+    canEditAssignments: Boolean,
+    canDeleteAssignments: Boolean,
+    
+    // Reports & Analytics
+    canViewReports: Boolean,
+    canViewAnalytics: Boolean,
+    canExportReports: Boolean
   },
   payroll: {
     hourlyRate: Number,
@@ -2398,16 +2537,88 @@ const normalizeTeacherData = (teacherData) => {
   // Ensure permissions are preserved and have all fields
   if (normalized.permissions) {
     normalized.permissions = {
+      // Assessments & Evaluations
       canViewAssessments: normalized.permissions.canViewAssessments ?? true,
       canEditAssessments: normalized.permissions.canEditAssessments ?? true,
       canViewEvaluations: normalized.permissions.canViewEvaluations ?? true,
       canEditEvaluations: normalized.permissions.canEditEvaluations ?? true,
+      
+      // Financial & Billing
       canViewFinancials: normalized.permissions.canViewFinancials ?? false,
+      
+      // Scheduling & Logistics
       canManageSchedule: normalized.permissions.canManageSchedule ?? true,
+      
+      // Communication
       canContactParents: normalized.permissions.canContactParents ?? true,
+      
+      // Student Information
       canViewStudentEmail: normalized.permissions.canViewStudentEmail ?? true,
       canViewStudentContact: normalized.permissions.canViewStudentContact ?? true,
       canViewStudentPersonalInfo: normalized.permissions.canViewStudentPersonalInfo ?? true,
+      
+      // Module Permissions - Messages
+      canAccessMessages: normalized.permissions.canAccessMessages ?? true,
+      canSendMessages: normalized.permissions.canSendMessages ?? true,
+      canViewAllMessages: normalized.permissions.canViewAllMessages ?? false,
+      
+      // Module Permissions - PDF
+      canAccessPdf: normalized.permissions.canAccessPdf ?? true,
+      canUploadPdf: normalized.permissions.canUploadPdf ?? false,
+      canAnnotatePdf: normalized.permissions.canAnnotatePdf ?? true,
+      canViewPdfAnnotations: normalized.permissions.canViewPdfAnnotations ?? true,
+      
+      // Module Permissions - Homework
+      canAccessHomework: normalized.permissions.canAccessHomework ?? true,
+      canCreateHomework: normalized.permissions.canCreateHomework ?? true,
+      canGradeHomework: normalized.permissions.canGradeHomework ?? true,
+      canViewHomeworkSubmissions: normalized.permissions.canViewHomeworkSubmissions ?? true,
+      
+      // Module Permissions - Evaluation
+      canAccessEvaluations: normalized.permissions.canAccessEvaluations ?? true,
+      canCreateEvaluations: normalized.permissions.canCreateEvaluations ?? false,
+      canReviewEvaluations: normalized.permissions.canReviewEvaluations ?? false,
+      canApproveEvaluations: normalized.permissions.canApproveEvaluations ?? false,
+      
+      // Module Permissions - Tickets
+      canAccessTickets: normalized.permissions.canAccessTickets ?? true,
+      canCreateTickets: normalized.permissions.canCreateTickets ?? false,
+      canReviewTickets: normalized.permissions.canReviewTickets ?? true,
+      canApproveTickets: normalized.permissions.canApproveTickets ?? false,
+      canFinalizeTickets: normalized.permissions.canFinalizeTickets ?? false,
+      
+      // Module Permissions - Attendance
+      canAccessAttendance: normalized.permissions.canAccessAttendance ?? true,
+      canRecordAttendance: normalized.permissions.canRecordAttendance ?? true,
+      canViewAttendanceReports: normalized.permissions.canViewAttendanceReports ?? true,
+      
+      // Module Permissions - Recordings
+      canAccessRecordings: normalized.permissions.canAccessRecordings ?? true,
+      canUploadRecordings: normalized.permissions.canUploadRecordings ?? true,
+      canDeleteRecordings: normalized.permissions.canDeleteRecordings ?? false,
+      canViewAllRecordings: normalized.permissions.canViewAllRecordings ?? false,
+      
+      // Module Permissions - Mushaf
+      canAccessMushaf: normalized.permissions.canAccessMushaf ?? true,
+      canMarkMistakes: normalized.permissions.canMarkMistakes ?? true,
+      canViewMistakeHistory: normalized.permissions.canViewMistakeHistory ?? true,
+      canManageMistakeLibrary: normalized.permissions.canManageMistakeLibrary ?? false,
+      
+      // Module Permissions - Qaidah
+      canAccessQaidah: normalized.permissions.canAccessQaidah ?? true,
+      canManageQaidah: normalized.permissions.canManageQaidah ?? false,
+      canViewQaidahProgress: normalized.permissions.canViewQaidahProgress ?? true,
+      
+      // Module Permissions - Assignments
+      canAccessAssignments: normalized.permissions.canAccessAssignments ?? true,
+      canCreateAssignments: normalized.permissions.canCreateAssignments ?? true,
+      canEditAssignments: normalized.permissions.canEditAssignments ?? false,
+      canDeleteAssignments: normalized.permissions.canDeleteAssignments ?? false,
+      
+      // Module Permissions - Reports & Analytics
+      canViewReports: normalized.permissions.canViewReports ?? true,
+      canViewAnalytics: normalized.permissions.canViewAnalytics ?? true,
+      canExportReports: normalized.permissions.canExportReports ?? false,
     };
   }
   
@@ -2465,11 +2676,76 @@ app.post('/api/admins', authenticateToken, async (req, res) => {
       email,
       contact: contact || '',
       permissions: permissions || {
+        // People Operations
         canManageTeachers: false,
         canManageStudents: false,
+        
+        // Finance & Billing
         canManageFinancials: false,
+        
+        // Insights
         canViewReports: false,
-        canManagePermissions: false
+        
+        // Security & Governance
+        canManagePermissions: false,
+        
+        // Module Permissions - Messages
+        canAccessMessages: false,
+        canViewAllMessages: false,
+        canModerateMessages: false,
+        
+        // Module Permissions - PDF
+        canAccessPdf: false,
+        canManagePdfLibrary: false,
+        canViewAllPdfAnnotations: false,
+        
+        // Module Permissions - Homework
+        canAccessHomework: false,
+        canManageHomework: false,
+        canViewAllHomework: false,
+        
+        // Module Permissions - Evaluation
+        canAccessEvaluations: false,
+        canManageEvaluations: false,
+        canApproveEvaluations: false,
+        
+        // Module Permissions - Tickets
+        canAccessTickets: false,
+        canCreateTickets: false,
+        canReviewTickets: false,
+        canApproveTickets: false,
+        canFinalizeTickets: false,
+        canManageTicketWorkflow: false,
+        
+        // Module Permissions - Attendance
+        canAccessAttendance: false,
+        canManageAttendance: false,
+        canViewAttendanceReports: false,
+        
+        // Module Permissions - Recordings
+        canAccessRecordings: false,
+        canManageRecordings: false,
+        canViewAllRecordings: false,
+        
+        // Module Permissions - Mushaf
+        canAccessMushaf: false,
+        canManageMushaf: false,
+        canViewAllMistakes: false,
+        
+        // Module Permissions - Qaidah
+        canAccessQaidah: false,
+        canManageQaidah: false,
+        canViewQaidahReports: false,
+        
+        // Module Permissions - Assignments
+        canAccessAssignments: false,
+        canManageAssignments: false,
+        canBulkCreateAssignments: false,
+        
+        // Module Permissions - Reports & Analytics
+        canViewAnalytics: false,
+        canExportReports: false,
+        canViewSystemStats: false
       },
       assignedDepartments: assignedDepartments || [],
       hireDate: hireDate ? new Date(hireDate) : new Date(),

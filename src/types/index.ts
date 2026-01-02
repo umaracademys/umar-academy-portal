@@ -202,16 +202,89 @@ export interface Payroll {
 }
 
 export interface TeacherPermissions {
+  // Assessments & Evaluations
   canViewAssessments: boolean;
   canEditAssessments: boolean;
   canViewEvaluations: boolean;
   canEditEvaluations: boolean;
+  
+  // Financial & Billing
   canViewFinancials: boolean;
+  
+  // Scheduling & Logistics
   canManageSchedule: boolean;
+  
+  // Communication
   canContactParents: boolean;
+  
+  // Student Information
   canViewStudentEmail: boolean;
   canViewStudentContact: boolean;
   canViewStudentPersonalInfo: boolean;
+  
+  // Module Permissions
+  // Messages Module
+  canAccessMessages: boolean;
+  canSendMessages: boolean;
+  canViewAllMessages: boolean;
+  
+  // PDF Module
+  canAccessPdf: boolean;
+  canUploadPdf: boolean;
+  canAnnotatePdf: boolean;
+  canViewPdfAnnotations: boolean;
+  
+  // Homework Module
+  canAccessHomework: boolean;
+  canCreateHomework: boolean;
+  canGradeHomework: boolean;
+  canViewHomeworkSubmissions: boolean;
+  
+  // Evaluation Module
+  canAccessEvaluations: boolean;
+  canCreateEvaluations: boolean;
+  canReviewEvaluations: boolean;
+  canApproveEvaluations: boolean;
+  
+  // Tickets Module
+  canAccessTickets: boolean;
+  canCreateTickets: boolean;
+  canReviewTickets: boolean;
+  canApproveTickets: boolean;
+  canFinalizeTickets: boolean;
+  
+  // Attendance Module
+  canAccessAttendance: boolean;
+  canRecordAttendance: boolean;
+  canViewAttendanceReports: boolean;
+  
+  // Recordings Module
+  canAccessRecordings: boolean;
+  canUploadRecordings: boolean;
+  canDeleteRecordings: boolean;
+  canViewAllRecordings: boolean;
+  
+  // Mushaf Module
+  canAccessMushaf: boolean;
+  canMarkMistakes: boolean;
+  canViewMistakeHistory: boolean;
+  canManageMistakeLibrary: boolean;
+  
+  // Qaidah Module
+  canAccessQaidah: boolean;
+  canManageQaidah: boolean;
+  canViewQaidahProgress: boolean;
+  
+  // Assignments Module
+  canAccessAssignments: boolean;
+  canCreateAssignments: boolean;
+  canEditAssignments: boolean;
+  canDeleteAssignments: boolean;
+  
+  // Reports & Analytics
+  canViewReports: boolean;
+  canViewAnalytics: boolean;
+  canExportReports: boolean;
 }
 
 export interface Teacher {
@@ -237,11 +310,77 @@ export interface Teacher {
 }
 
 export interface AdminPermissions {
+  // People Operations
   canManageTeachers: boolean;
   canManageStudents: boolean;
+  
+  // Finance & Billing
   canManageFinancials: boolean;
+  
+  // Insights
   canViewReports: boolean;
+  
+  // Security & Governance
   canManagePermissions: boolean;
+  
+  // Module Permissions
+  // Messages Module
+  canAccessMessages: boolean;
+  canViewAllMessages: boolean;
+  canModerateMessages: boolean;
+  
+  // PDF Module
+  canAccessPdf: boolean;
+  canManagePdfLibrary: boolean;
+  canViewAllPdfAnnotations: boolean;
+  
+  // Homework Module
+  canAccessHomework: boolean;
+  canManageHomework: boolean;
+  canViewAllHomework: boolean;
+  
+  // Evaluation Module
+  canAccessEvaluations: boolean;
+  canManageEvaluations: boolean;
+  canApproveEvaluations: boolean;
+  
+  // Tickets Module
+  canAccessTickets: boolean;
+  canCreateTickets: boolean;
+  canReviewTickets: boolean;
+  canApproveTickets: boolean;
+  canFinalizeTickets: boolean;
+  canManageTicketWorkflow: boolean;
+  
+  // Attendance Module
+  canAccessAttendance: boolean;
+  canManageAttendance: boolean;
+  canViewAttendanceReports: boolean;
+  
+  // Recordings Module
+  canAccessRecordings: boolean;
+  canManageRecordings: boolean;
+  canViewAllRecordings: boolean;
+  
+  // Mushaf Module
+  canAccessMushaf: boolean;
+  canManageMushaf: boolean;
+  canViewAllMistakes: boolean;
+  
+  // Qaidah Module
+  canAccessQaidah: boolean;
+  canManageQaidah: boolean;
+  canViewQaidahReports: boolean;
+  
+  // Assignments Module
+  canAccessAssignments: boolean;
+  canManageAssignments: boolean;
+  canBulkCreateAssignments: boolean;
+  
+  // Reports & Analytics
+  canViewAnalytics: boolean;
+  canExportReports: boolean;
+  canViewSystemStats: boolean;
 }
 
 export interface Admin {
