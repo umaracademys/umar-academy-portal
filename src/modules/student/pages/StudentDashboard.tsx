@@ -6,7 +6,6 @@ import Card from '../../../components/Card';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../../../components/DebugPanel')) : null;
-import StudentRecordings from '../../../components/StudentRecordings';
 import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import StudentTestResults from '../../../components/StudentTestResults';
 import TeacherStudentMessage from '../../../components/TeacherStudentMessage';
@@ -24,7 +23,6 @@ const StudentDashboard: React.FC = () => {
   
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [showSubmissionForm, setShowSubmissionForm] = useState(false);
-  const [showRecordings, setShowRecordings] = useState(false);
   const [showPersonalMushaf, setShowPersonalMushaf] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
   const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
@@ -307,12 +305,6 @@ const StudentDashboard: React.FC = () => {
               >
                 View All Assignments
               </Link>
-              <button
-                onClick={() => setShowRecordings(true)}
-                className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[rgba(var(--color-primary-rgb),0.9)] shadow-md hover:shadow-lg"
-              >
-                My Recordings
-              </button>
               <button
                 onClick={() => setShowPersonalMushaf(true)}
                 className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
@@ -1019,13 +1011,6 @@ const StudentDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
-
-      {/* Recordings Modal */}
-      {showRecordings && (
-        <StudentRecordings
-          onClose={() => setShowRecordings(false)}
-        />
-      )}
 
       {/* Personal Mushaf Modal */}
       {showPersonalMushaf && currentStudent && (
