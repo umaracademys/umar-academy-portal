@@ -4,7 +4,6 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import Card from './Card';
-import { useAutoRecording } from '../hooks/useAutoRecording';
 import TicketCreationForm from './TicketCreationForm';
 import AiSuggestionsInput from './AiSuggestionsInput';
 
@@ -36,33 +35,6 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mushafPage, setMushafPage] = useState(1);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
-  
-  // Recording state
-  const [recordingBlob, setRecordingBlob] = useState<Blob | null>(null);
-  const [recordingDuration, setRecordingDuration] = useState<number>(0);
-  const recordingStartedAtRef = useRef<Date | null>(null);
-  
-  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
-  
-  const {
-    isRecording,
-    recordingTime,
-    audioBlob,
-    error: recordingError,
-    hasPermission,
-    startRecording,
-    stopRecording
-  } = useAutoRecording({
-    autoStart: false,
-    onRecordingComplete: async (blob, duration) => {
-      console.log(`✅ Admin recording completed: ${duration} seconds, ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
-      setRecordingBlob(blob);
-      setRecordingDuration(duration);
-    },
-    onError: (err) => {
-      console.error('❌ Admin recording error:', err);
-    }
-  });
 
   // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
@@ -107,38 +79,6 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
     }
   }, [selectedTicket]);
-  
-  // Start recording when ticket is selected (Mushaf view is shown)
-  useEffect(() => {
-    if (selectedTicket && !isRecording && !recordingBlob) {
-      console.log('🎙️ Starting admin recording for ticket:', selectedTicket.id);
-      recordingStartedAtRef.current = new Date();
-      startRecording();
-    }
-  }, [selectedTicket, isRecording, recordingBlob, startRecording]);
-  
-  // Upload recording helper
-  const uploadRecording = async (blob: Blob): Promise<string | null> => {
-    try {
-      const formData = new FormData();
-      formData.append('recording', blob, `recording-${Date.now()}.${blob.type.includes('webm') ? 'webm' : 'mp4'}`);
-      
-      const response = await fetch(`${API_BASE}/recordings/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to upload recording');
-      }
-      
-      const data = await response.json();
-      return data.url || null;
-    } catch (error) {
-      console.error('Error uploading recording:', error);
-      return null;
-    }
-  };
 
   const handleTicketClick = (ticketId: string) => {
     console.log('🎫 Clicking ticket:', ticketId);
@@ -170,45 +110,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
     setIsProcessing(true);
     
-    // Stop recording if still recording
-    let recordingUrl: string | null = null;
-    let recordingFormat: string | null = null;
-    let recordingDurationFinal: number | null = null;
-    let recordingStartedAtFinal: Date | null = null;
-    let recordingStoppedAtFinal: Date | null = null;
-    
     try {
-      if (isRecording) {
-        console.log('🎙️ Stopping admin recording before approval...');
-        stopRecording();
-        // Give a small delay for the onRecordingComplete callback to fire
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      // Upload recording if available
-      const blobToUpload = recordingBlob || audioBlob;
-      if (blobToUpload) {
-        recordingStartedAtFinal = recordingStartedAtRef.current;
-        recordingStoppedAtFinal = new Date();
-        recordingDurationFinal = recordingDuration || Math.floor((recordingStoppedAtFinal.getTime() - (recordingStartedAtFinal?.getTime() || Date.now())) / 1000);
-        
-        console.log('📤 Uploading admin recording with metadata:', {
-          duration: recordingDurationFinal,
-          startedAt: recordingStartedAtFinal?.toISOString(),
-          stoppedAt: recordingStoppedAtFinal.toISOString(),
-          blobSize: blobToUpload.size
-        });
-        
-        recordingUrl = await uploadRecording(blobToUpload);
-        recordingFormat = blobToUpload.type.includes('webm') ? 'webm' : 'mp4';
-        
-        if (recordingUrl) {
-          console.log('✅ Admin recording uploaded successfully:', recordingUrl);
-        } else {
-          console.warn('⚠️ Recording upload failed, but continuing with approval without recording URL.');
-        }
-      }
-      
       console.log('✅ Approving ticket:', selectedTicket.id, 'Type:', selectedTicket.type);
       const result = await approveAndSendTicket(selectedTicket.id, '');
       console.log('✅ Approval result:', result);
@@ -220,15 +122,9 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         `Classwork entries added:\n` +
         `- Sabq: ${Array.isArray(assignment?.classwork?.sabq) ? assignment.classwork.sabq.length : 0}\n` +
         `- Sabqi: ${Array.isArray(assignment?.classwork?.sabqi) ? assignment.classwork.sabqi.length : 0}\n` +
-        `- Manzil: ${Array.isArray(assignment?.classwork?.manzil) ? assignment.classwork.manzil.length : 0}` +
-        (recordingUrl ? `\n\n🎙️ Recording saved to library` : '');
+        `- Manzil: ${Array.isArray(assignment?.classwork?.manzil) ? assignment.classwork.manzil.length : 0}`;
       
       alert(message);
-      
-      // Reset recording state
-      setRecordingBlob(null);
-      setRecordingDuration(0);
-      recordingStartedAtRef.current = null;
       
       await refreshData();
       setSelectedTicketId(null);
@@ -732,55 +628,6 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                         <span className="text-xs font-bold text-primary">
                           {selectedTicket.mistakes.length} mistake{selectedTicket.mistakes.length !== 1 ? 's' : ''} marked
                         </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Recording Status */}
-                  <div className="px-3 pt-2">
-                    <div className={`p-2 rounded-lg border-2 ${
-                      isRecording ? 'bg-red-50 border-red-300' :
-                      recordingBlob ? 'bg-green-50 border-green-300' :
-                      'bg-gray-50 border-gray-300'
-                    }`}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {isRecording ? (
-                            <>
-                              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-lg"></div>
-                              <div>
-                                <span className="text-xs font-extrabold text-red-800 block">
-                                  🎙️ Recording in Progress
-                                </span>
-                                <span className="text-[10px] text-red-600">
-                                  {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                                </span>
-                              </div>
-                            </>
-                          ) : recordingBlob ? (
-                            <>
-                              <div className="w-3 h-3 bg-green-500 rounded-full shadow-lg"></div>
-                              <div>
-                                <span className="text-xs font-extrabold text-green-800 block">
-                                  ✓ Recording Complete
-                                </span>
-                                <span className="text-[10px] text-green-600">
-                                  Duration: {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
-                                </span>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
-                              <span className="text-xs font-semibold text-gray-700">
-                                Recording will start automatically when viewing Mushaf
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        {recordingError && (
-                          <span className="text-[10px] text-red-600 font-bold bg-red-100 px-1.5 py-0.5 rounded">⚠️ {recordingError}</span>
-                        )}
                       </div>
                     </div>
                   </div>
