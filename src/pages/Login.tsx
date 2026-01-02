@@ -34,15 +34,26 @@ const Login: React.FC = () => {
     }
     
     setIsLoading(true);
+    setLoginError(''); // Clear previous errors
     try {
       const success = await login(email, password, role);
       
       if (!success) {
-        setLoginError(error || 'Invalid credentials. Please check your email, password, and account type.');
+        // Error is already set in AuthContext, but we can enhance it here
+        const errorMsg = error || 'Invalid credentials. Please check your email, password, and account type.';
+        setLoginError(errorMsg);
+        
+        // Log for debugging
+        console.warn('⚠️ Login failed:', {
+          email,
+          role,
+          error: errorMsg,
+          timestamp: new Date().toISOString()
+        });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Login error caught:', err);
-      setLoginError('Login failed. Please try again.');
+      setLoginError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
