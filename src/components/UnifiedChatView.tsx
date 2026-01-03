@@ -110,11 +110,11 @@ const UnifiedChatView: React.FC<UnifiedChatViewProps> = ({ conversation, onClose
     setAttachedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadFiles = async (): Promise<any[]> => {
+  const uploadFiles = async (): Promise<Array<{ filename: string; url: string; mimetype: string; size: number }>> => {
     if (attachedFiles.length === 0) return [];
     
     setUploadingFiles(true);
-    const uploadedFiles = [];
+    const uploadedFiles: Array<{ filename: string; url: string; mimetype: string; size: number }> = [];
     
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
