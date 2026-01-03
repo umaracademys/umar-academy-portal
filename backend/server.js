@@ -744,37 +744,46 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   studentName: { type: String, required: true },
   teacherId: { type: String, required: true, index: true },
   teacherName: { type: String, required: true },
-  weekStartDate: { type: Date, required: true }, // Start of the week being evaluated
-  weekEndDate: { type: Date, required: true }, // End of the week being evaluated
+  weekStartDate: { type: Date, required: true }, // Start of the week being evaluated (Monday)
+  weekEndDate: { type: Date, required: true }, // End of the week being evaluated (Sunday)
   
   // Level and Surah
   level: { type: String, enum: ['Qaidah 1', 'Qaidah 2', 'Reading'], required: true },
   selectedSurah: String, // Surah name if level is Reading
   
-  // Common Mistakes and Fixing Etiquette
+  // Core evaluation fields
+  strengths: { type: String, required: true },
+  weaknesses: { type: String, required: true },
   commonMistakes: { type: String, required: true },
-  fixingEtiquette: { type: String, required: true },
+  etiquetteNotes: { type: String, required: true }, // Renamed from fixingEtiquette for clarity
+  teacherNotes: { type: String, default: '' },
+  
+  // Ratings (1-5 scale)
+  ratings: {
+    fluency: { type: Number, min: 1, max: 5, required: true },
+    tajweed: { type: Number, min: 1, max: 5, required: true },
+    accuracy: { type: Number, min: 1, max: 5, required: true }
+  },
   
   // Admin feedback fields
-  adminFeedback: String, // Feedback from admin
+  adminFeedback: String, // Feedback from super admin
   gamePlan: String, // Game plan shared by admin
-  sharedLinks: [String], // Links shared by admin
+  sharedLinks: { type: [String], default: [] }, // Links shared by admin
   
-  // Legacy fields (kept for backward compatibility)
+  // Legacy fields (kept for backward compatibility with existing data)
+  fixingEtiquette: String, // Alias for etiquetteNotes
   tajweedEvaluation: {
     overallRating: { type: Number, min: 1, max: 10 },
     strengths: String,
     areasForImprovement: String,
     specificNotes: String
   },
-  
   memoryEvaluation: {
     overallRating: { type: Number, min: 1, max: 10 },
     memorizedPages: String,
     retentionQuality: String,
     specificNotes: String
   },
-  
   mistakes: {
     mistakesMade: [{
       type: String,
@@ -785,13 +794,12 @@ const weeklyEvaluationSchema = new mongoose.Schema({
     howFixed: String,
     improvement: String
   },
-  
   generalNotes: String,
   
-  // Approval workflow
+  // Approval workflow - strict status lifecycle: draft → submitted → under_review → approved | rejected
   status: {
     type: String,
-    enum: ['draft', 'submitted', 'under_review', 'feedback_provided', 'resubmitted', 'approved', 'rejected'],
+    enum: ['draft', 'submitted', 'under_review', 'approved', 'rejected'],
     default: 'draft',
     index: true
   },
@@ -799,10 +807,18 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   reviewedBy: String, // Super Admin ID
   reviewedByName: String, // Super Admin name
   reviewedAt: Date,
-  adminFeedback: String, // Feedback from super admin
   approvedAt: Date,
+  rejectedAt: Date,
+  rejectionReason: String, // Reason for rejection (admin comments)
   
-  // For tracking resubmissions
+  // Metadata for tracking and reporting
+  meta: {
+    isLate: { type: Boolean, default: false }, // True if submitted after Sunday 11:59 PM
+    daysLate: { type: Number, default: 0 }, // Number of days late
+    revisionCount: { type: Number, default: 0 } // Count of resubmissions after rejection
+  },
+  
+  // For tracking resubmissions (deprecated - using meta.revisionCount instead, but keeping for backward compatibility)
   resubmissionCount: { type: Number, default: 0 },
   previousFeedback: [{
     feedback: String,
@@ -811,6 +827,13 @@ const weeklyEvaluationSchema = new mongoose.Schema({
     providedAt: Date
   }]
 }, { timestamps: true });
+
+// Indexes for performance and data integrity
+// Enforce one evaluation per student per week
+weeklyEvaluationSchema.index({ studentId: 1, weekStartDate: 1 }, { unique: false }); // Not unique to allow drafts, but helps with queries
+weeklyEvaluationSchema.index({ teacherId: 1, status: 1 }); // Fast filtering by teacher and status
+weeklyEvaluationSchema.index({ status: 1, submittedAt: -1 }); // Fast filtering by status with submission date
+weeklyEvaluationSchema.index({ studentId: 1, status: 1, weekStartDate: -1 }); // For student views
 
 const WeeklyEvaluation = mongoose.model('WeeklyEvaluation', weeklyEvaluationSchema);
 
@@ -4118,6 +4141,7 @@ const assignmentSchema = new mongoose.Schema({
   assignedBy: { type: String, required: true }, // User ID (admin, super admin, or teacher)
   assignedByName: { type: String, required: true }, // User name
   assignedByRole: { type: String, enum: ['admin', 'super_admin', 'teacher'], required: true },
+  weeklyEvaluationId: { type: String }, // Link to WeeklyEvaluation if homework was created from evaluation
   // Classwork phases - can have multiple entries of each type
   classwork: {
     sabq: { type: [classworkPhaseSchema], default: [] },
@@ -4447,7 +4471,7 @@ const EvaluationUpload = mongoose.model('EvaluationUpload', evaluationUploadSche
 
 // Admin Notification Schema
 const adminNotificationSchema = new mongoose.Schema({
-  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request', 'student_registration_request', 'weekly_evaluation_submitted', 'weekly_evaluation_feedback', 'weekly_evaluation_approved'], required: true },
+  type: { type: String, enum: ['recitation_review_pending', 'assignment_submitted', 'student_enrolled', 'payment_received', 'profile_update_request', 'student_registration_request', 'weekly_evaluation_submitted', 'weekly_evaluation_feedback', 'weekly_evaluation_approved', 'weekly_evaluation_rejected'], required: true },
   title: { type: String, required: true },
   message: { type: String, required: true },
   recitationReviewId: { type: String },
@@ -6270,156 +6294,372 @@ app.post('/api/students/:studentId/personal-mushaf/mistakes', async (req, res) =
 // WEEKLY EVALUATION API ENDPOINTS
 // ============================================
 
-// Create or update weekly evaluation (Teacher)
-app.post('/api/weekly-evaluations', async (req, res) => {
+/**
+ * Helper function: Get week start (Monday) and end (Sunday) dates for a given date
+ * Week starts Monday 00:00:00, ends Sunday 23:59:59
+ */
+function getWeekDates(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday (0)
+  const monday = new Date(d.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  
+  return { weekStart: monday, weekEnd: sunday };
+}
+
+/**
+ * Helper function: Calculate if submission is late (after Sunday 11:59 PM of the evaluated week)
+ * Returns { isLate: boolean, daysLate: number }
+ */
+function calculateLateStatus(weekEndDate, submittedAt) {
+  const deadline = new Date(weekEndDate);
+  deadline.setHours(23, 59, 59, 999);
+  
+  const submitted = new Date(submittedAt);
+  
+  if (submitted <= deadline) {
+    return { isLate: false, daysLate: 0 };
+  }
+  
+  const daysLate = Math.floor((submitted - deadline) / (1000 * 60 * 60 * 24));
+  return { isLate: true, daysLate };
+}
+
+/**
+ * Helper function: Validate status transition
+ * Allowed transitions:
+ * - draft → submitted → under_review → approved | rejected
+ * - rejected → draft (for resubmission)
+ */
+function isValidStatusTransition(currentStatus, newStatus) {
+  const validTransitions = {
+    'draft': ['submitted', 'draft'], // Can stay as draft or submit
+    'submitted': ['under_review'], // Auto-transition on submit
+    'under_review': ['approved', 'rejected'],
+    'rejected': ['draft'], // Can create new draft after rejection
+    'approved': [] // Final state - no transitions allowed
+  };
+  
+  return validTransitions[currentStatus]?.includes(newStatus) || false;
+}
+
+// POST /api/weekly-evaluations - Create draft evaluation (Teacher only)
+app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
   try {
+    // Role check: Only teachers can create evaluations
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can create evaluations.' });
+    }
+
     const {
-      id,
       studentId,
       studentName,
-      teacherId,
-      teacherName,
       weekStartDate,
       weekEndDate,
       level,
       selectedSurah,
+      strengths,
+      weaknesses,
       commonMistakes,
+      etiquetteNotes,
+      teacherNotes,
+      ratings,
+      // Legacy field support
       fixingEtiquette,
       tajweedEvaluation,
       memoryEvaluation,
       mistakes,
-      generalNotes,
-      status
+      generalNotes
     } = req.body;
 
-    if (!studentId || !teacherId || !weekStartDate || !weekEndDate || !level || !commonMistakes || !fixingEtiquette) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const teacherId = req.user.userId.toString();
+    const user = await User.findById(req.user.userId);
+    const teacherName = user?.name || user?.email || 'Teacher';
+
+    // Validate required fields
+    if (!studentId || !weekStartDate || !weekEndDate || !level) {
+      return res.status(400).json({ error: 'Missing required fields: studentId, weekStartDate, weekEndDate, level' });
     }
     
     if (level === 'Reading' && !selectedSurah) {
       return res.status(400).json({ error: 'Surah is required when level is Reading' });
     }
 
-    let evaluation;
-    if (id) {
-      // Update existing evaluation
-      evaluation = await WeeklyEvaluation.findOne({ id });
-      if (!evaluation) {
-        return res.status(404).json({ error: 'Evaluation not found' });
+    // Validate ratings if provided (1-5 scale)
+    if (ratings) {
+      if (ratings.fluency && (ratings.fluency < 1 || ratings.fluency > 5)) {
+        return res.status(400).json({ error: 'Fluency rating must be between 1 and 5' });
       }
-
-      // Only allow updates if status is draft or feedback_provided
-      if (!['draft', 'feedback_provided'].includes(evaluation.status)) {
-        return res.status(400).json({ error: 'Cannot update evaluation in current status' });
+      if (ratings.tajweed && (ratings.tajweed < 1 || ratings.tajweed > 5)) {
+        return res.status(400).json({ error: 'Tajweed rating must be between 1 and 5' });
       }
-
-      evaluation.studentId = studentId;
-      evaluation.studentName = studentName;
-      evaluation.teacherId = teacherId;
-      evaluation.teacherName = teacherName;
-      evaluation.weekStartDate = new Date(weekStartDate);
-      evaluation.weekEndDate = new Date(weekEndDate);
-      evaluation.level = level;
-      evaluation.selectedSurah = selectedSurah || '';
-      evaluation.commonMistakes = commonMistakes;
-      evaluation.fixingEtiquette = fixingEtiquette;
-      evaluation.tajweedEvaluation = tajweedEvaluation || {};
-      evaluation.memoryEvaluation = memoryEvaluation || {};
-      evaluation.mistakes = mistakes || {};
-      evaluation.generalNotes = generalNotes || '';
-      evaluation.status = status || evaluation.status;
-
-      if (status === 'resubmitted') {
-        evaluation.resubmissionCount = (evaluation.resubmissionCount || 0) + 1;
-        evaluation.status = 'under_review';
-      } else if (status === 'submitted' && evaluation.status === 'draft') {
-        evaluation.submittedAt = new Date();
-        evaluation.status = 'under_review';
-        
-        // Create notification for admin when evaluation is submitted
-        const notification = new AdminNotification({
-          type: 'weekly_evaluation_submitted',
-          title: 'New Weekly Evaluation Submitted',
-          message: `${evaluation.teacherName} submitted a weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
-          weeklyEvaluationId: evaluation.id,
-          studentId: evaluation.studentId,
-          teacherId: evaluation.teacherId,
-          priority: 'high',
-          read: false
-        });
-        await notification.save();
+      if (ratings.accuracy && (ratings.accuracy < 1 || ratings.accuracy > 5)) {
+        return res.status(400).json({ error: 'Accuracy rating must be between 1 and 5' });
       }
-    } else {
-      // Create new evaluation
-      evaluation = new WeeklyEvaluation({
-        id: `WE${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    }
+
+    const weekStart = new Date(weekStartDate);
+    const weekEnd = new Date(weekEndDate);
+
+    // Check if evaluation already exists for this student and week (non-draft)
+    const existingEvaluation = await WeeklyEvaluation.findOne({
+      studentId,
+      weekStartDate: { $gte: weekStart, $lte: weekEnd },
+      status: { $ne: 'draft' }
+    });
+
+    if (existingEvaluation) {
+      return res.status(400).json({ 
+        error: 'An evaluation already exists for this student and week. Only one evaluation per week is allowed.' 
+      });
+    }
+
+    // Create new evaluation (draft only via POST)
+    const evaluationId = `WE${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const evaluation = new WeeklyEvaluation({
+      id: evaluationId,
         studentId,
-        studentName,
+      studentName: studentName || 'Student',
         teacherId,
         teacherName,
-        weekStartDate: new Date(weekStartDate),
-        weekEndDate: new Date(weekEndDate),
+      weekStartDate: weekStart,
+      weekEndDate: weekEnd,
         level,
         selectedSurah: selectedSurah || '',
-        commonMistakes,
-        fixingEtiquette,
+      strengths: strengths || '',
+      weaknesses: weaknesses || '',
+      commonMistakes: commonMistakes || '',
+      etiquetteNotes: etiquetteNotes || fixingEtiquette || '', // Support legacy field
+      teacherNotes: teacherNotes || generalNotes || '', // Support legacy field
+      ratings: ratings || {
+        fluency: 3,
+        tajweed: 3,
+        accuracy: 3
+      },
+      status: 'draft',
+      // Legacy field support
+      fixingEtiquette: fixingEtiquette || etiquetteNotes || '',
+      generalNotes: generalNotes || teacherNotes || '',
         tajweedEvaluation: tajweedEvaluation || {},
         memoryEvaluation: memoryEvaluation || {},
         mistakes: mistakes || {},
-        generalNotes: generalNotes || '',
-        status: status || 'draft'
-      });
-
-      if (status === 'submitted') {
-        evaluation.submittedAt = new Date();
-        evaluation.status = 'under_review';
-        
-        // Create notification for admin when new evaluation is submitted
-        const notification = new AdminNotification({
-          type: 'weekly_evaluation_submitted',
-          title: 'New Weekly Evaluation Submitted',
-          message: `${evaluation.teacherName} submitted a weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
-          weeklyEvaluationId: evaluation.id,
-          studentId: evaluation.studentId,
-          teacherId: evaluation.teacherId,
-          priority: 'high',
-          read: false
-        });
-        await notification.save();
+      meta: {
+        isLate: false,
+        daysLate: 0,
+        revisionCount: 0
       }
+    });
+
+    await evaluation.save();
+    res.status(201).json(evaluation);
+  } catch (error) {
+    console.error('❌ Error creating weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/weekly-evaluations/:id - Update draft evaluation (Teacher only)
+app.put('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
+  try {
+    // Role check: Only teachers can update evaluations
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can update evaluations.' });
+    }
+
+    const { id } = req.params;
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+    
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Verify teacher owns this evaluation
+    if (evaluation.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied. You can only update your own evaluations.' });
+    }
+
+    // Only allow updates if status is draft (strict workflow enforcement)
+    if (evaluation.status !== 'draft') {
+      return res.status(400).json({ 
+        error: `Cannot update evaluation in status "${evaluation.status}". Only draft evaluations can be edited.` 
+      });
+    }
+
+    const {
+      studentId,
+      studentName,
+      weekStartDate,
+      weekEndDate,
+      level,
+      selectedSurah,
+      strengths,
+      weaknesses,
+      commonMistakes,
+      etiquetteNotes,
+      teacherNotes,
+      ratings,
+      // Legacy field support
+      fixingEtiquette,
+      generalNotes
+    } = req.body;
+
+    // Update fields
+    if (studentId) evaluation.studentId = studentId;
+    if (studentName) evaluation.studentName = studentName;
+    if (weekStartDate) evaluation.weekStartDate = new Date(weekStartDate);
+    if (weekEndDate) evaluation.weekEndDate = new Date(weekEndDate);
+    if (level) evaluation.level = level;
+    if (selectedSurah !== undefined) evaluation.selectedSurah = selectedSurah;
+    if (strengths !== undefined) evaluation.strengths = strengths;
+    if (weaknesses !== undefined) evaluation.weaknesses = weaknesses;
+    if (commonMistakes !== undefined) evaluation.commonMistakes = commonMistakes;
+    if (etiquetteNotes !== undefined) {
+      evaluation.etiquetteNotes = etiquetteNotes;
+      evaluation.fixingEtiquette = etiquetteNotes; // Sync legacy field
+    }
+    if (teacherNotes !== undefined) {
+      evaluation.teacherNotes = teacherNotes;
+      evaluation.generalNotes = teacherNotes; // Sync legacy field
+    }
+    if (ratings) {
+      evaluation.ratings = {
+        fluency: ratings.fluency !== undefined ? ratings.fluency : evaluation.ratings?.fluency || 3,
+        tajweed: ratings.tajweed !== undefined ? ratings.tajweed : evaluation.ratings?.tajweed || 3,
+        accuracy: ratings.accuracy !== undefined ? ratings.accuracy : evaluation.ratings?.accuracy || 3
+      };
     }
 
     await evaluation.save();
     res.json(evaluation);
   } catch (error) {
-    console.error('Error saving weekly evaluation:', error);
+    console.error('❌ Error updating weekly evaluation:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get weekly evaluations for a student
-app.get('/api/students/:studentId/weekly-evaluations', async (req, res) => {
+// POST /api/weekly-evaluations/:id/submit - Submit evaluation for review (Teacher only)
+app.post('/api/weekly-evaluations/:id/submit', authenticateToken, async (req, res) => {
+  try {
+    // Role check: Only teachers can submit evaluations
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can submit evaluations.' });
+    }
+
+    const { id } = req.params;
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+    
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Verify teacher owns this evaluation
+    if (evaluation.teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied. You can only submit your own evaluations.' });
+    }
+
+    // Only allow submission from draft status
+    if (evaluation.status !== 'draft') {
+      return res.status(400).json({ 
+        error: `Cannot submit evaluation in status "${evaluation.status}". Only draft evaluations can be submitted.` 
+      });
+    }
+
+    // Validate required fields before submission
+    if (!evaluation.strengths || !evaluation.weaknesses || !evaluation.commonMistakes || !evaluation.etiquetteNotes) {
+      return res.status(400).json({ 
+        error: 'Cannot submit. Please fill in all required fields: strengths, weaknesses, commonMistakes, etiquetteNotes' 
+      });
+    }
+
+    if (!evaluation.ratings || !evaluation.ratings.fluency || !evaluation.ratings.tajweed || !evaluation.ratings.accuracy) {
+      return res.status(400).json({ 
+        error: 'Cannot submit. Please provide all ratings: fluency, tajweed, accuracy' 
+      });
+    }
+
+    // Update status and calculate late submission
+    const submittedAt = new Date();
+    evaluation.status = 'submitted';
+    evaluation.submittedAt = submittedAt;
+
+    // Calculate late status (deadline is Sunday 11:59 PM of the evaluated week)
+    const lateStatus = calculateLateStatus(evaluation.weekEndDate, submittedAt);
+    evaluation.meta = evaluation.meta || {};
+    evaluation.meta.isLate = lateStatus.isLate;
+    evaluation.meta.daysLate = lateStatus.daysLate;
+
+    await evaluation.save();
+
+    // Auto-transition to under_review after a brief moment (or immediately)
+        evaluation.status = 'under_review';
+    await evaluation.save();
+        
+    // Create notification for Super Admin
+    const user = await User.findById(req.user.userId);
+    const teacherName = user?.name || user?.email || 'Teacher';
+    
+        const notification = new AdminNotification({
+          type: 'weekly_evaluation_submitted',
+          title: 'New Weekly Evaluation Submitted',
+      message: `${teacherName} submitted a weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})${lateStatus.isLate ? ` - LATE by ${lateStatus.daysLate} day(s)` : ''}`,
+          weeklyEvaluationId: evaluation.id,
+          studentId: evaluation.studentId,
+          teacherId: evaluation.teacherId,
+      priority: lateStatus.isLate ? 'high' : 'medium',
+          read: false
+        });
+        await notification.save();
+
+    res.json(evaluation);
+  } catch (error) {
+    console.error('❌ Error submitting weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/weekly-evaluations/student/:studentId - Get approved evaluations for student (Student only)
+app.get('/api/weekly-evaluations/student/:studentId', authenticateToken, async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { status, teacherId } = req.query;
 
-    const query = { studentId };
-    if (status) query.status = status;
-    if (teacherId) query.teacherId = teacherId;
+    // Role check: Only students can view their own evaluations
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ error: 'Access denied. Only students can view student evaluations.' });
+    }
 
-    const evaluations = await WeeklyEvaluation.find(query).sort({ weekStartDate: -1 });
+    // Students can only see approved evaluations
+    const evaluations = await WeeklyEvaluation.find({
+      studentId,
+      status: 'approved'
+    }).sort({ weekStartDate: -1 });
+
     res.json(evaluations);
   } catch (error) {
-    console.error('Error fetching weekly evaluations:', error);
+    console.error('❌ Error fetching student weekly evaluations:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get weekly evaluations for a teacher
-app.get('/api/teachers/:teacherId/weekly-evaluations', async (req, res) => {
+// GET /api/teachers/:teacherId/weekly-evaluations - Get evaluations for a teacher (Teacher only)
+app.get('/api/teachers/:teacherId/weekly-evaluations', authenticateToken, async (req, res) => {
   try {
     const { teacherId } = req.params;
     const { status } = req.query;
+
+    // Role check: Only teachers can view their own evaluations
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can view teacher evaluations.' });
+    }
+
+    // Verify teacher owns these evaluations
+    if (teacherId !== req.user.userId.toString()) {
+      return res.status(403).json({ error: 'Access denied. You can only view your own evaluations.' });
+    }
 
     const query = { teacherId };
     if (status) query.status = status;
@@ -6427,79 +6667,187 @@ app.get('/api/teachers/:teacherId/weekly-evaluations', async (req, res) => {
     const evaluations = await WeeklyEvaluation.find(query).sort({ weekStartDate: -1 });
     res.json(evaluations);
   } catch (error) {
-    console.error('Error fetching teacher weekly evaluations:', error);
+    console.error('❌ Error fetching teacher weekly evaluations:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get all weekly evaluations (for super admin review)
-app.get('/api/weekly-evaluations', async (req, res) => {
+// GET /api/weekly-evaluations - Get all weekly evaluations (Super Admin and Admin only)
+app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
   try {
-    const { status } = req.query;
-    const query = status ? { status } : {};
+    // Role check: Only Super Admin and Admin can view all evaluations
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can view all evaluations.' });
+    }
+
+    const { status, teacherId, studentId, weekStartDate } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (teacherId) query.teacherId = teacherId;
+    if (studentId) query.studentId = studentId;
+    if (weekStartDate) {
+      const weekStart = new Date(weekStartDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      query.weekStartDate = { $gte: weekStart, $lte: weekEnd };
+    }
 
     const evaluations = await WeeklyEvaluation.find(query)
       .sort({ submittedAt: -1, createdAt: -1 });
     res.json(evaluations);
   } catch (error) {
-    console.error('Error fetching weekly evaluations:', error);
+    console.error('❌ Error fetching weekly evaluations:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get single weekly evaluation
-app.get('/api/weekly-evaluations/:id', async (req, res) => {
+// GET /api/weekly-evaluations/approved - Get approved evaluations with date filtering (Super Admin and Admin only)
+app.get('/api/weekly-evaluations/approved', authenticateToken, async (req, res) => {
+  try {
+    // Role check: Only Super Admin and Admin can view approved evaluations
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can view approved evaluations.' });
+    }
+
+    const { startDate, endDate, days, teacherId, studentId } = req.query;
+    const query = { status: 'approved' };
+
+    // Date filtering
+    if (days) {
+      // Filter by last N days
+      const daysAgo = parseInt(days, 10);
+      const start = new Date();
+      start.setDate(start.getDate() - daysAgo);
+      start.setHours(0, 0, 0, 0);
+      query.approvedAt = { $gte: start };
+    } else if (startDate || endDate) {
+      // Filter by date range
+      query.approvedAt = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        query.approvedAt.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.approvedAt.$lte = end;
+      }
+    } else {
+      // Default: Today's approved evaluations
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      query.approvedAt = { $gte: today, $lt: tomorrow };
+    }
+
+    // Additional filters
+    if (teacherId) query.teacherId = teacherId;
+    if (studentId) query.studentId = studentId;
+
+    const evaluations = await WeeklyEvaluation.find(query)
+      .sort({ approvedAt: -1, weekStartDate: -1 });
+    
+    res.json(evaluations);
+  } catch (error) {
+    console.error('❌ Error fetching approved weekly evaluations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/weekly-evaluations/:id - Get single weekly evaluation (Role-based access)
+app.get('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const evaluation = await WeeklyEvaluation.findOne({ id });
 
     if (!evaluation) {
       return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Role-based access control
+    if (req.user.role === 'student') {
+      // Students can only view approved evaluations
+      if (evaluation.status !== 'approved') {
+        return res.status(403).json({ error: 'Access denied. Only approved evaluations are visible to students.' });
+      }
+      if (evaluation.studentId !== req.user.userId.toString()) {
+        return res.status(403).json({ error: 'Access denied. You can only view your own evaluations.' });
+      }
+    } else if (req.user.role === 'teacher') {
+      // Teachers can view their own evaluations
+      if (evaluation.teacherId !== req.user.userId.toString()) {
+        return res.status(403).json({ error: 'Access denied. You can only view your own evaluations.' });
+      }
+    } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      // Only Super Admin and Admin can view all evaluations
+      return res.status(403).json({ error: 'Access denied. Weekly evaluations are only accessible to Super Admin and Admin.' });
     }
 
     res.json(evaluation);
   } catch (error) {
-    console.error('Error fetching weekly evaluation:', error);
+    console.error('❌ Error fetching weekly evaluation:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Super Admin review: Provide feedback or approve
-app.post('/api/weekly-evaluations/:id/review', async (req, res) => {
+// POST /api/weekly-evaluations/:id/approve - Approve evaluation (Super Admin only)
+app.post('/api/weekly-evaluations/:id/approve', authenticateToken, async (req, res) => {
   try {
-    const { id } = req.params;
-    const { action, feedback, reviewedBy, reviewedByName } = req.body;
-
-    if (!['approve', 'request_changes'].includes(action)) {
-      return res.status(400).json({ error: 'Invalid action' });
+    // Role check: Only Super Admin can approve evaluations
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin can approve evaluations.' });
     }
+
+    const { id } = req.params;
+    const { adminFeedback, gamePlan, sharedLinks } = req.body;
 
     const evaluation = await WeeklyEvaluation.findOne({ id });
     if (!evaluation) {
       return res.status(404).json({ error: 'Evaluation not found' });
     }
 
-    if (!['under_review', 'resubmitted'].includes(evaluation.status)) {
-      return res.status(400).json({ error: 'Evaluation is not in reviewable status' });
+    // Only allow approval from under_review or submitted status
+    if (!['under_review', 'submitted'].includes(evaluation.status)) {
+      return res.status(400).json({ 
+        error: `Cannot approve evaluation in status "${evaluation.status}". Only evaluations under review can be approved.` 
+      });
     }
 
-    evaluation.reviewedBy = reviewedBy;
+    const user = await User.findById(req.user.userId);
+    const reviewedByName = user?.name || user?.email || 'Super Admin';
+
+    // Update evaluation
+      evaluation.status = 'approved';
+      evaluation.approvedAt = new Date();
+    evaluation.reviewedBy = req.user.userId.toString();
     evaluation.reviewedByName = reviewedByName;
     evaluation.reviewedAt = new Date();
 
-    if (action === 'approve') {
-      evaluation.status = 'approved';
-      evaluation.approvedAt = new Date();
-      
-      // Add to student's evaluations array
+    // Add admin feedback, game plan, and links if provided
+    if (adminFeedback !== undefined) evaluation.adminFeedback = adminFeedback;
+    if (gamePlan !== undefined) evaluation.gamePlan = gamePlan;
+    if (sharedLinks !== undefined && Array.isArray(sharedLinks)) {
+      evaluation.sharedLinks = sharedLinks;
+    }
+
+    await evaluation.save();
+
+    // Add to student's evaluations array (backward compatibility)
       const student = await Student.findOne({ id: evaluation.studentId });
       if (student) {
+      const avgRating = evaluation.ratings 
+        ? Math.round((evaluation.ratings.fluency + evaluation.ratings.tajweed + evaluation.ratings.accuracy) / 3)
+        : 3;
+
         const approvedEvaluation = {
           id: evaluation.id,
           date: evaluation.weekStartDate.toISOString().split('T')[0],
           category: 'Weekly Report',
-          rating: Math.round((evaluation.tajweedEvaluation?.overallRating || 0 + evaluation.memoryEvaluation?.overallRating || 0) / 2),
-          comments: `Tajweed: ${evaluation.tajweedEvaluation?.overallRating || 'N/A'}/10, Memory: ${evaluation.memoryEvaluation?.overallRating || 'N/A'}/10. ${evaluation.generalNotes || ''}`,
+        rating: avgRating,
+        comments: `Fluency: ${evaluation.ratings?.fluency || 'N/A'}/5, Tajweed: ${evaluation.ratings?.tajweed || 'N/A'}/5, Accuracy: ${evaluation.ratings?.accuracy || 'N/A'}/5. ${evaluation.teacherNotes || ''}`,
           evaluatedBy: evaluation.teacherId,
           weeklyEvaluationId: evaluation.id
         };
@@ -6509,36 +6857,89 @@ app.post('/api/weekly-evaluations/:id/review', async (req, res) => {
         await student.save();
       }
 
-      // Create notification for admin dashboard
-      const notification = new AdminNotification({
+    // Create notifications
+    const adminNotification = new AdminNotification({
         type: 'weekly_evaluation_approved',
         title: 'Weekly Evaluation Approved',
-        message: `${reviewedByName || 'Admin'} approved weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
+      message: `${reviewedByName} approved weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
         weeklyEvaluationId: evaluation.id,
         studentId: evaluation.studentId,
         teacherId: evaluation.teacherId,
         priority: 'high',
         read: false
       });
-      await notification.save();
-    } else if (action === 'request_changes') {
-      evaluation.status = 'feedback_provided';
-      evaluation.adminFeedback = feedback || '';
-      
-      // Add to previous feedback history
-      evaluation.previousFeedback = evaluation.previousFeedback || [];
-      evaluation.previousFeedback.push({
-        feedback: feedback || '',
-        providedBy: reviewedBy,
-        providedByName: reviewedByName,
-        providedAt: new Date()
+    await adminNotification.save();
+
+    res.json(evaluation);
+  } catch (error) {
+    console.error('❌ Error approving weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/weekly-evaluations/:id/reject - Reject evaluation (Super Admin and Admin only)
+app.post('/api/weekly-evaluations/:id/reject', authenticateToken, async (req, res) => {
+  try {
+    // Role check: Only Super Admin and Admin can reject evaluations
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can reject evaluations.' });
+    }
+
+    const { id } = req.params;
+    const { rejectionReason, adminFeedback } = req.body;
+
+    if (!rejectionReason) {
+      return res.status(400).json({ error: 'Rejection reason is required' });
+    }
+
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Only allow rejection from under_review or submitted status
+    if (!['under_review', 'submitted'].includes(evaluation.status)) {
+      return res.status(400).json({ 
+        error: `Cannot reject evaluation in status "${evaluation.status}". Only evaluations under review can be rejected.` 
       });
     }
 
+    const user = await User.findById(req.user.userId);
+    const reviewedByName = user?.name || user?.email || 'Super Admin';
+
+    // Update evaluation
+    evaluation.status = 'rejected';
+    evaluation.rejectedAt = new Date();
+    evaluation.reviewedBy = req.user.userId.toString();
+    evaluation.reviewedByName = reviewedByName;
+    evaluation.reviewedAt = new Date();
+    evaluation.rejectionReason = rejectionReason;
+    if (adminFeedback) evaluation.adminFeedback = adminFeedback;
+
+    // Increment revision count
+    evaluation.meta = evaluation.meta || {};
+    evaluation.meta.revisionCount = (evaluation.meta.revisionCount || 0) + 1;
+
     await evaluation.save();
+
+    // Create notification for teacher
+    // Note: We'd need a teacher notification system for this. For now, using AdminNotification
+    // TODO: Implement teacher notification system
+    const adminNotification = new AdminNotification({
+      type: 'weekly_evaluation_rejected',
+      title: 'Weekly Evaluation Rejected',
+      message: `${reviewedByName} rejected weekly evaluation for ${evaluation.studentName}. Reason: ${rejectionReason.substring(0, 100)}`,
+      weeklyEvaluationId: evaluation.id,
+      studentId: evaluation.studentId,
+      teacherId: evaluation.teacherId,
+      priority: 'high',
+      read: false
+    });
+    await adminNotification.save();
+
     res.json(evaluation);
   } catch (error) {
-    console.error('Error reviewing weekly evaluation:', error);
+    console.error('❌ Error rejecting weekly evaluation:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -6602,6 +7003,132 @@ app.delete('/api/weekly-evaluations/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/weekly-evaluations/:id/assign-homework - Create homework assignment from approved evaluation (Super Admin and Admin only)
+app.post('/api/weekly-evaluations/:id/assign-homework', authenticateToken, async (req, res) => {
+  try {
+    // Role check: Only Super Admin and Admin can assign homework from evaluations
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can assign homework from evaluations.' });
+    }
+
+    const { id } = req.params;
+    const { homeworkContent, homeworkLink, additionalNotes } = req.body;
+
+    const evaluation = await WeeklyEvaluation.findOne({ id });
+    if (!evaluation) {
+      return res.status(404).json({ error: 'Evaluation not found' });
+    }
+
+    // Only allow homework assignment from approved evaluations
+    if (evaluation.status !== 'approved') {
+      return res.status(400).json({ 
+        error: `Cannot assign homework from evaluation in status "${evaluation.status}". Only approved evaluations can have homework assigned.` 
+      });
+    }
+
+    // Get student
+    const student = await Student.findOne({ id: evaluation.studentId });
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    // Get admin info
+    const user = await User.findById(req.user.userId);
+    const assignedByName = user?.name || user?.email || 'Admin';
+    const assignedByRole = req.user.role === 'superadmin' ? 'super_admin' : 'admin';
+
+    // Build homework content from evaluation data
+    let homeworkText = homeworkContent || '';
+    
+    // If no custom content, generate from evaluation
+    if (!homeworkText) {
+      homeworkText = `Weekly Evaluation Homework - Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()}\n\n`;
+      
+      if (evaluation.strengths) {
+        homeworkText += `Continue working on:\n${evaluation.strengths}\n\n`;
+      }
+      
+      if (evaluation.weaknesses) {
+        homeworkText += `Focus areas:\n${evaluation.weaknesses}\n\n`;
+      }
+      
+      if (evaluation.commonMistakes) {
+        homeworkText += `Common mistakes to avoid:\n${evaluation.commonMistakes}\n\n`;
+      }
+      
+      if (evaluation.etiquetteNotes) {
+        homeworkText += `Practice tips:\n${evaluation.etiquetteNotes}\n\n`;
+      }
+      
+      if (evaluation.adminFeedback) {
+        homeworkText += `Admin feedback:\n${evaluation.adminFeedback}\n\n`;
+      }
+      
+      if (evaluation.gamePlan) {
+        homeworkText += `Game plan:\n${evaluation.gamePlan}\n\n`;
+      }
+      
+      if (additionalNotes) {
+        homeworkText += `Additional notes:\n${additionalNotes}\n\n`;
+      }
+      
+      // Add ratings summary
+      if (evaluation.ratings) {
+        homeworkText += `Ratings: Fluency ${evaluation.ratings.fluency}/5, Tajweed ${evaluation.ratings.tajweed}/5, Accuracy ${evaluation.ratings.accuracy}/5`;
+      }
+    } else if (additionalNotes) {
+      homeworkText += `\n\nAdditional notes:\n${additionalNotes}`;
+    }
+
+    // Create homework assignment
+    const assignment = new Assignment({
+      studentId: evaluation.studentId,
+      studentName: evaluation.studentName,
+      assignedBy: req.user.userId.toString(),
+      assignedByName: assignedByName,
+      assignedByRole: assignedByRole,
+      homework: {
+        enabled: true,
+        content: homeworkText,
+        link: homeworkLink || (evaluation.sharedLinks && evaluation.sharedLinks.length > 0 ? evaluation.sharedLinks.join('\n') : '')
+      },
+      status: 'active',
+      // Link to the evaluation that generated this homework
+      weeklyEvaluationId: evaluation.id
+    });
+
+    await assignment.save();
+
+    // Create notification
+    const notification = new AdminNotification({
+      type: 'assignment_submitted',
+      title: 'Homework Assigned from Weekly Evaluation',
+      message: `${assignedByName} assigned homework to ${evaluation.studentName} based on weekly evaluation (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()})`,
+      assignmentId: assignment._id.toString(),
+      studentId: evaluation.studentId,
+      teacherId: evaluation.teacherId,
+      priority: 'medium',
+      read: false
+    });
+    await notification.save();
+
+    res.json({
+      success: true,
+      assignment: {
+        id: assignment._id.toString(),
+        studentId: assignment.studentId,
+        studentName: assignment.studentName,
+        homework: assignment.homework,
+        weeklyEvaluationId: evaluation.id
+      },
+      message: 'Homework assigned successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error assigning homework from weekly evaluation:', error);
     res.status(500).json({ error: error.message });
   }
 });
