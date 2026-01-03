@@ -1866,21 +1866,40 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteAdmin = async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${id}`, {
-        method: 'DELETE',
-      });
+      // Use fetchWithTimeout with authentication
+      const response = await fetchWithTimeout(
+        `${API_BASE}/users/${id}`,
+        {
+          method: 'DELETE',
+        },
+        10000,
+        true // requireAuth = true - includes Authorization header
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to delete admin');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to delete admin';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      setAdmins(prev => prev.filter(a => a.id !== id));
+      setAdmins(prev => prev.filter(a => {
+        const aId = a.id || (a as any)._id;
+        return aId !== id;
+      }));
+      
       if (import.meta.env.DEV) {
         console.log('✅ Admin deleted successfully from MongoDB');
       }
 
     } catch (err) {
-      setError('Failed to delete admin from MongoDB');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete admin from MongoDB';
+      setError(errorMessage);
       console.error('Error deleting admin:', err);
       throw err; // Re-throw to let caller handle the error
     }
