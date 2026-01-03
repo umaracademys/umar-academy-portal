@@ -54,6 +54,8 @@ const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStud
 const PdfManagement = lazy(() => import('../components/PdfManagement'));
 const StudentPersonalMushaf = lazy(() => import('../components/StudentPersonalMushaf'));
 const WeeklyEvaluationsAdmin = lazy(() => import('../components/WeeklyEvaluationsAdmin'));
+const ApprovedEvaluationsAdmin = lazy(() => import('../components/ApprovedEvaluationsAdmin'));
+const ApprovedTicketsAdmin = lazy(() => import('../components/ApprovedTicketsAdmin'));
 const SuperAdminProfile = lazy(() => import('../components/SuperAdminProfile'));
 const HelpAndSupport = lazy(() => import('../components/HelpAndSupport'));
 
@@ -173,6 +175,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
+  const [showApprovedEvaluations, setShowApprovedEvaluations] = useState(false);
+  const [showApprovedTickets, setShowApprovedTickets] = useState(false);
   const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
   const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -259,6 +263,20 @@ const SuperAdminDashboard: React.FC = () => {
       emphasis: 'primary' as const,
     },
     {
+      id: 'approved-evaluations',
+      label: 'Approved Evaluations',
+      description: 'View recently approved evaluations and assign homework.',
+      onClick: () => setShowApprovedEvaluations(true),
+      emphasis: 'accent' as const,
+    },
+    {
+      id: 'approved-tickets',
+      label: 'Approved Tickets',
+      description: 'View recently approved tickets and assign homework.',
+      onClick: () => setShowApprovedTickets(true),
+      emphasis: 'accent' as const,
+    },
+    {
       id: 'manage-assignments',
       label: 'Manage Assignments',
       description: 'Create and manage assignments with multi-phase classwork.',
@@ -266,7 +284,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: pendingHomeworkCount,
       emphasis: 'primary' as const,
     },
-  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations, setShowSuperAdminProfile]);
+  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations, setShowApprovedEvaluations, setShowApprovedTickets, setShowSuperAdminProfile]);
 
   const [showMoreActions, setShowMoreActions] = useState(false);
   
@@ -339,7 +357,7 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowWeeklyEvaluations(true),
       badge: pendingWeeklyEvaluationsCount > 0 ? pendingWeeklyEvaluationsCount : null,
     },
-  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, pendingWeeklyEvaluationsCount]);
+  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, setShowApprovedEvaluations, pendingWeeklyEvaluationsCount]);
 
   const managementActions = [
     {
@@ -436,6 +454,22 @@ const SuperAdminDashboard: React.FC = () => {
       action: () => setShowWeeklyEvaluations(true),
       footer: `${pendingWeeklyEvaluationsCount} pending`,
     },
+    {
+      id: 'approved-evaluations',
+      badge: '✓',
+      title: 'Approved Evaluations',
+      description: 'View recently approved evaluations and assign homework.',
+      action: () => setShowApprovedEvaluations(true),
+      footer: 'Assign homework',
+    },
+    {
+      id: 'approved-tickets',
+      badge: '🎫',
+      title: 'Approved Tickets',
+      description: 'View recently approved tickets and assign homework.',
+      action: () => setShowApprovedTickets(true),
+      footer: 'Assign homework',
+    },
   ];
 
   // Calculate additional metrics
@@ -514,6 +548,18 @@ const SuperAdminDashboard: React.FC = () => {
                     {pendingWeeklyEvaluationsCount}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => setShowApprovedEvaluations(true)}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-green-500/30 px-4 py-2 text-xs font-bold text-green-600 transition hover:bg-green-50 hover:border-green-500"
+              >
+                ✓ Approved Evaluations
+              </button>
+              <button
+                onClick={() => setShowApprovedTickets(true)}
+                className="inline-flex items-center justify-center rounded-lg border-2 border-purple-500/30 px-4 py-2 text-xs font-bold text-purple-600 transition hover:bg-purple-50 hover:border-purple-500"
+              >
+                🎫 Approved Tickets
               </button>
             </div>
           </div>
@@ -1727,6 +1773,24 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <WeeklyEvaluationsAdmin
             onClose={() => setShowWeeklyEvaluations(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Approved Evaluations Admin Modal */}
+      {showApprovedEvaluations && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <ApprovedEvaluationsAdmin
+            onClose={() => setShowApprovedEvaluations(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Approved Tickets Admin Modal */}
+      {showApprovedTickets && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <ApprovedTicketsAdmin
+            onClose={() => setShowApprovedTickets(false)}
           />
         </Suspense>
       )}
