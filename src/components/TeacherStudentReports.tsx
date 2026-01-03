@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { Assignment } from '../types/assignment';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TeacherStudentReportsProps {
   onClose: () => void;
@@ -692,12 +691,10 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Final Report / Summary <span className="text-red-500">*</span>
                 </label>
-                <AiSuggestionsInput
+                <textarea
                   value={editForm.finalReport}
-                  onChange={(value) => setEditForm(prev => ({ ...prev, finalReport: value }))}
-                  category="progress_report"
+                  onChange={(e) => setEditForm(prev => ({ ...prev, finalReport: e.target.value }))}
                   rows={6}
-                  multiline={true}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   placeholder="Enter the final report or summary..."
                 />
@@ -706,12 +703,10 @@ const TeacherStudentReports: React.FC<TeacherStudentReportsProps> = ({ onClose }
               {/* Homework */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Homework</label>
-                <AiSuggestionsInput
+                <textarea
                   value={editForm.homework}
-                  onChange={(value) => setEditForm(prev => ({ ...prev, homework: value }))}
-                  category="general"
+                  onChange={(e) => setEditForm(prev => ({ ...prev, homework: e.target.value }))}
                   rows={4}
-                  multiline={true}
                   className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm focus:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-100"
                   placeholder="Enter homework instructions..."
                 />

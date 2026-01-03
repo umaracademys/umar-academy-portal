@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import Card from './Card';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface PairTeacherMessageProps {
   pair: any;
@@ -363,11 +362,10 @@ const PairTeacherMessage: React.FC<PairTeacherMessageProps> = ({
             {/* Message Input */}
             <div>
               <label className="block text-xs font-bold text-primary mb-1">Message *</label>
-              <AiSuggestionsInput
+              <textarea
                 value={message}
-                onChange={(value) => setMessage(value)}
+                onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type your message..."
-                category="general"
                 className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white min-h-[100px]"
               />
             </div>

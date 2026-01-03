@@ -3,7 +3,6 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TeacherTicketReviewProps {
   ticket: Ticket;
@@ -372,12 +371,10 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                   </label>
                 </div>
                 <div className="p-4">
-                  <AiSuggestionsInput
+                  <textarea
                     value={teacherComment}
-                    onChange={(value) => setTeacherComment(value)}
-                    category="tajweed"
+                    onChange={(e) => setTeacherComment(e.target.value)}
                     rows={8}
-                    multiline={true}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition resize-none font-medium shadow-sm"
                     placeholder="Enter your review comments here... Describe the student's recitation, areas of improvement, and any additional notes."
                   />

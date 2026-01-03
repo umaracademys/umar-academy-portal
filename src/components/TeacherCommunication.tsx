@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Card from './Card';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TeacherCommunicationProps {
   teacher: any;
@@ -482,12 +481,10 @@ const TeacherCommunication: React.FC<TeacherCommunicationProps> = ({ teacher, on
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <AiSuggestionsInput
+                <textarea
                   value={composeMessage}
-                  onChange={(value) => setComposeMessage(value)}
-                  category="general"
+                  onChange={(e) => setComposeMessage(e.target.value)}
                   rows={6}
-                  multiline={true}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                   placeholder="Enter your message here..."
                 />
@@ -555,12 +552,10 @@ const TeacherCommunication: React.FC<TeacherCommunicationProps> = ({ teacher, on
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Message Template</label>
-                <AiSuggestionsInput
+                <textarea
                   value={templateContent}
-                  onChange={(value) => setTemplateContent(value)}
-                  category="general"
+                  onChange={(e) => setTemplateContent(e.target.value)}
                   rows={6}
-                  multiline={true}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
                   placeholder="Enter message template. Use {variable_name} for dynamic content."
                 />

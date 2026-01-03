@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import Card from './Card';
 import TicketCreationForm from './TicketCreationForm';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
@@ -775,12 +774,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
                     Reason (Optional)
                   </label>
-                  <AiSuggestionsInput
+                  <textarea
                     value={reassignReason}
-                    onChange={(value) => setReassignReason(value)}
-                    category="general"
+                    onChange={(e) => setReassignReason(e.target.value)}
                     rows={4}
-                    multiline={true}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                     placeholder="Why are you reassigning this ticket?"
                   />

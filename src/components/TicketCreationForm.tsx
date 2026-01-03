@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Ticket, TicketType } from '../types/ticket';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TicketCreationFormProps {
   studentId: string;
@@ -253,12 +252,10 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
                 Comment <span className="text-red-500">*</span>
               </label>
-              <AiSuggestionsInput
+              <textarea
                 value={adminComment}
-                onChange={(value) => setAdminComment(value)}
-                category="general"
+                onChange={(e) => setAdminComment(e.target.value)}
                 rows={5}
-                multiline={true}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                 placeholder="Enter comment for sabq assignment..."
               />
@@ -293,12 +290,10 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                 <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
                   Notes for Teacher <span className="text-red-500">*</span>
                 </label>
-                <AiSuggestionsInput
+                <textarea
                   value={teacherNotes}
-                  onChange={(value) => setTeacherNotes(value)}
-                  category="general"
+                  onChange={(e) => setTeacherNotes(e.target.value)}
                   rows={5}
-                  multiline={true}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
                   placeholder="Enter notes or instructions for the teacher..."
                 />

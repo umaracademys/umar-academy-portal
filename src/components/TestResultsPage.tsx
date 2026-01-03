@@ -5,7 +5,6 @@ import { ProgramType } from '../types';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { getQuranChapters } from '@umar-academy/mushaf';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 interface TestQuestion {
   id?: string;
@@ -754,13 +753,14 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
                         {/* Notes Input */}
                         <div>
                           <label className="block text-[9px] font-bold text-primary mb-0.5">Notes</label>
-                          <AiSuggestionsInput
+                          <input
+                            type="text"
                             value={question.notes || ''}
-                            onChange={(value) => {
+                            onChange={(e) => {
                               const updatedQuestions = [...editingTest.questions];
                               updatedQuestions[index] = {
                                 ...question,
-                                notes: value
+                                notes: e.target.value
                               };
                               setEditingTest({ ...editingTest, questions: updatedQuestions });
                             }}
@@ -778,12 +778,10 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
                   {/* Overall Feedback */}
                   <div className="mb-3">
                     <label className="block text-xs font-bold text-primary mb-1">Overall Feedback</label>
-                    <AiSuggestionsInput
+                    <textarea
                       value={editingTest.feedback || ''}
-                      onChange={(value) => setEditingTest({ ...editingTest, feedback: value })}
-                      category="evaluation"
+                      onChange={(e) => setEditingTest({ ...editingTest, feedback: e.target.value })}
                       rows={4}
-                      multiline={true}
                       className="w-full px-3 py-2 border-2 border-primary/30 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
                       placeholder="Add overall feedback for the student..."
                     />

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { TeacherEvaluation, EvaluationQuestion, QuestionType } from '../types';
-import AiSuggestionsInput from './AiSuggestionsInput';
 
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
@@ -530,12 +529,10 @@ const TeacherEvaluationManagement: React.FC<TeacherEvaluationManagementProps> = 
                     Description
                     <span className="text-xs text-primary/60 font-normal">(Optional)</span>
                   </label>
-                  <AiSuggestionsInput
+                  <textarea
                     value={formData.description}
-                    onChange={(value) => setFormData({ ...formData, description: value })}
-                    category="evaluation"
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
-                    multiline={true}
                     className="w-full px-4 py-2.5 border-2 border-primary/20 rounded-xl bg-white text-sm font-medium text-primary placeholder:text-primary/40 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm hover:shadow-md resize-none"
                     placeholder="Describe what this evaluation covers..."
                   />
