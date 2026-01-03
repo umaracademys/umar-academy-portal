@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense } from 'react';
+import React, { useState, lazy, Suspense, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -26,9 +26,69 @@ import TeacherAttendance from '../components/TeacherAttendance';
 import TeacherCommunication from '../components/TeacherCommunication';
 import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
 import { useData } from '../contexts/DataContext';
+import { useAuth } from '../contexts/AuthContext';
+import { AdminPermissions } from '../types';
 
 const AdminDashboard: React.FC = () => {
-  const { students, teachers } = useData();
+  const { user } = useAuth();
+  const { students, teachers, admins } = useData();
+  
+  // Get current admin's permissions
+  const currentAdmin = useMemo(() => {
+    if (!user?.email) return null;
+    return admins.find(admin => admin.email === user.email);
+  }, [user?.email, admins]);
+  
+  // Get admin permissions with defaults
+  const permissions: AdminPermissions = useMemo(() => {
+    if (!currentAdmin?.permissions) {
+      // Default permissions if admin not found or no permissions set
+      return {
+        canManageTeachers: false,
+        canManageStudents: false,
+        canManageFinancials: false,
+        canViewReports: false,
+        canManagePermissions: false,
+        canAccessMessages: false,
+        canViewAllMessages: false,
+        canModerateMessages: false,
+        canAccessPdf: false,
+        canManagePdfLibrary: false,
+        canViewAllPdfAnnotations: false,
+        canAccessHomework: false,
+        canManageHomework: false,
+        canViewAllHomework: false,
+        canAccessEvaluations: false,
+        canManageEvaluations: false,
+        canApproveEvaluations: false,
+        canAccessTickets: false,
+        canCreateTickets: false,
+        canReviewTickets: false,
+        canApproveTickets: false,
+        canFinalizeTickets: false,
+        canManageTicketWorkflow: false,
+        canAccessAttendance: false,
+        canManageAttendance: false,
+        canViewAttendanceReports: false,
+        canAccessRecordings: false,
+        canManageRecordings: false,
+        canViewAllRecordings: false,
+        canAccessMushaf: false,
+        canManageMushaf: false,
+        canViewAllMistakes: false,
+        canAccessQaidah: false,
+        canManageQaidah: false,
+        canViewQaidahReports: false,
+        canAccessAssignments: false,
+        canManageAssignments: false,
+        canBulkCreateAssignments: false,
+        canViewAnalytics: false,
+        canExportReports: false,
+        canViewSystemStats: false,
+      };
+    }
+    return currentAdmin.permissions;
+  }, [currentAdmin]);
   const [showEmailModule, setShowEmailModule] = useState(false);
   const [showTestingModule, setShowTestingModule] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
@@ -65,32 +125,44 @@ const AdminDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
-          <Link
-            to="/assignments"
-            className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
-          >
-            Manage Assignments
-          </Link>
-          <button
-            onClick={() => setActiveSection('students')}
-            className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
-          >
-            View Students
-          </button>
-          <button
-            onClick={() => setActiveSection('teachers')}
-            className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
-          >
-            View Teachers
-          </button>
+          {(permissions.canAccessAssignments || permissions.canManageAssignments) && (
+            <Link
+              to="/assignments"
+              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+            >
+              Manage Assignments
+            </Link>
+          )}
+          {permissions.canManageStudents && (
+            <button
+              onClick={() => setActiveSection('students')}
+              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+            >
+              View Students
+            </button>
+          )}
+          {permissions.canManageTeachers && (
+            <button
+              onClick={() => setActiveSection('teachers')}
+              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+            >
+              View Teachers
+            </button>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-        <StatCard title="Total Students" value={students.length} icon="ST" />
-        <StatCard title="Total Teachers" value={teachers.length} icon="TC" />
+        {permissions.canManageStudents && (
+          <StatCard title="Total Students" value={students.length} icon="ST" />
+        )}
+        {permissions.canManageTeachers && (
+          <StatCard title="Total Teachers" value={teachers.length} icon="TC" />
+        )}
         <StatCard title="Active Courses" value={45} icon="AC" />
-        <StatCard title="Revenue" value={`$${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}`} icon="REV" />
+        {permissions.canManageFinancials && (
+          <StatCard title="Revenue" value={`$${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}`} icon="REV" />
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
@@ -223,32 +295,36 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-          <button
-            onClick={() => setShowEvaluationManagement(true)}
-            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
-          >
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs sm:text-sm font-bold text-primary">Teacher Evaluations</p>
+          {(permissions.canAccessEvaluations || permissions.canManageEvaluations) && (
+            <button
+              onClick={() => setShowEvaluationManagement(true)}
+              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs sm:text-sm font-bold text-primary">Teacher Evaluations</p>
+                </div>
+                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
+                  Create and manage evaluation forms
+                </p>
               </div>
-              <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                Create and manage evaluation forms
-              </p>
-            </div>
-          </button>
-          <button
-            onClick={() => setShowEvaluationResults(true)}
-            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
-          >
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs sm:text-sm font-bold text-primary">Evaluation Results</p>
+            </button>
+          )}
+          {(permissions.canAccessEvaluations || permissions.canApproveEvaluations) && (
+            <button
+              onClick={() => setShowEvaluationResults(true)}
+              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs sm:text-sm font-bold text-primary">Evaluation Results</p>
+                </div>
+                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
+                  View and analyze results
+                </p>
               </div>
-              <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                View and analyze results
-              </p>
-            </div>
-          </button>
+            </button>
+          )}
           <button
             onClick={() => setShowEmailModule(true)}
             className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-transparent bg-accent text-primary hover:bg-accent/90 touch-target"
@@ -359,37 +435,48 @@ const AdminDashboard: React.FC = () => {
   );
 
   // Financials Section
-  const FinancialsSection = () => (
-    <div>
-      <h2 className="text-lg font-bold text-primary mb-3">Financial Overview</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-        <Card>
-          <div className="text-center">
-            <p className="text-xs text-primary-soft">Total Revenue</p>
-            <p className="text-xl font-bold text-primary">${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}</p>
-            <p className="text-[10px] text-primary-soft mt-0.5">This month</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-xs text-primary-soft">Pending Payments</p>
-            <p className="text-xl font-bold text-accent">$12,450</p>
-            <p className="text-xs text-primary-soft mt-1">24 students</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-sm text-primary-soft">Teacher Salaries</p>
-            <p className="text-3xl font-bold text-primary">
-              ${teachers.reduce((sum, t) => sum + t.payroll.monthlySalary, 0).toLocaleString()}
-            </p>
-            <p className="text-xs text-primary-soft mt-1">Monthly total</p>
-          </div>
-        </Card>
+  const FinancialsSection = () => {
+    if (!permissions.canManageFinancials) {
+      return (
+        <div className="p-8 text-center">
+          <p className="text-red-600 font-semibold">Access Denied</p>
+          <p className="text-gray-600 mt-2">You don't have permission to view financial information.</p>
+        </div>
+      );
+    }
+    
+    return (
+      <div>
+        <h2 className="text-lg font-bold text-primary mb-3">Financial Overview</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <Card>
+            <div className="text-center">
+              <p className="text-xs text-primary-soft">Total Revenue</p>
+              <p className="text-xl font-bold text-primary">${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}</p>
+              <p className="text-[10px] text-primary-soft mt-0.5">This month</p>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <p className="text-xs text-primary-soft">Pending Payments</p>
+              <p className="text-xl font-bold text-accent">$12,450</p>
+              <p className="text-xs text-primary-soft mt-1">24 students</p>
+            </div>
+          </Card>
+          <Card>
+            <div className="text-center">
+              <p className="text-sm text-primary-soft">Teacher Salaries</p>
+              <p className="text-3xl font-bold text-primary">
+                ${teachers.reduce((sum, t) => sum + t.payroll.monthlySalary, 0).toLocaleString()}
+              </p>
+              <p className="text-xs text-primary-soft mt-1">Monthly total</p>
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Reports Section
   const ReportsSection = () => (
@@ -478,11 +565,47 @@ const AdminDashboard: React.FC = () => {
   const renderSection = () => {
     switch (activeSection) {
       case 'overview': return <OverviewSection />;
-      case 'students': return <StudentsSection />;
-      case 'teachers': return <TeachersSection />;
+      case 'students': 
+        if (!permissions.canManageStudents) {
+          return (
+            <div className="p-8 text-center">
+              <p className="text-red-600 font-semibold">Access Denied</p>
+              <p className="text-gray-600 mt-2">You don't have permission to manage students.</p>
+            </div>
+          );
+        }
+        return <StudentsSection />;
+      case 'teachers': 
+        if (!permissions.canManageTeachers) {
+          return (
+            <div className="p-8 text-center">
+              <p className="text-red-600 font-semibold">Access Denied</p>
+              <p className="text-gray-600 mt-2">You don't have permission to manage teachers.</p>
+            </div>
+          );
+        }
+        return <TeachersSection />;
       case 'courses': return <CoursesSection />;
-      case 'financials': return <FinancialsSection />;
-      case 'reports': return <ReportsSection />;
+      case 'financials': 
+        if (!permissions.canManageFinancials) {
+          return (
+            <div className="p-8 text-center">
+              <p className="text-red-600 font-semibold">Access Denied</p>
+              <p className="text-gray-600 mt-2">You don't have permission to view financials.</p>
+            </div>
+          );
+        }
+        return <FinancialsSection />;
+      case 'reports': 
+        if (!permissions.canViewReports && !permissions.canViewAnalytics) {
+          return (
+            <div className="p-8 text-center">
+              <p className="text-red-600 font-semibold">Access Denied</p>
+              <p className="text-gray-600 mt-2">You don't have permission to view reports.</p>
+            </div>
+          );
+        }
+        return <ReportsSection />;
       case 'activities': return <ActivitiesSection />;
       case 'settings': return <SettingsSection />;
       default: return <OverviewSection />;
