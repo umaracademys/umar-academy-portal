@@ -22,8 +22,6 @@ const MessagesPage = lazy(() => import('./pages/MessagesPage'));
 const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage'));
 const ProfessionalMessagesPage = lazy(() => import('./components/messaging/ProfessionalMessagesPage'));
 const SuperAdminMessagesPageNew = lazy(() => import('./components/messaging/SuperAdminMessagesPage'));
-const ProfessionalMessagesPage = lazy(() => import('./components/messaging/ProfessionalMessagesPage'));
-const SuperAdminMessagesPageNew = lazy(() => import('./components/messaging/SuperAdminMessagesPage'));
 const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
 const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
