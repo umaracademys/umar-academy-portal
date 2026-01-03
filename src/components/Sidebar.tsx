@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
+import { AdminPermissions } from '../types';
 
 interface SidebarProps {
   activeSection: string;
@@ -12,6 +14,14 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle, onHelpClick }) => {
   const { user } = useAuth();
+  const { admins } = useData();
+  
+  // Get current admin's permissions if user is admin
+  const adminPermissions: AdminPermissions | null = useMemo(() => {
+    if (user?.role !== 'admin' || !user?.email) return null;
+    const currentAdmin = admins.find(admin => admin.email === user.email);
+    return currentAdmin?.permissions || null;
+  }, [user?.role, user?.email, admins]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   
@@ -28,20 +38,45 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
     href?: string;
   }
 
-  const baseMenuItems: MenuItem[] = [
-    { id: 'overview', icon: 'OV', label: 'Overview', badge: null, isLink: false },
-    { id: 'students', icon: 'ST', label: 'Students', badge: null, isLink: true, href: '/students' },
-    { id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' },
-    { id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' },
-    { id: 'messages', icon: 'MS', label: 'Messages', badge: null, isLink: true, href: '/messages' },
-  ];
+  const baseMenuItems: MenuItem[] = useMemo(() => {
+    const items: MenuItem[] = [
+      { id: 'overview', icon: 'OV', label: 'Overview', badge: null, isLink: false },
+    ];
+    
+    // Add Students if admin has permission
+    if (user?.role !== 'admin' || adminPermissions?.canManageStudents) {
+      items.push({ id: 'students', icon: 'ST', label: 'Students', badge: null, isLink: true, href: '/students' });
+    }
+    
+    // Add Teachers if admin has permission
+    if (user?.role !== 'admin' || adminPermissions?.canManageTeachers) {
+      items.push({ id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' });
+    }
+    
+    // Add Assignments if admin has permission
+    if (user?.role !== 'admin' || adminPermissions?.canAccessAssignments || adminPermissions?.canManageAssignments) {
+      items.push({ id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' });
+    }
+    
+    // Add Messages if admin has permission
+    if (user?.role !== 'admin' || adminPermissions?.canAccessMessages) {
+      items.push({ id: 'messages', icon: 'MS', label: 'Messages', badge: null, isLink: true, href: '/messages' });
+    }
+    
+    return items;
+  }, [user?.role, adminPermissions]);
 
 
   // Add Qaidah Submissions for teachers/admins/superadmins
-  const qaidahItem: MenuItem | null = 
-    (user?.role === 'teacher' || user?.role === 'admin' || user?.role === 'superadmin')
-      ? { id: 'qaidah', icon: 'QA', label: 'Qaidah', badge: null, isLink: true, href: '/qaidah-submissions' }
-      : null;
+  const qaidahItem: MenuItem | null = useMemo(() => {
+    if (user?.role === 'teacher' || user?.role === 'superadmin') {
+      return { id: 'qaidah', icon: 'QA', label: 'Qaidah', badge: null, isLink: true, href: '/qaidah-submissions' };
+    }
+    if (user?.role === 'admin' && adminPermissions?.canAccessQaidah) {
+      return { id: 'qaidah', icon: 'QA', label: 'Qaidah', badge: null, isLink: true, href: '/qaidah-submissions' };
+    }
+    return null;
+  }, [user?.role, adminPermissions]);
 
   // Add PDF Management for super admin (to upload/manage PDFs)
   const pdfManagementItem: MenuItem | null = 
