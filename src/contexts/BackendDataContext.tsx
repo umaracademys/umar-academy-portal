@@ -1822,9 +1822,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const updateAdmin = async (id: string, admin: Partial<Admin>) => {
     try {
-      // Use fetchWithTimeout with authentication
-      const response = await fetchWithTimeout(
-        `${API_BASE}/users/${id}`,
+      // Admins can be stored in either Admin collection or User collection
+      // Try Admin endpoint first, then fallback to User endpoint
+      let response = await fetchWithTimeout(
+        `${API_BASE}/admins/${id}`,
         {
           method: 'PUT',
           body: JSON.stringify(admin),
@@ -1832,6 +1833,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         10000,
         true // requireAuth = true - includes Authorization header
       );
+
+      // If Admin endpoint returns 404, try User endpoint (admin might only exist in User collection)
+      if (!response.ok && response.status === 404) {
+        if (import.meta.env.DEV) {
+          console.log('⚠️ Admin not found in Admin collection, trying User collection...');
+        }
+        response = await fetchWithTimeout(
+          `${API_BASE}/users/${id}`,
+          {
+            method: 'PUT',
+            body: JSON.stringify(admin),
+          },
+          10000,
+          true // requireAuth = true - includes Authorization header
+        );
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
