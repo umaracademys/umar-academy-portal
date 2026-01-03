@@ -1139,41 +1139,43 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   // Auto-refresh when window becomes visible (user switches back to tab)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && hasLoadedRef.current) {
-        // Use lightweight refresh when tab becomes visible (faster)
-        const lastRefresh = sessionStorage.getItem('lastDataRefresh');
-        const now = Date.now();
-        if (!lastRefresh || (now - parseInt(lastRefresh)) > 30000) {
-          if (import.meta.env.DEV) {
-            console.log('👁️ Tab became visible - refreshing data');
-          }
-          refreshDataLight(); // Use lightweight refresh for better UX
-          sessionStorage.setItem('lastDataRefresh', now.toString());
-        }
-      }
-    };
+  // DISABLED: Too aggressive and erases user work. Use manual refresh instead.
+  // useEffect(() => {
+  //   const handleVisibilityChange = () => {
+  //     if (document.visibilityState === 'visible' && hasLoadedRef.current) {
+  //       // Use lightweight refresh when tab becomes visible (faster)
+  //       const lastRefresh = sessionStorage.getItem('lastDataRefresh');
+  //       const now = Date.now();
+  //       if (!lastRefresh || (now - parseInt(lastRefresh)) > 30000) {
+  //         if (import.meta.env.DEV) {
+  //           console.log('👁️ Tab became visible - refreshing data');
+  //         }
+  //         refreshDataLight(); // Use lightweight refresh for better UX
+  //         sessionStorage.setItem('lastDataRefresh', now.toString());
+  //       }
+  //     }
+  //   };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [refreshDataLight]);
+  //   document.addEventListener('visibilitychange', handleVisibilityChange);
+  //   return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  // }, [refreshDataLight]);
 
   // Periodic auto-refresh (every 2 minutes when tab is active) - lightweight
-  useEffect(() => {
-    if (!hasLoadedRef.current) return;
+  // DISABLED: Too aggressive and erases user work. Use manual refresh instead.
+  // useEffect(() => {
+  //   if (!hasLoadedRef.current) return;
 
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible' && !isLoadingRef.current) {
-        if (import.meta.env.DEV) {
-          console.log('🔄 Periodic auto-refresh triggered');
-        }
-        refreshDataLight(); // Use lightweight refresh for periodic updates
-      }
-    }, 120000); // 2 minutes
+  //   const interval = setInterval(() => {
+  //     if (document.visibilityState === 'visible' && !isLoadingRef.current) {
+  //       if (import.meta.env.DEV) {
+  //         console.log('🔄 Periodic auto-refresh triggered');
+  //       }
+  //       refreshDataLight(); // Use lightweight refresh for periodic updates
+  //     }
+  //   }, 120000); // 2 minutes
 
-    return () => clearInterval(interval);
-  }, [refreshDataLight]);
+  //   return () => clearInterval(interval);
+  // }, [refreshDataLight]);
 
   // Re-apply masking when user changes (e.g., after login)
   useEffect(() => {
