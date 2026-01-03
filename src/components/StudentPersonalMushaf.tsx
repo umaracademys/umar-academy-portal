@@ -35,6 +35,7 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   // Ref to prevent concurrent loads
   const isLoadingRef = useRef(false);
   const hasLoadedRef = useRef(false);
+  const previousStudentIdRef = useRef<string>(''); // Track previous student ID to prevent unnecessary page resets
 
   // Get current student ID from props, user context, or student lookup
   const studentId = useMemo(() => {
@@ -76,8 +77,8 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         return;
       }
 
-      // Prevent reloading if already loaded for this studentId
-      if (hasLoadedRef.current) {
+      // Prevent reloading if already loaded for this studentId (unless it's a different student)
+      if (hasLoadedRef.current && previousStudentIdRef.current === studentId) {
         return;
       }
 
@@ -147,13 +148,17 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           
           setStats(statsData);
           
-          // Set initial page to first mistake if available
-          if (convertedMistakes.length > 0) {
+          // Set initial page ONLY when a different student is selected (not on data refresh)
+          if (previousStudentIdRef.current !== studentId && convertedMistakes.length > 0) {
             setCurrentPage(convertedMistakes[0].page);
           }
+          
+          // Update ref to track current student
+          previousStudentIdRef.current = studentId;
         } else {
           setMistakes([]);
           setStats({ total: 0, sabq: 0, sabqi: 0, manzil: 0, byType: {} });
+          previousStudentIdRef.current = studentId;
         }
       } catch (err) {
         console.error('Error loading personal Mushaf:', err);
@@ -171,8 +176,10 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   
   // Reset loading ref when studentId changes
   useEffect(() => {
-    hasLoadedRef.current = false;
-    isLoadingRef.current = false;
+    if (previousStudentIdRef.current !== studentId) {
+      hasLoadedRef.current = false;
+      isLoadingRef.current = false;
+    }
   }, [studentId]);
 
   // Get unique dates from mistakes
