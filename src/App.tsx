@@ -173,7 +173,7 @@ function AppContent() {
           path="/messages"
           element={
             <ProtectedRoute>
-              <MessagesPage />
+              <ProfessionalMessagesPage />
             </ProtectedRoute>
           }
         />
@@ -189,7 +189,7 @@ function AppContent() {
           path="/super-admin/messages"
           element={
             <ProtectedRoute>
-              <SuperAdminMessagesPage />
+              <SuperAdminMessagesPageNew />
             </ProtectedRoute>
           }
         />
