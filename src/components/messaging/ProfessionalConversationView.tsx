@@ -217,30 +217,33 @@ const ProfessionalConversationView: React.FC<ProfessionalConversationViewProps> 
           </div>
         ) : (
           <div className="space-y-6">
-            {Object.entries(groupedMessages).map(([date, dateMessages]) => (
-              <div key={date}>
-                {/* Date Separator */}
-                <div className="flex items-center gap-4 my-4">
-                  <div className="flex-1 border-t border-gray-300"></div>
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    {date}
-                  </span>
-                  <div className="flex-1 border-t border-gray-300"></div>
-                </div>
+            {Object.entries(groupedMessages).map(([date, dateMessages]) => {
+              const messagesForDate = dateMessages as Message[];
+              return (
+                <div key={date}>
+                  {/* Date Separator */}
+                  <div className="flex items-center gap-4 my-4">
+                    <div className="flex-1 border-t border-gray-300"></div>
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      {date}
+                    </span>
+                    <div className="flex-1 border-t border-gray-300"></div>
+                  </div>
 
-                {/* Messages for this date */}
-                <div className="space-y-3">
-                  {dateMessages.map((message) => (
-                    <MessageItem
-                      key={message._id}
-                      message={message}
-                      isOwnMessage={message.senderId.toString() === (user?._id || user?.id)?.toString()}
-                      apiBase={API_BASE}
-                    />
-                  ))}
+                  {/* Messages for this date */}
+                  <div className="space-y-3">
+                    {messagesForDate.map((message: Message) => (
+                      <MessageItem
+                        key={message._id}
+                        message={message}
+                        isOwnMessage={message.senderId.toString() === (user?._id || user?.id)?.toString()}
+                        apiBase={API_BASE}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         )}
