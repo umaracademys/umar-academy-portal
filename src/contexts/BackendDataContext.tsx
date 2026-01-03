@@ -1820,25 +1820,45 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const updateAdmin = async (id: string, admin: Partial<Admin>) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+      // Use fetchWithTimeout with authentication
+      const response = await fetchWithTimeout(
+        `${API_BASE}/users/${id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(admin),
         },
-        body: JSON.stringify(admin),
-      });
+        10000,
+        true // requireAuth = true - includes Authorization header
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to update admin');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update admin';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      setAdmins(prev => prev.map(a => a.id === id ? { ...a, ...admin } : a));
+      const updatedAdmin = await response.json();
+      
+      // Update local state with the response from server
+      setAdmins(prev => prev.map(a => {
+        const aId = a.id || (a as any)._id;
+        const updatedId = updatedAdmin._id || updatedAdmin.id || id;
+        return (aId === id || aId === updatedId) ? { ...a, ...admin, ...updatedAdmin } : a;
+      }));
+      
       if (import.meta.env.DEV) {
         console.log('✅ Admin updated successfully in MongoDB');
       }
 
     } catch (err) {
-      setError('Failed to update admin in MongoDB');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update admin in MongoDB';
+      setError(errorMessage);
       console.error('Error updating admin:', err);
       throw err; // Re-throw to let caller handle the error
     }
