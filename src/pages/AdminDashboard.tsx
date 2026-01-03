@@ -39,55 +39,64 @@ const AdminDashboard: React.FC = () => {
     return admins.find(admin => admin.email === user.email);
   }, [user?.email, admins]);
   
-  // Get admin permissions with defaults
+  // Get admin permissions with defaults - ensure all keys are present
   const permissions: AdminPermissions = useMemo(() => {
+    // Default permissions object with all keys set to false
+    const defaultPermissions: AdminPermissions = {
+      canManageTeachers: false,
+      canManageStudents: false,
+      canManageFinancials: false,
+      canViewReports: false,
+      canManagePermissions: false,
+      canAccessMessages: false,
+      canViewAllMessages: false,
+      canModerateMessages: false,
+      canAccessPdf: false,
+      canManagePdfLibrary: false,
+      canViewAllPdfAnnotations: false,
+      canAccessHomework: false,
+      canManageHomework: false,
+      canViewAllHomework: false,
+      canAccessEvaluations: false,
+      canManageEvaluations: false,
+      canApproveEvaluations: false,
+      canAccessTickets: false,
+      canCreateTickets: false,
+      canReviewTickets: false,
+      canApproveTickets: false,
+      canFinalizeTickets: false,
+      canManageTicketWorkflow: false,
+      canAccessAttendance: false,
+      canManageAttendance: false,
+      canViewAttendanceReports: false,
+      canAccessRecordings: false,
+      canManageRecordings: false,
+      canViewAllRecordings: false,
+      canAccessMushaf: false,
+      canManageMushaf: false,
+      canViewAllMistakes: false,
+      canAccessQaidah: false,
+      canManageQaidah: false,
+      canViewQaidahReports: false,
+      canAccessAssignments: false,
+      canManageAssignments: false,
+      canBulkCreateAssignments: false,
+      canViewAnalytics: false,
+      canExportReports: false,
+      canViewSystemStats: false,
+    };
+    
+    // If admin not found or no permissions, return defaults
     if (!currentAdmin?.permissions) {
-      // Default permissions if admin not found or no permissions set
-      return {
-        canManageTeachers: false,
-        canManageStudents: false,
-        canManageFinancials: false,
-        canViewReports: false,
-        canManagePermissions: false,
-        canAccessMessages: false,
-        canViewAllMessages: false,
-        canModerateMessages: false,
-        canAccessPdf: false,
-        canManagePdfLibrary: false,
-        canViewAllPdfAnnotations: false,
-        canAccessHomework: false,
-        canManageHomework: false,
-        canViewAllHomework: false,
-        canAccessEvaluations: false,
-        canManageEvaluations: false,
-        canApproveEvaluations: false,
-        canAccessTickets: false,
-        canCreateTickets: false,
-        canReviewTickets: false,
-        canApproveTickets: false,
-        canFinalizeTickets: false,
-        canManageTicketWorkflow: false,
-        canAccessAttendance: false,
-        canManageAttendance: false,
-        canViewAttendanceReports: false,
-        canAccessRecordings: false,
-        canManageRecordings: false,
-        canViewAllRecordings: false,
-        canAccessMushaf: false,
-        canManageMushaf: false,
-        canViewAllMistakes: false,
-        canAccessQaidah: false,
-        canManageQaidah: false,
-        canViewQaidahReports: false,
-        canAccessAssignments: false,
-        canManageAssignments: false,
-        canBulkCreateAssignments: false,
-        canViewAnalytics: false,
-        canExportReports: false,
-        canViewSystemStats: false,
-      };
+      return defaultPermissions;
     }
-    return currentAdmin.permissions;
+    
+    // Merge admin permissions with defaults to ensure all keys are present
+    // This handles cases where permissions object is incomplete
+    return {
+      ...defaultPermissions,
+      ...currentAdmin.permissions,
+    };
   }, [currentAdmin]);
   const [showEmailModule, setShowEmailModule] = useState(false);
   const [showTestingModule, setShowTestingModule] = useState(false);
