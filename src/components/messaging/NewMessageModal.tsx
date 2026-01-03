@@ -46,7 +46,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({ onClose, onSuccess })
       const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
       
       // Build participants
-      const participants = [];
+      const participants: Array<{ role: string; userId: string }> = [];
       if (messageType === 'teacher_student') {
         participants.push(
           { role: 'teacher', userId: selectedTeacher },

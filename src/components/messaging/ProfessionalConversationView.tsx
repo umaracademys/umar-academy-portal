@@ -125,7 +125,7 @@ const ProfessionalConversationView: React.FC<ProfessionalConversationViewProps> 
   };
 
   // Group messages by date
-  const groupedMessages = messages.reduce((groups: Record<string, Message[]>, message) => {
+  const groupedMessages = messages.reduce((groups: Record<string, Message[]>, message: Message) => {
     const date = new Date(message.createdAt).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -136,7 +136,7 @@ const ProfessionalConversationView: React.FC<ProfessionalConversationViewProps> 
     }
     groups[date].push(message);
     return groups;
-  }, {});
+  }, {} as Record<string, Message[]>);
 
   return (
     <div className="bg-white border-2 border-gray-200 rounded-lg flex flex-col h-[calc(100vh-250px)] min-h-[600px]">
