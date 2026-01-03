@@ -604,6 +604,10 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
 // Import Quran schemas
 const { QuranPage, QuranWord, QuranChapter } = require('./quranSchemas');
 
+// Import unified messaging models (must be loaded before routes)
+require('./models/Conversation');
+require('./models/Message');
+
 // User Schema
 const userSchema = new mongoose.Schema({
   name: String,
@@ -11936,6 +11940,11 @@ app.get('/api/students/:studentId/pdf-homework', authenticateToken, async (req, 
 
 // Serve PDF documents
 app.use('/pdf-documents', express.static(pdfDocumentsDir));
+
+// Unified Messaging System Routes
+// Register new unified messaging routes (before 404 handler)
+const unifiedMessagesRouter = require('./routes/messages');
+app.use('/api', unifiedMessagesRouter);
 
 // 404 handler for undefined routes (but skip /uploads as they're handled by static middleware)
 // MUST be after all other routes but before global error handler
