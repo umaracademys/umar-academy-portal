@@ -1193,6 +1193,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const addStudent = async (student: Student) => {
     try {
       // Create user first (requires authentication)
+      // Password is optional - student can set it later via password reset
       const userResponse = await fetchWithTimeout(
         `${API_BASE}/users`,
         {
@@ -1201,7 +1202,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             name: student.fullName,
             email: student.email,
             role: 'student',
-            password: 'password123', // Default password for students
+            // No password - student will set it later via password reset or initial login flow
             avatar: student.avatar
           }),
         },
