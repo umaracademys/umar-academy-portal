@@ -5,11 +5,13 @@ import Card from './Card';
 interface TeacherWeeklyEvaluationReviewProps {
   teacherId: string;
   onClose: () => void;
+  initialEvaluationId?: string; // For opening a specific evaluation from notification
 }
 
 const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps> = ({
   teacherId,
-  onClose
+  onClose,
+  initialEvaluationId
 }) => {
   const { user } = useAuth();
   const [evaluations, setEvaluations] = useState<any[]>([]);
@@ -20,6 +22,16 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
   useEffect(() => {
     loadEvaluations();
   }, [teacherId, filterStatus]);
+
+  // Auto-select evaluation if initialEvaluationId is provided
+  useEffect(() => {
+    if (initialEvaluationId && evaluations.length > 0) {
+      const evaluation = evaluations.find(e => e.id === initialEvaluationId);
+      if (evaluation) {
+        setSelectedEvaluation(evaluation);
+      }
+    }
+  }, [initialEvaluationId, evaluations]);
 
   const loadEvaluations = async () => {
     setLoading(true);

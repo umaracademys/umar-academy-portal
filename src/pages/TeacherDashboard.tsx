@@ -963,7 +963,11 @@ const TeacherDashboard: React.FC = () => {
       {showWeeklyEvaluationReview && currentTeacher && (
         <TeacherWeeklyEvaluationReview
           teacherId={(currentTeacher as any)?._id || (currentTeacher as any)?.teacherDocumentId || currentTeacher?.id || user?.id || ''}
-          onClose={() => setShowWeeklyEvaluationReview(false)}
+          onClose={() => {
+            setShowWeeklyEvaluationReview(false);
+            setSelectedEvaluationId(null);
+          }}
+          initialEvaluationId={selectedEvaluationId || undefined}
         />
       )}
 
