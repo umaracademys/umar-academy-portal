@@ -25,13 +25,27 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
 
   // Auto-select evaluation if initialEvaluationId is provided
   useEffect(() => {
-    if (initialEvaluationId && evaluations.length > 0) {
+    if (initialEvaluationId) {
+      // Reload evaluations to ensure we have the latest data
+      loadEvaluations().then(() => {
+        // After loading, find and select the evaluation
+        const evaluation = evaluations.find(e => e.id === initialEvaluationId);
+        if (evaluation) {
+          setSelectedEvaluation(evaluation);
+        }
+      });
+    }
+  }, [initialEvaluationId]);
+
+  // Auto-select evaluation after evaluations are loaded
+  useEffect(() => {
+    if (initialEvaluationId && evaluations.length > 0 && !selectedEvaluation) {
       const evaluation = evaluations.find(e => e.id === initialEvaluationId);
       if (evaluation) {
         setSelectedEvaluation(evaluation);
       }
     }
-  }, [initialEvaluationId, evaluations]);
+  }, [initialEvaluationId, evaluations, selectedEvaluation]);
 
   const loadEvaluations = async () => {
     setLoading(true);

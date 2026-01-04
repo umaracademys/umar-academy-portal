@@ -87,7 +87,7 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
       });
 
       if (response.ok) {
-        alert('Feedback submitted successfully!');
+        alert('Feedback submitted successfully! The teacher has been notified.');
         setFeedback('');
         setGamePlan('');
         setLinks(['']);

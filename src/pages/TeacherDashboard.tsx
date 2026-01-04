@@ -1478,10 +1478,13 @@ const TeacherDashboard: React.FC = () => {
             setSelectedEvaluationId(null);
             setSelectedConversationId(null);
           }}
-          onOpenWeeklyEvaluation={(evaluationId) => {
+          onOpenWeeklyEvaluation={async (evaluationId) => {
             setSelectedEvaluationId(evaluationId);
-            setShowWeeklyEvaluationReview(true);
             setShowNotificationCenter(false);
+            // Small delay to ensure notification center closes before opening review
+            setTimeout(() => {
+              setShowWeeklyEvaluationReview(true);
+            }, 100);
           }}
           onOpenMessage={(conversationId) => {
             setSelectedConversationId(conversationId);
