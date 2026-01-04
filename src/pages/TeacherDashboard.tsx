@@ -16,6 +16,7 @@ import { Ticket } from '../types/ticket';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
+import EnhancedWeeklyEvaluationForm from '../components/EnhancedWeeklyEvaluationForm';
 import TeacherWeeklyEvaluationReview from '../components/TeacherWeeklyEvaluationReview';
 import PairDailyReportForm from '../components/PairDailyReportForm';
 import PairTeacherMessage from '../components/PairTeacherMessage';

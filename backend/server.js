@@ -737,7 +737,7 @@ const evaluationSchema = new mongoose.Schema({
   evaluatedBy: String
 }, { _id: false });
 
-// Weekly Evaluation Schema - for comprehensive weekly student reports
+// Weekly Evaluation Schema - Enhanced comprehensive weekly student reports
 const weeklyEvaluationSchema = new mongoose.Schema({
   id: { type: String, unique: true, required: true },
   studentId: { type: String, required: true, index: true },
@@ -751,6 +751,42 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   level: { type: String, enum: ['Qaidah 1', 'Qaidah 2', 'Reading'], required: true },
   selectedSurah: String, // Surah name if level is Reading
   
+  // Enhanced Ratings (1-5 scale)
+  ratings: {
+    fluency: { type: Number, min: 1, max: 5, default: 3 },
+    tajweed: { type: Number, min: 1, max: 5, default: 3 },
+    accuracy: { type: Number, min: 1, max: 5, default: 3 },
+    memorization: { type: Number, min: 1, max: 5 }, // For Reading level
+    engagement: { type: Number, min: 1, max: 5, default: 3 },
+    behavior: { type: Number, min: 1, max: 5, default: 3 } // Behavior/Etiquette rating
+  },
+  
+  // Level-Specific Fields
+  levelSpecificData: {
+    // Qaidah 1 specific
+    qaidah1: {
+      lettersCovered: [String], // Letters covered this week
+      letterRecognitionAccuracy: { type: Number, min: 0, max: 100 }, // Percentage
+      pronunciationPracticeNotes: String,
+      readingSpeed: Number // Words per minute
+    },
+    // Qaidah 2 specific
+    qaidah2: {
+      wordsPhrasesPracticed: [String],
+      joiningLettersProficiency: { type: Number, min: 1, max: 5 },
+      readingFluencyMetrics: String,
+      commonJoiningMistakes: [String]
+    },
+    // Reading level specific
+    reading: {
+      surahName: String,
+      ayahRange: String, // e.g., "Al-Baqarah 1-10"
+      memorizationStatus: { type: String, enum: ['memorized', 'reviewing', 'new'] },
+      tajweedRulesApplied: [String],
+      recitationQualityScore: { type: Number, min: 1, max: 10 }
+    }
+  },
+  
   // Core evaluation fields
   strengths: { type: String, required: true },
   weaknesses: { type: String, required: true },
@@ -758,17 +794,114 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   etiquetteNotes: { type: String, required: true }, // Renamed from fixingEtiquette for clarity
   teacherNotes: { type: String, default: '' },
   
-  // Ratings (1-5 scale)
-  ratings: {
-    fluency: { type: Number, min: 1, max: 5, required: true },
-    tajweed: { type: Number, min: 1, max: 5, required: true },
-    accuracy: { type: Number, min: 1, max: 5, required: true }
+  // Structured Mistake Tracking
+  structuredMistakes: [{
+    mistakeType: { type: String, enum: ['letter', 'tajweed_rule', 'memory', 'pronunciation', 'joining', 'other'] },
+    description: { type: String, required: true },
+    location: String, // Surah:Ayah or Page:Line
+    frequency: { type: Number, default: 1 },
+    howCorrected: String,
+    improvementObserved: { type: Boolean, default: false },
+    mistakeLibraryId: String // Reference to mistake library if used
+  }],
+  
+  // Progress Tracking
+  progressTracking: {
+    previousWeekGoals: [{
+      goal: String,
+      achieved: { type: Boolean, default: false },
+      notes: String
+    }],
+    thisWeekGoals: [String], // Goals for this week
+    goalsAchieved: [String],
+    goalsNotAchieved: [{
+      goal: String,
+      reason: String
+    }],
+    nextWeekGoals: [String] // Suggested goals for next week
+  },
+  
+  // Media Attachments
+  media: {
+    audioRecordings: [{
+      url: String,
+      filename: String,
+      duration: Number, // seconds
+      uploadedAt: Date
+    }],
+    videoRecordings: [{
+      url: String,
+      filename: String,
+      duration: Number,
+      uploadedAt: Date
+    }],
+    images: [{
+      url: String,
+      filename: String,
+      description: String,
+      uploadedAt: Date
+    }],
+    documents: [{
+      url: String,
+      filename: String,
+      fileType: String,
+      uploadedAt: Date
+    }]
   },
   
   // Admin feedback fields
   adminFeedback: String, // Feedback from super admin
   gamePlan: String, // Game plan shared by admin
   sharedLinks: { type: [String], default: [] }, // Links shared by admin
+  adminVoiceNotes: [{
+    url: String,
+    filename: String,
+    duration: Number,
+    uploadedAt: Date,
+    uploadedBy: String,
+    uploadedByName: String
+  }],
+  
+  // Enhanced Approval workflow: draft → submitted → under_review → needs_revision → approved → published
+  status: {
+    type: String,
+    enum: ['draft', 'submitted', 'under_review', 'needs_revision', 'approved', 'published', 'rejected'],
+    default: 'draft',
+    index: true
+  },
+  submittedAt: Date,
+  reviewedBy: String, // Super Admin ID
+  reviewedByName: String, // Super Admin name
+  reviewedAt: Date,
+  approvedAt: Date,
+  publishedAt: Date, // When shared with student/parent
+  rejectedAt: Date,
+  rejectionReason: String, // Reason for rejection (admin comments)
+  revisionRequest: {
+    requestedAt: Date,
+    requestedBy: String,
+    requestedByName: String,
+    revisionNotes: String, // Specific areas needing revision
+    revisionFields: [String] // Which fields need to be updated
+  },
+  
+  // Form completion tracking
+  completion: {
+    progress: { type: Number, min: 0, max: 100, default: 0 }, // Percentage complete
+    sectionsCompleted: [String], // List of completed sections
+    lastSavedAt: Date,
+    timeSpent: Number, // Total time in minutes
+    autoSaveEnabled: { type: Boolean, default: true }
+  },
+  
+  // Metadata for tracking and reporting
+  meta: {
+    isLate: { type: Boolean, default: false }, // True if submitted after Sunday 11:59 PM
+    daysLate: { type: Number, default: 0 }, // Number of days late
+    revisionCount: { type: Number, default: 0 }, // Count of resubmissions after rejection
+    templateUsed: String, // Template ID if used
+    duplicatedFrom: String // Evaluation ID if duplicated from previous week
+  },
   
   // Legacy fields (kept for backward compatibility with existing data)
   fixingEtiquette: String, // Alias for etiquetteNotes
@@ -796,28 +929,6 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   },
   generalNotes: String,
   
-  // Approval workflow - strict status lifecycle: draft → submitted → under_review → approved | rejected
-  status: {
-    type: String,
-    enum: ['draft', 'submitted', 'under_review', 'approved', 'rejected'],
-    default: 'draft',
-    index: true
-  },
-  submittedAt: Date,
-  reviewedBy: String, // Super Admin ID
-  reviewedByName: String, // Super Admin name
-  reviewedAt: Date,
-  approvedAt: Date,
-  rejectedAt: Date,
-  rejectionReason: String, // Reason for rejection (admin comments)
-  
-  // Metadata for tracking and reporting
-  meta: {
-    isLate: { type: Boolean, default: false }, // True if submitted after Sunday 11:59 PM
-    daysLate: { type: Number, default: 0 }, // Number of days late
-    revisionCount: { type: Number, default: 0 } // Count of resubmissions after rejection
-  },
-  
   // For tracking resubmissions (deprecated - using meta.revisionCount instead, but keeping for backward compatibility)
   resubmissionCount: { type: Number, default: 0 },
   previousFeedback: [{
@@ -834,6 +945,9 @@ weeklyEvaluationSchema.index({ studentId: 1, weekStartDate: 1 }, { unique: false
 weeklyEvaluationSchema.index({ teacherId: 1, status: 1 }); // Fast filtering by teacher and status
 weeklyEvaluationSchema.index({ status: 1, submittedAt: -1 }); // Fast filtering by status with submission date
 weeklyEvaluationSchema.index({ studentId: 1, status: 1, weekStartDate: -1 }); // For student views
+weeklyEvaluationSchema.index({ 'completion.progress': 1 }); // For completion tracking
+weeklyEvaluationSchema.index({ 'ratings.fluency': 1, 'ratings.tajweed': 1, 'ratings.accuracy': 1 }); // For analytics
+weeklyEvaluationSchema.index({ level: 1, status: 1 }); // For level-based filtering
 
 const WeeklyEvaluation = mongoose.model('WeeklyEvaluation', weeklyEvaluationSchema);
 
@@ -6469,10 +6583,12 @@ function calculateLateStatus(weekEndDate, submittedAt) {
 function isValidStatusTransition(currentStatus, newStatus) {
   const validTransitions = {
     'draft': ['submitted', 'draft'], // Can stay as draft or submit
-    'submitted': ['under_review'], // Auto-transition on submit
-    'under_review': ['approved', 'rejected'],
-    'rejected': ['draft'], // Can create new draft after rejection
-    'approved': [] // Final state - no transitions allowed
+    'submitted': ['under_review', 'draft'], // Admin can start review or teacher can revert
+    'under_review': ['approved', 'rejected', 'needs_revision'], // Admin can approve, reject, or request revision
+    'needs_revision': ['draft', 'submitted'], // Teacher can update and resubmit
+    'approved': ['published'], // Can publish to student/parent
+    'published': [], // Final state - no transitions allowed
+    'rejected': ['draft'] // Can create new draft after rejection
   };
   
   return validTransitions[currentStatus]?.includes(newStatus) || false;
@@ -6499,6 +6615,12 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
       etiquetteNotes,
       teacherNotes,
       ratings,
+      // New enhanced fields
+      structuredMistakes,
+      levelSpecificData,
+      progressTracking,
+      media,
+      completion,
       // Legacy field support
       fixingEtiquette,
       tajweedEvaluation,
@@ -6522,14 +6644,11 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
 
     // Validate ratings if provided (1-5 scale)
     if (ratings) {
-      if (ratings.fluency && (ratings.fluency < 1 || ratings.fluency > 5)) {
-        return res.status(400).json({ error: 'Fluency rating must be between 1 and 5' });
-      }
-      if (ratings.tajweed && (ratings.tajweed < 1 || ratings.tajweed > 5)) {
-        return res.status(400).json({ error: 'Tajweed rating must be between 1 and 5' });
-      }
-      if (ratings.accuracy && (ratings.accuracy < 1 || ratings.accuracy > 5)) {
-        return res.status(400).json({ error: 'Accuracy rating must be between 1 and 5' });
+      const ratingFields = ['fluency', 'tajweed', 'accuracy', 'memorization', 'engagement', 'behavior'];
+      for (const field of ratingFields) {
+        if (ratings[field] !== undefined && (ratings[field] < 1 || ratings[field] > 5)) {
+          return res.status(400).json({ error: `${field} rating must be between 1 and 5` });
+        }
       }
     }
 
@@ -6574,35 +6693,62 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
     
     const evaluation = new WeeklyEvaluation({
       id: evaluationId,
-        studentId,
+      studentId,
       studentName: studentName || 'Student',
-        teacherId,
-        teacherName,
+      teacherId,
+      teacherName,
       weekStartDate: weekStart,
       weekEndDate: weekEnd,
-        level,
-        selectedSurah: selectedSurah || '',
+      level,
+      selectedSurah: selectedSurah || '',
       strengths: finalStrengths,
       weaknesses: finalWeaknesses,
       commonMistakes: commonMistakes || '',
       etiquetteNotes: etiquetteNotes || fixingEtiquette || '', // Support legacy field
       teacherNotes: teacherNotes || generalNotes || '', // Support legacy field
-      ratings: ratings || {
-        fluency: 3,
-        tajweed: 3,
-        accuracy: 3
+      ratings: {
+        fluency: ratings?.fluency || 3,
+        tajweed: ratings?.tajweed || 3,
+        accuracy: ratings?.accuracy || 3,
+        memorization: ratings?.memorization,
+        engagement: ratings?.engagement || 3,
+        behavior: ratings?.behavior || 3
+      },
+      structuredMistakes: structuredMistakes || [],
+      levelSpecificData: levelSpecificData || {},
+      progressTracking: progressTracking || {
+        previousWeekGoals: [],
+        thisWeekGoals: [],
+        goalsAchieved: [],
+        goalsNotAchieved: [],
+        nextWeekGoals: []
+      },
+      media: media || {
+        audioRecordings: [],
+        videoRecordings: [],
+        images: [],
+        documents: []
+      },
+      completion: {
+        progress: completion?.progress || 0,
+        sectionsCompleted: completion?.sectionsCompleted || [],
+        lastSavedAt: new Date(),
+        timeSpent: completion?.timeSpent || 0,
+        autoSaveEnabled: completion?.autoSaveEnabled !== undefined ? completion.autoSaveEnabled : true
       },
       status: evaluationStatus,
       // Legacy field support
       fixingEtiquette: fixingEtiquette || etiquetteNotes || '',
       generalNotes: generalNotes || teacherNotes || '',
-        tajweedEvaluation: tajweedEvaluation || {},
-        memoryEvaluation: memoryEvaluation || {},
-        mistakes: mistakes || {},
+      tajweedEvaluation: tajweedEvaluation || {},
+      memoryEvaluation: memoryEvaluation || {},
+      mistakes: mistakes || {},
       meta: {
         isLate: false,
         daysLate: 0,
-        revisionCount: 0
+        revisionCount: 0,
+        templateUsed: req.body.templateUsed,
+        duplicatedFrom: req.body.duplicatedFrom
       }
     });
 
@@ -6654,6 +6800,11 @@ app.put('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
       etiquetteNotes,
       teacherNotes,
       ratings,
+      structuredMistakes,
+      levelSpecificData,
+      progressTracking,
+      media,
+      completion,
       // Legacy field support
       fixingEtiquette,
       generalNotes
@@ -6677,14 +6828,26 @@ app.put('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
       evaluation.teacherNotes = teacherNotes;
       evaluation.generalNotes = teacherNotes; // Sync legacy field
     }
-    if (ratings) {
-      evaluation.ratings = {
-        fluency: ratings.fluency !== undefined ? ratings.fluency : evaluation.ratings?.fluency || 3,
-        tajweed: ratings.tajweed !== undefined ? ratings.tajweed : evaluation.ratings?.tajweed || 3,
-        accuracy: ratings.accuracy !== undefined ? ratings.accuracy : evaluation.ratings?.accuracy || 3
-      };
+    if (ratings !== undefined) {
+      if (ratings.fluency !== undefined) evaluation.ratings.fluency = ratings.fluency;
+      if (ratings.tajweed !== undefined) evaluation.ratings.tajweed = ratings.tajweed;
+      if (ratings.accuracy !== undefined) evaluation.ratings.accuracy = ratings.accuracy;
+      if (ratings.memorization !== undefined) evaluation.ratings.memorization = ratings.memorization;
+      if (ratings.engagement !== undefined) evaluation.ratings.engagement = ratings.engagement;
+      if (ratings.behavior !== undefined) evaluation.ratings.behavior = ratings.behavior;
     }
-
+    if (structuredMistakes !== undefined) evaluation.structuredMistakes = structuredMistakes;
+    if (levelSpecificData !== undefined) evaluation.levelSpecificData = levelSpecificData;
+    if (progressTracking !== undefined) evaluation.progressTracking = progressTracking;
+    if (media !== undefined) evaluation.media = media;
+    if (completion !== undefined) {
+      if (completion.progress !== undefined) evaluation.completion.progress = completion.progress;
+      if (completion.sectionsCompleted !== undefined) evaluation.completion.sectionsCompleted = completion.sectionsCompleted;
+      if (completion.timeSpent !== undefined) evaluation.completion.timeSpent = completion.timeSpent;
+      if (completion.autoSaveEnabled !== undefined) evaluation.completion.autoSaveEnabled = completion.autoSaveEnabled;
+      evaluation.completion.lastSavedAt = new Date();
+    }
+    // Remove duplicate ratings assignment (already handled above)
     await evaluation.save();
     res.json(evaluation);
   } catch (error) {
