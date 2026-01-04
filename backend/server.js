@@ -1592,7 +1592,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         
         const minutesLocked = Math.ceil(lockoutConfig.lockoutDuration / 60000);
         return res.status(403).json({ 
-          error: `Too many failed login attempts. Account locked for ${minutesLocked} minutes. Please try again later.` 
+          error: `Too many failed login attempts. Account locked for ${minutesLocked} minutes. Please try again later.`,
+          accountLocked: true,
+          minutesRemaining: minutesLocked,
+          email: email,
+          canRequestUnlock: true
         });
       }
 
