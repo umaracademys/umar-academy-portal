@@ -25,10 +25,11 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
     setLoading(true);
     try {
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
       const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
       const url = filterStatus === 'all' 
-        ? `${API_BASE}/weekly-evaluations`
-        : `${API_BASE}/weekly-evaluations?status=${filterStatus}`;
+        ? `${apiUrl}/weekly-evaluations`
+        : `${apiUrl}/weekly-evaluations?status=${filterStatus}`;
       
       const response = await fetch(url, {
         headers: {
