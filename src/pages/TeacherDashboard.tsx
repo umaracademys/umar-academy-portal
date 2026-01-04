@@ -173,6 +173,59 @@ const TeacherDashboard: React.FC = () => {
     loadTeacherPairs();
   }, [currentTeacher, getTeacherPairs, getPairStudents]);
 
+  // Load weekly evaluations for all students
+  useEffect(() => {
+    const loadWeeklyEvaluations = async () => {
+      if (!currentTeacher || allPairStudents.length === 0) return;
+      
+      const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+      const teacherIdStr = teacherDocId.toString();
+      
+      const evaluationsMap: Record<string, any[]> = {};
+      const loadingMap: Record<string, boolean> = {};
+      
+      // Set loading state for all students
+      allPairStudents.forEach(student => {
+        loadingMap[student.id] = true;
+      });
+      setLoadingEvaluations(loadingMap);
+      
+      // Fetch evaluations for each student
+      const promises = allPairStudents.map(async (student) => {
+        try {
+          const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+          const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
+          const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+          
+          const response = await fetch(`${apiUrl}/weekly-evaluations?studentId=${student.id}&teacherId=${teacherIdStr}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            evaluationsMap[student.id] = data || [];
+          } else {
+            evaluationsMap[student.id] = [];
+          }
+        } catch (error) {
+          console.error(`Error loading weekly evaluations for student ${student.id}:`, error);
+          evaluationsMap[student.id] = [];
+        } finally {
+          loadingMap[student.id] = false;
+        }
+      });
+      
+      await Promise.all(promises);
+      setStudentWeeklyEvaluations(evaluationsMap);
+      setLoadingEvaluations(loadingMap);
+    };
+    
+    loadWeeklyEvaluations();
+  }, [currentTeacher, allPairStudents]);
+
   const teacherTickets = useMemo(() => {
     if (!currentTeacher?.id) {
       return [];
