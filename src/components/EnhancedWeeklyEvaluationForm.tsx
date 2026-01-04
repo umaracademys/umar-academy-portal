@@ -44,7 +44,7 @@ const EnhancedWeeklyEvaluationForm: React.FC<EnhancedWeeklyEvaluationFormProps> 
   const [surahs, setSurahs] = useState<Chapter[]>([]);
   const [activeSection, setActiveSection] = useState('overview');
   const [startTime] = useState(Date.now());
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSaveTimerRef = useRef<number | null>(null);
   const formDataRef = useRef<any>(null);
 
   // Get current week dates
