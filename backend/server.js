@@ -9669,6 +9669,138 @@ try {
   console.warn('⚠️ Failed to create email transporter:', error.message);
 }
 
+// POST /api/auth/request-unlock - Request account unlock (Public endpoint)
+app.post('/api/auth/request-unlock', async (req, res) => {
+  try {
+    const { email, reason } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if email exists or not for security
+      return res.status(200).json({ 
+        message: 'If an account with this email exists and is locked, an unlock request has been sent to the administrator.' 
+      });
+    }
+
+    // Check if account is actually locked
+    const isLocked = user.accountLockedUntil && new Date() < user.accountLockedUntil;
+    if (!isLocked) {
+      return res.status(200).json({ 
+        message: 'This account is not currently locked.' 
+      });
+    }
+
+    const minutesRemaining = Math.ceil((user.accountLockedUntil - new Date()) / 60000);
+    const lockUntil = user.accountLockedUntil.toLocaleString();
+
+    // Send email to admin
+    if (emailTransporter) {
+      const mailOptions = {
+        from: EMAIL_CONFIG.from,
+        to: 'admin@umaracademy.org',
+        subject: `Account Unlock Request - ${user.email}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1F3224;">Account Unlock Request</h2>
+            <p>A user has requested to unlock their account:</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Email:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${user.email}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Name:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${user.name || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Role:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${user.role}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Failed Attempts:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${user.failedLoginAttempts || 0}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Locked Until:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${lockUntil}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Minutes Remaining:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${minutesRemaining} minute(s)</td>
+              </tr>
+              ${reason ? `
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Reason:</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${reason}</td>
+              </tr>
+              ` : ''}
+            </table>
+            <p style="margin-top: 20px;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/super-admin" 
+                 style="display: inline-block; padding: 10px 20px; background-color: #1F3224; color: white; text-decoration: none; border-radius: 5px;">
+                Unlock Account
+              </a>
+            </p>
+            <p style="margin-top: 20px; color: #666; font-size: 12px;">
+              This is an automated email from the Umar Academy Portal.
+            </p>
+          </div>
+        `,
+        text: `
+Account Unlock Request
+
+A user has requested to unlock their account:
+
+Email: ${user.email}
+Name: ${user.name || 'N/A'}
+Role: ${user.role}
+Failed Attempts: ${user.failedLoginAttempts || 0}
+Locked Until: ${lockUntil}
+Minutes Remaining: ${minutesRemaining} minute(s)
+${reason ? `Reason: ${reason}` : ''}
+
+Please visit the Super Admin dashboard to unlock this account.
+        `
+      };
+
+      try {
+        await emailTransporter.sendMail(mailOptions);
+        console.log(`✅ Unlock request email sent to admin@umaracademy.org for ${user.email}`);
+      } catch (emailError) {
+        console.error('❌ Error sending unlock request email:', emailError);
+        // Don't fail the request if email fails
+      }
+    } else {
+      console.warn('⚠️ Email transporter not configured. Unlock request email not sent.');
+    }
+
+    // Log the unlock request
+    await logActivity('unlock_request', {
+      req,
+      email: user.email,
+      userId: user._id.toString(),
+      role: user.role,
+      status: 'success',
+      details: {
+        reason: reason || 'No reason provided',
+        minutesRemaining: minutesRemaining
+      }
+    });
+
+    res.status(200).json({ 
+      message: 'Your unlock request has been sent to the administrator. You will be notified once your account is unlocked.' 
+    });
+  } catch (error) {
+    console.error('❌ Error processing unlock request:', error);
+    res.status(500).json({ error: 'Failed to process unlock request. Please try again later.' });
+  }
+});
+
 // Email Routes - Admin and Super Admin only
 // Send email endpoint
 app.post('/api/email/send', async (req, res) => {
