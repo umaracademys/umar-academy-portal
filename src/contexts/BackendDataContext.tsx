@@ -2051,7 +2051,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('🔍 Filtered students for teacher:', filteredStudents.length, filteredStudents.map(s => s.fullName || (s as any).fullName));
     }
     return filteredStudents;
-  };
+  }, [teachers, students]);
 
   const getTeacherById = (id: string) => {
     return teachers.find(teacher => teacher.id === id);
