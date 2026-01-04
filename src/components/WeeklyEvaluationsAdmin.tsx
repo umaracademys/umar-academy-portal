@@ -70,8 +70,9 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
     setSaving(true);
     try {
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
       const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/weekly-evaluations/${evaluationId}/admin-feedback`, {
+      const response = await fetch(`${apiUrl}/weekly-evaluations/${evaluationId}/admin-feedback`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -295,22 +296,26 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
                           if (confirm('Approve this evaluation?')) {
                             try {
                               const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+                              const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
                               const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
-                              const response = await fetch(`${API_BASE}/weekly-evaluations/${evaluation.id || evaluation._id}/review`, {
+                              const response = await fetch(`${apiUrl}/weekly-evaluations/${evaluation.id || evaluation._id}/approve`, {
                                 method: 'POST',
                                 headers: {
                                   'Authorization': `Bearer ${token}`,
                                   'Content-Type': 'application/json'
                                 },
                                 body: JSON.stringify({
-                                  action: 'approve',
-                                  reviewedBy: user?.id || '',
-                                  reviewedByName: user?.name || user?.email || 'Admin'
+                                  adminFeedback: evaluation.adminFeedback || '',
+                                  gamePlan: evaluation.gamePlan || '',
+                                  sharedLinks: evaluation.sharedLinks || []
                                 })
                               });
                               if (response.ok) {
-                                alert('Evaluation approved!');
+                                alert('Evaluation approved! The teacher has been notified.');
                                 loadEvaluations();
+                              } else {
+                                const error = await response.json();
+                                alert(error.error || 'Failed to approve evaluation');
                               }
                             } catch (error) {
                               console.error('Error approving evaluation:', error);
