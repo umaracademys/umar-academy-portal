@@ -4037,6 +4037,64 @@ app.put('/api/users/:id/settings', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/users/locked - Get all locked accounts (admin/superadmin only)
+app.get('/api/users/locked', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    // Find all users with locked accounts
+    const lockedUsers = await User.find({
+      accountLockedUntil: { $exists: true, $ne: null, $gt: new Date() }
+    }).select('-password').sort({ accountLockedUntil: -1 });
+
+    // Also include users with high failed login attempts (even if not locked yet)
+    const highAttemptUsers = await User.find({
+      failedLoginAttempts: { $gte: 3 },
+      accountLockedUntil: null
+    }).select('-password').sort({ failedLoginAttempts: -1 });
+
+    // Combine and format results
+    const allLockedUsers = lockedUsers.map(user => ({
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      failedLoginAttempts: user.failedLoginAttempts || 0,
+      accountLockedUntil: user.accountLockedUntil,
+      lastFailedLoginAttempt: user.lastFailedLoginAttempt,
+      minutesRemaining: user.accountLockedUntil 
+        ? Math.ceil((user.accountLockedUntil - new Date()) / 60000)
+        : 0,
+      status: 'locked'
+    }));
+
+    const warningUsers = highAttemptUsers.map(user => ({
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      failedLoginAttempts: user.failedLoginAttempts || 0,
+      accountLockedUntil: null,
+      lastFailedLoginAttempt: user.lastFailedLoginAttempt,
+      minutesRemaining: 0,
+      status: 'warning'
+    }));
+
+    res.json({
+      locked: allLockedUsers,
+      warnings: warningUsers,
+      total: allLockedUsers.length + warningUsers.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching locked accounts:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Unlock user account endpoint (admin/superadmin only)
 app.post('/api/users/:id/unlock', authenticateToken, async (req, res) => {
   try {

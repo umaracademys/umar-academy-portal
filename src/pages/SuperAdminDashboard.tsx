@@ -58,6 +58,7 @@ const ApprovedEvaluationsAdmin = lazy(() => import('../components/ApprovedEvalua
 const ApprovedTicketsAdmin = lazy(() => import('../components/ApprovedTicketsAdmin'));
 const SuperAdminProfile = lazy(() => import('../components/SuperAdminProfile'));
 const HelpAndSupport = lazy(() => import('../components/HelpAndSupport'));
+const LockedAccountsManager = lazy(() => import('../components/LockedAccountsManager'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -176,6 +177,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [showApprovedEvaluations, setShowApprovedEvaluations] = useState(false);
+  const [showLockedAccounts, setShowLockedAccounts] = useState(false);
   const [showApprovedTickets, setShowApprovedTickets] = useState(false);
   const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
   const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
@@ -421,6 +423,14 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'Adjust access across teacher, admin, and QA roles.',
       action: () => setShowPermissionManager(true),
       footer: 'Open manager',
+    },
+    {
+      id: 'locked-accounts',
+      badge: '🔒',
+      title: 'Locked Accounts',
+      description: 'View and unlock accounts locked due to failed login attempts.',
+      action: () => setShowLockedAccounts(true),
+      footer: 'Manage locks',
     },
     {
       id: 'data-manager',
@@ -1809,6 +1819,15 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <HelpAndSupport
             onClose={() => setShowHelpAndSupport(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Locked Accounts Manager Modal */}
+      {showLockedAccounts && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <LockedAccountsManager
+            onClose={() => setShowLockedAccounts(false)}
           />
         </Suspense>
       )}
