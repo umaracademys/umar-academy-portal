@@ -173,7 +173,7 @@ const TeacherDashboard: React.FC = () => {
     loadTeacherPairs();
   }, [currentTeacher, getTeacherPairs, getPairStudents]);
 
-  // Load weekly evaluations for all students
+  // Load weekly evaluations for all students (fetch all at once, then filter)
   useEffect(() => {
     const loadWeeklyEvaluations = async () => {
       if (!currentTeacher || allPairStudents.length === 0) return;
@@ -181,7 +181,6 @@ const TeacherDashboard: React.FC = () => {
       const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
       const teacherIdStr = teacherDocId.toString();
       
-      const evaluationsMap: Record<string, any[]> = {};
       const loadingMap: Record<string, boolean> = {};
       
       // Set loading state for all students
@@ -190,37 +189,52 @@ const TeacherDashboard: React.FC = () => {
       });
       setLoadingEvaluations(loadingMap);
       
-      // Fetch evaluations for each student
-      const promises = allPairStudents.map(async (student) => {
-        try {
-          const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-          const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
-          const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+      try {
+        // Fetch all evaluations for this teacher at once (more efficient)
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
+        const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+        
+        const response = await fetch(`${apiUrl}/weekly-evaluations?teacherId=${teacherIdStr}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const allEvaluations = await response.json();
           
-          const response = await fetch(`${apiUrl}/weekly-evaluations?studentId=${student.id}&teacherId=${teacherIdStr}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
+          // Group evaluations by studentId
+          const evaluationsMap: Record<string, any[]> = {};
+          allPairStudents.forEach(student => {
+            evaluationsMap[student.id] = allEvaluations.filter((e: any) => e.studentId === student.id) || [];
+            loadingMap[student.id] = false;
           });
           
-          if (response.ok) {
-            const data = await response.json();
-            evaluationsMap[student.id] = data || [];
-          } else {
+          setStudentWeeklyEvaluations(evaluationsMap);
+          setLoadingEvaluations(loadingMap);
+        } else {
+          // If fetch fails, set empty arrays for all students
+          const evaluationsMap: Record<string, any[]> = {};
+          allPairStudents.forEach(student => {
             evaluationsMap[student.id] = [];
-          }
-        } catch (error) {
-          console.error(`Error loading weekly evaluations for student ${student.id}:`, error);
-          evaluationsMap[student.id] = [];
-        } finally {
-          loadingMap[student.id] = false;
+            loadingMap[student.id] = false;
+          });
+          setStudentWeeklyEvaluations(evaluationsMap);
+          setLoadingEvaluations(loadingMap);
         }
-      });
-      
-      await Promise.all(promises);
-      setStudentWeeklyEvaluations(evaluationsMap);
-      setLoadingEvaluations(loadingMap);
+      } catch (error) {
+        console.error('Error loading weekly evaluations:', error);
+        // Set empty arrays for all students on error
+        const evaluationsMap: Record<string, any[]> = {};
+        allPairStudents.forEach(student => {
+          evaluationsMap[student.id] = [];
+          loadingMap[student.id] = false;
+        });
+        setStudentWeeklyEvaluations(evaluationsMap);
+        setLoadingEvaluations(loadingMap);
+      }
     };
     
     loadWeeklyEvaluations();
