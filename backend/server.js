@@ -1916,6 +1916,86 @@ app.get('/api/users', apiLimiter, async (req, res) => {
   }
 });
 
+// GET /api/users/locked - Get all locked accounts (admin/superadmin only)
+// NOTE: This route must come BEFORE /api/users/:id to avoid route conflicts
+app.get('/api/users/locked', authenticateToken, async (req, res) => {
+  try {
+    // Check if user has admin permissions
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const adminUser = await User.findById(req.user.userId);
+    if (!adminUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (adminUser.role !== 'superadmin' && adminUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+    }
+
+    const now = new Date();
+
+    // Find all users with locked accounts (currently locked)
+    const lockedUsers = await User.find({
+      accountLockedUntil: { 
+        $exists: true, 
+        $ne: null,
+        $gt: now
+      }
+    }).select('-password').sort({ accountLockedUntil: -1 });
+
+    // Also include users with high failed login attempts (even if not locked yet)
+    const highAttemptUsers = await User.find({
+      failedLoginAttempts: { $gte: 3 },
+      $or: [
+        { accountLockedUntil: null },
+        { accountLockedUntil: { $exists: false } },
+        { accountLockedUntil: { $lte: now } }
+      ]
+    }).select('-password').sort({ failedLoginAttempts: -1 });
+
+    // Combine and format results
+    const allLockedUsers = lockedUsers.map(user => {
+      const lockUntil = user.accountLockedUntil instanceof Date ? user.accountLockedUntil : new Date(user.accountLockedUntil);
+      const minutesRemaining = Math.max(0, Math.ceil((lockUntil.getTime() - now.getTime()) / 60000));
+      
+      return {
+        id: user._id.toString(),
+        email: user.email || 'N/A',
+        name: user.name || 'N/A',
+        role: user.role || 'N/A',
+        failedLoginAttempts: user.failedLoginAttempts || 0,
+        accountLockedUntil: lockUntil.toISOString(),
+        lastFailedLoginAttempt: user.lastFailedLoginAttempt ? (user.lastFailedLoginAttempt instanceof Date ? user.lastFailedLoginAttempt.toISOString() : new Date(user.lastFailedLoginAttempt).toISOString()) : null,
+        minutesRemaining: minutesRemaining,
+        status: 'locked'
+      };
+    });
+
+    const warningUsers = highAttemptUsers.map(user => ({
+      id: user._id.toString(),
+      email: user.email || 'N/A',
+      name: user.name || 'N/A',
+      role: user.role || 'N/A',
+      failedLoginAttempts: user.failedLoginAttempts || 0,
+      accountLockedUntil: null,
+      lastFailedLoginAttempt: user.lastFailedLoginAttempt ? (user.lastFailedLoginAttempt instanceof Date ? user.lastFailedLoginAttempt.toISOString() : new Date(user.lastFailedLoginAttempt).toISOString()) : null,
+      minutesRemaining: 0,
+      status: 'warning'
+    }));
+
+    res.json({
+      locked: allLockedUsers,
+      warnings: warningUsers,
+      total: allLockedUsers.length + warningUsers.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching locked accounts:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch locked accounts' });
+  }
+});
+
 // Get a single user by ID (no password)
 app.get('/api/users/:id', apiLimiter, async (req, res) => {
   try {
@@ -4033,64 +4113,6 @@ app.put('/api/users/:id/settings', authenticateToken, async (req, res) => {
       status: 'failure',
       errorMessage: error.message
     });
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// GET /api/users/locked - Get all locked accounts (admin/superadmin only)
-app.get('/api/users/locked', authenticateToken, async (req, res) => {
-  try {
-    // Check if user has admin permissions
-    const adminUser = await User.findById(req.user.userId);
-    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
-      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
-    }
-
-    // Find all users with locked accounts
-    const lockedUsers = await User.find({
-      accountLockedUntil: { $exists: true, $ne: null, $gt: new Date() }
-    }).select('-password').sort({ accountLockedUntil: -1 });
-
-    // Also include users with high failed login attempts (even if not locked yet)
-    const highAttemptUsers = await User.find({
-      failedLoginAttempts: { $gte: 3 },
-      accountLockedUntil: null
-    }).select('-password').sort({ failedLoginAttempts: -1 });
-
-    // Combine and format results
-    const allLockedUsers = lockedUsers.map(user => ({
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      failedLoginAttempts: user.failedLoginAttempts || 0,
-      accountLockedUntil: user.accountLockedUntil,
-      lastFailedLoginAttempt: user.lastFailedLoginAttempt,
-      minutesRemaining: user.accountLockedUntil 
-        ? Math.ceil((user.accountLockedUntil - new Date()) / 60000)
-        : 0,
-      status: 'locked'
-    }));
-
-    const warningUsers = highAttemptUsers.map(user => ({
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      failedLoginAttempts: user.failedLoginAttempts || 0,
-      accountLockedUntil: null,
-      lastFailedLoginAttempt: user.lastFailedLoginAttempt,
-      minutesRemaining: 0,
-      status: 'warning'
-    }));
-
-    res.json({
-      locked: allLockedUsers,
-      warnings: warningUsers,
-      total: allLockedUsers.length + warningUsers.length
-    });
-  } catch (error) {
-    console.error('❌ Error fetching locked accounts:', error);
     res.status(500).json({ error: error.message });
   }
 });
