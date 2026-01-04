@@ -1952,19 +1952,34 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     // Find the teacher to get their assignedStudents array
+    // Check multiple ID fields: id, _id, teacherId, userId
     const teacher = teachers.find(t => {
       const tId = (t.id || (t as any)._id)?.toString().trim();
-      return tId === normalizedTeacherId;
+      const tTeacherId = (t as any).teacherId?.toString().trim();
+      const tUserId = (t as any).userId?._id?.toString().trim() || (t as any).userId?.toString().trim();
+      return tId === normalizedTeacherId || 
+             tTeacherId === normalizedTeacherId ||
+             tUserId === normalizedTeacherId ||
+             normalizedTeacherId === tId ||
+             normalizedTeacherId === tTeacherId ||
+             normalizedTeacherId === tUserId;
     });
     
     if (!teacher) {
       console.log('🔍 Teacher not found for ID:', normalizedTeacherId);
-      console.log('🔍 Available teachers:', teachers.map(t => ({ id: t.id || (t as any)._id, name: t.fullName })));
+      console.log('🔍 Available teachers:', teachers.map(t => ({ 
+        id: t.id || (t as any)._id, 
+        teacherId: (t as any).teacherId,
+        userId: (t as any).userId?._id || (t as any).userId,
+        name: t.fullName 
+      })));
       return [];
     }
     
     const teacherName = teacher.fullName?.trim() || '';
     const teacherIdFromTeacher = (teacher.id || (teacher as any)._id)?.toString().trim();
+    const teacherTeacherId = (teacher as any).teacherId?.toString().trim();
+    const teacherUserId = (teacher as any).userId?._id?.toString().trim() || (teacher as any).userId?.toString().trim();
     const assignedStudentIds = (teacher as any).assignedStudents || [];
     
     console.log('🔍 Teacher found:', teacherName, 
@@ -1994,9 +2009,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
       
       // Check 2: If student's assignedTeacher field matches teacher's ID (normalized)
+      // Check against multiple teacher ID fields: _id, teacherId, userId
       const hasAssignedTeacherId = assignedTeacher === normalizedTeacherId ||
                                    assignedTeacher === teacherIdFromTeacher ||
-                                   (student as any).assignedTeacherId?.toString().trim() === normalizedTeacherId;
+                                   assignedTeacher === teacherTeacherId ||
+                                   assignedTeacher === teacherUserId ||
+                                   (student as any).assignedTeacherId?.toString().trim() === normalizedTeacherId ||
+                                   (student as any).assignedTeacherId?.toString().trim() === teacherIdFromTeacher ||
+                                   (student as any).assignedTeacherId?.toString().trim() === teacherTeacherId ||
+                                   (student as any).assignedTeacherId?.toString().trim() === teacherUserId;
       
       // Check 3: If student's assignedTeacher field matches teacher's name (case-insensitive)
       const hasAssignedTeacherName = teacherName && assignedTeacher && (
