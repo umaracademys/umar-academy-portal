@@ -54,6 +54,8 @@ const TeacherDashboard: React.FC = () => {
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [selectedEvaluationId, setSelectedEvaluationId] = useState<string | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [studentWeeklyEvaluations, setStudentWeeklyEvaluations] = useState<Record<string, any[]>>({});
+  const [loadingEvaluations, setLoadingEvaluations] = useState<Record<string, boolean>>({});
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -821,7 +823,12 @@ const TeacherDashboard: React.FC = () => {
                     {permissions.canViewEvaluations && (
                       <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-bold text-primary">Evaluations ({Array.isArray(student.evaluations) ? student.evaluations.length : 0})</p>
+                          <p className="text-sm font-bold text-primary">
+                            Evaluations ({
+                              (Array.isArray(student.evaluations) ? student.evaluations.length : 0) + 
+                              (studentWeeklyEvaluations[student.id]?.length || 0)
+                            })
+                          </p>
                           {permissions.canEditEvaluations && (
                             <button
                               onClick={() => {
@@ -834,21 +841,99 @@ const TeacherDashboard: React.FC = () => {
                             </button>
                           )}
                         </div>
-                        {Array.isArray(student.evaluations) && student.evaluations.length > 0 ? (
-                          <div className="space-y-2">
-                            {student.evaluations.slice(-3).map((evaluation) => (
-                              <div key={evaluation.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs">
-                                <div className="flex justify-between text-primary">
-                                  <span className="font-semibold">{evaluation.category}</span>
-                                  <span className="font-bold text-accent">Rating: {evaluation.rating}/5</span>
-                                </div>
-                                <p className="text-gray-600">{evaluation.comments}</p>
-                                <p className="text-[10px] text-gray-500 mt-1">{new Date(evaluation.date).toLocaleDateString()}</p>
-                              </div>
-                            ))}
-                          </div>
+                        {loadingEvaluations[student.id] ? (
+                          <p className="text-xs text-gray-500">Loading evaluations...</p>
                         ) : (
-                          <p className="text-xs text-gray-500">No evaluations yet</p>
+                          <>
+                            {/* Weekly Evaluations */}
+                            {studentWeeklyEvaluations[student.id] && studentWeeklyEvaluations[student.id].length > 0 && (
+                              <div className="space-y-2 mb-3">
+                                {studentWeeklyEvaluations[student.id]
+                                  .sort((a, b) => {
+                                    const dateA = new Date(a.weekStartDate || a.createdAt).getTime();
+                                    const dateB = new Date(b.weekStartDate || b.createdAt).getTime();
+                                    return dateB - dateA; // Newest first
+                                  })
+                                  .slice(0, 5)
+                                  .map((evaluation) => {
+                                    const weekStart = new Date(evaluation.weekStartDate);
+                                    const weekEnd = new Date(evaluation.weekEndDate);
+                                    const statusColors: Record<string, { bg: string; text: string }> = {
+                                      draft: { bg: 'bg-gray-100', text: 'text-gray-800' },
+                                      submitted: { bg: 'bg-blue-100', text: 'text-blue-800' },
+                                      under_review: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
+                                      feedback_provided: { bg: 'bg-amber-100', text: 'text-amber-800' },
+                                      approved: { bg: 'bg-green-100', text: 'text-green-800' },
+                                      rejected: { bg: 'bg-red-100', text: 'text-red-800' }
+                                    };
+                                    const statusColor = statusColors[evaluation.status] || statusColors.draft;
+                                    
+                                    return (
+                                      <div 
+                                        key={evaluation.id || evaluation._id} 
+                                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs cursor-pointer hover:border-primary transition-colors"
+                                        onClick={() => {
+                                          setSelectedEvaluationId(evaluation.id);
+                                          setShowWeeklyEvaluationReview(true);
+                                        }}
+                                      >
+                                        <div className="flex justify-between items-start mb-1">
+                                          <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className="font-semibold text-primary">Weekly Evaluation</span>
+                                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor.bg} ${statusColor.text}`}>
+                                                {evaluation.status || 'draft'}
+                                              </span>
+                                            </div>
+                                            <p className="text-gray-600 text-[10px]">
+                                              Week: {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </p>
+                                            {evaluation.level && (
+                                              <p className="text-gray-500 text-[10px] mt-0.5">Level: {evaluation.level}</p>
+                                            )}
+                                            {evaluation.adminFeedback && (
+                                              <div className="mt-1 p-1.5 bg-yellow-50 rounded border-l-2 border-yellow-400">
+                                                <p className="text-[10px] font-semibold text-yellow-900">Admin Feedback</p>
+                                                <p className="text-[10px] text-yellow-800 line-clamp-1">{evaluation.adminFeedback}</p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <p className="text-[10px] text-gray-500 mt-1">
+                                          {evaluation.submittedAt 
+                                            ? `Submitted: ${new Date(evaluation.submittedAt).toLocaleDateString()}`
+                                            : evaluation.createdAt 
+                                            ? `Created: ${new Date(evaluation.createdAt).toLocaleDateString()}`
+                                            : ''}
+                                        </p>
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                            
+                            {/* Legacy Evaluations */}
+                            {Array.isArray(student.evaluations) && student.evaluations.length > 0 && (
+                              <div className="space-y-2">
+                                {student.evaluations.slice(-3).map((evaluation) => (
+                                  <div key={evaluation.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs">
+                                    <div className="flex justify-between text-primary">
+                                      <span className="font-semibold">{evaluation.category}</span>
+                                      <span className="font-bold text-accent">Rating: {evaluation.rating}/5</span>
+                                    </div>
+                                    <p className="text-gray-600">{evaluation.comments}</p>
+                                    <p className="text-[10px] text-gray-500 mt-1">{new Date(evaluation.date).toLocaleDateString()}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Empty State */}
+                            {(!studentWeeklyEvaluations[student.id] || studentWeeklyEvaluations[student.id].length === 0) && 
+                             (!Array.isArray(student.evaluations) || student.evaluations.length === 0) && (
+                              <p className="text-xs text-gray-500">No evaluations yet</p>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
