@@ -1103,7 +1103,7 @@ const TeacherDashboard: React.FC = () => {
 
       {/* Weekly Evaluation Form Modal */}
       {showWeeklyEvaluationForm && selectedStudent && (
-        <WeeklyEvaluationForm
+        <EnhancedWeeklyEvaluationForm
           studentId={selectedStudent.id}
           studentName={selectedStudent.fullName}
           onClose={() => {
