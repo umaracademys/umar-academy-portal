@@ -594,6 +594,23 @@ export interface AdminNotification {
   registrationData?: any; // Full registration form data for student_registration_request
 }
 
+export interface TeacherNotification {
+  id: string;
+  _id?: string;
+  teacherId: string;
+  type: 'weekly_evaluation_feedback' | 'weekly_evaluation_approved' | 'message_received' | 'pair_message_received' | 'student_message_received';
+  title: string;
+  message: string;
+  weeklyEvaluationId?: string;
+  conversationId?: string;
+  messageId?: string;
+  studentId?: string;
+  read: boolean;
+  createdAt: Date;
+  priority: 'low' | 'medium' | 'high';
+  metadata?: any;
+}
+
 // ============================================
 // TEACHER EVALUATION SYSTEM TYPES
 // ============================================

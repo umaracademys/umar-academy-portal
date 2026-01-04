@@ -4486,6 +4486,36 @@ const adminNotificationSchema = new mongoose.Schema({
 
 const AdminNotification = mongoose.model('AdminNotification', adminNotificationSchema);
 
+// Teacher Notification Schema
+const teacherNotificationSchema = new mongoose.Schema({
+  teacherId: { type: String, required: true, index: true },
+  type: { 
+    type: String, 
+    enum: [
+      'weekly_evaluation_feedback', 
+      'weekly_evaluation_approved', 
+      'message_received',
+      'pair_message_received',
+      'student_message_received'
+    ], 
+    required: true 
+  },
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  weeklyEvaluationId: { type: String }, // For weekly evaluation notifications
+  conversationId: { type: String }, // For message notifications
+  messageId: { type: String }, // For message notifications
+  studentId: { type: String }, // For student-related notifications
+  read: { type: Boolean, default: false },
+  priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium' },
+  metadata: { type: mongoose.Schema.Types.Mixed } // Store additional data
+}, { timestamps: true });
+
+// Index for efficient queries
+teacherNotificationSchema.index({ teacherId: 1, read: 1, createdAt: -1 });
+teacherNotificationSchema.index({ teacherId: 1, createdAt: -1 });
+
+const TeacherNotification = mongoose.model('TeacherNotification', teacherNotificationSchema);
 
 // Listening Session Schema - tracks live listening telemetry for control tower
 const listeningMistakeSchema = new mongoose.Schema({
@@ -5768,6 +5798,106 @@ app.put('/api/admin-notifications/read-all', async (req, res) => {
   }
 });
 
+// Teacher Notification Routes
+app.get('/api/teacher-notifications', authenticateToken, async (req, res) => {
+  try {
+    // Only teachers can access their own notifications
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can view their notifications.' });
+    }
+
+    // Get teacher ID from user
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher.id || teacher._id?.toString();
+    const notifications = await TeacherNotification.find({ teacherId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+    res.json(notifications);
+  } catch (error) {
+    console.error('Error fetching teacher notifications:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single teacher notification by ID
+app.get('/api/teacher-notifications/:id', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can view their notifications.' });
+    }
+
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher.id || teacher._id?.toString();
+    const notification = await TeacherNotification.findOne({ 
+      _id: req.params.id, 
+      teacherId 
+    });
+    
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark teacher notification as read
+app.put('/api/teacher-notifications/:id/read', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can mark their notifications as read.' });
+    }
+
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher.id || teacher._id?.toString();
+    const notification = await TeacherNotification.findOneAndUpdate(
+      { _id: req.params.id, teacherId },
+      { read: true },
+      { new: true }
+    );
+    
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+    res.json(notification);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark all teacher notifications as read
+app.put('/api/teacher-notifications/read-all', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can mark their notifications as read.' });
+    }
+
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher.id || teacher._id?.toString();
+    await TeacherNotification.updateMany({ teacherId }, { read: true });
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/admin-notifications', async (req, res) => {
   try {
     const notification = new AdminNotification(req.body);
@@ -6421,6 +6551,27 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
 
     // Create new evaluation (draft only via POST)
     const evaluationId = `WE${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Handle missing strengths/weaknesses - provide defaults for drafts
+    // The form may not send these fields, so we provide defaults
+    const evaluationStatus = req.body.status || 'draft';
+    const finalStrengths = (strengths && strengths.trim()) 
+      ? strengths.trim() 
+      : (evaluationStatus === 'draft' ? 'To be filled' : '');
+    const finalWeaknesses = (weaknesses && weaknesses.trim()) 
+      ? weaknesses.trim() 
+      : (evaluationStatus === 'draft' ? 'To be filled' : '');
+    
+    // Validate required fields for submitted evaluations
+    if (evaluationStatus === 'submitted') {
+      if (!finalStrengths || finalStrengths === 'To be filled' || finalStrengths.trim() === '') {
+        return res.status(400).json({ error: 'Strengths is required for submitted evaluations' });
+      }
+      if (!finalWeaknesses || finalWeaknesses === 'To be filled' || finalWeaknesses.trim() === '') {
+        return res.status(400).json({ error: 'Weaknesses is required for submitted evaluations' });
+      }
+    }
+    
     const evaluation = new WeeklyEvaluation({
       id: evaluationId,
         studentId,
@@ -6431,8 +6582,8 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
       weekEndDate: weekEnd,
         level,
         selectedSurah: selectedSurah || '',
-      strengths: strengths || '',
-      weaknesses: weaknesses || '',
+      strengths: finalStrengths,
+      weaknesses: finalWeaknesses,
       commonMistakes: commonMistakes || '',
       etiquetteNotes: etiquetteNotes || fixingEtiquette || '', // Support legacy field
       teacherNotes: teacherNotes || generalNotes || '', // Support legacy field
@@ -6441,7 +6592,7 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
         tajweed: 3,
         accuracy: 3
       },
-      status: 'draft',
+      status: evaluationStatus,
       // Legacy field support
       fixingEtiquette: fixingEtiquette || etiquetteNotes || '',
       generalNotes: generalNotes || teacherNotes || '',
@@ -6672,25 +6823,40 @@ app.get('/api/teachers/:teacherId/weekly-evaluations', authenticateToken, async 
   }
 });
 
-// GET /api/weekly-evaluations - Get all weekly evaluations (Super Admin and Admin only)
+// GET /api/weekly-evaluations - Get weekly evaluations (Role-based access)
 app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
   try {
-    // Role check: Only Super Admin and Admin can view all evaluations
-    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can view all evaluations.' });
-    }
-
     const { status, teacherId, studentId, weekStartDate } = req.query;
     const query = {};
 
-    if (status) query.status = status;
-    if (teacherId) query.teacherId = teacherId;
-    if (studentId) query.studentId = studentId;
-    if (weekStartDate) {
-      const weekStart = new Date(weekStartDate);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      query.weekStartDate = { $gte: weekStart, $lte: weekEnd };
+    // Role-based access control
+    if (req.user.role === 'teacher') {
+      // Teachers can only view their own evaluations
+      const teacher = await Teacher.findOne({ email: req.user.email });
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher not found' });
+      }
+      const currentTeacherId = teacher.id || teacher._id?.toString();
+      query.teacherId = currentTeacherId;
+    } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      // Only Super Admin, Admin, and Teachers can access this endpoint
+      return res.status(403).json({ error: 'Access denied. Only Super Admin, Admin, and Teachers can view evaluations.' });
+    }
+
+    // Apply filters (only for admin/superadmin)
+    if (req.user.role === 'superadmin' || req.user.role === 'admin') {
+      if (status) query.status = status;
+      if (teacherId) query.teacherId = teacherId;
+      if (studentId) query.studentId = studentId;
+      if (weekStartDate) {
+        const weekStart = new Date(weekStartDate);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        query.weekStartDate = { $gte: weekStart, $lte: weekEnd };
+      }
+    } else {
+      // For teachers, allow status filter
+      if (status) query.status = status;
     }
 
     const evaluations = await WeeklyEvaluation.find(query)
@@ -6870,6 +7036,37 @@ app.post('/api/weekly-evaluations/:id/approve', authenticateToken, async (req, r
       });
     await adminNotification.save();
 
+    // Create teacher notification
+    try {
+      // Ensure we use the correct teacherId format (same as used in GET endpoint)
+      let notificationTeacherId = evaluation.teacherId;
+      const teacher = await Teacher.findOne({ email: (await User.findById(evaluation.teacherId))?.email });
+      if (teacher) {
+        // Use the same format as GET endpoint: teacher.id || teacher._id?.toString()
+        notificationTeacherId = teacher.id || teacher._id?.toString() || evaluation.teacherId;
+      }
+      
+      const teacherNotification = new TeacherNotification({
+        teacherId: notificationTeacherId,
+        type: 'weekly_evaluation_approved',
+        title: 'Weekly Evaluation Response Shared',
+        message: `${reviewedByName || 'Admin'} has shared feedback on your weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()}). ${adminFeedback ? 'Feedback: ' + adminFeedback.substring(0, 100) + '...' : ''}`,
+        weeklyEvaluationId: evaluation.id,
+        studentId: evaluation.studentId,
+        priority: 'high',
+        read: false,
+        metadata: {
+          adminFeedback: evaluation.adminFeedback,
+          gamePlan: evaluation.gamePlan,
+          sharedLinks: evaluation.sharedLinks
+        }
+      });
+      await teacherNotification.save();
+    } catch (error) {
+      console.error('Error creating teacher notification:', error);
+      // Don't fail the request if notification creation fails
+    }
+
     res.json(evaluation);
   } catch (error) {
     console.error('❌ Error approving weekly evaluation:', error);
@@ -6977,6 +7174,40 @@ app.post('/api/weekly-evaluations/:id/admin-feedback', async (req, res) => {
       read: false
     });
     await notification.save();
+
+    // Create teacher notification
+    try {
+      // Ensure we use the correct teacherId format (same as used in GET endpoint)
+      let notificationTeacherId = evaluation.teacherId;
+      const teacherUser = await User.findById(evaluation.teacherId);
+      if (teacherUser) {
+        const teacher = await Teacher.findOne({ email: teacherUser.email });
+        if (teacher) {
+          // Use the same format as GET endpoint: teacher.id || teacher._id?.toString()
+          notificationTeacherId = teacher.id || teacher._id?.toString() || evaluation.teacherId;
+        }
+      }
+      
+      const teacherNotification = new TeacherNotification({
+        teacherId: notificationTeacherId,
+        type: 'weekly_evaluation_feedback',
+        title: 'Weekly Evaluation Response Shared',
+        message: `${reviewedByName || 'Admin'} has shared feedback on your weekly evaluation for ${evaluation.studentName} (Week of ${new Date(evaluation.weekStartDate).toLocaleDateString()}). ${adminFeedback ? 'Feedback: ' + adminFeedback.substring(0, 100) + '...' : ''}`,
+        weeklyEvaluationId: evaluation.id,
+        studentId: evaluation.studentId,
+        priority: 'high',
+        read: false,
+        metadata: {
+          adminFeedback: evaluation.adminFeedback,
+          gamePlan: evaluation.gamePlan,
+          sharedLinks: evaluation.sharedLinks
+        }
+      });
+      await teacherNotification.save();
+    } catch (error) {
+      console.error('Error creating teacher notification:', error);
+      // Don't fail the request if notification creation fails
+    }
 
     res.json(evaluation);
   } catch (error) {

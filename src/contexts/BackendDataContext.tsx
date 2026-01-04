@@ -5,6 +5,7 @@ import {
   Admin,
   RecitationReview,
   AdminNotification,
+  TeacherNotification,
   AssignmentTicket,
   RecitationStep,
   RecitationUnit,
@@ -88,6 +89,11 @@ interface BackendDataContextType {
   markNotificationAsRead: (notificationId: string) => Promise<void>;
   markAllNotificationsAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
+  // Teacher Notifications
+  teacherNotifications: TeacherNotification[];
+  markTeacherNotificationAsRead: (notificationId: string) => Promise<void>;
+  markAllTeacherNotificationsAsRead: () => Promise<void>;
+  refreshTeacherNotifications: () => Promise<void>;
   // Ticket-based workflow
   tickets: AssignmentTicket[];
   addTicket: (ticket: AssignmentTicket) => Promise<void>;
@@ -269,6 +275,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [recitationReviews, setRecitationReviews] = useState<RecitationReview[]>([]);
   const [adminNotifications, setAdminNotifications] = useState<AdminNotification[]>([]);
+  const [teacherNotifications, setTeacherNotifications] = useState<TeacherNotification[]>([]);
   const [tickets, setTickets] = useState<AssignmentTicket[]>([]);
   const [recitationTickets, setRecitationTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1190,6 +1197,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setAdmins(maskedAdmins);
     }
   }, [currentUser?.email, currentUser?.isDeveloper, currentUser?.isTestAccount]);
+
+  // Refresh teacher notifications when user is a teacher
+  useEffect(() => {
+    if (currentUser?.role === 'teacher') {
+      refreshTeacherNotifications();
+    } else {
+      setTeacherNotifications([]);
+    }
+  }, [currentUser?.role, currentUser?.email]);
 
   // Student operations
   const addStudent = async (student: Student) => {
@@ -2504,6 +2520,66 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  // Teacher Notification Functions
+  const refreshTeacherNotifications = async () => {
+    try {
+      // Only fetch if user is a teacher
+      if (currentUser?.role !== 'teacher') {
+        setTeacherNotifications([]);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/teacher-notifications`, {
+        headers: getAuthHeaders()
+      });
+      if (response.ok) {
+        const notifications = await response.json();
+        setTeacherNotifications(notifications);
+      }
+    } catch (error) {
+      console.error('Error loading teacher notifications:', error);
+    }
+  };
+
+  const markTeacherNotificationAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/teacher-notifications/${notificationId}/read`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark notification as read');
+      }
+      
+      const updatedNotification = await response.json();
+      setTeacherNotifications(prev => prev.map(n => 
+        (n.id === notificationId || n.id === updatedNotification._id || n._id === notificationId || n._id === updatedNotification._id) ? updatedNotification : n
+      ));
+    } catch (error) {
+      console.error('Error marking teacher notification as read:', error);
+      throw error;
+    }
+  };
+
+  const markAllTeacherNotificationsAsRead = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/teacher-notifications/read-all`, {
+        method: 'PUT',
+        headers: getAuthHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to mark all notifications as read');
+      }
+      
+      await refreshTeacherNotifications();
+    } catch (error) {
+      console.error('Error marking all teacher notifications as read:', error);
+      throw error;
+    }
+  };
+
   // Ticket Functions
   const addTicket = async (ticket: AssignmentTicket) => {
     try {
@@ -3420,6 +3496,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     markNotificationAsRead,
     markAllNotificationsAsRead,
     refreshNotifications,
+    teacherNotifications,
+    markTeacherNotificationAsRead,
+    markAllTeacherNotificationsAsRead,
+    refreshTeacherNotifications,
     tickets,
     addTicket,
     updateTicket,

@@ -22,10 +22,11 @@ import PairTeacherMessage from '../components/PairTeacherMessage';
 import TeacherStudentMessage from '../components/TeacherStudentMessage';
 import TeacherPersonalMushaf from '../components/TeacherPersonalMushaf';
 import TeacherAssessmentForm from '../components/TeacherAssessmentForm';
+import TeacherNotificationCenter from '../components/TeacherNotificationCenter';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
-  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -50,6 +51,9 @@ const TeacherDashboard: React.FC = () => {
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<Student | null>(null);
   const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
   const [pairStudentsMap, setPairStudentsMap] = useState<Record<string, any[]>>({});
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [selectedEvaluationId, setSelectedEvaluationId] = useState<string | null>(null);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -308,7 +312,7 @@ const TeacherDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onNotificationClick={() => setShowNotificationCenter(true)} />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {/* Header Section */}
@@ -1324,6 +1328,27 @@ const TeacherDashboard: React.FC = () => {
         />
       )}
       
+      {/* Teacher Notification Center */}
+      {showNotificationCenter && (
+        <TeacherNotificationCenter
+          onClose={() => {
+            setShowNotificationCenter(false);
+            setSelectedEvaluationId(null);
+            setSelectedConversationId(null);
+          }}
+          onOpenWeeklyEvaluation={(evaluationId) => {
+            setSelectedEvaluationId(evaluationId);
+            setShowWeeklyEvaluationReview(true);
+            setShowNotificationCenter(false);
+          }}
+          onOpenMessage={(conversationId) => {
+            setSelectedConversationId(conversationId);
+            // Navigate to messages or open message modal
+            setShowNotificationCenter(false);
+          }}
+        />
+      )}
+
       {isDevelopment && DebugPanel && (
         <Suspense fallback={null}>
           <DebugPanel />

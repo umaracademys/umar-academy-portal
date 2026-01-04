@@ -47,6 +47,7 @@ const User = mongoose.model('User');
 const Teacher = mongoose.model('Teacher');
 const Student = mongoose.model('Student');
 const TeacherPair = mongoose.model('TeacherPair');
+const TeacherNotification = mongoose.model('TeacherNotification');
 
 // Rate limiting for message sending
 const sendMessageLimiter = rateLimit({
@@ -294,6 +295,52 @@ router.post('/conversations/:conversationId/messages',
         lastMessageId: message._id,
         $inc: { messageCount: 1 }
       });
+      
+      // Create notifications for teacher participants (if message is not from a teacher)
+      if (user.role !== 'teacher') {
+        try {
+          const conversation = await Conversation.findById(conversationId);
+          if (conversation) {
+            // Find all teacher participants (excluding admin)
+            const teacherParticipants = conversation.participants.filter(
+              p => p.role === 'teacher'
+            );
+            
+            // Create notifications for each teacher
+            for (const participant of teacherParticipants) {
+              try {
+                // Get teacher by userId to find teacherId
+                const teacher = await Teacher.findById(participant.userId);
+                if (teacher && teacher.id) {
+                  const teacherNotification = new TeacherNotification({
+                    teacherId: teacher.id,
+                    type: conversation.type === 'pair_teacher' ? 'pair_message_received' : 'student_message_received',
+                    title: 'New Message Received',
+                    message: `${senderName} sent you a message${conversation.type === 'teacher_student' && conversation.context?.studentId ? ' (Student conversation)' : ''}`,
+                    conversationId: conversationId.toString(),
+                    messageId: message._id.toString(),
+                    studentId: conversation.context?.studentId?.toString(),
+                    priority: priority === 'high' || priority === 'urgent' ? 'high' : 'medium',
+                    read: false,
+                    metadata: {
+                      senderName,
+                      senderRole: user.role,
+                      messagePreview: body.trim().substring(0, 100)
+                    }
+                  });
+                  await teacherNotification.save();
+                }
+              } catch (notifError) {
+                console.error('Error creating teacher notification:', notifError);
+                // Don't fail the request if notification creation fails
+              }
+            }
+          }
+        } catch (notifError) {
+          console.error('Error processing teacher notifications:', notifError);
+          // Don't fail the request if notification creation fails
+        }
+      }
       
       // Populate and return
       const populated = await Message.findById(message._id)

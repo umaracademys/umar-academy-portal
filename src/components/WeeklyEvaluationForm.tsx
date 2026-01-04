@@ -95,11 +95,12 @@ const WeeklyEvaluationForm: React.FC<WeeklyEvaluationFormProps> = ({
     try {
       const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const apiUrl = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+      const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
       const response = await fetch(`${apiUrl}/weekly-evaluations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           id: existingEvaluation?.id,

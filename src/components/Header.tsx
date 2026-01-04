@@ -10,28 +10,34 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => {
   const { user, logout } = useAuth();
-  const { adminNotifications, assignments, recitationTickets, recitationReviews, refreshDataLight, loading } = useBackendData();
+  const { adminNotifications, teacherNotifications, assignments, recitationTickets, recitationReviews, refreshDataLight, loading } = useBackendData();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   
-  // Only show notification bell for admins/super admins
-  const showNotificationBell = user?.role === 'admin' || user?.role === 'superadmin';
+  // Show notification bell for admins/super admins and teachers
+  const showNotificationBell = user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'teacher';
   
   // Calculate total unread notifications (backend + dynamic)
   const unreadCount = React.useMemo(() => {
-    const backendUnread = adminNotifications.filter(n => !n.read).length;
-    
-    // Dynamic notifications (homework, tickets, recitations)
-    const pendingHomework = assignments.filter((assignment: any) => 
-      assignment.homework?.enabled && 
-      assignment.homework?.submission?.submitted && 
-      assignment.homework?.submission?.status === 'submitted'
-    ).length;
-    
-    const pendingTickets = recitationTickets.filter(t => t.status === 'submitted').length;
-    const pendingRecitations = recitationReviews.filter(r => r.status === 'pending_review').length;
-    
-    return backendUnread + pendingHomework + pendingTickets + pendingRecitations;
-  }, [adminNotifications, assignments, recitationTickets, recitationReviews]);
+    if (user?.role === 'teacher') {
+      // For teachers, count teacher notifications
+      return teacherNotifications.filter(n => !n.read).length;
+    } else {
+      // For admins, count admin notifications + dynamic
+      const backendUnread = adminNotifications.filter(n => !n.read).length;
+      
+      // Dynamic notifications (homework, tickets, recitations)
+      const pendingHomework = assignments.filter((assignment: any) => 
+        assignment.homework?.enabled && 
+        assignment.homework?.submission?.submitted && 
+        assignment.homework?.submission?.status === 'submitted'
+      ).length;
+      
+      const pendingTickets = recitationTickets.filter(t => t.status === 'submitted').length;
+      const pendingRecitations = recitationReviews.filter(r => r.status === 'pending_review').length;
+      
+      return backendUnread + pendingHomework + pendingTickets + pendingRecitations;
+    }
+  }, [adminNotifications, teacherNotifications, assignments, recitationTickets, recitationReviews, user?.role]);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
