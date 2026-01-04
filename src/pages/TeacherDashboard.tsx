@@ -63,7 +63,10 @@ const TeacherDashboard: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
-  const assignedStudents = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id) : [];
+  const assignedStudents = useMemo(() => {
+    if (!currentTeacher?.id) return [];
+    return getStudentsByTeacher(currentTeacher.id);
+  }, [currentTeacher?.id, getStudentsByTeacher]);
   
   // Get pair partner teacher
   const pairPartner = useMemo(() => {

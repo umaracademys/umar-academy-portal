@@ -1941,8 +1941,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   // Helper functions
-  const getStudentsByTeacher = (teacherId: string) => {
-    console.log('🔍 getStudentsByTeacher called with teacherId:', teacherId);
+  const getStudentsByTeacher = useCallback((teacherId: string) => {
+    if (import.meta.env.DEV) {
+      console.log('🔍 getStudentsByTeacher called with teacherId:', teacherId);
+    }
     
     // Normalize teacherId to string for comparison
     const normalizedTeacherId = teacherId?.toString().trim();
