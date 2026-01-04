@@ -788,10 +788,11 @@ const weeklyEvaluationSchema = new mongoose.Schema({
   },
   
   // Core evaluation fields
-  strengths: { type: String, required: true },
-  weaknesses: { type: String, required: true },
-  commonMistakes: { type: String, required: true },
-  etiquetteNotes: { type: String, required: true }, // Renamed from fixingEtiquette for clarity
+  // Note: These are optional for drafts, but required when submitting
+  strengths: { type: String, required: false, default: '' },
+  weaknesses: { type: String, required: false, default: '' },
+  commonMistakes: { type: String, required: false, default: '' },
+  etiquetteNotes: { type: String, required: false, default: '' }, // Renamed from fixingEtiquette for clarity
   teacherNotes: { type: String, default: '' },
   
   // Structured Mistake Tracking
@@ -6781,10 +6782,10 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
       weekEndDate: weekEnd,
       level,
       selectedSurah: selectedSurah || '',
-      strengths: finalStrengths,
-      weaknesses: finalWeaknesses,
+      strengths: finalStrengths || '',
+      weaknesses: finalWeaknesses || '',
       commonMistakes: commonMistakes || '',
-      etiquetteNotes: etiquetteNotes || fixingEtiquette || '', // Support legacy field
+      etiquetteNotes: (etiquetteNotes || fixingEtiquette || '').trim() || '', // Support legacy field, ensure it's never undefined
       teacherNotes: teacherNotes || generalNotes || '', // Support legacy field
       ratings: {
         fluency: ratings?.fluency || 3,
