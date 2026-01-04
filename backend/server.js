@@ -1513,7 +1513,11 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         errorMessage: `Account locked. Try again in ${minutesLeft} minute(s)`
       });
       return res.status(403).json({ 
-        error: `Account is temporarily locked due to too many failed login attempts. Please try again in ${minutesLeft} minute(s).` 
+        error: `Account is temporarily locked due to too many failed login attempts. Please try again in ${minutesLeft} minute(s).`,
+        accountLocked: true,
+        minutesRemaining: minutesLeft,
+        email: email,
+        canRequestUnlock: true
       });
     }
 

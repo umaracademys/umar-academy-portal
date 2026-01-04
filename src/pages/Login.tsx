@@ -11,6 +11,10 @@ const Login: React.FC = () => {
   const [loginError, setLoginError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [accountLocked, setAccountLocked] = useState(false);
+  const [minutesRemaining, setMinutesRemaining] = useState<number | null>(null);
+  const [requestingUnlock, setRequestingUnlock] = useState(false);
+  const [unlockRequestSent, setUnlockRequestSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,11 +47,22 @@ const Login: React.FC = () => {
         const errorMsg = error || 'Invalid credentials. Please check your email, password, and account type.';
         setLoginError(errorMsg);
         
+        // Check if account is locked
+        const lockedInfo = (window as any).__lockedAccountInfo;
+        if (lockedInfo && lockedInfo.accountLocked) {
+          setAccountLocked(true);
+          setMinutesRemaining(lockedInfo.minutesRemaining);
+        } else {
+          setAccountLocked(false);
+          setMinutesRemaining(null);
+        }
+        
         // Log for debugging
         console.warn('⚠️ Login failed:', {
           email,
           role,
           error: errorMsg,
+          accountLocked,
           timestamp: new Date().toISOString()
         });
       }
@@ -93,8 +108,67 @@ const Login: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {loginError && (
-                <div className="bg-soft-error border border-error/30 text-error px-4 py-3 rounded-lg">
-                  <p className="text-sm font-medium">{loginError}</p>
+                <div className={`px-4 py-3 rounded-lg ${accountLocked ? 'bg-yellow-50 border border-yellow-300' : 'bg-soft-error border border-error/30 text-error'}`}>
+                  <p className={`text-sm font-medium ${accountLocked ? 'text-yellow-800' : 'text-error'}`}>
+                    {loginError}
+                  </p>
+                  {accountLocked && minutesRemaining !== null && (
+                    <p className="text-xs text-yellow-700 mt-2">
+                      Account will be automatically unlocked in {minutesRemaining} minute(s).
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {accountLocked && !unlockRequestSent && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 mb-3">
+                    Need immediate access? Request an unlock from the administrator.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setRequestingUnlock(true);
+                      try {
+                        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+                        const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
+                        const response = await fetch(`${apiUrl}/auth/request-unlock`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({
+                            email: email,
+                            reason: 'User requested unlock from login page'
+                          })
+                        });
+
+                        const data = await response.json();
+                        if (response.ok) {
+                          setUnlockRequestSent(true);
+                          setLoginError(data.message || 'Unlock request sent successfully!');
+                        } else {
+                          setLoginError(data.error || 'Failed to send unlock request. Please try again.');
+                        }
+                      } catch (err) {
+                        setLoginError('Failed to send unlock request. Please try again.');
+                      } finally {
+                        setRequestingUnlock(false);
+                      }
+                    }}
+                    disabled={requestingUnlock}
+                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  >
+                    {requestingUnlock ? 'Sending Request...' : '🔓 Request Account Unlock'}
+                  </button>
+                </div>
+              )}
+
+              {unlockRequestSent && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800 font-medium">
+                    ✅ Unlock request sent! The administrator has been notified and will unlock your account shortly.
+                  </p>
                 </div>
               )}
               

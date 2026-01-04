@@ -98,6 +98,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
         
+        // Check if account is locked
+        let accountLocked = false;
+        let minutesRemaining = null;
+        try {
+          const errorData = await response.json().catch(() => ({}));
+          accountLocked = errorData.accountLocked || false;
+          minutesRemaining = errorData.minutesRemaining || null;
+          if (accountLocked) {
+            // Store locked account info for the UI
+            (window as any).__lockedAccountInfo = {
+              email,
+              accountLocked: true,
+              minutesRemaining,
+              canRequestUnlock: errorData.canRequestUnlock || false
+            };
+          }
+        } catch (e) {
+          // Ignore JSON parse errors
+        }
+
         // Provide more specific error messages based on status code
         if (response.status === 401) {
           errorMessage = errorMessage || 'Invalid email, password, or role. Please check your credentials and try again.';
