@@ -6898,12 +6898,17 @@ app.put('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
     if (weekEndDate) evaluation.weekEndDate = new Date(weekEndDate);
     if (level) evaluation.level = level;
     if (selectedSurah !== undefined) evaluation.selectedSurah = selectedSurah;
-    if (strengths !== undefined) evaluation.strengths = strengths;
-    if (weaknesses !== undefined) evaluation.weaknesses = weaknesses;
-    if (commonMistakes !== undefined) evaluation.commonMistakes = commonMistakes;
+    if (strengths !== undefined) evaluation.strengths = strengths || '';
+    if (weaknesses !== undefined) evaluation.weaknesses = weaknesses || '';
+    if (commonMistakes !== undefined) evaluation.commonMistakes = commonMistakes || '';
     if (etiquetteNotes !== undefined) {
-      evaluation.etiquetteNotes = etiquetteNotes;
-      evaluation.fixingEtiquette = etiquetteNotes; // Sync legacy field
+      evaluation.etiquetteNotes = (etiquetteNotes || '').trim() || '';
+      evaluation.fixingEtiquette = evaluation.etiquetteNotes; // Sync legacy field
+    }
+    // Handle legacy fixingEtiquette field
+    if (fixingEtiquette !== undefined && etiquetteNotes === undefined) {
+      evaluation.etiquetteNotes = (fixingEtiquette || '').trim() || '';
+      evaluation.fixingEtiquette = evaluation.etiquetteNotes;
     }
     if (teacherNotes !== undefined) {
       evaluation.teacherNotes = teacherNotes;
