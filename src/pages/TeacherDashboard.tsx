@@ -237,7 +237,12 @@ const TeacherDashboard: React.FC = () => {
       }
     };
     
-    loadWeeklyEvaluations();
+    // Add a small delay to prevent rapid re-fetches
+    const timeoutId = setTimeout(() => {
+      loadWeeklyEvaluations();
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [currentTeacher, allPairStudents]);
 
   const teacherTickets = useMemo(() => {
