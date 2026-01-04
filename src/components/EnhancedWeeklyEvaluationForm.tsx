@@ -227,13 +227,15 @@ const EnhancedWeeklyEvaluationForm: React.FC<EnhancedWeeklyEvaluationFormProps> 
   // Set up auto-save timer
   useEffect(() => {
     if (formData.completion.autoSaveEnabled && !existingEvaluation) {
-      autoSaveTimerRef.current = setInterval(() => {
+      const timerId = window.setInterval(() => {
         autoSave();
       }, 30000); // Auto-save every 30 seconds
+      autoSaveTimerRef.current = timerId;
       
       return () => {
-        if (autoSaveTimerRef.current) {
-          clearInterval(autoSaveTimerRef.current);
+        if (autoSaveTimerRef.current !== null) {
+          window.clearInterval(autoSaveTimerRef.current);
+          autoSaveTimerRef.current = null;
         }
       };
     }
