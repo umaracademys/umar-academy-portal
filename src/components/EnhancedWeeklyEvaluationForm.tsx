@@ -119,7 +119,8 @@ const EnhancedWeeklyEvaluationForm: React.FC<EnhancedWeeklyEvaluationFormProps> 
       timeSpent: existingEvaluation?.completion?.timeSpent || 0,
       autoSaveEnabled: existingEvaluation?.completion?.autoSaveEnabled !== undefined 
         ? existingEvaluation?.completion?.autoSaveEnabled 
-        : true
+        : true,
+      lastSavedAt: existingEvaluation?.completion?.lastSavedAt || null
     }
   });
 
