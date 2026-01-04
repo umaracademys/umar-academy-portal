@@ -6936,6 +6936,52 @@ app.post('/api/weekly-evaluations/:id/submit', authenticateToken, async (req, re
   }
 });
 
+// GET /api/weekly-evaluations - Get weekly evaluations (Role-based access)
+// NOTE: This must come BEFORE /api/weekly-evaluations/:id to avoid route conflicts
+app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
+  try {
+    const { status, teacherId, studentId, weekStartDate } = req.query;
+    const query = {};
+
+    // Role-based access control
+    if (req.user.role === 'teacher') {
+      // Teachers can only view their own evaluations
+      const teacher = await Teacher.findOne({ email: req.user.email });
+      if (!teacher) {
+        return res.status(404).json({ error: 'Teacher not found' });
+      }
+      const currentTeacherId = teacher.id || teacher._id?.toString();
+      query.teacherId = currentTeacherId;
+    } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      // Only Super Admin, Admin, and Teachers can access this endpoint
+      return res.status(403).json({ error: 'Access denied. Only Super Admin, Admin, and Teachers can view evaluations.' });
+    }
+
+    // Apply filters (only for admin/superadmin)
+    if (req.user.role === 'superadmin' || req.user.role === 'admin') {
+      if (status) query.status = status;
+      if (teacherId) query.teacherId = teacherId;
+      if (studentId) query.studentId = studentId;
+      if (weekStartDate) {
+        const weekStart = new Date(weekStartDate);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        query.weekStartDate = { $gte: weekStart, $lte: weekEnd };
+      }
+    } else {
+      // For teachers, allow status filter
+      if (status) query.status = status;
+    }
+
+    const evaluations = await WeeklyEvaluation.find(query)
+      .sort({ submittedAt: -1, createdAt: -1 });
+    res.json(evaluations);
+  } catch (error) {
+    console.error('❌ Error fetching weekly evaluations:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // GET /api/weekly-evaluations/student/:studentId - Get approved evaluations for student (Student only)
 app.get('/api/weekly-evaluations/student/:studentId', authenticateToken, async (req, res) => {
   try {
@@ -6986,50 +7032,6 @@ app.get('/api/teachers/:teacherId/weekly-evaluations', authenticateToken, async 
   }
 });
 
-// GET /api/weekly-evaluations - Get weekly evaluations (Role-based access)
-app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
-  try {
-    const { status, teacherId, studentId, weekStartDate } = req.query;
-    const query = {};
-
-    // Role-based access control
-    if (req.user.role === 'teacher') {
-      // Teachers can only view their own evaluations
-      const teacher = await Teacher.findOne({ email: req.user.email });
-      if (!teacher) {
-        return res.status(404).json({ error: 'Teacher not found' });
-      }
-      const currentTeacherId = teacher.id || teacher._id?.toString();
-      query.teacherId = currentTeacherId;
-    } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
-      // Only Super Admin, Admin, and Teachers can access this endpoint
-      return res.status(403).json({ error: 'Access denied. Only Super Admin, Admin, and Teachers can view evaluations.' });
-    }
-
-    // Apply filters (only for admin/superadmin)
-    if (req.user.role === 'superadmin' || req.user.role === 'admin') {
-      if (status) query.status = status;
-      if (teacherId) query.teacherId = teacherId;
-      if (studentId) query.studentId = studentId;
-      if (weekStartDate) {
-        const weekStart = new Date(weekStartDate);
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        query.weekStartDate = { $gte: weekStart, $lte: weekEnd };
-      }
-    } else {
-      // For teachers, allow status filter
-      if (status) query.status = status;
-    }
-
-    const evaluations = await WeeklyEvaluation.find(query)
-      .sort({ submittedAt: -1, createdAt: -1 });
-    res.json(evaluations);
-  } catch (error) {
-    console.error('❌ Error fetching weekly evaluations:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // GET /api/weekly-evaluations/approved - Get approved evaluations with date filtering (Super Admin and Admin only)
 app.get('/api/weekly-evaluations/approved', authenticateToken, async (req, res) => {
