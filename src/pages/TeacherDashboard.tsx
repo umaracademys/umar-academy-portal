@@ -199,7 +199,8 @@ const TeacherDashboard: React.FC = () => {
         const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
         const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
         
-        const response = await fetch(`${apiUrl}/weekly-evaluations?teacherId=${teacherIdStr}`, {
+        // Use the general endpoint - it will auto-filter by logged-in teacher
+        const response = await fetch(`${apiUrl}/weekly-evaluations`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
