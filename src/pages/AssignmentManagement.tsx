@@ -105,17 +105,43 @@ const AssignmentManagement: React.FC = () => {
   const filteredStudents = useMemo(() => {
     let filtered = assignedStudents;
     
+    // Filter by program - handle case sensitivity and exact matching
     if (selectedProgram !== 'all') {
-      filtered = filtered.filter(student => student.program === selectedProgram);
+      filtered = filtered.filter(student => {
+        if (!student.program) return false;
+        // Normalize program names for comparison (handle variations)
+        const studentProgram = student.program.trim();
+        const selectedProgramNormalized = selectedProgram.trim();
+        return studentProgram === selectedProgramNormalized;
+      });
     }
     
+    // Filter by search query - handle undefined/null values safely
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(student => 
-        student.fullName.toLowerCase().includes(query) ||
-        student.email.toLowerCase().includes(query) ||
-        student.id.toLowerCase().includes(query)
-      );
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(student => {
+        // Check fullName
+        const fullName = student.fullName?.toLowerCase() || '';
+        if (fullName.includes(query)) return true;
+        
+        // Check email
+        const email = student.email?.toLowerCase() || '';
+        if (email.includes(query)) return true;
+        
+        // Check id (convert to string safely)
+        const id = String(student.id || student._id || '').toLowerCase();
+        if (id.includes(query)) return true;
+        
+        // Check program
+        const program = student.program?.toLowerCase() || '';
+        if (program.includes(query)) return true;
+        
+        // Check contact/phone
+        const contact = student.contact?.toLowerCase() || '';
+        if (contact.includes(query)) return true;
+        
+        return false;
+      });
     }
     
     return filtered;
