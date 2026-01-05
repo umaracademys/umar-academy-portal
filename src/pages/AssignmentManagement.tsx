@@ -7,11 +7,13 @@ import StudentAssignmentHistory from '../components/StudentAssignmentHistory';
 import AssignmentForm from '../components/AssignmentForm';
 import TicketCreationForm from '../components/TicketCreationForm';
 import AfterSchoolStudentView from '../components/AfterSchoolStudentView';
+import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
 import { Ticket } from '../types/ticket';
+import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
 
 const AssignmentManagement: React.FC = () => {
-  const { students: allStudents, assignments, getStudentAssignments, getTeacherPairs, getPairStudents } = useBackendData();
+  const { students: allStudents, assignments, getStudentAssignments, getTeacherPairs, getPairStudents, refreshData } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
   const { user } = useAuth();
   const [pairStudents, setPairStudents] = useState<any[]>([]);
@@ -23,6 +25,8 @@ const AssignmentManagement: React.FC = () => {
   const [prefillTicket, setPrefillTicket] = useState<Ticket | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'students' | 'completed'>('students');
+  const [showHomeworkForm, setShowHomeworkForm] = useState(false);
+  const [homeworkAssignmentId, setHomeworkAssignmentId] = useState<string | null>(null);
 
   const currentTeacher = useMemo(() => {
     if (!user || !teachers) return null;
@@ -622,15 +626,25 @@ const AssignmentManagement: React.FC = () => {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            <button
-                              onClick={() => {
-                                setSelectedStudent(assignment.studentId);
-                                handleStudentClick(assignment.studentId);
-                              }}
-                              className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                            >
-                              View
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedStudent(assignment.studentId);
+                                  handleStudentClick(assignment.studentId);
+                                }}
+                                className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                              >
+                                View
+                              </button>
+                              {assignment.status === 'active' && (
+                                <button
+                                  onClick={() => handleAssignHomework(assignment.id || assignment._id, assignment.studentId)}
+                                  className="px-3 py-1.5 text-xs font-medium text-green-600 border border-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors"
+                                >
+                                  Assign Homework
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -662,6 +676,7 @@ const AssignmentManagement: React.FC = () => {
             setShowAssignmentForm(true);
             setEditingAssignment(null);
           }}
+          onAssignHomework={handleAssignHomework}
         />
       )}
 
@@ -693,6 +708,15 @@ const AssignmentManagement: React.FC = () => {
             setEditingAssignment(null);
             setPrefillTicket(null);
           }}
+        />
+      )}
+
+      {showHomeworkForm && selectedStudent && homeworkAssignmentId && (
+        <HomeworkAssignmentForm
+          studentId={selectedStudent}
+          assignmentId={homeworkAssignmentId}
+          onSave={handleSaveHomework}
+          onClose={handleCloseHomeworkForm}
         />
       )}
     </div>

@@ -10,13 +10,15 @@ interface StudentAssignmentHistoryProps {
   onClose: () => void;
   onEditAssignment?: (assignmentId: string) => void;
   onCreateAssignment?: () => void;
+  onAssignHomework?: (assignmentId: string, studentId: string) => void;
 }
 
 const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   studentId,
   onClose,
   onEditAssignment,
-  onCreateAssignment
+  onCreateAssignment,
+  onAssignHomework
 }) => {
   const { students, getStudentAssignments, deleteAssignment, refreshData } = useBackendData();
   const { user } = useAuth();
@@ -353,6 +355,17 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                     className="px-3 py-1 text-xs font-medium text-primary border border-primary rounded hover:bg-primary hover:text-white transition-colors"
                                   >
                                     Edit
+                                  </button>
+                                )}
+                                {onAssignHomework && assignment.status === 'active' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onAssignHomework(assignment.id, assignment.studentId);
+                                    }}
+                                    className="px-3 py-1 text-xs font-medium text-green-600 border border-green-600 rounded hover:bg-green-600 hover:text-white transition-colors"
+                                  >
+                                    Assign Homework
                                   </button>
                                 )}
                                 <button

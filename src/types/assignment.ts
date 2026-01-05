@@ -40,10 +40,36 @@ export interface HomeworkSubmission {
   status?: 'submitted' | 'graded' | 'returned';
 }
 
+export interface HomeworkRange {
+  mode: 'surah_ayah' | 'surah_surah' | 'juz_juz' | 'multiple_juz';
+  from?: {
+    surah: number;
+    surahName: string;
+    ayah?: number;
+  };
+  to?: {
+    surah: number;
+    surahName: string;
+    ayah?: number;
+  };
+  juzList?: number[]; // For juz_juz and multiple_juz modes
+}
+
+export interface HomeworkItem {
+  type: 'sabq' | 'sabqi' | 'manzil';
+  range: HomeworkRange;
+  source: {
+    suggestedFrom: 'ticket' | 'manual';
+    ticketIds: string[];
+  };
+}
+
 export interface AssignmentHomework {
   enabled: boolean;
-  content: string; // Text content
-  link?: string; // Optional link
+  content: string; // Text content (legacy - kept for backward compatibility)
+  link?: string; // Optional link (legacy)
+  items?: HomeworkItem[]; // NEW: Structured homework items
+  notes?: string; // General notes for all homework items
   submission?: HomeworkSubmission;
 }
 

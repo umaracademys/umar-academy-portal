@@ -4482,10 +4482,33 @@ const assignmentSchema = new mongoose.Schema({
   // Homework
   homework: {
     enabled: { type: Boolean, default: false },
-    content: { type: String, default: '' }, // Text content
-    link: { type: String, default: '' }, // Optional link
+    content: { type: String, default: '' }, // Text content (legacy - kept for backward compatibility)
+    link: { type: String, default: '' }, // Optional link (legacy)
     pdfId: { type: String }, // ID of uploaded PDF document
     pdfAnnotations: { type: Object }, // Teacher's annotations on the PDF
+    // NEW: Structured homework items (Sabq, Sabqi, Manzil)
+    items: [{
+      type: { type: String, enum: ['sabq', 'sabqi', 'manzil'], required: true },
+      range: {
+        mode: { type: String, enum: ['surah_ayah', 'surah_surah', 'juz_juz', 'multiple_juz'], required: true },
+        from: {
+          surah: Number,
+          surahName: String,
+          ayah: Number
+        },
+        to: {
+          surah: Number,
+          surahName: String,
+          ayah: Number
+        },
+        juzList: [Number] // For juz_juz and multiple_juz modes
+      },
+      source: {
+        suggestedFrom: { type: String, enum: ['ticket', 'manual'], default: 'manual' },
+        ticketIds: [String] // Array of ticket IDs that suggested this homework
+      }
+    }],
+    notes: { type: String, default: '' }, // General notes for all homework items
     // Qaidah-specific homework (for After School Students)
     qaidahHomework: {
       book: { type: String, enum: ['qaidah1', 'qaidah2'] }, // Qaidah book
@@ -5441,6 +5464,61 @@ app.post('/api/assignments/:id/grade-homework', async (req, res) => {
 app.put('/api/assignments/:id', async (req, res) => {
   try {
     const updateData = { ...req.body };
+    
+    // Validate homework items if provided
+    if (updateData.homework?.items && Array.isArray(updateData.homework.items)) {
+      for (const item of updateData.homework.items) {
+        // Validate item structure
+        if (!item.type || !['sabq', 'sabqi', 'manzil'].includes(item.type)) {
+          return res.status(400).json({ error: 'Invalid homework item type' });
+        }
+        
+        if (!item.range || !item.range.mode) {
+          return res.status(400).json({ error: 'Homework item must have a range with mode' });
+        }
+        
+        // Validate range based on mode
+        if (item.range.mode === 'surah_ayah') {
+          if (!item.range.from?.surah || !item.range.from?.ayah || !item.range.to?.ayah) {
+            return res.status(400).json({ error: 'Surah-Ayah range requires from.surah, from.ayah, and to.ayah' });
+          }
+          if (item.range.from.ayah > item.range.to.ayah) {
+            return res.status(400).json({ error: 'From ayah must be less than or equal to to ayah' });
+          }
+          // Validate surah number (1-114)
+          if (item.range.from.surah < 1 || item.range.from.surah > 114) {
+            return res.status(400).json({ error: 'Surah number must be between 1 and 114' });
+          }
+        } else if (item.range.mode === 'surah_surah') {
+          if (!item.range.from?.surah || !item.range.to?.surah) {
+            return res.status(400).json({ error: 'Surah-Surah range requires from.surah and to.surah' });
+          }
+          if (item.range.from.surah > item.range.to.surah) {
+            return res.status(400).json({ error: 'From surah must be less than or equal to to surah' });
+          }
+        } else if (item.range.mode === 'juz_juz' || item.range.mode === 'multiple_juz') {
+          if (!item.range.juzList || item.range.juzList.length === 0) {
+            return res.status(400).json({ error: 'Juz range requires at least one juz in juzList' });
+          }
+          // Validate juz values (1-30)
+          for (const juz of item.range.juzList) {
+            if (juz < 1 || juz > 30) {
+              return res.status(400).json({ error: 'Juz values must be between 1 and 30' });
+            }
+          }
+        }
+        
+        // Validate source
+        if (!item.source || !['ticket', 'manual'].includes(item.source.suggestedFrom)) {
+          return res.status(400).json({ error: 'Homework item must have valid source.suggestedFrom' });
+        }
+      }
+      
+      // If homework items are provided, enable homework
+      if (updateData.homework.items.length > 0) {
+        updateData.homework.enabled = true;
+      }
+    }
     
     // Ensure all new classwork entries have createdAt set to current date
     const currentDate = new Date();
@@ -8047,6 +8125,208 @@ app.post('/api/weekly-evaluations/:id/assign-homework', authenticateToken, async
     });
   } catch (error) {
     console.error('❌ Error assigning homework from weekly evaluation:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// HOMEWORK SUGGESTIONS API ENDPOINTS
+// ============================================
+
+// Get homework suggestions for a student based on approved tickets
+app.get('/api/students/:studentId/homework-suggestions', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    console.log('🔍 Fetching homework suggestions for student:', studentId);
+
+    // Find the most recent active assignment for this student
+    const activeAssignment = await Assignment.findOne({
+      studentId: studentId,
+      status: 'active'
+    }).sort({ createdAt: -1 });
+
+    // Fetch approved tickets from last 14 days
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const approvedTickets = await Ticket.find({
+      studentId: studentId,
+      status: 'sent_to_assignment',
+      approvedAt: { $gte: fourteenDaysAgo }
+    }).sort({ approvedAt: -1 });
+
+    console.log(`📊 Found ${approvedTickets.length} approved tickets in last 14 days`);
+
+    // Helper function to extract surah/ayah range from mistakes
+    const extractRangeFromMistakes = (mistakes, type) => {
+      if (!mistakes || mistakes.length === 0) return null;
+
+      const surahs = mistakes.map(m => m.surah).filter(Boolean);
+      const ayahs = mistakes.map(m => m.ayah).filter(Boolean);
+
+      if (surahs.length === 0) return null;
+
+      const uniqueSurahs = [...new Set(surahs)];
+      const minAyah = Math.min(...ayahs);
+      const maxAyah = Math.max(...ayahs);
+
+      // For sabq: usually single surah with ayah range
+      if (type === 'sabq' && uniqueSurahs.length === 1) {
+        return {
+          mode: 'surah_ayah',
+          from: {
+            surah: uniqueSurahs[0],
+            surahName: getSurahName(uniqueSurahs[0]),
+            ayah: minAyah
+          },
+          to: {
+            surah: uniqueSurahs[0],
+            surahName: getSurahName(uniqueSurahs[0]),
+            ayah: maxAyah
+          }
+        };
+      }
+
+      // For sabqi/manzil: might be multiple surahs or juz-based
+      // Try to detect juz from page numbers (approximate)
+      const pages = mistakes.map(m => m.page).filter(Boolean);
+      if (pages.length > 0) {
+        const minPage = Math.min(...pages);
+        const maxPage = Math.max(...pages);
+        // Approximate juz from pages (each juz ≈ 20 pages)
+        const estimatedJuzStart = Math.ceil(minPage / 20);
+        const estimatedJuzEnd = Math.ceil(maxPage / 20);
+
+        if (estimatedJuzStart === estimatedJuzEnd && estimatedJuzStart >= 1 && estimatedJuzStart <= 30) {
+          return {
+            mode: 'juz_juz',
+            juzList: [estimatedJuzStart]
+          };
+        } else if (estimatedJuzStart < estimatedJuzEnd && estimatedJuzStart >= 1 && estimatedJuzEnd <= 30) {
+          return {
+            mode: 'multiple_juz',
+            juzList: Array.from({ length: estimatedJuzEnd - estimatedJuzStart + 1 }, (_, i) => estimatedJuzStart + i)
+          };
+        }
+      }
+
+      // Fallback: surah range
+      if (uniqueSurahs.length === 1) {
+        return {
+          mode: 'surah_ayah',
+          from: {
+            surah: uniqueSurahs[0],
+            surahName: getSurahName(uniqueSurahs[0]),
+            ayah: minAyah
+          },
+          to: {
+            surah: uniqueSurahs[0],
+            surahName: getSurahName(uniqueSurahs[0]),
+            ayah: maxAyah
+          }
+        };
+      } else if (uniqueSurahs.length > 1) {
+        return {
+          mode: 'surah_surah',
+          from: {
+            surah: Math.min(...uniqueSurahs),
+            surahName: getSurahName(Math.min(...uniqueSurahs)),
+            ayah: undefined
+          },
+          to: {
+            surah: Math.max(...uniqueSurahs),
+            surahName: getSurahName(Math.max(...uniqueSurahs)),
+            ayah: undefined
+          }
+        };
+      }
+
+      return null;
+    };
+
+    // Helper function to get surah name (simplified - you may want to use a proper mapping)
+    const getSurahName = (surahNumber) => {
+      const surahNames = {
+        1: 'Al-Fatihah', 2: 'Al-Baqarah', 3: 'Ali \'Imran', 4: 'An-Nisa', 5: 'Al-Ma\'idah',
+        6: 'Al-An\'am', 7: 'Al-A\'raf', 8: 'Al-Anfal', 9: 'At-Tawbah', 10: 'Yunus',
+        // Add more as needed - this is a simplified version
+      };
+      return surahNames[surahNumber] || `Surah ${surahNumber}`;
+    };
+
+    // Group tickets by type and extract suggestions
+    const suggestions = {
+      sabq: null,
+      sabqi: null,
+      manzil: null
+    };
+
+    // Process each ticket type
+    ['sabq', 'sabqi', 'manzil'].forEach(type => {
+      const ticketsOfType = approvedTickets.filter(t => t.type === type);
+      
+      if (ticketsOfType.length === 0) {
+        suggestions[type] = { suggested: false };
+        return;
+      }
+
+      // Get the most recent ticket of this type
+      const mostRecentTicket = ticketsOfType[0];
+      
+      // Extract range from mistakes
+      const range = extractRangeFromMistakes(mostRecentTicket.mistakes, type);
+      
+      if (range) {
+        suggestions[type] = {
+          suggested: true,
+          range: range,
+          ticketIds: ticketsOfType.map(t => t._id.toString()),
+          lastApprovedAt: mostRecentTicket.approvedAt || mostRecentTicket.updatedAt
+        };
+      } else {
+        // Try to extract from classwork if available
+        if (activeAssignment && activeAssignment.classwork) {
+          const classworkEntries = activeAssignment.classwork[type] || [];
+          if (classworkEntries.length > 0) {
+            const latestEntry = classworkEntries[classworkEntries.length - 1];
+            if (latestEntry.surahNumber) {
+              suggestions[type] = {
+                suggested: true,
+                range: {
+                  mode: 'surah_ayah',
+                  from: {
+                    surah: latestEntry.surahNumber,
+                    surahName: latestEntry.surahName || getSurahName(latestEntry.surahNumber),
+                    ayah: latestEntry.fromAyah || 1
+                  },
+                  to: {
+                    surah: latestEntry.surahNumber,
+                    surahName: latestEntry.surahName || getSurahName(latestEntry.surahNumber),
+                    ayah: latestEntry.toAyah || undefined
+                  }
+                },
+                ticketIds: ticketsOfType.map(t => t._id.toString()),
+                lastApprovedAt: mostRecentTicket.approvedAt || mostRecentTicket.updatedAt
+              };
+            }
+          }
+        }
+
+        if (!suggestions[type] || !suggestions[type].suggested) {
+          suggestions[type] = { suggested: false };
+        }
+      }
+    });
+
+    console.log('✅ Homework suggestions generated:', {
+      sabq: suggestions.sabq.suggested,
+      sabqi: suggestions.sabqi.suggested,
+      manzil: suggestions.manzil.suggested
+    });
+
+    res.json(suggestions);
+  } catch (error) {
+    console.error('❌ Error fetching homework suggestions:', error);
     res.status(500).json({ error: error.message });
   }
 });
