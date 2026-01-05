@@ -4383,7 +4383,8 @@ const classworkPhaseSchema = new mongoose.Schema({
   fromAyah: Number,
   toAyah: Number,
   surahNumber: Number,
-  surahName: String
+  surahName: String,
+  createdAt: { type: Date, default: Date.now } // When this classwork entry was added
 }, { _id: false });
 
 const assignmentSchema = new mongoose.Schema({
@@ -5214,6 +5215,30 @@ app.get('/api/assignments/:id', async (req, res) => {
 app.post('/api/assignments', async (req, res) => {
   try {
     const { ticketId, ...assignmentData } = req.body;
+    
+    // Ensure all classwork entries have createdAt set to current date
+    const currentDate = new Date();
+    if (assignmentData.classwork) {
+      if (assignmentData.classwork.sabq && Array.isArray(assignmentData.classwork.sabq)) {
+        assignmentData.classwork.sabq = assignmentData.classwork.sabq.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || currentDate
+        }));
+      }
+      if (assignmentData.classwork.sabqi && Array.isArray(assignmentData.classwork.sabqi)) {
+        assignmentData.classwork.sabqi = assignmentData.classwork.sabqi.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || currentDate
+        }));
+      }
+      if (assignmentData.classwork.manzil && Array.isArray(assignmentData.classwork.manzil)) {
+        assignmentData.classwork.manzil = assignmentData.classwork.manzil.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || currentDate
+        }));
+      }
+    }
+    
     const assignment = new Assignment(assignmentData);
     await assignment.save();
     
@@ -5338,9 +5363,37 @@ app.post('/api/assignments/:id/grade-homework', async (req, res) => {
 // Update assignment
 app.put('/api/assignments/:id', async (req, res) => {
   try {
+    const updateData = { ...req.body };
+    
+    // Ensure all new classwork entries have createdAt set to current date
+    const currentDate = new Date();
+    if (updateData.classwork) {
+      if (updateData.classwork.sabq && Array.isArray(updateData.classwork.sabq)) {
+        updateData.classwork.sabq = updateData.classwork.sabq.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || currentDate
+        }));
+      }
+      if (updateData.classwork.sabqi && Array.isArray(updateData.classwork.sabqi)) {
+        updateData.classwork.sabqi = updateData.classwork.sabqi.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || currentDate
+        }));
+      }
+      if (updateData.classwork.manzil && Array.isArray(updateData.classwork.manzil)) {
+        updateData.classwork.manzil = updateData.classwork.manzil.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || currentDate
+        }));
+      }
+    }
+    
+    // Ensure updatedAt is set to current date
+    updateData.updatedAt = new Date();
+    
     const assignment = await Assignment.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
     if (!assignment) {
@@ -5791,6 +5844,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     }
 
     // Add ticket content to assignment based on ticket type
+    const currentDate = new Date(); // Use current date for all new entries
     if (ticket.type === 'sabq') {
       // Add to sabq classwork
       assignment.classwork.sabq.push({
@@ -5798,7 +5852,8 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         assignmentRange: ticket.adminComment || 'Sabq recitation',
         details: ticket.adminComment || '',
         surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
-        surahName: undefined
+        surahName: undefined,
+        createdAt: currentDate
       });
       // Add admin comment to main comment if it's the first sabq
       if (assignment.comment === '' && ticket.adminComment) {
@@ -5813,7 +5868,8 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         assignmentRange: commentText,
         details: commentText,
         surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
-        surahName: undefined
+        surahName: undefined,
+        createdAt: currentDate
       };
       console.log('📝 Adding sabqi entry to assignment:', sabqiEntry);
       console.log('📝 Ticket data:', {
@@ -5839,7 +5895,8 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         assignmentRange: commentText,
         details: commentText,
         surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
-        surahName: undefined
+        surahName: undefined,
+        createdAt: currentDate
       };
       console.log('📝 Adding manzil entry to assignment:', manzilEntry);
       console.log('📝 Ticket data:', {
@@ -5888,6 +5945,9 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
       mistakesCount: assignment.mushafMistakes.length
     });
 
+    // Ensure updatedAt is set to current date when assignment is modified
+    assignment.updatedAt = new Date();
+    
     try {
     await assignment.save();
       console.log('✅ Assignment save() completed successfully');

@@ -10,6 +10,7 @@ export interface ClassworkPhase {
   toAyah?: number;
   surahNumber?: number;
   surahName?: string;
+  createdAt?: Date | string; // When this classwork entry was added
 }
 
 export interface AssignmentClasswork {

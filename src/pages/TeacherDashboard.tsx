@@ -15,7 +15,6 @@ import { Student, Assessment, Evaluation } from '../types';
 import { Ticket } from '../types/ticket';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
-import WeeklyEvaluationForm from '../components/WeeklyEvaluationForm';
 import EnhancedWeeklyEvaluationForm from '../components/EnhancedWeeklyEvaluationForm';
 import TeacherWeeklyEvaluationReview from '../components/TeacherWeeklyEvaluationReview';
 import PairDailyReportForm from '../components/PairDailyReportForm';
@@ -31,7 +30,6 @@ const TeacherDashboard: React.FC = () => {
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
-  const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [showWeeklyEvaluationForm, setShowWeeklyEvaluationForm] = useState(false);
   const [showWeeklyEvaluationReview, setShowWeeklyEvaluationReview] = useState(false);
   const [showStudentHistory, setShowStudentHistory] = useState(false);
@@ -283,12 +281,6 @@ const TeacherDashboard: React.FC = () => {
     canViewStudentPersonalInfo: true,
   };
 
-  const [evaluationData, setEvaluationData] = useState({
-    category: '',
-    rating: 5,
-    comments: '',
-  });
-
   const formatDate = (date: string | Date | undefined | null): string => {
     if (!date) return 'Not set';
     
@@ -314,47 +306,6 @@ const TeacherDashboard: React.FC = () => {
            (student as any).enrollmentDate || 
            (student as any).createdAt || 
            undefined;
-  };
-
-  const handleAddEvaluation = async () => {
-    if (!selectedStudent || !permissions.canEditEvaluations) return;
-    
-    if (!evaluationData.category.trim()) {
-      setSaveError('Please enter an evaluation category');
-      return;
-    }
-
-    setIsSaving(true);
-    setSaveError(null);
-    setSaveSuccess(null);
-
-    try {
-      const newEvaluation: Evaluation = {
-        id: `EVA${Date.now()}`,
-        date: new Date().toISOString().split('T')[0],
-        category: evaluationData.category,
-        rating: evaluationData.rating,
-        comments: evaluationData.comments,
-        evaluatedBy: currentTeacher?.id || '',
-      };
-
-      const updatedEvaluations = [...(Array.isArray(selectedStudent.evaluations) ? selectedStudent.evaluations : []), newEvaluation];
-      
-      await updateStudent(selectedStudent.id, { evaluations: updatedEvaluations });
-      await refreshData();
-      
-      setSaveSuccess('Evaluation added successfully!');
-      setShowEvaluationForm(false);
-      setEvaluationData({ category: '', rating: 5, comments: '' });
-      
-      setTimeout(() => setSaveSuccess(null), 3000);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add evaluation';
-      setSaveError(errorMessage);
-      console.error('Error adding evaluation:', error);
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const buildActivityHistory = (student: Student) => {
@@ -1145,88 +1096,6 @@ const TeacherDashboard: React.FC = () => {
           initialEvaluationId={selectedEvaluationId || undefined}
         />
       )}
-
-      {/* Old Evaluation Form Modal (kept for backward compatibility) */}
-      {showEvaluationForm && selectedStudent && (
-        <div 
-          className="fixed inset-0 flex items-center justify-center p-4 z-50"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setShowEvaluationForm(false)}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-6 pb-4 border-b-2 border-accent">
-              <h3 className="text-2xl font-bold text-accent">Add Evaluation</h3>
-              <p className="text-sm text-gray-600 mt-1">For {selectedStudent.fullName}</p>
-            </div>
-            
-            {saveError && (
-              <div className="mb-4 rounded-lg border-2 border-red-500 bg-red-50 px-4 py-3">
-                <p className="text-xs font-bold text-red-800">{saveError}</p>
-              </div>
-            )}
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
-                <input
-                  type="text"
-                  value={evaluationData.category}
-                  onChange={(e) => setEvaluationData({ ...evaluationData, category: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition"
-                  placeholder="e.g., Behavior, Participation, Homework"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Rating (1-5 stars)</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={evaluationData.rating}
-                  onChange={(e) => setEvaluationData({ ...evaluationData, rating: parseInt(e.target.value) })}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer"
-                  style={{ 
-                    background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(evaluationData.rating - 1) * 25}%, #e5e7eb ${(evaluationData.rating - 1) * 25}%, #e5e7eb 100%)`
-                  }}
-                />
-                <p className="text-center text-sm text-gray-600 mt-2 font-semibold">Rating: {evaluationData.rating} / 5</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Comments</label>
-                <textarea
-                  value={evaluationData.comments}
-                  onChange={(e) => setEvaluationData({ ...evaluationData, comments: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition resize-none"
-                  rows={4}
-                  placeholder="Add your evaluation comments..."
-                />
-              </div>
-              
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => setShowEvaluationForm(false)}
-                  className="px-6 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 font-bold transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddEvaluation}
-                  disabled={isSaving}
-                  className="px-6 py-3 bg-accent text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? 'Saving...' : 'Add Evaluation'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
 
       {/* Student Reports Modal */}
       {showStudentReports && (
