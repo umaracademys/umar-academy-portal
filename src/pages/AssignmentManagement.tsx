@@ -22,6 +22,7 @@ const AssignmentManagement: React.FC = () => {
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [prefillTicket, setPrefillTicket] = useState<Ticket | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'students' | 'completed'>('students');
 
   const currentTeacher = useMemo(() => {
     if (!user || !teachers) return null;
@@ -122,13 +123,38 @@ const AssignmentManagement: React.FC = () => {
     const totalAssignments = relevantAssignments.length;
     const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
     const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
+    const completedAssignments = relevantAssignments.filter((a: any) => 
+      a.status === 'completed' || 
+      (a.homework?.enabled && 
+       a.homework?.submission?.submitted && 
+       a.homework?.submission?.status === 'graded')
+    ).length;
     
     return {
       totalAssignments,
       studentsWithAssignments,
       activeAssignments,
+      completedAssignments,
       totalStudents: assignedStudents.length
     };
+  }, [assignments, assignedStudents]);
+
+  // Get completed assignments for display
+  const completedAssignmentsList = useMemo(() => {
+    const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
+    return assignments
+      .filter((a: any) => assignedStudentIds.has(a.studentId))
+      .filter((assignment: any) => 
+        assignment.status === 'completed' || 
+        (assignment.homework?.enabled && 
+         assignment.homework?.submission?.submitted && 
+         assignment.homework?.submission?.status === 'graded')
+      )
+      .sort((a: any, b: any) => {
+        const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
+        const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      });
   }, [assignments, assignedStudents]);
 
   const getInitials = (name: string) => {
@@ -195,7 +221,7 @@ const AssignmentManagement: React.FC = () => {
         </div>
 
         {/* Simple Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <p className="text-xs text-gray-600 mb-1">Total</p>
             <p className="text-xl font-bold text-gray-900">{stats.totalAssignments}</p>
@@ -205,8 +231,38 @@ const AssignmentManagement: React.FC = () => {
             <p className="text-xl font-bold text-blue-600">{stats.activeAssignments}</p>
           </div>
           <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-600 mb-1">Completed</p>
+            <p className="text-xl font-bold text-green-600">{stats.completedAssignments}</p>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
             <p className="text-xs text-gray-600 mb-1">Students</p>
-            <p className="text-xl font-bold text-green-600">{stats.studentsWithAssignments}</p>
+            <p className="text-xl font-bold text-purple-600">{stats.studentsWithAssignments}</p>
+          </div>
+        </div>
+
+        {/* View Mode Toggle */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('students')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'students'
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Students View
+            </button>
+            <button
+              onClick={() => setViewMode('completed')}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'completed'
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Completed Assignments ({stats.completedAssignments})
+            </button>
           </div>
         </div>
 
@@ -235,92 +291,190 @@ const AssignmentManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Students List - Simple Table Style */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {currentTeacher ? 'My Students' : 'All Students'}
-            </h2>
-          </div>
-
-          {filteredStudents.length === 0 ? (
-            <div className="text-center py-12 px-4">
-              <p className="text-gray-600">No students found</p>
+        {/* Students List or Completed Assignments */}
+        {viewMode === 'students' ? (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {currentTeacher ? 'My Students' : 'All Students'}
+              </h2>
             </div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredStudents.map(student => {
-                // Use getStudentAssignments for consistent filtering logic
-                const studentAssignments = getStudentAssignments(student.id);
-                const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
-                const initials = getInitials(student.fullName);
-                
-                return (
-                  <div
-                    key={student.id}
-                    className="px-4 py-3 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {/* Avatar */}
-                        <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                          {student.avatar ? (
-                            <img
-                              src={student.avatar}
-                              alt={student.fullName}
-                              className="w-full h-full rounded-full object-cover"
-                            />
-                          ) : (
-                            initials
-                          )}
-                        </div>
-                        
-                        {/* Student Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{student.fullName}</p>
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            {student.program && <span>{student.program}</span>}
-                            {studentAssignments.length > 0 && (
-                              <span className="text-primary font-medium">
-                                {activeAssignments > 0 ? activeAssignments : studentAssignments.length} assignment{studentAssignments.length !== 1 ? 's' : ''}
-                              </span>
+
+            {filteredStudents.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <p className="text-gray-600">No students found</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {filteredStudents.map(student => {
+                  // Use getStudentAssignments for consistent filtering logic
+                  const studentAssignments = getStudentAssignments(student.id);
+                  const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
+                  const initials = getInitials(student.fullName);
+                  
+                  return (
+                    <div
+                      key={student.id}
+                      className="px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {/* Avatar */}
+                          <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            {student.avatar ? (
+                              <img
+                                src={student.avatar}
+                                alt={student.fullName}
+                                className="w-full h-full rounded-full object-cover"
+                              />
+                            ) : (
+                              initials
                             )}
                           </div>
+                          
+                          {/* Student Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 truncate">{student.fullName}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              {student.program && <span>{student.program}</span>}
+                              {studentAssignments.length > 0 && (
+                                <span className="text-primary font-medium">
+                                  {activeAssignments > 0 ? activeAssignments : studentAssignments.length} assignment{studentAssignments.length !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {!isAfterSchoolSelected && (
+                            <button
+                              onClick={() => handleCreateTicket(student.id)}
+                              className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                            >
+                              Ticket
+                            </button>
+                          )}
+                          {!isAfterSchoolSelected && (
+                            <button
+                              onClick={() => handleCreateAssignment(student.id)}
+                              className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                            >
+                              Assignment
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleStudentClick(student.id)}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                          >
+                            {isAfterSchoolSelected ? 'Review' : 'View'}
+                          </button>
                         </div>
                       </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        {!isAfterSchoolSelected && (
-                          <button
-                            onClick={() => handleCreateTicket(student.id)}
-                            className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
-                          >
-                            Ticket
-                          </button>
-                        )}
-                        {!isAfterSchoolSelected && (
-                          <button
-                            onClick={() => handleCreateAssignment(student.id)}
-                            className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                          >
-                            Assignment
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleStudentClick(student.id)}
-                          className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          {isAfterSchoolSelected ? 'Review' : 'View'}
-                        </button>
-                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                ✅ Completed Assignments & Homework
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {completedAssignmentsList.length} completed assignment{completedAssignmentsList.length !== 1 ? 's' : ''}
+              </p>
             </div>
-          )}
-        </div>
+
+            {completedAssignmentsList.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <p className="text-gray-600">No completed assignments found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Completed</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Grade</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {completedAssignmentsList.map((assignment: any) => {
+                      const isCompleted = assignment.status === 'completed';
+                      const isGraded = assignment.homework?.submission?.status === 'graded';
+                      const completedDate = assignment.completedAt || 
+                                           assignment.homework?.submission?.gradedAt || 
+                                           assignment.updatedAt || 
+                                           assignment.createdAt;
+                      const grade = assignment.homework?.submission?.grade;
+                      const student = allStudents.find((s: any) => s.id === assignment.studentId);
+                      
+                      return (
+                        <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-gray-900 text-sm">
+                              {assignment.studentName || student?.fullName || 'Unknown'}
+                            </div>
+                            {student?.program && (
+                              <div className="text-xs text-gray-500 mt-1">{student.program}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-sm text-gray-600">
+                              {isGraded ? 'Homework' : 'Assignment'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {isCompleted ? (
+                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                                Completed
+                              </span>
+                            ) : isGraded ? (
+                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                                Graded
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {completedDate ? new Date(completedDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-4 py-3">
+                            {grade !== null && grade !== undefined ? (
+                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">
+                                {grade}/100
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => {
+                                setSelectedStudent(assignment.studentId);
+                                handleStudentClick(assignment.studentId);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Modals */}
