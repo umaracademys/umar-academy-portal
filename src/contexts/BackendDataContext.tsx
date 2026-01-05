@@ -2515,7 +2515,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const response = await fetch(`${API_BASE}/admin-notifications`);
       if (response.ok) {
         const notifications = await response.json();
-        setAdminNotifications(notifications);
+        // Normalize notifications to have both id and _id
+        const normalizedNotifications = notifications.map((n: any) => ({
+          ...n,
+          id: n.id || n._id,
+          _id: n._id || n.id
+        }));
+        setAdminNotifications(normalizedNotifications);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);
@@ -2523,19 +2529,35 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const markNotificationAsRead = async (notificationId: string) => {
+    if (!notificationId || notificationId === 'undefined') {
+      console.error('Cannot mark notification as read: invalid notification ID', notificationId);
+      throw new Error('Invalid notification ID');
+    }
+    
     try {
       const response = await fetch(`${API_BASE}/admin-notifications/${notificationId}/read`, {
         method: 'PUT'
       });
       
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to mark notification as read:', errorText);
         throw new Error('Failed to mark notification as read');
       }
       
       const updatedNotification = await response.json();
-      setAdminNotifications(prev => prev.map(n => 
-        (n.id === notificationId || n.id === updatedNotification._id) ? updatedNotification : n
-      ));
+      // Normalize the updated notification
+      const normalizedNotification = {
+        ...updatedNotification,
+        id: updatedNotification.id || updatedNotification._id,
+        _id: updatedNotification._id || updatedNotification.id
+      };
+      
+      setAdminNotifications(prev => prev.map(n => {
+        const nId = n.id || (n as any)._id;
+        const updatedId = normalizedNotification.id || normalizedNotification._id;
+        return (nId === notificationId || nId === updatedId) ? normalizedNotification : n;
+      }));
     } catch (error) {
       console.error('Error marking notification as read:', error);
       throw error;

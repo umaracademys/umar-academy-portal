@@ -6022,16 +6022,40 @@ app.get('/api/admin-notifications/:id', authenticateToken, async (req, res) => {
 
 app.put('/api/admin-notifications/:id/read', async (req, res) => {
   try {
-    const notification = await AdminNotification.findByIdAndUpdate(
-      req.params.id,
+    const notificationId = req.params.id;
+    
+    // Validate notification ID
+    if (!notificationId || notificationId === 'undefined' || notificationId === 'null') {
+      return res.status(400).json({ error: 'Invalid notification ID' });
+    }
+    
+    console.log(`🔄 Marking admin notification as read: ${notificationId}`);
+    
+    // Try to find by _id first (MongoDB ObjectId)
+    let notification = await AdminNotification.findByIdAndUpdate(
+      notificationId,
       { read: true },
       { new: true }
     );
+    
+    // If not found by _id, try finding by other fields
     if (!notification) {
+      notification = await AdminNotification.findOneAndUpdate(
+        { _id: notificationId },
+        { read: true },
+        { new: true }
+      );
+    }
+    
+    if (!notification) {
+      console.error(`❌ Admin notification not found: ${notificationId}`);
       return res.status(404).json({ error: 'Notification not found' });
     }
+    
+    console.log(`✅ Admin notification marked as read: ${notification._id.toString()}`);
     res.json(notification);
   } catch (error) {
+    console.error('❌ Error marking admin notification as read:', error);
     res.status(500).json({ error: error.message });
   }
 });

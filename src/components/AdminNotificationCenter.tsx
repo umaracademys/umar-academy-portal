@@ -121,9 +121,20 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
     // Mark as read
     if (!notification.read) {
       try {
+        // Get the notification ID (handle both id and _id)
+        const notificationId = notification.id || (notification as any)._id;
+        
         // Only mark backend notifications as read (dynamic ones will be filtered out on refresh)
-        if (adminNotifications.find(n => n.id === notification.id)) {
-          await markNotificationAsRead(notification.id);
+        // Check if this is a real backend notification (not a dynamic one)
+        const backendNotification = adminNotifications.find(n => 
+          n.id === notificationId || 
+          (n as any)._id === notificationId ||
+          n.id === notification.id ||
+          (n as any)._id === (notification as any)._id
+        );
+        
+        if (backendNotification && notificationId) {
+          await markNotificationAsRead(notificationId);
         }
       } catch (error) {
         console.error('Error marking notification as read:', error);
