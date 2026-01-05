@@ -102,6 +102,7 @@ export default defineConfig({
     minify: 'esbuild', // Use esbuild instead of terser (faster and doesn't require extra dependency)
     target: 'esnext', // Use modern JS for faster builds
     sourcemap: false, // Disable sourcemaps in production for faster builds
+    reportCompressedSize: false, // Don't calculate compressed sizes (saves time)
     rollupOptions: {
       output: {
         manualChunks: (id) => {
