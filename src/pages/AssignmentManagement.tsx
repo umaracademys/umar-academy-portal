@@ -11,7 +11,7 @@ import { Ticket } from '../types/ticket';
 import Header from '../components/Header';
 
 const AssignmentManagement: React.FC = () => {
-  const { students: allStudents, assignments, getTeacherPairs, getPairStudents } = useBackendData();
+  const { students: allStudents, assignments, getStudentAssignments, getTeacherPairs, getPairStudents } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
   const { user } = useAuth();
   const [pairStudents, setPairStudents] = useState<any[]>([]);
@@ -250,7 +250,8 @@ const AssignmentManagement: React.FC = () => {
           ) : (
             <div className="divide-y divide-gray-200">
               {filteredStudents.map(student => {
-                const studentAssignments = assignments.filter(a => a.studentId === student.id);
+                // Use getStudentAssignments for consistent filtering logic
+                const studentAssignments = getStudentAssignments(student.id);
                 const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
                 const initials = getInitials(student.fullName);
                 
