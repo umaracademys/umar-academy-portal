@@ -1994,82 +1994,91 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     const teacherIdFromTeacher = (teacher.id || (teacher as any)._id)?.toString().trim();
     const teacherTeacherId = (teacher as any).teacherId?.toString().trim();
     const teacherUserId = (teacher as any).userId?._id?.toString().trim() || (teacher as any).userId?.toString().trim();
-    const assignedStudentIds = (teacher as any).assignedStudents || [];
+    const assignedStudentIds = Array.isArray((teacher as any).assignedStudents) ? (teacher as any).assignedStudents : [];
     
-    console.log('🔍 Teacher found:', teacherName, 
-      '- teacherId:', teacherIdFromTeacher,
-      '- assignedStudents array:', assignedStudentIds,
-      '- total students in system:', students.length);
+    if (import.meta.env.DEV) {
+      console.log('🔍 Teacher found:', teacherName, 
+        '- teacherId:', teacherIdFromTeacher,
+        '- teacherUserId:', teacherUserId,
+        '- assignedStudents array length:', assignedStudentIds.length,
+        '- assignedStudents:', assignedStudentIds,
+        '- total students in system:', students.length);
+    }
     
-    // Log all students and their assignedTeacher values for debugging
-    console.log('🔍 All students and their assignedTeacher values:');
-    students.forEach(student => {
-      const assignedTeacher = (student.assignedTeacher || (student as any).assignedTeacher || '').trim();
-      console.log(`  - ${student.fullName || (student as any).fullName}: assignedTeacher="${assignedTeacher}"`);
-    });
-    
-    // Filter students by checking multiple criteria
+    // Filter students by checking multiple criteria - STRICT MATCHING ONLY
     const filteredStudents = students.filter(student => {
       const studentId = (student.id || (student as any)._id)?.toString().trim();
       const userId = (student as any).userId?._id?.toString().trim() || (student as any).userId?.toString().trim();
-      const assignedTeacher = (student.assignedTeacher || (student as any).assignedTeacher || '').trim();
+      
+      // Normalize assignedTeacher - handle null, undefined, empty string
+      const rawAssignedTeacher = student.assignedTeacher || (student as any).assignedTeacher;
+      const assignedTeacher = rawAssignedTeacher ? rawAssignedTeacher.toString().trim() : '';
       
       // Check 1: If student ID or user ID is in teacher's assignedStudents array
-      const isAssignedById = assignedStudentIds.some((assignedId: string) => {
-        const assignedIdStr = assignedId?.toString().trim();
+      const isAssignedById = assignedStudentIds.length > 0 && assignedStudentIds.some((assignedId: string) => {
+        if (!assignedId) return false;
+        const assignedIdStr = assignedId.toString().trim();
         return assignedIdStr === studentId || 
                assignedIdStr === userId ||
                assignedIdStr === (student as any)._id?.toString().trim();
       });
       
       // Check 2: If student's assignedTeacher field matches teacher's ID (normalized)
-      // Check against multiple teacher ID fields: _id, teacherId, userId
-      const hasAssignedTeacherId = assignedTeacher === normalizedTeacherId ||
-                                   assignedTeacher === teacherIdFromTeacher ||
-                                   assignedTeacher === teacherTeacherId ||
-                                   assignedTeacher === teacherUserId ||
-                                   (student as any).assignedTeacherId?.toString().trim() === normalizedTeacherId ||
-                                   (student as any).assignedTeacherId?.toString().trim() === teacherIdFromTeacher ||
-                                   (student as any).assignedTeacherId?.toString().trim() === teacherTeacherId ||
-                                   (student as any).assignedTeacherId?.toString().trim() === teacherUserId;
+      // ONLY check if assignedTeacher is NOT empty
+      const hasAssignedTeacherId = assignedTeacher !== '' && (
+        assignedTeacher === normalizedTeacherId ||
+        assignedTeacher === teacherIdFromTeacher ||
+        assignedTeacher === teacherTeacherId ||
+        assignedTeacher === teacherUserId ||
+        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === normalizedTeacherId) ||
+        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherIdFromTeacher) ||
+        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherTeacherId) ||
+        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherUserId)
+      );
       
       // Check 3: If student's assignedTeacher field matches teacher's name (case-insensitive)
-      // Only match by name if assignedTeacher is not empty (to avoid false matches)
-      const hasAssignedTeacherName = teacherName && assignedTeacher && assignedTeacher.trim() !== '' && (
+      // ONLY check if assignedTeacher is NOT empty
+      const hasAssignedTeacherName = assignedTeacher !== '' && teacherName !== '' && (
         assignedTeacher === teacherName ||
         assignedTeacher === teacher.fullName?.trim() ||
         assignedTeacher.toLowerCase() === teacherName.toLowerCase() ||
         assignedTeacher.toLowerCase() === teacher.fullName?.trim().toLowerCase()
       );
       
-      // STRICT MATCHING: Only match if:
-      // 1. Student is explicitly in teacher's assignedStudents array, OR
-      // 2. Student's assignedTeacher field matches teacher's ID (and is not empty), OR
-      // 3. Student's assignedTeacher field matches teacher's name (and is not empty)
-      // This prevents showing all students when assignedTeacher is empty or teacher's assignedStudents array is empty
-      const matches = isAssignedById || 
-                      (hasAssignedTeacherId && assignedTeacher && assignedTeacher.trim() !== '') ||
-                      (hasAssignedTeacherName && assignedTeacher && assignedTeacher.trim() !== '');
+      // STRICT MATCHING: Only match if at least ONE condition is true
+      // This ensures we NEVER show students that aren't explicitly assigned
+      const matches = isAssignedById || hasAssignedTeacherId || hasAssignedTeacherName;
       
-      if (matches) {
-        if (import.meta.env.DEV) {
-          console.log('✅ Student matched:', student.fullName || (student as any).fullName, 
-          '- assignedTeacher:', assignedTeacher,
+      if (matches && import.meta.env.DEV) {
+        console.log('✅ Student matched:', student.fullName || (student as any).fullName, 
+          '- assignedTeacher:', assignedTeacher || '(empty)',
           '- studentId:', studentId,
           '- teacherId (normalized):', normalizedTeacherId,
           '- teacherName:', teacherName,
           '- isAssignedById:', isAssignedById,
           '- hasAssignedTeacherId:', hasAssignedTeacherId,
           '- hasAssignedTeacherName:', hasAssignedTeacherName);
-        }
       }
       
       return matches;
     });
     
     if (import.meta.env.DEV) {
-      console.log('🔍 Filtered students for teacher:', filteredStudents.length, filteredStudents.map(s => s.fullName || (s as any).fullName));
+      console.log('🔍 Filtered students for teacher:', teacherName, '- Count:', filteredStudents.length);
+      if (filteredStudents.length > 0) {
+        console.log('🔍 Matched students:', filteredStudents.map(s => s.fullName || (s as any).fullName));
+      } else {
+        console.log('⚠️ No students matched for teacher:', teacherName);
+        console.log('⚠️ Teacher assignedStudents array:', assignedStudentIds);
+        console.log('⚠️ Sample student assignedTeacher values:', 
+          students.slice(0, 5).map(s => ({
+            name: s.fullName || (s as any).fullName,
+            assignedTeacher: (s.assignedTeacher || (s as any).assignedTeacher || '').toString().trim() || '(empty)'
+          }))
+        );
+      }
     }
+    
     return filteredStudents;
   }, [teachers, students]);
 
