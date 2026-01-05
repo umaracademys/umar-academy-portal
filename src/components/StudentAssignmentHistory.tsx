@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { Assignment } from '../types/assignment';
+import HomeworkDisplay from './HomeworkDisplay';
 
 interface StudentAssignmentHistoryProps {
   studentId: string;

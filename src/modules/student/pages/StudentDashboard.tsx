@@ -11,6 +11,7 @@ import StudentTestResults from '../../../components/StudentTestResults';
 import TeacherStudentMessage from '../../../components/TeacherStudentMessage';
 import StudentWeeklyEvaluationReview from '../../../components/StudentWeeklyEvaluationReview';
 import StudentPasswordChangeModal from '../../../components/StudentPasswordChangeModal';
+import HomeworkDisplay from '../../../components/HomeworkDisplay';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -627,19 +628,7 @@ const StudentDashboard: React.FC = () => {
                         {hasHomework && (
                           <div className="mb-4 p-4 bg-soft-accent rounded-lg border border-gray-200">
                             <h5 className="text-sm font-bold text-primary mb-2 uppercase tracking-wide">Homework</h5>
-                            {assignment.homework.content && (
-                              <p className="text-sm text-gray-700 mb-2">{assignment.homework.content}</p>
-                            )}
-                            {assignment.homework.link && (
-                              <a 
-                                href={assignment.homework.link} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="text-sm text-primary hover:underline font-semibold"
-                              >
-                                {assignment.homework.link}
-                              </a>
-                            )}
+                            <HomeworkDisplay homework={assignment.homework} />
                           </div>
                         )}
 

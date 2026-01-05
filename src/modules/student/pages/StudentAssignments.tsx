@@ -9,6 +9,7 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { HomeworkSubmission } from '../../../types/assignment';
 import { uploadMistakeAudio } from '../../../services/audioService';
+import HomeworkDisplay from '../../../components/HomeworkDisplay';
 
 const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
