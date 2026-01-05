@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
 import Card from './Card';
 
@@ -29,6 +29,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [generatedPasswords, setGeneratedPasswords] = useState<Record<string, string>>({});
   const [resettingPasswords, setResettingPasswords] = useState(false);
+  const [userPasswordStatus, setUserPasswordStatus] = useState<Record<string, { passwordChangeRequired: boolean; hasPassword: boolean }>>({});
 
   // Helper function to get teacher name from ID
   const getTeacherName = (teacherId: string | undefined | null): string => {
@@ -61,6 +62,46 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
   const uniqueStatuses = Array.from(new Set(students.map(s => s.status).filter(Boolean)));
   const uniquePrograms = Array.from(new Set(students.map(s => s.program).filter(Boolean)));
+
+  // Fetch user password status for all students
+  useEffect(() => {
+    const fetchUserPasswordStatus = async () => {
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
+        const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+        
+        const response = await fetch(`${apiUrl}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const users = await response.json();
+          const statusMap: Record<string, { passwordChangeRequired: boolean; hasPassword: boolean }> = {};
+          
+          users.forEach((user: any) => {
+            if (user.role === 'student' && user.email) {
+              statusMap[user.email.toLowerCase()] = {
+                passwordChangeRequired: user.passwordChangeRequired || false,
+                hasPassword: user.hasPassword !== false
+              };
+            }
+          });
+          
+          setUserPasswordStatus(statusMap);
+        }
+      } catch (error) {
+        console.error('Error fetching user password status:', error);
+      }
+    };
+
+    if (students.length > 0) {
+      fetchUserPasswordStatus();
+    }
+  }, [students]);
 
   // Filter and sort students
   const filteredStudents = useMemo(() => {
@@ -650,6 +691,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                   </div>
                 </th>
                 <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Password</th>
                 <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -683,6 +725,31 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                       ${student.tuitionFee?.toLocaleString() || '0'}
                     </td>
                     <td className="px-2 py-2">{getStatusBadge(student.status || 'active')}</td>
+                    <td className="px-2 py-2">
+                      {(() => {
+                        const email = student.email?.toLowerCase();
+                        const status = email ? userPasswordStatus[email] : null;
+                        if (!status || !status.hasPassword) {
+                          return (
+                            <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
+                              No Password
+                            </span>
+                          );
+                        }
+                        if (status.passwordChangeRequired) {
+                          return (
+                            <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300" title="Student needs to change password">
+                              Change Required
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300" title="Password has been changed">
+                              Changed
+                            </span>
+                        );
+                      })()}
+                    </td>
                     <td className="px-2 py-2">
                       <div className="flex space-x-1">
                         <button

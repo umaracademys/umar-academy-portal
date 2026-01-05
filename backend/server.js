@@ -1969,8 +1969,16 @@ app.get('/api/users', apiLimiter, async (req, res) => {
       });
     }
 
-    const users = await User.find({}).select('-password'); // Always exclude passwords
-    res.json(users);
+    const users = await User.find({}).select('-password').lean(); // Always exclude passwords
+    
+    // Add password status information
+    const usersWithPasswordStatus = users.map(user => ({
+      ...user,
+      passwordChangeRequired: user.passwordChangeRequired || false,
+      hasPassword: !!user.password
+    }));
+    
+    res.json(usersWithPasswordStatus);
   } catch (error) {
     console.error('❌ Error fetching users:', error);
     res.status(500).json({ error: error.message });
@@ -4313,6 +4321,7 @@ app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
       ...userResponse,
       lastLogin: lastLoginLog?.timestamp || null,
       passwordChanged: lastPasswordReset?.timestamp || null,
+      passwordChangeRequired: user.passwordChangeRequired || false,
       accountStatus: user.loginEnabled !== false ? (isLocked ? 'locked' : 'active') : 'inactive',
       loginEnabled: user.loginEnabled !== false,
       twoFactorEnabled: user.twoFactorEnabled || false,
