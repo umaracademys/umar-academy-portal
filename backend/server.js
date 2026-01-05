@@ -5417,6 +5417,95 @@ app.get('/api/tickets/previous-reports/:studentId/:type', async (req, res) => {
   }
 });
 
+// Diagnostic endpoint: Check ticket-to-assignment linkage
+app.get('/api/tickets/:id/verify-assignment', async (req, res) => {
+  try {
+    const ticket = await Ticket.findById(req.params.id);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const result: any = {
+      ticket: {
+        id: ticket._id.toString(),
+        studentId: ticket.studentId,
+        studentName: ticket.studentName,
+        type: ticket.type,
+        status: ticket.status,
+        sentToAssignmentId: ticket.sentToAssignmentId,
+        sentAt: ticket.sentAt,
+        teacherComment: ticket.teacherComment,
+        adminComment: ticket.adminComment,
+        mistakesCount: ticket.mistakes?.length || 0
+      },
+      assignment: null,
+      issues: []
+    };
+
+    if (ticket.sentToAssignmentId) {
+      const assignment = await Assignment.findById(ticket.sentToAssignmentId);
+      if (assignment) {
+        result.assignment = {
+          id: assignment._id.toString(),
+          studentId: assignment.studentId,
+          studentName: assignment.studentName,
+          status: assignment.status,
+          sabqCount: assignment.classwork?.sabq?.length || 0,
+          sabqiCount: assignment.classwork?.sabqi?.length || 0,
+          manzilCount: assignment.classwork?.manzil?.length || 0,
+          mistakesCount: assignment.mushafMistakes?.length || 0,
+          sabqiEntries: assignment.classwork?.sabqi || [],
+          manzilEntries: assignment.classwork?.manzil || []
+        };
+
+        // Check for issues
+        if (String(assignment.studentId) !== String(ticket.studentId)) {
+          result.issues.push('Student ID mismatch between ticket and assignment');
+        }
+        if (assignment.status !== 'active') {
+          result.issues.push(`Assignment status is '${assignment.status}' (should be 'active')`);
+        }
+        if (ticket.type === 'sabqi' && assignment.classwork?.sabqi?.length === 0) {
+          result.issues.push('Sabqi ticket approved but no sabqi entries in assignment');
+        }
+        if (ticket.type === 'sabq' && assignment.classwork?.sabq?.length === 0) {
+          result.issues.push('Sabq ticket approved but no sabq entries in assignment');
+        }
+        if (ticket.type === 'manzil' && assignment.classwork?.manzil?.length === 0) {
+          result.issues.push('Manzil ticket approved but no manzil entries in assignment');
+        }
+        if (ticket.mistakes && ticket.mistakes.length > 0 && (!assignment.mushafMistakes || assignment.mushafMistakes.length === 0)) {
+          result.issues.push('Ticket has mistakes but assignment has no mistakes');
+        }
+      } else {
+        result.issues.push(`Assignment with ID ${ticket.sentToAssignmentId} not found`);
+      }
+    } else {
+      result.issues.push('Ticket does not have sentToAssignmentId (not approved yet)');
+    }
+
+    // Also check if there are any active assignments for this student
+    const studentIdStr = String(ticket.studentId);
+    const activeAssignments = await Assignment.find({
+      studentId: studentIdStr,
+      status: 'active'
+    }).sort({ createdAt: -1 }).limit(5);
+
+    result.activeAssignmentsForStudent = activeAssignments.map(a => ({
+      id: a._id.toString(),
+      sabqCount: a.classwork?.sabq?.length || 0,
+      sabqiCount: a.classwork?.sabqi?.length || 0,
+      manzilCount: a.classwork?.manzil?.length || 0,
+      createdAt: a.createdAt
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error('❌ Error verifying ticket assignment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Fix tickets that are missing sentToAssignmentId - MUST come before /:id route
 app.post('/api/tickets/fix-missing-assignment-ids', async (req, res) => {
   try {
