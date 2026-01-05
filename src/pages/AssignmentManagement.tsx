@@ -123,12 +123,21 @@ const AssignmentManagement: React.FC = () => {
     const totalAssignments = relevantAssignments.length;
     const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
     const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
-    const completedAssignments = relevantAssignments.filter((a: any) => 
-      a.status === 'completed' || 
-      (a.homework?.enabled && 
-       a.homework?.submission?.submitted && 
-       a.homework?.submission?.status === 'graded')
-    ).length;
+    const completedAssignments = relevantAssignments.filter((a: any) => {
+      // Explicitly completed
+      if (a.status === 'completed') return true;
+      // Archived assignments
+      if (a.status === 'archived') return true;
+      // Homework that has been graded
+      if (a.homework?.enabled && 
+          a.homework?.submission?.submitted && 
+          a.homework?.submission?.status === 'graded') return true;
+      // Homework that has feedback (even if status isn't 'graded')
+      if (a.homework?.enabled && 
+          a.homework?.submission?.submitted && 
+          a.homework?.submission?.feedback) return true;
+      return false;
+    }).length;
     const pendingHomework = relevantAssignments.filter((a: any) => 
       a.homework?.enabled && 
       a.homework?.submission?.submitted && 
@@ -154,12 +163,21 @@ const AssignmentManagement: React.FC = () => {
     const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
     return assignments
       .filter((a: any) => assignedStudentIds.has(a.studentId))
-      .filter((assignment: any) => 
-        assignment.status === 'completed' || 
-        (assignment.homework?.enabled && 
-         assignment.homework?.submission?.submitted && 
-         assignment.homework?.submission?.status === 'graded')
-      )
+      .filter((assignment: any) => {
+        // Explicitly completed
+        if (assignment.status === 'completed') return true;
+        // Archived assignments
+        if (assignment.status === 'archived') return true;
+        // Homework that has been graded
+        if (assignment.homework?.enabled && 
+            assignment.homework?.submission?.submitted && 
+            assignment.homework?.submission?.status === 'graded') return true;
+        // Homework that has feedback (even if status isn't 'graded')
+        if (assignment.homework?.enabled && 
+            assignment.homework?.submission?.submitted && 
+            assignment.homework?.submission?.feedback) return true;
+        return false;
+      })
       .sort((a: any, b: any) => {
         const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
         const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
@@ -547,7 +565,9 @@ const AssignmentManagement: React.FC = () => {
                   <tbody className="divide-y divide-gray-200">
                     {completedAssignmentsList.map((assignment: any) => {
                       const isCompleted = assignment.status === 'completed';
+                      const isArchived = assignment.status === 'archived';
                       const isGraded = assignment.homework?.submission?.status === 'graded';
+                      const hasFeedback = !!assignment.homework?.submission?.feedback;
                       const completedDate = assignment.completedAt || 
                                            assignment.homework?.submission?.gradedAt || 
                                            assignment.updatedAt || 
@@ -567,17 +587,25 @@ const AssignmentManagement: React.FC = () => {
                           </td>
                           <td className="px-4 py-3">
                             <span className="text-sm text-gray-600">
-                              {isGraded ? 'Homework' : 'Assignment'}
+                              {assignment.homework?.enabled ? 'Homework' : 'Assignment'}
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            {isCompleted ? (
+                            {isArchived ? (
+                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-800 border border-gray-300">
+                                Archived
+                              </span>
+                            ) : isCompleted ? (
                               <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
                                 Completed
                               </span>
                             ) : isGraded ? (
                               <span className="px-2 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
                                 Graded
+                              </span>
+                            ) : hasFeedback ? (
+                              <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800 border border-purple-300">
+                                Reviewed
                               </span>
                             ) : null}
                           </td>
