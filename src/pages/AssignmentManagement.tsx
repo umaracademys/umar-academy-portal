@@ -129,12 +129,22 @@ const AssignmentManagement: React.FC = () => {
        a.homework?.submission?.submitted && 
        a.homework?.submission?.status === 'graded')
     ).length;
+    const pendingHomework = relevantAssignments.filter((a: any) => 
+      a.homework?.enabled && 
+      a.homework?.submission?.submitted && 
+      a.homework?.submission?.status === 'submitted'
+    ).length;
+    const completionRate = totalAssignments > 0 
+      ? Math.round((completedAssignments / totalAssignments) * 100) 
+      : 0;
     
     return {
       totalAssignments,
       studentsWithAssignments,
       activeAssignments,
       completedAssignments,
+      pendingHomework,
+      completionRate,
       totalStudents: assignedStudents.length
     };
   }, [assignments, assignedStudents]);
@@ -210,35 +220,133 @@ const AssignmentManagement: React.FC = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Simple Header */}
+        {/* Dashboard Overview */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Assignments</h1>
-          <p className="text-sm text-gray-600">
-            {currentTeacher 
-              ? `${stats.totalStudents} assigned students` 
-              : `${stats.totalStudents} total students`}
-          </p>
+          <section className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white via-primary/5 to-white px-6 py-6 shadow-lg">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-3 py-1 rounded-full">
+                    Assignment Management
+                  </span>
+                  {stats.pendingHomework > 0 && (
+                    <span className="rounded-full bg-red-500 text-white px-2.5 py-1 text-xs font-bold animate-pulse">
+                      {stats.pendingHomework} pending homework
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-primary">Dashboard Overview</h1>
+                <p className="max-w-3xl text-sm text-gray-600 leading-relaxed">
+                  Manage assignments, track student progress, and review completed work. 
+                  {currentTeacher 
+                    ? ` You have ${stats.totalStudents} assigned students.`
+                    : ` Total of ${stats.totalStudents} students in the system.`}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold mt-3">
+                  <span className="rounded-full bg-primary/10 px-3 py-1.5 text-primary border border-primary/20">
+                    {stats.totalStudents} {currentTeacher ? 'assigned' : 'total'} students
+                  </span>
+                  <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 border border-blue-200">
+                    {stats.activeAssignments} active assignments
+                  </span>
+                  <span className="rounded-full bg-green-100 px-3 py-1.5 text-green-700 border border-green-200">
+                    {stats.completedAssignments} completed
+                  </span>
+                  {stats.pendingHomework > 0 && (
+                    <span className="rounded-full bg-orange-100 px-3 py-1.5 text-orange-700 border border-orange-200">
+                      {stats.pendingHomework} pending homework
+                    </span>
+                  )}
+                  <span className="rounded-full bg-purple-100 px-3 py-1.5 text-purple-700 border border-purple-200">
+                    {stats.completionRate}% completion rate
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Simple Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-600 mb-1">Total</p>
-            <p className="text-xl font-bold text-gray-900">{stats.totalAssignments}</p>
+        {/* Enhanced Stats Grid */}
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+          <div className="bg-white rounded-xl border-2 border-primary/20 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-primary/40">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Assignments</p>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                <span className="text-lg">📋</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-primary mb-1">{stats.totalAssignments}</p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-600">Across {stats.studentsWithAssignments} students</span>
+            </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-600 mb-1">Active</p>
-            <p className="text-xl font-bold text-blue-600">{stats.activeAssignments}</p>
+
+          <div className="bg-white rounded-xl border-2 border-blue-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-blue-300">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Active Assignments</p>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
+                <span className="text-lg">🔄</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-blue-600 mb-1">{stats.activeAssignments}</p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-blue-600 font-semibold">In progress</span>
+            </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-600 mb-1">Completed</p>
-            <p className="text-xl font-bold text-green-600">{stats.completedAssignments}</p>
+
+          <div className="bg-white rounded-xl border-2 border-green-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-green-300">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Completed</p>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
+                <span className="text-lg">✅</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-green-600 mb-1">{stats.completedAssignments}</p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-green-600 font-semibold">{stats.completionRate}% completion rate</span>
+            </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-600 mb-1">Students</p>
-            <p className="text-xl font-bold text-purple-600">{stats.studentsWithAssignments}</p>
+
+          <div className="bg-white rounded-xl border-2 border-purple-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-purple-300">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Students</p>
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center">
+                <span className="text-lg">👥</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-purple-600 mb-1">{stats.totalStudents}</p>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-purple-600 font-semibold">{stats.studentsWithAssignments} with assignments</span>
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* Pending Homework Alert */}
+        {stats.pendingHomework > 0 && (
+          <div className="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-2xl">📝</span>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm font-medium text-orange-800">
+                    {stats.pendingHomework} homework submission{stats.pendingHomework !== 1 ? 's' : ''} pending review
+                  </p>
+                  <p className="text-xs text-orange-700 mt-1">
+                    Click on "Completed Assignments" to review and grade submissions.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewMode('completed')}
+                className="ml-4 px-4 py-2 text-xs font-medium text-orange-800 bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors"
+              >
+                Review Now
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* View Mode Toggle */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
