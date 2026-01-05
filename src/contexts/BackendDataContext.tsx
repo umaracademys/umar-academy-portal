@@ -2042,10 +2042,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         assignedTeacher.toLowerCase() === teacher.fullName?.trim().toLowerCase()
       );
       
-      // Only match if at least one condition is true AND student has an assignedTeacher (not empty)
-      // This prevents showing all students when assignedTeacher is empty
-      const matches = (isAssignedById || hasAssignedTeacherId || hasAssignedTeacherName) && 
-                      (isAssignedById || hasAssignedTeacherId || (hasAssignedTeacherName && assignedTeacher && assignedTeacher.trim() !== ''));
+      // STRICT MATCHING: Only match if:
+      // 1. Student is explicitly in teacher's assignedStudents array, OR
+      // 2. Student's assignedTeacher field matches teacher's ID (and is not empty), OR
+      // 3. Student's assignedTeacher field matches teacher's name (and is not empty)
+      // This prevents showing all students when assignedTeacher is empty or teacher's assignedStudents array is empty
+      const matches = isAssignedById || 
+                      (hasAssignedTeacherId && assignedTeacher && assignedTeacher.trim() !== '') ||
+                      (hasAssignedTeacherName && assignedTeacher && assignedTeacher.trim() !== '');
       
       if (matches) {
         if (import.meta.env.DEV) {
