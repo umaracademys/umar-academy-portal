@@ -94,7 +94,7 @@ const TYPE_COLORS = {
 };
 
 const INITIAL_CURRENT_ITEM: Partial<HomeworkItem> = {
-  type: null,
+  type: undefined,
   range: {
     mode: 'surah_ayah',
     from: { surah: 1, surahName: 'Al-Fatihah', ayah: 1 },
@@ -189,7 +189,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case 'IGNORE_SUGGESTION':
       return {
         ...state,
-        ignoredSuggestions: new Set([...state.ignoredSuggestions, action.payload])
+        ignoredSuggestions: new Set([...Array.from(state.ignoredSuggestions), action.payload])
       };
 
     default:
