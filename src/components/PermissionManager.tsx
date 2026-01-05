@@ -1286,8 +1286,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     preset: 'all' | 'view' | 'none',
   ): Promise<void> => {
     if (!selectedTeacher || isSaving) {
+      console.warn('⚠️ Cannot apply preset: no teacher selected or already saving');
       return;
     }
+
+    console.log('🔐 Applying teacher preset:', preset, 'for teacher:', selectedTeacher.fullName);
 
     const next = TEACHER_PERMISSION_KEYS.reduce(
       (acc, key) => {
@@ -1296,6 +1299,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         } else if (preset === 'none') {
           acc[key] = false;
         } else {
+          // View-only: only enable permissions marked with defaultView
           acc[key] = Boolean(
             TEACHER_DEFINITION_MAP[key].defaultView ?? false,
           );
@@ -1304,6 +1308,14 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       },
       {} as TeacherPermissions,
     );
+
+    console.log('🔐 Generated permissions object:', {
+      preset,
+      permissionCount: Object.keys(next).length,
+      enabledCount: Object.values(next).filter(v => v === true).length,
+      disabledCount: Object.values(next).filter(v => v === false).length,
+      samplePermissions: Object.entries(next).slice(0, 5)
+    });
 
     const message =
       preset === 'all'
