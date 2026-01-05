@@ -39,6 +39,20 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
 
   const student = students.find(s => s.id === studentId);
   const assignments = getStudentAssignments(studentId);
+  
+  // Debug logging
+  useEffect(() => {
+    if (import.meta.env.DEV && studentId) {
+      console.log('🔍 StudentAssignmentHistory for student:', {
+        studentId: studentId,
+        studentName: student?.fullName,
+        assignmentsFound: assignments.length,
+        assignmentIds: assignments.map(a => a.id),
+        assignmentStatuses: assignments.map(a => a.status),
+        sabqiCounts: assignments.map(a => a.classwork?.sabqi?.length || 0)
+      });
+    }
+  }, [studentId, assignments, student]);
 
   useEffect(() => {
     if (assignments.length > 0 && expandedAssignments.size === 0) {

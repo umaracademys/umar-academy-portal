@@ -2178,16 +2178,39 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!studentId) return [];
     
     // Normalize studentId to string for comparison
-    const normalizedStudentId = String(studentId);
+    const normalizedStudentId = String(studentId).trim();
     
-    return assignments.filter(a => {
+    const filtered = assignments.filter(a => {
       // Check both studentId formats (string and _id)
-      const assignmentStudentId = a.studentId || (a as any)._id?.studentId;
-      return String(assignmentStudentId) === normalizedStudentId ||
-             String(assignmentStudentId) === String(studentId) ||
-             assignmentStudentId === studentId ||
-             assignmentStudentId === normalizedStudentId;
+      const assignmentStudentId = (a.studentId || (a as any)._id?.studentId || '').toString().trim();
+      const matches = assignmentStudentId === normalizedStudentId ||
+             assignmentStudentId === String(studentId).trim() ||
+             assignmentStudentId === studentId?.toString().trim();
+      
+      if (import.meta.env.DEV && matches) {
+        console.log('✅ Assignment matched for student:', {
+          studentId: normalizedStudentId,
+          assignmentId: a.id,
+          assignmentStudentId: assignmentStudentId,
+          assignmentStatus: a.status,
+          sabqiCount: a.classwork?.sabqi?.length || 0
+        });
+      }
+      
+      return matches;
     });
+    
+    if (import.meta.env.DEV) {
+      console.log('🔍 getStudentAssignments:', {
+        studentId: normalizedStudentId,
+        totalAssignments: assignments.length,
+        filteredCount: filtered.length,
+        assignmentIds: filtered.map(a => a.id),
+        allStudentIds: [...new Set(assignments.map(a => String(a.studentId || '').trim()))]
+      });
+    }
+    
+    return filtered;
   };
 
   // New Ticket System Functions (sabq/sabqi/manzil workflow)
