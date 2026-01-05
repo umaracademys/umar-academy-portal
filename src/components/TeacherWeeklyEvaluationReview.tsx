@@ -250,8 +250,14 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
 
       {/* Detail Modal */}
       {selectedEvaluation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          onClick={() => setSelectedEvaluation(null)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="sticky top-0 bg-gradient-to-r from-primary to-primary/90 px-6 py-5 flex justify-between items-center rounded-t-xl">
               <div>
                 <h3 className="text-xl font-bold text-white">Evaluation Details</h3>
@@ -260,8 +266,12 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
                 </p>
               </div>
               <button
-                onClick={() => setSelectedEvaluation(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEvaluation(null);
+                }}
                 className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-xl font-bold"
+                type="button"
               >
                 ×
               </button>
@@ -368,8 +378,12 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
 
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button
-                  onClick={() => setSelectedEvaluation(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEvaluation(null);
+                  }}
                   className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all shadow-md"
+                  type="button"
                 >
                   Close
                 </button>

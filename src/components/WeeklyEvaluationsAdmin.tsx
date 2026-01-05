@@ -358,8 +358,14 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
 
       {/* Detail Modal */}
       {selectedEvaluationDetails && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+          onClick={() => setSelectedEvaluationDetails(null)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="sticky top-0 bg-gradient-to-r from-primary to-primary/90 px-6 py-5 flex justify-between items-center rounded-t-xl">
               <div>
                 <h3 className="text-xl font-bold text-white">Evaluation Details</h3>
@@ -368,8 +374,12 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
                 </p>
               </div>
               <button
-                onClick={() => setSelectedEvaluationDetails(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEvaluationDetails(null);
+                }}
                 className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-xl font-bold"
+                type="button"
               >
                 ×
               </button>
@@ -476,17 +486,20 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setSelectedEvaluationDetails(null);
                     setSelectedEvaluation(selectedEvaluationDetails.id || selectedEvaluationDetails._id);
                   }}
                   className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary/90 transition-all shadow-md"
+                  type="button"
                 >
                   {selectedEvaluationDetails.adminFeedback ? 'Update Feedback' : 'Provide Feedback'}
                 </button>
                 {selectedEvaluationDetails.status === 'under_review' && (
                   <button
-                    onClick={async () => {
+                    onClick={async (e) => {
+                      e.stopPropagation();
                       if (confirm('Approve this evaluation?')) {
                         try {
                           const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -519,13 +532,18 @@ const WeeklyEvaluationsAdmin: React.FC<WeeklyEvaluationsAdminProps> = ({ onClose
                       }
                     }}
                     className="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-md"
+                    type="button"
                   >
                     Approve
                   </button>
                 )}
                 <button
-                  onClick={() => setSelectedEvaluationDetails(null)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEvaluationDetails(null);
+                  }}
                   className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                  type="button"
                 >
                   Close
                 </button>
