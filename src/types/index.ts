@@ -16,6 +16,7 @@ export interface User {
   avatar?: string;
   isDeveloper?: boolean; // Developer account flag
   isTestAccount?: boolean; // Test account flag
+  passwordChangeRequired?: boolean; // Flag to indicate password needs to be changed
 }
 
 export interface Sibling {

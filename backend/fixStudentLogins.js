@@ -52,9 +52,15 @@ const fixStudentLogins = async () => {
           console.log(`   ⚠️  No password set - setting default password...`);
           const hashedPassword = await bcrypt.hash('password123', 10);
           existingUser.password = hashedPassword;
+          existingUser.passwordChangeRequired = true; // Set flag to require password change
           await existingUser.save();
-          console.log(`   ✅ Password set to: password123`);
+          console.log(`   ✅ Password set to: password123 (password change required)`);
           fixedCount++;
+        } else if (existingUser.passwordChangeRequired === undefined || existingUser.passwordChangeRequired === null) {
+          // Ensure passwordChangeRequired flag is set for default passwords
+          existingUser.passwordChangeRequired = true;
+          await existingUser.save();
+          console.log(`   ✅ Set passwordChangeRequired flag`);
         }
       } else {
         console.log(`❌ ${student.email} - NO USER ACCOUNT (creating now...)`);
@@ -66,6 +72,7 @@ const fixStudentLogins = async () => {
           email: student.email,
           role: 'student',
           password: hashedPassword,
+          passwordChangeRequired: true, // Set flag to require password change
           avatar: student.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.fullName || student.email)}&background=3b82f6&color=fff`
         });
         

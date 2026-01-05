@@ -10,6 +10,7 @@ import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
 import StudentTestResults from '../../../components/StudentTestResults';
 import TeacherStudentMessage from '../../../components/TeacherStudentMessage';
 import StudentWeeklyEvaluationReview from '../../../components/StudentWeeklyEvaluationReview';
+import StudentPasswordChangeModal from '../../../components/StudentPasswordChangeModal';
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -29,6 +30,7 @@ const StudentDashboard: React.FC = () => {
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [pairInfo, setPairInfo] = useState<any>(null);
   const [pairDailyReports, setPairDailyReports] = useState<any[]>([]);
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
   const navigate = useNavigate();
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
@@ -853,6 +855,23 @@ const StudentDashboard: React.FC = () => {
         <StudentWeeklyEvaluationReview
           studentId={currentStudent.id}
           onClose={() => setShowWeeklyEvaluations(false)}
+        />
+      )}
+
+      {/* Password Change Modal - Shows when passwordChangeRequired is true */}
+      {showPasswordChangeModal && (
+        <StudentPasswordChangeModal
+          onClose={() => setShowPasswordChangeModal(false)}
+          onPasswordChanged={() => {
+            setShowPasswordChangeModal(false);
+            // Update user in localStorage to clear the flag
+            const savedUser = localStorage.getItem('umar_academy_user');
+            if (savedUser) {
+              const userData = JSON.parse(savedUser);
+              userData.passwordChangeRequired = false;
+              localStorage.setItem('umar_academy_user', JSON.stringify(userData));
+            }
+          }}
         />
       )}
       

@@ -637,7 +637,9 @@ const userSchema = new mongoose.Schema({
   // Account lockout fields
   failedLoginAttempts: { type: Number, default: 0 },
   accountLockedUntil: Date,
-  lastFailedLoginAttempt: Date
+  lastFailedLoginAttempt: Date,
+  // Password change tracking
+  passwordChangeRequired: { type: Boolean, default: false } // Set to true for generated/default passwords
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -1665,6 +1667,35 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       details: { timestamp: new Date() }
     });
 
+    // Check if password change is required (for generated/default passwords)
+    // Common default passwords that should trigger password change
+    const defaultPasswords = ['password123', 'password', '12345678', 'changeme'];
+    let passwordChangeRequired = user.passwordChangeRequired === true;
+    
+    // If not explicitly set, check if password matches common defaults
+    if (!passwordChangeRequired && user.password) {
+      const isBcryptHash = user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$');
+      if (isBcryptHash) {
+        // Check if any default password matches
+        for (const defaultPwd of defaultPasswords) {
+          if (await bcrypt.compare(defaultPwd, user.password)) {
+            passwordChangeRequired = true;
+            // Set flag in database for future checks
+            user.passwordChangeRequired = true;
+            await user.save();
+            break;
+          }
+        }
+      } else {
+        // Plain text password - check directly
+        if (defaultPasswords.includes(user.password.toLowerCase())) {
+          passwordChangeRequired = true;
+          user.passwordChangeRequired = true;
+          await user.save();
+        }
+      }
+    }
+
     // Return user data (without password) and token
     // Include isDeveloper and isTestAccount flags for frontend data masking
     res.json({
@@ -1677,6 +1708,7 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
         avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.fullName || 'User')}&background=random&color=fff`,
         isDeveloper: user.isDeveloper || false,
         isTestAccount: user.isTestAccount || false,
+        passwordChangeRequired: passwordChangeRequired || false
       }
     });
   } catch (error) {
@@ -3946,6 +3978,16 @@ app.put('/api/users/:id/password', authenticateToken, async (req, res) => {
     // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 10);
     targetUser.password = hashedPassword;
+    
+    // Set passwordChangeRequired flag based on who is changing it
+    if (isSelfUpdate) {
+      // User changing their own password - clear the flag
+      targetUser.passwordChangeRequired = false;
+    } else {
+      // Admin resetting password - set flag to require change on next login
+      targetUser.passwordChangeRequired = true;
+    }
+    
     await targetUser.save();
 
     console.log(`✅ Password updated for user: ${targetUser.email} (${targetUser.role})`);
