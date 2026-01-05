@@ -64,9 +64,14 @@ const TeacherDashboard: React.FC = () => {
 
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
   const assignedStudents = useMemo(() => {
-    if (!currentTeacher?.id) return [];
-    return getStudentsByTeacher(currentTeacher.id);
-  }, [currentTeacher?.id, getStudentsByTeacher]);
+    if (!currentTeacher?.id) {
+      console.log('⚠️ No current teacher found, returning empty assigned students');
+      return [];
+    }
+    const students = getStudentsByTeacher(currentTeacher.id);
+    console.log('✅ Assigned students for teacher:', currentTeacher.fullName, '- Count:', students.length);
+    return students;
+  }, [currentTeacher?.id, currentTeacher?.fullName, getStudentsByTeacher]);
   
   // Get pair partner teacher
   const pairPartner = useMemo(() => {
@@ -106,7 +111,7 @@ const TeacherDashboard: React.FC = () => {
     const students: Student[] = [];
     const studentIds = new Set<string>();
     
-    // Add directly assigned students
+    // Add directly assigned students ONLY
     assignedStudents.forEach(s => {
       const id = s.id || (s as any)._id?.toString();
       if (id && !studentIds.has(id)) {
@@ -116,6 +121,7 @@ const TeacherDashboard: React.FC = () => {
     });
     
     // Add pair students - get from all students list
+    // Only add students that are actually in active pairs for this teacher
     (Object.values(pairStudentsMap) as any[][]).forEach((pairStudentList: any[]) => {
       pairStudentList.forEach((ps: any) => {
         const studentRef = ps.student;
@@ -134,6 +140,13 @@ const TeacherDashboard: React.FC = () => {
           }
         }
       });
+    });
+    
+    console.log('✅ allPairStudents calculated:', {
+      assignedCount: assignedStudents.length,
+      pairCount: students.length - assignedStudents.length,
+      total: students.length,
+      studentNames: students.map(s => s.fullName || (s as any).fullName)
     });
     
     return students;

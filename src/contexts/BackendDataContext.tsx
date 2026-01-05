@@ -2022,14 +2022,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
                                    (student as any).assignedTeacherId?.toString().trim() === teacherUserId;
       
       // Check 3: If student's assignedTeacher field matches teacher's name (case-insensitive)
-      const hasAssignedTeacherName = teacherName && assignedTeacher && (
+      // Only match by name if assignedTeacher is not empty (to avoid false matches)
+      const hasAssignedTeacherName = teacherName && assignedTeacher && assignedTeacher.trim() !== '' && (
         assignedTeacher === teacherName ||
         assignedTeacher === teacher.fullName?.trim() ||
         assignedTeacher.toLowerCase() === teacherName.toLowerCase() ||
         assignedTeacher.toLowerCase() === teacher.fullName?.trim().toLowerCase()
       );
       
-      const matches = isAssignedById || hasAssignedTeacherId || hasAssignedTeacherName;
+      // Only match if at least one condition is true AND student has an assignedTeacher (not empty)
+      // This prevents showing all students when assignedTeacher is empty
+      const matches = (isAssignedById || hasAssignedTeacherId || hasAssignedTeacherName) && 
+                      (isAssignedById || hasAssignedTeacherId || (hasAssignedTeacherName && assignedTeacher && assignedTeacher.trim() !== ''));
       
       if (matches) {
         if (import.meta.env.DEV) {
