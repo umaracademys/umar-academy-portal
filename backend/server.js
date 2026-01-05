@@ -108,7 +108,11 @@ app.use(cors({
       'http://localhost:5174',
       'http://localhost:5175',
       process.env.FRONTEND_URL,
-      'https://umar-academy-frontend-m2at.onrender.com'
+      // Legacy domains (keep for migration period)
+      'https://umar-academy-frontend-m2at.onrender.com',
+      'https://umar-academy-frontend.onrender.com',
+      // Add any additional domains from environment variable (comma-separated)
+      ...(process.env.ADDITIONAL_FRONTEND_URLS ? process.env.ADDITIONAL_FRONTEND_URLS.split(',') : [])
     ].filter(Boolean); // Remove undefined values
     
     // In development, allow all localhost origins
