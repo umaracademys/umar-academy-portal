@@ -6,9 +6,10 @@
 @tailwind utilities;
 
 /* QPC V2 Font for Surah Names */
+/* Note: QPC V2 Font file doesn't exist, using surah_names.woff as fallback */
 @font-face {
   font-family: 'QPC V2 Font';
-  src: url('/fonts/QPC V2 Font.woff') format('woff');
+  src: url('/fonts/surah_names.woff') format('woff');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
