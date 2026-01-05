@@ -237,6 +237,70 @@ const AssignmentManagement: React.FC = () => {
     setEditingAssignment(null);
   };
 
+  const handleAssignHomework = (assignmentId: string, studentId: string) => {
+    setHomeworkAssignmentId(assignmentId);
+    setSelectedStudent(studentId);
+    setShowHomeworkForm(true);
+  };
+
+  const handleSaveHomework = async (homeworkItems: HomeworkItem[], notes: string) => {
+    if (!homeworkAssignmentId) return;
+
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+      
+      // Get current assignment
+      const assignmentResponse = await fetch(`${API_BASE}/assignments/${homeworkAssignmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!assignmentResponse.ok) {
+        throw new Error('Failed to fetch assignment');
+      }
+
+      const assignment = await assignmentResponse.json();
+
+      // Update assignment with homework items
+      const updateResponse = await fetch(`${API_BASE}/assignments/${homeworkAssignmentId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ...assignment,
+          homework: {
+            ...assignment.homework,
+            enabled: homeworkItems.length > 0,
+            items: homeworkItems,
+            notes: notes
+          }
+        })
+      });
+
+      if (!updateResponse.ok) {
+        const error = await updateResponse.json();
+        throw new Error(error.error || 'Failed to save homework');
+      }
+
+      // Refresh data
+      await refreshData();
+    } catch (error) {
+      console.error('Error saving homework:', error);
+      throw error;
+    }
+  };
+
+  const handleCloseHomeworkForm = () => {
+    setShowHomeworkForm(false);
+    setHomeworkAssignmentId(null);
+    setSelectedStudent(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
