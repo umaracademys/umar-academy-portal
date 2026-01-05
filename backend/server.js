@@ -6697,6 +6697,14 @@ app.post('/api/weekly-evaluations', authenticateToken, async (req, res) => {
     if (req.user.role !== 'teacher') {
       return res.status(403).json({ error: 'Access denied. Only teachers can create evaluations.' });
     }
+    
+    // Permission check
+    const { checkTeacherPermission } = require('./middleware/permissions');
+    const userId = req.user.userId || req.user.id || req.user._id;
+    const hasPermission = await checkTeacherPermission(userId, 'canCreateEvaluations');
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Access denied. You don\'t have permission to create evaluations.' });
+    }
 
     const {
       studentId,
@@ -7415,8 +7423,23 @@ app.post('/api/weekly-evaluations/:id/reject', authenticateToken, async (req, re
 });
 
 // Admin provide feedback, game plan, and links
-app.post('/api/weekly-evaluations/:id/admin-feedback', async (req, res) => {
+app.post('/api/weekly-evaluations/:id/admin-feedback', authenticateToken, async (req, res) => {
   try {
+    // Role check: Only Super Admin and Admin can provide feedback
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can provide feedback.' });
+    }
+    
+    // Permission check for admins (superadmin has all permissions)
+    if (req.user.role === 'admin') {
+      const { checkAdminPermission } = require('./middleware/permissions');
+      const userId = req.user.userId || req.user.id || req.user._id;
+      const hasPermission = await checkAdminPermission(userId, 'canManageEvaluations');
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Access denied. You don\'t have permission to manage evaluations.' });
+      }
+    }
+    
     const { id } = req.params;
     const { adminFeedback, gamePlan, sharedLinks, reviewedBy, reviewedByName } = req.body;
 
