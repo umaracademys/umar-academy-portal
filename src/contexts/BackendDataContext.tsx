@@ -1653,6 +1653,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         phoneNumber: teacher.phoneNumber || teacher.contact,
       };
 
+      // Log permissions update for debugging
+      if (updatePayload.permissions) {
+        console.log('🔐 Updating teacher permissions:', {
+          teacherId: id,
+          permissionCount: Object.keys(updatePayload.permissions).length,
+          enabledCount: Object.values(updatePayload.permissions).filter(v => v === true).length,
+          disabledCount: Object.values(updatePayload.permissions).filter(v => v === false).length
+        });
+      }
+
       // Try updating via /api/teachers/:id first
       let response = await fetchWithTimeout(
         `${API_BASE}/teachers/${id}`,
@@ -1696,7 +1706,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         ...updatedTeacher,
         id: updatedTeacher._id || updatedTeacher.id || id,
         fullName: updatedTeacher.fullName || updatedTeacher.name || 'Unknown Teacher',
-        // Ensure permissions are preserved from update payload if backend didn't return them
+        // Use permissions from backend response, fallback to what we sent, then defaults
         permissions: updatedTeacher.permissions || teacher.permissions || {
           canViewAssessments: true,
           canEditAssessments: true,
@@ -1711,14 +1721,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
       };
 
-      // Update local state - merge to preserve all fields
+      // Update local state - merge to preserve all fields, prioritize backend response permissions
       setTeachers(prev => prev.map(t => {
         const tId = t.id || (t as any)._id;
         if (tId === id || tId === mappedTeacher.id || tId === mappedTeacher._id) {
           return {
             ...t,
             ...mappedTeacher,
-            permissions: mappedTeacher.permissions || t.permissions
+            // Use permissions from backend response if available, otherwise use what we sent
+            permissions: updatedTeacher.permissions || teacher.permissions || t.permissions
           };
         }
         return t;
@@ -1728,11 +1739,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       if (import.meta.env.DEV) {
         console.log('✅ Teacher updated successfully:', mappedTeacher.fullName || mappedTeacher.name || 'Teacher');
+        console.log('✅ Updated permissions:', mappedTeacher.permissions);
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update teacher';
       setError(errorMessage);
-      console.error('Error updating teacher:', err);
+      console.error('❌ Error updating teacher:', err);
       throw err;
     }
   };

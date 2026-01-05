@@ -1169,10 +1169,32 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
   ) => {
     setIsSaving(true);
     try {
+      console.log('🔐 Applying teacher permissions:', {
+        teacherId: teacher.id,
+        teacherName: teacher.fullName,
+        permissions,
+        permissionCount: Object.keys(permissions).length
+      });
+      
       await updateTeacher(teacher.id, { permissions });
+      
       setFeedback({
         tone: 'success',
         message: `${message} • ${teacher.fullName}`,
+      });
+      
+      // Refresh the teacher data to show updated permissions
+      setTimeout(() => {
+        // Force re-render by updating selected user
+        const currentSelected = selectedUser;
+        setSelectedUser('');
+        setTimeout(() => setSelectedUser(currentSelected), 100);
+      }, 500);
+    } catch (error) {
+      console.error('❌ Error applying teacher permissions:', error);
+      setFeedback({
+        tone: 'error',
+        message: `Failed to update permissions: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     } finally {
       setIsSaving(false);
@@ -1186,10 +1208,32 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
   ) => {
     setIsSaving(true);
     try {
+      console.log('🔐 Applying admin permissions:', {
+        adminId: admin.id,
+        adminName: admin.fullName,
+        permissions,
+        permissionCount: Object.keys(permissions).length
+      });
+      
       await updateAdmin(admin.id, { permissions });
+      
       setFeedback({
         tone: 'success',
         message: `${message} • ${admin.fullName}`,
+      });
+      
+      // Refresh the admin data to show updated permissions
+      setTimeout(() => {
+        // Force re-render by updating selected user
+        const currentSelected = selectedUser;
+        setSelectedUser('');
+        setTimeout(() => setSelectedUser(currentSelected), 100);
+      }, 500);
+    } catch (error) {
+      console.error('❌ Error applying admin permissions:', error);
+      setFeedback({
+        tone: 'error',
+        message: `Failed to update permissions: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     } finally {
       setIsSaving(false);

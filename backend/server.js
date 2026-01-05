@@ -2815,91 +2815,94 @@ const normalizeTeacherData = (teacherData) => {
     };
   }
   
-  // Ensure permissions are preserved and have all fields
+  // Ensure permissions are preserved - use exact values if provided, only set defaults if missing
   if (normalized.permissions) {
+    // If permissions object exists, preserve exact values (including false values)
+    // Only set defaults for fields that are completely missing (undefined)
+    const perms = normalized.permissions;
     normalized.permissions = {
       // Assessments & Evaluations
-      canViewAssessments: normalized.permissions.canViewAssessments ?? true,
-      canEditAssessments: normalized.permissions.canEditAssessments ?? true,
-      canViewEvaluations: normalized.permissions.canViewEvaluations ?? true,
-      canEditEvaluations: normalized.permissions.canEditEvaluations ?? true,
+      canViewAssessments: perms.canViewAssessments !== undefined ? perms.canViewAssessments : true,
+      canEditAssessments: perms.canEditAssessments !== undefined ? perms.canEditAssessments : true,
+      canViewEvaluations: perms.canViewEvaluations !== undefined ? perms.canViewEvaluations : true,
+      canEditEvaluations: perms.canEditEvaluations !== undefined ? perms.canEditEvaluations : true,
       
       // Financial & Billing
-      canViewFinancials: normalized.permissions.canViewFinancials ?? false,
+      canViewFinancials: perms.canViewFinancials !== undefined ? perms.canViewFinancials : false,
       
       // Scheduling & Logistics
-      canManageSchedule: normalized.permissions.canManageSchedule ?? true,
+      canManageSchedule: perms.canManageSchedule !== undefined ? perms.canManageSchedule : true,
       
       // Communication
-      canContactParents: normalized.permissions.canContactParents ?? true,
+      canContactParents: perms.canContactParents !== undefined ? perms.canContactParents : true,
       
       // Student Information
-      canViewStudentEmail: normalized.permissions.canViewStudentEmail ?? true,
-      canViewStudentContact: normalized.permissions.canViewStudentContact ?? true,
-      canViewStudentPersonalInfo: normalized.permissions.canViewStudentPersonalInfo ?? true,
+      canViewStudentEmail: perms.canViewStudentEmail !== undefined ? perms.canViewStudentEmail : true,
+      canViewStudentContact: perms.canViewStudentContact !== undefined ? perms.canViewStudentContact : true,
+      canViewStudentPersonalInfo: perms.canViewStudentPersonalInfo !== undefined ? perms.canViewStudentPersonalInfo : true,
       
       // Module Permissions - Messages
-      canAccessMessages: normalized.permissions.canAccessMessages ?? true,
-      canSendMessages: normalized.permissions.canSendMessages ?? true,
-      canViewAllMessages: normalized.permissions.canViewAllMessages ?? false,
+      canAccessMessages: perms.canAccessMessages !== undefined ? perms.canAccessMessages : true,
+      canSendMessages: perms.canSendMessages !== undefined ? perms.canSendMessages : true,
+      canViewAllMessages: perms.canViewAllMessages !== undefined ? perms.canViewAllMessages : false,
       
       // Module Permissions - PDF
-      canAccessPdf: normalized.permissions.canAccessPdf ?? true,
-      canUploadPdf: normalized.permissions.canUploadPdf ?? false,
-      canAnnotatePdf: normalized.permissions.canAnnotatePdf ?? true,
-      canViewPdfAnnotations: normalized.permissions.canViewPdfAnnotations ?? true,
+      canAccessPdf: perms.canAccessPdf !== undefined ? perms.canAccessPdf : true,
+      canUploadPdf: perms.canUploadPdf !== undefined ? perms.canUploadPdf : false,
+      canAnnotatePdf: perms.canAnnotatePdf !== undefined ? perms.canAnnotatePdf : true,
+      canViewPdfAnnotations: perms.canViewPdfAnnotations !== undefined ? perms.canViewPdfAnnotations : true,
       
       // Module Permissions - Homework
-      canAccessHomework: normalized.permissions.canAccessHomework ?? true,
-      canCreateHomework: normalized.permissions.canCreateHomework ?? true,
-      canGradeHomework: normalized.permissions.canGradeHomework ?? true,
-      canViewHomeworkSubmissions: normalized.permissions.canViewHomeworkSubmissions ?? true,
+      canAccessHomework: perms.canAccessHomework !== undefined ? perms.canAccessHomework : true,
+      canCreateHomework: perms.canCreateHomework !== undefined ? perms.canCreateHomework : true,
+      canGradeHomework: perms.canGradeHomework !== undefined ? perms.canGradeHomework : true,
+      canViewHomeworkSubmissions: perms.canViewHomeworkSubmissions !== undefined ? perms.canViewHomeworkSubmissions : true,
       
       // Module Permissions - Evaluation
-      canAccessEvaluations: normalized.permissions.canAccessEvaluations ?? true,
-      canCreateEvaluations: normalized.permissions.canCreateEvaluations ?? false,
-      canReviewEvaluations: normalized.permissions.canReviewEvaluations ?? false,
-      canApproveEvaluations: normalized.permissions.canApproveEvaluations ?? false,
+      canAccessEvaluations: perms.canAccessEvaluations !== undefined ? perms.canAccessEvaluations : true,
+      canCreateEvaluations: perms.canCreateEvaluations !== undefined ? perms.canCreateEvaluations : false,
+      canReviewEvaluations: perms.canReviewEvaluations !== undefined ? perms.canReviewEvaluations : false,
+      canApproveEvaluations: perms.canApproveEvaluations !== undefined ? perms.canApproveEvaluations : false,
       
       // Module Permissions - Tickets
-      canAccessTickets: normalized.permissions.canAccessTickets ?? true,
-      canCreateTickets: normalized.permissions.canCreateTickets ?? false,
-      canReviewTickets: normalized.permissions.canReviewTickets ?? true,
-      canApproveTickets: normalized.permissions.canApproveTickets ?? false,
-      canFinalizeTickets: normalized.permissions.canFinalizeTickets ?? false,
+      canAccessTickets: perms.canAccessTickets !== undefined ? perms.canAccessTickets : true,
+      canCreateTickets: perms.canCreateTickets !== undefined ? perms.canCreateTickets : false,
+      canReviewTickets: perms.canReviewTickets !== undefined ? perms.canReviewTickets : true,
+      canApproveTickets: perms.canApproveTickets !== undefined ? perms.canApproveTickets : false,
+      canFinalizeTickets: perms.canFinalizeTickets !== undefined ? perms.canFinalizeTickets : false,
       
       // Module Permissions - Attendance
-      canAccessAttendance: normalized.permissions.canAccessAttendance ?? true,
-      canRecordAttendance: normalized.permissions.canRecordAttendance ?? true,
-      canViewAttendanceReports: normalized.permissions.canViewAttendanceReports ?? true,
+      canAccessAttendance: perms.canAccessAttendance !== undefined ? perms.canAccessAttendance : true,
+      canRecordAttendance: perms.canRecordAttendance !== undefined ? perms.canRecordAttendance : true,
+      canViewAttendanceReports: perms.canViewAttendanceReports !== undefined ? perms.canViewAttendanceReports : true,
       
       // Module Permissions - Recordings
-      canAccessRecordings: normalized.permissions.canAccessRecordings ?? true,
-      canUploadRecordings: normalized.permissions.canUploadRecordings ?? true,
-      canDeleteRecordings: normalized.permissions.canDeleteRecordings ?? false,
-      canViewAllRecordings: normalized.permissions.canViewAllRecordings ?? false,
+      canAccessRecordings: perms.canAccessRecordings !== undefined ? perms.canAccessRecordings : true,
+      canUploadRecordings: perms.canUploadRecordings !== undefined ? perms.canUploadRecordings : true,
+      canDeleteRecordings: perms.canDeleteRecordings !== undefined ? perms.canDeleteRecordings : false,
+      canViewAllRecordings: perms.canViewAllRecordings !== undefined ? perms.canViewAllRecordings : false,
       
       // Module Permissions - Mushaf
-      canAccessMushaf: normalized.permissions.canAccessMushaf ?? true,
-      canMarkMistakes: normalized.permissions.canMarkMistakes ?? true,
-      canViewMistakeHistory: normalized.permissions.canViewMistakeHistory ?? true,
-      canManageMistakeLibrary: normalized.permissions.canManageMistakeLibrary ?? false,
+      canAccessMushaf: perms.canAccessMushaf !== undefined ? perms.canAccessMushaf : true,
+      canMarkMistakes: perms.canMarkMistakes !== undefined ? perms.canMarkMistakes : true,
+      canViewMistakeHistory: perms.canViewMistakeHistory !== undefined ? perms.canViewMistakeHistory : true,
+      canManageMistakeLibrary: perms.canManageMistakeLibrary !== undefined ? perms.canManageMistakeLibrary : false,
       
       // Module Permissions - Qaidah
-      canAccessQaidah: normalized.permissions.canAccessQaidah ?? true,
-      canManageQaidah: normalized.permissions.canManageQaidah ?? false,
-      canViewQaidahProgress: normalized.permissions.canViewQaidahProgress ?? true,
+      canAccessQaidah: perms.canAccessQaidah !== undefined ? perms.canAccessQaidah : true,
+      canManageQaidah: perms.canManageQaidah !== undefined ? perms.canManageQaidah : false,
+      canViewQaidahProgress: perms.canViewQaidahProgress !== undefined ? perms.canViewQaidahProgress : true,
       
       // Module Permissions - Assignments
-      canAccessAssignments: normalized.permissions.canAccessAssignments ?? true,
-      canCreateAssignments: normalized.permissions.canCreateAssignments ?? true,
-      canEditAssignments: normalized.permissions.canEditAssignments ?? false,
-      canDeleteAssignments: normalized.permissions.canDeleteAssignments ?? false,
+      canAccessAssignments: perms.canAccessAssignments !== undefined ? perms.canAccessAssignments : true,
+      canCreateAssignments: perms.canCreateAssignments !== undefined ? perms.canCreateAssignments : true,
+      canEditAssignments: perms.canEditAssignments !== undefined ? perms.canEditAssignments : false,
+      canDeleteAssignments: perms.canDeleteAssignments !== undefined ? perms.canDeleteAssignments : false,
       
       // Module Permissions - Reports & Analytics
-      canViewReports: normalized.permissions.canViewReports ?? true,
-      canViewAnalytics: normalized.permissions.canViewAnalytics ?? true,
-      canExportReports: normalized.permissions.canExportReports ?? false,
+      canViewReports: perms.canViewReports !== undefined ? perms.canViewReports : true,
+      canViewAnalytics: perms.canViewAnalytics !== undefined ? perms.canViewAnalytics : true,
+      canExportReports: perms.canExportReports !== undefined ? perms.canExportReports : false,
     };
   }
   
@@ -3073,6 +3076,9 @@ app.post('/api/admins', authenticateToken, async (req, res) => {
 // Update admin
 app.put('/api/admins/:id', authenticateToken, async (req, res) => {
   try {
+    const adminId = req.params.id;
+    console.log(`🔄 PUT /api/admins/${adminId}`);
+    
     const adminData = { ...req.body };
     if (adminData.userId && typeof adminData.userId === 'string') {
       adminData.userId = new mongoose.Types.ObjectId(adminData.userId);
@@ -3081,14 +3087,45 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
       adminData.hireDate = new Date(adminData.hireDate);
     }
 
-    const admin = await Admin.findByIdAndUpdate(req.params.id, adminData, { new: true, runValidators: true });
-    
-    if (!admin) {
-      return res.status(404).json({ error: 'Admin not found' });
+    // Preserve permissions exactly as sent (including false values)
+    if (adminData.permissions) {
+      console.log('🔐 Updating admin permissions:', {
+        adminId,
+        permissionCount: Object.keys(adminData.permissions).length,
+        enabledCount: Object.values(adminData.permissions).filter(v => v === true).length,
+        disabledCount: Object.values(adminData.permissions).filter(v => v === false).length
+      });
+      // Use exact permissions as sent - don't override with defaults
+      adminData.permissions = adminData.permissions;
     }
 
+    // Try to convert ID to ObjectId if it's a valid ObjectId string
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(adminId);
+    const queryId = isValidObjectId ? new mongoose.Types.ObjectId(adminId) : adminId;
+    
+    let admin = await Admin.findByIdAndUpdate(queryId, adminData, { new: true, runValidators: true });
+    
+    if (!admin) {
+      // Try alternative queries
+      const queryConditions = [];
+      if (isValidObjectId) {
+        const objectId = new mongoose.Types.ObjectId(adminId);
+        queryConditions.push({ _id: objectId }, { userId: objectId });
+      }
+      queryConditions.push({ userId: adminId }, { adminId: adminId }, { _id: adminId });
+      
+      const foundAdmin = await Admin.findOne({ $or: queryConditions });
+      if (!foundAdmin) {
+        return res.status(404).json({ error: `Admin not found with ID: ${adminId}` });
+      }
+      
+      admin = await Admin.findByIdAndUpdate(foundAdmin._id, adminData, { new: true, runValidators: true });
+    }
+
+    console.log(`✅ Admin updated successfully:`, admin._id.toString());
     res.json(admin);
   } catch (error) {
+    console.error('❌ Error updating admin:', error);
     res.status(500).json({ error: error.message });
   }
 });
