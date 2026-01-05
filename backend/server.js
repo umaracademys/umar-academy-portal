@@ -5871,7 +5871,9 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         }
       } else {
         // If no active assignment exists, create a new one
-        console.log('📝 No active assignment found, creating new one');
+        // Use current date for assignment creation (not ticket's original date)
+        const assignmentCreatedAt = new Date();
+        console.log('📝 No active assignment found, creating new one with createdAt:', assignmentCreatedAt);
         assignment = new Assignment({
           studentId: ticket.studentId,
           studentName: ticket.studentName,
@@ -5891,30 +5893,37 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
           },
           comment: '',
           mushafMistakes: [],
-          status: 'active'
+          status: 'active',
+          createdAt: assignmentCreatedAt // Explicitly set to current date (today's report)
         });
         await assignment.save();
         console.log('✅ Created new assignment:', {
           assignmentId: assignment._id,
           studentId: assignment.studentId,
           fromTicketId: assignment.fromTicketId,
-          createdAt: assignment.createdAt
+          createdAt: assignment.createdAt,
+          createdAtType: typeof assignment.createdAt
         });
       }
     }
 
     // Add ticket content to assignment based on ticket type
-    const currentDate = new Date(); // Use current date for all new entries
+    // Always use current date/time for new entries (when ticket is approved today)
+    const currentDate = new Date();
+    console.log('📅 Setting createdAt to current date for new classwork entry:', currentDate);
+    
     if (ticket.type === 'sabq') {
       // Add to sabq classwork
-      assignment.classwork.sabq.push({
+      const sabqEntry = {
         type: 'sabq',
         assignmentRange: ticket.adminComment || 'Sabq recitation',
         details: ticket.adminComment || '',
         surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
         surahName: undefined,
-        createdAt: currentDate
-      });
+        createdAt: currentDate // Always use current date, not ticket date
+      };
+      console.log('📝 Adding sabq entry with createdAt:', sabqEntry.createdAt);
+      assignment.classwork.sabq.push(sabqEntry);
       // Add admin comment to main comment if it's the first sabq
       if (assignment.comment === '' && ticket.adminComment) {
         assignment.comment = ticket.adminComment;
@@ -5929,8 +5938,9 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         details: commentText,
         surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
         surahName: undefined,
-        createdAt: currentDate
+        createdAt: currentDate // Always use current date, not ticket date
       };
+      console.log('📝 Adding sabqi entry with createdAt:', sabqiEntry.createdAt);
       console.log('📝 Adding sabqi entry to assignment:', sabqiEntry);
       console.log('📝 Ticket data:', {
         teacherComment: ticket.teacherComment,
@@ -5956,8 +5966,9 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
         details: commentText,
         surahNumber: ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined,
         surahName: undefined,
-        createdAt: currentDate
+        createdAt: currentDate // Always use current date, not ticket date
       };
+      console.log('📝 Adding manzil entry with createdAt:', manzilEntry.createdAt);
       console.log('📝 Adding manzil entry to assignment:', manzilEntry);
       console.log('📝 Ticket data:', {
         teacherComment: ticket.teacherComment,
