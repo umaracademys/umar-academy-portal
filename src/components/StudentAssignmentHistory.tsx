@@ -30,11 +30,28 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const lastRefreshedStudentId = React.useRef<string | null>(null);
+  const refreshIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  
   useEffect(() => {
     if (lastRefreshedStudentId.current !== studentId) {
       lastRefreshedStudentId.current = studentId;
       refreshData();
     }
+    
+    // Set up periodic refresh to catch newly created assignments
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+    refreshIntervalRef.current = window.setInterval(() => {
+      refreshData();
+    }, 5000); // Refresh every 5 seconds while modal is open
+    
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
   }, [studentId, refreshData]);
 
   const student = students.find(s => s.id === studentId);

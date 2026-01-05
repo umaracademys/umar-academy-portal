@@ -6027,16 +6027,28 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
     const assignmentObj = assignment.toObject ? assignment.toObject() : assignment;
     
+    // Ensure assignment has all necessary fields for frontend
+    const assignmentResponse = {
+      _id: assignmentObj._id?.toString() || assignmentObj.id,
+      id: assignmentObj._id?.toString() || assignmentObj.id,
+      studentId: String(assignmentObj.studentId || '').trim(), // Normalize studentId
+      studentName: assignmentObj.studentName,
+      status: assignmentObj.status,
+      createdAt: assignmentObj.createdAt,
+      updatedAt: assignmentObj.updatedAt,
+      fromTicketId: assignmentObj.fromTicketId,
+      classwork: assignmentObj.classwork || { sabq: [], sabqi: [], manzil: [] },
+      mushafMistakes: assignmentObj.mushafMistakes || [],
+      assignedBy: assignmentObj.assignedBy,
+      assignedByName: assignmentObj.assignedByName,
+      assignedByRole: assignmentObj.assignedByRole,
+      homework: assignmentObj.homework || { enabled: false, content: '', link: '' },
+      comment: assignmentObj.comment || ''
+    };
+    
     const responseData = {
       ticket: ticketObj,
-      assignment: {
-        id: assignmentObj._id?.toString() || assignmentObj.id,
-        classwork: {
-          sabq: assignmentObj.classwork?.sabq?.length || 0,
-          sabqi: assignmentObj.classwork?.sabqi?.length || 0,
-          manzil: assignmentObj.classwork?.manzil?.length || 0
-        }
-      }
+      assignment: assignmentResponse
     };
     
     console.log('📤 Sending response with ticket:', {

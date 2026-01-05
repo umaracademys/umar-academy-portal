@@ -2401,7 +2401,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           updated.find(t => t.id === id)?.sentToAssignmentId || 'N/A');
         return updated;
       });
+      
+      // Force refresh assignments to ensure new assignment is visible
+      console.log('🔄 Refreshing assignments after ticket approval...');
       await refreshData();
+      
+      // Double-check: Verify assignment was created and is in the assignments array
+      if (import.meta.env.DEV && result.assignment) {
+        const assignmentId = result.assignment._id || result.assignment.id;
+        const studentId = result.assignment.studentId || ticket.studentId;
+        console.log('🔍 Verifying assignment after refresh:', {
+          assignmentId,
+          studentId,
+          assignmentInState: assignments.find(a => (a.id || a._id) === assignmentId) ? 'YES' : 'NO',
+          totalAssignments: assignments.length
+        });
+      }
       
       // Return both ticket and assignment info
       return {
