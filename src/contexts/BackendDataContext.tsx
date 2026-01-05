@@ -2375,11 +2375,48 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('✅ Response assignment:', result.assignment);
       
       const ticket = result.ticket || result;
+      const assignment = result.assignment;
+      
       console.log('✅ Ticket from response:', {
         id: ticket._id || ticket.id,
         sentToAssignmentId: ticket.sentToAssignmentId,
-        status: ticket.status
+        status: ticket.status,
+        studentId: ticket.studentId
       });
+      
+      // If assignment is returned, add it to local state immediately for instant UI update
+      if (assignment && assignment.id) {
+        console.log('✅ Adding assignment to local state immediately:', {
+          assignmentId: assignment.id,
+          studentId: assignment.studentId,
+          status: assignment.status,
+          sabqiCount: assignment.classwork?.sabqi?.length || 0,
+          manzilCount: assignment.classwork?.manzil?.length || 0
+        });
+        setAssignments(prev => {
+          // Check if assignment already exists
+          const exists = prev.some(a => (a.id || a._id) === assignment.id);
+          if (exists) {
+            // Update existing assignment
+            return prev.map(a => (a.id || a._id) === assignment.id ? {
+              ...assignment,
+              id: assignment.id || assignment._id,
+              studentId: String(assignment.studentId || '').trim(),
+              createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+              updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
+            } : a);
+          } else {
+            // Add new assignment
+            return [...prev, {
+              ...assignment,
+              id: assignment.id || assignment._id,
+              studentId: String(assignment.studentId || '').trim(),
+              createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+              updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
+            }];
+          }
+        });
+      }
       
       const mappedTicket = {
         ...ticket,
