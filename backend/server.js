@@ -1,3 +1,12 @@
+// Load environment variables from .env file if it exists
+try {
+  const path = require('path');
+  require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+  require('dotenv').config({ path: path.join(__dirname, '.env') });
+} catch (error) {
+  // dotenv is optional, continue without it
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -7318,7 +7327,24 @@ app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
         return res.status(404).json({ error: 'Teacher not found' });
       }
       const currentTeacherId = teacher.id || teacher._id?.toString();
-      query.teacherId = currentTeacherId;
+      const teacherUserId = teacher.userId?.toString() || userId?.toString();
+      
+      // Build teacherId matching conditions
+      const teacherIdConditions = [
+        { teacherId: currentTeacherId },
+        { teacherId: teacherUserId }
+      ];
+      
+      // Also try matching as ObjectId if they're valid ObjectIds
+      if (mongoose.Types.ObjectId.isValid(currentTeacherId)) {
+        teacherIdConditions.push({ teacherId: new mongoose.Types.ObjectId(currentTeacherId) });
+      }
+      if (teacherUserId && mongoose.Types.ObjectId.isValid(teacherUserId)) {
+        teacherIdConditions.push({ teacherId: new mongoose.Types.ObjectId(teacherUserId) });
+      }
+      
+      // Match evaluations where teacherId equals any of the above
+      query.$or = teacherIdConditions;
     } else if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
       // Only Super Admin, Admin, and Teachers can access this endpoint
       return res.status(403).json({ error: 'Access denied. Only Super Admin, Admin, and Teachers can view evaluations.' });
@@ -7336,7 +7362,7 @@ app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
         query.weekStartDate = { $gte: weekStart, $lte: weekEnd };
       }
     } else {
-      // For teachers, allow status filter
+      // For teachers, allow status filter (applied after $or, so it works correctly)
       if (status) query.status = status;
     }
 
@@ -7383,12 +7409,47 @@ app.get('/api/teachers/:teacherId/weekly-evaluations', authenticateToken, async 
       return res.status(403).json({ error: 'Access denied. Only teachers can view teacher evaluations.' });
     }
 
-    // Verify teacher owns these evaluations
-    if (teacherId !== req.user.userId.toString()) {
+    // Find the logged-in teacher to verify ownership
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const currentTeacherId = teacher.id || teacher._id?.toString();
+    const teacherUserId = teacher.userId?.toString() || req.user.userId?.toString() || req.user.id?.toString();
+
+    // Verify teacher owns these evaluations - check if passed teacherId matches logged-in teacher
+    const passedTeacherIdStr = teacherId.toString();
+    const isOwnEvaluation = (
+      passedTeacherIdStr === currentTeacherId ||
+      passedTeacherIdStr === teacherUserId ||
+      (mongoose.Types.ObjectId.isValid(passedTeacherIdStr) && 
+       mongoose.Types.ObjectId.isValid(currentTeacherId) &&
+       passedTeacherIdStr === currentTeacherId) ||
+      (mongoose.Types.ObjectId.isValid(passedTeacherIdStr) && 
+       teacherUserId && mongoose.Types.ObjectId.isValid(teacherUserId) &&
+       passedTeacherIdStr === teacherUserId)
+    );
+
+    if (!isOwnEvaluation) {
       return res.status(403).json({ error: 'Access denied. You can only view your own evaluations.' });
     }
 
-    const query = { teacherId };
+    // Build query to match evaluations by teacherId (can be Teacher doc ID or User ID)
+    const teacherIdConditions = [
+      { teacherId: currentTeacherId },
+      { teacherId: teacherUserId }
+    ];
+
+    // Also try matching as ObjectId if they're valid ObjectIds
+    if (mongoose.Types.ObjectId.isValid(currentTeacherId)) {
+      teacherIdConditions.push({ teacherId: new mongoose.Types.ObjectId(currentTeacherId) });
+    }
+    if (teacherUserId && mongoose.Types.ObjectId.isValid(teacherUserId)) {
+      teacherIdConditions.push({ teacherId: new mongoose.Types.ObjectId(teacherUserId) });
+    }
+
+    const query = { $or: teacherIdConditions };
     if (status) query.status = status;
 
     const evaluations = await WeeklyEvaluation.find(query).sort({ weekStartDate: -1 });
