@@ -4393,6 +4393,8 @@ const assignmentSchema = new mongoose.Schema({
   assignedByName: { type: String, required: true }, // User name
   assignedByRole: { type: String, enum: ['admin', 'super_admin', 'teacher'], required: true },
   weeklyEvaluationId: { type: String }, // Link to WeeklyEvaluation if homework was created from evaluation
+  fromTicketId: { type: String }, // Link to Ticket if assignment was created/updated from a ticket
+  fromRecitationReviewId: { type: String }, // Link to RecitationReview if assignment was created from a review
   // Classwork phases - can have multiple entries of each type
   classwork: {
     sabq: { type: [classworkPhaseSchema], default: [] },
@@ -5142,7 +5144,19 @@ app.get('/api/assignments', async (req, res) => {
     const { studentId, assignedBy, program } = req.query;
     const query = {};
     
-    if (studentId) query.studentId = studentId;
+    if (studentId) {
+      // Try multiple formats to match studentId
+      const studentIdStr = String(studentId);
+      query.$or = [
+        { studentId: studentIdStr },
+        { studentId: studentId }
+      ];
+      // If it looks like an ObjectId, also try matching as ObjectId
+      if (/^[0-9a-fA-F]{24}$/.test(studentIdStr)) {
+        query.$or.push({ studentId: new mongoose.Types.ObjectId(studentIdStr) });
+      }
+      console.log('🔍 GET /api/assignments - Query for studentId:', studentIdStr, 'Query:', JSON.stringify(query));
+    }
     if (assignedBy) query.assignedBy = assignedBy;
     if (program) {
       // If program filter is provided, we need to join with students
@@ -5737,7 +5751,12 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
           sabqi: assignment.classwork.sabqi.length,
           manzil: assignment.classwork.manzil.length
         });
-        } else {
+        // Ensure fromTicketId is set if not already set
+        if (!assignment.fromTicketId) {
+          assignment.fromTicketId = ticket._id.toString();
+          console.log('🔗 Linking existing assignment to ticket:', ticket._id.toString());
+        }
+      } else {
         // If no active assignment exists, create a new one
         console.log('📝 No active assignment found, creating new one');
         assignment = new Assignment({
@@ -5746,6 +5765,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
           assignedBy: ticket.createdBy,
           assignedByName: ticket.createdByName,
           assignedByRole: 'admin', // Default to admin
+          fromTicketId: ticket._id.toString(), // Link assignment to ticket
           classwork: {
             sabq: [],
             sabqi: [],
@@ -5761,7 +5781,12 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
           status: 'active'
         });
         await assignment.save();
-        console.log('✅ Created new assignment:', assignment._id);
+        console.log('✅ Created new assignment:', {
+          assignmentId: assignment._id,
+          studentId: assignment.studentId,
+          fromTicketId: assignment.fromTicketId,
+          createdAt: assignment.createdAt
+        });
       }
     }
 
