@@ -422,11 +422,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           const mappedAssignments = assignmentsData.map((assignment: any) => ({
             ...assignment,
             id: assignment._id || assignment.id,
+            studentId: String(assignment.studentId || '').trim(), // Normalize studentId
             createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
             updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
             completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
           }));
           setAssignments(mappedAssignments);
+          if (import.meta.env.DEV) {
+            console.log('✅ Mapped assignments:', mappedAssignments.length, 'assignments set');
+            if (mappedAssignments.length > 0) {
+              console.log('📝 Sample mapped assignment:', {
+                id: mappedAssignments[0].id,
+                studentId: mappedAssignments[0].studentId,
+                status: mappedAssignments[0].status,
+                sabqiCount: mappedAssignments[0].classwork?.sabqi?.length || 0,
+                fromTicketId: mappedAssignments[0].fromTicketId
+              });
+            }
+          }
         } catch (err) {
           console.error('❌ Error processing assignments:', err);
           setAssignments([]);
