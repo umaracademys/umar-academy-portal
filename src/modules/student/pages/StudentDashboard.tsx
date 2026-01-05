@@ -39,6 +39,13 @@ const StudentDashboard: React.FC = () => {
   const isPartTimeHQ = currentStudent?.program === 'Part-Time HQ';
   const shouldHideQaidah = isFullTimeHQ || isPartTimeHQ;
   
+  // Show password change modal on login if passwordChangeRequired is true
+  useEffect(() => {
+    if (user?.passwordChangeRequired && !showPasswordChangeModal) {
+      setShowPasswordChangeModal(true);
+    }
+  }, [user?.passwordChangeRequired, showPasswordChangeModal]);
+
   // Debug logging
   useEffect(() => {
     if (currentStudent) {

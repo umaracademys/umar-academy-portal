@@ -1,15 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
 import DebugPanel from '../../../components/DebugPanel';
 import { useData } from '../../../contexts/DataContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import StudentProfileUpdateRequestModal from '../../../components/StudentProfileUpdateRequestModal';
+import StudentPasswordChangeModal from '../../../components/StudentPasswordChangeModal';
 
 const StudentProfile: React.FC = () => {
   const { students, getStudentByEmail } = useData();
   const { user } = useAuth();
   const [showUpdateRequestModal, setShowUpdateRequestModal] = useState(false);
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
+
+  // Show password change modal on login if passwordChangeRequired is true
+  useEffect(() => {
+    if (user?.passwordChangeRequired && !showPasswordChangeModal) {
+      setShowPasswordChangeModal(true);
+    }
+  }, [user?.passwordChangeRequired, showPasswordChangeModal]);
 
   // Get current student info
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
@@ -278,6 +287,33 @@ const StudentProfile: React.FC = () => {
           </Card>
         </div>
 
+        {/* Account Settings */}
+        <div className="mt-6">
+          <Card title="🔐 Account Settings">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">Password</p>
+                  <p className="text-sm text-gray-600">Change your account password</p>
+                </div>
+                <button
+                  onClick={() => setShowPasswordChangeModal(true)}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition"
+                >
+                  Change Password
+                </button>
+              </div>
+              {user?.passwordChangeRequired && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ <strong>Action Required:</strong> Please change your password to continue using your account.
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+
         {/* Actions */}
         <div className="mt-6 flex justify-end space-x-3">
           <button
@@ -301,6 +337,28 @@ const StudentProfile: React.FC = () => {
           }}
           studentName={currentStudent.fullName}
           studentId={currentStudent.id}
+        />
+      )}
+
+      {/* Password Change Modal */}
+      {showPasswordChangeModal && (
+        <StudentPasswordChangeModal
+          onClose={() => {
+            setShowPasswordChangeModal(false);
+            // If passwordChangeRequired was true, it should be cleared after successful change
+          }}
+          onPasswordChanged={() => {
+            setShowPasswordChangeModal(false);
+            // Update user in localStorage to clear the flag
+            const savedUser = localStorage.getItem('umar_academy_user');
+            if (savedUser) {
+              const userData = JSON.parse(savedUser);
+              userData.passwordChangeRequired = false;
+              localStorage.setItem('umar_academy_user', JSON.stringify(userData));
+            }
+            // Show success message
+            alert('✅ Password changed successfully!');
+          }}
         />
       )}
       
