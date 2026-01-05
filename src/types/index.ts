@@ -9,10 +9,13 @@ export type ScheduleDay = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Fri
 
 export interface User {
   id: string;
+  _id?: string; // MongoDB _id for backend compatibility
   name: string;
   email: string;
   role: UserRole;
   avatar?: string;
+  isDeveloper?: boolean; // Developer account flag
+  isTestAccount?: boolean; // Test account flag
 }
 
 export interface Sibling {

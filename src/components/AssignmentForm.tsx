@@ -745,9 +745,9 @@ const AssignmentForm: React.FC<AssignmentFormProps> = ({
               </h3>
               <button
                 type="button"
-                onClick={() => setShowMushaf(!showMushaf)}
+                onClick={() => setShowMushaf(prev => ({ ...prev, [currentWorkflowStep || 'sabq']: !prev[currentWorkflowStep || 'sabq'] }))}
                 className={`px-4 py-2 text-sm font-medium rounded transition-colors ${
-                  showMushaf
+                  showMushaf[currentWorkflowStep || 'sabq']
                     ? 'bg-primary text-white hover:bg-primary/90'
                     : 'border border-primary text-primary hover:bg-primary/10'
                 }`}

@@ -46,7 +46,7 @@ const QaidahCanvas: React.FC<QaidahCanvasProps> = ({
   const [editingMark, setEditingMark] = useState<string | null>(null);
   const [editComment, setEditComment] = useState('');
   const canvasRef = useRef<HTMLDivElement>(null);
-  const saveTimeoutRef = useRef<number | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -77,10 +77,10 @@ const QaidahCanvas: React.FC<QaidahCanvasProps> = ({
   // Debounced save function
   const debouncedSave = useCallback((marksToSave: QaidahMark[]) => {
     if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+      window.clearTimeout(saveTimeoutRef.current);
     }
 
-    saveTimeoutRef.current = setTimeout(async () => {
+    saveTimeoutRef.current = window.setTimeout(async () => {
       if (!studentId || !enabled) return;
 
       setIsSaving(true);

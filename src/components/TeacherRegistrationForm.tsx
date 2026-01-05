@@ -496,16 +496,73 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         daysWorking: 22,
       });
       setPermissions({
+        // Assessments & Evaluations
         canViewAssessments: true,
         canEditAssessments: true,
         canViewEvaluations: true,
         canEditEvaluations: true,
+        // Financial & Billing
         canViewFinancials: false,
+        // Scheduling & Logistics
         canManageSchedule: true,
+        // Communication
         canContactParents: true,
+        // Student Information
         canViewStudentEmail: true,
         canViewStudentContact: true,
         canViewStudentPersonalInfo: true,
+        // Messages Module
+        canAccessMessages: true,
+        canSendMessages: true,
+        canViewAllMessages: false,
+        // PDF Module
+        canAccessPdf: true,
+        canUploadPdf: true,
+        canAnnotatePdf: true,
+        canViewPdfAnnotations: true,
+        // Homework Module
+        canAccessHomework: true,
+        canCreateHomework: true,
+        canGradeHomework: true,
+        canViewHomeworkSubmissions: true,
+        // Evaluation Module
+        canAccessEvaluations: true,
+        canCreateEvaluations: true,
+        canReviewEvaluations: true,
+        canApproveEvaluations: false,
+        // Tickets Module
+        canAccessTickets: true,
+        canCreateTickets: true,
+        canReviewTickets: true,
+        canApproveTickets: false,
+        canFinalizeTickets: false,
+        // Attendance Module
+        canAccessAttendance: true,
+        canRecordAttendance: true,
+        canViewAttendanceReports: true,
+        // Recordings Module
+        canAccessRecordings: true,
+        canUploadRecordings: true,
+        canDeleteRecordings: false,
+        canViewAllRecordings: false,
+        // Mushaf Module
+        canAccessMushaf: true,
+        canMarkMistakes: true,
+        canViewMistakeHistory: true,
+        canManageMistakeLibrary: false,
+        // Qaidah Module
+        canAccessQaidah: true,
+        canManageQaidah: true,
+        canViewQaidahProgress: true,
+        // Assignments Module
+        canAccessAssignments: true,
+        canCreateAssignments: true,
+        canEditAssignments: true,
+        canDeleteAssignments: false,
+        // Reports & Analytics
+        canViewReports: true,
+        canViewAnalytics: false,
+        canExportReports: false,
       });
       setIdDocument('');
     }
