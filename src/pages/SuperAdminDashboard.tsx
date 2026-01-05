@@ -197,6 +197,33 @@ const SuperAdminDashboard: React.FC = () => {
     ).length;
   }, [assignments]);
 
+  // Get completed assignments/homework count
+  const completedAssignmentsCount = useMemo(() => {
+    return assignments.filter((assignment: any) => 
+      assignment.status === 'completed' || 
+      (assignment.homework?.enabled && 
+       assignment.homework?.submission?.submitted && 
+       assignment.homework?.submission?.status === 'graded')
+    ).length;
+  }, [assignments]);
+
+  // Get completed assignments for display
+  const completedAssignments = useMemo(() => {
+    return assignments
+      .filter((assignment: any) => 
+        assignment.status === 'completed' || 
+        (assignment.homework?.enabled && 
+         assignment.homework?.submission?.submitted && 
+         assignment.homework?.submission?.status === 'graded')
+      )
+      .sort((a: any, b: any) => {
+        const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
+        const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
+      })
+      .slice(0, 10); // Show last 10 completed
+  }, [assignments]);
+
   // Get pending weekly evaluations count
   const [pendingWeeklyEvaluationsCount, setPendingWeeklyEvaluationsCount] = useState(0);
   
@@ -774,6 +801,90 @@ const SuperAdminDashboard: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* Completed Assignments/Homework */}
+      {completedAssignmentsCount > 0 && (
+        <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-bold text-primary">✅ Completed Assignments & Homework</h3>
+            <span className="rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-bold">
+              {completedAssignmentsCount} completed
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Completed</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Grade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {completedAssignments.map((assignment: any) => {
+                  const isCompleted = assignment.status === 'completed';
+                  const isGraded = assignment.homework?.submission?.status === 'graded';
+                  const completedDate = assignment.completedAt || 
+                                       assignment.homework?.submission?.gradedAt || 
+                                       assignment.updatedAt || 
+                                       assignment.createdAt;
+                  const grade = assignment.homework?.submission?.grade;
+                  
+                  return (
+                    <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900 text-xs">
+                          {assignment.studentName || 'Unknown'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="text-xs text-gray-600">
+                          {isGraded ? 'Homework' : 'Assignment'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {isCompleted ? (
+                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            Completed
+                          </span>
+                        ) : isGraded ? (
+                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                            Graded
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-gray-600">
+                        {completedDate ? new Date(completedDate).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-3 py-2">
+                        {grade !== null && grade !== undefined ? (
+                          <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">
+                            {grade}/100
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {completedAssignmentsCount > 10 && (
+            <div className="mt-3 text-center">
+              <button
+                onClick={() => navigate('/assignments')}
+                className="text-xs font-semibold text-primary hover:text-accent transition-colors"
+              >
+                View All Completed ({completedAssignmentsCount}) →
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* System Status */}
       <section className="rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-white to-gray-50 px-6 py-5 shadow-md">

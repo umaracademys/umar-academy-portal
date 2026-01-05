@@ -26,12 +26,14 @@ import TeacherAttendance from '../components/TeacherAttendance';
 import TeacherCommunication from '../components/TeacherCommunication';
 import TeacherRegistrationForm from '../components/TeacherRegistrationForm';
 import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AdminPermissions } from '../types';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const { students, teachers, admins } = useData();
+  const { assignments } = useBackendData();
   
   // Get current admin's permissions
   const currentAdmin = useMemo(() => {
@@ -231,6 +233,113 @@ const AdminDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* Completed Assignments/Homework */}
+      {useMemo(() => {
+        const completedAssignments = assignments.filter((assignment: any) => 
+          assignment.status === 'completed' || 
+          (assignment.homework?.enabled && 
+           assignment.homework?.submission?.submitted && 
+           assignment.homework?.submission?.status === 'graded')
+        );
+        return completedAssignments.length > 0 ? completedAssignments.slice(0, 5) : [];
+      }, [assignments]).length > 0 && (
+        <Card title="✅ Completed Assignments & Homework">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Completed</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Grade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {useMemo(() => {
+                  return assignments
+                    .filter((assignment: any) => 
+                      assignment.status === 'completed' || 
+                      (assignment.homework?.enabled && 
+                       assignment.homework?.submission?.submitted && 
+                       assignment.homework?.submission?.status === 'graded')
+                    )
+                    .sort((a: any, b: any) => {
+                      const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
+                      const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
+                      return new Date(dateB).getTime() - new Date(dateA).getTime();
+                    })
+                    .slice(0, 5);
+                }, [assignments]).map((assignment: any) => {
+                  const isCompleted = assignment.status === 'completed';
+                  const isGraded = assignment.homework?.submission?.status === 'graded';
+                  const completedDate = assignment.completedAt || 
+                                       assignment.homework?.submission?.gradedAt || 
+                                       assignment.updatedAt || 
+                                       assignment.createdAt;
+                  const grade = assignment.homework?.submission?.grade;
+                  
+                  return (
+                    <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2">
+                        <div className="font-medium text-gray-900 text-xs">
+                          {assignment.studentName || 'Unknown'}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="text-xs text-gray-600">
+                          {isGraded ? 'Homework' : 'Assignment'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {isCompleted ? (
+                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
+                            Completed
+                          </span>
+                        ) : isGraded ? (
+                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                            Graded
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-gray-600">
+                        {completedDate ? new Date(completedDate).toLocaleDateString() : 'N/A'}
+                      </td>
+                      <td className="px-3 py-2">
+                        {grade !== null && grade !== undefined ? (
+                          <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">
+                            {grade}/100
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {useMemo(() => {
+            return assignments.filter((assignment: any) => 
+              assignment.status === 'completed' || 
+              (assignment.homework?.enabled && 
+               assignment.homework?.submission?.submitted && 
+               assignment.homework?.submission?.status === 'graded')
+            ).length;
+          }, [assignments]) > 5 && (
+            <div className="mt-3 text-center">
+              <Link
+                to="/assignments"
+                className="text-xs font-semibold text-primary hover:text-accent transition-colors"
+              >
+                View All Completed →
+              </Link>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 
