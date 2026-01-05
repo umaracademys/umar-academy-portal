@@ -1261,6 +1261,13 @@ const teacherSchema = new mongoose.Schema({
 
 const Teacher = mongoose.model('Teacher', teacherSchema);
 
+// Initialize permission middleware with models (after Admin is defined)
+const { initializeModels, requireTeacherPermission, requireAdminPermission, checkTeacherPermission, checkAdminPermission } = require('./middleware/permissions');
+// Note: Admin is defined earlier in the file, so this should work
+if (typeof Admin !== 'undefined') {
+  initializeModels(Teacher, Admin);
+}
+
 // Teacher Attendance Schema
 const teacherAttendanceSchema = new mongoose.Schema({
   teacherId: { type: String, required: true, index: true },
@@ -7039,6 +7046,13 @@ app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
 
     // Role-based access control
     if (req.user.role === 'teacher') {
+      // Permission check for teachers
+      const { checkTeacherPermission } = require('./middleware/permissions');
+      const userId = req.user.userId || req.user.id || req.user._id;
+      const hasPermission = await checkTeacherPermission(userId, 'canAccessEvaluations');
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Access denied. You don\'t have permission to access evaluations.' });
+      }
       // Teachers can only view their own evaluations
       const teacher = await Teacher.findOne({ email: req.user.email });
       if (!teacher) {
