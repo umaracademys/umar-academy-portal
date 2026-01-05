@@ -5425,7 +5425,7 @@ app.get('/api/tickets/:id/verify-assignment', async (req, res) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
-    const result: any = {
+    const result = {
       ticket: {
         id: ticket._id.toString(),
         studentId: ticket.studentId,
