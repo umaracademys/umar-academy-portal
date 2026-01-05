@@ -1912,6 +1912,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         return (aId === id || aId === updatedId) ? { ...a, ...admin, ...updatedAdmin } : a;
       }));
       
+      // Refresh data to ensure we have the latest from backend
+      await refreshData();
+      
       if (import.meta.env.DEV) {
         console.log('✅ Admin updated successfully in MongoDB');
       }

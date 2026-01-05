@@ -2782,6 +2782,11 @@ app.patch('/api/students/:id/recitation', async (req, res) => {
 const normalizeTeacherData = (teacherData) => {
   const normalized = { ...teacherData };
   
+  // Explicitly preserve permissions if they exist
+  if (teacherData.permissions) {
+    normalized.permissions = teacherData.permissions;
+  }
+  
   // Handle contact/phoneNumber mapping
   if (normalized.phoneNumber && !normalized.contact) {
     normalized.contact = normalized.phoneNumber;
@@ -3216,6 +3221,18 @@ app.put('/api/teachers/:id', async (req, res) => {
     const teacherData = { ...req.body };
     if (teacherData.userId && typeof teacherData.userId === 'string') {
       teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
+    }
+    
+    // Preserve permissions exactly as sent (including false values)
+    if (teacherData.permissions) {
+      console.log('🔐 Updating teacher permissions:', {
+        teacherId,
+        permissionCount: Object.keys(teacherData.permissions).length,
+        enabledCount: Object.values(teacherData.permissions).filter(v => v === true).length,
+        disabledCount: Object.values(teacherData.permissions).filter(v => v === false).length
+      });
+      // Use exact permissions as sent - don't override with defaults
+      teacherData.permissions = teacherData.permissions;
     }
     
     // Normalize the teacher data

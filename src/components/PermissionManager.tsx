@@ -1109,7 +1109,7 @@ interface PermissionManagerProps {
 }
 
 const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
-  const { teachers, admins, updateTeacher, updateAdmin } = useData();
+  const { teachers, admins, updateTeacher, updateAdmin, refreshData } = useData();
   const [selectedType, setSelectedType] = useState<'teacher' | 'admin'>(
     'teacher',
   );
@@ -1178,18 +1178,19 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       
       await updateTeacher(teacher.id, { permissions });
       
+      // Refresh data from backend to ensure we have latest permissions
+      await refreshData();
+      
       setFeedback({
         tone: 'success',
         message: `${message} • ${teacher.fullName}`,
       });
       
       // Refresh the teacher data to show updated permissions
-      setTimeout(() => {
-        // Force re-render by updating selected user
-        const currentSelected = selectedUser;
-        setSelectedUser('');
-        setTimeout(() => setSelectedUser(currentSelected), 100);
-      }, 500);
+      // Force re-render by updating selected user
+      const currentSelected = selectedUser;
+      setSelectedUser('');
+      setTimeout(() => setSelectedUser(currentSelected), 100);
     } catch (error) {
       console.error('❌ Error applying teacher permissions:', error);
       setFeedback({
@@ -1217,18 +1218,19 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       
       await updateAdmin(admin.id, { permissions });
       
+      // Refresh data from backend to ensure we have latest permissions
+      await refreshData();
+      
       setFeedback({
         tone: 'success',
         message: `${message} • ${admin.fullName}`,
       });
       
       // Refresh the admin data to show updated permissions
-      setTimeout(() => {
-        // Force re-render by updating selected user
-        const currentSelected = selectedUser;
-        setSelectedUser('');
-        setTimeout(() => setSelectedUser(currentSelected), 100);
-      }, 500);
+      // Force re-render by updating selected user
+      const currentSelected = selectedUser;
+      setSelectedUser('');
+      setTimeout(() => setSelectedUser(currentSelected), 100);
     } catch (error) {
       console.error('❌ Error applying admin permissions:', error);
       setFeedback({
