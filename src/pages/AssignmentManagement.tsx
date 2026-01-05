@@ -261,6 +261,36 @@ const AssignmentManagement: React.FC = () => {
                     {stats.completionRate}% completion rate
                   </span>
                 </div>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <button
+                    onClick={() => setViewMode('completed')}
+                    className="inline-flex items-center justify-center rounded-lg border-2 border-green-500/30 px-4 py-2 text-xs font-bold text-green-600 transition hover:bg-green-50 hover:border-green-500"
+                  >
+                    ✅ Completed Assignments
+                    {stats.completedAssignments > 0 && (
+                      <span className="ml-2 rounded-full bg-green-500 text-white px-2 py-0.5 text-xs font-bold">
+                        {stats.completedAssignments}
+                      </span>
+                    )}
+                  </button>
+                  {stats.pendingHomework > 0 && (
+                    <button
+                      onClick={() => setViewMode('completed')}
+                      className="inline-flex items-center justify-center rounded-lg border-2 border-orange-500/30 px-4 py-2 text-xs font-bold text-orange-600 transition hover:bg-orange-50 hover:border-orange-500"
+                    >
+                      📝 Review Homework
+                      <span className="ml-2 rounded-full bg-orange-500 text-white px-2 py-0.5 text-xs font-bold">
+                        {stats.pendingHomework}
+                      </span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setViewMode('students')}
+                    className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-4 py-2 text-xs font-bold text-primary transition hover:bg-primary/10 hover:border-primary"
+                  >
+                    👥 View Students
+                  </button>
+                </div>
               </div>
             </div>
           </section>
