@@ -600,50 +600,10 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                               {assignment.homework?.enabled && (
                                 <div className="bg-white rounded border border-gray-200 p-3">
                                   <h4 className="text-sm font-semibold text-gray-900 mb-2">Homework</h4>
-                                  {assignment.homework.content && (
-                                    <p className="text-sm text-gray-700 mb-2">{assignment.homework.content}</p>
-                                  )}
-                                  {assignment.homework.link && (
-                                    <a
-                                      href={assignment.homework.link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-sm text-blue-600 hover:underline"
-                                    >
-                                      {assignment.homework.link}
-                                    </a>
-                                  )}
-                                  
-                                  {assignment.homework.submission?.submitted && (
-                                    <div className="mt-3 pt-3 border-t border-gray-200">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-medium text-gray-700">Submitted</span>
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                          assignment.homework.submission.status === 'graded' 
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-blue-100 text-blue-800'
-                                        }`}>
-                                          {assignment.homework.submission.status}
-                                        </span>
-                                      </div>
-                                      
-                                      {assignment.homework.submission.content && (
-                                        <p className="text-sm text-gray-700 mb-2">{assignment.homework.submission.content}</p>
-                                      )}
-                                      
-                                      {assignment.homework.submission.feedback && (
-                                        <div className="mt-2 p-2 bg-gray-50 rounded">
-                                          <p className="text-xs font-medium text-gray-700 mb-1">Feedback:</p>
-                                          <p className="text-sm text-gray-900">{assignment.homework.submission.feedback}</p>
-                                        </div>
-                                      )}
-                                      
-                                      {assignment.homework.submission.grade !== undefined && assignment.homework.submission.grade !== null && (
-                                        <div className="mt-2">
-                                          <span className="text-sm font-medium text-gray-700">Grade: </span>
-                                          <span className="text-lg font-bold text-primary">{assignment.homework.submission.grade}</span>
-                                        </div>
-                                      )}
+                                  <HomeworkDisplay 
+                                    homework={assignment.homework} 
+                                    showSubmission={true}
+                                  />
 
                                       {/* Grading Form */}
                                       {assignment.homework.submission.status === 'submitted' && 
