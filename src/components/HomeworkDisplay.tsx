@@ -13,21 +13,22 @@ function formatRange(range: HomeworkRange): string {
     const from = range.from;
     const to = range.to;
     if (!from) return 'Invalid range';
-    const surahName = from.surahName || `Surah ${from.surah}`;
+    // Prioritize Arabic name
+    const surahName = from.surahName || `سورة ${from.surah}`;
     if (from.ayah && to?.ayah) {
       return from.ayah === to.ayah
-        ? `${surahName}, Ayah ${from.ayah}`
-        : `${surahName}, Ayah ${from.ayah}-${to.ayah}`;
+        ? `${surahName}, آية ${from.ayah}`
+        : `${surahName}, آية ${from.ayah}-${to.ayah}`;
     }
     return surahName;
   } else if (range.mode === 'juz_juz') {
-    return `Juz ${range.juzList?.[0] || 'N/A'}`;
+    return `جزء ${range.juzList?.[0] || 'N/A'}`;
   } else if (range.mode === 'multiple_juz') {
-    return `Juz ${range.juzList?.join(', ') || 'N/A'}`;
+    return `أجزاء ${range.juzList?.join(', ') || 'N/A'}`;
   } else if (range.mode === 'surah_surah') {
-    const fromName = range.from?.surahName || `Surah ${range.from?.surah}`;
-    const toName = range.to?.surahName || `Surah ${range.to?.surah}`;
-    return `${fromName} to ${toName}`;
+    const fromName = range.from?.surahName || `سورة ${range.from?.surah}`;
+    const toName = range.to?.surahName || `سورة ${range.to?.surah}`;
+    return `${fromName} إلى ${toName}`;
   }
   return 'Unknown range';
 }
@@ -37,11 +38,21 @@ const HomeworkDisplay: React.FC<HomeworkDisplayProps> = ({
   showSubmission = false,
   className = '' 
 }) => {
-  if (!homework?.enabled) return null;
+  // Show homework if enabled OR if items exist
+  const hasStructuredItems = homework?.items && homework.items.length > 0;
+  const hasLegacyContent = homework?.content || homework?.link;
+  const shouldShow = homework?.enabled || hasStructuredItems || hasLegacyContent;
+  
+  if (!shouldShow) {
+    console.log('🚫 HomeworkDisplay: Not showing because:', {
+      enabled: homework?.enabled,
+      itemsCount: homework?.items?.length || 0,
+      hasLegacyContent
+    });
+    return null;
+  }
 
-  const hasStructuredItems = homework.items && homework.items.length > 0;
-  const hasLegacyContent = homework.content || homework.link;
-  const hasNotes = homework.notes && homework.notes.trim();
+  const hasNotes = homework?.notes && homework.notes.trim();
 
   // Type colors for badges
   const typeColors = {
@@ -68,18 +79,50 @@ const HomeworkDisplay: React.FC<HomeworkDisplayProps> = ({
                 key={index}
                 className={`${colors.bg} ${colors.border} border rounded-lg p-3`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <span className={`text-sm font-semibold ${colors.text} mr-2`}>
-                      {typeLabels[item.type]}
-                    </span>
-                    <span className="text-sm text-gray-700">
-                      {formatRange(item.range)}
-                    </span>
-                    {item.source.suggestedFrom === 'ticket' && (
-                      <span className="text-xs text-gray-500 ml-2">(from tickets)</span>
-                    )}
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <span className={`text-sm font-semibold ${colors.text} mr-2`}>
+                        {typeLabels[item.type]}
+                      </span>
+                      <span className="text-sm text-gray-700">
+                        {formatRange(item.range)}
+                      </span>
+                      {item.source.suggestedFrom === 'ticket' && (
+                        <span className="text-xs text-gray-500 ml-2">(from tickets)</span>
+                      )}
+                    </div>
                   </div>
+                  
+                  {/* Item Content */}
+                  {item.content && item.content.trim() && (
+                    <div className="mt-2 pt-2 border-t border-gray-300">
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Instructions:</p>
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {item.content}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Item Attachments */}
+                  {item.attachments && item.attachments.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-300">
+                      <p className="text-xs font-semibold text-gray-600 mb-1">Attached Files:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {item.attachments.map((file, fileIndex) => (
+                          <a
+                            key={fileIndex}
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline inline-flex items-center gap-1 px-2 py-1 bg-white rounded border border-gray-300"
+                          >
+                            📎 {file.name}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

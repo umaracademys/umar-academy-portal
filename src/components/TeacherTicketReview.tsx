@@ -1,8 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { WorkflowBanner } from './workflow/WorkflowBanner';
+import { AICommentDraft } from './workflow/AICommentDraft';
+import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
 
 interface TeacherTicketReviewProps {
   ticket: Ticket;
@@ -25,6 +28,13 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   const [error, setError] = useState<string | null>(null);
   const [personalMushafMistakes, setPersonalMushafMistakes] = useState<MushafMistake[]>([]);
   const [loadingPersonalMushaf, setLoadingPersonalMushaf] = useState(false);
+  const [fullMushafView, setFullMushafView] = useState(false); // Full-Page Mushaf Mode
+  const [showReviewComment, setShowReviewComment] = useState(false); // Review Comment hidden by default
+  const [mushafZoom, setMushafZoom] = useState(1.0); // Zoom level
+  const [showSidebar, setShowSidebar] = useState(false); // Hide sidebar by default for Mushaf-first experience
+  const [newMistakeIds, setNewMistakeIds] = useState<Set<string>>(new Set()); // Track newly added mistakes
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const initialMistakesRef = useRef<Set<string>>(new Set(ticket.mistakes?.map(m => m.id || '') || []));
 
   // Load student's personal mushaf when ticket is opened
   useEffect(() => {
@@ -115,6 +125,8 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
       timestamp: new Date()
     };
     setMistakes(prev => [...prev, newMistake]);
+    // Track as new mistake
+    setNewMistakeIds(prev => new Set(prev).add(newMistake.id!));
   };
 
   const handleRemoveMistake = (mistakeId: string) => {
@@ -139,9 +151,36 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     };
   }, [mistakes]);
 
+  // ESC key handler to exit Full Mushaf View
+  useEffect(() => {
+    const handleEscKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && fullMushafView) {
+        setFullMushafView(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [fullMushafView]);
+
+  // Validation: Submit enabled if mistakes OR comment exists
+  const canSubmit = useMemo(() => {
+    return mistakes.length > 0 || teacherComment.trim().length > 0;
+  }, [mistakes.length, teacherComment]);
+
+  // Banner visibility: Show until form is valid
+  const showBanner = useMemo(() => {
+    return !bannerDismissed && (!canSubmit || (mistakes.length === 0 && !teacherComment.trim()));
+  }, [bannerDismissed, canSubmit, mistakes.length, teacherComment]);
+
   const handleSubmit = async () => {
-    if (!teacherComment.trim()) {
-      setError('Please add a comment before submitting');
+    if (!canSubmit) {
+      setError('Please mark at least one mistake OR add a review comment before submitting');
+      if (mistakes.length === 0) {
+        setShowSidebar(true); // Show sidebar to guide user
+      }
+      if (!teacherComment.trim()) {
+        setShowReviewComment(true); // Show comment panel if missing
+      }
       return;
     }
 
@@ -242,6 +281,15 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
           </div>
         )}
 
+        {/* Contextual Workflow Banner */}
+        <WorkflowBanner
+          message="Mark Mushaf mistakes first, then add your review comment."
+          type="info"
+          visible={showBanner}
+          onDismiss={() => setBannerDismissed(true)}
+          icon="💡"
+        />
+
         {/* Error Message */}
         {error && (
           <div className="px-6 py-4 bg-red-50 border-l-4 border-red-500">
@@ -250,48 +298,126 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         )}
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Mushaf View - Takes 2 columns */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-extrabold text-primary flex items-center gap-2">
-                      <span>📖</span> Interactive Mushaf
-                    </h3>
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
-                      <span className="text-sm font-bold text-primary">
-                        {mistakes.length} mistake{mistakes.length !== 1 ? 's' : ''} marked
-                      </span>
-                    </div>
+        <div className={`flex-1 overflow-y-auto ${fullMushafView ? 'p-0' : 'p-6'} bg-gradient-to-b from-gray-50 to-white transition-all duration-300`}>
+          {fullMushafView ? (
+            /* Full-Page Mushaf View */
+            <div className="relative w-full h-full">
+              {/* Full View Header Bar */}
+              <div className="absolute top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-sm font-bold text-primary flex items-center gap-2">
+                    <span>📖</span> Full Mushaf View
+                  </h3>
+                  <span className="text-xs text-gray-600">
+                    {mistakes.length} mistake{mistakes.length !== 1 ? 's' : ''} marked
+                  </span>
+                </div>
+                <button
+                  onClick={() => setFullMushafView(false)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+                  title="Exit Full View (ESC)"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Exit Full View
+                </button>
+              </div>
+              
+              {/* Full-Page Mushaf */}
+              <div className="pt-12 h-full overflow-auto">
+                {loadingPersonalMushaf && (
+                  <div className="text-center py-4 text-gray-500">
+                    Loading student's mistake history...
                   </div>
-                </div>
-                <div className="p-4 bg-gradient-to-b from-gray-50 to-white">
-                  {loadingPersonalMushaf && (
-                    <div className="text-center py-4 text-gray-500">
-                      Loading student's mistake history...
-                    </div>
-                  )}
-                  <InteractiveMushaf
-                    currentPage={mushafPage}
-                    onPageChange={setMushafPage}
-                    mistakes={mushafMistakes}
-                    historicalMistakes={personalMushafMistakes}
-                    showHistorical={true}
-                    onMistakeMark={handleMistakeMark}
-                    readOnly={false}
-                    mode="marking"
-                    studentName={ticket.studentName}
-                  />
-                </div>
+                )}
+                <InteractiveMushaf
+                  currentPage={mushafPage}
+                  onPageChange={setMushafPage}
+                  mistakes={mushafMistakes}
+                  historicalMistakes={personalMushafMistakes}
+                  showHistorical={true}
+                  onMistakeMark={handleMistakeMark}
+                  readOnly={false}
+                  mode="marking"
+                  studentName={ticket.studentName}
+                  enableZoom={true}
+                  zoom={mushafZoom}
+                  onZoomChange={setMushafZoom}
+                />
               </div>
             </div>
+          ) : (
+            /* Normal View - Mushaf-First with Optional Sidebar */
+            <div className={`grid gap-6 transition-all duration-300 ${showSidebar ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1'}`}>
+              {/* Mushaf View - Full width when sidebar hidden */}
+              <div className={showSidebar ? 'lg:col-span-2' : ''}>
+                <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                  <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-extrabold text-primary flex items-center gap-2">
+                        <span>📖</span> Interactive Mushaf
+                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          onClick={() => setShowSidebar(!showSidebar)}
+                          className="px-3 py-1.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs font-semibold flex items-center gap-1.5"
+                          title={showSidebar ? "Hide sidebar" : "Show mistakes & comment"}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={showSidebar ? "M6 18L18 6M6 6l12 12" : "M9 5l7 7-7 7"} />
+                          </svg>
+                          {showSidebar ? 'Hide Panel' : 'Show Panel'}
+                        </button>
+                        <button
+                          onClick={() => setFullMushafView(true)}
+                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1.5"
+                          title="Full Mushaf View (ESC to exit)"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                          </svg>
+                          Full View
+                        </button>
+                        {mistakes.length > 0 && (
+                          <div className="px-3 py-1.5 bg-primary/10 rounded-lg">
+                            <span className="text-sm font-bold text-primary">
+                              {mistakes.length} mistake{mistakes.length !== 1 ? 's' : ''} marked
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-gradient-to-b from-gray-50 to-white">
+                    {loadingPersonalMushaf && (
+                      <div className="text-center py-4 text-gray-500">
+                        Loading student's mistake history...
+                      </div>
+                    )}
+                    <InteractiveMushaf
+                      currentPage={mushafPage}
+                      onPageChange={setMushafPage}
+                      mistakes={mushafMistakes}
+                      historicalMistakes={personalMushafMistakes}
+                      showHistorical={true}
+                      onMistakeMark={handleMistakeMark}
+                      readOnly={false}
+                      mode="marking"
+                      studentName={ticket.studentName}
+                      enableZoom={true}
+                      zoom={mushafZoom}
+                      onZoomChange={setMushafZoom}
+                    />
+                  </div>
+                </div>
+              </div>
 
-            {/* Sidebar - Mistakes List and Comment */}
-            <div className="space-y-4">
-              {/* Mistakes List Card */}
-              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+              {/* Sidebar - Mistakes List and Comment - Hidden by default */}
+              {showSidebar && (
+                <div className="space-y-4">
+                {/* Mistakes List Card */}
+                <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
                 <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                   <div className="flex flex-col gap-2">
                     <h3 className="text-base font-extrabold text-primary flex items-center gap-2">
@@ -326,65 +452,89 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {mistakes.map((mistake) => (
-                        <div
-                          key={mistake.id}
-                          className="group flex items-start justify-between gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200 hover:border-primary/50 transition-all"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-xs font-extrabold px-2.5 py-1 rounded-lg bg-primary text-white shadow-sm">
-                                {mistake.type}
-                              </span>
-                              <span className="text-xs text-primary/70 font-semibold">
-                                Page {mistake.page}
-                              </span>
-                            </div>
-                            {mistake.surah && mistake.ayah && (
-                              <p className="text-xs text-primary/60 mb-1">
-                                Surah {mistake.surah}, Ayah {mistake.ayah}
-                              </p>
-                            )}
-                            {mistake.note && (
-                              <p className="text-xs text-primary/80 mt-1 italic">"{mistake.note}"</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleRemoveMistake(mistake.id!)}
-                            className="text-red-600 hover:text-red-800 text-xs px-2 py-1 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0 font-bold"
-                            title="Remove mistake"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+                      {mistakes.map((mistake) => {
+                        const isNew = newMistakeIds.has(mistake.id || '');
+                        return (
+                          <MistakeBadgeHighlight
+                            key={mistake.id}
+                            mistake={mistake}
+                            isNew={isNew}
+                            showTimestamp={false}
+                            onRemove={handleRemoveMistake}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Comment Section Card */}
-              <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                  <label className="block text-base font-extrabold text-primary flex items-center gap-2">
-                    <span>💬</span> Your Review Comment <span className="text-red-500">*</span>
-                  </label>
+              {/* Comment Section Card - Hidden by default */}
+              {showReviewComment ? (
+                <div className="bg-white rounded-2xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                  <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-base font-extrabold text-primary flex items-center gap-2">
+                        <span>💬</span> Your Review Comment <span className="text-red-500">*</span>
+                      </label>
+                      <button
+                        onClick={() => setShowReviewComment(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Hide comment"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <AICommentDraft
+                        mistakes={mistakes}
+                        onDraftGenerated={(draft) => {
+                          setTeacherComment(draft);
+                          // Scroll to textarea
+                          setTimeout(() => {
+                            const textarea = document.querySelector('textarea');
+                            textarea?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }, 100);
+                        }}
+                        disabled={mistakes.length === 0}
+                      />
+                    </div>
+                    <textarea
+                      value={teacherComment}
+                      onChange={(e) => setTeacherComment(e.target.value)}
+                      rows={8}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition resize-none font-medium shadow-sm"
+                      placeholder="Enter your review comments here... Describe the student's recitation, areas of improvement, and any additional notes. Or use 'Generate Review Summary' to auto-draft based on marked mistakes."
+                      autoFocus
+                    />
+                    <p className="text-xs text-primary/60 mt-2 font-medium">
+                      This comment will be sent to the admin for review.
+                    </p>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <textarea
-                    value={teacherComment}
-                    onChange={(e) => setTeacherComment(e.target.value)}
-                    rows={8}
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition resize-none font-medium shadow-sm"
-                    placeholder="Enter your review comments here... Describe the student's recitation, areas of improvement, and any additional notes."
-                  />
-                  <p className="text-xs text-primary/60 mt-2 font-medium">
-                    This comment will be sent to the admin for review.
+              ) : (
+                <button
+                  onClick={() => setShowReviewComment(true)}
+                  className="w-full p-4 bg-white rounded-2xl border-2 border-dashed border-gray-300 hover:border-primary/50 transition-all text-left"
+                >
+                  <div className="flex items-center gap-2 text-primary font-semibold">
+                    <span>💬</span>
+                    <span>Add Review Comment</span>
+                    <span className="text-red-500 ml-auto">*</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {teacherComment ? `${teacherComment.substring(0, 50)}...` : 'Click to add your review comment'}
                   </p>
+                </button>
+              )}
                 </div>
-              </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Modern Footer */}
@@ -398,8 +548,9 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !teacherComment.trim()}
+            disabled={isSubmitting || !canSubmit}
             className="px-8 py-3 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
+            title={!canSubmit ? 'Mark at least one mistake OR add a comment to submit' : 'Submit review'}
           >
             {isSubmitting ? (
               <>

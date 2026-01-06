@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Ticket, TicketType } from '../types/ticket';
@@ -16,7 +16,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   onSuccess,
   ticket: existingTicket
 }) => {
-  const { students, teachers, createTicket, updateRecitationTicket, getPreviousReports } = useBackendData();
+  const { students, teachers, createTicket, updateRecitationTicket, getPreviousReports, assignments, getStudentAssignments } = useBackendData();
   const { user } = useAuth();
   const isEditMode = !!existingTicket;
   const [isCreating, setIsCreating] = useState(false);
@@ -26,28 +26,104 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   const [teacherNotes, setTeacherNotes] = useState(existingTicket?.teacherNotes || '');
   const [previousReports, setPreviousReports] = useState<Ticket[]>([]);
   const [showReminder, setShowReminder] = useState(false);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+  const previousReportsKeyRef = React.useRef<string>('');
 
   const student = students.find(s => s.id === studentId);
 
+  // Get recent homework assignments (last 30 days for better history)
+  const previousDayHomework = useMemo(() => {
+    if (!studentId) return [];
+    
+    const studentAssignments = getStudentAssignments(studentId);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get assignments from last 30 days (more history)
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    return studentAssignments
+      .filter((assignment: any) => {
+        // Check if assignment has homework (either new format with items or legacy format with content)
+        const hasNewFormatHomework = assignment.homework?.enabled && assignment.homework?.items?.length > 0;
+        const hasLegacyHomework = assignment.homework?.enabled && assignment.homework?.content;
+        
+        if (!hasNewFormatHomework && !hasLegacyHomework) return false;
+        
+        const assignmentDate = assignment.createdAt ? new Date(assignment.createdAt) : null;
+        if (!assignmentDate) return false;
+        
+        assignmentDate.setHours(0, 0, 0, 0);
+        // Include assignments from last 30 days (including today)
+        return assignmentDate.getTime() >= thirtyDaysAgo.getTime();
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA; // Most recent first
+      })
+      .slice(0, 10) // Show max 10 recent assignments
+      .map((assignment: any) => {
+        const assignmentDate = assignment.createdAt ? new Date(assignment.createdAt) : null;
+        const dateStr = assignmentDate ? assignmentDate.toLocaleDateString('en-US', { 
+          weekday: 'short',
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        }) : 'Unknown';
+        
+        // Handle both new format (items) and legacy format (content)
+        const homeworkItems = assignment.homework?.items || [];
+        const legacyContent = assignment.homework?.content;
+        
+        return {
+          id: assignment.id || assignment._id,
+          date: dateStr,
+          fullDate: assignmentDate,
+          homeworkItems: homeworkItems,
+          legacyContent: legacyContent,
+          notes: assignment.homework?.notes || '',
+          assignedBy: assignment.assignedByName || 'Unknown'
+        };
+      });
+  }, [studentId, assignments, getStudentAssignments]);
+
   // Load previous reports when sabqi or manzil is selected
   useEffect(() => {
-    if ((ticketType === 'sabqi' || ticketType === 'manzil') && studentId) {
+    // Create a unique key for this combination
+    const reportsKey = `${studentId}-${ticketType}`;
+    
+    // Skip if we've already loaded reports for this combination
+    if (previousReportsKeyRef.current === reportsKey && previousReports.length > 0) {
+      return;
+    }
+    
+    if ((ticketType === 'sabqi' || ticketType === 'manzil') && studentId && !isLoadingReports) {
+      setIsLoadingReports(true);
+      previousReportsKeyRef.current = reportsKey;
+      
       getPreviousReports(studentId, ticketType).then(reports => {
-        console.log('📋 Previous reports found:', reports.length, reports);
+        if (import.meta.env.DEV) {
+          console.log('📋 Previous reports found:', reports.length);
+        }
         setPreviousReports(reports);
         if (reports.length > 0) {
           setShowReminder(true);
         }
+        setIsLoadingReports(false);
       }).catch(err => {
         console.error('Error loading previous reports:', err);
         setPreviousReports([]);
         setShowReminder(false);
+        setIsLoadingReports(false);
       });
-    } else {
+    } else if (ticketType !== 'sabqi' && ticketType !== 'manzil') {
       setPreviousReports([]);
       setShowReminder(false);
+      previousReportsKeyRef.current = '';
     }
-  }, [ticketType, studentId, getPreviousReports]);
+  }, [ticketType, studentId]); // Removed getPreviousReports from dependencies
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +219,105 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Assignment History Homework Box - Always show if student has any assignments */}
+        {previousDayHomework.length > 0 ? (
+          <div className="mx-6 mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-1">
+                  <span>📚</span>
+                  Assignment History - Recent Homework
+                </h3>
+                <p className="text-xs text-blue-600">Reference previous assignments to see what was assigned</p>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {previousDayHomework.map((hw, idx) => (
+                <div key={hw.id || idx} className="bg-white rounded-lg p-3 border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs font-semibold text-blue-700 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                      {hw.date}
+                    </div>
+                    {hw.assignedBy && hw.assignedBy !== 'Unknown' && (
+                      <span className="text-xs text-gray-500">by {hw.assignedBy}</span>
+                    )}
+                  </div>
+                  {hw.homeworkItems.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {hw.homeworkItems.map((item: any, itemIdx: number) => {
+                        const getRangeText = () => {
+                          if (item.range?.mode === 'surah_ayah' && item.range.from?.surah) {
+                            const fromSurah = item.range.from.surah;
+                            const toSurah = item.range.to?.surah || fromSurah;
+                            const fromAyah = item.range.from.ayah;
+                            const toAyah = item.range.to?.ayah;
+                            
+                            if (fromSurah === toSurah) {
+                              if (fromAyah && toAyah) {
+                                return `Surah ${fromSurah}:${fromAyah}-${toAyah}`;
+                              } else if (fromAyah) {
+                                return `Surah ${fromSurah}:${fromAyah}`;
+                              } else {
+                                return `Surah ${fromSurah}`;
+                              }
+                            } else {
+                              return `Surah ${fromSurah} to ${toSurah}`;
+                            }
+                          }
+                          if (item.range?.mode === 'surah_surah' && item.range.from?.surah && item.range.to?.surah) {
+                            return `Surah ${item.range.from.surah} - ${item.range.to.surah}`;
+                          }
+                          if ((item.range?.mode === 'juz_juz' || item.range?.mode === 'multiple_juz') && item.range.juzList?.length > 0) {
+                            return `Juz ${item.range.juzList.sort((a: number, b: number) => a - b).join(', ')}`;
+                          }
+                          return 'No range specified';
+                        };
+                        
+                        return (
+                          <div key={itemIdx} className="text-xs text-gray-700 bg-gray-50 rounded px-2 py-1.5 border border-gray-200">
+                            <span className="font-semibold capitalize text-blue-600">{item.type}:</span>{' '}
+                            <span className="text-gray-800">{getRangeText()}</span>
+                            {item.content && (
+                              <div className="text-gray-600 mt-1 italic text-xs">
+                                {item.content}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : hw.legacyContent ? (
+                    <div className="text-xs text-gray-700 bg-gray-50 rounded px-2 py-1.5 border border-gray-200 whitespace-pre-wrap">
+                      {hw.legacyContent}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 italic">No homework items</div>
+                  )}
+                  {hw.notes && (
+                    <div className="text-xs text-gray-600 mt-2 italic border-t border-gray-100 pt-2">
+                      <span className="font-medium">General Notes:</span> {hw.notes}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {previousDayHomework.length >= 10 && (
+              <p className="text-xs text-blue-600 mt-2 text-center italic">
+                Showing most recent 10 assignments. Check full history in Assignment Management.
+              </p>
+            )}
+          </div>
+        ) : (
+          // Show message if no homework found
+          <div className="mx-6 mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span>📚</span>
+              <span>No recent homework assignments found in the last 30 days. Check Assignment Management for full history.</span>
+            </div>
+          </div>
+        )}
 
         {/* Reminder Alert for Previous Reports */}
         {showReminder && previousReports.length > 0 && (

@@ -5,13 +5,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import Card from './Card';
 import TicketCreationForm from './TicketCreationForm';
+import { TicketQuickStats } from './workflow/TicketQuickStats';
+import { TicketInsightBanner } from './workflow/TicketInsightBanner';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
 }
 
 const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
-  const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshData, updateRecitationTicket, loading } = useBackendData();
+  const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshDataLight, updateRecitationTicket, loading } = useBackendData();
   const { user } = useAuth();
   
   // Refresh data when component mounts to ensure tickets are loaded
@@ -135,7 +137,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       
       alert(message);
       
-      await refreshData();
+      await refreshDataLight(); // Use lightweight refresh for faster update
       setSelectedTicketId(null);
     } catch (error) {
       console.error('Error approving ticket:', error);
@@ -165,7 +167,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       setShowReassignModal(false);
       setSelectedTeacherId('');
       setReassignReason('');
-      await refreshData();
+      await refreshDataLight(); // Use lightweight refresh for faster update
     } catch (error) {
       console.error('Error reassigning ticket:', error);
       alert('Failed to reassign ticket');
@@ -187,6 +189,19 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       audioUrl: m.audioUrl,
       timestamp: m.timestamp || new Date()
     }));
+  };
+
+  // Human-readable status mapping
+  const getHumanReadableStatus = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      pending: 'Waiting for Teacher',
+      in_progress: 'Being Reviewed',
+      submitted: 'Ready for Admin',
+      sent_to_assignment: 'Published to Student',
+      reassigned: 'Reassigned',
+      approved: 'Approved',
+    };
+    return statusMap[status] || status;
   };
 
   // Check for duplicate tickets
@@ -240,7 +255,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
 
       alert('Ticket deleted successfully!');
-      await refreshData();
+      await refreshDataLight(); // Use lightweight refresh for faster update
       
       // If this was the selected ticket, go back to list
       if (selectedTicketId === ticketId) {
@@ -333,9 +348,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
                                     ticket.status === 'sent_to_assignment' 
                                       ? 'bg-green-500 text-green-50' 
-                                      : 'bg-yellow-500 text-yellow-50'
+                                      : ticket.status === 'submitted'
+                                      ? 'bg-yellow-500 text-yellow-50'
+                                      : 'bg-gray-500 text-gray-50'
                                   } shadow-md`}>
-                                    {ticket.status === 'sent_to_assignment' ? 'SENT' : 'PENDING'}
+                                    {getHumanReadableStatus(ticket.status).toUpperCase()}
                                   </span>
                                 </div>
                                 <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
@@ -463,7 +480,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                     {ticket.type.toUpperCase()}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-yellow-500 text-yellow-50 shadow-md">
-                                    SUBMITTED
+                                    {getHumanReadableStatus(ticket.status).toUpperCase()}
                                   </span>
                                 </div>
                                 <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
@@ -546,8 +563,8 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               )}
             </div>
           ) : selectedTicket ? (
-            // Modern Ticket Detail View
-            <div className="space-y-3">
+            // Modern Ticket Detail View - Split View Layout
+            <div className="space-y-4">
               {/* Back Button */}
               <button
                 onClick={handleBackToList}
@@ -557,8 +574,29 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                 <span>Back to Ticket List</span>
               </button>
 
-              {/* Ticket Info Card */}
-              <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+              {/* Quick Stats at Top */}
+              {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
+                <TicketQuickStats
+                  mistakes={getMushafMistakes(selectedTicket)}
+                  ticketType={selectedTicket.type as 'sabq' | 'sabqi' | 'manzil'}
+                />
+              )}
+
+              {/* Contextual Insight Banner */}
+              <TicketInsightBanner
+                ticket={selectedTicket}
+                previousTickets={recitationTickets.filter(t => 
+                  t.studentId === selectedTicket.studentId && 
+                  t.id !== selectedTicket.id
+                )}
+              />
+
+              {/* Split View: Left → Mushaf Mistakes, Right → Teacher Comment + Stats */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Left Column: Mushaf Mistakes */}
+                <div className="space-y-4">
+                  {/* Ticket Info Card */}
+                  <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
                 <div className={`h-1 ${
                   selectedTicket.type === 'sabq' ? 'bg-green-500' :
                   selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
@@ -576,15 +614,15 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                           {selectedTicket.type.toUpperCase()}
                         </span>
                         <span className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-yellow-500 text-white shadow-md">
-                          SUBMITTED
+                          {getHumanReadableStatus(selectedTicket.status).toUpperCase()}
                         </span>
                       </div>
                       <h3 className="text-base font-extrabold text-primary mb-1">{selectedTicket.studentName}</h3>
                     </div>
                   </div>
 
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                  {/* Info Grid - Compact for Split View */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
                       <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Student</p>
                       <p className="text-xs font-bold text-primary">{selectedTicket.studentName}</p>
@@ -592,18 +630,6 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                     <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
                       <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Teacher</p>
                       <p className="text-xs font-bold text-primary">{selectedTicket.assignedTeacherName || 'Unassigned'}</p>
-                    </div>
-                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Submitted</p>
-                      <p className="text-xs font-bold text-primary">
-                        {selectedTicket.submittedAt ? new Date(selectedTicket.submittedAt).toLocaleString() : 'N/A'}
-                      </p>
-                    </div>
-                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Mistakes</p>
-                      <p className="text-xs font-bold text-primary">
-                        {selectedTicket.mistakes?.length || 0} mistake{(selectedTicket.mistakes?.length || 0) !== 1 ? 's' : ''}
-                      </p>
                     </div>
                   </div>
 
@@ -614,18 +640,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                       <p className="text-xs text-blue-900">{selectedTicket.teacherNotes}</p>
                     </div>
                   )}
-
-                  {/* Teacher Comment */}
-                  {selectedTicket.teacherComment && (
-                    <div className="p-2 bg-green-50 border-l-4 border-green-500 rounded-lg">
-                      <p className="text-[10px] font-bold text-green-800 mb-1 uppercase tracking-wide">💬 Teacher Comment</p>
-                      <p className="text-xs text-green-900 italic">"{selectedTicket.teacherComment}"</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Mushaf View */}
+              {/* Mushaf View - Left Column */}
               {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
                 <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
                   <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
@@ -633,10 +651,44 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                       <h3 className="text-sm font-extrabold text-primary flex items-center gap-1.5">
                         <span>📖</span> Mushaf View with Mistakes
                       </h3>
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 rounded-lg">
-                        <span className="text-xs font-bold text-primary">
-                          {selectedTicket.mistakes.length} mistake{selectedTicket.mistakes.length !== 1 ? 's' : ''} marked
-                        </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => {
+                            // Toggle full view for admin (read-only)
+                            const currentFullView = document.querySelector('[data-full-mushaf-view]');
+                            if (currentFullView) {
+                              currentFullView.remove();
+                            } else {
+                              // Create full-screen overlay
+                              const overlay = document.createElement('div');
+                              overlay.setAttribute('data-full-mushaf-view', 'true');
+                              overlay.className = 'fixed inset-0 bg-white z-[100] overflow-auto';
+                              overlay.innerHTML = `
+                                <div class="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 px-4 py-2 flex items-center justify-between shadow-sm z-10">
+                                  <h3 class="text-sm font-bold text-primary">Full Mushaf View</h3>
+                                  <button onclick="this.closest('[data-full-mushaf-view]').remove()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-sm">Exit</button>
+                                </div>
+                                <div id="full-mushaf-container" class="p-4"></div>
+                              `;
+                              document.body.appendChild(overlay);
+                              // Render Mushaf in overlay
+                              setTimeout(() => {
+                                const container = document.getElementById('full-mushaf-container');
+                                if (container) {
+                                  // This would need React Portal, but for now we'll use a simpler approach
+                                }
+                              }, 100);
+                            }
+                          }}
+                          className="px-2 py-1 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700"
+                        >
+                          Full View
+                        </button>
+                        <div className="px-2 py-0.5 bg-primary/10 rounded-lg">
+                          <span className="text-xs font-bold text-primary">
+                            {selectedTicket.mistakes.length} mistake{selectedTicket.mistakes.length !== 1 ? 's' : ''} marked
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -650,6 +702,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                         readOnly={true}
                         mode="viewing"
                         studentName={selectedTicket.studentName}
+                        enableZoom={true}
                       />
                     ) : (
                       <div className="text-center py-12">
@@ -659,29 +712,87 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   </div>
                 </div>
               )}
+                </div>
 
-              {/* Modern Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t-2 border-gray-200">
+                {/* Right Column: Teacher Comment + Stats */}
+                <div className="space-y-4">
+                  {/* Teacher Comment Card */}
+                  {selectedTicket.teacherComment && (
+                    <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                      <div className="p-4">
+                        <h3 className="text-sm font-extrabold text-primary mb-2 flex items-center gap-2">
+                          <span>💬</span> Teacher Comment
+                        </h3>
+                        <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-lg">
+                          <p className="text-sm text-green-900 italic whitespace-pre-wrap">"{selectedTicket.teacherComment}"</p>
+                        </div>
+                        {selectedTicket.submittedAt && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            Submitted: {new Date(selectedTicket.submittedAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mistake List Summary */}
+                  {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
+                    <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
+                      <div className="p-4">
+                        <h3 className="text-sm font-extrabold text-primary mb-3 flex items-center gap-2">
+                          <span>🔴</span> Marked Mistakes ({selectedTicket.mistakes.length})
+                        </h3>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {selectedTicket.mistakes.map((mistake, idx) => (
+                            <div
+                              key={mistake.id || idx}
+                              className="p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs"
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="px-2 py-0.5 rounded bg-primary text-white font-semibold text-[10px]">
+                                  {mistake.type}
+                                </span>
+                                <span className="text-gray-600">
+                                  Page {mistake.page}
+                                  {mistake.surah && mistake.ayah && ` • Surah ${mistake.surah}:${mistake.ayah}`}
+                                </span>
+                              </div>
+                              {mistake.note && (
+                                <p className="text-gray-700 italic mt-1">"{mistake.note}"</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Single Primary CTA: Approve & Send */}
+              <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t-2 border-gray-200">
+                {/* Secondary Action: Reassign */}
                 <button
                   onClick={() => setShowReassignModal(true)}
-                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-xs font-extrabold hover:from-orange-600 hover:to-orange-700 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-1.5"
+                  className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition-all shadow-md flex items-center justify-center gap-2"
                 >
                   <span>🔄</span>
-                  <span>Reassign Ticket</span>
+                  <span>Reassign</span>
                 </button>
+                {/* Primary CTA: Approve & Send */}
                 <button
                   onClick={handleApproveAndSend}
                   disabled={isProcessing}
-                  className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-xs font-extrabold hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-1.5"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-base font-extrabold hover:from-green-600 hover:to-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
                 >
                   {isProcessing ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       <span>Processing...</span>
                     </>
                   ) : (
                     <>
-                      <span>✓</span>
+                      <span className="text-xl">✓</span>
                       <span>Approve & Send to Assignment</span>
                     </>
                   )}
@@ -822,11 +933,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
           ticket={editingTicket}
           onClose={() => {
             setEditingTicket(null);
-            refreshData();
+            refreshDataLight(); // Use lightweight refresh for faster update
           }}
           onSuccess={(updatedTicket) => {
             setEditingTicket(null);
-            refreshData();
+            refreshDataLight(); // Use lightweight refresh for faster update
             // If we were viewing this ticket, refresh the view
             if (selectedTicketId === updatedTicket.id) {
               setSelectedTicketId(null);

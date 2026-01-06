@@ -267,6 +267,22 @@ const serializeRecitationHistoryEntry = (entry: RecitationHistoryEntry) => ({
   completedAt: entry.completedAt || new Date().toISOString()
 });
 
+// Helper function to normalize IDs (handles ObjectId, strings, etc.)
+const normalizeId = (id: any): string => {
+  if (!id) return '';
+  // Handle ObjectId objects (MongoDB) - they have a toString method
+  if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
+    const str = id.toString();
+    // Check if it's an ObjectId string (24 hex characters)
+    if (/^[0-9a-fA-F]{24}$/.test(str)) {
+      return str;
+    }
+    // If toString() doesn't give us a valid ObjectId, try the string anyway
+    return str.trim();
+  }
+  return String(id).trim();
+};
+
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user: currentUser } = useAuth(); // Get current user from AuthContext
   const [students, setStudents] = useState<Student[]>([]);
@@ -422,7 +438,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           const mappedAssignments = assignmentsData.map((assignment: any) => ({
             ...assignment,
             id: assignment._id || assignment.id,
-            studentId: String(assignment.studentId || '').trim(), // Normalize studentId
+            studentId: normalizeId(assignment.studentId), // Normalize studentId
             createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
             updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
             completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
@@ -1117,9 +1133,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const mappedAssignments = assignmentsData.map((assignment: any) => ({
           ...assignment,
           id: assignment._id || assignment.id,
+          studentId: normalizeId(assignment.studentId), // Normalize studentId
           createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
           updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
         }));
+        console.log('🔄 Refreshed assignments:', {
+          count: mappedAssignments.length,
+          sample: mappedAssignments[0] ? {
+            id: mappedAssignments[0].id,
+            studentId: mappedAssignments[0].studentId,
+            homeworkEnabled: mappedAssignments[0].homework?.enabled,
+            homeworkItemsCount: mappedAssignments[0].homework?.items?.length || 0
+          } : null
+        });
         setAssignments(mappedAssignments);
       }
 
@@ -2147,6 +2173,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const updateAssignment = async (id: string, assignment: Partial<Assignment>) => {
     try {
+      if (import.meta.env.DEV) {
+        console.log('📤 Updating assignment:', {
+          id,
+          homework: assignment.homework,
+          homeworkItems: assignment.homework?.items?.length || 0
+        });
+      }
+      
       const response = await fetch(`${API_BASE}/assignments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -2154,13 +2188,79 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
       
       if (!response.ok) {
-        throw new Error('Failed to update assignment');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Update failed:', errorData);
+        throw new Error(errorData.error || 'Failed to update assignment');
       }
       
-      setAssignments(prev => prev.map(a => {
-        const aId = a._id || a.id;
-        return aId === id ? { ...a, ...assignment } : a;
-      }));
+      const updatedAssignment = await response.json();
+      
+      // Normalize the assignment ID
+      const normalizedId = updatedAssignment._id || updatedAssignment.id;
+      const normalizedUpdatedAssignment = {
+        ...updatedAssignment,
+        id: normalizedId,
+        _id: normalizedId
+      };
+      
+      if (import.meta.env.DEV) {
+        console.log('✅ Assignment updated:', {
+          id: normalizedId,
+          homeworkEnabled: normalizedUpdatedAssignment.homework?.enabled,
+          homeworkItemsCount: normalizedUpdatedAssignment.homework?.items?.length || 0,
+          homeworkItems: normalizedUpdatedAssignment.homework?.items
+        });
+      }
+      
+      // Update assignments list with the full updated assignment
+      setAssignments(prev => {
+        const updated = prev.map(a => {
+          const aId = a._id || a.id;
+          if (String(aId) === String(normalizedId)) {
+            // Deep merge to ensure homework items are properly updated
+            const merged = {
+              ...a,
+              ...normalizedUpdatedAssignment,
+              id: normalizedId,
+              _id: normalizedId,
+              homework: {
+                enabled: normalizedUpdatedAssignment.homework?.enabled !== undefined 
+                  ? normalizedUpdatedAssignment.homework.enabled
+                  : (normalizedUpdatedAssignment.homework?.items?.length > 0 || a.homework?.enabled),
+                items: normalizedUpdatedAssignment.homework?.items || a.homework?.items || [],
+                notes: normalizedUpdatedAssignment.homework?.notes || a.homework?.notes || '',
+                content: normalizedUpdatedAssignment.homework?.content || a.homework?.content || '',
+                link: normalizedUpdatedAssignment.homework?.link || a.homework?.link || ''
+              }
+            };
+            
+            if (import.meta.env.DEV) {
+              console.log('🔄 Updated assignment in state:', {
+                id: merged.id,
+                homeworkEnabled: merged.homework.enabled,
+                homeworkItemsCount: merged.homework.items.length,
+                homeworkItems: merged.homework.items
+              });
+            }
+            
+            return merged;
+          }
+          return a;
+        });
+        
+        // If assignment wasn't found, add it (shouldn't happen but safety check)
+        const found = updated.find(a => {
+          const aId = a._id || a.id;
+          return String(aId) === String(normalizedId);
+        });
+        
+        if (!found && normalizedUpdatedAssignment.studentId) {
+          console.warn('⚠️ Assignment not found in list, adding it:', normalizedId);
+          updated.push(normalizedUpdatedAssignment as Assignment);
+        }
+        
+        return updated;
+      });
     } catch (error) {
       console.error('Error updating assignment:', error);
       throw error;
@@ -2193,22 +2293,37 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const getStudentAssignments = (studentId: string): Assignment[] => {
     if (!studentId) return [];
     
-    // Normalize studentId to string for comparison
-    const normalizedStudentId = String(studentId).trim();
+    const normalizedStudentId = normalizeId(studentId);
     
     const filtered = assignments.filter(a => {
-      // Check both studentId formats (string and _id)
-      const assignmentStudentId = (a.studentId || (a as any)._id?.studentId || '').toString().trim();
-      const matches = assignmentStudentId === normalizedStudentId ||
-             assignmentStudentId === String(studentId).trim() ||
-             assignmentStudentId === studentId?.toString().trim();
+      // Extract studentId from multiple possible locations and formats
+      let assignmentStudentId = '';
       
-      if (import.meta.env.DEV && matches) {
+      // Try direct studentId property first (should be normalized from mapping)
+      if (a.studentId) {
+        assignmentStudentId = normalizeId(a.studentId);
+      }
+      // Fallback to _id.studentId if direct property doesn't exist
+      else if ((a as any)._id?.studentId) {
+        assignmentStudentId = normalizeId((a as any)._id.studentId);
+      }
+      // Fallback to raw assignment data
+      else if ((a as any).studentId) {
+        assignmentStudentId = normalizeId((a as any).studentId);
+      }
+      
+      // Compare normalized IDs
+      const matches = assignmentStudentId === normalizedStudentId;
+      
+      if (matches) {
         console.log('✅ Assignment matched for student:', {
           studentId: normalizedStudentId,
           assignmentId: a.id,
           assignmentStudentId: assignmentStudentId,
           assignmentStatus: a.status,
+          homeworkEnabled: a.homework?.enabled,
+          homeworkItemsCount: a.homework?.items?.length || 0,
+          homeworkItems: a.homework?.items,
           sabqiCount: a.classwork?.sabqi?.length || 0
         });
       }
@@ -2216,15 +2331,33 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       return matches;
     });
     
-    if (import.meta.env.DEV) {
-      console.log('🔍 getStudentAssignments:', {
-        studentId: normalizedStudentId,
-        totalAssignments: assignments.length,
-        filteredCount: filtered.length,
-        assignmentIds: filtered.map(a => a.id),
-        allStudentIds: [...new Set(assignments.map(a => String(a.studentId || '').trim()))]
-      });
-    }
+    // Enhanced debugging - show sample of unmatched assignments for this student
+    const unmatchedSample = assignments
+      .filter(a => {
+        const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
+        return assignmentStudentId && assignmentStudentId !== normalizedStudentId;
+      })
+      .slice(0, 3)
+      .map(a => ({
+        id: a.id,
+        studentId: normalizeId(a.studentId || (a as any)._id?.studentId),
+        rawStudentId: a.studentId
+      }));
+    
+    console.log('🔍 getStudentAssignments:', {
+      studentId: normalizedStudentId,
+      totalAssignments: assignments.length,
+      filteredCount: filtered.length,
+      assignmentIds: filtered.map(a => a.id),
+      homeworkDetails: filtered.map(a => ({
+        id: a.id,
+        enabled: a.homework?.enabled,
+        itemsCount: a.homework?.items?.length || 0,
+        items: a.homework?.items
+      })),
+      uniqueStudentIds: [...new Set(assignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId)))].slice(0, 10),
+      unmatchedSample: unmatchedSample
+    });
     
     return filtered;
   };
@@ -2404,7 +2537,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             return prev.map(a => (a.id || a._id) === assignment.id ? {
               ...assignment,
               id: assignment.id || assignment._id,
-              studentId: String(assignment.studentId || '').trim(),
+              studentId: normalizeId(assignment.studentId),
               createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
               updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
             } : a);
@@ -2413,7 +2546,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             return [...prev, {
               ...assignment,
               id: assignment.id || assignment._id,
-              studentId: String(assignment.studentId || '').trim(),
+              studentId: normalizeId(assignment.studentId),
               createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
               updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
             }];
@@ -2509,7 +2642,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     return recitationTickets.filter(t => t.status === 'submitted');
   };
 
-  const getPreviousReports = async (studentId: string, type: 'sabqi' | 'manzil'): Promise<Ticket[]> => {
+  const getPreviousReports = useCallback(async (studentId: string, type: 'sabqi' | 'manzil'): Promise<Ticket[]> => {
     try {
       const response = await fetch(`${API_BASE}/tickets/previous-reports/${studentId}/${type}`);
       if (!response.ok) {
@@ -2525,7 +2658,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.error('Error getting previous reports:', error);
       return [];
     }
-  };
+  }, []);
 
   // Recitation Review Functions
   const addRecitationReview = async (review: RecitationReview) => {

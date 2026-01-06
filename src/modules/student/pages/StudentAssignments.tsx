@@ -649,19 +649,11 @@ const StudentAssignments: React.FC = () => {
                                         )}
                                       </div>
                                       
-                                      {assignment.homework.content && (
-                                        <p className="text-sm text-primary mb-2">{assignment.homework.content}</p>
-                                      )}
-                                      {assignment.homework.link && (
-                                        <a 
-                                          href={assignment.homework.link} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
-                                          className="text-sm text-primary hover:underline inline-flex items-center gap-1 mb-2"
-                                        >
-                                          🔗 {assignment.homework.link}
-                                        </a>
-                                      )}
+                                      {/* Display Homework using HomeworkDisplay component */}
+                                      <HomeworkDisplay 
+                                        homework={assignment.homework} 
+                                        showSubmission={false}
+                                      />
 
                                       {/* Homework Submission Status */}
                                       {assignment.homework.submission?.submitted && (

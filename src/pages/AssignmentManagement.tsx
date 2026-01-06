@@ -4,7 +4,7 @@ import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { ProgramType } from '../types';
 import StudentAssignmentHistory from '../components/StudentAssignmentHistory';
-import AssignmentForm from '../components/AssignmentForm';
+import EnhancedAssignmentForm from '../components/EnhancedAssignmentForm';
 import TicketCreationForm from '../components/TicketCreationForm';
 import AfterSchoolStudentView from '../components/AfterSchoolStudentView';
 import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
@@ -332,166 +332,46 @@ const AssignmentManagement: React.FC = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* Dashboard Overview */}
+        {/* Page Header */}
         <div className="mb-6">
-          <section className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white via-primary/5 to-white px-6 py-6 shadow-lg">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-3 py-1 rounded-full">
-                    Assignment Management
-                  </span>
-                  {stats.pendingHomework > 0 && (
-                    <span className="rounded-full bg-red-500 text-white px-2.5 py-1 text-xs font-bold animate-pulse">
-                      {stats.pendingHomework} pending homework
-                    </span>
-                  )}
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary">Dashboard Overview</h1>
-                <p className="max-w-3xl text-sm text-gray-600 leading-relaxed">
-                  Manage assignments, track student progress, and review completed work. 
-                  {currentTeacher 
-                    ? ` You have ${stats.totalStudents} assigned students.`
-                    : ` Total of ${stats.totalStudents} students in the system.`}
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-xs font-semibold mt-3">
-                  <span className="rounded-full bg-primary/10 px-3 py-1.5 text-primary border border-primary/20">
-                    {stats.totalStudents} {currentTeacher ? 'assigned' : 'total'} students
-                  </span>
-                  <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 border border-blue-200">
-                    {stats.activeAssignments} active assignments
-                  </span>
-                  <span className="rounded-full bg-green-100 px-3 py-1.5 text-green-700 border border-green-200">
-                    {stats.completedAssignments} completed
-                  </span>
-                  {stats.pendingHomework > 0 && (
-                    <span className="rounded-full bg-orange-100 px-3 py-1.5 text-orange-700 border border-orange-200">
-                      {stats.pendingHomework} pending homework
-                    </span>
-                  )}
-                  <span className="rounded-full bg-purple-100 px-3 py-1.5 text-purple-700 border border-purple-200">
-                    {stats.completionRate}% completion rate
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  <button
-                    onClick={() => setViewMode('completed')}
-                    className="inline-flex items-center justify-center rounded-lg border-2 border-green-500/30 px-4 py-2 text-xs font-bold text-green-600 transition hover:bg-green-50 hover:border-green-500"
-                  >
-                    ✅ Completed Assignments
-                    {stats.completedAssignments > 0 && (
-                      <span className="ml-2 rounded-full bg-green-500 text-white px-2 py-0.5 text-xs font-bold">
-                        {stats.completedAssignments}
-                      </span>
-                    )}
-                  </button>
-                  {stats.pendingHomework > 0 && (
-                    <button
-                      onClick={() => setViewMode('completed')}
-                      className="inline-flex items-center justify-center rounded-lg border-2 border-orange-500/30 px-4 py-2 text-xs font-bold text-orange-600 transition hover:bg-orange-50 hover:border-orange-500"
-                    >
-                      📝 Review Homework
-                      <span className="ml-2 rounded-full bg-orange-500 text-white px-2 py-0.5 text-xs font-bold">
-                        {stats.pendingHomework}
-                      </span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setViewMode('students')}
-                    className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-4 py-2 text-xs font-bold text-primary transition hover:bg-primary/10 hover:border-primary"
-                  >
-                    👥 View Students
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
+          <h1 className="text-2xl font-bold text-gray-900">Assignment Management</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {currentTeacher 
+              ? `Manage assignments for ${stats.totalStudents} assigned students`
+              : `Manage assignments for ${stats.totalStudents} students`}
+          </p>
         </div>
 
-        {/* Enhanced Stats Grid */}
+        {/* Stats Grid */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-          <div className="bg-white rounded-xl border-2 border-primary/20 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-primary/40">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Assignments</p>
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                <span className="text-lg">📋</span>
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-primary mb-1">{stats.totalAssignments}</p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-gray-600">Across {stats.studentsWithAssignments} students</span>
-            </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-500 mb-1">Total Assignments</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.totalAssignments}</p>
+            <p className="text-xs text-gray-600 mt-1">{stats.studentsWithAssignments} students</p>
           </div>
 
-          <div className="bg-white rounded-xl border-2 border-blue-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-blue-300">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Active Assignments</p>
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
-                <span className="text-lg">🔄</span>
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-blue-600 mb-1">{stats.activeAssignments}</p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-blue-600 font-semibold">In progress</span>
-            </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-500 mb-1">Active</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.activeAssignments}</p>
           </div>
 
-          <div className="bg-white rounded-xl border-2 border-green-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-green-300">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Completed</p>
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-green-100 to-green-50 flex items-center justify-center">
-                <span className="text-lg">✅</span>
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-green-600 mb-1">{stats.completedAssignments}</p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-green-600 font-semibold">{stats.completionRate}% completion rate</span>
-            </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-500 mb-1">Completed</p>
+            <p className="text-2xl font-bold text-green-600">{stats.completedAssignments}</p>
+            <p className="text-xs text-gray-600 mt-1">{stats.completionRate}% rate</p>
           </div>
 
-          <div className="bg-white rounded-xl border-2 border-purple-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-purple-300">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Students</p>
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-100 to-purple-50 flex items-center justify-center">
-                <span className="text-lg">👥</span>
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-purple-600 mb-1">{stats.totalStudents}</p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-purple-600 font-semibold">{stats.studentsWithAssignments} with assignments</span>
-            </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <p className="text-xs text-gray-500 mb-1">Students</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+            {stats.pendingHomework > 0 && (
+              <p className="text-xs text-orange-600 mt-1">{stats.pendingHomework} pending homework</p>
+            )}
           </div>
         </section>
 
-        {/* Pending Homework Alert */}
-        {stats.pendingHomework > 0 && (
-          <div className="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="text-2xl">📝</span>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm font-medium text-orange-800">
-                    {stats.pendingHomework} homework submission{stats.pendingHomework !== 1 ? 's' : ''} pending review
-                  </p>
-                  <p className="text-xs text-orange-700 mt-1">
-                    Click on "Completed Assignments" to review and grade submissions.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setViewMode('completed')}
-                className="ml-4 px-4 py-2 text-xs font-medium text-orange-800 bg-orange-100 rounded-lg hover:bg-orange-200 transition-colors"
-              >
-                Review Now
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* View Mode Toggle */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 p-3 mb-6">
           <div className="flex gap-2">
             <button
               onClick={() => setViewMode('students')}
@@ -501,7 +381,7 @@ const AssignmentManagement: React.FC = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Students View
+              Students
             </button>
             <button
               onClick={() => setViewMode('completed')}
@@ -511,23 +391,26 @@ const AssignmentManagement: React.FC = () => {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Completed Assignments ({stats.completedAssignments})
+              Completed ({stats.completedAssignments})
+              {stats.pendingHomework > 0 && (
+                <span className="ml-2 px-2 py-0.5 bg-orange-500 text-white rounded-full text-xs">
+                  {stats.pendingHomework} pending
+                </span>
+              )}
             </button>
           </div>
         </div>
 
-        {/* Simple Search Bar */}
-        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        {/* Search Bar */}
+        <div className="bg-white rounded-lg border border-gray-200 p-3 mb-6">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search students..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-              />
-            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search students..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+            />
             <select
               value={selectedProgram}
               onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
@@ -781,7 +664,7 @@ const AssignmentManagement: React.FC = () => {
       )}
 
       {showAssignmentForm && (
-        <AssignmentForm
+        <EnhancedAssignmentForm
           studentId={selectedStudent || ''}
           assignmentId={editingAssignment}
           prefillTicket={prefillTicket}
@@ -793,7 +676,9 @@ const AssignmentManagement: React.FC = () => {
               setSelectedStudent(null);
             }
           }}
-          onSave={() => {
+          onSave={async () => {
+            // Refresh data and wait for it to complete
+            await refreshData();
             setShowAssignmentForm(false);
             setEditingAssignment(null);
             setPrefillTicket(null);

@@ -1416,12 +1416,25 @@ const loginLimiter = rateLimit({
   }
 });
 
-// Rate limiting for general API endpoints
+// Rate limiting for general API endpoints (more lenient in development)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: isDevelopment ? 10000 : 100, // Much more lenient in development (10000 vs 100 in production)
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting completely in development
+    if (isDevelopment) {
+      return true; // Skip all rate limiting in development
+    }
+    return false;
+  },
+  handler: (req, res) => {
+    res.status(429).json({ 
+      error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil(15 * 60 / 1000) // seconds
+    });
+  }
 });
 
 // Middleware to verify JWT token
@@ -1958,7 +1971,8 @@ app.get('/api/activity-logs/stats', apiLimiter, authenticateToken, async (req, r
 });
 
 // Get all users (optional auth - for backward compatibility, but passwords are always excluded)
-app.get('/api/users', apiLimiter, async (req, res) => {
+// No rate limiting for this endpoint (it's called frequently during app initialization)
+app.get('/api/users', async (req, res) => {
   try {
     // Check MongoDB connection
     if (mongoose.connection.readyState !== 1) {
@@ -4506,7 +4520,14 @@ const assignmentSchema = new mongoose.Schema({
       source: {
         suggestedFrom: { type: String, enum: ['ticket', 'manual'], default: 'manual' },
         ticketIds: [String] // Array of ticket IDs that suggested this homework
-      }
+      },
+      content: { type: String, default: '' }, // Optional text content/instructions for this item
+      attachments: [{ // Optional file attachments for this item
+        name: String,
+        url: String,
+        type: String,
+        size: Number
+      }]
     }],
     notes: { type: String, default: '' }, // General notes for all homework items
     // Qaidah-specific homework (for After School Students)
@@ -5477,17 +5498,68 @@ app.put('/api/assignments/:id', async (req, res) => {
           return res.status(400).json({ error: 'Homework item must have a range with mode' });
         }
         
-        // Validate range based on mode
+        // Validate range based on mode (flexible validation - allow partial data)
         if (item.range.mode === 'surah_ayah') {
-          if (!item.range.from?.surah || !item.range.from?.ayah || !item.range.to?.ayah) {
-            return res.status(400).json({ error: 'Surah-Ayah range requires from.surah, from.ayah, and to.ayah' });
-          }
-          if (item.range.from.ayah > item.range.to.ayah) {
-            return res.status(400).json({ error: 'From ayah must be less than or equal to to ayah' });
+          // Require at least from.surah
+          if (!item.range.from?.surah) {
+            return res.status(400).json({ error: 'Surah-Ayah range requires from.surah' });
           }
           // Validate surah number (1-114)
-          if (item.range.from.surah < 1 || item.range.from.surah > 114) {
+          const fromSurah = Number(item.range.from.surah);
+          if (isNaN(fromSurah) || fromSurah < 1 || fromSurah > 114) {
             return res.status(400).json({ error: 'Surah number must be between 1 and 114' });
+          }
+          
+          // Normalize to.surah - if not provided or invalid, default to from.surah
+          let toSurah = fromSurah;
+          if (item.range.to?.surah !== undefined && item.range.to?.surah !== null && item.range.to?.surah !== '') {
+            toSurah = Number(item.range.to.surah);
+            if (isNaN(toSurah) || toSurah < 1 || toSurah > 114) {
+              return res.status(400).json({ error: 'To surah number must be between 1 and 114' });
+            }
+            // Validate to.surah is >= from.surah
+            if (toSurah < fromSurah) {
+              return res.status(400).json({ error: 'To surah must be greater than or equal to from surah' });
+            }
+          }
+          
+          // Update the item with normalized to.surah if it was missing
+          // Ensure normalized data is saved to updateData
+          if (!item.range.to?.surah || item.range.to.surah === '' || item.range.to.surah === null || Number(item.range.to.surah) !== fromSurah) {
+            if (!item.range.to) {
+              item.range.to = {};
+            }
+            item.range.to.surah = fromSurah;
+            if (!item.range.to.surahName && item.range.from?.surahName) {
+              item.range.to.surahName = item.range.from.surahName;
+            }
+          }
+          
+          // Ensure to.surah is always set to at least from.surah
+          if (item.range.to && (!item.range.to.surah || Number(item.range.to.surah) < fromSurah)) {
+            item.range.to.surah = fromSurah;
+            if (!item.range.to.surahName && item.range.from?.surahName) {
+              item.range.to.surahName = item.range.from.surahName;
+            }
+          }
+          
+          // If both ayahs are provided, validate and auto-fix order
+          if (item.range.from.ayah && item.range.to?.ayah) {
+            const fromAyah = Number(item.range.from.ayah);
+            const toAyah = Number(item.range.to.ayah);
+            if (!isNaN(fromAyah) && !isNaN(toAyah)) {
+              // If same surah, ensure to ayah >= from ayah (auto-fix if needed)
+              if (toSurah === fromSurah && fromAyah > toAyah) {
+                // Auto-fix: set to.ayah to at least from.ayah
+                item.range.to.ayah = fromAyah;
+                if (process.env.NODE_ENV !== 'production') {
+                  console.log(`⚠️ Auto-fixed ayah order: set to.ayah from ${toAyah} to ${fromAyah} (same as from.ayah)`);
+                }
+              }
+            }
+          } else if (item.range.from.ayah && !item.range.to?.ayah && toSurah === fromSurah) {
+            // If from.ayah exists but to.ayah doesn't, and same surah, set to.ayah = from.ayah
+            item.range.to.ayah = Number(item.range.from.ayah);
           }
         } else if (item.range.mode === 'surah_surah') {
           if (!item.range.from?.surah || !item.range.to?.surah) {
@@ -5546,6 +5618,16 @@ app.put('/api/assignments/:id', async (req, res) => {
     // Ensure updatedAt is set to current date
     updateData.updatedAt = new Date();
     
+    // Log homework data for debugging
+    if (updateData.homework) {
+      console.log('📝 Updating homework:', {
+        enabled: updateData.homework.enabled,
+        itemsCount: updateData.homework.items?.length || 0,
+        items: JSON.stringify(updateData.homework.items, null, 2),
+        notes: updateData.homework.notes
+      });
+    }
+    
     const assignment = await Assignment.findByIdAndUpdate(
       req.params.id,
       updateData,
@@ -5554,6 +5636,28 @@ app.put('/api/assignments/:id', async (req, res) => {
     if (!assignment) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
+    
+    // Ensure homework is properly set
+    if (updateData.homework) {
+      assignment.homework.enabled = updateData.homework.enabled !== undefined 
+        ? updateData.homework.enabled 
+        : (assignment.homework.items && assignment.homework.items.length > 0);
+      if (updateData.homework.items) {
+        assignment.homework.items = updateData.homework.items;
+      }
+      if (updateData.homework.notes !== undefined) {
+        assignment.homework.notes = updateData.homework.notes;
+      }
+      await assignment.save();
+    }
+    
+    console.log('✅ Assignment updated:', {
+      assignmentId: assignment._id,
+      homeworkEnabled: assignment.homework?.enabled,
+      homeworkItemsCount: assignment.homework?.items?.length || 0,
+      homeworkItems: JSON.stringify(assignment.homework?.items || [], null, 2)
+    });
+    
     res.json(assignment);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -11032,6 +11136,24 @@ app.get('/', (req, res) => {
     status: 'OK', 
     message: 'Umar Academy Backend API is running',
     timestamp: new Date().toISOString()
+  });
+});
+
+// API root endpoint - provides basic API information
+app.get('/api', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Umar Academy Portal API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      users: '/api/users',
+      students: '/api/students',
+      teachers: '/api/teachers',
+      assignments: '/api/assignments',
+      tickets: '/api/tickets',
+      auth: '/api/auth/login'
+    }
   });
 });
 

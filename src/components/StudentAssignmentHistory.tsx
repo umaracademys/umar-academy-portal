@@ -21,7 +21,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   onCreateAssignment,
   onAssignHomework
 }) => {
-  const { students, getStudentAssignments, deleteAssignment, refreshData } = useBackendData();
+  const { students, getStudentAssignments, deleteAssignment, refreshDataLight } = useBackendData();
   const { user } = useAuth();
   
   const [expandedAssignments, setExpandedAssignments] = useState<Set<string>>(new Set());
@@ -34,11 +34,13 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
 
   const lastRefreshedStudentId = React.useRef<string | null>(null);
   const refreshIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   
+  // Force refresh when component mounts or studentId changes
   useEffect(() => {
     if (lastRefreshedStudentId.current !== studentId) {
       lastRefreshedStudentId.current = studentId;
-      refreshData();
+      refreshDataLight(); // Use lightweight refresh for faster loading
     }
     
     // Set up periodic refresh to catch newly created assignments
@@ -46,8 +48,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
       clearInterval(refreshIntervalRef.current);
     }
     refreshIntervalRef.current = window.setInterval(() => {
-      refreshData();
-    }, 5000); // Refresh every 5 seconds while modal is open
+      refreshDataLight(); // Use lightweight refresh for faster periodic updates
+      setRefreshKey(prev => prev + 1); // Force re-render
+    }, 10000); // Refresh every 10 seconds (reduced frequency for better performance)
     
     return () => {
       if (refreshIntervalRef.current) {
@@ -55,24 +58,49 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
         refreshIntervalRef.current = null;
       }
     };
-  }, [studentId, refreshData]);
+  }, [studentId, refreshDataLight]);
+  
+  // Listen for storage events (when assignment is updated in another tab/component)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      refreshDataLight(); // Use lightweight refresh for faster updates
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom refresh event
+    window.addEventListener('assignmentUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('assignmentUpdated', handleStorageChange);
+    };
+  }, [refreshData]);
 
   const student = students.find(s => s.id === studentId);
   const assignments = getStudentAssignments(studentId);
   
   // Debug logging
   useEffect(() => {
-    if (import.meta.env.DEV && studentId) {
+    if (studentId) {
       console.log('🔍 StudentAssignmentHistory for student:', {
         studentId: studentId,
         studentName: student?.fullName,
         assignmentsFound: assignments.length,
         assignmentIds: assignments.map(a => a.id),
         assignmentStatuses: assignments.map(a => a.status),
+        homeworkDetails: assignments.map(a => ({
+          id: a.id,
+          enabled: a.homework?.enabled,
+          itemsCount: a.homework?.items?.length || 0,
+          items: a.homework?.items,
+          notes: a.homework?.notes,
+          willShow: a.homework?.enabled || (a.homework?.items && a.homework.items.length > 0)
+        })),
         sabqiCounts: assignments.map(a => a.classwork?.sabqi?.length || 0)
       });
     }
-  }, [studentId, assignments, student]);
+  }, [studentId, assignments, student, refreshKey]);
 
   useEffect(() => {
     if (assignments.length > 0 && expandedAssignments.size === 0) {
@@ -130,7 +158,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
     try {
       await deleteAssignment(assignmentId);
       alert('Assignment deleted successfully!');
-      await refreshData();
+      await refreshDataLight(); // Use lightweight refresh for faster update
       setExpandedAssignments(prev => {
         const newSet = new Set(prev);
         newSet.delete(assignmentId);
@@ -233,7 +261,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
       alert('Homework graded successfully!');
       setGradingAssignment(null);
       setGradeData({ feedback: '', grade: '' });
-      await refreshData();
+      await refreshDataLight(); // Use lightweight refresh for faster update
     } catch (error) {
       console.error('Error grading homework:', error);
       alert(`Failed to grade homework: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -257,6 +285,16 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  await refreshDataLight(); // Use lightweight refresh for faster update
+                  setRefreshKey(prev => prev + 1);
+                }}
+                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                title="Refresh assignments"
+              >
+                🔄 Refresh
+              </button>
               {onCreateAssignment && (
                 <button
                   onClick={onCreateAssignment}
@@ -597,11 +635,14 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                               </div>
 
                               {/* Homework */}
-                              {assignment.homework?.enabled && (
+                              {(assignment.homework?.enabled || (assignment.homework?.items && assignment.homework.items.length > 0)) && (
                                 <div className="bg-white rounded border border-gray-200 p-3">
                                   <h4 className="text-sm font-semibold text-gray-900 mb-2">Homework</h4>
                                   <HomeworkDisplay 
-                                    homework={assignment.homework} 
+                                    homework={{
+                                      ...assignment.homework,
+                                      enabled: assignment.homework?.enabled || (assignment.homework?.items && assignment.homework.items.length > 0)
+                                    }} 
                                     showSubmission={true}
                                   />
 

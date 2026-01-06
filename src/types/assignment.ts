@@ -62,6 +62,13 @@ export interface HomeworkItem {
     suggestedFrom: 'ticket' | 'manual';
     ticketIds: string[];
   };
+  content?: string; // Optional text content for this homework item
+  attachments?: Array<{
+    name: string;
+    url: string;
+    type: string;
+    size?: number;
+  }>; // Optional file attachments for this homework item
 }
 
 export interface AssignmentHomework {

@@ -1,9 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { MushafMistake } from '../types/mushaf';
 import { fetchPageLines, getQuranChapters, Chapter } from "../services/quranApi";
 import { uploadMistakeAudio } from "../services/audioService";
 import { FALLBACK_CHAPTERS } from "../data/fallbackChapters";
 import { ensureQpcV1Font, getAllQpcV1Words, getQpcV1Layout } from "../services/qpcV1Assets";
+import { useMushafViewMode } from '../hooks/useMushafViewMode';
+import { useMobileGestures } from '../hooks/useMobileGestures';
+import { useMistakeCounts } from '../hooks/useMistakeCounts';
+import { useMushafZoom } from '../hooks/useMushafZoom';
+import { MistakeCounters } from './MistakeCounters';
+import { TajweedExplanationCard } from './TajweedExplanationCard';
+import { MobileMistakeBottomSheet } from './MobileMistakeBottomSheet';
+import { MushafZoomControls } from './MushafZoomControls';
+import { isTajweedType } from '../utils/tajweedExplanations';
 
 export interface AyahPosition {
   surah: number;
@@ -62,6 +71,11 @@ interface InteractiveMushafProps {
   showSurahIndexDefault?: boolean; // Default state for surah index visibility
   onVerseSelect?: (surah: number, ayah: number, page: number) => void; // Callback when a verse is clicked for question selection
   selectedVerses?: Array<{ surah: number; ayah: number }>; // Array of verses that are selected as questions
+  focusMode?: boolean; // Focus Mode: hide all UI tools, expand Mushaf
+  toolsHidden?: boolean; // Hide Tools: disable marking interactions but keep mistakes visible
+  zoom?: number; // Zoom level (0.8 to 1.4)
+  onZoomChange?: (zoom: number) => void; // Callback when zoom changes
+  enableZoom?: boolean; // Enable zoom controls
 }
 
 interface MistakeModalProps {
@@ -83,7 +97,7 @@ interface Mistake {
 const mistakeTypes = [
   "Mistake",
   "Atkee",
-  "Tajweed Mistake",
+  "Tajweed Error",
 ];
 
 // Letter-level mistake types that require letter selection
@@ -185,15 +199,15 @@ const splitArabicText = (text: string): string[] => {
 const getMistakeTypeLabel = (type: string): string => {
   const typeMap: Record<string, string> = {
     "memory": "Mistake",
-    "madd": "Tajweed Mistake",
-    "ikhfa": "Tajweed Mistake",
+    "madd": "Tajweed Error",
+    "ikhfa": "Tajweed Error",
     "holding": "Mistake",
-    "tech": "Tajweed Mistake",
+    "tech": "Tajweed Error",
     "letter": "Mistake",
-    "heavy_letter": "Tajweed Mistake",
-    "no_rounding_lips": "Tajweed Mistake",
-    "heavy_h": "Tajweed Mistake",
-    "light_l": "Tajweed Mistake",
+    "heavy_letter": "Tajweed Error",
+    "no_rounding_lips": "Tajweed Error",
+    "heavy_h": "Tajweed Error",
+    "light_l": "Tajweed Error",
     "atkee": "Atkee",
     "other": "Mistake",
   };
@@ -582,8 +596,8 @@ export const MushafPage: React.FC<{
 
 export const WordByWordPage: React.FC<{
   pageNumber: number;
-  onWordClick?: (word: Word) => void;
-  onLetterClick?: (word: Word, letterIndex: number) => void; // New: handle letter clicks
+  onWordClick?: (word: Word, event?: React.MouseEvent | React.TouchEvent) => void;
+  onLetterClick?: (word: Word, letterIndex: number, event?: React.MouseEvent | React.TouchEvent) => void; // New: handle letter clicks
   mistakes?: MushafMistake[]; // Current mistakes
   historicalMistakes?: MushafMistake[]; // Historical mistakes from student's personal Mushaf
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
@@ -591,6 +605,8 @@ export const WordByWordPage: React.FC<{
   onMistakesWithWords?: (mistakesWithWords: Array<MushafMistake & { wordText?: string }>) => void;
   onPageChange?: (page: number) => void; // For page navigation
   selectedVerses?: Array<{ surah: number; ayah: number }>; // Verses selected as questions
+  isMobile?: boolean; // Mobile device flag
+  getMistakeClass?: (mistake: MushafMistake | undefined, isHistorical: boolean, isMobile: boolean) => string; // Custom mistake class function
 }> = ({
   pageNumber,
   onWordClick,
@@ -601,7 +617,9 @@ export const WordByWordPage: React.FC<{
   readOnly = false,
   onMistakesWithWords,
   onPageChange,
-  selectedVerses = [] as Array<{ surah: number; ayah: number }> as Array<{ surah: number; ayah: number }>
+  selectedVerses = [] as Array<{ surah: number; ayah: number }> as Array<{ surah: number; ayah: number }>,
+  isMobile = false,
+  getMistakeClass: customGetMistakeClass,
 }) => {
   const mistakes = React.useMemo(() => mistakesProp as MushafMistake[], [mistakesProp]);
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
@@ -1065,31 +1083,68 @@ export const WordByWordPage: React.FC<{
     return { mistake: undefined, isHistorical: false };
   };
 
-  // Function to get CSS class for mistake highlighting (Mushaf-style colors)
-  const getMistakeClass = (mistake: MushafMistake | undefined, isHistorical: boolean = false): string => {
+  // Function to get CSS class for mistake highlighting (STRICT color rules)
+  // Mistake: Red highlight
+  // Atkee: Yellow highlight
+  // Tajweed: Gray border ONLY (no background fill, NO red color)
+  const getMistakeClass = (mistake: MushafMistake | undefined, isHistorical: boolean = false, isMobile: boolean = false): string => {
     if (!mistake) {
       return "hover:bg-yellow-100 hover:shadow-sm";
     }
 
-    const isTajweed = ["madd", "ikhfa", "holding", "tech"].includes(mistake.type);
+    const isMobileDevice = isMobile || (typeof window !== 'undefined' && window.innerWidth <= 768);
+    
+    // Check Tajweed FIRST - before any other checks
+    const mistakeType = String(mistake.type || '').toLowerCase().trim();
+    const isTajweed = isTajweedType(mistakeType) || 
+                      ['madd', 'ikhfa', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(mistakeType);
+    const isAtkee = mistakeType === 'atkee';
+    const isMistake = !isTajweed && !isAtkee;
+
+    // TAJWEED ERRORS: Always use gray border, NO red color - Check FIRST
+    if (isTajweed) {
+      if (isHistorical) {
+        return "border-2 border-gray-400 text-gray-700 bg-transparent";
+      }
+      // Current Tajweed errors: Gray border ONLY, no background, no red
+      return "border-2 border-gray-600 text-gray-800 font-semibold bg-transparent";
+    }
 
     if (isHistorical) {
-      if (mistake.type === "memory") {
-        return "bg-red-100/60 hover:bg-red-200/60 border border-dashed border-red-400 text-red-800 shadow-sm";
+      if (isMistake) {
+        // Historical mistakes: red with reduced opacity
+        return isMobileDevice
+          ? "border-b-2 border-red-400 text-red-800"
+          : "bg-red-100/60 hover:bg-red-200/60 border border-dashed border-red-400 text-red-800 shadow-sm";
       }
-      if (isTajweed) {
-        return "bg-yellow-100/60 hover:bg-yellow-200/60 border border-dashed border-yellow-400 text-yellow-800 shadow-sm";
+      if (isAtkee) {
+        // Historical atkees: yellow with reduced opacity
+        return isMobileDevice
+          ? "border-b-2 border-yellow-400 text-yellow-800"
+          : "bg-yellow-100/60 hover:bg-yellow-200/60 border border-dashed border-yellow-400 text-yellow-800 shadow-sm";
       }
-      return "bg-gray-200/60 hover:bg-gray-300/60 border border-dashed border-gray-400 text-gray-700 shadow-sm";
+      return isMobileDevice
+        ? "border-b border-gray-400 text-gray-700"
+        : "bg-gray-200/60 hover:bg-gray-300/60 border border-dashed border-gray-400 text-gray-700 shadow-sm";
     }
 
-    if (mistake.type === "memory") {
-      return "bg-red-200 hover:bg-red-300 border border-red-500 text-red-900 font-semibold shadow-sm";
+    // Current mistakes
+    if (isMistake) {
+      // Mistake: Red highlight
+      return isMobileDevice
+        ? "bg-red-200 border-b-2 border-red-500 text-red-900 font-semibold"
+        : "bg-red-200 hover:bg-red-300 border border-red-500 text-red-900 font-semibold shadow-sm";
     }
-    if (isTajweed) {
-      return "bg-yellow-200 hover:bg-yellow-300 border border-yellow-500 text-yellow-900 font-semibold shadow-sm";
+    if (isAtkee) {
+      // Atkee: Yellow highlight
+      return isMobileDevice
+        ? "bg-yellow-200 border-b-2 border-yellow-500 text-yellow-900 font-semibold"
+        : "bg-yellow-200 hover:bg-yellow-300 border border-yellow-500 text-yellow-900 font-semibold shadow-sm";
     }
-    return "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
+    
+    return isMobileDevice
+      ? "bg-gray-200 border-b border-gray-500 text-gray-800"
+      : "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
   };
   
   // Function to get remark text for mistake types
@@ -1442,7 +1497,19 @@ export const WordByWordPage: React.FC<{
                 >
                   {lineWords.map((w, idx) => {
                     const { mistake: wordMistake, isHistorical: isWordHistorical } = getWordMistake(w);
-                    const wordMistakeClass = getMistakeClass(wordMistake, isWordHistorical);
+                    const getMistakeClassFn = customGetMistakeClass || getMistakeClass;
+                    const wordMistakeClass = getMistakeClassFn(wordMistake, isWordHistorical, isMobile);
+                    
+                    // Force gray styling for Tajweed errors with inline styles
+                    const isTajweedError = wordMistake && (isTajweedType(String(wordMistake.type || '').toLowerCase().trim()) || 
+                      ['madd', 'ikhfa', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(String(wordMistake.type || '').toLowerCase().trim()));
+                    const tajweedStyle = isTajweedError ? {
+                      border: '2px solid #4b5563', // gray-600
+                      borderColor: isWordHistorical ? '#9ca3af' : '#4b5563', // gray-400 for historical, gray-600 for current
+                      color: isWordHistorical ? '#374151' : '#1f2937', // gray-700 for historical, gray-800 for current
+                      backgroundColor: 'transparent',
+                    } : {};
+                    
                     // Check if this verse is selected as a question
                     const isVerseSelected = selectedVerses.some(v => v.surah === w.surah && v.ayah === w.ayah);
                     const verseSelectedClass = isVerseSelected ? 'ring-2 ring-blue-400 ring-offset-1 bg-blue-50/50' : '';
@@ -1518,6 +1585,7 @@ export const WordByWordPage: React.FC<{
                             }
                           }}
                           className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
+                          style={tajweedStyle}
                           dir="rtl"
                           title={
                             isVerseSelected 
@@ -1535,13 +1603,25 @@ export const WordByWordPage: React.FC<{
                             fontSize: 'inherit',
                             lineHeight: 'inherit',
                             borderRadius: '0',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            ...tajweedStyle // Override with gray for Tajweed
                           }}
                         >
                           {/* Render word as individual letters for letter-level interaction */}
                           {letters.map((letter, letterIdx) => {
                             const { mistake: letterMistake, isHistorical: isLetterHistorical } = getLetterMistake(w, letterIdx);
-                            const letterMistakeClass = letterMistake ? getMistakeClass(letterMistake, isLetterHistorical) : '';
+                            const getMistakeClassFn = customGetMistakeClass || getMistakeClass;
+                            const letterMistakeClass = letterMistake ? getMistakeClassFn(letterMistake, isLetterHistorical, isMobile) : '';
+                            
+                            // Force gray styling for Tajweed errors with inline styles
+                            const isLetterTajweed = letterMistake && (isTajweedType(String(letterMistake.type || '').toLowerCase().trim()) || 
+                              ['madd', 'ikhfa', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(String(letterMistake.type || '').toLowerCase().trim()));
+                            const letterTajweedStyle = isLetterTajweed ? {
+                              border: '2px solid #4b5563', // gray-600
+                              borderColor: isLetterHistorical ? '#9ca3af' : '#4b5563', // gray-400 for historical, gray-600 for current
+                              color: isLetterHistorical ? '#374151' : '#1f2937', // gray-700 for historical, gray-800 for current
+                              backgroundColor: 'transparent',
+                            } : {};
                             
                             return (
                               <span
@@ -1550,9 +1630,9 @@ export const WordByWordPage: React.FC<{
                                 onClick={(e) => {
                                   e.stopPropagation(); // Prevent word click
                                   if (!readOnly && onLetterClick) {
-                                    onLetterClick(w, letterIdx);
+                                    onLetterClick(w, letterIdx, e);
                                   } else {
-                                    onWordClick?.(w);
+                                    onWordClick?.(w, e);
                                   }
                                 }}
                                 className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-all duration-200 inline-block`}
@@ -1563,6 +1643,7 @@ export const WordByWordPage: React.FC<{
                                   fontFamily: fontFamily,
                                   fontSize: 'inherit',
                                   lineHeight: 'inherit',
+                                  ...letterTajweedStyle, // Override with gray for Tajweed
                                 }}
                                 title={
                                   letterMistake
@@ -1718,7 +1799,12 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   showHistorical: showHistoricalProp = true,
   showSurahIndexDefault = false, // Default to hidden unless specified
   onVerseSelect,
-  selectedVerses = [] as Array<{ surah: number; ayah: number }>
+  selectedVerses = [] as Array<{ surah: number; ayah: number }>,
+  focusMode: focusModeProp,
+  toolsHidden: toolsHiddenProp,
+  zoom: zoomProp,
+  onZoomChange,
+  enableZoom = false,
 }) => {
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
@@ -1729,6 +1815,143 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [showHistorical, setShowHistorical] = useState(showHistoricalProp);
   const [isIndexMinimized, setIsIndexMinimized] = useState(false);
+  const [indexTab, setIndexTab] = useState<'surah' | 'juz'>('surah'); // Tab for Surah/Juz index
+  const [tajweedExplanation, setTajweedExplanation] = useState<{ type: string; position?: { x: number; y: number } } | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+
+  // View mode hooks
+  const { focusMode, toolsHidden, toggleFocusMode, toggleToolsHidden } = useMushafViewMode(focusModeProp, toolsHiddenProp);
+  
+  // Mistake counts
+  const mistakeCounts = useMistakeCounts(mistakes, historicalMistakes, showHistorical);
+
+  // Zoom hook
+  const mushafZoom = useMushafZoom(zoomProp, onZoomChange);
+  const effectiveZoom = enableZoom ? mushafZoom.zoom : 1.0;
+
+  // Pinch-to-zoom state
+  const pinchStartZoomRef = useRef<number>(1.0);
+  const pinchStartDistanceRef = useRef<number>(0);
+
+  // Mobile gestures
+  const mobileGestures = useMobileGestures({
+    onSwipeLeft: () => onPageChange(Math.min(604, currentPage + 1)),
+    onSwipeRight: () => onPageChange(Math.max(1, currentPage - 1)),
+    onLongPress: (e) => {
+      // Long-press for mistake marking (if not read-only and not tools hidden)
+      if (!readOnly && mode === 'marking' && !toolsHidden) {
+        // This will be handled by word/letter click handlers
+      }
+    },
+    onDoubleTap: () => {
+      // Double-tap to reset zoom on mobile (if zoom is enabled)
+      if (isMobile && enableZoom && mushafZoom.zoom !== 1.0) {
+        mushafZoom.resetZoom();
+      } else if (isMobile && focusModeProp === undefined) {
+        // Otherwise toggle Focus Mode
+        toggleFocusMode();
+      }
+    },
+    onPinchStart: (e) => {
+      if (enableZoom && e.touches.length === 2) {
+        const distance = Math.sqrt(
+          Math.pow(e.touches[0].clientX - e.touches[1].clientX, 2) +
+          Math.pow(e.touches[0].clientY - e.touches[1].clientY, 2)
+        );
+        pinchStartDistanceRef.current = distance;
+        pinchStartZoomRef.current = mushafZoom.zoom;
+      }
+    },
+    onPinchMove: (e, scale) => {
+      if (enableZoom && e.touches.length === 2 && pinchStartDistanceRef.current > 0) {
+        const currentDistance = Math.sqrt(
+          Math.pow(e.touches[0].clientX - e.touches[1].clientX, 2) +
+          Math.pow(e.touches[0].clientY - e.touches[1].clientY, 2)
+        );
+        const newScale = currentDistance / pinchStartDistanceRef.current;
+        const newZoom = Math.max(0.8, Math.min(1.4, pinchStartZoomRef.current * newScale));
+        mushafZoom.setZoom(newZoom);
+      }
+    },
+    onPinchEnd: () => {
+      if (enableZoom) {
+        pinchStartDistanceRef.current = 0;
+      }
+    },
+  });
+
+  // Detect mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Function to get CSS class for mistake highlighting (STRICT color rules)
+  // Mistake: Red highlight
+  // Atkee: Yellow highlight
+  // Tajweed: Gray border ONLY (no background fill, NO red color)
+  const getMistakeClassForPage = useCallback((mistake: MushafMistake | undefined, isHistorical: boolean = false, isMobileDevice: boolean = false): string => {
+    if (!mistake) {
+      return "hover:bg-yellow-100 hover:shadow-sm";
+    }
+
+    const isMobileDeviceCheck = isMobileDevice || isMobile;
+    
+    // Check Tajweed FIRST - before any other checks
+    const mistakeType = String(mistake.type || '').toLowerCase().trim();
+    const isTajweed = isTajweedType(mistakeType) || 
+                      ['madd', 'ikhfa', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(mistakeType);
+    const isAtkee = mistakeType === 'atkee';
+    const isMistake = !isTajweed && !isAtkee;
+
+    // TAJWEED ERRORS: Always use gray border, NO red color - Check FIRST
+    if (isTajweed) {
+      if (isHistorical) {
+        return "border-2 border-gray-400 text-gray-700 bg-transparent";
+      }
+      // Current Tajweed errors: Gray border ONLY, no background, no red
+      return "border-2 border-gray-600 text-gray-800 font-semibold bg-transparent";
+    }
+
+    if (isHistorical) {
+      if (isMistake) {
+        // Historical mistakes: red with reduced opacity
+        return isMobileDeviceCheck
+          ? "border-b-2 border-red-400 text-red-800"
+          : "bg-red-100/60 hover:bg-red-200/60 border border-dashed border-red-400 text-red-800 shadow-sm";
+      }
+      if (isAtkee) {
+        // Historical atkees: yellow with reduced opacity
+        return isMobileDeviceCheck
+          ? "border-b-2 border-yellow-400 text-yellow-800"
+          : "bg-yellow-100/60 hover:bg-yellow-200/60 border border-dashed border-yellow-400 text-yellow-800 shadow-sm";
+      }
+      return isMobileDeviceCheck
+        ? "border-b border-gray-400 text-gray-700"
+        : "bg-gray-200/60 hover:bg-gray-300/60 border border-dashed border-gray-400 text-gray-700 shadow-sm";
+    }
+
+    // Current mistakes
+    if (isMistake) {
+      // Mistake: Red highlight
+      return isMobileDeviceCheck
+        ? "bg-red-200 border-b-2 border-red-500 text-red-900 font-semibold"
+        : "bg-red-200 hover:bg-red-300 border border-red-500 text-red-900 font-semibold shadow-sm";
+    }
+    if (isAtkee) {
+      // Atkee: Yellow highlight
+      return isMobileDeviceCheck
+        ? "bg-yellow-200 border-b-2 border-yellow-500 text-yellow-900 font-semibold"
+        : "bg-yellow-200 hover:bg-yellow-300 border border-yellow-500 text-yellow-900 font-semibold shadow-sm";
+    }
+    
+    return isMobileDeviceCheck
+      ? "bg-gray-200 border-b border-gray-500 text-gray-800"
+      : "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
+  }, [isMobile]);
 
   // Sync showSurahIndex with prop changes
   useEffect(() => {
@@ -1784,7 +2007,28 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     setLocalMistakes(convertedMistakes);
   }, [mistakesWithWords, currentPage]);
 
-  const handleWordClick = (word: Word) => {
+  const handleWordClick = (word: Word, event?: React.MouseEvent | React.TouchEvent) => {
+    // Respect toolsHidden: disable marking interactions
+    if (toolsHidden) {
+      // Check if this word has a tajweed error and show explanation
+      const wordMistake = mistakes.find(m => 
+        m.page === currentPage &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        isTajweedType(m.type)
+      );
+      if (wordMistake && event) {
+        const position = event instanceof MouseEvent
+          ? { x: event.clientX, y: event.clientY }
+          : event instanceof TouchEvent && event.touches[0]
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+          : undefined;
+        setTajweedExplanation({ type: wordMistake.type, position });
+      }
+      return;
+    }
+
     if (!readOnly && mode === 'marking') {
       // If onVerseSelect is provided, call it for verse selection (testing mode)
       if (onVerseSelect) {
@@ -1794,13 +2038,70 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       // Otherwise, handle as mistake marking
       setSelectedWord(word);
       setSelectedLetterIndex(undefined); // Reset letter selection for word-level mistakes
+    } else if (readOnly || mode === 'viewing') {
+      // In viewing mode, show tajweed explanation if applicable
+      const wordMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
+        m.page === currentPage &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        isTajweedType(m.type)
+      );
+      if (wordMistake && event) {
+        const position = event instanceof MouseEvent
+          ? { x: event.clientX, y: event.clientY }
+          : event instanceof TouchEvent && event.touches[0]
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+          : undefined;
+        setTajweedExplanation({ type: wordMistake.type, position });
+      }
     }
   };
 
-  const handleLetterClick = (word: Word, letterIndex: number) => {
+  const handleLetterClick = (word: Word, letterIndex: number, event?: React.MouseEvent | React.TouchEvent) => {
+    // Respect toolsHidden: disable marking interactions
+    if (toolsHidden) {
+      // Check if this letter has a tajweed error and show explanation
+      const letterMistake = mistakes.find(m => 
+        m.page === currentPage &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        m.letterIndex === letterIndex &&
+        isTajweedType(m.type)
+      );
+      if (letterMistake && event) {
+        const position = event instanceof MouseEvent
+          ? { x: event.clientX, y: event.clientY }
+          : event instanceof TouchEvent && event.touches[0]
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+          : undefined;
+        setTajweedExplanation({ type: letterMistake.type, position });
+      }
+      return;
+    }
+
     if (!readOnly && mode === 'marking') {
       setSelectedWord(word);
       setSelectedLetterIndex(letterIndex);
+    } else if (readOnly || mode === 'viewing') {
+      // In viewing mode, show tajweed explanation if applicable
+      const letterMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
+        m.page === currentPage &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        m.letterIndex === letterIndex &&
+        isTajweedType(m.type)
+      );
+      if (letterMistake && event) {
+        const position = event instanceof MouseEvent
+          ? { x: event.clientX, y: event.clientY }
+          : event instanceof TouchEvent && event.touches[0]
+          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+          : undefined;
+        setTajweedExplanation({ type: letterMistake.type, position });
+      }
     }
   };
 
@@ -1808,9 +2109,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     // Map the mistake type string to the MistakeType enum
     const typeMap: Record<string, 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other' | 'letter' | 'heavy_letter' | 'no_rounding_lips' | 'heavy_h' | 'light_l' | 'atkee'> = {
       "Memory Mistake": "memory",
-      "Mad (Elongation) Mistake": "madd",
-      "Ikhfa Mistake": "ikhfa",
-      "Ghunna Mistake": "tech",
+      "Mad (Elongation) Error": "madd",
+      "Ikhfa Error": "ikhfa",
+      "Ghunna Error": "tech",
       "Holding/Fluency Mistake": "holding",
       "Letter Mistake": "letter",
       "Heavy Letter": "heavy_letter",
@@ -1951,66 +2252,134 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
   const currentJuz = getJuzFromPage(currentPage);
 
+  // Navigate to Juz's first page
+  const navigateToJuz = (juz: number) => {
+    // Approximate page numbers for each Juz (each Juz is roughly 20 pages)
+    const juzPageMap: Record<number, number> = {
+      1: 1, 2: 22, 3: 42, 4: 62, 5: 82, 6: 102, 7: 122, 8: 142, 9: 162, 10: 182,
+      11: 202, 12: 222, 13: 242, 14: 262, 15: 282, 16: 302, 17: 322, 18: 342, 19: 362, 20: 382,
+      21: 402, 22: 422, 23: 442, 24: 462, 25: 482, 26: 502, 27: 522, 28: 542, 29: 562, 30: 582
+    };
+    const page = juzPageMap[juz] || 1;
+    onPageChange(page);
+    setShowSurahIndex(false);
+  };
+
   return (
-    <div className="relative w-full" dir="rtl">
-      {/* Compact Controls Bar - Only show controls, no duplicate navigation - Mobile responsive */}
-      <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap" dir="ltr">
-        <div className="flex items-center gap-2">
-          {/* Historical Mistakes Toggle */}
-          {historicalMistakes.length > 0 && (
+    <div 
+      className="relative w-full" 
+      dir="rtl"
+      {...mobileGestures}
+      style={{
+        fontSize: focusMode ? '1.05em' : undefined, // Increase font size by 5-8% in Focus Mode
+        touchAction: enableZoom ? 'pan-x pan-y pinch-zoom' : undefined, // Enable pinch-to-zoom
+      }}
+    >
+      {/* Compact Controls Bar - Hidden in Focus Mode */}
+      {!focusMode && (
+        <div className="mb-2 sm:mb-4 flex items-center justify-between gap-2 sm:gap-3 flex-wrap" dir="ltr">
+          <div className="flex items-center gap-2">
+            {/* Focus Mode Toggle - Desktop only */}
+            {!isMobile && (
+              <button
+                onClick={toggleFocusMode}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm bg-purple-100 text-purple-700 hover:bg-purple-200"
+                title="Toggle Focus Mode"
+                aria-label="Toggle Focus Mode"
+              >
+                <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                Focus
+              </button>
+            )}
+            {/* Hide Tools Toggle */}
+            {!readOnly && mode === 'marking' && (
+              <button
+                onClick={toggleToolsHidden}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm ${
+                  toolsHidden 
+                    ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title={toolsHidden ? 'Show tools' : 'Hide tools (Teacher Listening Mode)'}
+                aria-label={toolsHidden ? 'Show tools' : 'Hide tools'}
+              >
+                {toolsHidden ? (
+                  <>
+                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Tools Hidden
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.29 3.29m0 0L3 15.29m3.29-12L12 8.29" />
+                    </svg>
+                    Hide Tools
+                  </>
+                )}
+              </button>
+            )}
+            {/* Historical Mistakes Toggle */}
+            {historicalMistakes.length > 0 && (
+              <button
+                onClick={() => setShowHistorical(!showHistorical)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                  showHistorical 
+                    ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+                title={showHistorical ? 'Hide historical mistakes' : 'Show historical mistakes'}
+              >
+                <span className="hidden sm:inline">Historical </span>
+                ({historicalMistakes.length})
+              </button>
+            )}
+            {/* Surah Index Toggle Button */}
             <button
-              onClick={() => setShowHistorical(!showHistorical)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                showHistorical 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' 
+              onClick={() => setShowSurahIndex(!showSurahIndex)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm ${
+                showSurahIndex 
+                  ? 'bg-green-600 text-white hover:bg-green-700' 
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
-              title={showHistorical ? 'Hide historical mistakes' : 'Show historical mistakes'}
+              title={showSurahIndex ? 'Hide surah index' : 'Show surah index'}
+              dir="rtl"
             >
-              <span className="hidden sm:inline">Historical </span>
-              ({historicalMistakes.length})
+              <span className="hidden sm:inline">Surah </span>Index
+              {showSurahIndex && chapters.length > 0 && (
+                <span className="mr-1 text-[10px] opacity-75" dir="ltr">
+                  ({chapters.length})
+                </span>
+              )}
+            </button>
+          </div>
+          
+          {/* Back button if provided */}
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" 
+              title="Back"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+              Back
             </button>
           )}
-          {/* Surah Index Toggle Button - Always visible */}
-          <button
-            onClick={() => setShowSurahIndex(!showSurahIndex)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors shadow-sm ${
-              showSurahIndex 
-                ? 'bg-green-600 text-white hover:bg-green-700' 
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-            title={showSurahIndex ? 'Hide surah index' : 'Show surah index'}
-            dir="rtl"
-          >
-            <span className="hidden sm:inline">Surah </span>Index
-            {showSurahIndex && chapters.length > 0 && (
-              <span className="mr-1 text-[10px] opacity-75" dir="ltr">
-                ({chapters.length})
-              </span>
-            )}
-          </button>
         </div>
-        
-        {/* Back button if provided */}
-        {onBack && (
-          <button 
-            onClick={onBack}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors" 
-            title="Back"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            Back
-          </button>
-        )}
-      </div>
+      )}
 
 
 
       <div className="relative flex flex-col lg:flex-row gap-2 sm:gap-4 w-full" dir="rtl">
-        {/* Surah Index Sidebar - Sidebar on all screens, doesn't cover entire page */}
-        {showSurahIndex && (
+        {/* Surah Index Sidebar - Hidden in Focus Mode */}
+        {showSurahIndex && !focusMode && (
           <>
             {/* Mobile Overlay - Lighter, allows content to show */}
             <div 
@@ -2069,34 +2438,70 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                   </div>
                 </div>
                 {!isIndexMinimized && (
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="ابحث عن سورة..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full px-3 py-2.5 pr-9 text-sm border-2 border-primary/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 bg-white placeholder:text-gray-400 transition-all"
-                      dir="rtl"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
+                  <>
+                    {/* Tab Toggle: Surah / Juz */}
+                    <div className="flex gap-2 mb-3" dir="ltr">
+                      <button
+                        onClick={() => {
+                          setIndexTab('surah');
+                          setSearchTerm('');
+                        }}
+                        className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                          indexTab === 'surah'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Surah
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIndexTab('juz');
+                          setSearchTerm('');
+                        }}
+                        className={`flex-1 px-3 py-2 text-xs font-semibold rounded-lg transition-colors ${
+                          indexTab === 'juz'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        Juz
+                      </button>
                     </div>
-                  </div>
+                    {/* Search - Only for Surah */}
+                    {indexTab === 'surah' && (
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="ابحث عن سورة..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="w-full px-3 py-2.5 pr-9 text-sm border-2 border-primary/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 bg-white placeholder:text-gray-400 transition-all"
+                          dir="rtl"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               {!isIndexMinimized && (
                 <div className="overflow-y-auto pr-1 flex-1 custom-scrollbar">
-                  {filteredChapters.length === 0 ? (
-                    <div className="p-6 text-center" dir="rtl">
-                      <div className="text-3xl mb-2">🔍</div>
-                      <p className="text-sm text-gray-500 font-semibold">لم يتم العثور على سورة</p>
-                      <p className="text-xs text-gray-400 mt-1">No surahs found</p>
-                    </div>
-                  ) : (
-                    <div className="p-2 space-y-1">
-                      {filteredChapters.map((surah) => (
+                  {indexTab === 'surah' ? (
+                    <>
+                      {filteredChapters.length === 0 ? (
+                        <div className="p-6 text-center" dir="rtl">
+                          <div className="text-3xl mb-2">🔍</div>
+                          <p className="text-sm text-gray-500 font-semibold">لم يتم العثور على سورة</p>
+                          <p className="text-xs text-gray-400 mt-1">No surahs found</p>
+                        </div>
+                      ) : (
+                        <div className="p-2 space-y-1">
+                          {filteredChapters.map((surah) => (
                         <button
                           key={surah.id}
                           onClick={() => navigateToSurah(surah)}
@@ -2154,6 +2559,28 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                           </div>
                         </button>
                       ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Juz Index */
+                    <div className="p-2">
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => (
+                          <button
+                            key={juz}
+                            onClick={() => navigateToJuz(juz)}
+                            className={`px-3 py-2 text-sm font-bold rounded-lg transition-all ${
+                              currentJuz === juz
+                                ? 'bg-primary text-white shadow-md scale-105'
+                                : 'bg-gray-100 text-gray-700 hover:bg-primary/20 hover:text-primary hover:shadow-sm'
+                            }`}
+                            title={`Juz ${juz}`}
+                          >
+                            {juz}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -2164,10 +2591,28 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
         {/* Mushaf Content - Always visible alongside index */}
         <div className={`flex-1 min-w-0 overflow-hidden flex justify-center items-start transition-all duration-300 ${
-          showSurahIndex && !isIndexMinimized ? 'lg:ml-4' : ''
-        }`}>
+          showSurahIndex && !isIndexMinimized && !focusMode ? 'lg:ml-4' : ''
+        } ${focusMode ? 'w-full' : ''}`}>
 
-          <div className="w-full max-w-7xl flex justify-center">
+          {/* Zoom Controls - Only show if enabled and not in Focus Mode */}
+          {enableZoom && !focusMode && (
+            <div className="absolute top-4 left-4 z-30">
+              <MushafZoomControls
+                zoom={effectiveZoom}
+                onZoomIn={mushafZoom.zoomIn}
+                onZoomOut={mushafZoom.zoomOut}
+                onReset={mushafZoom.resetZoom}
+              />
+            </div>
+          )}
+
+          <div 
+            className={`w-full ${focusMode ? 'max-w-full' : 'max-w-7xl'} flex justify-center transition-transform duration-200`}
+            style={{
+              transform: enableZoom ? `scale(${effectiveZoom})` : undefined,
+              transformOrigin: 'center top',
+            }}
+          >
             <WordByWordPage
               pageNumber={currentPage}
               onWordClick={handleWordClick}
@@ -2175,22 +2620,50 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               mistakes={mistakes}
               historicalMistakes={historicalMistakes}
               showHistorical={showHistorical}
-              readOnly={readOnly || !!onVerseSelect} // Read-only if verse selection mode
+              readOnly={readOnly || !!onVerseSelect || toolsHidden} // Read-only if verse selection mode or tools hidden
               onMistakesWithWords={setMistakesWithWords}
               onPageChange={onPageChange}
               selectedVerses={selectedVerses}
+              isMobile={isMobile}
+              getMistakeClass={getMistakeClassForPage}
             />
           </div>
 
-          <MistakeModal
-          word={selectedWord}
-          letterIndex={selectedLetterIndex}
-          onClose={() => {
-            setSelectedWord(null);
-            setSelectedLetterIndex(undefined);
-          }}
-          onSave={handleSaveMistake}
-        />
+          {/* Mistake Modal / Bottom Sheet */}
+          {isMobile ? (
+            <MobileMistakeBottomSheet
+              word={selectedWord}
+              letterIndex={selectedLetterIndex}
+              onClose={() => {
+                setSelectedWord(null);
+                setSelectedLetterIndex(undefined);
+              }}
+              onSave={handleSaveMistake}
+            />
+          ) : (
+            <MistakeModal
+              word={selectedWord}
+              letterIndex={selectedLetterIndex}
+              onClose={() => {
+                setSelectedWord(null);
+                setSelectedLetterIndex(undefined);
+              }}
+              onSave={handleSaveMistake}
+            />
+          )}
+
+          {/* Tajweed Explanation Card */}
+          {tajweedExplanation && (
+            <TajweedExplanationCard
+              mistakeType={tajweedExplanation.type}
+              position={tajweedExplanation.position}
+              isMobile={isMobile}
+              onClose={() => setTajweedExplanation(null)}
+            />
+          )}
+
+          {/* Mistake Counters - Hidden in Focus Mode */}
+          {!focusMode && <MistakeCounters counts={mistakeCounts} focusMode={false} />}
 
         {/* Mistake Report removed - should be rendered outside the Mushaf component */}
         </div>
