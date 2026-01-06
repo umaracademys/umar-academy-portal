@@ -1,4 +1,4 @@
-import React, { useState, lazy, Suspense, useMemo } from 'react';
+import React, { useState, lazy, Suspense, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -32,13 +32,27 @@ import { AdminPermissions } from '../types';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { students, teachers, admins } = useData();
+  const { students, teachers, admins, refreshData } = useData();
   const { assignments } = useBackendData();
+  
+  // Refresh data on mount to ensure latest permissions are loaded
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
   
   // Get current admin's permissions
   const currentAdmin = useMemo(() => {
     if (!user?.email) return null;
-    return admins.find(admin => admin.email === user.email);
+    const foundAdmin = admins.find(admin => admin.email === user.email);
+    if (isDevelopment && foundAdmin) {
+      console.log('🔍 AdminDashboard - Found admin:', {
+        email: foundAdmin.email,
+        fullName: foundAdmin.fullName,
+        permissionsCount: foundAdmin.permissions ? Object.keys(foundAdmin.permissions).length : 0,
+        enabledPermissions: foundAdmin.permissions ? Object.values(foundAdmin.permissions).filter(v => v === true).length : 0
+      });
+    }
+    return foundAdmin;
   }, [user?.email, admins]);
   
   // Get admin permissions with defaults - ensure all keys are present
