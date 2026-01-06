@@ -1585,7 +1585,6 @@ export const WordByWordPage: React.FC<{
                             }
                           }}
                           className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
-                          style={tajweedStyle}
                           dir="rtl"
                           title={
                             isVerseSelected 
@@ -1604,7 +1603,7 @@ export const WordByWordPage: React.FC<{
                             lineHeight: 'inherit',
                             borderRadius: '0',
                             whiteSpace: 'nowrap',
-                            ...tajweedStyle // Override with gray for Tajweed
+                            ...tajweedStyle // Merge tajweed styles
                           }}
                         >
                           {/* Render word as individual letters for letter-level interaction */}

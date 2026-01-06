@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 
+import type React from 'react';
+
 export interface MobileGestures {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
@@ -46,7 +48,7 @@ export function useMobileGestures(options: UseMobileGesturesOptions = {}) {
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTapRef = useRef<number>(0);
   const doubleTapDelay = 300; // milliseconds
-  const pinchStartRef = useRef<{ distance: number; touches: TouchList } | null>(null);
+  const pinchStartRef = useRef<{ distance: number; touches: Array<{ clientX: number; clientY: number }> } | null>(null);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -140,7 +142,7 @@ export function useMobileGestures(options: UseMobileGesturesOptions = {}) {
   }, []);
 
   // Pinch-to-zoom handlers
-  const getDistance = (touches: TouchList): number => {
+  const getDistance = (touches: Array<{ clientX: number; clientY: number }>): number => {
     if (touches.length < 2) return 0;
     const dx = touches[0].clientX - touches[1].clientX;
     const dy = touches[0].clientY - touches[1].clientY;
@@ -149,15 +151,17 @@ export function useMobileGestures(options: UseMobileGesturesOptions = {}) {
 
   const handlePinchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && onPinchStart) {
-      const distance = getDistance(e.touches);
-      pinchStartRef.current = { distance, touches: e.touches };
+      const touchesArray = Array.from(e.touches);
+      const distance = getDistance(touchesArray);
+      pinchStartRef.current = { distance, touches: touchesArray };
       onPinchStart(e);
     }
   }, [onPinchStart]);
 
   const handlePinchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && pinchStartRef.current && onPinchMove) {
-      const currentDistance = getDistance(e.touches);
+      const touchesArray = Array.from(e.touches);
+      const currentDistance = getDistance(touchesArray);
       const scale = currentDistance / pinchStartRef.current.distance;
       onPinchMove(e, scale);
     }
