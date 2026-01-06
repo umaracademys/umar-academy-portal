@@ -33,7 +33,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const lastRefreshedStudentId = React.useRef<string | null>(null);
-  const refreshIntervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const refreshIntervalRef = React.useRef<number | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Force refresh when component mounts or studentId changes
@@ -75,7 +75,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('assignmentUpdated', handleStorageChange);
     };
-  }, [refreshData]);
+  }, [refreshDataLight]);
 
   const student = students.find(s => s.id === studentId);
   const assignments = getStudentAssignments(studentId);
@@ -641,7 +641,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                   <HomeworkDisplay 
                                     homework={{
                                       ...assignment.homework,
-                                      enabled: assignment.homework?.enabled || (assignment.homework?.items && assignment.homework.items.length > 0)
+                                      enabled: Boolean(assignment.homework?.enabled || (assignment.homework?.items && assignment.homework.items.length > 0))
                                     }} 
                                     showSubmission={true}
                                   />

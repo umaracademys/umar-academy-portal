@@ -139,18 +139,18 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
 
   // Filter mistakes based on selected filters
   const filteredMistakes = useMemo(() => {
-    let filtered = allMistakes;
+    let filtered: MistakeWithStatus[] = allMistakes;
     
     if (showNewOnly) {
-      filtered = filtered.filter(m => m.isNew);
+      filtered = filtered.filter((m: MistakeWithStatus) => m.isNew);
     }
     
     if (filterType !== 'all') {
-      filtered = filtered.filter(m => (m as any).workflowStep === filterType);
+      filtered = filtered.filter((m: MistakeWithStatus) => (m as any).workflowStep === filterType);
     }
     
     if (filterPage !== null) {
-      filtered = filtered.filter(m => m.page === filterPage);
+      filtered = filtered.filter((m: MistakeWithStatus) => (m as MushafMistake).page === filterPage);
     }
     
     return filtered;
@@ -158,7 +158,7 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
 
   // Get unique pages with mistakes
   const pagesWithMistakes = useMemo(() => {
-    const pages = new Set<number>(allMistakes.map(m => m.page));
+    const pages = new Set<number>(allMistakes.map((m: MistakeWithStatus) => (m as MushafMistake).page));
     return Array.from(pages).sort((a, b) => a - b);
   }, [allMistakes]);
 
@@ -178,8 +178,9 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
   // Calculate type statistics
   useEffect(() => {
     const byType: Record<string, number> = {};
-    allMistakes.forEach(m => {
-      byType[m.type] = (byType[m.type] || 0) + 1;
+    allMistakes.forEach((m: MistakeWithStatus) => {
+      const mistake = m as MushafMistake;
+      byType[mistake.type] = (byType[mistake.type] || 0) + 1;
     });
     stats.byType = byType;
   }, [allMistakes]);
@@ -194,22 +195,23 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
     // Check if this mistake already exists
     const existingMistake = existingMistakes.find(m => 
       m.page === mistake.page &&
-      m.surah === mistake.surah &&
-      m.ayah === mistake.ayah &&
+                    (m as MushafMistake).surah === mistake.surah &&
+                    (m as MushafMistake).ayah === mistake.ayah &&
       m.wordIndex === mistake.wordIndex &&
       m.type === mistake.type &&
       (mistake.letterIndex === undefined || m.letterIndex === mistake.letterIndex)
     );
 
     // Check if already marked in this session
-    const sessionMistake = newMistakes.find(m =>
-      m.page === mistake.page &&
-      m.surah === mistake.surah &&
-      m.ayah === mistake.ayah &&
-      m.wordIndex === mistake.wordIndex &&
-      m.type === mistake.type &&
-      (mistake.letterIndex === undefined || m.letterIndex === mistake.letterIndex)
-    );
+    const sessionMistake = newMistakes.find((m: MistakeWithStatus) => {
+      const mm = m as MushafMistake;
+      return mm.page === mistake.page &&
+      mm.surah === mistake.surah &&
+      mm.ayah === mistake.ayah &&
+      mm.wordIndex === mistake.wordIndex &&
+      mm.type === mistake.type &&
+      (mistake.letterIndex === undefined || mm.letterIndex === mistake.letterIndex);
+    });
 
     if (sessionMistake) {
       // Already marked in this session - show info
@@ -486,24 +488,29 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
               <InteractiveMushaf
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
-                mistakes={allMistakes.length > 0 ? filteredMistakes.filter(m => m.page === currentPage).map(m => ({
-                  ...m,
-                  // Highlight new mistakes differently
-                  ...(m.isNew && { 
-                    // Add visual indicator for new mistakes
-                    note: m.note ? `🆕 ${m.note}` : '🆕 New mistake'
-                  })
-                })) : []}
-                historicalMistakes={allMistakes.length > 0 ? existingMistakes.filter(m => 
-                  m.page === currentPage && 
-                  !filteredMistakes.some(fm => 
-                    fm.page === m.page &&
-                    fm.surah === m.surah &&
-                    fm.ayah === m.ayah &&
-                    fm.wordIndex === m.wordIndex &&
-                    fm.type === m.type
-                  )
-                ) : []}
+                mistakes={allMistakes.length > 0 ? filteredMistakes.filter((m: MistakeWithStatus) => (m as MushafMistake).page === currentPage).map((m: MistakeWithStatus) => {
+                  const mm = m as MushafMistake;
+                  return {
+                    ...mm,
+                    // Highlight new mistakes differently
+                    ...(m.isNew && { 
+                      // Add visual indicator for new mistakes
+                      note: mm.note ? `🆕 ${mm.note}` : '🆕 New mistake'
+                    })
+                  };
+                }) : []}
+                historicalMistakes={allMistakes.length > 0 ? existingMistakes.filter((m: MistakeWithStatus) => {
+                  const mm = m as MushafMistake;
+                  return mm.page === currentPage && 
+                  !filteredMistakes.some((fm: MistakeWithStatus) => {
+                    const fmm = fm as MushafMistake;
+                    return fmm.page === mm.page &&
+                    fmm.surah === mm.surah &&
+                    fmm.ayah === mm.ayah &&
+                    fmm.wordIndex === mm.wordIndex &&
+                    fmm.type === mm.type;
+                  });
+                }) : []}
                 onMistakeMark={sessionActive ? handleMistakeMark : undefined}
                 readOnly={!sessionActive}
                 mode="marking"
@@ -519,14 +526,16 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
         {filteredMistakes.length > 0 && (
           <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-t-2 border-gray-200 max-h-48 overflow-y-auto">
             <h3 className="text-sm font-bold text-primary mb-3">
-              Mistakes on Page {currentPage} ({filteredMistakes.filter(m => m.page === currentPage).length})
+              Mistakes on Page {currentPage} ({filteredMistakes.filter((m: MistakeWithStatus) => (m as MushafMistake).page === currentPage).length})
             </h3>
             <div className="space-y-2">
               {filteredMistakes
-                .filter(m => m.page === currentPage)
-                .map((mistake) => (
+                .filter((m: MistakeWithStatus) => (m as MushafMistake).page === currentPage)
+                .map((mistake: MistakeWithStatus) => {
+                  const mm = mistake as MushafMistake;
+                  return (
                   <div
-                    key={mistake.id}
+                    key={mm.id}
                     className={`flex items-start gap-2 p-3 rounded-lg border-2 shadow-sm transition-all ${
                       mistake.isNew 
                         ? 'bg-green-50 border-green-300' 
@@ -551,16 +560,17 @@ const TeacherPersonalMushaf: React.FC<TeacherPersonalMushafProps> = ({
                       {(mistake as any).workflowStep?.toUpperCase() || 'N/A'}
                     </span>
                     <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold shadow-sm">
-                      {mistake.type}
+                      {(mistake as MushafMistake).type}
                     </span>
-                    {mistake.note && (
-                      <span className="text-gray-700 text-xs italic ml-auto">"{mistake.note}"</span>
+                    {(mistake as MushafMistake).note && (
+                      <span className="text-gray-700 text-xs italic ml-auto">"{(mistake as MushafMistake).note}"</span>
                     )}
                     <span className="text-gray-400 text-xs ml-auto">
-                      Surah {mistake.surah}:{mistake.ayah}
+                      Surah {(mistake as MushafMistake).surah}:{(mistake as MushafMistake).ayah}
                     </span>
                   </div>
-                ))}
+                  );
+                })}
             </div>
           </div>
         )}

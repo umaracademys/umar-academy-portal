@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+// @ts-ignore - Demo page, mushaf package may not be available in all environments
 import { InteractiveMushaf } from '@umar-academy/mushaf';
+// @ts-ignore - Demo page, mushaf package may not be available in all environments
 import { MushafMistake } from '@umar-academy/mushaf';
 
 const MushafDemo: React.FC = () => {

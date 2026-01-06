@@ -753,8 +753,7 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
                         {/* Notes Input */}
                         <div>
                           <label className="block text-[9px] font-bold text-primary mb-0.5">Notes</label>
-                          <input
-                            type="text"
+                          <textarea
                             value={question.notes || ''}
                             onChange={(e) => {
                               const updatedQuestions = [...editingTest.questions];
@@ -764,9 +763,7 @@ const TestResultsPage: React.FC<TestResultsPageProps> = ({ onClose }) => {
                               };
                               setEditingTest({ ...editingTest, questions: updatedQuestions });
                             }}
-                            category="tajweed"
                             rows={2}
-                            multiline={true}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
                             placeholder="Add notes for this question..."
                           />

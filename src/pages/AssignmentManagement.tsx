@@ -129,7 +129,7 @@ const AssignmentManagement: React.FC = () => {
         if (email.includes(query)) return true;
         
         // Check id (convert to string safely)
-        const id = String(student.id || student._id || '').toLowerCase();
+        const id = String(student.id || (student as any)._id || '').toLowerCase();
         if (id.includes(query)) return true;
         
         // Check program

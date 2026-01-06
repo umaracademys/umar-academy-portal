@@ -23,16 +23,16 @@ export const TicketInsightBanner: React.FC<TicketInsightBannerProps> = ({
 
     // Categorize current ticket mistakes
     const currentTajweed = ticket.mistakes.filter(m => {
-      const type = m.type.toLowerCase();
+      const type = (m.type || '').toLowerCase();
       return ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(type);
     }).length;
     const currentMistakes = ticket.mistakes.filter(m => {
-      const type = m.type.toLowerCase();
+      const type = (m.type || '').toLowerCase();
       return type !== 'atkee' && !['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(type);
     }).length;
 
     // Compare with previous tickets for same student
-    const studentPreviousTickets = previousTickets.filter(t => 
+    const studentPreviousTickets: Ticket[] = previousTickets.filter((t: Ticket) => 
       t.studentId === ticket.studentId && 
       t.id !== ticket.id &&
       t.mistakes && t.mistakes.length > 0
@@ -42,15 +42,15 @@ export const TicketInsightBanner: React.FC<TicketInsightBannerProps> = ({
       // Calculate average mistakes from previous tickets
       const avgMistakes = studentPreviousTickets.reduce((sum, t) => {
         const mistakes = t.mistakes?.filter(m => {
-          const type = m.type.toLowerCase();
+          const type = (m.type || '').toLowerCase();
           return type !== 'atkee' && !['madd', 'ikhfa', 'holding', 'tech'].includes(type);
         }).length || 0;
         return sum + mistakes;
       }, 0) / studentPreviousTickets.length;
 
       const avgTajweed = studentPreviousTickets.reduce((sum, t) => {
-        const tajweed = t.mistakes?.filter(m => {
-          const type = m.type.toLowerCase();
+      const tajweed = t.mistakes?.filter(m => {
+        const type = (m.type || '').toLowerCase();
           return ['madd', 'ikhfa', 'holding', 'tech'].includes(type);
         }).length || 0;
         return sum + tajweed;

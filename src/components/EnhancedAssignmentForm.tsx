@@ -957,12 +957,12 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                       range: {
                                         ...item.range,
                                         mode: item.range?.mode || 'surah_ayah',
-                                        from: {
+                                        from: surahNum ? {
                                           ...item.range?.from,
-                                          surah: surahNum || undefined,
+                                          surah: surahNum,
                                           surahName: surah?.name_arabic || surah?.name_complex || surah?.name_simple || ''
-                                        },
-                                        to: item.range?.to || {}
+                                        } : item.range?.from,
+                                        to: item.range?.to
                                       }
                                     });
                                   }}
@@ -1000,11 +1000,11 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                       range: {
                                         ...item.range,
                                         mode: item.range?.mode || 'surah_ayah',
-                                        from: { ...item.range?.from, ayah: newFromAyah },
-                                        to: { 
-                                          ...item.range?.to, 
-                                          ayah: adjustedToAyah !== undefined ? adjustedToAyah : item.range?.to?.ayah
-                                        }
+                                        from: item.range?.from ? { ...item.range.from, ayah: newFromAyah } : undefined,
+                                        to: item.range?.to ? { 
+                                          ...item.range.to, 
+                                          ayah: adjustedToAyah !== undefined ? adjustedToAyah : item.range.to.ayah
+                                        } : undefined
                                       }
                                     });
                                   }}
@@ -1033,12 +1033,15 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                       range: {
                                         ...item.range,
                                         mode: item.range?.mode || 'surah_ayah',
-                                        from: item.range?.from || {},
-                                        to: {
-                                          ...item.range?.to,
-                                          surah: surahNum || fromSurah || undefined,
-                                          surahName: surah?.name_arabic || surah?.name_complex || surah?.name_simple || item.range?.from?.surahName || ''
-                                        }
+                                        from: item.range?.from,
+                                        to: item.range?.to && fromSurah ? {
+                                          ...item.range.to,
+                                          surah: surahNum || fromSurah,
+                                          surahName: surah?.name_arabic || surah?.name_complex || surah?.name_simple || item.range.from?.surahName || ''
+                                        } : (fromSurah ? {
+                                          surah: surahNum || fromSurah,
+                                          surahName: surah?.name_arabic || surah?.name_complex || surah?.name_simple || ''
+                                        } : item.range?.to)
                                       }
                                     });
                                   }}
@@ -1079,8 +1082,8 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                       range: {
                                         ...item.range,
                                         mode: item.range?.mode || 'surah_ayah',
-                                        from: item.range?.from || {},
-                                        to: { ...item.range?.to, ayah: newToAyah }
+                                        from: item.range?.from,
+                                        to: item.range?.to ? { ...item.range.to, ayah: newToAyah } : undefined
                                       }
                                     });
                                   }}
@@ -1098,13 +1101,13 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                               multiple
                               value={item.range?.juzList?.map(j => j.toString()) || []}
                               onChange={(e) => {
-                                const selectedJuz = Array.from(e.target.selectedOptions, option => parseInt(option.value));
+                                const selectedJuz = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => parseInt(option.value));
                                 updateHomeworkItem(index, {
                                   range: { 
                                     ...item.range,
                                     mode: item.range?.mode || 'multiple_juz',
-                                    from: item.range?.from || {},
-                                    to: item.range?.to || {},
+                                    from: item.range?.from,
+                                    to: item.range?.to,
                                     juzList: selectedJuz 
                                   }
                                 });
@@ -1189,7 +1192,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                       type="button"
                       onClick={() => addHomeworkItem({
                         type: 'sabq',
-                        range: { mode: 'surah_ayah', from: {}, to: {} },
+                        range: { 
+                          mode: 'surah_ayah'
+                        },
                         source: { suggestedFrom: 'manual', ticketIds: [] }
                       })}
                       className="px-3 py-2 text-xs font-medium border border-purple-300 text-purple-700 rounded hover:bg-purple-50 transition-colors"
@@ -1200,7 +1205,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                       type="button"
                       onClick={() => addHomeworkItem({
                         type: 'sabqi',
-                        range: { mode: 'surah_ayah', from: {}, to: {} },
+                        range: { 
+                          mode: 'surah_ayah'
+                        },
                         source: { suggestedFrom: 'manual', ticketIds: [] }
                       })}
                       className="px-3 py-2 text-xs font-medium border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition-colors"

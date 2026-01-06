@@ -21,7 +21,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     // Only refresh if we don't have tickets yet
     if (recitationTickets.length === 0) {
       console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
-      refreshData();
+      refreshDataLight();
     } else {
       console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
     }

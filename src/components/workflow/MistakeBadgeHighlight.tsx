@@ -1,4 +1,5 @@
 import React from 'react';
+// @ts-ignore - Demo component, mushaf package may not be available in all environments
 import { MushafMistake } from '@umar-academy/mushaf';
 
 interface MistakeBadgeHighlightProps {
