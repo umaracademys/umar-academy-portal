@@ -151,7 +151,10 @@ export function useMobileGestures(options: UseMobileGesturesOptions = {}) {
 
   const handlePinchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && onPinchStart) {
-      const touchesArray = Array.from(e.touches);
+      const touchesArray: Array<{ clientX: number; clientY: number }> = Array.from(e.touches).map(touch => ({
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      }));
       const distance = getDistance(touchesArray);
       pinchStartRef.current = { distance, touches: touchesArray };
       onPinchStart(e);
@@ -160,7 +163,10 @@ export function useMobileGestures(options: UseMobileGesturesOptions = {}) {
 
   const handlePinchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && pinchStartRef.current && onPinchMove) {
-      const touchesArray = Array.from(e.touches);
+      const touchesArray: Array<{ clientX: number; clientY: number }> = Array.from(e.touches).map(touch => ({
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      }));
       const currentDistance = getDistance(touchesArray);
       const scale = currentDistance / pinchStartRef.current.distance;
       onPinchMove(e, scale);
