@@ -605,71 +605,69 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                     showSubmission={true}
                                   />
 
-                                      {/* Grading Form */}
-                                      {assignment.homework.submission.status === 'submitted' && 
-                                       (user?.role === 'admin' || user?.role === 'superadmin') && (
-                                        <div className="mt-3 pt-3 border-t border-gray-200">
-                                          {gradingAssignment === assignment.id ? (
-                                            <div className="space-y-2">
-                                              <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Feedback</label>
-                                                <textarea
-                                                  value={gradeData.feedback}
-                                                  onChange={(e) => setGradeData(prev => ({ ...prev, feedback: e.target.value }))}
-                                                  rows={3}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                                                  placeholder="Enter feedback..."
-                                                />
-                                              </div>
-                                              <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Grade (Optional)</label>
-                                                <input
-                                                  type="number"
-                                                  min="0"
-                                                  max="100"
-                                                  value={gradeData.grade}
-                                                  onChange={(e) => setGradeData(prev => ({ ...prev, grade: e.target.value }))}
-                                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
-                                                  placeholder="0-100"
-                                                />
-                                              </div>
-                                              <div className="flex gap-2">
-                                                <button
-                                                  onClick={() => {
-                                                    setGradingAssignment(null);
-                                                    setGradeData({ feedback: '', grade: '' });
-                                                  }}
-                                                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
-                                                >
-                                                  Cancel
-                                                </button>
-                                                <button
-                                                  onClick={() => handleGradeHomework(assignment.id)}
-                                                  disabled={isGrading}
-                                                  className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                                                >
-                                                  {isGrading ? 'Grading...' : 'Submit'}
-                                                </button>
-                                              </div>
-                                            </div>
-                                          ) : (
+                                  {/* Grading Form */}
+                                  {assignment.homework.submission?.status === 'submitted' && 
+                                   (user?.role === 'admin' || user?.role === 'superadmin') && (
+                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                      {gradingAssignment === assignment.id ? (
+                                        <div className="space-y-2">
+                                          <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Feedback</label>
+                                            <textarea
+                                              value={gradeData.feedback}
+                                              onChange={(e) => setGradeData(prev => ({ ...prev, feedback: e.target.value }))}
+                                              rows={3}
+                                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
+                                              placeholder="Enter feedback..."
+                                            />
+                                          </div>
+                                          <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-1">Grade (Optional)</label>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="100"
+                                              value={gradeData.grade}
+                                              onChange={(e) => setGradeData(prev => ({ ...prev, grade: e.target.value }))}
+                                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+                                              placeholder="0-100"
+                                            />
+                                          </div>
+                                          <div className="flex gap-2">
                                             <button
                                               onClick={() => {
-                                                setGradingAssignment(assignment.id);
-                                                const submission = assignment.homework.submission;
-                                                setGradeData({ 
-                                                  feedback: submission?.feedback || '', 
-                                                  grade: submission?.grade?.toString() || '' 
-                                                });
+                                                setGradingAssignment(null);
+                                                setGradeData({ feedback: '', grade: '' });
                                               }}
-                                              className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors"
+                                              className="px-4 py-2 border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
                                             >
-                                              {assignment.homework.submission.grade !== undefined && assignment.homework.submission.grade !== null 
-                                                ? 'Update Grade' 
-                                                : 'Grade Homework'}
+                                              Cancel
                                             </button>
-                                          )}
+                                            <button
+                                              onClick={() => handleGradeHomework(assignment.id)}
+                                              disabled={isGrading}
+                                              className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                                            >
+                                              {isGrading ? 'Grading...' : 'Submit'}
+                                            </button>
+                                          </div>
                                         </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => {
+                                            setGradingAssignment(assignment.id);
+                                            const submission = assignment.homework.submission;
+                                            setGradeData({ 
+                                              feedback: submission?.feedback || '', 
+                                              grade: submission?.grade?.toString() || '' 
+                                            });
+                                          }}
+                                          className="px-4 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors"
+                                        >
+                                          {assignment.homework.submission?.grade !== undefined && assignment.homework.submission?.grade !== null 
+                                            ? 'Update Grade' 
+                                            : 'Grade Homework'}
+                                        </button>
                                       )}
                                     </div>
                                   )}
