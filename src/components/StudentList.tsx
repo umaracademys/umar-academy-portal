@@ -61,12 +61,35 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   }, [students, teachers]);
 
   const uniqueStatuses = Array.from(new Set(students.map(s => s.status).filter(Boolean)));
-  // Normalize program names to prevent duplicates (trim whitespace, handle case variations)
+  
+  // Normalize program names to canonical ProgramType values to prevent duplicates
+  const normalizeProgramName = (program: string | undefined): string | null => {
+    if (!program) return null;
+    const normalized = program.trim().toLowerCase();
+    
+    // Map variations to canonical ProgramType values
+    if (normalized.includes('full') && normalized.includes('time')) {
+      return 'Full-Time HQ';
+    }
+    if (normalized.includes('part') && normalized.includes('time')) {
+      return 'Part-Time HQ';
+    }
+    if (normalized.includes('after') && normalized.includes('school')) {
+      return 'After School';
+    }
+    
+    // If it matches exactly, return as-is
+    if (program === 'Full-Time HQ' || program === 'Part-Time HQ' || program === 'After School') {
+      return program;
+    }
+    
+    return null;
+  };
+  
   const uniquePrograms = Array.from(new Set(
     students
-      .map(s => s.program?.trim())
-      .filter(Boolean)
-      .map(p => p as string)
+      .map(s => normalizeProgramName(s.program))
+      .filter((p): p is string => p !== null)
   )).sort(); // Sort alphabetically for better UX
 
   // Fetch user password status for all students
@@ -117,7 +140,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                            student.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            false;
       const matchesTeacher = selectedTeacher === 'all' || student.assignedTeacher === selectedTeacher;
-      const matchesProgram = selectedProgram === 'all' || student.program === selectedProgram;
+      const matchesProgram = selectedProgram === 'all' || normalizeProgramName(student.program) === selectedProgram;
       const matchesStatus = selectedStatus === 'all' || student.status === selectedStatus;
       
       return matchesSearch && matchesTeacher && matchesProgram && matchesStatus;

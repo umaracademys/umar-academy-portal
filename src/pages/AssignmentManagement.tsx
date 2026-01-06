@@ -92,15 +92,36 @@ const AssignmentManagement: React.FC = () => {
     return uniqueAssigned;
   }, [currentTeacher, allStudents, getStudentsByTeacher, pairStudents]);
 
+  // Normalize program names to canonical ProgramType values
+  const normalizeProgramName = (program: string | undefined): ProgramType | null => {
+    if (!program) return null;
+    const normalized = program.trim().toLowerCase();
+    
+    // Map variations to canonical ProgramType values
+    if (normalized.includes('full') && normalized.includes('time')) {
+      return 'Full-Time HQ';
+    }
+    if (normalized.includes('part') && normalized.includes('time')) {
+      return 'Part-Time HQ';
+    }
+    if (normalized.includes('after') && normalized.includes('school')) {
+      return 'After School';
+    }
+    
+    // If it matches exactly, return as-is
+    if (program === 'Full-Time HQ' || program === 'Part-Time HQ' || program === 'After School') {
+      return program as ProgramType;
+    }
+    
+    return null;
+  };
+
   const programs = useMemo(() => {
-    // Normalize program names to prevent duplicates (trim whitespace, handle case variations)
-    const programSet = new Set<string>();
+    const programSet = new Set<ProgramType>();
     assignedStudents.forEach(student => {
-      if (student.program) {
-        const normalized = student.program.trim();
-        if (normalized) {
-          programSet.add(normalized);
-        }
+      const normalized = normalizeProgramName(student.program);
+      if (normalized) {
+        programSet.add(normalized);
       }
     });
     return Array.from(programSet).sort(); // Sort alphabetically for better UX
@@ -109,14 +130,11 @@ const AssignmentManagement: React.FC = () => {
   const filteredStudents = useMemo(() => {
     let filtered = assignedStudents;
     
-    // Filter by program - handle case sensitivity and exact matching
+    // Filter by program - normalize both sides for comparison
     if (selectedProgram !== 'all') {
       filtered = filtered.filter(student => {
-        if (!student.program) return false;
-        // Normalize program names for comparison (handle variations)
-        const studentProgram = student.program.trim();
-        const selectedProgramNormalized = selectedProgram.trim();
-        return studentProgram === selectedProgramNormalized;
+        const normalizedStudentProgram = normalizeProgramName(student.program);
+        return normalizedStudentProgram === selectedProgram;
       });
     }
     
