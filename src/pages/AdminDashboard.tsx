@@ -104,16 +104,34 @@ const AdminDashboard: React.FC = () => {
     
     // If admin not found or no permissions, return defaults
     if (!currentAdmin?.permissions) {
+      if (isDevelopment) {
+        console.warn('⚠️ AdminDashboard - No permissions found for admin:', {
+          email: user?.email,
+          adminFound: !!currentAdmin,
+          adminId: currentAdmin?.id
+        });
+      }
       return defaultPermissions;
     }
     
     // Merge admin permissions with defaults to ensure all keys are present
     // This handles cases where permissions object is incomplete
-    return {
+    const mergedPermissions = {
       ...defaultPermissions,
       ...currentAdmin.permissions,
     };
-  }, [currentAdmin]);
+    
+    if (isDevelopment) {
+      const enabledCount = Object.values(mergedPermissions).filter(v => v === true).length;
+      console.log('✅ AdminDashboard - Loaded permissions:', {
+        total: Object.keys(mergedPermissions).length,
+        enabled: enabledCount,
+        disabled: Object.keys(mergedPermissions).length - enabledCount
+      });
+    }
+    
+    return mergedPermissions;
+  }, [currentAdmin, user?.email]);
   const [showEmailModule, setShowEmailModule] = useState(false);
   const [showTestingModule, setShowTestingModule] = useState(false);
   const [showTestResults, setShowTestResults] = useState(false);
