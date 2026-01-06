@@ -61,7 +61,13 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   }, [students, teachers]);
 
   const uniqueStatuses = Array.from(new Set(students.map(s => s.status).filter(Boolean)));
-  const uniquePrograms = Array.from(new Set(students.map(s => s.program).filter(Boolean)));
+  // Normalize program names to prevent duplicates (trim whitespace, handle case variations)
+  const uniquePrograms = Array.from(new Set(
+    students
+      .map(s => s.program?.trim())
+      .filter(Boolean)
+      .map(p => p as string)
+  )).sort(); // Sort alphabetically for better UX
 
   // Fetch user password status for all students
   useEffect(() => {

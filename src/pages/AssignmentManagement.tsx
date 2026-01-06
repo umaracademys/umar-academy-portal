@@ -93,13 +93,17 @@ const AssignmentManagement: React.FC = () => {
   }, [currentTeacher, allStudents, getStudentsByTeacher, pairStudents]);
 
   const programs = useMemo(() => {
-    const programSet = new Set<ProgramType>();
+    // Normalize program names to prevent duplicates (trim whitespace, handle case variations)
+    const programSet = new Set<string>();
     assignedStudents.forEach(student => {
       if (student.program) {
-        programSet.add(student.program);
+        const normalized = student.program.trim();
+        if (normalized) {
+          programSet.add(normalized);
+        }
       }
     });
-    return Array.from(programSet);
+    return Array.from(programSet).sort(); // Sort alphabetically for better UX
   }, [assignedStudents]);
 
   const filteredStudents = useMemo(() => {
