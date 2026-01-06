@@ -191,27 +191,28 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border-4 border-accent/30">
-        {/* Modern Header */}
-        <div className="px-6 sm:px-8 py-5 sm:py-6 border-b-4 border-accent/50 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] shadow-lg">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                <span className="text-lg font-bold text-white">TK</span>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 md:p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col border border-gray-200">
+        {/* Elegant Header */}
+        <div className="relative px-6 py-5 bg-gradient-to-r from-primary via-primary/95 to-primary/90 border-b border-primary/20">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.05"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-20"></div>
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-lg">
+                <span className="text-xl font-bold text-white">🎫</span>
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white drop-shadow-lg truncate">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-0.5">
                   {isEditMode ? 'Edit Ticket' : 'Create New Ticket'}
                 </h2>
-                <p className="text-white/90 mt-1 text-sm sm:text-base md:text-lg font-bold truncate">
+                <p className="text-white/80 text-sm font-medium">
                   {student?.fullName || 'Student'}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-xl sm:text-2xl md:text-3xl font-bold shadow-lg border-2 border-white/30 touch-target flex-shrink-0"
+              className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all hover:scale-110 text-xl font-semibold border border-white/20"
               title="Close"
               aria-label="Close"
             >
@@ -220,33 +221,30 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
           </div>
         </div>
 
-        {/* Assignment History Homework Box - Always show if student has any assignments */}
-        {previousDayHomework.length > 0 ? (
-          <div className="mx-6 mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
-            <div className="flex items-start justify-between mb-3">
+        {/* Assignment History - Compact & Modern */}
+        {previousDayHomework.length > 0 && (
+          <div className="mx-6 mt-4 p-4 bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                <span className="text-sm">📚</span>
+              </div>
               <div>
-                <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2 mb-1">
-                  <span>📚</span>
-                  Assignment History - Recent Homework
-                </h3>
-                <p className="text-xs text-blue-600">Reference previous assignments to see what was assigned</p>
+                <h3 className="text-sm font-semibold text-slate-800">Recent Homework History</h3>
+                <p className="text-xs text-slate-500">Reference previous assignments</p>
               </div>
             </div>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {previousDayHomework.map((hw, idx) => (
-                <div key={hw.id || idx} className="bg-white rounded-lg p-3 border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-xs font-semibold text-blue-700 flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                      {hw.date}
-                    </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+              {previousDayHomework.slice(0, 5).map((hw, idx) => (
+                <div key={hw.id || idx} className="bg-white rounded-lg p-2.5 border border-slate-200 hover:border-blue-300 transition-colors">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-medium text-slate-700">{hw.date}</span>
                     {hw.assignedBy && hw.assignedBy !== 'Unknown' && (
-                      <span className="text-xs text-gray-500">by {hw.assignedBy}</span>
+                      <span className="text-xs text-slate-400">by {hw.assignedBy}</span>
                     )}
                   </div>
                   {hw.homeworkItems.length > 0 ? (
-                    <div className="space-y-1.5">
-                      {hw.homeworkItems.map((item: any, itemIdx: number) => {
+                    <div className="space-y-1">
+                      {hw.homeworkItems.slice(0, 2).map((item: any, itemIdx: number) => {
                         const getRangeText = () => {
                           if (item.range?.mode === 'surah_ayah' && item.range.from?.surah) {
                             const fromSurah = item.range.from.surah;
@@ -276,178 +274,156 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                         };
                         
                         return (
-                          <div key={itemIdx} className="text-xs text-gray-700 bg-gray-50 rounded px-2 py-1.5 border border-gray-200">
-                            <span className="font-semibold capitalize text-blue-600">{item.type}:</span>{' '}
-                            <span className="text-gray-800">{getRangeText()}</span>
-                            {item.content && (
-                              <div className="text-gray-600 mt-1 italic text-xs">
-                                {item.content}
-                              </div>
-                            )}
+                          <div key={itemIdx} className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
+                            <span className="font-medium text-blue-600 capitalize">{item.type}:</span> {getRangeText()}
                           </div>
                         );
                       })}
                     </div>
                   ) : hw.legacyContent ? (
-                    <div className="text-xs text-gray-700 bg-gray-50 rounded px-2 py-1.5 border border-gray-200 whitespace-pre-wrap">
+                    <div className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1 whitespace-pre-wrap line-clamp-2">
                       {hw.legacyContent}
                     </div>
-                  ) : (
-                    <div className="text-xs text-gray-500 italic">No homework items</div>
-                  )}
-                  {hw.notes && (
-                    <div className="text-xs text-gray-600 mt-2 italic border-t border-gray-100 pt-2">
-                      <span className="font-medium">General Notes:</span> {hw.notes}
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>
-            {previousDayHomework.length >= 10 && (
-              <p className="text-xs text-blue-600 mt-2 text-center italic">
-                Showing most recent 10 assignments. Check full history in Assignment Management.
-              </p>
-            )}
-          </div>
-        ) : (
-          // Show message if no homework found
-          <div className="mx-6 mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>📚</span>
-              <span>No recent homework assignments found in the last 30 days. Check Assignment Management for full history.</span>
-            </div>
           </div>
         )}
 
-        {/* Reminder Alert for Previous Reports */}
+        {/* Previous Reports Alert - Modern Design */}
         {showReminder && previousReports.length > 0 && (
-          <div className="mx-6 mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-500 rounded-xl">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-3 flex-1">
-                <div className="w-8 h-8 rounded-lg bg-yellow-500 flex items-center justify-center flex-shrink-0">
-                  <span className="text-white text-xs font-bold">!</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-extrabold text-yellow-800 mb-2 uppercase tracking-wide">
-                    Previous {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} Tickets Found
-                  </h3>
-                  <div className="text-xs sm:text-sm text-yellow-900">
-                    <p className="font-bold mb-2">Last {previousReports.length} approved ticket(s) for this student:</p>
-                    <ul className="list-disc list-inside space-y-1 mb-3">
-                      {previousReports.slice(0, 3).map((report, idx) => (
-                        <li key={report.id || idx} className="break-words">
-                          {report.teacherComment || report.adminComment || 'No comment'} 
-                          {report.sentAt && (
-                            <span className="text-yellow-700 ml-2 font-semibold">
-                              (Sent: {new Date(report.sentAt).toLocaleDateString()})
-                            </span>
-                          )}
-                          {report.submittedAt && !report.sentAt && (
-                            <span className="text-yellow-700 ml-2 font-semibold">
-                              (Submitted: {new Date(report.submittedAt).toLocaleDateString()})
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="font-bold">Please review to avoid creating duplicate tickets.</p>
-                  </div>
-                </div>
+          <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <span className="text-amber-600 text-sm font-bold">⚠</span>
               </div>
-              <button
-                onClick={() => setShowReminder(false)}
-                className="ml-4 text-yellow-600 hover:text-yellow-800 flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-yellow-100 transition-colors"
-              >
-                ×
-              </button>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-amber-900 mb-2">
+                  Previous {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} Tickets Found
+                </h3>
+                <p className="text-xs text-amber-700 mb-2 font-medium">
+                  Found {previousReports.length} approved ticket(s). Review to avoid duplicates:
+                </p>
+                <div className="space-y-1.5 mb-2">
+                  {previousReports.slice(0, 2).map((report, idx) => (
+                    <div key={report.id || idx} className="text-xs text-amber-800 bg-white rounded px-2 py-1.5 border border-amber-100">
+                      <span className="font-medium">{report.teacherComment || report.adminComment || 'No comment'}</span>
+                      {report.sentAt && (
+                        <span className="text-amber-600 ml-2">
+                          • {new Date(report.sentAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setShowReminder(false)}
+                  className="text-xs text-amber-600 hover:text-amber-800 font-medium underline"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-gray-50 to-white">
-          {/* Ticket Type Selection */}
+        {/* Form Content */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 bg-white">
+          {/* Ticket Type Selection - Modern Card Design */}
           <div className="mb-6">
-            <label className="block text-sm font-extrabold text-primary mb-4 uppercase tracking-wide">
-              Select Ticket Type <span className="text-red-500">*</span>
+            <label className="block text-sm font-semibold text-slate-700 mb-3">
+              Ticket Type <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
                 onClick={() => setTicketType('sabq')}
-                className={`px-4 py-5 rounded-xl border-2 font-extrabold text-sm transition-all shadow-lg hover:scale-105 ${
+                className={`group relative px-4 py-4 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   ticketType === 'sabq'
-                    ? 'border-green-500 bg-green-50 text-green-700 shadow-xl ring-2 ring-green-200'
-                    : 'border-gray-300 bg-white text-primary hover:border-green-400 hover:shadow-xl'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md ring-2 ring-emerald-200'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-sm'
                 }`}
               >
-                <div className="text-2xl mb-1">📖</div>
-                <div>Sabq</div>
+                <div className="text-2xl mb-1.5">📖</div>
+                <div className="font-semibold">Sabq</div>
+                {ticketType === 'sabq' && (
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full"></div>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setTicketType('sabqi')}
-                className={`px-4 py-5 rounded-xl border-2 font-extrabold text-sm transition-all shadow-lg hover:scale-105 ${
+                className={`group relative px-4 py-4 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   ticketType === 'sabqi'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-xl ring-2 ring-blue-200'
-                    : 'border-gray-300 bg-white text-primary hover:border-blue-400 hover:shadow-xl'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md ring-2 ring-blue-200'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm'
                 }`}
               >
-                <div className="text-2xl mb-1">📚</div>
-                <div>Sabqi</div>
+                <div className="text-2xl mb-1.5">📚</div>
+                <div className="font-semibold">Sabqi</div>
+                {ticketType === 'sabqi' && (
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => setTicketType('manzil')}
-                className={`px-4 py-5 rounded-xl border-2 font-extrabold text-sm transition-all shadow-lg hover:scale-105 ${
+                className={`group relative px-4 py-4 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   ticketType === 'manzil'
-                    ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-xl ring-2 ring-purple-200'
-                    : 'border-gray-300 bg-white text-primary hover:border-purple-400 hover:shadow-xl'
+                    ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-sm'
                 }`}
               >
-                <div className="text-2xl mb-1">📿</div>
-                <div>Manzil</div>
+                <div className="text-2xl mb-1.5">📿</div>
+                <div className="font-semibold">Manzil</div>
+                {ticketType === 'manzil' && (
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-purple-500 rounded-full"></div>
+                )}
               </button>
             </div>
             {ticketType === 'sabq' && (
-              <p className="mt-3 text-xs text-primary/70 font-medium bg-green-50 p-2 rounded-lg border border-green-200">
-                📝 Sabq tickets go directly to assignment page (admin only, no teacher review)
-              </p>
+              <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <p className="text-xs text-emerald-700 font-medium">
+                  📝 Goes directly to assignment page (no teacher review required)
+                </p>
+              </div>
             )}
             {(ticketType === 'sabqi' || ticketType === 'manzil') && (
-              <p className="mt-3 text-xs text-primary/70 font-medium bg-blue-50 p-2 rounded-lg border border-blue-200">
-                👨‍🏫 {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} tickets require teacher review before assignment
-              </p>
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs text-blue-700 font-medium">
+                  👨‍🏫 Requires teacher review before assignment
+                </p>
+              </div>
             )}
           </div>
 
-          {/* Admin Comment (for sabq) */}
+          {/* Form Fields - Clean Design */}
           {ticketType === 'sabq' && (
             <div className="mb-6">
-              <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
                 Comment <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={adminComment}
                 onChange={(e) => setAdminComment(e.target.value)}
-                rows={5}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
+                rows={4}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm resize-none placeholder:text-slate-400"
                 placeholder="Enter comment for sabq assignment..."
               />
             </div>
           )}
 
-          {/* Teacher Selection (for sabqi/manzil) */}
           {(ticketType === 'sabqi' || ticketType === 'manzil') && (
-            <>
-              <div className="mb-6">
-                <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+            <div className="space-y-5">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Select Teacher <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm"
                   required
                 >
                   <option value="">Choose a teacher...</option>
@@ -461,27 +437,27 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                 </select>
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-extrabold text-primary mb-2 uppercase tracking-wide">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Notes for Teacher <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={teacherNotes}
                   onChange={(e) => setTeacherNotes(e.target.value)}
-                  rows={5}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl bg-white text-primary focus:ring-2 focus:ring-primary focus:border-primary transition font-medium shadow-sm resize-none"
+                  rows={4}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm resize-none placeholder:text-slate-400"
                   placeholder="Enter notes or instructions for the teacher..."
                 />
               </div>
-            </>
+            </div>
           )}
 
-          {/* Submit Button */}
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t-2 border-gray-200">
+          {/* Footer Actions */}
+          <div className="sticky bottom-0 bg-white border-t border-slate-200 -mx-6 -mb-6 px-6 py-4 mt-6 flex flex-col sm:flex-row justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 border-2 border-gray-300 text-primary rounded-xl font-extrabold hover:bg-gray-50 transition-all shadow-md"
+              className="px-5 py-2.5 border border-slate-300 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 transition-all"
               disabled={isCreating}
             >
               Cancel
@@ -489,11 +465,11 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             <button
               type="submit"
               disabled={isCreating}
-              className="px-8 py-4 bg-gradient-to-r from-primary to-primary/90 text-white rounded-xl font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
+              className="px-6 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md flex items-center justify-center gap-2"
             >
               {isCreating ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   <span>{isEditMode ? 'Updating...' : 'Creating...'}</span>
                 </>
               ) : (
