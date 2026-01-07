@@ -1219,10 +1219,12 @@ export const WordByWordPage: React.FC<{
           <div 
             className="mushaf-arabic-text"
             style={{
-              fontSize: 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
-              lineHeight: '1.5',
+              fontSize: isMobile 
+                ? 'clamp(1.1rem, 4vw, 1.4rem)' // Larger base size for mobile readability
+                : 'clamp(1rem, 1.8vw + 0.3rem, 1.6rem)',
+              lineHeight: isMobile ? '1.6' : '1.5', // Slightly more line height on mobile
               letterSpacing: '0',
-              wordSpacing: '0.15em',
+              wordSpacing: isMobile ? '0.2em' : '0.15em', // More spacing on mobile
               direction: 'rtl',
               textAlign: 'right',
               fontFamily: fontFamily,
@@ -1230,9 +1232,10 @@ export const WordByWordPage: React.FC<{
               fontFeatureSettings: '"liga" 1, "kern" 1',
               display: 'flex',
               flexDirection: 'column',
-              gap: '0.15em',
+              gap: isMobile ? '0.2em' : '0.15em', // More gap on mobile
               margin: '0 auto',
-              color: '#000000'
+              color: '#000000',
+              padding: isMobile ? '0.5rem' : '0' // Add padding on mobile for better touch targets
             }}
           >
             {layout.lines.map((line) => {
@@ -1594,14 +1597,15 @@ export const WordByWordPage: React.FC<{
                                 : `Surah ${w.surah}, Ayah ${w.ayah}${hasLetterMistakes ? ' (Click letters to mark letter mistakes)' : ''}`
                           }
                           style={{
-                            padding: '1px 2px',
+                            padding: isMobile ? '3px 4px' : '1px 2px', // Larger touch targets on mobile
+                            minHeight: isMobile ? '28px' : 'auto', // Minimum touch target size on mobile
                             direction: 'rtl',
                             display: 'inline-block',
                             unicodeBidi: 'embed',
                             fontFamily: fontFamily,
                             fontSize: 'inherit',
                             lineHeight: 'inherit',
-                            borderRadius: '0',
+                            borderRadius: isMobile ? '2px' : '0', // Slight rounding on mobile
                             whiteSpace: 'nowrap',
                             ...tajweedStyle // Merge tajweed styles
                           }}
@@ -1636,8 +1640,11 @@ export const WordByWordPage: React.FC<{
                                 }}
                                 className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-all duration-200 inline-block`}
                                 style={{
-                                  padding: letterMistake ? '2px 1px' : '0',
-                                  borderRadius: '0',
+                                  padding: letterMistake 
+                                    ? (isMobile ? '3px 2px' : '2px 1px') 
+                                    : (isMobile ? '2px 1px' : '0'), // Better touch targets on mobile
+                                  minHeight: isMobile && letterMistake ? '24px' : 'auto',
+                                  borderRadius: isMobile ? '2px' : '0',
                                   display: 'inline-block',
                                   fontFamily: fontFamily,
                                   fontSize: 'inherit',
@@ -1661,9 +1668,9 @@ export const WordByWordPage: React.FC<{
                               </svg>
                             </span>
                           )}
-                          {/* Mistake Details Popup */}
-                          {wordMistake && readOnly && (
-                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 bg-white border border-gray-300 rounded-lg shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                          {/* Mistake Details Popup - Hidden on mobile, only shows on hover for desktop */}
+                          {wordMistake && readOnly && !isMobile && (
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 max-w-[90vw] bg-white border border-gray-300 rounded-lg shadow-xl p-3 z-[100] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none lg:pointer-events-auto" style={{ marginBottom: '4px' }}>
                               <div className="text-xs">
                                 {isWordHistorical && (
                                   <div className="text-blue-600 font-semibold mb-1 text-[10px]">
@@ -1816,6 +1823,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [isIndexMinimized, setIsIndexMinimized] = useState(false);
   const [indexTab, setIndexTab] = useState<'surah' | 'juz'>('surah'); // Tab for Surah/Juz index
   const [tajweedExplanation, setTajweedExplanation] = useState<{ type: string; position?: { x: number; y: number } } | null>(null);
+  const [selectedMistakeForDetails, setSelectedMistakeForDetails] = useState<{ mistake: MushafMistake; word: Word; isHistorical: boolean } | null>(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
 
   // View mode hooks
@@ -1917,38 +1925,38 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
     if (isHistorical) {
       if (isMistake) {
-        // Historical mistakes: red with reduced opacity
+        // Historical mistakes: red with reduced opacity - Enhanced for mobile
         return isMobileDeviceCheck
-          ? "border-b-2 border-red-400 text-red-800"
+          ? "border-2 border-red-500 text-red-900 bg-red-100/80 font-medium" // More visible on mobile
           : "bg-red-100/60 hover:bg-red-200/60 border border-dashed border-red-400 text-red-800 shadow-sm";
       }
       if (isAtkee) {
-        // Historical atkees: yellow with reduced opacity
+        // Historical atkees: yellow with reduced opacity - Enhanced for mobile
         return isMobileDeviceCheck
-          ? "border-b-2 border-yellow-400 text-yellow-800"
+          ? "border-2 border-yellow-500 text-yellow-900 bg-yellow-100/80 font-medium" // More visible on mobile
           : "bg-yellow-100/60 hover:bg-yellow-200/60 border border-dashed border-yellow-400 text-yellow-800 shadow-sm";
       }
       return isMobileDeviceCheck
-        ? "border-b border-gray-400 text-gray-700"
+        ? "border-2 border-gray-500 text-gray-800 bg-gray-100/80 font-medium" // More visible on mobile
         : "bg-gray-200/60 hover:bg-gray-300/60 border border-dashed border-gray-400 text-gray-700 shadow-sm";
     }
 
     // Current mistakes
     if (isMistake) {
-      // Mistake: Red highlight
+      // Mistake: Red highlight - Enhanced for mobile visibility
       return isMobileDeviceCheck
-        ? "bg-red-200 border-b-2 border-red-500 text-red-900 font-semibold"
+        ? "bg-red-300 border-2 border-red-600 text-red-950 font-bold shadow-sm" // Stronger colors on mobile
         : "bg-red-200 hover:bg-red-300 border border-red-500 text-red-900 font-semibold shadow-sm";
     }
     if (isAtkee) {
-      // Atkee: Yellow highlight
+      // Atkee: Yellow highlight - Enhanced for mobile visibility
       return isMobileDeviceCheck
-        ? "bg-yellow-200 border-b-2 border-yellow-500 text-yellow-900 font-semibold"
+        ? "bg-yellow-300 border-2 border-yellow-600 text-yellow-950 font-bold shadow-sm" // Stronger colors on mobile
         : "bg-yellow-200 hover:bg-yellow-300 border border-yellow-500 text-yellow-900 font-semibold shadow-sm";
     }
     
     return isMobileDeviceCheck
-      ? "bg-gray-200 border-b border-gray-500 text-gray-800"
+      ? "bg-gray-300 border-2 border-gray-600 text-gray-900 font-semibold shadow-sm" // Enhanced visibility on mobile
       : "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
   }, [isMobile]);
 
@@ -2038,21 +2046,39 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       setSelectedWord(word);
       setSelectedLetterIndex(undefined); // Reset letter selection for word-level mistakes
     } else if (readOnly || mode === 'viewing') {
-      // In viewing mode, show tajweed explanation if applicable
+      // In viewing mode, show mistake details or tajweed explanation
       const wordMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
         m.page === currentPage &&
         m.surah === word.surah &&
         m.ayah === word.ayah &&
-        m.wordIndex === word.word_index &&
-        isTajweedType(m.type)
+        m.wordIndex === word.word_index
       );
-      if (wordMistake && event) {
-        const position = event instanceof MouseEvent
-          ? { x: event.clientX, y: event.clientY }
-          : event instanceof TouchEvent && event.touches[0]
-          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
-          : undefined;
-        setTajweedExplanation({ type: wordMistake.type, position });
+      
+      if (wordMistake) {
+        const isHistoricalMistake = historicalMistakes.some(m => 
+          m.page === currentPage &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          m.wordIndex === word.word_index &&
+          m.type === wordMistake.type
+        );
+        
+        if (isTajweedType(wordMistake.type)) {
+          // Show tajweed explanation
+          if (event) {
+            const position = event instanceof MouseEvent
+              ? { x: event.clientX, y: event.clientY }
+              : event instanceof TouchEvent && event.touches[0]
+              ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+              : undefined;
+            setTajweedExplanation({ type: wordMistake.type, position });
+          }
+        } else if (isMobile) {
+          // On mobile, show mistake details in bottom sheet
+          setSelectedMistakeForDetails({ mistake: wordMistake, word, isHistorical: isHistoricalMistake });
+        } else if (event) {
+          // On desktop, tooltip will show on hover (already implemented)
+        }
       }
     }
   };
@@ -2061,7 +2087,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     // Respect toolsHidden: disable marking interactions
     if (toolsHidden) {
       // Check if this letter has a tajweed error and show explanation
-      const letterMistake = mistakes.find(m => 
+      const letterMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
         m.page === currentPage &&
         m.surah === word.surah &&
         m.ayah === word.ayah &&
@@ -2076,6 +2102,44 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
           : undefined;
         setTajweedExplanation({ type: letterMistake.type, position });
+      }
+      return;
+    }
+
+    if (readOnly || mode === 'viewing') {
+      // In viewing mode, show mistake details or tajweed explanation
+      const letterMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
+        m.page === currentPage &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        m.letterIndex === letterIndex
+      );
+      
+      if (letterMistake) {
+        const isHistoricalMistake = historicalMistakes.some(m => 
+          m.page === currentPage &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          m.wordIndex === word.word_index &&
+          m.letterIndex === letterIndex &&
+          m.type === letterMistake.type
+        );
+        
+        if (isTajweedType(letterMistake.type)) {
+          // Show tajweed explanation
+          if (event) {
+            const position = event instanceof MouseEvent
+              ? { x: event.clientX, y: event.clientY }
+              : event instanceof TouchEvent && event.touches[0]
+              ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
+              : undefined;
+            setTajweedExplanation({ type: letterMistake.type, position });
+          }
+        } else if (isMobile) {
+          // On mobile, show mistake details in bottom sheet
+          setSelectedMistakeForDetails({ mistake: letterMistake, word, isHistorical: isHistoricalMistake });
+        }
       }
       return;
     }
@@ -2659,6 +2723,103 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               isMobile={isMobile}
               onClose={() => setTajweedExplanation(null)}
             />
+          )}
+
+          {/* Mobile Mistake Details Bottom Sheet - For students viewing mistakes */}
+          {selectedMistakeForDetails && isMobile && readOnly && (
+            <div className="fixed inset-0 z-50 flex items-end">
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 bg-black/40"
+                onClick={() => setSelectedMistakeForDetails(null)}
+              />
+              
+              {/* Bottom Sheet */}
+              <div
+                className="relative bg-white rounded-t-xl shadow-2xl w-full max-h-[60vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+                style={{ direction: 'ltr' }}
+              >
+                {/* Handle */}
+                <div className="flex justify-center pt-2 pb-1">
+                  <div className="w-12 h-1 bg-gray-300 rounded-full" />
+                </div>
+
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Mistake Details
+                  </h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Surah {selectedMistakeForDetails.word.surah}, Ayah {selectedMistakeForDetails.word.ayah}
+                  </p>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 space-y-3">
+                  {selectedMistakeForDetails.isHistorical && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                      <p className="text-xs font-semibold text-blue-700">📜 Historical Mistake</p>
+                    </div>
+                  )}
+                  
+                  <div>
+                    <p className="text-xs font-medium text-gray-500 mb-1">Mistake Type:</p>
+                    <p className="text-base font-semibold text-gray-900">
+                      {getMistakeTypeLabel(selectedMistakeForDetails.mistake.type)}
+                    </p>
+                  </div>
+
+                  {selectedMistakeForDetails.mistake.note && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-1">Note:</p>
+                      <p className="text-sm text-gray-700">{selectedMistakeForDetails.mistake.note}</p>
+                    </div>
+                  )}
+
+                  {selectedMistakeForDetails.mistake.audioUrl && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 mb-2">Audio Correction:</p>
+                      <audio 
+                        controls 
+                        preload="metadata"
+                        className="w-full h-10"
+                        src={
+                          (() => {
+                            let url = selectedMistakeForDetails.mistake.audioUrl || '';
+                            if (url.startsWith('http://') || url.startsWith('https://')) {
+                              url = url.replace('/api/uploads/', '/uploads/');
+                              return url;
+                            }
+                            let baseUrl = 'http://localhost:3001';
+                            if (typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE) {
+                              baseUrl = (window as any).MUSHAF_API_BASE;
+                            } else if (import.meta.env?.VITE_API_BASE_URL) {
+                              baseUrl = import.meta.env.VITE_API_BASE_URL;
+                            }
+                            if (baseUrl.endsWith('/api')) {
+                              baseUrl = baseUrl.replace('/api', '');
+                            }
+                            baseUrl = baseUrl.replace(/\/$/, '');
+                            const audioPath = url.startsWith('/') ? url : `/${url}`;
+                            return `${baseUrl}${audioPath}`;
+                          })()
+                        }
+                      >
+                        Your browser does not support the audio element.
+                      </audio>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => setSelectedMistakeForDetails(null)}
+                    className="w-full mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Mistake Counters - Hidden in Focus Mode */}
