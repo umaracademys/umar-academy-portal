@@ -2552,7 +2552,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       {/* Surah Index Portal for Mobile/iPad - Render at body level to appear on top */}
       {(() => {
         const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 1024;
-        const shouldRender = showSurahIndex && !focusMode && isMobileDevice;
+        // On mobile, always show portal when showSurahIndex is true, regardless of focusMode
+        const shouldRender = showSurahIndex && isMobileDevice;
         console.log('📱 Portal render check:', { 
           showSurahIndex, 
           focusMode, 
