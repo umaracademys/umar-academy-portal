@@ -373,8 +373,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load users from backend with timeout (no auth required for backward compatibility)
+      // Reduced timeout to 5 seconds for faster loading
       setLoadingStep('Loading users...');
-      const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 10000, false);
+      const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 5000, false);
       if (import.meta.env.DEV) {
         console.log('📡 Backend response status:', usersResponse.status);
       }
@@ -387,33 +388,21 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log('👥 Users loaded from backend:', users.length);
       }
 
-      // Load actual teacher records from /api/teachers endpoint (with sync to ensure assignedStudents arrays are up to date)
-      setLoadingStep('Loading teachers...');
+      // Load teachers and students in parallel for faster loading (NO SYNC on initial load)
+      setLoadingStep('Loading teachers and students...');
+      const [teachersResponse, studentsResponse] = await Promise.allSettled([
+        fetchWithTimeout(`${API_BASE}/teachers`, {}, 8000), // No sync on initial load - much faster
+        fetchWithTimeout(`${API_BASE}/students`, {}, 8000)
+      ]);
+
+      // Process teachers
       let teacherRecords: any[] = [];
-      try {
-        // Try with sync first, but with longer timeout (30 seconds)
-        // If it times out, fall back to loading without sync
-        let teachersResponse;
+      if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
         try {
-          teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 30000);
-        } catch (syncError: any) {
-          // If sync times out, try without sync
-          console.warn('⚠️ Sync request timed out, loading teachers without sync:', syncError?.message);
-          teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers`, {}, 10000);
-        }
-        
-        if (teachersResponse.ok) {
-          teacherRecords = await teachersResponse.json();
+          teacherRecords = await teachersResponse.value.json();
           if (import.meta.env.DEV) {
-            console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
-            
-            // Log assignedStudents arrays for debugging
-            teacherRecords.forEach((teacher: any) => {
-              const assignedCount = Array.isArray(teacher.assignedStudents) ? teacher.assignedStudents.length : 0;
-              console.log(`  - ${teacher.fullName || 'Unknown'}: assignedStudents=[${(teacher.assignedStudents || []).join(', ')}] (${assignedCount} students)`);
-            });
+            console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
           }
-        
           // Merge teacher data with user data
           teacherRecords.forEach((teacher: any) => {
             const user = users.find((u: any) => 
@@ -425,38 +414,42 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               user.teacherProfile = teacher;
             }
           });
-        }
-      } catch (err) {
-        console.warn('⚠️ Could not load teacher records:', err);
-        // Try one more time without sync as fallback
-        try {
-          const fallbackResponse = await fetchWithTimeout(`${API_BASE}/teachers`, {}, 10000);
-          if (fallbackResponse.ok) {
-            teacherRecords = await fallbackResponse.json();
-            // Merge teacher data with user data
-            teacherRecords.forEach((teacher: any) => {
-              const user = users.find((u: any) => 
-                u._id === teacher.userId?._id || 
-                u._id === teacher.userId ||
-                (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
-              );
-              if (user) {
-                user.teacherProfile = teacher;
-              }
-            });
-          }
-        } catch (fallbackErr) {
-          console.error('❌ Fallback teacher load also failed:', fallbackErr);
+        } catch (err) {
+          console.error('❌ Error processing teachers:', err);
         }
       }
 
+      // Process students
+      if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
+        try {
+          const studentsData = await studentsResponse.value.json();
+          if (import.meta.env.DEV) {
+            console.log('👨‍🎓 Students loaded:', studentsData.length);
+          }
+          const normalizedStudents = Array.isArray(studentsData) ? studentsData.map((student: any) => ({
+            ...student,
+            id: student._id || student.id,
+            fullName: student.fullName || student.name || 'Unknown',
+            email: student.email || '',
+            status: student.status || 'active'
+          })) : [];
+          setStudents(normalizedStudents);
+        } catch (err) {
+          console.error('❌ Error processing students:', err);
+          setStudents([]);
+        }
+      } else {
+        setStudents([]);
+      }
+
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
+      // Reduced timeout to 5 seconds for faster failure recovery
       setLoadingStep('Loading assignments, reviews, notifications, and tickets...');
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000),
-        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 8000),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 8000),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000)
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 5000),
+        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 5000),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 5000)
       ]);
 
       // Process assignments
@@ -589,19 +582,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setRecitationTickets([]);
       }
 
-      // Load actual student records from /api/students endpoint
-      setLoadingStep('Loading students...');
+      // Process student records (already loaded above in parallel)
       let studentRecords: any[] = [];
-      try {
-        const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 10000);
-        if (studentsResponse.ok) {
-          studentRecords = await studentsResponse.json();
+      if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
+        try {
+          studentRecords = await studentsResponse.value.json();
           if (import.meta.env.DEV) {
-            console.log('📚 Student records loaded from /api/students:', studentRecords.length);
+            console.log('📚 Student records loaded:', studentRecords.length);
           }
+        } catch (err) {
+          console.error('❌ Error processing student records:', err);
         }
-      } catch (err) {
-        console.warn('⚠️ Could not load student records:', err);
       }
 
       // Separate users by role and map to expected format
