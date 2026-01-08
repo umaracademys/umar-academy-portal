@@ -4672,7 +4672,8 @@ const studentPersonalMushafSchema = new mongoose.Schema({
   studentName: { type: String, required: true },
   mistakes: [{
     id: String,
-    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee'], required: true },
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee', 'idgham', 'iqlab', 'qalqalah', 'makhraj', 'ghunna', 'shaddah'], required: true },
+    category: { type: String, enum: ['tajweed', 'letter', 'stop', 'memory', 'other'], default: 'other' },
     page: { type: Number, required: true },
     surah: { type: Number, required: true },
     ayah: { type: Number, required: true },
@@ -4682,6 +4683,23 @@ const studentPersonalMushafSchema = new mongoose.Schema({
       x: Number,
       y: Number
     },
+    // Structured Tajweed Data (only for tajweed mistakes)
+    tajweedData: {
+      stretchCount: { type: Number, enum: [0, 2, 4, 6], default: 0 },
+      holdRequired: { type: Boolean, default: false },
+      focusLetters: [String],
+      tajweedRule: { type: String, enum: ['ikhfa', 'idgham', 'iqlab', 'qalqalah', 'heavy_letter', 'makhraj', 'madd', 'ghunna', 'shaddah'] },
+      teacherNote: { type: String, maxlength: 200 }
+    },
+    // Timeline Metadata
+    timeline: {
+      firstMarkedAt: { type: Date, default: Date.now },
+      lastMarkedAt: { type: Date, default: Date.now },
+      repeatCount: { type: Number, default: 1 },
+      resolved: { type: Boolean, default: false },
+      resolvedAt: Date
+    },
+    // Legacy fields (for backward compatibility)
     note: String,
     audioUrl: String,
     ticketId: String, // Reference to the ticket where this mistake was marked
