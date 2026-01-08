@@ -419,27 +419,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
       }
 
-      // Process students
+      // Process students - store the data for later use
+      let studentRecords: any[] = [];
       if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
         try {
-          const studentsData = await studentsResponse.value.json();
+          studentRecords = await studentsResponse.value.json();
           if (import.meta.env.DEV) {
-            console.log('👨‍🎓 Students loaded:', studentsData.length);
+            console.log('👨‍🎓 Students loaded:', studentRecords.length);
           }
-          const normalizedStudents = Array.isArray(studentsData) ? studentsData.map((student: any) => ({
-            ...student,
-            id: student._id || student.id,
-            fullName: student.fullName || student.name || 'Unknown',
-            email: student.email || '',
-            status: student.status || 'active'
-          })) : [];
-          setStudents(normalizedStudents);
+          // Don't set students here - we'll process them later with full data mapping
         } catch (err) {
           console.error('❌ Error processing students:', err);
-          setStudents([]);
+          studentRecords = [];
         }
-      } else {
-        setStudents([]);
       }
 
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
@@ -582,18 +574,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setRecitationTickets([]);
       }
 
-      // Process student records (already loaded above in parallel)
-      let studentRecords: any[] = [];
-      if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
-        try {
-          studentRecords = await studentsResponse.value.json();
-          if (import.meta.env.DEV) {
-            console.log('📚 Student records loaded:', studentRecords.length);
-          }
-        } catch (err) {
-          console.error('❌ Error processing student records:', err);
-        }
-      }
+      // Student records already loaded above in parallel - use them here
 
       // Separate users by role and map to expected format
       // Use studentRecords directly if available, otherwise fall back to users

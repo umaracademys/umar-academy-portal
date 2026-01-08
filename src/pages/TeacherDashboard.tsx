@@ -61,20 +61,30 @@ const TeacherDashboard: React.FC = () => {
   useEffect(() => {
     const fetchUnreadCount = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('umar_academy_token'); // Use correct token key
+        if (!token) {
+          console.warn('⚠️ No auth token found, skipping broadcast message count');
+          return;
+        }
         const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
         const response = await fetch(`${API_BASE}/broadcast-messages/unread/count`, {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
         });
 
         if (response.ok) {
           const data = await response.json();
           setBroadcastUnreadCount(data.unreadCount || 0);
+        } else if (response.status === 403) {
+          // Silently handle 403 - teacher might not have access yet or token expired
+          console.warn('⚠️ Access denied to broadcast messages (403)');
+          setBroadcastUnreadCount(0);
         }
       } catch (err) {
         console.error('❌ Error fetching broadcast unread count:', err);
+        // Don't set error state - just log it
       }
     };
 
@@ -1844,11 +1854,13 @@ const TeacherDashboard: React.FC = () => {
             // Refresh unread count when closing
             const fetchUnreadCount = async () => {
               try {
-                const token = localStorage.getItem('token');
+                const token = localStorage.getItem('umar_academy_token');
+                if (!token) return;
                 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
                 const response = await fetch(`${API_BASE}/broadcast-messages/unread/count`, {
                   headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
                   }
                 });
                 if (response.ok) {
