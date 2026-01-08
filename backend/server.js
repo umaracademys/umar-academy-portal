@@ -7173,7 +7173,19 @@ app.get('/api/students/:studentId/personal-mushaf', async (req, res) => {
     const personalMushaf = await StudentPersonalMushaf.findOne({ studentId });
     
     if (!personalMushaf) {
-      return res.json({ studentId, studentName: '', mistakes: [] });
+      // If personalMushaf doesn't exist, still try to get student name from Student collection
+      const student = await Student.findOne({ id: studentId });
+      const studentName = student?.fullName || '';
+      return res.json({ studentId, studentName, mistakes: [] });
+    }
+    
+    // Ensure studentName is always populated (update if student name changed)
+    if (!personalMushaf.studentName || personalMushaf.studentName === 'Unknown Student') {
+      const student = await Student.findOne({ id: studentId });
+      if (student?.fullName) {
+        personalMushaf.studentName = student.fullName;
+        await personalMushaf.save();
+      }
     }
     
     res.json(personalMushaf);

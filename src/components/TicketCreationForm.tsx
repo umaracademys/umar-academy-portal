@@ -249,9 +249,9 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
 
         {/* Assignment History - Compact & Modern */}
         {previousDayHomework.length > 0 && (
-          <div className="mx-6 mt-4 p-4 bg-gradient-to-br from-slate-50 to-blue-50 border border-slate-200 rounded-xl shadow-sm">
+          <div className="mx-6 mt-4 p-4 bg-gradient-to-br from-slate-50 to-primary/5 border border-slate-200 rounded-xl shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <span className="text-sm">📚</span>
               </div>
               <div>
@@ -261,7 +261,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             </div>
             <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
               {previousDayHomework.slice(0, 5).map((hw, idx) => (
-                <div key={hw.id || idx} className="bg-white rounded-lg p-2.5 border border-slate-200 hover:border-blue-300 transition-colors">
+                <div key={hw.id || idx} className="bg-white rounded-lg p-2.5 border border-slate-200 hover:border-primary/50 transition-colors">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs font-medium text-slate-700">{hw.date}</span>
                     {hw.assignedBy && hw.assignedBy !== 'Unknown' && (
@@ -301,7 +301,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                         
                         return (
                           <div key={itemIdx} className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
-                            <span className="font-medium text-blue-600 capitalize">{item.type}:</span> {getRangeText()}
+                            <span className="font-medium text-primary capitalize">{item.type}:</span> {getRangeText()}
                           </div>
                         );
                       })}
@@ -409,14 +409,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                 onClick={() => setTicketType('sabqi')}
                 className={`group relative px-4 py-4 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   ticketType === 'sabqi'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md ring-2 ring-blue-200'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm'
+                    ? 'border-primary bg-primary/10 text-primary shadow-md ring-2 ring-primary/20'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-primary/50 hover:bg-primary/5 hover:shadow-sm'
                 }`}
               >
                 <div className="text-2xl mb-1.5">📚</div>
                 <div className="font-semibold">Sabqi</div>
                 {ticketType === 'sabqi' && (
-                  <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></div>
                 )}
               </button>
               <button
@@ -424,14 +424,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                 onClick={() => setTicketType('manzil')}
                 className={`group relative px-4 py-4 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   ticketType === 'manzil'
-                    ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md ring-2 ring-purple-200'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-sm'
+                    ? 'border-accent bg-accent/10 text-accent shadow-md ring-2 ring-accent/20'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-accent/50 hover:bg-accent/5 hover:shadow-sm'
                 }`}
               >
                 <div className="text-2xl mb-1.5">📿</div>
                 <div className="font-semibold">Manzil</div>
                 {ticketType === 'manzil' && (
-                  <div className="absolute top-2 right-2 w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <div className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full"></div>
                 )}
               </button>
             </div>
@@ -443,8 +443,8 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
               </div>
             )}
             {(ticketType === 'sabqi' || ticketType === 'manzil') && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs text-blue-700 font-medium">
+              <div className="mt-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                <p className="text-xs text-primary font-medium">
                   👨‍🏫 Requires teacher review before assignment
                 </p>
               </div>

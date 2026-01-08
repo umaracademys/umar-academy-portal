@@ -74,10 +74,10 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
       draft: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Draft' },
-      submitted: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Submitted' },
+      submitted: { bg: 'bg-accent/10', text: 'text-accent', label: 'Submitted' },
       under_review: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Under Review' },
       feedback_provided: { bg: 'bg-amber-100', text: 'text-amber-800', label: 'Feedback Provided' },
-      approved: { bg: 'bg-green-100', text: 'text-green-800', label: 'Approved' },
+      approved: { bg: 'bg-primary/10', text: 'text-primary', label: 'Approved' },
       rejected: { bg: 'bg-red-100', text: 'text-red-800', label: 'Rejected' }
     };
     
@@ -213,9 +213,9 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
                       </div>
                     )}
                     {evaluation.fixingEtiquette && (
-                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-xs font-bold text-blue-900 mb-1">Fixing Etiquette</p>
-                        <p className="text-sm text-blue-800 line-clamp-2">{evaluation.fixingEtiquette}</p>
+                      <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+                        <p className="text-xs font-bold text-primary mb-1">Fixing Etiquette</p>
+                        <p className="text-sm text-primary/90 line-clamp-2">{evaluation.fixingEtiquette}</p>
                       </div>
                     )}
                   </div>
@@ -321,11 +321,11 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
 
               {/* Fixing Etiquette */}
               {selectedEvaluation.fixingEtiquette && (
-                <div className="p-5 bg-blue-50 rounded-xl border-2 border-blue-200">
-                  <h4 className="font-bold text-blue-900 text-lg mb-3 flex items-center gap-2">
+                <div className="p-5 bg-primary/10 rounded-xl border-2 border-primary/20">
+                  <h4 className="font-bold text-primary text-lg mb-3 flex items-center gap-2">
                     <span>✅</span> Fixing Etiquette
                   </h4>
-                  <p className="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{selectedEvaluation.fixingEtiquette}</p>
+                  <p className="text-sm text-primary/90 whitespace-pre-wrap leading-relaxed">{selectedEvaluation.fixingEtiquette}</p>
                 </div>
               )}
 
@@ -346,7 +346,7 @@ const TeacherWeeklyEvaluationReview: React.FC<TeacherWeeklyEvaluationReviewProps
 
               {/* Game Plan */}
               {selectedEvaluation.gamePlan && (
-                <div className="p-5 bg-green-50 rounded-xl border-2 border-green-200">
+                <div className="p-5 bg-primary/10 rounded-xl border-2 border-primary/20">
                   <h4 className="font-bold text-green-900 text-lg mb-3 flex items-center gap-2">
                     <span>🎯</span> Game Plan
                   </h4>

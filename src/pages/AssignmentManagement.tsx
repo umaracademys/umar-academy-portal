@@ -13,10 +13,9 @@ import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
 
 const AssignmentManagement: React.FC = () => {
-  const { students: allStudents, assignments, getStudentAssignments, getTeacherPairs, getPairStudents, refreshData } = useBackendData();
+  const { students: allStudents, assignments, getStudentAssignments, refreshData } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
   const { user } = useAuth();
-  const [pairStudents, setPairStudents] = useState<any[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<ProgramType | 'all'>('all');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
@@ -27,70 +26,17 @@ const AssignmentManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'students' | 'completed'>('students');
   const [showHomeworkForm, setShowHomeworkForm] = useState(false);
   const [homeworkAssignmentId, setHomeworkAssignmentId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'with-assignments' | 'without-assignments'>('all');
 
   const currentTeacher = useMemo(() => {
     if (!user || !teachers) return null;
     return teachers.find(t => t.email === user.email) || null;
   }, [user, teachers]);
 
-  useEffect(() => {
-    const loadPairStudents = async () => {
-      if (!currentTeacher) {
-        setPairStudents([]);
-        return;
-      }
-      
-      try {
-        const pairs = await getTeacherPairs();
-        const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
-        const teacherIdStr = teacherDocId.toString();
-        
-        const filteredPairs = pairs.filter((pair: any) => {
-          const pairTeacher1Id = pair.teacher1?._id?.toString() || pair.teacher1?.toString();
-          const pairTeacher2Id = pair.teacher2?._id?.toString() || pair.teacher2?.toString();
-          return pairTeacher1Id === teacherIdStr || pairTeacher2Id === teacherIdStr;
-        });
-        
-        const allPairStudents: any[] = [];
-        for (const pair of filteredPairs) {
-          try {
-            const students = await getPairStudents({ pair: pair._id, status: 'active' });
-            allPairStudents.push(...students);
-          } catch (error) {
-            console.error(`Error loading students for pair ${pair._id}:`, error);
-          }
-        }
-        setPairStudents(allPairStudents);
-      } catch (error) {
-        console.error('Error loading pair students:', error);
-        setPairStudents([]);
-      }
-    };
-    
-    loadPairStudents();
-  }, [currentTeacher, getTeacherPairs, getPairStudents]);
-
   const assignedStudents = useMemo(() => {
     if (!currentTeacher?.id) return allStudents;
-    
-    const directAssigned = getStudentsByTeacher(currentTeacher.id);
-    const pairStudentIds = new Set(
-      pairStudents
-        .map(ps => ps.student?._id?.toString() || ps.student?.toString() || ps.student)
-        .filter(Boolean)
-    );
-    
-    const pairStudentsList = allStudents.filter(s => 
-      pairStudentIds.has(s.id?.toString()) || pairStudentIds.has((s as any)._id?.toString())
-    );
-    
-    const allAssigned = [...directAssigned, ...pairStudentsList];
-    const uniqueAssigned = allAssigned.filter((student, index, self) => 
-      index === self.findIndex(s => s.id === student.id || (s as any)._id === (student as any)._id)
-    );
-    
-    return uniqueAssigned;
-  }, [currentTeacher, allStudents, getStudentsByTeacher, pairStudents]);
+    return getStudentsByTeacher(currentTeacher.id);
+  }, [currentTeacher, allStudents, getStudentsByTeacher]);
 
   // Normalize program names to canonical ProgramType values
   const normalizeProgramName = (program: string | undefined): ProgramType | null => {
@@ -138,6 +84,18 @@ const AssignmentManagement: React.FC = () => {
       });
     }
     
+    // Filter by assignment status
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(student => {
+        const studentAssignments = getStudentAssignments(student.id);
+        const hasAssignments = studentAssignments.length > 0;
+        
+        if (filterStatus === 'with-assignments') return hasAssignments;
+        if (filterStatus === 'without-assignments') return !hasAssignments;
+        return true;
+      });
+    }
+    
     // Filter by search query - handle undefined/null values safely
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
@@ -167,7 +125,7 @@ const AssignmentManagement: React.FC = () => {
     }
     
     return filtered;
-  }, [assignedStudents, selectedProgram, searchQuery]);
+  }, [assignedStudents, selectedProgram, searchQuery, filterStatus, getStudentAssignments]);
 
   const stats = useMemo(() => {
     const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
@@ -356,108 +314,199 @@ const AssignmentManagement: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Assignment Management</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {currentTeacher 
-              ? `Manage assignments for ${stats.totalStudents} assigned students`
-              : `Manage assignments for ${stats.totalStudents} students`}
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Assignment Management</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                {currentTeacher 
+                  ? `Manage assignments for ${stats.totalStudents} assigned students`
+                  : `Manage assignments for ${stats.totalStudents} students`}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('students')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  viewMode === 'students'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Students
+              </button>
+              <button
+                onClick={() => setViewMode('completed')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors relative ${
+                  viewMode === 'completed'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Completed
+                {stats.completedAssignments > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                    {stats.completedAssignments}
+                  </span>
+                )}
+                {stats.pendingHomework > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white rounded-full text-xs flex items-center justify-center">
+                    {stats.pendingHomework}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Grid */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Total Assignments</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalAssignments}</p>
-            <p className="text-xs text-gray-600 mt-1">{stats.studentsWithAssignments} students</p>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200 p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-blue-700 font-medium mb-1">Total Assignments</p>
+                <p className="text-2xl sm:text-3xl font-bold text-blue-900">{stats.totalAssignments}</p>
+                <p className="text-xs text-blue-600 mt-1">{stats.studentsWithAssignments} students</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Active</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.activeAssignments}</p>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200 p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-green-700 font-medium mb-1">Active</p>
+                <p className="text-2xl sm:text-3xl font-bold text-green-900">{stats.activeAssignments}</p>
+              </div>
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Completed</p>
-            <p className="text-2xl font-bold text-green-600">{stats.completedAssignments}</p>
-            <p className="text-xs text-gray-600 mt-1">{stats.completionRate}% rate</p>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-purple-700 font-medium mb-1">Completed</p>
+                <p className="text-2xl sm:text-3xl font-bold text-purple-900">{stats.completedAssignments}</p>
+                <p className="text-xs text-purple-600 mt-1">{stats.completionRate}% rate</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <p className="text-xs text-gray-500 mb-1">Students</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
-            {stats.pendingHomework > 0 && (
-              <p className="text-xs text-orange-600 mt-1">{stats.pendingHomework} pending homework</p>
-            )}
+          <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg border border-orange-200 p-4 sm:p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs sm:text-sm text-orange-700 font-medium mb-1">Students</p>
+                <p className="text-2xl sm:text-3xl font-bold text-orange-900">{stats.totalStudents}</p>
+                {stats.pendingHomework > 0 && (
+                  <p className="text-xs text-orange-600 mt-1 font-medium">{stats.pendingHomework} pending homework</p>
+                )}
+              </div>
+              <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* View Mode Toggle */}
-        <div className="bg-white rounded-lg border border-gray-200 p-3 mb-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('students')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                viewMode === 'students'
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Students
-            </button>
-            <button
-              onClick={() => setViewMode('completed')}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                viewMode === 'completed'
-                  ? 'bg-primary text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Completed ({stats.completedAssignments})
-              {stats.pendingHomework > 0 && (
-                <span className="ml-2 px-2 py-0.5 bg-orange-500 text-white rounded-full text-xs">
-                  {stats.pendingHomework} pending
-                </span>
+        {/* Filters */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
+          <div className="flex flex-col lg:flex-row gap-3">
+            <div className="flex-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search students by name, email, or program..."
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 flex-1 lg:flex-none lg:w-auto">
+              <select
+                value={selectedProgram}
+                onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm bg-white"
+              >
+                <option value="all">All Programs</option>
+                {programs.map(program => (
+                  <option key={program} value={program}>{program}</option>
+                ))}
+              </select>
+              {viewMode === 'students' && (
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value as 'all' | 'with-assignments' | 'without-assignments')}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm bg-white"
+                >
+                  <option value="all">All Students</option>
+                  <option value="with-assignments">With Assignments</option>
+                  <option value="without-assignments">Without Assignments</option>
+                </select>
               )}
-            </button>
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="bg-white rounded-lg border border-gray-200 p-3 mb-6">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search students..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-            />
-            <select
-              value={selectedProgram}
-              onChange={(e) => setSelectedProgram(e.target.value as ProgramType | 'all')}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm"
-            >
-              <option value="all">All Programs</option>
-              {programs.map(program => (
-                <option key={program} value={program}>{program}</option>
-              ))}
-            </select>
+            </div>
+            {(searchQuery || selectedProgram !== 'all' || filterStatus !== 'all') && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedProgram('all');
+                  setFilterStatus('all');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
         {/* Students List or Completed Assignments */}
         {viewMode === 'students' ? (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {currentTeacher ? 'My Students' : 'All Students'}
-              </h2>
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
+                  {currentTeacher ? 'My Students' : 'All Students'}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium">{filteredStudents.length}</span> of <span className="font-medium">{assignedStudents.length}</span> students
+                  {(searchQuery || selectedProgram !== 'all' || filterStatus !== 'all') && (
+                    <span className="text-gray-500 ml-1">(filtered)</span>
+                  )}
+                </p>
+              </div>
             </div>
 
             {filteredStudents.length === 0 ? (
               <div className="text-center py-12 px-4">
-                <p className="text-gray-600">No students found</p>
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p className="mt-4 text-gray-600">No students found</p>
+                {(searchQuery || selectedProgram !== 'all' || filterStatus !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedProgram('all');
+                      setFilterStatus('all');
+                    }}
+                    className="mt-2 text-sm text-primary hover:underline"
+                  >
+                    Clear filters to see all students
+                  </button>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
@@ -465,17 +514,21 @@ const AssignmentManagement: React.FC = () => {
                   // Use getStudentAssignments for consistent filtering logic
                   const studentAssignments = getStudentAssignments(student.id);
                   const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
+                  const completedAssignments = studentAssignments.filter((a: any) => 
+                    a.status === 'completed' || a.status === 'archived' ||
+                    (a.homework?.submission?.submitted && a.homework?.submission?.status === 'graded')
+                  ).length;
                   const initials = getInitials(student.fullName);
                   
                   return (
                     <div
                       key={student.id}
-                      className="px-4 py-3 hover:bg-gray-50 transition-colors"
+                      className="px-4 sm:px-6 py-4 hover:bg-gray-50 transition-colors"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           {/* Avatar */}
-                          <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 text-white flex items-center justify-center text-sm font-bold flex-shrink-0 shadow-md">
                             {student.avatar ? (
                               <img
                                 src={student.avatar}
@@ -489,24 +542,40 @@ const AssignmentManagement: React.FC = () => {
                           
                           {/* Student Info */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 truncate">{student.fullName}</p>
-                            <div className="flex items-center gap-2 text-xs text-gray-500">
-                              {student.program && <span>{student.program}</span>}
+                            <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">{student.fullName}</p>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mt-1">
+                              {student.program && (
+                                <span className="px-2 py-0.5 bg-gray-100 rounded-full">{student.program}</span>
+                              )}
                               {studentAssignments.length > 0 && (
-                                <span className="text-primary font-medium">
-                                  {activeAssignments > 0 ? activeAssignments : studentAssignments.length} assignment{studentAssignments.length !== 1 ? 's' : ''}
-                                </span>
+                                <>
+                                  {activeAssignments > 0 && (
+                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                                      {activeAssignments} active
+                                    </span>
+                                  )}
+                                  {completedAssignments > 0 && (
+                                    <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-medium">
+                                      {completedAssignments} completed
+                                    </span>
+                                  )}
+                                  {activeAssignments === 0 && completedAssignments === 0 && (
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-full font-medium">
+                                      {studentAssignments.length} total
+                                    </span>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
                           {!isAfterSchoolSelected && (
                             <button
                               onClick={() => handleCreateTicket(student.id)}
-                              className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors"
+                              className="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary hover:text-white transition-colors whitespace-nowrap"
                             >
                               Ticket
                             </button>
@@ -514,14 +583,14 @@ const AssignmentManagement: React.FC = () => {
                           {!isAfterSchoolSelected && (
                             <button
                               onClick={() => handleCreateAssignment(student.id)}
-                              className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                              className="px-3 py-1.5 text-xs font-medium bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors whitespace-nowrap"
                             >
                               Assignment
                             </button>
                           )}
                           <button
                             onClick={() => handleStudentClick(student.id)}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors whitespace-nowrap"
                           >
                             {isAfterSchoolSelected ? 'Review' : 'View'}
                           </button>

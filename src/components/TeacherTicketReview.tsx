@@ -212,9 +212,9 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   };
 
   const typeColors = {
-    sabq: { bg: 'bg-green-500', text: 'text-green-50' },
-    sabqi: { bg: 'bg-blue-500', text: 'text-blue-50' },
-    manzil: { bg: 'bg-purple-500', text: 'text-purple-50' }
+    sabq: { bg: 'bg-primary', text: 'text-white' },
+    sabqi: { bg: 'bg-accent', text: 'text-white' },
+    manzil: { bg: 'bg-primary/80', text: 'text-white' }
   };
   const colors = typeColors[ticket.type as keyof typeof typeColors] || typeColors.sabq;
 
@@ -252,9 +252,9 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
 
         {/* Admin Notes (if provided) */}
         {ticket.teacherNotes && (
-          <div className="px-6 py-4 bg-blue-50 border-l-4 border-blue-500">
-            <p className="text-xs font-bold text-blue-800 mb-1 uppercase tracking-wide">📝 Admin Instructions</p>
-            <p className="text-sm text-blue-900 font-medium">{ticket.teacherNotes}</p>
+          <div className="px-6 py-4 bg-primary/10 border-l-4 border-primary">
+            <p className="text-xs font-bold text-primary mb-1 uppercase tracking-wide">📝 Admin Instructions</p>
+            <p className="text-sm text-primary/90 font-medium">{ticket.teacherNotes}</p>
           </div>
         )}
 
@@ -371,7 +371,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                         </button>
                         <button
                           onClick={() => setFullMushafView(true)}
-                          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1.5"
+                          className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-xs font-semibold flex items-center gap-1.5"
                           title="Full Mushaf View (ESC to exit)"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,7 +430,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                         </span>
                       )}
                       {mistakeCategories.atkee > 0 && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-semibold">
+                        <span className="px-2 py-1 bg-accent/20 text-accent rounded font-semibold">
                           Atkee: {mistakeCategories.atkee}
                         </span>
                       )}

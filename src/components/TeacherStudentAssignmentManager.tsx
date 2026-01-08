@@ -14,6 +14,8 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [filterProgram, setFilterProgram] = useState<string>('all');
 
   // Get assigned students for selected teacher
   const assignedStudents = useMemo(() => {
@@ -44,20 +46,60 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     );
   }, [teachers, teacherSearchTerm]);
 
-  // Filter students by search term
+  // Get unique programs for filter dropdown
+  const availablePrograms = useMemo(() => {
+    const programs = new Set<string>();
+    students.forEach(student => {
+      if (student.program) {
+        programs.add(student.program);
+      }
+    });
+    return Array.from(programs).sort();
+  }, [students]);
+
+  // Filter students by search term, status, and program
   const filteredStudents = useMemo(() => {
-    if (!searchTerm.trim()) return students;
-    const term = searchTerm.toLowerCase();
-    return students.filter(student => 
-      student.fullName?.toLowerCase().includes(term) ||
-      student.email?.toLowerCase().includes(term) ||
-      student.parentName?.toLowerCase().includes(term)
-    );
-  }, [students, searchTerm]);
+    let filtered = students;
+
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(student => 
+        student.fullName?.toLowerCase().includes(term) ||
+        student.email?.toLowerCase().includes(term) ||
+        student.parentName?.toLowerCase().includes(term) ||
+        student.program?.toLowerCase().includes(term)
+      );
+    }
+
+    // Filter by assignment status
+    if (filterStatus !== 'all' && selectedTeacher) {
+      const teacherDocId = (selectedTeacher as any)._id || (selectedTeacher as any).teacherDocumentId || selectedTeacher.id;
+      filtered = filtered.filter(student => {
+        const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
+        const currentAssignedTeachers = (student as any).assignedTeachers || [];
+        const isAssigned = currentAssignedTeacherIds.includes(teacherDocId) || 
+                          currentAssignedTeachers.includes(teacherDocId);
+        
+        if (filterStatus === 'assigned') return isAssigned;
+        if (filterStatus === 'unassigned') return !isAssigned;
+        return true;
+      });
+    }
+
+    // Filter by program
+    if (filterProgram !== 'all') {
+      filtered = filtered.filter(student => student.program === filterProgram);
+    }
+
+    return filtered;
+  }, [students, searchTerm, filterStatus, filterProgram, selectedTeacher]);
 
   const handleTeacherSelect = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     setSearchTerm(''); // Reset student search when selecting teacher
+    setFilterStatus('all'); // Reset status filter
+    setFilterProgram('all'); // Reset program filter
   };
 
   const handleStudentToggle = (studentId: string) => {
@@ -224,15 +266,68 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
           <div className="lg:col-span-2">
             {selectedTeacher ? (
               <Card title={`📚 Students - ${selectedTeacher.fullName}`}>
-                {/* Student Search */}
-                <div className="mb-3 sm:mb-4">
-                  <input
-                    type="text"
-                    placeholder="Search students..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-                  />
+                {/* Student Filters */}
+                <div className="mb-3 sm:mb-4 space-y-3">
+                  {/* Search Input */}
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Search students by name, email, or program..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                    />
+                  </div>
+
+                  {/* Filter Options */}
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                    {/* Status Filter */}
+                    <div className="flex-1 sm:flex-none">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value as 'all' | 'assigned' | 'unassigned')}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                      >
+                        <option value="all">All Students</option>
+                        <option value="assigned">Assigned to Teacher</option>
+                        <option value="unassigned">Not Assigned</option>
+                      </select>
+                    </div>
+
+                    {/* Program Filter */}
+                    {availablePrograms.length > 0 && (
+                      <div className="flex-1 sm:flex-none">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Program</label>
+                        <select
+                          value={filterProgram}
+                          onChange={(e) => setFilterProgram(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                        >
+                          <option value="all">All Programs</option>
+                          {availablePrograms.map(program => (
+                            <option key={program} value={program}>{program}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Clear Filters Button */}
+                    {(searchTerm || filterStatus !== 'all' || filterProgram !== 'all') && (
+                      <div className="flex items-end">
+                        <button
+                          onClick={() => {
+                            setSearchTerm('');
+                            setFilterStatus('all');
+                            setFilterProgram('all');
+                          }}
+                          className="px-3 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 active:bg-gray-300 transition-colors touch-target whitespace-nowrap"
+                        >
+                          Clear Filters
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Action Buttons */}
@@ -263,7 +358,21 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                 {/* Students List */}
                 <div className="space-y-2 max-h-[400px] sm:max-h-[500px] lg:max-h-[600px] overflow-y-auto">
                   {filteredStudents.length === 0 ? (
-                    <p className="text-gray-500 text-center py-6 sm:py-8 text-sm">No students found</p>
+                    <div className="text-center py-6 sm:py-8 px-4">
+                      <p className="text-gray-500 text-sm mb-2">No students found</p>
+                      {(searchTerm || filterStatus !== 'all' || filterProgram !== 'all') && (
+                        <button
+                          onClick={() => {
+                            setSearchTerm('');
+                            setFilterStatus('all');
+                            setFilterProgram('all');
+                          }}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Clear filters to see all students
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     filteredStudents.map((student) => {
                       const studentId = student.id || (student as any)._id || '';
@@ -320,10 +429,13 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                       <p className="text-xs sm:text-sm font-medium text-gray-700">
-                        Selected: <span className="text-primary font-bold">{selectedStudentIds.size}</span> students
+                        Showing: <span className="font-bold">{filteredStudents.length}</span> of <span className="font-bold">{students.length}</span> students
+                        {(searchTerm || filterStatus !== 'all' || filterProgram !== 'all') && (
+                          <span className="text-gray-500 ml-1">(filtered)</span>
+                        )}
                       </p>
                       <p className="text-xs text-gray-600 mt-1">
-                        Currently assigned: {assignedStudents.length} students
+                        Selected: <span className="text-primary font-bold">{selectedStudentIds.size}</span> • Currently assigned: <span className="font-bold">{assignedStudents.length}</span>
                       </p>
                     </div>
                     {selectedStudentIds.size !== assignedStudents.length && (

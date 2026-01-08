@@ -93,8 +93,8 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
 
   const getNotificationColor = (type: string, priority: string) => {
     if (priority === 'high') return 'border-l-red-500 bg-red-50';
-    if (type.includes('evaluation')) return 'border-l-blue-500 bg-blue-50';
-    if (type.includes('message')) return 'border-l-green-500 bg-green-50';
+    if (type.includes('evaluation')) return 'border-l-primary bg-primary/10';
+    if (type.includes('message')) return 'border-l-accent bg-accent/10';
     return 'border-l-gray-500 bg-gray-50';
   };
 

@@ -91,9 +91,9 @@ const SURAH_NAMES: Record<number, string> = {
 };
 
 const TYPE_COLORS = {
-  sabq: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', hover: 'hover:bg-purple-100' },
-  sabqi: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', hover: 'hover:bg-blue-100' },
-  manzil: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', hover: 'hover:bg-green-100' }
+  sabq: { bg: 'bg-primary/10', border: 'border-primary/30', text: 'text-primary', hover: 'hover:bg-primary/20' },
+  sabqi: { bg: 'bg-accent/10', border: 'border-accent/30', text: 'text-accent', hover: 'hover:bg-accent/20' },
+  manzil: { bg: 'bg-primary/10', border: 'border-primary/30', text: 'text-primary', hover: 'hover:bg-primary/20' }
 };
 
 const INITIAL_CURRENT_ITEM: Partial<HomeworkItem> = {
@@ -308,7 +308,7 @@ const Toast: React.FC<ToastProps> = React.memo(({ message, onClose }) => {
   }, [message, onClose]);
 
   return (
-    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg animate-fadeIn">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[60] bg-primary text-white px-6 py-3 rounded-lg shadow-lg animate-fadeIn">
       <div className="flex items-center gap-3">
         <span>✓</span>
         <span>{message}</span>
@@ -382,7 +382,7 @@ const HomeworkSuggestionPanel: React.FC<HomeworkSuggestionPanelProps> = React.me
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-semibold text-gray-900">💡 Suggested</span>
-              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">From last approved assignment</span>
+              <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">From last approved assignment</span>
             </div>
             <p className="text-sm font-medium text-gray-900 mb-1">
               {label}: <span className="text-gray-700">{range}</span>
@@ -397,7 +397,7 @@ const HomeworkSuggestionPanel: React.FC<HomeworkSuggestionPanelProps> = React.me
             <button
               type="button"
               onClick={() => onUse(type)}
-              className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors font-medium"
+              className="px-3 py-1.5 bg-primary text-white text-xs rounded hover:bg-primary/90 transition-colors font-medium"
             >
               Use
             </button>
@@ -407,7 +407,7 @@ const HomeworkSuggestionPanel: React.FC<HomeworkSuggestionPanelProps> = React.me
                 onModify(type);
                 setTimeout(onScrollToForm, 100);
               }}
-              className="px-3 py-1.5 bg-blue-100 text-blue-700 text-xs rounded hover:bg-blue-200 transition-colors font-medium"
+              className="px-3 py-1.5 bg-primary/10 text-primary text-xs rounded hover:bg-primary/20 transition-colors font-medium"
             >
               Modify
             </button>
@@ -515,7 +515,7 @@ const SabqForm: React.FC<SabqFormProps> = React.memo(({ currentItem, onUpdate, e
         <select
           value={fromSurah}
           onChange={(e) => handleSurahChange(parseInt(e.target.value))}
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition"
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition"
         >
           {Object.entries(SURAH_NAMES).map(([num, name]) => (
             <option key={num} value={num}>{num}. {name}</option>
@@ -532,7 +532,7 @@ const SabqForm: React.FC<SabqFormProps> = React.memo(({ currentItem, onUpdate, e
             min="1"
             value={fromAyah}
             onChange={(e) => handleFromAyahChange(parseInt(e.target.value) || 1)}
-            className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition ${
+            className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition ${
               error ? 'border-red-300' : 'border-gray-300'
             }`}
           />
@@ -546,7 +546,7 @@ const SabqForm: React.FC<SabqFormProps> = React.memo(({ currentItem, onUpdate, e
             min="1"
             value={toAyah}
             onChange={(e) => handleToAyahChange(parseInt(e.target.value) || 1)}
-            className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition ${
+            className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition ${
               error ? 'border-red-300' : 'border-gray-300'
             }`}
           />
@@ -561,7 +561,7 @@ const SabqForm: React.FC<SabqFormProps> = React.memo(({ currentItem, onUpdate, e
           onChange={(e) => onUpdate({ content: e.target.value })}
           placeholder="Add any notes or instructions for this Sabq homework..."
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition resize-none"
         />
       </div>
       {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
@@ -644,7 +644,7 @@ const SabqiForm: React.FC<SabqiFormProps> = React.memo(({ currentItem, onUpdate,
                   }
                 });
               }}
-              className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
+              className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-accent focus:border-accent transition ${
                 error ? 'border-red-300' : 'border-gray-300'
               }`}
             >
@@ -668,7 +668,7 @@ const SabqiForm: React.FC<SabqiFormProps> = React.memo(({ currentItem, onUpdate,
                   }
                 });
               }}
-              className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
+              className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-accent focus:border-accent transition ${
                 error ? 'border-red-300' : 'border-gray-300'
               }`}
             >
@@ -694,7 +694,7 @@ const SabqiForm: React.FC<SabqiFormProps> = React.memo(({ currentItem, onUpdate,
                 }
               });
             }}
-            className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition ${
+            className={`w-full px-3 py-2 border rounded text-sm focus:ring-2 focus:ring-accent focus:border-accent transition ${
               error ? 'border-red-300' : 'border-gray-300'
             }`}
           >
@@ -713,7 +713,7 @@ const SabqiForm: React.FC<SabqiFormProps> = React.memo(({ currentItem, onUpdate,
           onChange={(e) => onUpdate({ content: e.target.value })}
           placeholder="Add any notes or instructions for this Sabqi homework..."
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-accent focus:border-accent transition resize-none"
         />
       </div>
       {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
@@ -775,7 +775,7 @@ const ManzilForm: React.FC<ManzilFormProps> = React.memo(({ currentItem, onUpdat
           onChange={(e) => onUpdate({ content: e.target.value })}
           placeholder="Add any notes or instructions for this Manzil homework..."
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition resize-none"
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary focus:border-primary transition resize-none"
         />
       </div>
     </div>
@@ -807,7 +807,7 @@ const HomeworkItemsList: React.FC<HomeworkItemsListProps> = React.memo(({ items,
                   <span className="text-sm font-medium text-gray-900 capitalize">{item.type}:</span>
                   <span className="text-sm text-gray-700">{formatRange(item.range)}</span>
                   {item.source.suggestedFrom === 'ticket' && (
-                    <span className="text-xs text-blue-600">(from tickets)</span>
+                    <span className="text-xs text-primary">(from tickets)</span>
                   )}
                 </div>
                 {item.content && (

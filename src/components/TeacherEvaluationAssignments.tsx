@@ -46,9 +46,9 @@ const TeacherEvaluationAssignments: React.FC<TeacherEvaluationAssignmentsProps> 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-primary/10 text-primary border-primary/30';
       case 'in_progress':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-accent/10 text-accent border-accent/30';
       case 'overdue':
         return 'bg-red-100 text-red-800 border-red-300';
       default:
@@ -227,7 +227,7 @@ const TeacherEvaluationAssignments: React.FC<TeacherEvaluationAssignmentsProps> 
                         className={`flex-1 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 ${
                           assignment.status === 'assigned'
                             ? 'bg-primary text-white hover:bg-[rgba(var(--color-primary-rgb),0.9)]'
-                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-accent text-white hover:bg-accent/90'
                         }`}
                       >
                         {assignment.status === 'assigned' ? (
@@ -248,8 +248,8 @@ const TeacherEvaluationAssignments: React.FC<TeacherEvaluationAssignmentsProps> 
                         )}
                       </button>
                       {assignment.completedAt && (
-                        <div className="px-4 py-2.5 bg-green-50 border-2 border-green-200 rounded-xl">
-                          <p className="text-xs font-bold text-green-800">
+                        <div className="px-4 py-2.5 bg-primary/10 border-2 border-primary/20 rounded-xl">
+                          <p className="text-xs font-bold text-primary">
                             ✅ Completed: {new Date(assignment.completedAt).toLocaleDateString()}
                           </p>
                         </div>

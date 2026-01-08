@@ -66,6 +66,14 @@ const TeacherDashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'tickets' | 'actions'>('overview');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    pendingTickets: true,
+    approvedTickets: true,
+    quickActions: false
+  });
+  const [showAllPendingTickets, setShowAllPendingTickets] = useState(false);
+  const [showAllApprovedTickets, setShowAllApprovedTickets] = useState(false);
 
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
   const assignedStudents = useMemo(() => {
@@ -290,9 +298,27 @@ const TeacherDashboard: React.FC = () => {
                                    ticket.assignedTeacherId === currentTeacher.id ||
                                    String(ticket.assignedTeacherId) === String(currentTeacher.id);
       
-      return ticket.status === 'sent_to_assignment' && isAssignedToTeacher;
+      if (!(ticket.status === 'sent_to_assignment' && isAssignedToTeacher)) {
+        return false;
+      }
+      
+      // Check if homework has already been assigned
+      if (ticket.sentToAssignmentId) {
+        const assignment = assignments.find(a => {
+          const aId = (a as any)._id || a.id;
+          return String(aId) === String(ticket.sentToAssignmentId);
+        });
+        
+        // If assignment exists and has homework enabled with items, exclude this ticket
+        if (assignment?.homework?.enabled && 
+            ((assignment.homework.items && assignment.homework.items.length > 0) || assignment.homework.content?.trim())) {
+          return false;
+        }
+      }
+      
+      return true;
     });
-  }, [recitationTickets, currentTeacher]);
+  }, [recitationTickets, currentTeacher, assignments]);
 
   const permissions = (currentTeacher?.permissions) || {
     canViewAssessments: true,
@@ -380,36 +406,55 @@ const TeacherDashboard: React.FC = () => {
   }, [activityHistory]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
       <Header onNotificationClick={() => setShowNotificationCenter(true)} />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header Section */}
-        <div className="mb-8 rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-white to-gray-50 px-6 py-8 shadow-lg">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Teacher Workspace</span>
-              <h1 className="text-4xl font-bold text-primary">Dashboard</h1>
-              <p className="text-base text-gray-600 max-w-2xl">
-                Manage assignments, review student work, and track progress all in one place.
+        {/* Header Section - High-Tech Design */}
+        <div className="mb-4 sm:mb-6 md:mb-8 relative overflow-hidden rounded-xl sm:rounded-2xl border-2 border-primary/20 bg-white px-4 sm:px-6 py-4 sm:py-6 md:py-8 shadow-lg">
+          {/* Animated background grid */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `linear-gradient(rgba(31, 50, 36, 0.1) 1px, transparent 1px),
+                                linear-gradient(90deg, rgba(31, 50, 36, 0.1) 1px, transparent 1px)`,
+              backgroundSize: '50px 50px'
+            }}></div>
+          </div>
+          
+          {/* Glowing accent */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl"></div>
+          
+          <div className="relative flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-lg" style={{ boxShadow: '0 0 10px rgba(31, 50, 36, 0.5)' }}></div>
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-primary">Teacher Workspace</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-primary">
+                Dashboard
+              </h1>
+              <p className="text-sm sm:text-base text-gray-700 max-w-2xl">
+                Advanced control center for managing assignments, reviewing student work, and tracking progress.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link
                 to="/assignments"
-                className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-primary-rgb),0.9)] shadow-md hover:shadow-lg"
+                className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                style={{ boxShadow: '0 4px 14px rgba(31, 50, 36, 0.3)' }}
               >
-                Manage Assignments
+                <span className="relative z-10">Manage Assignments</span>
+                <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
               </Link>
               <button
                 onClick={() => setShowStudentReports(true)}
-                className="inline-flex items-center justify-center rounded-xl border-2 border-primary px-6 py-3 text-sm font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
               >
                 Student Reports
               </button>
               <Link
                 to="/profile"
-                className="inline-flex items-center justify-center rounded-xl border-2 border-gray-300 px-6 py-3 text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-gray-300 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-400 shadow-md"
               >
                 My Profile
               </Link>
@@ -417,76 +462,284 @@ const TeacherDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Success/Error Messages */}
+        {/* Success/Error Messages - High-Tech Style */}
         {saveSuccess && (
-          <div className="mb-6 rounded-xl border-2 border-green-500 bg-green-50 px-6 py-4 shadow-sm">
-            <p className="text-sm font-bold text-green-800">{saveSuccess}</p>
+          <div className="mb-6 relative overflow-hidden rounded-xl border border-emerald-500/50 bg-gradient-to-r from-emerald-900/40 to-emerald-800/30 backdrop-blur-xl px-6 py-4 shadow-lg shadow-emerald-500/20">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent"></div>
+            <div className="relative flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+              <p className="text-sm font-bold text-emerald-300">{saveSuccess}</p>
+            </div>
           </div>
         )}
         {saveError && (
-          <div className="mb-6 rounded-xl border-2 border-red-500 bg-red-50 px-6 py-4 shadow-sm">
-            <p className="text-sm font-bold text-red-800">{saveError}</p>
-            <button
-              onClick={() => setSaveError(null)}
-              className="mt-2 text-xs text-red-600 underline font-semibold"
-            >
-              Dismiss
-            </button>
+          <div className="mb-6 relative overflow-hidden rounded-xl border border-red-500/50 bg-gradient-to-r from-red-900/40 to-red-800/30 backdrop-blur-xl px-6 py-4 shadow-lg shadow-red-500/20">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent"></div>
+            <div className="relative">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-red-400"></div>
+                <p className="text-sm font-bold text-red-300">{saveError}</p>
+              </div>
+              <button
+                onClick={() => setSaveError(null)}
+                className="mt-3 text-xs text-red-400 hover:text-red-300 underline font-semibold transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Pair Teacher Info Banner */}
+        {/* Pair Teacher Info Banner - High-Tech */}
         {pairPartner && (
-          <div className="mb-4 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border-2 border-primary/30">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-2xl">👥</span>
+          <div className="mb-4 sm:mb-6 relative overflow-hidden rounded-xl border-2 border-primary/30 bg-white p-3 sm:p-4 md:p-5 shadow-lg">
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                <div className="relative w-10 h-10 sm:w-12 sm:h-14 rounded-xl bg-primary/20 flex items-center justify-center shadow-md border-2 border-primary/40 flex-shrink-0">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <div className="absolute top-1 right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-pulse"></div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-primary text-lg">Teaching Pair</h3>
-                  <p className="text-sm text-primary/70">
-                    You're paired with <span className="font-semibold text-primary">{pairPartner.fullName}</span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-primary text-sm sm:text-base md:text-lg mb-1">Teaching Pair</h3>
+                  <p className="text-xs sm:text-sm text-gray-700 truncate">
+                    Paired with <span className="font-semibold text-primary">{pairPartner.fullName}</span>
                   </p>
-                  <p className="text-xs text-primary/60 mt-1">
-                    Both of you can assess, evaluate, assign, and communicate about shared students
+                  <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
+                    Shared access to student assessments, evaluations, and assignments
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-primary/70">Pair Students</p>
-                  <p className="text-lg font-bold text-primary">{allPairStudents.length}</p>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="text-right px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-primary/10 border-2 border-primary/20">
+                  <p className="text-[10px] sm:text-xs font-semibold text-gray-600 uppercase tracking-wide">Pair Students</p>
+                  <p className="text-xl sm:text-2xl font-black text-primary">{allPairStudents.length}</p>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Statistics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-          <StatCard title="Pair Students" value={currentTeacher ? allPairStudents.length : 0} icon="AS" />
-          <StatCard title="Total Assessments" value={currentTeacher ? allPairStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} icon="TA" />
-          <StatCard title="Active Students" value={currentTeacher ? allPairStudents.filter(s => s.status === 'active').length : 0} icon="WK" />
-          <StatCard title="Pending Tickets" value={teacherTickets.length} icon="PT" />
+        {/* Statistics Grid - Always Visible */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+          <StatCard 
+            title="Pair Students" 
+            value={currentTeacher ? allPairStudents.length : 0} 
+            icon="AS"
+            onClick={() => setActiveTab('overview')}
+          />
+          <StatCard 
+            title="Total Assessments" 
+            value={currentTeacher ? allPairStudents.reduce((sum, s) => sum + (Array.isArray(s.assessments) ? s.assessments.length : 0), 0) : 0} 
+            icon="TA"
+            onClick={() => setActiveTab('actions')}
+          />
+          <StatCard 
+            title="Active Students" 
+            value={currentTeacher ? allPairStudents.filter(s => s.status === 'active').length : 0} 
+            icon="WK"
+            onClick={() => setActiveTab('overview')}
+          />
+          <StatCard 
+            title="Pending Tickets" 
+            value={teacherTickets.length} 
+            icon="PT"
+            onClick={() => setActiveTab('tickets')}
+          />
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-          {/* Pending Tickets - Takes 2 columns */}
-          <div className="lg:col-span-2">
+        {/* Tab Navigation */}
+        <div className="mb-4 sm:mb-6 flex items-center gap-1 sm:gap-2 border-b border-primary/20 bg-white/50 backdrop-blur-sm rounded-t-xl px-1 sm:px-2 pt-2 overflow-x-auto">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+              activeTab === 'overview'
+                ? 'text-primary bg-primary/10 border-b-2 border-primary'
+                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+            }`}
+          >
+            Overview
+            {activeTab === 'overview' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+              activeTab === 'tickets'
+                ? 'text-primary bg-primary/10 border-b-2 border-primary'
+                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+            }`}
+          >
+            Tickets
+            {teacherTickets.length > 0 && (
+              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold bg-primary text-white rounded-full">
+                {teacherTickets.length}
+              </span>
+            )}
+            {activeTab === 'tickets' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
+            )}
+          </button>
+          {approvedTicketsNeedingHomework.length > 0 && (
+            <button
+              onClick={() => setActiveTab('tickets')}
+              className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+                activeTab === 'tickets'
+                  ? 'text-accent bg-accent/10 border-b-2 border-accent'
+                  : 'text-slate-600 hover:text-accent hover:bg-accent/5'
+              }`}
+            >
+              Approved
+              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold bg-accent text-primary rounded-full">
+                {approvedTicketsNeedingHomework.length}
+              </span>
+            </button>
+          )}
+          <button
+            onClick={() => setActiveTab('actions')}
+            className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+              activeTab === 'actions'
+                ? 'text-primary bg-primary/10 border-b-2 border-primary'
+                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+            }`}
+          >
+            Quick Actions
+            {activeTab === 'actions' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
+            )}
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            {/* Quick Stats Summary */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+              <Card title="Quick Actions" className="lg:col-span-1">
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowCreateTicket(true)}
+                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-bold text-primary group-hover:text-primary transition-colors truncate">Create Ticket</p>
+                        <p className="text-[10px] sm:text-xs text-gray-600 truncate">Start new review</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setShowEvaluationAssignments(true)}
+                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/15 transition-all shadow-md hover:shadow-lg group"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/20 border-2 border-primary/40 group-hover:bg-primary/30 transition-colors flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-bold text-primary group-hover:text-primary transition-colors truncate">My Evaluations</p>
+                        <p className="text-[10px] sm:text-xs text-gray-600 truncate">Complete evaluations</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setShowStudentReports(true)}
+                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-accent/30 bg-accent/5 hover:border-accent hover:bg-accent/15 transition-all shadow-md hover:shadow-lg group"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-accent/20 border-2 border-accent/40 group-hover:bg-accent/30 transition-colors flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-bold text-accent group-hover:text-accent transition-colors truncate">Student Reports</p>
+                        <p className="text-[10px] sm:text-xs text-gray-600 truncate">View reports</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </Card>
+              
+              {/* Recent Activity Preview */}
+              <Card title="Recent Activity" className="lg:col-span-2">
+                <div className="space-y-3">
+                  {teacherTickets.slice(0, 3).map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="p-3 rounded-lg border-2 border-primary/20 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setActiveTab('tickets');
+                        if (ticket.status === 'pending' || ticket.status === 'reassigned') {
+                          startTicket(ticket.id).then(updatedTicket => {
+                            setSelectedTicket(updatedTicket);
+                            setShowTicketReview(true);
+                          });
+                        } else {
+                          setSelectedTicket(ticket);
+                          setShowTicketReview(true);
+                        }
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${
+                            ticket.type === 'sabqi' ? 'bg-primary' : ticket.type === 'manzil' ? 'bg-accent' : 'bg-primary'
+                          }`}></div>
+                          <div>
+                            <p className="text-sm font-semibold text-gray-800">{ticket.studentName}</p>
+                            <p className="text-xs text-gray-600">{ticket.type} • {ticket.status}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {teacherTickets.length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+                  )}
+                  {teacherTickets.length > 3 && (
+                    <button
+                      onClick={() => setActiveTab('tickets')}
+                      className="w-full py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
+                    >
+                      View All Tickets ({teacherTickets.length})
+                    </button>
+                  )}
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'tickets' && (
+          <div className="space-y-4">
+            {/* Pending Tickets */}
             <Card title={`Pending Tickets (${teacherTickets.length})`}>
               {teacherTickets.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-gray-400">PT</span>
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
+                    <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                   </div>
-                  <p className="text-lg font-semibold">No pending tickets</p>
-                  <p className="text-sm mt-2">All tickets have been reviewed.</p>
+                  <p className="text-lg font-bold text-gray-800">No pending tickets</p>
+                  <p className="text-sm mt-2 text-gray-600">All tickets have been reviewed.</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {teacherTickets.map((ticket) => {
+                <div className="space-y-3">
+                  {(showAllPendingTickets ? teacherTickets : teacherTickets.slice(0, 5)).map((ticket) => {
                     const handleTicketClick = async () => {
                       try {
                         if (ticket.status === 'pending' || ticket.status === 'reassigned') {
@@ -508,53 +761,66 @@ const TeacherDashboard: React.FC = () => {
                       <button
                         key={ticket.id}
                         onClick={handleTicketClick}
-                        className="w-full text-left rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-primary transition-all cursor-pointer"
+                        className="group w-full text-left relative overflow-hidden rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-5 shadow-lg hover:shadow-xl hover:border-primary/50 transition-all cursor-pointer"
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${
+                        {/* Hover glow effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        
+                        {/* Left accent bar */}
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                          ticket.type === 'sabqi' 
+                            ? 'bg-primary' 
+                            : ticket.type === 'manzil'
+                            ? 'bg-accent'
+                            : 'bg-primary'
+                        }`}></div>
+                        
+                        <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border ${
                                 ticket.type === 'sabqi' 
-                                  ? 'bg-blue-100 text-blue-800' 
+                                  ? 'bg-soft-primary text-primary border-primary/30' 
                                   : ticket.type === 'manzil'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-green-100 text-green-800'
+                                  ? 'bg-soft-accent text-accent border-accent/30'
+                                  : 'bg-soft-primary text-primary border-primary/30'
                               }`}>
                                 {ticket.type}
                               </span>
-                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                              <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${
                                 ticket.status === 'pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
+                                  ? 'bg-soft-accent text-accent border-accent/30'
                                   : ticket.status === 'in_progress'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-orange-100 text-orange-800'
+                                  ? 'bg-soft-primary text-primary border-primary/30'
+                                  : 'bg-soft-accent text-accent border-accent/30'
                               }`}>
                                 {ticket.status === 'in_progress' ? 'In Progress' : ticket.status === 'reassigned' ? 'Reassigned' : 'Pending'}
                               </span>
                             </div>
-                            <h4 className="text-xl font-bold text-primary mb-2">
+                            <h4 className="text-lg font-bold text-slate-100 mb-2 group-hover:text-primary transition-colors">
                               {ticket.studentName}
                             </h4>
                             {ticket.teacherNotes && (
-                              <p className="text-sm text-gray-600 mb-2">
-                                <span className="font-semibold">Admin Notes:</span> {ticket.teacherNotes}
-                              </p>
+                              <div className="mb-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Admin Notes</p>
+                                <p className="text-sm text-slate-300">{ticket.teacherNotes}</p>
+                              </div>
                             )}
                             {ticket.status === 'reassigned' && ticket.previousTeacherComment && (
-                              <div className="mt-3 p-3 bg-orange-50 border-l-4 border-orange-500 rounded-lg">
-                                <p className="text-xs font-bold text-orange-800 mb-1 uppercase tracking-wide">Previous Review</p>
-                                <p className="text-sm text-orange-900">{ticket.previousTeacherComment}</p>
+                              <div className="mt-3 p-3 bg-orange-900/30 border-l-4 border-orange-500 rounded-lg">
+                                <p className="text-xs font-bold text-orange-400 mb-1 uppercase tracking-wide">Previous Review</p>
+                                <p className="text-sm text-orange-300">{ticket.previousTeacherComment}</p>
                                 {ticket.reassignmentReason && (
-                                  <p className="text-xs text-orange-700 mt-1">Reason: {ticket.reassignmentReason}</p>
+                                  <p className="text-xs text-orange-400/70 mt-1">Reason: {ticket.reassignmentReason}</p>
                                 )}
                               </div>
                             )}
-                            <p className="text-xs text-gray-500 mt-3">
-                              Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'N/A'} at {ticket.createdAt ? new Date(ticket.createdAt).toLocaleTimeString() : 'N/A'}
+                            <p className="text-xs text-slate-500 mt-3">
+                              Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'} at {ticket.createdAt ? new Date(ticket.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                             </p>
                           </div>
-                          <div className="flex items-center">
-                            <div className="px-6 py-3 bg-primary hover:bg-[rgba(var(--color-primary-rgb),0.9)] text-white rounded-xl text-sm font-bold transition-all shadow-md whitespace-nowrap">
+                          <div className="flex items-center flex-shrink-0">
+                            <div className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl whitespace-nowrap group-hover:scale-105">
                               {ticket.status === 'pending' || ticket.status === 'reassigned' 
                                 ? 'Start Review' 
                                 : 'Continue Review'}
@@ -564,17 +830,23 @@ const TeacherDashboard: React.FC = () => {
                       </button>
                     );
                   })}
+                  {teacherTickets.length > 5 && (
+                    <button
+                      onClick={() => setShowAllPendingTickets(!showAllPendingTickets)}
+                      className="w-full py-3 text-sm font-bold text-primary hover:text-primary/80 transition-colors border border-slate-700/50 rounded-lg hover:border-primary/30 bg-slate-800/30"
+                    >
+                      {showAllPendingTickets ? 'Show Less' : `Show All (${teacherTickets.length})`}
+                    </button>
+                  )}
                 </div>
               )}
             </Card>
-          </div>
 
-          {/* Approved Tickets Needing Homework - Takes full width */}
-          {approvedTicketsNeedingHomework.length > 0 && (
-            <div className="lg:col-span-3">
+            {/* Approved Tickets Needing Homework */}
+            {approvedTicketsNeedingHomework.length > 0 && (
               <Card title={`Approved Tickets - Assign Homework (${approvedTicketsNeedingHomework.length})`}>
-                <div className="space-y-4">
-                  {approvedTicketsNeedingHomework.map((ticket) => {
+                <div className="space-y-3">
+                  {(showAllApprovedTickets ? approvedTicketsNeedingHomework : approvedTicketsNeedingHomework.slice(0, 3)).map((ticket) => {
                     const handleAssignHomework = async () => {
                       // Find the assignment linked to this ticket
                       const assignmentId = ticket.sentToAssignmentId;
@@ -587,48 +859,73 @@ const TeacherDashboard: React.FC = () => {
                       }
                     };
 
+                    const mistakeCount = ticket.mistakes?.length || 0;
+                    const mistakeBreakdown = ticket.mistakes?.reduce((acc: any, m: any) => {
+                      const type = m.type?.toLowerCase() || 'other';
+                      if (type.includes('atkee')) acc.atkee++;
+                      else if (type.includes('tajweed') || type.includes('tech') || type.includes('light') || type.includes('heavy')) acc.tajweed++;
+                      else acc.mistakes++;
+                      return acc;
+                    }, { mistakes: 0, atkee: 0, tajweed: 0 }) || { mistakes: 0, atkee: 0, tajweed: 0 };
+
                     return (
                       <div
                         key={ticket.id}
-                        className="w-full rounded-xl border-2 border-green-200 bg-green-50 p-6 shadow-sm hover:shadow-md transition-all"
+                        className="group relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 via-slate-800/50 to-slate-900/50 backdrop-blur-sm p-5 shadow-lg hover:shadow-xl hover:border-emerald-500/50 transition-all"
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-3">
-                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${
+                        {/* Glow effect */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/0 via-emerald-600/5 to-emerald-600/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        
+                        {/* Left accent bar */}
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-emerald-500 to-teal-500"></div>
+                        
+                        <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border ${
                                 ticket.type === 'sabqi' 
-                                  ? 'bg-blue-100 text-blue-800' 
+                                  ? 'bg-soft-primary text-primary border-primary/30' 
                                   : ticket.type === 'manzil'
-                                  ? 'bg-purple-100 text-purple-800'
-                                  : 'bg-green-100 text-green-800'
+                                  ? 'bg-soft-accent text-accent border-accent/30'
+                                  : 'bg-soft-primary text-primary border-primary/30'
                               }`}>
                                 {ticket.type}
                               </span>
-                              <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 text-green-800">
-                                ✓ Approved
+                              <span className="px-3 py-1 rounded-lg text-xs font-bold bg-soft-accent text-accent border border-accent/30">
+                                Approved
                               </span>
                             </div>
-                            <h4 className="text-xl font-bold text-primary mb-2">
+                            <h4 className="text-lg font-bold text-slate-100 mb-2 group-hover:text-accent transition-colors">
                               {ticket.studentName}
                             </h4>
                             {ticket.teacherComment && (
-                              <p className="text-sm text-gray-700 mb-2">
-                                <span className="font-semibold">Your Review:</span> {ticket.teacherComment}
-                              </p>
+                              <div className="mb-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Your Review</p>
+                                <p className="text-sm text-slate-300">{ticket.teacherComment}</p>
+                              </div>
                             )}
-                            {ticket.mistakes && ticket.mistakes.length > 0 && (
-                              <p className="text-sm text-gray-600 mb-2">
-                                <span className="font-semibold">Mistakes Marked:</span> {ticket.mistakes.length}
-                              </p>
+                            {mistakeCount > 0 && (
+                              <div className="mb-3 flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Markings:</span>
+                                <span className="px-2 py-1 bg-red-500/20 text-red-400 rounded-lg text-xs font-bold border border-red-500/30">
+                                  Mistakes: {mistakeBreakdown.mistakes}
+                                </span>
+                                <span className="px-2 py-1 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-bold border border-amber-500/30">
+                                  Atkees: {mistakeBreakdown.atkee}
+                                </span>
+                                <span className="px-2 py-1 bg-slate-700/50 text-slate-300 rounded-lg text-xs font-bold border border-slate-600">
+                                  Tajweed: {mistakeBreakdown.tajweed}
+                                </span>
+                              </div>
                             )}
-                            <p className="text-xs text-gray-500 mt-3">
-                              Approved: {ticket.sentAt ? new Date(ticket.sentAt).toLocaleDateString() : 'N/A'}
+                            <p className="text-xs text-slate-500">
+                              Approved: {ticket.sentAt ? new Date(ticket.sentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
                             </p>
                           </div>
-                          <div className="flex items-center">
+                          <div className="flex items-center flex-shrink-0">
                             <button
                               onClick={handleAssignHomework}
-                              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all shadow-md whitespace-nowrap"
+                              className="px-6 py-3 bg-accent hover:bg-accent/90 text-primary rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl whitespace-nowrap group-hover:scale-105"
                             >
                               Assign Homework
                             </button>
@@ -637,111 +934,140 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     );
                   })}
+                  {approvedTicketsNeedingHomework.length > 3 && (
+                    <button
+                      onClick={() => setShowAllApprovedTickets(!showAllApprovedTickets)}
+                      className="w-full py-3 text-sm font-bold text-accent hover:text-accent/80 transition-colors border border-slate-700/50 rounded-lg hover:border-accent/30 bg-slate-800/30"
+                    >
+                      {showAllApprovedTickets ? 'Show Less' : `Show All (${approvedTicketsNeedingHomework.length})`}
+                    </button>
+                  )}
                 </div>
               </Card>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {/* Quick Actions - Takes 1 column */}
-          <div className="lg:col-span-1">
+        {activeTab === 'actions' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <Card title="Quick Actions">
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <button
                   onClick={() => setShowEvaluationAssignments(true)}
-                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                  className="group w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-lg hover:shadow-xl"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
-                      📝
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary border border-primary/30 group-hover:bg-primary/20 transition-colors">
+                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-primary">My Evaluations</p>
-                      <p className="text-xs text-gray-600">Complete assigned evaluations</p>
+                      <p className="text-sm font-bold text-slate-200 group-hover:text-primary transition-colors">My Evaluations</p>
+                      <p className="text-xs text-slate-400">Complete assigned evaluations</p>
                     </div>
                   </div>
                 </button>
                 <button
                   onClick={() => setShowWeeklyEvaluationReview(true)}
-                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                  className="group w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-accent/50 hover:bg-accent/10 transition-all shadow-lg hover:shadow-xl"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
-                      📋
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-soft-accent border border-accent/30 group-hover:bg-accent/20 transition-colors">
+                      <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-primary">Weekly Evaluations</p>
-                      <p className="text-xs text-gray-600">Review your weekly evaluations</p>
+                      <p className="text-sm font-bold text-slate-200 group-hover:text-accent transition-colors">Weekly Evaluations</p>
+                      <p className="text-xs text-slate-400">Review your weekly evaluations</p>
                     </div>
                   </div>
                 </button>
                 <button
                   onClick={() => setShowStudentReports(true)}
-                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                  className="group w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-accent/50 hover:bg-accent/10 transition-all shadow-lg hover:shadow-xl"
                 >
-                  <div className="font-bold text-primary mb-1">View Student Reports</div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-soft-accent border border-accent/30 group-hover:bg-accent/20 transition-colors">
+                      <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-200 group-hover:text-accent transition-colors">Student Reports</p>
+                      <p className="text-xs text-slate-400">View comprehensive reports</p>
+                    </div>
+                  </div>
                 </button>
                 <button
                   onClick={() => setShowMyAttendance(true)}
-                  className="p-4 border-2 border-primary rounded-lg hover:bg-soft-primary transition text-left w-full"
+                  className="group w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-accent/50 hover:bg-accent/10 transition-all shadow-lg hover:shadow-xl"
                 >
-                  <div className="text-2xl mb-2">📅</div>
-                  <div className="font-bold text-primary mb-1">My Attendance</div>
-                  <div className="text-sm text-primary/70">View your attendance history and paid days</div>
-                  <div className="text-xs text-gray-600">Access comprehensive reports</div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-soft-accent border border-accent/30 group-hover:bg-accent/20 transition-colors">
+                      <svg className="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-200 group-hover:text-accent transition-colors">My Attendance</p>
+                      <p className="text-xs text-slate-400">View attendance history</p>
+                    </div>
+                  </div>
                 </button>
                 <button
                   onClick={() => setShowCreateTicket(true)}
-                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-primary bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all shadow-sm"
+                  className="group w-full text-left px-4 py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-lg hover:shadow-xl"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white text-lg font-bold">
-                      🎫
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-primary">Create Ticket</p>
-                      <p className="text-xs text-gray-600">Start new recitation review</p>
+                      <p className="text-sm font-bold text-primary group-hover:text-primary transition-colors">Create Ticket</p>
+                      <p className="text-xs text-slate-400">Start new recitation review</p>
                     </div>
                   </div>
                 </button>
                 <button
                   onClick={() => setShowPairDailyReport(true)}
-                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                  className="group w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-lg hover:shadow-xl"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
-                      📝
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary border border-primary/30 group-hover:bg-primary/20 transition-colors">
+                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-primary">Daily Report</p>
-                      <p className="text-xs text-gray-600">Submit daily reports for pair students</p>
+                      <p className="text-sm font-bold text-slate-200 group-hover:text-primary transition-colors">Daily Report</p>
+                      <p className="text-xs text-slate-400">Submit daily reports</p>
                     </div>
                   </div>
                 </button>
                 <Link
                   to="/assignments"
-                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
-                >
-                  <div className="font-bold text-primary mb-1">Manage Assignments</div>
-                  <div className="text-xs text-gray-600">Create and manage assignments</div>
-                </Link>
-                <Link
-                  to="/pdf-teaching"
-                  className="block w-full text-left px-4 py-4 rounded-xl border-2 border-gray-200 bg-white hover:border-primary hover:bg-soft-primary transition-all shadow-sm"
+                  className="block w-full text-left px-4 py-3 rounded-lg border border-slate-700/50 bg-gradient-to-r from-slate-800/50 to-slate-900/50 hover:border-primary/50 hover:bg-primary/10 transition-all shadow-lg hover:shadow-xl group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary text-lg font-bold">
-                      📚
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-soft-primary border border-primary/30 group-hover:bg-primary/20 transition-colors">
+                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-primary">PDF Teaching</p>
-                      <p className="text-xs text-gray-600">Annotate PDFs and assign as homework</p>
+                      <p className="text-sm font-bold text-slate-200 group-hover:text-primary transition-colors">Manage Assignments</p>
+                      <p className="text-xs text-slate-400">Create and manage assignments</p>
                     </div>
                   </div>
                 </Link>
               </div>
             </Card>
           </div>
-        </div>
+        )}
 
         {/* Teacher Pairs Section */}
         {teacherPairs.length > 0 && (
@@ -840,257 +1166,119 @@ const TeacherDashboard: React.FC = () => {
                   })() : null;
                   
                   return (
-                    <div key={student.id} className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center space-x-4">
+                    <div key={student.id} className="rounded-lg border-2 border-gray-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                         <img
                           src={student.avatar}
                           alt={student.fullName}
-                          className="h-14 w-14 rounded-full border-2 border-gray-200"
+                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-gray-200 flex-shrink-0"
                         />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold text-lg text-primary">{student.fullName}</h4>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h4 className="font-bold text-sm sm:text-base text-primary truncate">{student.fullName}</h4>
                             {isPairStudent && pairPartner && (
-                              <span className="px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-xs font-bold flex items-center gap-1">
-                                <span>👥</span> Pair
+                              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] sm:text-xs font-bold">
+                                Pair
                               </span>
                             )}
                             {!isPairStudent && student.assignedTeacher && (
-                              <span className="px-2 py-0.5 rounded-lg bg-gray-100 text-gray-600 text-xs font-bold flex items-center gap-1">
-                                <span>👤</span> Individual
+                              <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] sm:text-xs font-bold">
+                                Individual
                               </span>
                             )}
+                            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] sm:text-xs font-bold">
+                              {student.program}
+                            </span>
                           </div>
-                          {isPairStudent && pairDetails?.pair && (
-                            <p className="text-xs text-primary/70 mt-1">
-                              Pair: <span className="font-semibold">{pairDetails.pair.name}</span>
-                              {pairPartner && ` • Shared with ${pairPartner.fullName}`}
-                            </p>
-                          )}
-                          {!isPairStudent && student.assignedTeacher && (() => {
-                            const teacher = teachers.find(t => t.id === student.assignedTeacher);
-                            return teacher ? (
-                              <p className="text-xs text-gray-600 mt-1">
-                                Teacher: <span className="font-semibold">{teacher.fullName}</span>
+                          <div className="space-y-0.5 text-xs text-gray-600">
+                            {isPairStudent && pairDetails?.pair && (
+                              <p className="truncate">
+                                Pair: <span className="font-semibold">{pairDetails.pair.name}</span>
                               </p>
-                            ) : null;
-                          })()}
-                          {permissions.canViewStudentPersonalInfo && (
-                            <p className="text-sm text-gray-600">Parent: {student.parentName}</p>
-                          )}
-                          <p className="text-sm text-gray-500">
-                            {permissions.canViewStudentEmail && `Email: ${student.email}`}
-                            {permissions.canViewStudentEmail && permissions.canViewStudentContact && ' · '}
-                            {permissions.canViewStudentContact && `Phone: ${student.contact}`}
-                            {!permissions.canViewStudentEmail && !permissions.canViewStudentContact && (
-                              <span className="text-gray-400">No contact information available</span>
                             )}
-                          </p>
+                            {!isPairStudent && student.assignedTeacher && (() => {
+                              const teacher = teachers.find(t => t.id === student.assignedTeacher);
+                              return teacher ? (
+                                <p className="truncate">Teacher: <span className="font-semibold">{teacher.fullName}</span></p>
+                              ) : null;
+                            })()}
+                            {permissions.canViewStudentPersonalInfo && (
+                              <p className="truncate">Parent: {student.parentName}</p>
+                            )}
+                            <p className="truncate text-gray-500">
+                              {permissions.canViewStudentEmail && student.email}
+                              {permissions.canViewStudentEmail && permissions.canViewStudentContact && ' · '}
+                              {permissions.canViewStudentContact && student.contact}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="rounded-lg bg-soft-primary px-3 py-1.5 text-xs font-bold text-primary">
-                          {student.program}
+                      <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-1 flex-shrink-0">
+                        <span className="text-[10px] sm:text-xs text-gray-500 font-mono">ID: {String(student.id).slice(-8)}</span>
+                        <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded font-semibold ${
+                          student.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {student.status || 'active'}
                         </span>
-                        <p className="mt-2 text-xs text-gray-500">ID: {student.id}</p>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Schedule</p>
-                        <p className="text-sm font-semibold text-gray-900">
+                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100">
+                      <div className="text-xs">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-0.5">Schedule</p>
+                        <p className="text-xs font-semibold text-gray-900 truncate">
                           {Array.isArray(student.schedule?.days) && student.schedule.days.length > 0
-                            ? student.schedule.days.join(', ')
+                            ? student.schedule.days.slice(0, 2).join(', ')
                             : 'Not scheduled'}
                         </p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {student.schedule?.startTime && student.schedule?.endTime
-                            ? `${student.schedule.startTime} - ${student.schedule.endTime}`
-                            : '—'}
-                        </p>
+                        {student.schedule?.startTime && student.schedule?.endTime && (
+                          <p className="text-[10px] text-gray-600 mt-0.5">
+                            {student.schedule.startTime}-{student.schedule.endTime}
+                          </p>
+                        )}
                       </div>
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Enrolled</p>
-                        <p className="text-sm font-semibold text-gray-900">{formatDate(getEnrollmentDate(student))}</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Status: <span className="font-semibold text-primary">
-                            {student.status || 'active'}
-                          </span>
-                        </p>
+                      <div className="text-xs">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-0.5">Enrolled</p>
+                        <p className="text-xs font-semibold text-gray-900">{formatDate(getEnrollmentDate(student))}</p>
                       </div>
                     </div>
 
-                    {Array.isArray(student.siblings) && student.siblings.length > 0 && (
-                      <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                        <p className="mb-2 text-xs font-bold text-gray-500 uppercase tracking-wide">Siblings</p>
-                        <div className="flex flex-wrap gap-2">
-                          {student.siblings.map((sibling) => (
-                            <span key={sibling.id} className="rounded-lg bg-white border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-700">
-                              {sibling.fullName} ({sibling.program})
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Assessments */}
-                    {permissions.canViewAssessments && (
-                      <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-bold text-primary">Assessments ({Array.isArray(student.assessments) ? student.assessments.length : 0})</p>
-                          {permissions.canEditAssessments && (
-                            <button
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setShowAssessmentForm(true);
-                                setSaveError(null);
-                                setSaveSuccess(null);
-                              }}
-                              className="rounded-lg border-2 border-primary px-3 py-1 text-xs font-bold text-primary transition hover:bg-soft-primary"
-                            >
-                              Add Assessment
-                            </button>
-                          )}
-                        </div>
-                        {Array.isArray(student.assessments) && student.assessments.length > 0 ? (
-                          <div className="space-y-2">
-                            {student.assessments.slice(-3).map((assessment) => (
-                              <div key={assessment.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs">
-                                <div className="flex justify-between text-primary">
-                                  <span className="font-semibold">{assessment.type}</span>
-                                  <span className="font-bold text-primary">{assessment.score}/{assessment.maxScore}</span>
-                                </div>
-                                <p className="text-gray-600">{assessment.notes}</p>
-                                <p className="text-[10px] text-gray-500 mt-1">{new Date(assessment.date).toLocaleDateString()}</p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-xs text-gray-500">No assessments yet</p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Evaluations */}
-                    {permissions.canViewEvaluations && (
-                      <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm font-bold text-primary">
-                            Evaluations ({
-                              (Array.isArray(student.evaluations) ? student.evaluations.length : 0) + 
-                              (studentWeeklyEvaluations[student.id]?.length || 0)
-                            })
-                          </p>
-                          {permissions.canEditEvaluations && (
-                            <button
-                              onClick={() => {
-                                setSelectedStudent(student);
-                                setShowWeeklyEvaluationForm(true);
-                              }}
-                              className="rounded-lg border-2 border-accent px-3 py-1 text-xs font-bold text-accent transition hover:bg-soft-accent"
-                            >
-                              Add Weekly Evaluation
-                            </button>
-                          )}
-                        </div>
-                        {loadingEvaluations[student.id] ? (
-                          <p className="text-xs text-gray-500">Loading evaluations...</p>
-                        ) : (
-                          <>
-                            {/* Weekly Evaluations */}
-                            {studentWeeklyEvaluations[student.id] && studentWeeklyEvaluations[student.id].length > 0 && (
-                              <div className="space-y-2 mb-3">
-                                {studentWeeklyEvaluations[student.id]
-                                  .sort((a, b) => {
-                                    const dateA = new Date(a.weekStartDate || a.createdAt).getTime();
-                                    const dateB = new Date(b.weekStartDate || b.createdAt).getTime();
-                                    return dateB - dateA; // Newest first
-                                  })
-                                  .slice(0, 5)
-                                  .map((evaluation) => {
-                                    const weekStart = new Date(evaluation.weekStartDate);
-                                    const weekEnd = new Date(evaluation.weekEndDate);
-                                    const statusColors: Record<string, { bg: string; text: string }> = {
-                                      draft: { bg: 'bg-gray-100', text: 'text-gray-800' },
-                                      submitted: { bg: 'bg-blue-100', text: 'text-blue-800' },
-                                      under_review: { bg: 'bg-yellow-100', text: 'text-yellow-800' },
-                                      feedback_provided: { bg: 'bg-amber-100', text: 'text-amber-800' },
-                                      approved: { bg: 'bg-green-100', text: 'text-green-800' },
-                                      rejected: { bg: 'bg-red-100', text: 'text-red-800' }
-                                    };
-                                    const statusColor = statusColors[evaluation.status] || statusColors.draft;
-                                    
-                                    return (
-                                      <div 
-                                        key={evaluation.id || evaluation._id} 
-                                        className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs cursor-pointer hover:border-primary transition-colors"
-                                        onClick={() => {
-                                          setSelectedEvaluationId(evaluation.id);
-                                          setShowWeeklyEvaluationReview(true);
-                                        }}
-                                      >
-                                        <div className="flex justify-between items-start mb-1">
-                                          <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <span className="font-semibold text-primary">Weekly Evaluation</span>
-                                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColor.bg} ${statusColor.text}`}>
-                                                {evaluation.status || 'draft'}
-                                              </span>
-                                            </div>
-                                            <p className="text-gray-600 text-[10px]">
-                                              Week: {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </p>
-                                            {evaluation.level && (
-                                              <p className="text-gray-500 text-[10px] mt-0.5">Level: {evaluation.level}</p>
-                                            )}
-                                            {evaluation.adminFeedback && (
-                                              <div className="mt-1 p-1.5 bg-yellow-50 rounded border-l-2 border-yellow-400">
-                                                <p className="text-[10px] font-semibold text-yellow-900">Admin Feedback</p>
-                                                <p className="text-[10px] text-yellow-800 line-clamp-1">{evaluation.adminFeedback}</p>
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <p className="text-[10px] text-gray-500 mt-1">
-                                          {evaluation.submittedAt 
-                                            ? `Submitted: ${new Date(evaluation.submittedAt).toLocaleDateString()}`
-                                            : evaluation.createdAt 
-                                            ? `Created: ${new Date(evaluation.createdAt).toLocaleDateString()}`
-                                            : ''}
-                                        </p>
-                                      </div>
-                                    );
-                                  })}
-                              </div>
-                            )}
-                            
-                            {/* Legacy Evaluations */}
-                            {Array.isArray(student.evaluations) && student.evaluations.length > 0 && (
-                              <div className="space-y-2">
-                                {student.evaluations.slice(-3).map((evaluation) => (
-                                  <div key={evaluation.id} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs">
-                                    <div className="flex justify-between text-primary">
-                                      <span className="font-semibold">{evaluation.category}</span>
-                                      <span className="font-bold text-accent">Rating: {evaluation.rating}/5</span>
-                                    </div>
-                                    <p className="text-gray-600">{evaluation.comments}</p>
-                                    <p className="text-[10px] text-gray-500 mt-1">{new Date(evaluation.date).toLocaleDateString()}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Empty State */}
-                            {(!studentWeeklyEvaluations[student.id] || studentWeeklyEvaluations[student.id].length === 0) && 
-                             (!Array.isArray(student.evaluations) || student.evaluations.length === 0) && (
-                              <p className="text-xs text-gray-500">No evaluations yet</p>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                    {/* Compact Stats Row */}
+                    <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-100">
+                      {permissions.canViewAssessments && (
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(student);
+                            setShowAssessmentForm(true);
+                            setSaveError(null);
+                            setSaveSuccess(null);
+                          }}
+                          className="text-[10px] sm:text-xs px-2 py-1 rounded border border-primary/30 bg-primary/5 text-primary font-semibold hover:bg-primary/10 transition"
+                        >
+                          Assessments ({Array.isArray(student.assessments) ? student.assessments.length : 0})
+                        </button>
+                      )}
+                      {permissions.canViewEvaluations && (
+                        <button
+                          onClick={() => {
+                            setSelectedStudent(student);
+                            setShowWeeklyEvaluationForm(true);
+                          }}
+                          className="text-[10px] sm:text-xs px-2 py-1 rounded border border-accent/30 bg-accent/5 text-accent font-semibold hover:bg-accent/10 transition"
+                        >
+                          Evaluations ({
+                            (Array.isArray(student.evaluations) ? student.evaluations.length : 0) + 
+                            (studentWeeklyEvaluations[student.id]?.length || 0)
+                          })
+                        </button>
+                      )}
+                      {Array.isArray(student.siblings) && student.siblings.length > 0 && (
+                        <span className="text-[10px] sm:text-xs px-2 py-1 rounded border border-gray-200 bg-gray-50 text-gray-600 font-semibold">
+                          Siblings ({student.siblings.length})
+                        </span>
+                      )}
+                    </div>
 
                     {/* Action Buttons */}
                     <div className="mt-4 flex gap-2 flex-wrap">
