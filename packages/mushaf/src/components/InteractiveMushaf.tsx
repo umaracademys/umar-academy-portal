@@ -2053,7 +2053,12 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   useEffect(() => {
     console.log('🔄 InteractiveMushaf: showSurahIndexDefault changed to:', showSurahIndexDefault, 'isMobileOrTablet:', isMobileOrTablet, 'focusMode:', focusMode, 'window width:', typeof window !== 'undefined' ? window.innerWidth : 'N/A');
     setShowSurahIndex(showSurahIndexDefault);
-  }, [showSurahIndexDefault, isMobileOrTablet, focusMode]);
+  }, [showSurahIndexDefault]);
+
+  // Debug: Log when showSurahIndex state changes
+  useEffect(() => {
+    console.log('📊 showSurahIndex state changed to:', showSurahIndex, 'focusMode:', focusMode);
+  }, [showSurahIndex, focusMode]);
 
   // Load chapters/surahs on mount
   useEffect(() => {
