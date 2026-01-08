@@ -2281,12 +2281,6 @@ const syncTeacherAssignedStudents = async () => {
           }
         );
         console.log(`✅ Updated student ${student.fullName || studentId} with ${normalizedTeacherIds.length} teacher(s): [${normalizedTeacherIds.join(', ')}]`);
-        } else {
-          console.error(`❌ Failed to add student ${studentId} to teacher ${teacher.fullName}'s assignedStudents`);
-        }
-      } else {
-        notFoundCount++;
-        console.log(`⚠️ Teacher not found for assignedTeacherId: ${assignedTeacherId}`);
       }
     }
     
