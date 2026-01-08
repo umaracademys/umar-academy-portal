@@ -124,36 +124,47 @@ const MistakeExplanationView: React.FC<MistakeExplanationViewProps> = ({
 
       {/* Timeline Info */}
       {mistake.timeline && (
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="space-y-2">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Timeline
+          </h4>
+          <div className="space-y-3">
             {mistake.timeline.firstMarkedAt && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200">
                 <span className="text-sm font-semibold text-gray-700">First Marked:</span>
-                <span className="text-sm text-gray-600">{formatDate(mistake.timeline.firstMarkedAt)}</span>
+                <span className="text-sm text-gray-600 font-medium">{formatDate(mistake.timeline.firstMarkedAt)}</span>
               </div>
             )}
             {mistake.timeline.lastMarkedAt && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200">
                 <span className="text-sm font-semibold text-gray-700">Last Marked:</span>
-                <span className="text-sm text-gray-600">{formatDate(mistake.timeline.lastMarkedAt)}</span>
+                <span className="text-sm text-gray-600 font-medium">{formatDate(mistake.timeline.lastMarkedAt)}</span>
               </div>
             )}
             {mistake.timeline.repeatCount !== undefined && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-gray-200">
                 <span className="text-sm font-semibold text-gray-700">Repetition Count:</span>
-                <span className={`text-sm font-bold ${
-                  mistake.timeline.repeatCount > 3 ? 'text-red-600' :
-                  mistake.timeline.repeatCount > 1 ? 'text-orange-600' :
-                  'text-gray-600'
+                <span className={`text-sm font-bold px-2 py-1 rounded ${
+                  mistake.timeline.repeatCount > 3 ? 'bg-red-100 text-red-700' :
+                  mistake.timeline.repeatCount > 1 ? 'bg-orange-100 text-orange-700' :
+                  'bg-gray-100 text-gray-700'
                 }`}>
                   {mistake.timeline.repeatCount} {mistake.timeline.repeatCount === 1 ? 'time' : 'times'}
                 </span>
               </div>
             )}
             {mistake.timeline.resolved && (
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between bg-green-50 p-2 rounded-lg border border-green-200">
                 <span className="text-sm font-semibold text-green-700">Status:</span>
-                <span className="text-sm font-bold text-green-600">✓ Resolved</span>
+                <span className="text-sm font-bold text-green-600 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  Resolved
+                </span>
               </div>
             )}
           </div>
@@ -215,65 +226,84 @@ const MistakeExplanationView: React.FC<MistakeExplanationViewProps> = ({
 
       {/* General Note */}
       {mistake.note && !isTajweed && (
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h4 className="text-sm font-bold text-gray-900 mb-2">Note:</h4>
-          <p className="text-sm text-gray-700 italic">"{mistake.note}"</p>
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+            Note
+          </h4>
+          <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+            <p className="text-sm text-gray-700 italic leading-relaxed">"{mistake.note}"</p>
+          </div>
         </div>
       )}
 
       {/* Audio */}
       {mistake.audioUrl && (
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h4 className="text-sm font-bold text-gray-900 mb-2">Audio Correction:</h4>
-          <audio 
-            controls 
-            preload="metadata"
-            crossOrigin="anonymous"
-            className="w-full h-10"
-            onError={(e) => {
-              const target = e.target as HTMLAudioElement;
-              console.error('Audio load error:', target.src, {
-                error: target.error,
-                code: target.error?.code,
-                message: target.error?.message
-              });
-            }}
-            onLoadedMetadata={() => {
-              console.log('✅ Audio loaded successfully:', mistake.audioUrl);
-            }}
-            src={
-              (() => {
-                let url = mistake.audioUrl || '';
-                // Handle full URLs
-                if (url.startsWith('http://') || url.startsWith('https://')) {
-                  // Fix URLs that incorrectly include /api/uploads
-                  url = url.replace('/api/uploads/', '/uploads/');
-                  return url;
-                }
-                // Handle relative paths - construct full URL
-                let baseUrl = 'http://localhost:3001';
-                if (typeof window !== 'undefined') {
-                  if ((window as any).MUSHAF_API_BASE) {
-                    baseUrl = (window as any).MUSHAF_API_BASE;
-                  } else if (import.meta.env?.VITE_API_BASE_URL) {
-                    baseUrl = import.meta.env.VITE_API_BASE_URL;
+        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center shadow-lg">
+              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-gray-900">Audio Correction</h4>
+              <p className="text-xs text-gray-600">Listen to the correct pronunciation</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-blue-200">
+            <audio 
+              controls 
+              preload="metadata"
+              crossOrigin="anonymous"
+              className="w-full h-10"
+              onError={(e) => {
+                const target = e.target as HTMLAudioElement;
+                console.error('Audio load error:', target.src, {
+                  error: target.error,
+                  code: target.error?.code,
+                  message: target.error?.message
+                });
+              }}
+              onLoadedMetadata={() => {
+                console.log('✅ Audio loaded successfully:', mistake.audioUrl);
+              }}
+              src={
+                (() => {
+                  let url = mistake.audioUrl || '';
+                  // Handle full URLs
+                  if (url.startsWith('http://') || url.startsWith('https://')) {
+                    // Fix URLs that incorrectly include /api/uploads
+                    url = url.replace('/api/uploads/', '/uploads/');
+                    return url;
                   }
-                }
-                // Remove /api suffix if present (uploads are served from root, not /api)
-                if (baseUrl.endsWith('/api')) {
-                  baseUrl = baseUrl.replace('/api', '');
-                }
-                baseUrl = baseUrl.replace(/\/$/, '');
-                // Ensure URL starts with /
-                const audioPath = url.startsWith('/') ? url : `/${url}`;
-                const fullUrl = `${baseUrl}${audioPath}`;
-                console.log('🔊 Constructed audio URL:', fullUrl, 'from:', mistake.audioUrl);
-                return fullUrl;
-              })()
-            }
-          >
-            Your browser does not support the audio element.
-          </audio>
+                  // Handle relative paths - construct full URL
+                  let baseUrl = 'http://localhost:3001';
+                  if (typeof window !== 'undefined') {
+                    if ((window as any).MUSHAF_API_BASE) {
+                      baseUrl = (window as any).MUSHAF_API_BASE;
+                    } else if (import.meta.env?.VITE_API_BASE_URL) {
+                      baseUrl = import.meta.env.VITE_API_BASE_URL;
+                    }
+                  }
+                  // Remove /api suffix if present (uploads are served from root, not /api)
+                  if (baseUrl.endsWith('/api')) {
+                    baseUrl = baseUrl.replace('/api', '');
+                  }
+                  baseUrl = baseUrl.replace(/\/$/, '');
+                  // Ensure URL starts with /
+                  const audioPath = url.startsWith('/') ? url : `/${url}`;
+                  const fullUrl = `${baseUrl}${audioPath}`;
+                  console.log('🔊 Constructed audio URL:', fullUrl, 'from:', mistake.audioUrl);
+                  return fullUrl;
+                })()
+              }
+            >
+              Your browser does not support the audio element.
+            </audio>
+          </div>
         </div>
       )}
     </>

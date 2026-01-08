@@ -599,6 +599,8 @@ export const MushafPage: React.FC<{
 export const WordByWordPage: React.FC<{
   pageNumber: number;
   onWordClick?: (word: Word, event?: React.MouseEvent | React.TouchEvent) => void;
+  onWordHover?: (word: Word, event?: React.MouseEvent) => void; // New: handle word hover
+  onWordLeave?: () => void; // New: handle word leave
   onLetterClick?: (word: Word, letterIndex: number, event?: React.MouseEvent | React.TouchEvent) => void; // New: handle letter clicks
   mistakes?: MushafMistake[]; // Current mistakes
   historicalMistakes?: MushafMistake[]; // Historical mistakes from student's personal Mushaf
@@ -612,6 +614,8 @@ export const WordByWordPage: React.FC<{
 }> = ({
   pageNumber,
   onWordClick,
+  onWordHover,
+  onWordLeave,
   onLetterClick,
   mistakes: mistakesProp = [],
   historicalMistakes: historicalMistakesProp = [],
@@ -1591,11 +1595,22 @@ export const WordByWordPage: React.FC<{
                           }}
                           className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
                           dir="rtl"
+                          onMouseEnter={(e) => {
+                            if (onWordHover && wordMistake) {
+                              onWordHover(w, e);
+                            }
+                          }}
+                          onMouseLeave={() => {
+                            // Keep panel open on leave - user can click to close
+                            if (onWordLeave) {
+                              onWordLeave();
+                            }
+                          }}
                           title={
                             isVerseSelected 
                               ? `Selected as Question - Surah ${w.surah}, Ayah ${w.ayah}`
                               : wordMistake
-                                ? `${isWordHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${wordMistake.type} mistake${wordMistake.note ? `: ${wordMistake.note}` : ""}${wordMistake.audioUrl ? ' (Click to hear audio)' : ''}`
+                                ? `${isWordHistorical ? '📜 Historical ' : ''}Surah ${w.surah}, Ayah ${w.ayah} - ${wordMistake.type} mistake${wordMistake.note ? `: ${wordMistake.note}` : ""}${wordMistake.audioUrl ? ' (Hover to see details and audio)' : ' (Hover to see details)'}`
                                 : `Surah ${w.surah}, Ayah ${w.ayah}${hasLetterMistakes ? ' (Click letters to mark letter mistakes)' : ''}`
                           }
                           style={{
@@ -2074,6 +2089,34 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       });
     setLocalMistakes(convertedMistakes);
   }, [mistakesWithWords, currentPage]);
+
+  // Handle hover to show mistake details (for read-only mode)
+  const handleWordHover = (word: Word, event?: React.MouseEvent) => {
+    if (!readOnly || mode !== 'viewing') return;
+    
+    const wordMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
+      m.page === currentPage &&
+      m.surah === word.surah &&
+      m.ayah === word.ayah &&
+      m.wordIndex === word.word_index
+    );
+    
+    if (wordMistake) {
+      const isHistoricalMistake = historicalMistakes.some(m => 
+        m.page === currentPage &&
+        m.surah === word.surah &&
+        m.ayah === word.ayah &&
+        m.wordIndex === word.word_index &&
+        m.type === wordMistake.type
+      );
+      
+      setSelectedMistakeForDetails({ mistake: wordMistake, word, isHistorical: isHistoricalMistake });
+    }
+  };
+
+  const handleWordLeave = () => {
+    // Don't clear on mouse leave - keep panel open until user clicks away or hovers another mistake
+  };
 
   const handleWordClick = (word: Word, event?: React.MouseEvent | React.TouchEvent) => {
     // Respect toolsHidden: disable marking interactions
@@ -2728,6 +2771,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             <WordByWordPage
               pageNumber={currentPage}
               onWordClick={handleWordClick}
+              onWordHover={readOnly || mode === 'viewing' ? handleWordHover : undefined}
+              onWordLeave={readOnly || mode === 'viewing' ? handleWordLeave : undefined}
               onLetterClick={handleLetterClick}
               mistakes={mistakes}
               historicalMistakes={historicalMistakes}
