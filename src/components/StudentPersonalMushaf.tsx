@@ -460,14 +460,22 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                     e.stopPropagation();
                     const newValue = !showSurahIndex;
                     console.log('🔍 Index button clicked, toggling from', showSurahIndex, 'to', newValue);
+                    console.log('📱 Current window width:', typeof window !== 'undefined' ? window.innerWidth : 'N/A');
                     setShowSurahIndex(newValue);
+                    // Force a small delay to ensure state updates
+                    setTimeout(() => {
+                      console.log('⏱️ After timeout, showSurahIndex:', newValue);
+                    }, 100);
                   }}
                   onTouchStart={(e) => {
                     e.stopPropagation();
+                    const newValue = !showSurahIndex;
+                    console.log('👆 Touch start on Index button, toggling to:', newValue);
+                    setShowSurahIndex(newValue);
                   }}
                   className={`px-2 sm:px-2.5 md:px-3 py-1.5 sm:py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-md sm:rounded-lg transition-all text-[10px] sm:text-xs md:text-sm font-semibold shadow-lg hover:scale-105 flex items-center gap-1 touch-manipulation z-50 relative ${showSurahIndex ? 'bg-white/30 ring-2 ring-white/50' : ''}`}
                   title="Surah/Juz Index"
-                  style={{ pointerEvents: 'auto', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+                  style={{ pointerEvents: 'auto', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}
                 >
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
