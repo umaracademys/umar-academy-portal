@@ -2051,6 +2051,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
   // Sync showSurahIndex with prop changes
   useEffect(() => {
+    console.log('🔄 InteractiveMushaf: showSurahIndexDefault changed to:', showSurahIndexDefault);
     setShowSurahIndex(showSurahIndexDefault);
   }, [showSurahIndexDefault]);
 
