@@ -170,7 +170,29 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
       await Promise.all(updatePromises);
 
-      // Refresh data to ensure UI updates
+      // Trigger backend sync to update teacher's assignedStudents arrays
+      try {
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const token = localStorage.getItem('umar_academy_token');
+        const syncResponse = await fetch(`${API_BASE}/teachers/sync-assigned-students`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (syncResponse.ok) {
+          console.log('✅ Teacher assignedStudents arrays synced successfully');
+        } else {
+          console.warn('⚠️ Sync request returned non-OK status:', syncResponse.status);
+        }
+      } catch (syncError) {
+        console.warn('⚠️ Could not trigger sync (non-critical):', syncError);
+        // Don't fail the whole operation if sync fails
+      }
+
+      // Refresh data to ensure UI updates (this will reload teachers with updated assignedStudents)
       if (refreshData) {
         await refreshData();
       }
