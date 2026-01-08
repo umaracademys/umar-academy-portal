@@ -2051,9 +2051,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
   // Sync showSurahIndex with prop changes
   useEffect(() => {
-    console.log('🔄 InteractiveMushaf: showSurahIndexDefault changed to:', showSurahIndexDefault);
+    console.log('🔄 InteractiveMushaf: showSurahIndexDefault changed to:', showSurahIndexDefault, 'isMobileOrTablet:', isMobileOrTablet, 'focusMode:', focusMode, 'window width:', typeof window !== 'undefined' ? window.innerWidth : 'N/A');
     setShowSurahIndex(showSurahIndexDefault);
-  }, [showSurahIndexDefault]);
+  }, [showSurahIndexDefault, isMobileOrTablet, focusMode]);
 
   // Load chapters/surahs on mount
   useEffect(() => {
@@ -2545,7 +2545,20 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
       {/* Surah Index Portal for Mobile/iPad - Render at body level to appear on top */}
-      {showSurahIndex && !focusMode && isMobileOrTablet && typeof window !== 'undefined' && createPortal(
+      {(() => {
+        const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 1024;
+        const shouldRender = showSurahIndex && !focusMode && isMobileDevice;
+        console.log('📱 Portal render check:', { 
+          showSurahIndex, 
+          focusMode, 
+          isMobileOrTablet, 
+          isMobileDevice,
+          windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'N/A',
+          windowExists: typeof window !== 'undefined',
+          shouldRender 
+        });
+        return shouldRender;
+      })() && typeof window !== 'undefined' && document.body && createPortal(
         <>
           {/* Mobile/iPad Overlay - Full screen overlay */}
           <div 
