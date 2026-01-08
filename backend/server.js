@@ -2307,14 +2307,17 @@ app.get('/api/teachers', async (req, res) => {
   try {
     // Sync assignedStudents arrays before returning teachers
     const syncOnLoad = req.query.sync === 'true';
+    
+    // If sync is requested, start it but don't wait for it to complete
+    // This prevents timeout issues on slow databases
     if (syncOnLoad) {
-      console.log('🔄 GET /api/teachers called with sync=true, running sync...');
-      const syncResult = await syncTeacherAssignedStudents();
-      console.log(`🔄 Sync result: ${syncResult ? 'Success' : 'Failed'}`);
-      
-      // After sync, fetch fresh teacher records to ensure we have the latest data
-      // There might be a caching issue, so we'll fetch again after sync
-      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay to ensure DB write completes
+      console.log('🔄 GET /api/teachers called with sync=true, starting async sync...');
+      // Start sync in background - don't await it
+      syncTeacherAssignedStudents().catch(err => {
+        console.error('❌ Background sync error:', err);
+      });
+      // Give sync a small head start, but don't wait for completion
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     const teachers = await Teacher.find({}).populate('userId').lean();
@@ -2328,9 +2331,9 @@ app.get('/api/teachers', async (req, res) => {
       id: teacher._id?.toString() || teacher._id // Also include as 'id' for compatibility
     }));
     
-    // Log assignedStudents arrays for debugging
-    if (syncOnLoad) {
-      console.log('📊 Teachers after sync:');
+    // Log assignedStudents arrays for debugging (only if not syncing to avoid delay)
+    if (!syncOnLoad) {
+      console.log('📊 Teachers loaded (no sync):');
       teachersWithArrays.forEach(teacher => {
         console.log(`  - ${teacher.fullName} (${teacher._id}): assignedStudents=[${teacher.assignedStudents.join(', ')}] (${teacher.assignedStudents.length} students)`);
       });
@@ -5010,6 +5013,52 @@ teacherNotificationSchema.index({ teacherId: 1, createdAt: -1 });
 
 const TeacherNotification = mongoose.model('TeacherNotification', teacherNotificationSchema);
 
+// Broadcast Message Schema - for super admin to send messages to teachers
+const broadcastMessageSchema = new mongoose.Schema({
+  senderId: { type: String, required: true }, // Super Admin User ID
+  senderName: { type: String, required: true }, // Super Admin name
+  category: { 
+    type: String, 
+    enum: ['mistakes', 'announcements', 'alerts'], 
+    required: true,
+    index: true
+  },
+  priority: { 
+    type: String, 
+    enum: ['low', 'medium', 'high'], 
+    default: 'medium',
+    index: true
+  },
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  commonMistakes: [{ // For 'mistakes' category
+    type: String, // Mistake type
+    example: String, // Example of the mistake
+    correction: String // How to correct it
+  }],
+  recipients: {
+    type: [String], // Array of teacher IDs (empty = broadcast to all)
+    default: []
+  },
+  recipientType: {
+    type: String,
+    enum: ['all', 'selected', 'active'], // all = broadcast, selected = specific teachers, active = teachers currently in Interactive Mushaf
+    default: 'all'
+  },
+  readBy: [{
+    teacherId: { type: String, required: true },
+    readAt: { type: Date, default: Date.now }
+  }],
+  expiresAt: { type: Date }, // Optional expiration date
+  active: { type: Boolean, default: true, index: true } // Can be deactivated without deleting
+}, { timestamps: true });
+
+broadcastMessageSchema.index({ category: 1, active: 1, createdAt: -1 });
+broadcastMessageSchema.index({ recipients: 1, active: 1 });
+broadcastMessageSchema.index({ createdAt: -1 });
+
+const BroadcastMessage = mongoose.model('BroadcastMessage', broadcastMessageSchema);
+
 // Listening Session Schema - tracks live listening telemetry for control tower
 const listeningMistakeSchema = new mongoose.Schema({
   id: String,
@@ -6792,6 +6841,264 @@ app.post('/api/admin-notifications', async (req, res) => {
     await notification.save();
     res.status(201).json(notification);
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// BROADCAST MESSAGE ROUTES
+// ============================================
+
+// Create broadcast message (Super Admin only)
+app.post('/api/broadcast-messages', authenticateToken, async (req, res) => {
+  try {
+    // Only Super Admin can create broadcast messages
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin can create broadcast messages.' });
+    }
+
+    const { category, priority, title, message, commonMistakes, recipients, recipientType } = req.body;
+
+    // Validate required fields
+    if (!category || !title || !message) {
+      return res.status(400).json({ error: 'Category, title, and message are required' });
+    }
+
+    // Get sender info
+    const senderId = req.user.id || req.user._id?.toString();
+    const senderName = req.user.name || 'Super Admin';
+
+    // Handle recipientType 'active' - get teachers currently in Interactive Mushaf
+    let finalRecipients = recipients || [];
+    if (recipientType === 'active') {
+      // Get active listening sessions to find active teachers
+      const activeSessions = await ListeningSession.find({ 
+        status: 'in_progress',
+        lastHeartbeatAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) } // Active in last 5 minutes
+      }).distinct('teacherId');
+      finalRecipients = activeSessions;
+    }
+
+    // Create broadcast message
+    const broadcastMessage = new BroadcastMessage({
+      senderId,
+      senderName,
+      category,
+      priority: priority || 'medium',
+      title,
+      message,
+      commonMistakes: commonMistakes || [],
+      recipients: finalRecipients,
+      recipientType: recipientType || (finalRecipients.length === 0 ? 'all' : 'selected'),
+      active: true
+    });
+
+    await broadcastMessage.save();
+
+    console.log(`✅ Broadcast message created: ${broadcastMessage._id} by ${senderName}, category: ${category}, recipients: ${finalRecipients.length === 0 ? 'all' : finalRecipients.length}`);
+
+    res.status(201).json(broadcastMessage);
+  } catch (error) {
+    console.error('❌ Error creating broadcast message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get broadcast messages for a teacher
+app.get('/api/broadcast-messages', authenticateToken, async (req, res) => {
+  try {
+    // Only teachers can access their broadcast messages
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can view broadcast messages.' });
+    }
+
+    // Get teacher ID
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher._id?.toString() || teacher.id;
+
+    // Build query: messages that are active and either broadcast to all or include this teacher
+    const query = {
+      active: true,
+      $or: [
+        { recipientType: 'all' },
+        { recipients: { $in: [teacherId] } },
+        { recipients: { $in: [teacher._id] } }
+      ]
+    };
+
+    // Optional filters
+    const { category, unreadOnly } = req.query;
+    if (category) {
+      query.category = category;
+    }
+
+    // Get messages
+    let messages = await BroadcastMessage.find(query)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    // Filter unread if requested
+    if (unreadOnly === 'true') {
+      messages = messages.filter(msg => {
+        const readBy = msg.readBy || [];
+        return !readBy.some(r => r.teacherId === teacherId || r.teacherId === teacher._id?.toString());
+      });
+    }
+
+    // Add read status for each message
+    const messagesWithReadStatus = messages.map(msg => {
+      const readBy = msg.readBy || [];
+      const isRead = readBy.some(r => r.teacherId === teacherId || r.teacherId === teacher._id?.toString());
+      return {
+        ...msg,
+        isRead,
+        readAt: isRead ? readBy.find(r => r.teacherId === teacherId || r.teacherId === teacher._id?.toString())?.readAt : null
+      };
+    });
+
+    res.json(messagesWithReadStatus);
+  } catch (error) {
+    console.error('❌ Error fetching broadcast messages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get unread count for teacher
+app.get('/api/broadcast-messages/unread/count', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can view broadcast message counts.' });
+    }
+
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher._id?.toString() || teacher.id;
+
+    // Get all active messages for this teacher
+    const messages = await BroadcastMessage.find({
+      active: true,
+      $or: [
+        { recipientType: 'all' },
+        { recipients: { $in: [teacherId] } },
+        { recipients: { $in: [teacher._id] } }
+      ]
+    }).lean();
+
+    // Count unread
+    const unreadCount = messages.filter(msg => {
+      const readBy = msg.readBy || [];
+      return !readBy.some(r => r.teacherId === teacherId || r.teacherId === teacher._id?.toString());
+    }).length;
+
+    res.json({ unreadCount, totalCount: messages.length });
+  } catch (error) {
+    console.error('❌ Error fetching unread count:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Mark broadcast message as read
+app.put('/api/broadcast-messages/:id/read', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Access denied. Only teachers can mark messages as read.' });
+    }
+
+    const teacher = await Teacher.findOne({ email: req.user.email });
+    if (!teacher) {
+      return res.status(404).json({ error: 'Teacher not found' });
+    }
+
+    const teacherId = teacher._id?.toString() || teacher.id;
+    const messageId = req.params.id;
+
+    // Find message and check if teacher has access
+    const message = await BroadcastMessage.findById(messageId);
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    // Check if teacher has access to this message
+    const hasAccess = message.recipientType === 'all' || 
+                     message.recipients.includes(teacherId) || 
+                     message.recipients.includes(teacher._id?.toString());
+
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied. You do not have access to this message.' });
+    }
+
+    // Add to readBy if not already there
+    const readBy = message.readBy || [];
+    const alreadyRead = readBy.some(r => r.teacherId === teacherId || r.teacherId === teacher._id?.toString());
+
+    if (!alreadyRead) {
+      message.readBy.push({
+        teacherId,
+        readAt: new Date()
+      });
+      await message.save();
+    }
+
+    res.json({ success: true, message: 'Message marked as read' });
+  } catch (error) {
+    console.error('❌ Error marking message as read:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all broadcast messages (Super Admin - for management)
+app.get('/api/broadcast-messages/all', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin can view all broadcast messages.' });
+    }
+
+    const { category, active } = req.query;
+    const query = {};
+    
+    if (category) query.category = category;
+    if (active !== undefined) query.active = active === 'true';
+
+    const messages = await BroadcastMessage.find(query)
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+
+    res.json(messages);
+  } catch (error) {
+    console.error('❌ Error fetching all broadcast messages:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Deactivate broadcast message (Super Admin)
+app.put('/api/broadcast-messages/:id/deactivate', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Access denied. Only Super Admin can deactivate messages.' });
+    }
+
+    const message = await BroadcastMessage.findByIdAndUpdate(
+      req.params.id,
+      { active: false },
+      { new: true }
+    );
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    res.json(message);
+  } catch (error) {
+    console.error('❌ Error deactivating message:', error);
     res.status(500).json({ error: error.message });
   }
 });

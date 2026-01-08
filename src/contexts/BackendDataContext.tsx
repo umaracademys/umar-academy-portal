@@ -391,8 +391,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoadingStep('Loading teachers...');
       let teacherRecords: any[] = [];
       try {
-      const teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 10000);
-      if (teachersResponse.ok) {
+        // Try with sync first, but with longer timeout (30 seconds)
+        // If it times out, fall back to loading without sync
+        let teachersResponse;
+        try {
+          teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers?sync=true`, {}, 30000);
+        } catch (syncError: any) {
+          // If sync times out, try without sync
+          console.warn('⚠️ Sync request timed out, loading teachers without sync:', syncError?.message);
+          teachersResponse = await fetchWithTimeout(`${API_BASE}/teachers`, {}, 10000);
+        }
+        
+        if (teachersResponse.ok) {
           teacherRecords = await teachersResponse.json();
           if (import.meta.env.DEV) {
             console.log('👨‍🏫 Teacher records loaded from /api/teachers:', teacherRecords.length);
@@ -404,20 +414,40 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             });
           }
         
-        // Merge teacher data with user data
+          // Merge teacher data with user data
           teacherRecords.forEach((teacher: any) => {
             const user = users.find((u: any) => 
               u._id === teacher.userId?._id || 
               u._id === teacher.userId ||
               (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
             );
-          if (user) {
-            user.teacherProfile = teacher;
-          }
-        });
+            if (user) {
+              user.teacherProfile = teacher;
+            }
+          });
         }
       } catch (err) {
         console.warn('⚠️ Could not load teacher records:', err);
+        // Try one more time without sync as fallback
+        try {
+          const fallbackResponse = await fetchWithTimeout(`${API_BASE}/teachers`, {}, 10000);
+          if (fallbackResponse.ok) {
+            teacherRecords = await fallbackResponse.json();
+            // Merge teacher data with user data
+            teacherRecords.forEach((teacher: any) => {
+              const user = users.find((u: any) => 
+                u._id === teacher.userId?._id || 
+                u._id === teacher.userId ||
+                (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
+              );
+              if (user) {
+                user.teacherProfile = teacher;
+              }
+            });
+          }
+        } catch (fallbackErr) {
+          console.error('❌ Fallback teacher load also failed:', fallbackErr);
+        }
       }
 
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
