@@ -879,7 +879,7 @@ const HomeworkAssignmentForm: React.FC<HomeworkAssignmentFormProps> = ({
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
         // If ticket mistakes provided, generate suggestions from them
-        if (ticketMistakes.length > 0 && ticketType) {
+        if (ticketMistakes && ticketMistakes.length > 0 && ticketType) {
           const suggestions: HomeworkSuggestions = {
             sabq: { suggested: false },
             sabqi: { suggested: false },
@@ -888,7 +888,7 @@ const HomeworkAssignmentForm: React.FC<HomeworkAssignmentFormProps> = ({
 
           // Group mistakes by surah
           const mistakesBySurah: Record<number, number[]> = {};
-          ticketMistakes.forEach(mistake => {
+          ticketMistakes.forEach((mistake: TicketMistake) => {
             if (mistake.surah && mistake.ayah) {
               if (!mistakesBySurah[mistake.surah]) {
                 mistakesBySurah[mistake.surah] = [];
@@ -927,7 +927,7 @@ const HomeworkAssignmentForm: React.FC<HomeworkAssignmentFormProps> = ({
             }
           } else if (ticketType === 'sabqi' || ticketType === 'manzil') {
             // For sabqi/manzil, suggest based on pages (convert to juz)
-            const pages = [...new Set(ticketMistakes.map(m => m.page).filter(Boolean))].sort((a, b) => a - b);
+            const pages = [...new Set(ticketMistakes.map((m: TicketMistake) => m.page).filter(Boolean))].sort((a, b) => a - b);
             if (pages.length > 0) {
               // Rough conversion: page 1-20 ≈ Juz 1, page 21-40 ≈ Juz 2, etc.
               const juzs = [...new Set(pages.map(page => Math.ceil(page / 20)))].filter(juz => juz >= 1 && juz <= 30);
