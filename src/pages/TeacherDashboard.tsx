@@ -24,6 +24,7 @@ import TeacherPersonalMushaf from '../components/TeacherPersonalMushaf';
 import TeacherAssessmentForm from '../components/TeacherAssessmentForm';
 import TeacherNotificationCenter from '../components/TeacherNotificationCenter';
 import TicketCreationForm from '../components/TicketCreationForm';
+import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
@@ -1579,7 +1580,9 @@ const TeacherDashboard: React.FC = () => {
                       homework: {
                         enabled: true,
                         items: homeworkItems,
-                        notes: notes
+                        notes: notes,
+                        content: '', // Legacy field required by type
+                        link: '' // Legacy field required by type
                       }
                     });
                     setShowHomeworkForm(false);

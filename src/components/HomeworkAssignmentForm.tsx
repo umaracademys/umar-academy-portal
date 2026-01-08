@@ -1,5 +1,6 @@
 import React, { useReducer, useEffect, useMemo, useCallback, useRef } from 'react';
 import { HomeworkItem, HomeworkRange } from '../types/assignment';
+import { TicketMistake } from '../types/ticket';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -24,12 +25,7 @@ interface HomeworkSuggestions {
 interface HomeworkAssignmentFormProps {
   studentId: string;
   assignmentId?: string;
-  ticketMistakes?: Array<{
-    surah: number;
-    ayah: number;
-    page: number;
-    type: string;
-  }>; // Optional: mistakes from ticket for smart suggestions
+  ticketMistakes?: TicketMistake[]; // Optional: mistakes from ticket for smart suggestions
   ticketType?: 'sabq' | 'sabqi' | 'manzil'; // Optional: ticket type for suggestions
   onSave: (homeworkItems: HomeworkItem[], notes: string) => Promise<void>;
   onClose: () => void;
