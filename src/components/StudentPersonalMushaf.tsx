@@ -501,9 +501,11 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
               <div className="text-[10px] font-bold text-gray-700 uppercase tracking-wide leading-tight mt-1">Pages</div>
             </div>
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Filters - Enhanced Design with Surah Index Toggle */}
+        {!isFullscreen && (
         <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-white via-gray-50 to-white border-b-2 border-gray-200 flex flex-wrap gap-3 sm:gap-4 items-center shadow-sm">
           <div className="flex items-center gap-2">
             <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Date:</label>
@@ -568,6 +570,7 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
             </span>
           </div>
         </div>
+        )}
 
         {/* Error Message */}
         {error && (
