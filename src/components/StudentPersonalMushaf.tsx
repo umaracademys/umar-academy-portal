@@ -24,6 +24,8 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   const [filterType, setFilterType] = useState<'all' | 'sabq' | 'sabqi' | 'manzil'>('all');
   const [filterPage, setFilterPage] = useState<number | null>(null);
   const [filterDate, setFilterDate] = useState<string | null>(null); // Filter by date (YYYY-MM-DD format)
+  const [isFullscreen, setIsFullscreen] = useState(false); // Fullscreen mode toggle
+  const [showMistakeList, setShowMistakeList] = useState(true); // Toggle mistake list visibility
   const [stats, setStats] = useState({
     total: 0,
     sabq: 0,
@@ -225,6 +227,44 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     return Array.from(pages).sort((a, b) => a - b);
   }, [mistakes]);
 
+  // Categorize mistakes by recency (for visual distinction)
+  const categorizeMistakesByRecency = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    return {
+      recent: mistakes.filter(m => {
+        if (!m.timestamp) return false;
+        const mistakeDate = new Date(m.timestamp);
+        return mistakeDate >= sevenDaysAgo;
+      }),
+      older: mistakes.filter(m => {
+        if (!m.timestamp) return false;
+        const mistakeDate = new Date(m.timestamp);
+        return mistakeDate >= thirtyDaysAgo && mistakeDate < sevenDaysAgo;
+      }),
+      old: mistakes.filter(m => {
+        if (!m.timestamp) return true;
+        const mistakeDate = new Date(m.timestamp);
+        return mistakeDate < thirtyDaysAgo;
+      })
+    };
+  }, [mistakes]);
+
+  // Enhanced mistake classification for display
+  const getMistakeRecencyClass = useCallback((mistake: MushafMistake): 'recent' | 'older' | 'old' => {
+    if (!mistake.timestamp) return 'old';
+    const mistakeDate = new Date(mistake.timestamp);
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    if (mistakeDate >= sevenDaysAgo) return 'recent';
+    if (mistakeDate >= thirtyDaysAgo) return 'older';
+    return 'old';
+  }, []);
+
   // Check if current user is a student (should be read-only)
   const isStudent = useMemo(() => {
     if (!user) return true; // Default to read-only if no user
@@ -348,38 +388,97 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-[98vw] sm:max-w-[95vw] lg:max-w-[98vw] max-h-[98vh] sm:max-h-[95vh] overflow-hidden flex flex-col border-2 border-primary/20">
+    <div className={`fixed inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 bg-opacity-95 backdrop-blur-sm flex items-center justify-center z-50 ${isFullscreen ? 'p-0' : 'p-2 sm:p-4'} overflow-y-auto`}>
+      <div className={`bg-white ${isFullscreen ? 'rounded-none' : 'rounded-2xl sm:rounded-3xl'} shadow-2xl w-full ${isFullscreen ? 'max-w-full h-full' : 'max-w-[98vw] sm:max-w-[95vw] lg:max-w-[98vw] max-h-[98vh] sm:max-h-[95vh]'} overflow-hidden flex flex-col border-2 border-primary/20`}>
         {/* Header - Enhanced Design */}
-        <div className="px-4 sm:px-6 py-4 border-b-2 border-primary/30 bg-gradient-to-r from-primary via-[rgba(var(--color-primary-rgb),0.9)] to-primary shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                <span className="text-2xl">📖</span>
+        {!isFullscreen && (
+          <div className="px-4 sm:px-6 py-4 border-b-2 border-primary/30 bg-gradient-to-r from-primary via-[rgba(var(--color-primary-rgb),0.9)] to-primary shadow-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                  <span className="text-2xl">📖</span>
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
+                    {studentName ? `${studentName}'s Personal Mushaf` : 'My Personal Mushaf'}
+                  </h2>
+                  <p className="text-white/90 text-xs sm:text-sm mt-0.5 font-medium">
+                    {studentName ? `All mistakes from ${studentName}'s recitation reviews` : 'All mistakes from your recitation reviews'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
-                  {studentName ? `${studentName}'s Personal Mushaf` : 'My Personal Mushaf'}
-                </h2>
-                <p className="text-white/90 text-xs sm:text-sm mt-0.5 font-medium">
-                  {studentName ? `All mistakes from ${studentName}'s recitation reviews` : 'All mistakes from your recitation reviews'}
-                </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-lg transition-all text-sm font-semibold shadow-lg hover:scale-105 flex items-center gap-2"
+                  title="Fullscreen Mode"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  Fullscreen
+                </button>
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-xl transition-all text-xl font-bold shadow-lg hover:scale-110"
+                    title="Close"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             </div>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-xl transition-all text-xl font-bold shadow-lg hover:scale-110"
-                title="Close"
-              >
-                ×
-              </button>
-            )}
           </div>
-        </div>
+        )}
+
+        {/* Fullscreen Header - Minimal */}
+        {isFullscreen && (
+          <div className="px-4 py-2 bg-black/80 backdrop-blur-sm border-b border-white/20 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-white">
+                {studentName ? `${studentName}'s Personal Mushaf` : 'My Personal Mushaf'}
+              </h2>
+              <div className="flex items-center gap-2 text-xs text-white/70">
+                <span className="px-2 py-1 bg-red-500/20 rounded">Recent: {categorizeMistakesByRecency.recent.length}</span>
+                <span className="px-2 py-1 bg-orange-500/20 rounded">Older: {categorizeMistakesByRecency.older.length}</span>
+                <span className="px-2 py-1 bg-gray-500/20 rounded">Old: {categorizeMistakesByRecency.old.length}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowMistakeList(!showMistakeList)}
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold transition-all"
+                title={showMistakeList ? "Hide Mistake List" : "Show Mistake List"}
+              >
+                {showMistakeList ? 'Hide List' : 'Show List'}
+              </button>
+              <button
+                onClick={() => setIsFullscreen(false)}
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+                title="Exit Fullscreen"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Exit Fullscreen
+              </button>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all text-lg font-bold"
+                  title="Close"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Statistics Bar - Enhanced Design */}
-        <div className="px-3 sm:px-4 py-3 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200 shadow-sm">
+        {!isFullscreen && (
+          <div className="px-3 sm:px-4 py-3 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-b-2 border-gray-200 shadow-sm">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
             <div className="text-center px-3 py-2 rounded-xl bg-gradient-to-br from-white to-primary/5 border-2 border-primary/30 shadow-md hover:shadow-lg transition-all h-[70px] flex flex-col justify-center group cursor-pointer">
               <div className="text-2xl font-bold text-primary leading-tight group-hover:scale-110 transition-transform">{stats.total}</div>
@@ -478,14 +577,20 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         )}
 
         {/* Content - Always show Mushaf with surah index */}
-        <div className="flex-1 overflow-y-auto bg-gray-50" style={{ padding: '0', position: 'relative' }}>
-          <div className="w-full h-full p-2 sm:p-4 lg:p-6" style={{ position: 'relative', minHeight: '500px' }}>
+        <div className={`flex-1 overflow-y-auto bg-gray-50 ${isFullscreen ? 'h-full' : ''}`} style={{ padding: '0', position: 'relative' }}>
+          <div className={`w-full h-full ${isFullscreen ? 'p-0' : 'p-2 sm:p-4 lg:p-6'}`} style={{ position: 'relative', minHeight: isFullscreen ? '100%' : '500px' }}>
             <div className="w-full h-full max-w-full">
               <InteractiveMushaf
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
-                mistakes={mistakes.length > 0 ? filteredMistakes.filter(m => m.page === currentPage) : []}
-                historicalMistakes={mistakes.length > 0 ? mistakes.filter(m => m.page === currentPage && !filteredMistakes.includes(m)) : []}
+                mistakes={mistakes.length > 0 ? filteredMistakes.filter(m => {
+                  const recency = getMistakeRecencyClass(m);
+                  return m.page === currentPage && recency === 'recent';
+                }) : []}
+                historicalMistakes={mistakes.length > 0 ? mistakes.filter(m => {
+                  const recency = getMistakeRecencyClass(m);
+                  return m.page === currentPage && (recency === 'older' || recency === 'old');
+                }) : []}
                 onMistakeMark={isStudent ? undefined : handleMistakeMark}
                 readOnly={isStudent}
                 mode={isStudent ? "viewing" : "marking"}
@@ -498,8 +603,8 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
         </div>
 
         {/* Mistake List Footer (if mistakes exist) - Enhanced Design */}
-        {filteredMistakes.length > 0 && (
-          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-t-2 border-gray-200 shadow-lg">
+        {filteredMistakes.length > 0 && (!isFullscreen || showMistakeList) && (
+          <div className={`px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-gray-50 via-white to-gray-50 border-t-2 border-gray-200 shadow-lg ${isFullscreen ? 'max-h-[30vh]' : ''}`}>
             <div className="max-h-64 overflow-y-auto custom-scrollbar">
               <h3 className="text-sm sm:text-base font-bold text-primary mb-3 flex items-center gap-2">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -534,13 +639,22 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                       minute: '2-digit'
                     }) : 'Unknown date';
                     
+                    const recency = getMistakeRecencyClass(mistake);
+                    const recencyBadge = recency === 'recent' ? '🆕 Recent' : recency === 'older' ? '📅 Older' : '📜 Old';
+                    const recencyColor = recency === 'recent' ? 'bg-red-100 border-red-300 text-red-800' : 
+                                        recency === 'older' ? 'bg-orange-100 border-orange-300 text-orange-800' : 
+                                        'bg-gray-100 border-gray-300 text-gray-600';
+                    
                     return (
                       <div
                         key={mistake.id}
-                        className="flex items-start gap-2 p-3 bg-white rounded-xl border-2 border-gray-200 shadow-md hover:shadow-lg hover:border-primary/40 transition-all hover:scale-[1.02]"
+                        className={`flex items-start gap-2 p-3 bg-white rounded-xl border-2 ${recency === 'recent' ? 'border-red-300 shadow-lg' : recency === 'older' ? 'border-orange-200 shadow-md' : 'border-gray-200 shadow-sm'} hover:shadow-lg hover:border-primary/40 transition-all hover:scale-[1.02]`}
                       >
                         <div className="flex flex-col gap-1 flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${recencyColor}`}>
+                              {recencyBadge}
+                            </span>
                             <span className={`px-3 py-1 rounded-full text-white text-xs font-bold shadow-md ${
                               (mistake as any).workflowStep === 'sabq' ? 'bg-blue-500' :
                               (mistake as any).workflowStep === 'sabqi' ? 'bg-green-500' :
