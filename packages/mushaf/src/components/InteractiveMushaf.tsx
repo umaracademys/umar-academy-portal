@@ -1856,6 +1856,18 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   const [tajweedExplanation, setTajweedExplanation] = useState<{ type: string; position?: { x: number; y: number } } | null>(null);
   const [selectedMistakeForDetails, setSelectedMistakeForDetails] = useState<{ mistake: MushafMistake; word: Word; isHistorical: boolean } | null>(null);
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1024);
+
+  // Update mobile/tablet detection on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      setIsMobile(width <= 768);
+      setIsMobileOrTablet(width < 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // View mode hooks
   const { focusMode, toolsHidden, toggleFocusMode, toggleToolsHidden } = useMushafViewMode(focusModeProp, toolsHiddenProp);
@@ -2532,7 +2544,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
 
       {/* Surah Index Portal for Mobile/iPad - Render at body level to appear on top */}
-      {showSurahIndex && !focusMode && typeof window !== 'undefined' && window.innerWidth < 1024 && createPortal(
+      {showSurahIndex && !focusMode && isMobileOrTablet && typeof window !== 'undefined' && createPortal(
         <>
           {/* Mobile/iPad Overlay - Full screen overlay */}
           <div 
@@ -3157,9 +3169,11 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
 
           <div 
             className={`w-full ${focusMode ? 'max-w-full' : 'max-w-7xl'} flex justify-center transition-transform duration-200`}
+            key={`mushaf-container-${currentPage}`}
             style={{
-              transform: enableZoom ? `scale(${effectiveZoom})` : undefined,
+              transform: enableZoom ? `scale(${effectiveZoom})` : 'none',
               transformOrigin: 'center top',
+              willChange: enableZoom ? 'transform' : 'auto',
             }}
           >
             <WordByWordPage
