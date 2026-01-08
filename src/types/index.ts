@@ -173,7 +173,10 @@ export interface Student {
   siblings: Sibling[];
   tuitionFee: number;
   registrationAmount: number;
-  assignedTeacher: string;
+  assignedTeacher: string; // Legacy: single teacher (for backward compatibility)
+  assignedTeachers?: string[]; // New: array of teacher IDs (multiple teachers support)
+  assignedTeacherIds?: string[]; // New: array of teacher IDs (for easier lookup)
+  assignedTeacherId?: string; // Legacy: single teacher ID (for backward compatibility)
   schedule: Schedule;
   assessments: Assessment[];
   evaluations: Evaluation[];

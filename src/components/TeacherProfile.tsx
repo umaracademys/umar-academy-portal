@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useData } from '../contexts/DataContext';
 import Card from './Card';
 
@@ -23,12 +23,54 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
   onAttendance, 
   onCommunication 
 }) => {
-  const { students, updateTeacher } = useData();
+  const { students, updateTeacher, getStudentsByTeacher } = useData();
   const [activeTab, setActiveTab] = useState('overview');
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [newPassword, setNewPassword] = useState('');
 
-  const assignedStudents = students?.filter(s => s.assignedTeacher === teacher.fullName) || [];
+  // Get teacher ID to display (prefer teacherId, then _id, then id)
+  const displayTeacherId = (teacher as any).teacherId || (teacher as any)._id || teacher.id;
+  
+  // Get the correct teacher ID for querying students (try multiple ID formats)
+  const teacherIdForQuery = React.useMemo(() => {
+    // Priority 1: Teacher document _id (MongoDB Teacher document ID) - this is what's stored in assignedStudents
+    if ((teacher as any)._id) return (teacher as any)._id.toString();
+    // Priority 2: teacherDocumentId (same as _id)
+    if ((teacher as any).teacherDocumentId) return (teacher as any).teacherDocumentId.toString();
+    // Priority 3: teacherId field (not the same as _id, but might be used)
+    if ((teacher as any).teacherId) return (teacher as any).teacherId.toString();
+    // Priority 4: id (User ID - fallback, but getStudentsByTeacher will try to match by userId)
+    if (teacher.id) return teacher.id.toString();
+    return null;
+  }, [teacher]);
+
+  // Get assigned students using the proper function that handles multi-teacher assignment
+  const assignedStudents = React.useMemo(() => {
+    if (!teacherIdForQuery) {
+      if (import.meta.env.DEV) {
+        console.log('⚠️ TeacherProfile: No teacher ID found for query', teacher);
+      }
+      return [];
+    }
+    
+    const result = getStudentsByTeacher(teacherIdForQuery);
+    
+    if (import.meta.env.DEV) {
+      console.log('🔍 TeacherProfile: Getting students for teacher', {
+        teacherIdForQuery,
+        teacherName: teacher.fullName,
+        teacherIds: {
+          teacherId: (teacher as any).teacherId,
+          _id: (teacher as any)._id,
+          id: teacher.id
+        },
+        foundStudents: result.length,
+        students: result.map(s => ({ id: s.id, name: s.fullName }))
+      });
+    }
+    
+    return result;
+  }, [teacherIdForQuery, students, getStudentsByTeacher, teacher]);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -98,18 +140,29 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({
                 className="h-10 w-10 rounded-full border-2 border-white" 
               />
               <div>
-                <h2 className="text-lg font-bold">{teacher.fullName}</h2>
-                <p className="text-primary-100 text-xs">Teacher ID: {teacher.id}</p>
-                <div className="flex items-center space-x-2 mt-1">
+                <h2 className="text-lg font-bold">{teacher.fullName || 'Unknown Teacher'}</h2>
+                <p className="text-primary-100 text-xs">Teacher ID: {displayTeacherId}</p>
+                {teacher.email && (
+                  <p className="text-primary-100 text-xs">Email: {teacher.email}</p>
+                )}
+                {teacher.department && (
+                  <p className="text-primary-100 text-xs">Department: {teacher.department}</p>
+                )}
+                <div className="flex items-center space-x-2 mt-1 flex-wrap gap-1">
                   <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${getStatusColor(teacher.status || 'active')}`}>
                     {teacher.status || 'active'}
                   </span>
                   <span className="text-xs text-primary-100">
-                    {getLocationFlag(teacher.location)} {teacher.location}
+                    {getLocationFlag(teacher.location || 'Local')} {teacher.location || 'Local'}
                   </span>
-                  <span className="text-xs text-primary-100">
-                    {assignedStudents.length} students
+                  <span className="text-xs text-primary-100 font-semibold">
+                    {assignedStudents.length} {assignedStudents.length === 1 ? 'student' : 'students'}
                   </span>
+                  {teacher.employmentType && (
+                    <span className="text-xs text-primary-100">
+                      • {teacher.employmentType}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

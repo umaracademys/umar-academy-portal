@@ -213,7 +213,7 @@ const TeacherDashboard: React.FC = () => {
       
       try {
         // Fetch all evaluations for this teacher at once (more efficient)
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
         const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
         const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
         

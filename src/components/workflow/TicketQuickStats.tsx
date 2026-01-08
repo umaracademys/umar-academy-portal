@@ -17,12 +17,16 @@ export const TicketQuickStats: React.FC<TicketQuickStatsProps> = ({
   const categorizeMistakes = () => {
     const regularMistakes = mistakes.filter(m => {
       const type = m.type.toLowerCase();
-      return type !== 'atkee' && !['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(type);
+      // Handle both light_l and light_j variations
+      const normalizedType = type.replace('light_j', 'light_l');
+      return type !== 'atkee' && !['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
     });
     const atkeeMistakes = mistakes.filter(m => m.type.toLowerCase() === 'atkee');
     const tajweedMistakes = mistakes.filter(m => {
       const type = m.type.toLowerCase();
-      return ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(type);
+      // Handle both light_l and light_j variations
+      const normalizedType = type.replace('light_j', 'light_l');
+      return ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
     });
     return {
       mistakes: regularMistakes.length,

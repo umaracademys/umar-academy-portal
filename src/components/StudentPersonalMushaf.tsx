@@ -24,8 +24,10 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
   const [filterType, setFilterType] = useState<'all' | 'sabq' | 'sabqi' | 'manzil'>('all');
   const [filterPage, setFilterPage] = useState<number | null>(null);
   const [filterDate, setFilterDate] = useState<string | null>(null); // Filter by date (YYYY-MM-DD format)
+  const [filterRecency, setFilterRecency] = useState<'all' | 'today' | 'recent' | 'historical'>('all'); // Quick recency filter
   const [isFullscreen, setIsFullscreen] = useState(false); // Fullscreen mode toggle
   const [showMistakeList, setShowMistakeList] = useState(true); // Toggle mistake list visibility
+  const [expandedRecencyGroups, setExpandedRecencyGroups] = useState<Set<string>>(new Set(['today', 'recent'])); // Expanded groups by default
   const [stats, setStats] = useState({
     total: 0,
     sabq: 0,
@@ -197,6 +199,19 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
     return Array.from(dates).sort((a, b) => b.localeCompare(a)); // Sort descending (newest first)
   }, [mistakes]);
 
+  // Enhanced mistake classification for display (must be defined before filteredMistakes)
+  const getMistakeRecencyClass = useCallback((mistake: MushafMistake): 'recent' | 'older' | 'old' => {
+    if (!mistake.timestamp) return 'old';
+    const mistakeDate = new Date(mistake.timestamp);
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    if (mistakeDate >= sevenDaysAgo) return 'recent';
+    if (mistakeDate >= thirtyDaysAgo) return 'older';
+    return 'old';
+  }, []);
+
   // Filter mistakes based on selected filters
   const filteredMistakes = useMemo(() => {
     let filtered = mistakes;
@@ -218,8 +233,32 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
       });
     }
     
+    // Filter by recency (quick filter)
+    if (filterRecency !== 'all') {
+      filtered = filtered.filter(m => {
+        const recency = getMistakeRecencyClass(m);
+        if (filterRecency === 'today') {
+          const now = new Date();
+          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          if (!m.timestamp) return false;
+          const mistakeDate = new Date(m.timestamp);
+          const mistakeDay = new Date(mistakeDate.getFullYear(), mistakeDate.getMonth(), mistakeDate.getDate());
+          return mistakeDay.getTime() === today.getTime();
+        } else if (filterRecency === 'recent') {
+          const now = new Date();
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (!m.timestamp) return false;
+          const mistakeDate = new Date(m.timestamp);
+          return mistakeDate >= sevenDaysAgo && recency === 'recent';
+        } else if (filterRecency === 'historical') {
+          return recency === 'older' || recency === 'old';
+        }
+        return true;
+      });
+    }
+    
     return filtered;
-  }, [mistakes, filterType, filterPage, filterDate]);
+  }, [mistakes, filterType, filterPage, filterDate, filterRecency, getMistakeRecencyClass]);
 
   // Get unique pages with mistakes
   const pagesWithMistakes = useMemo(() => {
@@ -251,19 +290,6 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
       })
     };
   }, [mistakes]);
-
-  // Enhanced mistake classification for display
-  const getMistakeRecencyClass = useCallback((mistake: MushafMistake): 'recent' | 'older' | 'old' => {
-    if (!mistake.timestamp) return 'old';
-    const mistakeDate = new Date(mistake.timestamp);
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    if (mistakeDate >= sevenDaysAgo) return 'recent';
-    if (mistakeDate >= thirtyDaysAgo) return 'older';
-    return 'old';
-  }, []);
 
   // Check if current user is a student (should be read-only)
   const isStudent = useMemo(() => {
@@ -504,70 +530,124 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
           </div>
         )}
 
-        {/* Filters - Enhanced Design with Surah Index Toggle */}
+        {/* Filters - Enhanced Design with Quick Toggles */}
         {!isFullscreen && (
-        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-white via-gray-50 to-white border-b-2 border-gray-200 flex flex-wrap gap-3 sm:gap-4 items-center shadow-sm">
-          <div className="flex items-center gap-2">
-            <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Date:</label>
-            <select
-              value={filterDate || ''}
-              onChange={(e) => setFilterDate(e.target.value || null)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
-            >
-              <option value="">All Dates</option>
-              {mistakeDates.map(date => {
-                const dateObj = new Date(date);
-                const formattedDate = dateObj.toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                });
-                return (
-                  <option key={date} value={date}>{formattedDate}</option>
-                );
-              })}
-            </select>
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-white via-gray-50 to-white border-b-2 border-gray-200 shadow-sm">
+          {/* Quick Recency Filters - Chip Style */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs sm:text-sm font-bold text-gray-700 mr-1">Quick Filters:</span>
+            {(['all', 'today', 'recent', 'historical'] as const).map((recency) => {
+              const isActive = filterRecency === recency;
+              const count = recency === 'all' ? mistakes.length :
+                           recency === 'today' ? mistakes.filter(m => {
+                             const now = new Date();
+                             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                             if (!m.timestamp) return false;
+                             const mistakeDate = new Date(m.timestamp);
+                             const mistakeDay = new Date(mistakeDate.getFullYear(), mistakeDate.getMonth(), mistakeDate.getDate());
+                             return mistakeDay.getTime() === today.getTime();
+                           }).length :
+                           recency === 'recent' ? categorizeMistakesByRecency.recent.length :
+                           categorizeMistakesByRecency.older.length + categorizeMistakesByRecency.old.length;
+              
+              const colors = {
+                all: 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700',
+                today: 'bg-red-100 hover:bg-red-200 border-red-300 text-red-700',
+                recent: 'bg-orange-100 hover:bg-orange-200 border-orange-300 text-orange-700',
+                historical: 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-600'
+              };
+              
+              const activeColors = {
+                all: 'bg-gray-200 border-gray-400 text-gray-900 ring-2 ring-gray-300',
+                today: 'bg-red-200 border-red-400 text-red-900 ring-2 ring-red-300',
+                recent: 'bg-orange-200 border-orange-400 text-orange-900 ring-2 ring-orange-300',
+                historical: 'bg-gray-200 border-gray-400 text-gray-900 ring-2 ring-gray-300'
+              };
+              
+              return (
+                <button
+                  key={recency}
+                  onClick={() => setFilterRecency(recency)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border-2 transition-all shadow-sm ${
+                    isActive ? activeColors[recency] : colors[recency]
+                  }`}
+                >
+                  {recency === 'all' ? 'All' : recency === 'today' ? '🆕 Today' : recency === 'recent' ? '📅 Recent' : '📜 Historical'}
+                  <span className={`ml-1.5 px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/80' : 'bg-white/60'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
           
-          <div className="flex items-center gap-2">
-            <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Type:</label>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
-            >
-              <option value="all">All Types</option>
-              <option value="sabq">Sabq</option>
-              <option value="sabqi">Sabqi</option>
-              <option value="manzil">Manzil</option>
-            </select>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <label className="text-xs sm:text-sm font-bold text-gray-700">Filter by Page:</label>
-            <select
-              value={filterPage || ''}
-              onChange={(e) => setFilterPage(e.target.value ? parseInt(e.target.value) : null)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
-            >
-              <option value="">All Pages</option>
-              {pagesWithMistakes.map(page => (
-                <option key={page} value={page}>Page {page}</option>
-              ))}
-            </select>
-          </div>
+          {/* Advanced Filters Row */}
+          <div className="flex flex-wrap gap-3 sm:gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-bold text-gray-700">Date:</label>
+              <select
+                value={filterDate || ''}
+                onChange={(e) => {
+                  setFilterDate(e.target.value || null);
+                  if (e.target.value) setFilterRecency('all'); // Reset recency filter when selecting specific date
+                }}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
+              >
+                <option value="">All Dates</option>
+                {mistakeDates.map(date => {
+                  const dateObj = new Date(date);
+                  const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  });
+                  return (
+                    <option key={date} value={date}>{formattedDate}</option>
+                  );
+                })}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-bold text-gray-700">Type:</label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
+              >
+                <option value="all">All Types</option>
+                <option value="sabq">Sabq</option>
+                <option value="sabqi">Sabqi</option>
+                <option value="manzil">Manzil</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-xs sm:text-sm font-bold text-gray-700">Page:</label>
+              <select
+                value={filterPage || ''}
+                onChange={(e) => setFilterPage(e.target.value ? parseInt(e.target.value) : null)}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 border-2 border-gray-300 rounded-lg text-xs sm:text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-white hover:border-primary/50 shadow-sm"
+              >
+                <option value="">All Pages</option>
+                {pagesWithMistakes.map(page => (
+                  <option key={page} value={page}>Page {page}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border-2 border-green-300 rounded-lg shadow-sm">
-            <span className="text-lg">📑</span>
-            <span className="text-xs sm:text-sm font-bold text-green-700">
-              Surah Index Active
-            </span>
-          </div>
-          
-          <div className="ml-auto px-3 sm:px-4 py-1.5 sm:py-2 bg-primary/10 rounded-lg border-2 border-primary/30 shadow-sm">
-            <span className="text-xs sm:text-sm font-bold text-primary">
-              Showing <span className="font-extrabold text-lg">{filteredMistakes.length}</span> of <span className="font-extrabold text-lg">{stats.total}</span> mistakes
-            </span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border-2 border-green-300 rounded-lg shadow-sm">
+              <span className="text-lg">📑</span>
+              <span className="text-xs sm:text-sm font-bold text-green-700">
+                Surah Index Active
+              </span>
+            </div>
+            
+            <div className="ml-auto px-3 sm:px-4 py-1.5 sm:py-2 bg-primary/10 rounded-lg border-2 border-primary/30 shadow-sm">
+              <span className="text-xs sm:text-sm font-bold text-primary">
+                Showing <span className="font-extrabold text-lg">{filteredMistakes.length}</span> of <span className="font-extrabold text-lg">{stats.total}</span> mistakes
+              </span>
+            </div>
           </div>
         </div>
         )}
@@ -623,69 +703,165 @@ const StudentPersonalMushaf: React.FC<StudentPersonalMushafProps> = ({ onClose, 
                   </button>
                 )}
               </h3>
-              <div className="space-y-2">
-                {filteredMistakes
-                  .sort((a, b) => {
-                    // Sort by date (newest first), then by page
+              
+              {/* Group mistakes by recency */}
+              {(() => {
+                const grouped = {
+                  today: [] as MushafMistake[],
+                  recent: [] as MushafMistake[],
+                  older: [] as MushafMistake[],
+                  old: [] as MushafMistake[]
+                };
+                
+                filteredMistakes.forEach(mistake => {
+                  const recency = getMistakeRecencyClass(mistake);
+                  const now = new Date();
+                  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                  const isToday = mistake.timestamp && new Date(mistake.timestamp) >= today;
+                  
+                  if (isToday) {
+                    grouped.today.push(mistake);
+                  } else if (recency === 'recent') {
+                    grouped.recent.push(mistake);
+                  } else if (recency === 'older') {
+                    grouped.older.push(mistake);
+                  } else {
+                    grouped.old.push(mistake);
+                  }
+                });
+                
+                // Sort each group by date (newest first), then by page
+                Object.values(grouped).forEach(group => {
+                  group.sort((a, b) => {
                     const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
                     const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
                     if (dateB !== dateA) return dateB - dateA;
                     return a.page - b.page;
-                  })
-                  .map((mistake) => {
-                    const mistakeDate = mistake.timestamp ? new Date(mistake.timestamp) : null;
-                    const formattedDate = mistakeDate ? mistakeDate.toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }) : 'Unknown date';
-                    
-                    const recency = getMistakeRecencyClass(mistake);
-                    const recencyBadge = recency === 'recent' ? '🆕 Recent' : recency === 'older' ? '📅 Older' : '📜 Old';
-                    const recencyColor = recency === 'recent' ? 'bg-red-100 border-red-300 text-red-800' : 
-                                        recency === 'older' ? 'bg-orange-100 border-orange-300 text-orange-800' : 
-                                        'bg-gray-100 border-gray-300 text-gray-600';
-                    
-                    return (
-                      <div
-                        key={mistake.id}
-                        className={`flex items-start gap-2 p-3 bg-white rounded-xl border-2 ${recency === 'recent' ? 'border-red-300 shadow-lg' : recency === 'older' ? 'border-orange-200 shadow-md' : 'border-gray-200 shadow-sm'} hover:shadow-lg hover:border-primary/40 transition-all hover:scale-[1.02]`}
-                      >
-                        <div className="flex flex-col gap-1 flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${recencyColor}`}>
-                              {recencyBadge}
-                            </span>
-                            <span className={`px-3 py-1 rounded-full text-white text-xs font-bold shadow-md ${
-                              (mistake as any).workflowStep === 'sabq' ? 'bg-blue-500' :
-                              (mistake as any).workflowStep === 'sabqi' ? 'bg-green-500' :
-                              (mistake as any).workflowStep === 'manzil' ? 'bg-purple-500' : 'bg-gray-500'
-                            }`}>
-                              {(mistake as any).workflowStep?.toUpperCase() || 'N/A'}
-                            </span>
-                            <span className="px-3 py-1 rounded-full bg-primary text-white text-xs font-bold shadow-md">
-                              {mistake.type}
-                            </span>
-                            <span className="text-gray-500 text-xs sm:text-sm font-semibold">
-                              Page {mistake.page} • Surah {mistake.surah}:{mistake.ayah}
-                            </span>
-                          </div>
-                          {mistake.note && (
-                            <p className="text-gray-700 text-xs sm:text-sm italic font-medium">"{mistake.note}"</p>
-                          )}
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  });
+                });
+                
+                const groups = [
+                  { key: 'today', label: '🆕 Today', mistakes: grouped.today, color: 'red', defaultExpanded: true },
+                  { key: 'recent', label: '📅 Recent (Last 7 Days)', mistakes: grouped.recent, color: 'orange', defaultExpanded: true },
+                  { key: 'older', label: '📆 Older (7-30 Days)', mistakes: grouped.older, color: 'orange', defaultExpanded: false },
+                  { key: 'old', label: '📜 Old (30+ Days)', mistakes: grouped.old, color: 'gray', defaultExpanded: false }
+                ];
+                
+                return (
+                  <div className="space-y-3">
+                    {groups.map(group => {
+                      if (group.mistakes.length === 0) return null;
+                      
+                      const isExpanded = expandedRecencyGroups.has(group.key);
+                      const borderColor = group.color === 'red' ? 'border-red-300' : 
+                                         group.color === 'orange' ? 'border-orange-300' : 
+                                         'border-gray-300';
+                      const bgColor = group.color === 'red' ? 'bg-red-50' : 
+                                     group.color === 'orange' ? 'bg-orange-50' : 
+                                     'bg-gray-50';
+                      
+                      return (
+                        <div key={group.key} className={`rounded-xl border-2 ${borderColor} ${bgColor} overflow-hidden`}>
+                          <button
+                            onClick={() => {
+                              setExpandedRecencyGroups(prev => {
+                                const next = new Set(prev);
+                                if (next.has(group.key)) {
+                                  next.delete(group.key);
+                                } else {
+                                  next.add(group.key);
+                                }
+                                return next;
+                              });
+                            }}
+                            className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/50 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-lg">{group.label.split(' ')[0]}</span>
+                              <span className="font-bold text-gray-900">{group.label.split(' ').slice(1).join(' ')}</span>
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+                                group.color === 'red' ? 'bg-red-200 text-red-800' :
+                                group.color === 'orange' ? 'bg-orange-200 text-orange-800' :
+                                'bg-gray-200 text-gray-800'
+                              }`}>
+                                {group.mistakes.length}
+                              </span>
+                            </div>
+                            <svg 
+                              className={`w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
-                            <span>{formattedDate}</span>
-                          </div>
+                          </button>
+                          
+                          {isExpanded && (
+                            <div className="px-4 pb-3 space-y-2 bg-white/50">
+                              {group.mistakes.map((mistake) => {
+                                const mistakeDate = mistake.timestamp ? new Date(mistake.timestamp) : null;
+                                const formattedDate = mistakeDate ? mistakeDate.toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : 'Unknown';
+                                
+                                return (
+                                  <div
+                                    key={mistake.id}
+                                    className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 hover:border-primary/40 hover:shadow-md transition-all group"
+                                  >
+                                    <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold text-white shadow-sm ${
+                                          (mistake as any).workflowStep === 'sabq' ? 'bg-blue-500' :
+                                          (mistake as any).workflowStep === 'sabqi' ? 'bg-green-500' :
+                                          (mistake as any).workflowStep === 'manzil' ? 'bg-purple-500' : 'bg-gray-500'
+                                        }`}>
+                                          {(mistake as any).workflowStep?.toUpperCase() || 'N/A'}
+                                        </span>
+                                        <span className="px-2.5 py-1 rounded-full bg-primary text-white text-xs font-bold shadow-sm">
+                                          {mistake.type}
+                                        </span>
+                                        <span className="text-gray-600 text-xs sm:text-sm font-semibold">
+                                          Page {mistake.page} • Surah {mistake.surah}:{mistake.ayah}
+                                        </span>
+                                      </div>
+                                      {mistake.note && (
+                                        <p className="text-gray-700 text-xs sm:text-sm italic font-medium">"{mistake.note}"</p>
+                                      )}
+                                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                                        <span className="flex items-center gap-1">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                          </svg>
+                                          {formattedDate}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setCurrentPage(mistake.page);
+                                        setFilterPage(mistake.page);
+                                      }}
+                                      className="px-3 py-1.5 text-xs font-semibold bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                      title="Jump to page"
+                                    >
+                                      Go
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-              </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

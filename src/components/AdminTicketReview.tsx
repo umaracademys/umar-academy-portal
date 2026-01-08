@@ -739,29 +739,77 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
                     <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
                       <div className="p-4">
-                        <h3 className="text-sm font-extrabold text-primary mb-3 flex items-center gap-2">
-                          <span>🔴</span> Marked Mistakes ({selectedTicket.mistakes.length})
-                        </h3>
+                        {(() => {
+                          // Calculate counts for each category
+                          let mistakeCount = 0;
+                          let atkeeCount = 0;
+                          let tajweedCount = 0;
+                          
+                          selectedTicket.mistakes.forEach((mistake) => {
+                            const mistakeType = mistake.type?.toLowerCase() || '';
+                            const normalizedType = mistakeType.replace('light_j', 'light_l');
+                            const isAtkee = mistakeType === 'atkee';
+                            const isTajweed = ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
+                            
+                            if (isAtkee) {
+                              atkeeCount++;
+                            } else if (isTajweed) {
+                              tajweedCount++;
+                            } else {
+                              mistakeCount++;
+                            }
+                          });
+                          
+                          return (
+                            <h3 className="text-sm font-extrabold text-primary mb-3 flex items-center gap-2 flex-wrap">
+                              <span>🔴</span> 
+                              <span>Markings: {selectedTicket.mistakes.length}</span>
+                              <span className="text-red-600">• Mistakes: {mistakeCount}</span>
+                              <span className="text-yellow-600">• Atkees: {atkeeCount}</span>
+                              <span className="text-gray-600">• Tajweed: {tajweedCount}</span>
+                            </h3>
+                          );
+                        })()}
                         <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {selectedTicket.mistakes.map((mistake, idx) => (
-                            <div
-                              key={mistake.id || idx}
-                              className="p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs"
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="px-2 py-0.5 rounded bg-primary text-white font-semibold text-[10px]">
-                                  {mistake.type}
-                                </span>
-                                <span className="text-gray-600">
-                                  Page {mistake.page}
-                                  {mistake.surah && mistake.ayah && ` • Surah ${mistake.surah}:${mistake.ayah}`}
-                                </span>
+                          {selectedTicket.mistakes.map((mistake, idx) => {
+                            // Categorize mistake type
+                            const mistakeType = mistake.type?.toLowerCase() || '';
+                            const isAtkee = mistakeType === 'atkee';
+                            // Handle both light_l and light_j variations (case-insensitive)
+                            const normalizedType = mistakeType.replace('light_j', 'light_l');
+                            const isTajweed = ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
+                            const isRegularMistake = !isAtkee && !isTajweed;
+                            
+                            // Get badge color based on category
+                            let badgeColor = 'bg-primary text-white'; // Default for regular mistakes
+                            if (isAtkee) {
+                              badgeColor = 'bg-yellow-500 text-yellow-50';
+                            } else if (isTajweed) {
+                              badgeColor = 'bg-gray-500 text-gray-50';
+                            } else {
+                              badgeColor = 'bg-red-500 text-red-50';
+                            }
+                            
+                            return (
+                              <div
+                                key={mistake.id || idx}
+                                className="p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs"
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${badgeColor}`}>
+                                    {mistake.type}
+                                  </span>
+                                  <span className="text-gray-600">
+                                    Page {mistake.page}
+                                    {mistake.surah && mistake.ayah && ` • Surah ${mistake.surah}:${mistake.ayah}`}
+                                  </span>
+                                </div>
+                                {mistake.note && (
+                                  <p className="text-gray-700 italic mt-1">"{mistake.note}"</p>
+                                )}
                               </div>
-                              {mistake.note && (
-                                <p className="text-gray-700 italic mt-1">"{mistake.note}"</p>
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>

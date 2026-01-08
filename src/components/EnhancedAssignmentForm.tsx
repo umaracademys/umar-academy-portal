@@ -325,23 +325,28 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
   // Use suggestion from ticket log
   const useTicketSuggestion = (logEntry: TicketLogEntry) => {
     const currentDate = new Date();
-    const notes = logEntry.notes || logEntry.ticket.adminComment || '';
+    const teacherName = logEntry.teacherName;
+    const mistakeCount = logEntry.ticket.mistakes?.length || 0;
+    const teacherComment = logEntry.notes || logEntry.ticket.teacherComment || '';
+    
+    // Format the data: Teacher: [Name] | Mistakes Marked: [Count] | Comments: [Teacher Comments]
+    const formattedData = `Teacher: ${teacherName} | Mistakes Marked: ${mistakeCount} | Comments: ${teacherComment}`;
     
     if (logEntry.type === 'sabq') {
       addClassworkPhase('sabq');
       const lastIndex = classwork.sabq.length;
-      updateClassworkPhase('sabq', lastIndex, 'assignmentRange', notes);
-      updateClassworkPhase('sabq', lastIndex, 'details', notes);
+      updateClassworkPhase('sabq', lastIndex, 'assignmentRange', formattedData);
+      updateClassworkPhase('sabq', lastIndex, 'details', formattedData);
     } else if (logEntry.type === 'sabqi') {
       addClassworkPhase('sabqi');
       const lastIndex = classwork.sabqi.length;
-      updateClassworkPhase('sabqi', lastIndex, 'assignmentRange', notes);
-      updateClassworkPhase('sabqi', lastIndex, 'details', notes);
+      updateClassworkPhase('sabqi', lastIndex, 'assignmentRange', formattedData);
+      updateClassworkPhase('sabqi', lastIndex, 'details', formattedData);
     } else if (logEntry.type === 'manzil') {
       addClassworkPhase('manzil');
       const lastIndex = classwork.manzil.length;
-      updateClassworkPhase('manzil', lastIndex, 'assignmentRange', notes);
-      updateClassworkPhase('manzil', lastIndex, 'details', notes);
+      updateClassworkPhase('manzil', lastIndex, 'assignmentRange', formattedData);
+      updateClassworkPhase('manzil', lastIndex, 'details', formattedData);
     }
   };
 
@@ -691,13 +696,15 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                           <th className="px-4 py-2 text-left font-semibold text-gray-700">Date</th>
                           <th className="px-4 py-2 text-left font-semibold text-gray-700">Teacher</th>
                           <th className="px-4 py-2 text-left font-semibold text-gray-700">Type</th>
-                          <th className="px-4 py-2 text-left font-semibold text-gray-700">Notes</th>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">Mistakes</th>
+                          <th className="px-4 py-2 text-left font-semibold text-gray-700">Comments</th>
                           <th className="px-4 py-2 text-left font-semibold text-gray-700">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {ticketLogs.map((log, idx) => {
                           const colors = getTypeColor(log.type);
+                          const mistakeCount = log.ticket.mistakes?.length || 0;
                           return (
                             <tr key={idx} className="hover:bg-gray-50">
                               <td className="px-4 py-2 text-gray-600">
@@ -709,6 +716,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                   {log.type.toUpperCase()}
                                 </span>
                               </td>
+                              <td className="px-4 py-2 text-gray-600">
+                                <span className="font-semibold text-primary">{mistakeCount}</span> marked
+                              </td>
                               <td className="px-4 py-2 text-gray-600 max-w-xs truncate" title={log.notes}>
                                 {log.notes || '-'}
                               </td>
@@ -717,6 +727,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                   type="button"
                                   onClick={() => useTicketSuggestion(log)}
                                   className="px-3 py-1 text-xs bg-primary text-white rounded hover:bg-primary/90 transition-colors"
+                                  title={`Paste: Teacher: ${log.teacherName} | Mistakes: ${mistakeCount} | Comments: ${log.notes || '-'}`}
                                 >
                                   Use
                                 </button>

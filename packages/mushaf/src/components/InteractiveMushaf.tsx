@@ -13,6 +13,8 @@ import { TajweedExplanationCard } from './TajweedExplanationCard';
 import { MobileMistakeBottomSheet } from './MobileMistakeBottomSheet';
 import { MushafZoomControls } from './MushafZoomControls';
 import { isTajweedType } from '../utils/tajweedExplanations';
+import { EnhancedMistakeModal } from './EnhancedMistakeModal';
+import MistakeExplanationView from './MistakeExplanationView';
 
 export interface AyahPosition {
   surah: number;
@@ -82,7 +84,7 @@ interface MistakeModalProps {
   word: Word | null;
   letterIndex?: number; // Index of clicked letter within the word
   onClose: () => void;
-  onSave: (word: Word, type: string, note?: string, audioBlob?: Blob, letterIndex?: number) => void;
+  onSave: (word: Word, type: string, note?: string, audioBlob?: Blob, letterIndex?: number, tajweedData?: any) => void;
 }
 
 interface Mistake {
@@ -1689,16 +1691,27 @@ export const WordByWordPage: React.FC<{
                                     <audio 
                                       controls 
                                       preload="metadata"
+                                      crossOrigin="anonymous"
                                       onError={(e) => {
-                                        console.error('Audio load error:', wordMistake.audioUrl, e);
                                         const target = e.target as HTMLAudioElement;
+                                        const audioUrl = target.src;
+                                        console.error('Audio load error:', audioUrl, {
+                                          error: target.error,
+                                          code: target.error?.code,
+                                          message: target.error?.message,
+                                          networkState: target.networkState,
+                                          readyState: target.readyState
+                                        });
                                         if (target) {
                                           target.style.opacity = '0.5';
-                                          target.title = 'Audio file not found or cannot be loaded';
+                                          target.title = `Audio file error: ${target.error?.message || 'Unable to load audio'}`;
                                         }
                                       }}
                                       onLoadedMetadata={() => {
-                                        console.log('Audio loaded successfully:', wordMistake.audioUrl);
+                                        console.log('✅ Audio loaded successfully:', wordMistake.audioUrl);
+                                      }}
+                                      onCanPlay={() => {
+                                        console.log('✅ Audio can play:', wordMistake.audioUrl);
                                       }}
                                       src={
                                         (() => {
@@ -1724,7 +1737,9 @@ export const WordByWordPage: React.FC<{
                                           baseUrl = baseUrl.replace(/\/$/, '');
                                           // Ensure audio URL starts with /
                                           const audioPath = url.startsWith('/') ? url : `/${url}`;
-                                          return `${baseUrl}${audioPath}`;
+                                          const fullUrl = `${baseUrl}${audioPath}`;
+                                          console.log('🔊 Constructed audio URL:', fullUrl, 'from:', wordMistake.audioUrl);
+                                          return fullUrl;
                                         })()
                                       } 
                                       className="w-full h-8"
@@ -1900,6 +1915,19 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   // Mistake: Red highlight
   // Atkee: Yellow highlight
   // Tajweed: Gray border ONLY (no background fill, NO red color)
+  // Helper to get recency category
+  const getRecencyCategory = useCallback((mistake: MushafMistake): 'today' | 'recent' | 'old' => {
+    if (!mistake.timeline?.lastMarkedAt) return 'old';
+    const now = new Date();
+    const lastMarked = new Date(mistake.timeline.lastMarkedAt);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    if (lastMarked >= today) return 'today';
+    if (lastMarked >= sevenDaysAgo) return 'recent';
+    return 'old';
+  }, []);
+
   const getMistakeClassForPage = useCallback((mistake: MushafMistake | undefined, isHistorical: boolean = false, isMobileDevice: boolean = false): string => {
     if (!mistake) {
       return "hover:bg-yellow-100 hover:shadow-sm";
@@ -1914,51 +1942,84 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     const isAtkee = mistakeType === 'atkee';
     const isMistake = !isTajweed && !isAtkee;
 
+    // Get recency for visual distinction
+    const recency = getRecencyCategory(mistake);
+    const isToday = recency === 'today';
+    const isRecent = recency === 'recent';
+
     // TAJWEED ERRORS: Always use gray border, NO red color - Check FIRST
     if (isTajweed) {
-      if (isHistorical) {
-        return "border-2 border-gray-400 text-gray-700 bg-transparent";
+      if (isHistorical || recency === 'old') {
+        return "border-2 border-gray-400 text-gray-700 bg-transparent"; // Old: faint gray
       }
-      // Current Tajweed errors: Gray border ONLY, no background, no red
-      return "border-2 border-gray-600 text-gray-800 font-semibold bg-transparent";
+      if (isRecent) {
+        return "border-2 border-orange-500 text-orange-800 bg-orange-50 font-semibold"; // Recent: orange
+      }
+      // Today Tajweed errors: Stronger gray border
+      return "border-2 border-gray-700 text-gray-900 font-bold bg-gray-100"; // Today: stronger gray
     }
 
-    if (isHistorical) {
+    if (isHistorical || recency === 'old') {
       if (isMistake) {
-        // Historical mistakes: red with reduced opacity - Enhanced for mobile
+        // Old mistakes: faint underline only
         return isMobileDeviceCheck
-          ? "border-2 border-red-500 text-red-900 bg-red-100/80 font-medium" // More visible on mobile
-          : "bg-red-100/60 hover:bg-red-200/60 border border-dashed border-red-400 text-red-800 shadow-sm";
+          ? "border-b border-red-400 text-red-700" // Mobile: underline
+          : "border-b border-dashed border-red-400 text-red-700"; // Desktop: dashed underline
       }
       if (isAtkee) {
-        // Historical atkees: yellow with reduced opacity - Enhanced for mobile
         return isMobileDeviceCheck
-          ? "border-2 border-yellow-500 text-yellow-900 bg-yellow-100/80 font-medium" // More visible on mobile
-          : "bg-yellow-100/60 hover:bg-yellow-200/60 border border-dashed border-yellow-400 text-yellow-800 shadow-sm";
+          ? "border-b border-yellow-400 text-yellow-700"
+          : "border-b border-dashed border-yellow-400 text-yellow-700";
       }
       return isMobileDeviceCheck
-        ? "border-2 border-gray-500 text-gray-800 bg-gray-100/80 font-medium" // More visible on mobile
-        : "bg-gray-200/60 hover:bg-gray-300/60 border border-dashed border-gray-400 text-gray-700 shadow-sm";
+        ? "border-b border-gray-400 text-gray-600"
+        : "border-b border-dashed border-gray-400 text-gray-600";
     }
 
-    // Current mistakes
+    // Recent mistakes (≤7 days)
+    if (isRecent) {
+      if (isMistake) {
+        return isMobileDeviceCheck
+          ? "bg-orange-200 border-2 border-orange-500 text-orange-950 font-bold shadow-sm" // Medium highlight
+          : "bg-orange-200 hover:bg-orange-300 border-2 border-orange-500 text-orange-900 font-semibold shadow-sm";
+      }
+      if (isAtkee) {
+        return isMobileDeviceCheck
+          ? "bg-yellow-200 border-2 border-yellow-500 text-yellow-950 font-bold shadow-sm"
+          : "bg-yellow-200 hover:bg-yellow-300 border-2 border-yellow-500 text-yellow-900 font-semibold shadow-sm";
+      }
+    }
+
+    // Today mistakes - Strong highlight with subtle glow (no pulse)
+    if (isToday) {
+      if (isMistake) {
+        return isMobileDeviceCheck
+          ? "bg-red-400 border-2 border-red-700 text-red-950 font-bold shadow-lg shadow-red-500/50 ring-2 ring-red-400/30" // Strong highlight + subtle glow
+          : "bg-red-300 hover:bg-red-400 border-2 border-red-600 text-red-950 font-bold shadow-lg shadow-red-500/50 ring-2 ring-red-400/30";
+      }
+      if (isAtkee) {
+        return isMobileDeviceCheck
+          ? "bg-yellow-400 border-2 border-yellow-700 text-yellow-950 font-bold shadow-lg shadow-yellow-500/50 ring-2 ring-yellow-400/30"
+          : "bg-yellow-300 hover:bg-yellow-400 border-2 border-yellow-600 text-yellow-950 font-bold shadow-lg shadow-yellow-500/50 ring-2 ring-yellow-400/30";
+      }
+    }
+
+    // Current mistakes (fallback)
     if (isMistake) {
-      // Mistake: Red highlight - Enhanced for mobile visibility
       return isMobileDeviceCheck
-        ? "bg-red-300 border-2 border-red-600 text-red-950 font-bold shadow-sm" // Stronger colors on mobile
+        ? "bg-red-300 border-2 border-red-600 text-red-950 font-bold shadow-sm"
         : "bg-red-200 hover:bg-red-300 border border-red-500 text-red-900 font-semibold shadow-sm";
     }
     if (isAtkee) {
-      // Atkee: Yellow highlight - Enhanced for mobile visibility
       return isMobileDeviceCheck
-        ? "bg-yellow-300 border-2 border-yellow-600 text-yellow-950 font-bold shadow-sm" // Stronger colors on mobile
+        ? "bg-yellow-300 border-2 border-yellow-600 text-yellow-950 font-bold shadow-sm"
         : "bg-yellow-200 hover:bg-yellow-300 border border-yellow-500 text-yellow-900 font-semibold shadow-sm";
     }
     
     return isMobileDeviceCheck
-      ? "bg-gray-300 border-2 border-gray-600 text-gray-900 font-semibold shadow-sm" // Enhanced visibility on mobile
+      ? "bg-gray-300 border-2 border-gray-600 text-gray-900 font-semibold shadow-sm"
       : "bg-gray-200 hover:bg-gray-300 border border-gray-500 text-gray-800 shadow-sm";
-  }, [isMobile]);
+  }, [isMobile, getRecencyCategory]);
 
   // Sync showSurahIndex with prop changes
   useEffect(() => {
@@ -2063,22 +2124,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           m.type === wordMistake.type
         );
         
-        if (isTajweedType(wordMistake.type)) {
-          // Show tajweed explanation
-          if (event) {
-            const position = event instanceof MouseEvent
-              ? { x: event.clientX, y: event.clientY }
-              : event instanceof TouchEvent && event.touches[0]
-              ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
-              : undefined;
-            setTajweedExplanation({ type: wordMistake.type, position });
-          }
-        } else if (isMobile) {
-          // On mobile, show mistake details in bottom sheet
-          setSelectedMistakeForDetails({ mistake: wordMistake, word, isHistorical: isHistoricalMistake });
-        } else if (event) {
-          // On desktop, tooltip will show on hover (already implemented)
-        }
+        // Always show enhanced mistake explanation view in read-only mode
+        setSelectedMistakeForDetails({ mistake: wordMistake, word, isHistorical: isHistoricalMistake });
       }
     }
   };
@@ -2126,20 +2173,8 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           m.type === letterMistake.type
         );
         
-        if (isTajweedType(letterMistake.type)) {
-          // Show tajweed explanation
-          if (event) {
-            const position = event instanceof MouseEvent
-              ? { x: event.clientX, y: event.clientY }
-              : event instanceof TouchEvent && event.touches[0]
-              ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
-              : undefined;
-            setTajweedExplanation({ type: letterMistake.type, position });
-          }
-        } else if (isMobile) {
-          // On mobile, show mistake details in bottom sheet
-          setSelectedMistakeForDetails({ mistake: letterMistake, word, isHistorical: isHistoricalMistake });
-        }
+        // Always show enhanced mistake explanation view in read-only mode
+        setSelectedMistakeForDetails({ mistake: letterMistake, word, isHistorical: isHistoricalMistake });
       }
       return;
     }
@@ -2147,28 +2182,30 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
     if (!readOnly && mode === 'marking') {
       setSelectedWord(word);
       setSelectedLetterIndex(letterIndex);
-    } else if (readOnly || mode === 'viewing') {
-      // In viewing mode, show tajweed explanation if applicable
+    } else {
+      // In viewing/read-only mode, show mistake details
       const letterMistake = [...mistakes, ...(showHistorical ? historicalMistakes : [])].find(m => 
         m.page === currentPage &&
         m.surah === word.surah &&
         m.ayah === word.ayah &&
         m.wordIndex === word.word_index &&
-        m.letterIndex === letterIndex &&
-        isTajweedType(m.type)
+        m.letterIndex === letterIndex
       );
-      if (letterMistake && event) {
-        const position = event instanceof MouseEvent
-          ? { x: event.clientX, y: event.clientY }
-          : event instanceof TouchEvent && event.touches[0]
-          ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
-          : undefined;
-        setTajweedExplanation({ type: letterMistake.type, position });
+      if (letterMistake) {
+        const isHistoricalMistake = historicalMistakes.some(m => 
+          m.page === currentPage &&
+          m.surah === word.surah &&
+          m.ayah === word.ayah &&
+          m.wordIndex === word.word_index &&
+          m.letterIndex === letterIndex &&
+          m.type === letterMistake.type
+        );
+        setSelectedMistakeForDetails({ mistake: letterMistake, word, isHistorical: isHistoricalMistake });
       }
     }
   };
 
-  const handleSaveMistake = async (word: Word, type: string, note?: string, audioBlob?: Blob, letterIndex?: number) => {
+  const handleSaveMistake = async (word: Word, type: string, note?: string, audioBlob?: Blob, letterIndex?: number, tajweedData?: any) => {
     // Map the mistake type string to the MistakeType enum
     const typeMap: Record<string, 'madd' | 'holding' | 'memory' | 'ikhfa' | 'tech' | 'other' | 'letter' | 'heavy_letter' | 'no_rounding_lips' | 'heavy_h' | 'light_l' | 'atkee'> = {
       "Memory Mistake": "memory",
@@ -2200,6 +2237,10 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       }
     }
 
+    // Determine category
+    const isTajweedMistake = ['madd', 'ikhfa', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(mistakeType);
+    const category = isTajweedMistake ? 'tajweed' : mistakeType === 'memory' ? 'memory' : mistakeType === 'letter' ? 'recitation' : 'other';
+
     const newMistake: Omit<MushafMistake, 'id' | 'timestamp'> = {
       type: mistakeType,
       page: currentPage,
@@ -2209,7 +2250,15 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
       letterIndex: letterIndex !== undefined ? letterIndex : undefined, // Include letterIndex for letter-level mistakes
       position: { x: 50, y: 50 }, // Default position for word-based mistakes
       note: note || '',
-      audioUrl: audioUrl
+      audioUrl: audioUrl,
+      category,
+      tajweedData: tajweedData || undefined,
+      timeline: {
+        firstMarkedAt: new Date(),
+        lastMarkedAt: new Date(),
+        repeatCount: 1,
+        resolved: false
+      }
     };
     
     onMistakeMark(newMistake);
@@ -2692,9 +2741,9 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             />
           </div>
 
-          {/* Mistake Modal / Bottom Sheet */}
-          {isMobile ? (
-            <MobileMistakeBottomSheet
+          {/* Enhanced Mistake Modal - Use new enhanced modal for both mobile and desktop */}
+          {selectedWord && !readOnly && (
+            <EnhancedMistakeModal
               word={selectedWord}
               letterIndex={selectedLetterIndex}
               onClose={() => {
@@ -2702,16 +2751,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
                 setSelectedLetterIndex(undefined);
               }}
               onSave={handleSaveMistake}
-            />
-          ) : (
-            <MistakeModal
-              word={selectedWord}
-              letterIndex={selectedLetterIndex}
-              onClose={() => {
-                setSelectedWord(null);
-                setSelectedLetterIndex(undefined);
-              }}
-              onSave={handleSaveMistake}
+              isMobile={isMobile}
             />
           )}
 
@@ -2725,101 +2765,23 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
             />
           )}
 
-          {/* Mobile Mistake Details Bottom Sheet - For students viewing mistakes */}
-          {selectedMistakeForDetails && isMobile && readOnly && (
-            <div className="fixed inset-0 z-50 flex items-end">
+          {/* Enhanced Mistake Explanation View - For students viewing mistakes */}
+          {selectedMistakeForDetails && readOnly && (
+            <>
               {/* Backdrop */}
               <div
-                className="fixed inset-0 bg-black/40"
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50"
                 onClick={() => setSelectedMistakeForDetails(null)}
               />
-              
-              {/* Bottom Sheet */}
-              <div
-                className="relative bg-white rounded-t-xl shadow-2xl w-full max-h-[60vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-                style={{ direction: 'ltr' }}
-              >
-                {/* Handle */}
-                <div className="flex justify-center pt-2 pb-1">
-                  <div className="w-12 h-1 bg-gray-300 rounded-full" />
-                </div>
-
-                {/* Header */}
-                <div className="px-4 py-3 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Mistake Details
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Surah {selectedMistakeForDetails.word.surah}, Ayah {selectedMistakeForDetails.word.ayah}
-                  </p>
-                </div>
-
-                {/* Content */}
-                <div className="p-4 space-y-3">
-                  {selectedMistakeForDetails.isHistorical && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                      <p className="text-xs font-semibold text-blue-700">📜 Historical Mistake</p>
-                    </div>
-                  )}
-                  
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1">Mistake Type:</p>
-                    <p className="text-base font-semibold text-gray-900">
-                      {getMistakeTypeLabel(selectedMistakeForDetails.mistake.type)}
-                    </p>
-                  </div>
-
-                  {selectedMistakeForDetails.mistake.note && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 mb-1">Note:</p>
-                      <p className="text-sm text-gray-700">{selectedMistakeForDetails.mistake.note}</p>
-                    </div>
-                  )}
-
-                  {selectedMistakeForDetails.mistake.audioUrl && (
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 mb-2">Audio Correction:</p>
-                      <audio 
-                        controls 
-                        preload="metadata"
-                        className="w-full h-10"
-                        src={
-                          (() => {
-                            let url = selectedMistakeForDetails.mistake.audioUrl || '';
-                            if (url.startsWith('http://') || url.startsWith('https://')) {
-                              url = url.replace('/api/uploads/', '/uploads/');
-                              return url;
-                            }
-                            let baseUrl = 'http://localhost:3001';
-                            if (typeof window !== 'undefined' && (window as any).MUSHAF_API_BASE) {
-                              baseUrl = (window as any).MUSHAF_API_BASE;
-                            } else if (import.meta.env?.VITE_API_BASE_URL) {
-                              baseUrl = import.meta.env.VITE_API_BASE_URL;
-                            }
-                            if (baseUrl.endsWith('/api')) {
-                              baseUrl = baseUrl.replace('/api', '');
-                            }
-                            baseUrl = baseUrl.replace(/\/$/, '');
-                            const audioPath = url.startsWith('/') ? url : `/${url}`;
-                            return `${baseUrl}${audioPath}`;
-                          })()
-                        }
-                      >
-                        Your browser does not support the audio element.
-                      </audio>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => setSelectedMistakeForDetails(null)}
-                    className="w-full mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
+              {/* Explanation Panel */}
+              <MistakeExplanationView
+                mistake={selectedMistakeForDetails.mistake as any}
+                word={selectedMistakeForDetails.word}
+                isHistorical={selectedMistakeForDetails.isHistorical}
+                onClose={() => setSelectedMistakeForDetails(null)}
+                isMobile={isMobile}
+              />
+            </>
           )}
 
           {/* Mistake Counters - Hidden in Focus Mode */}

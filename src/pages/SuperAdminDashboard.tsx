@@ -47,7 +47,6 @@ const TeacherEvaluationManagement = lazy(() => import('../components/TeacherEval
 const EvaluationResultsPage = lazy(() => import('../components/EvaluationResultsPage'));
 const TeacherAttendanceForm = lazy(() => import('../components/TeacherAttendanceForm'));
 const TeacherAttendanceReport = lazy(() => import('../components/TeacherAttendanceReport'));
-const TeacherPairManagement = lazy(() => import('../components/TeacherPairManagement'));
 const PairTeacherMessagesAdmin = lazy(() => import('../components/PairTeacherMessagesAdmin'));
 const TeacherStudentMessage = lazy(() => import('../components/TeacherStudentMessage'));
 const TeacherStudentMessagesAdmin = lazy(() => import('../components/TeacherStudentMessagesAdmin'));
@@ -167,7 +166,6 @@ const SuperAdminDashboard: React.FC = () => {
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
   const [showTeacherAttendanceForm, setShowTeacherAttendanceForm] = useState(false);
   const [showTeacherAttendanceReport, setShowTeacherAttendanceReport] = useState(false);
-  const [showTeacherPairManagement, setShowTeacherPairManagement] = useState(false);
   const [showPairMessagesAdmin, setShowPairMessagesAdmin] = useState(false);
   const [showTeacherStudentMessagesAdmin, setShowTeacherStudentMessagesAdmin] = useState(false);
   const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
@@ -366,11 +364,6 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowEvaluationResults(true),
     },
     {
-      id: 'teacher-pairs',
-      label: 'Manage Teacher Pairs',
-      onClick: () => setShowTeacherPairManagement(true),
-    },
-    {
       id: 'pair-messages',
       label: 'Pair Teacher Messages',
       onClick: () => setShowPairMessagesAdmin(true),
@@ -386,7 +379,7 @@ const SuperAdminDashboard: React.FC = () => {
       onClick: () => setShowWeeklyEvaluations(true),
       badge: pendingWeeklyEvaluationsCount > 0 ? pendingWeeklyEvaluationsCount : null,
     },
-  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowTeacherPairManagement, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, setShowApprovedEvaluations, pendingWeeklyEvaluationsCount]);
+  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, setShowApprovedEvaluations, pendingWeeklyEvaluationsCount]);
 
   const managementActions = [
     {
@@ -964,6 +957,7 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
           <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sync now</span>
         </button>
+
       </div>
 
       <Card title="Live Signals">
@@ -1833,19 +1827,6 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {/* Teacher Pair Management Modal */}
-      {showTeacherPairManagement && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherPairManagement
-            onClose={() => setShowTeacherPairManagement(false)}
-            onViewMessages={(pair: any) => {
-              // Open admin view of pair messages
-              setShowTeacherPairManagement(false);
-              setShowPairMessagesAdmin(true);
-            }}
-          />
-        </Suspense>
-      )}
 
       {/* Pair Teacher Messages Admin Modal */}
       {showPairMessagesAdmin && (

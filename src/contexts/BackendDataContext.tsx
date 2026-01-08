@@ -179,7 +179,8 @@ export const useBackendData = () => {
 };
 
 // API base URL - uses environment variable in production, localhost in development
-const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
@@ -2008,12 +2009,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     // Find the teacher to get their assignedStudents array
-    // Check multiple ID fields: id, _id, teacherId, userId
+    // Check multiple ID fields: _id (Teacher document ID), teacherDocumentId, id (User ID), teacherId, userId
     const teacher = teachers.find(t => {
-      const tId = (t.id || (t as any)._id)?.toString().trim();
+      const tDocId = ((t as any)._id || (t as any).teacherDocumentId)?.toString().trim(); // Teacher document _id (priority)
+      const tId = t.id?.toString().trim(); // User ID
       const tTeacherId = (t as any).teacherId?.toString().trim();
       const tUserId = (t as any).userId?._id?.toString().trim() || (t as any).userId?.toString().trim();
-      return tId === normalizedTeacherId || 
+      return tDocId === normalizedTeacherId || 
+             normalizedTeacherId === tDocId ||
+             tId === normalizedTeacherId || 
              tTeacherId === normalizedTeacherId ||
              tUserId === normalizedTeacherId ||
              normalizedTeacherId === tId ||
@@ -2033,7 +2037,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     const teacherName = teacher.fullName?.trim() || '';
-    const teacherIdFromTeacher = (teacher.id || (teacher as any)._id)?.toString().trim();
+    const teacherDocId = ((teacher as any)._id || (teacher as any).teacherDocumentId)?.toString().trim(); // Teacher document _id (priority)
+    const teacherIdFromTeacher = teacher.id?.toString().trim(); // User ID
     const teacherTeacherId = (teacher as any).teacherId?.toString().trim();
     const teacherUserId = (teacher as any).userId?._id?.toString().trim() || (teacher as any).userId?.toString().trim();
     const assignedStudentIds = Array.isArray((teacher as any).assignedStudents) ? (teacher as any).assignedStudents : [];
@@ -2065,20 +2070,41 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
                assignedIdStr === (student as any)._id?.toString().trim();
       });
       
-      // Check 2: If student's assignedTeacher field matches teacher's ID (normalized)
+      // Check 2: If student's assignedTeacherIds array contains teacher's ID (NEW - multiple teachers support)
+      const assignedTeacherIds = (student as any).assignedTeacherIds || [];
+      const assignedTeachers = (student as any).assignedTeachers || [];
+      const hasAssignedTeacherInArray = Array.isArray(assignedTeacherIds) && assignedTeacherIds.some((tid: string) => {
+        const tidStr = tid?.toString().trim();
+        return tidStr === normalizedTeacherId ||
+               tidStr === teacherDocId ||
+               tidStr === teacherIdFromTeacher ||
+               tidStr === teacherTeacherId ||
+               tidStr === teacherUserId;
+      }) || Array.isArray(assignedTeachers) && assignedTeachers.some((tid: string) => {
+        const tidStr = tid?.toString().trim();
+        return tidStr === normalizedTeacherId ||
+               tidStr === teacherDocId ||
+               tidStr === teacherIdFromTeacher ||
+               tidStr === teacherTeacherId ||
+               tidStr === teacherUserId;
+      });
+      
+      // Check 3: If student's assignedTeacher field matches teacher's ID (legacy - single teacher)
       // ONLY check if assignedTeacher is NOT empty
       const hasAssignedTeacherId = assignedTeacher !== '' && (
         assignedTeacher === normalizedTeacherId ||
+        assignedTeacher === teacherDocId ||
         assignedTeacher === teacherIdFromTeacher ||
         assignedTeacher === teacherTeacherId ||
         assignedTeacher === teacherUserId ||
         ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === normalizedTeacherId) ||
+        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherDocId) ||
         ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherIdFromTeacher) ||
         ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherTeacherId) ||
         ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherUserId)
       );
       
-      // Check 3: If student's assignedTeacher field matches teacher's name (case-insensitive)
+      // Check 4: If student's assignedTeacher field matches teacher's name (case-insensitive)
       // ONLY check if assignedTeacher is NOT empty
       const hasAssignedTeacherName = assignedTeacher !== '' && teacherName !== '' && (
         assignedTeacher === teacherName ||
@@ -2089,7 +2115,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       // STRICT MATCHING: Only match if at least ONE condition is true
       // This ensures we NEVER show students that aren't explicitly assigned
-      const matches = isAssignedById || hasAssignedTeacherId || hasAssignedTeacherName;
+      const matches = isAssignedById || hasAssignedTeacherInArray || hasAssignedTeacherId || hasAssignedTeacherName;
       
       if (matches && import.meta.env.DEV) {
         console.log('✅ Student matched:', student.fullName || (student as any).fullName, 

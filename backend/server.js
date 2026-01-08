@@ -1069,8 +1069,10 @@ const studentSchema = new mongoose.Schema({
   paymentStatus: String,
   enrollmentDate: Date,
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
-  assignedTeacher: String, // Teacher ID or name who is assigned to this student
-  assignedTeacherId: String, // Teacher ID (for easier lookup)
+  assignedTeacher: String, // Teacher ID or name who is assigned to this student (legacy - kept for backward compatibility)
+  assignedTeacherId: String, // Teacher ID (for easier lookup) (legacy - kept for backward compatibility)
+  assignedTeachers: [String], // Array of teacher IDs/names assigned to this student (NEW)
+  assignedTeacherIds: [String], // Array of teacher IDs for easier lookup (NEW)
   program: String, // Program type (Full Time HQ, Part Time HQ, After School Reading)
   fullName: String,
   email: String,
@@ -2142,119 +2144,143 @@ const syncTeacherAssignedStudents = async () => {
     
     for (const student of allStudents) {
       const studentId = student._id.toString();
-      let assignedTeacherId = (student.assignedTeacherId || student.assignedTeacher || '').toString().trim();
       
-      console.log(`🔍 Processing student ${student.fullName || studentId}: assignedTeacherId="${assignedTeacherId}"`);
+      // Get all assigned teacher IDs (support both new array format and legacy single format)
+      const assignedTeacherIds = [];
       
-      if (!assignedTeacherId) {
-        console.log(`⚠️ Student ${student.fullName || studentId} has no assignedTeacherId or assignedTeacher`);
+      // Add from new array format
+      if (student.assignedTeacherIds && Array.isArray(student.assignedTeacherIds)) {
+        assignedTeacherIds.push(...student.assignedTeacherIds.map(id => id.toString().trim()).filter(Boolean));
+      }
+      if (student.assignedTeachers && Array.isArray(student.assignedTeachers)) {
+        assignedTeacherIds.push(...student.assignedTeachers.map(id => id.toString().trim()).filter(Boolean));
+      }
+      
+      // Add from legacy single format (for backward compatibility)
+      const legacyTeacherId = (student.assignedTeacherId || student.assignedTeacher || '').toString().trim();
+      if (legacyTeacherId && !assignedTeacherIds.includes(legacyTeacherId)) {
+        assignedTeacherIds.push(legacyTeacherId);
+      }
+      
+      // Remove duplicates
+      const uniqueTeacherIds = [...new Set(assignedTeacherIds)];
+      
+      console.log(`🔍 Processing student ${student.fullName || studentId}: assignedTeacherIds=[${uniqueTeacherIds.join(', ')}]`);
+      
+      if (uniqueTeacherIds.length === 0) {
+        console.log(`⚠️ Student ${student.fullName || studentId} has no assigned teachers`);
         continue;
       }
       
-      // Find teacher in map by direct ID match (includes _id, userId, teacherId, email)
-      let teacher = teacherMap.get(assignedTeacherId);
-      if (teacher) {
-        console.log(`✅ Found teacher ${teacher.fullName} in map by direct match: ${assignedTeacherId}`);
-      }
+      // Process each assigned teacher ID
+      const normalizedTeacherIds = [];
       
-      // If not found in map, try finding by userId in the array (most common case)
-      // Students often have the User's ID stored, not the Teacher document's _id
-      if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-        const teacherByUserId = allTeachers.find(t => {
-          if (t.userId) {
-            const userIdStr = t.userId.toString();
-            return userIdStr === assignedTeacherId;
-          }
-          return false;
-        });
-        if (teacherByUserId) {
-          teacher = teacherByUserId;
-          console.log(`✅ Found teacher ${teacher.fullName} by userId match: ${assignedTeacherId} matches userId ${teacher.userId.toString()}`);
+      for (const assignedTeacherId of uniqueTeacherIds) {
+        // Find teacher in map by direct ID match (includes _id, userId, teacherId, email)
+        let teacher = teacherMap.get(assignedTeacherId);
+        if (teacher) {
+          console.log(`✅ Found teacher ${teacher.fullName} in map by direct match: ${assignedTeacherId}`);
         }
-      }
-      
-      // If not found, try ObjectId lookup (exact match by teacher _id)
-      if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-        const teacherDoc = allTeachers.find(t => {
-          const tid = t._id.toString();
-          return tid === assignedTeacherId;
-        });
-        if (teacherDoc) {
-          teacher = teacherDoc;
-          console.log(`✅ Found teacher ${teacher.fullName} by teacher _id match: ${assignedTeacherId}`);
-        }
-      }
-      
-      // If still not found, try querying the database
-      if (!teacher) {
-        const queries = [];
         
-        // Try ObjectId if valid
-        if (mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
-          queries.push({ _id: assignedTeacherId });
-          queries.push({ userId: assignedTeacherId }); // Important: also search by userId
-          // Also try converting to ObjectId (in case of string mismatch)
-          try {
-            const objId = new mongoose.Types.ObjectId(assignedTeacherId);
-            queries.push({ _id: objId });
-            queries.push({ userId: objId });
-          } catch (e) {
-            // Ignore conversion errors
+        // If not found in map, try finding by userId in the array (most common case)
+        if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+          const teacherByUserId = allTeachers.find(t => {
+            if (t.userId) {
+              const userIdStr = t.userId.toString();
+              return userIdStr === assignedTeacherId;
+            }
+            return false;
+          });
+          if (teacherByUserId) {
+            teacher = teacherByUserId;
+            console.log(`✅ Found teacher ${teacher.fullName} by userId match: ${assignedTeacherId}`);
           }
         }
         
-        // Try other fields
-        queries.push(
-          { teacherId: assignedTeacherId },
-          { email: assignedTeacherId },
-          { fullName: assignedTeacherId }
-        );
-        
-        // Remove null/undefined queries
-        const validQueries = queries.filter(query => {
-          return Object.values(query).some(v => v !== null && v !== undefined);
-        });
-        
-        if (validQueries.length > 0) {
-          console.log(`🔍 Trying database query with ${validQueries.length} conditions for assignedTeacherId: ${assignedTeacherId}`);
-          const teacherDoc = await Teacher.findOne({ $or: validQueries }).lean();
+        // If not found, try ObjectId lookup (exact match by teacher _id)
+        if (!teacher && mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+          const teacherDoc = allTeachers.find(t => {
+            const tid = t._id.toString();
+            return tid === assignedTeacherId;
+          });
           if (teacherDoc) {
             teacher = teacherDoc;
-            console.log(`✅ Found teacher ${teacher.fullName} by database query`);
-          } else {
-            console.log(`❌ No teacher found in database for assignedTeacherId: ${assignedTeacherId}`);
+            console.log(`✅ Found teacher ${teacher.fullName} by teacher _id match: ${assignedTeacherId}`);
           }
+        }
+        
+        // If still not found, try querying the database
+        if (!teacher) {
+          const queries = [];
+          
+          if (mongoose.Types.ObjectId.isValid(assignedTeacherId)) {
+            queries.push({ _id: assignedTeacherId });
+            queries.push({ userId: assignedTeacherId });
+            try {
+              const objId = new mongoose.Types.ObjectId(assignedTeacherId);
+              queries.push({ _id: objId });
+              queries.push({ userId: objId });
+            } catch (e) {
+              // Ignore conversion errors
+            }
+          }
+          
+          queries.push(
+            { teacherId: assignedTeacherId },
+            { email: assignedTeacherId },
+            { fullName: assignedTeacherId }
+          );
+          
+          const validQueries = queries.filter(query => {
+            return Object.values(query).some(v => v !== null && v !== undefined);
+          });
+          
+          if (validQueries.length > 0) {
+            const teacherDoc = await Teacher.findOne({ $or: validQueries }).lean();
+            if (teacherDoc) {
+              teacher = teacherDoc;
+              console.log(`✅ Found teacher ${teacher.fullName} by database query`);
+            }
+          }
+        }
+        
+        if (teacher) {
+          const teacherMongoId = teacher._id;
+          const teacherIdStr = teacherMongoId.toString();
+          normalizedTeacherIds.push(teacherIdStr);
+          
+          // Use $addToSet to atomically add student to teacher's assignedStudents array
+          const updateResult = await Teacher.findByIdAndUpdate(
+            teacherMongoId,
+            { $addToSet: { assignedStudents: studentId } },
+            { new: true }
+          );
+          
+          if (updateResult) {
+            matchedCount++;
+            console.log(`✅ Added student ${student.fullName || studentId} (${studentId}) to teacher ${teacher.fullName}'s assignedStudents`);
+          }
+        } else {
+          notFoundCount++;
+          console.log(`❌ No teacher found for assignedTeacherId: ${assignedTeacherId}`);
         }
       }
       
-      if (teacher) {
-        const teacherMongoId = teacher._id;
-        const teacherIdStr = teacherMongoId.toString();
-        
-        // Ensure assignedTeacherId is set on student (normalize to teacher's _id)
-        if (!student.assignedTeacherId || student.assignedTeacherId !== teacherIdStr) {
-          await Student.updateOne(
-            { _id: student._id },
-            { 
-              $set: { 
-                assignedTeacherId: teacherIdStr,
-                assignedTeacher: teacherIdStr
-              }
+      // Update student with normalized teacher IDs (if any were found)
+      if (normalizedTeacherIds.length > 0) {
+        await Student.updateOne(
+          { _id: student._id },
+          { 
+            $set: { 
+              assignedTeacherIds: normalizedTeacherIds,
+              assignedTeachers: normalizedTeacherIds,
+              // Keep legacy fields for backward compatibility (set to first teacher)
+              assignedTeacherId: normalizedTeacherIds[0],
+              assignedTeacher: normalizedTeacherIds[0]
             }
-          );
-          console.log(`✅ Set assignedTeacherId on student ${student.fullName || studentId} to ${teacherIdStr}`);
-        }
-        
-        // Use $addToSet to atomically add student to teacher's assignedStudents array
-        const updateResult = await Teacher.findByIdAndUpdate(
-          teacherMongoId,
-          { $addToSet: { assignedStudents: studentId } },
-          { new: true }
+          }
         );
-        
-        if (updateResult) {
-          matchedCount++;
-          console.log(`✅ Added student ${student.fullName || studentId} (${studentId}) to teacher ${teacher.fullName}'s assignedStudents using $addToSet`);
+        console.log(`✅ Updated student ${student.fullName || studentId} with ${normalizedTeacherIds.length} teacher(s): [${normalizedTeacherIds.join(', ')}]`);
         } else {
           console.error(`❌ Failed to add student ${studentId} to teacher ${teacher.fullName}'s assignedStudents`);
         }
@@ -2519,24 +2545,51 @@ app.post('/api/students', async (req, res) => {
     const student = new Student(studentData);
     await student.save();
     
-    // If student is assigned to a teacher, add student ID to teacher's assignedStudents array
-    if (studentData.assignedTeacher || studentData.assignedTeacherId) {
-      const teacherId = studentData.assignedTeacherId || studentData.assignedTeacher;
-      if (teacherId) {
+    // If student is assigned to teachers, add student ID to each teacher's assignedStudents array
+    const assignedTeacherIds = [];
+    
+    // Get from new array format
+    if (studentData.assignedTeacherIds && Array.isArray(studentData.assignedTeacherIds)) {
+      assignedTeacherIds.push(...studentData.assignedTeacherIds.map(id => id.toString().trim()).filter(Boolean));
+    }
+    if (studentData.assignedTeachers && Array.isArray(studentData.assignedTeachers)) {
+      assignedTeacherIds.push(...studentData.assignedTeachers.map(id => id.toString().trim()).filter(Boolean));
+    }
+    
+    // Get from legacy single format (for backward compatibility)
+    const legacyTeacherId = (studentData.assignedTeacherId || studentData.assignedTeacher || '').toString().trim();
+    if (legacyTeacherId && !assignedTeacherIds.includes(legacyTeacherId)) {
+      assignedTeacherIds.push(legacyTeacherId);
+    }
+    
+    // Remove duplicates
+    const uniqueTeacherIds = [...new Set(assignedTeacherIds)];
+    
+    if (uniqueTeacherIds.length > 0) {
+      const normalizedTeacherIds = [];
+      
+      for (const teacherId of uniqueTeacherIds) {
         let teacher = null;
         
-        // Try to find teacher by ObjectId first (if it's a valid ObjectId)
+        // Try to find teacher by ObjectId first
         if (mongoose.Types.ObjectId.isValid(teacherId)) {
           teacher = await Teacher.findById(teacherId);
         }
         
-        // If not found, try other fields
+        // If not found, try other fields (including userId - User document ID)
         if (!teacher) {
+          // Try to find by userId (User document ID) - convert to ObjectId if needed
+          let userIdToSearch = teacherId;
+          if (mongoose.Types.ObjectId.isValid(teacherId)) {
+            userIdToSearch = new mongoose.Types.ObjectId(teacherId);
+          }
           teacher = await Teacher.findOne({
             $or: [
               { teacherId: teacherId },
               { email: teacherId },
-              { fullName: teacherId }
+              { fullName: teacherId },
+              { userId: userIdToSearch },
+              { userId: teacherId }
             ]
           });
         }
@@ -2544,12 +2597,8 @@ app.post('/api/students', async (req, res) => {
         if (teacher) {
           const studentId = student._id.toString();
           const teacherMongoId = teacher._id;
-          
-          // Also set assignedTeacherId on student if not already set
-          if (!student.assignedTeacherId) {
-            student.assignedTeacherId = teacher._id.toString();
-            await student.save();
-          }
+          const teacherIdStr = teacherMongoId.toString();
+          normalizedTeacherIds.push(teacherIdStr);
           
           // Use $addToSet to atomically add student to teacher's assignedStudents array
           const updateResult = await Teacher.findByIdAndUpdate(
@@ -2559,13 +2608,21 @@ app.post('/api/students', async (req, res) => {
           );
           
           if (updateResult) {
-            console.log(`✅ Added student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array using $addToSet`);
-          } else {
-            console.error(`❌ Failed to add student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array`);
+            console.log(`✅ Added student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array`);
           }
         } else {
           console.log(`⚠️ Teacher not found for ID: ${teacherId}`);
         }
+      }
+      
+      // Update student with normalized teacher IDs
+      if (normalizedTeacherIds.length > 0) {
+        student.assignedTeacherIds = normalizedTeacherIds;
+        student.assignedTeachers = normalizedTeacherIds;
+        // Keep legacy fields for backward compatibility
+        student.assignedTeacherId = normalizedTeacherIds[0];
+        student.assignedTeacher = normalizedTeacherIds[0];
+        await student.save();
       }
     }
     
@@ -2585,8 +2642,40 @@ app.put('/api/students/:id', async (req, res) => {
 
     // Get the old student data to check for teacher assignment changes
     const oldStudent = await Student.findById(req.params.id);
-    const oldTeacherId = (oldStudent && (oldStudent.assignedTeacherId || oldStudent.assignedTeacher)) || null;
-    const newTeacherId = studentData.assignedTeacherId || studentData.assignedTeacher;
+    
+    // Collect old teacher IDs from multiple sources
+    const oldTeacherIds = [];
+    if (oldStudent) {
+      if (oldStudent.assignedTeacherIds && Array.isArray(oldStudent.assignedTeacherIds)) {
+        oldTeacherIds.push(...oldStudent.assignedTeacherIds.map(id => id.toString().trim()));
+      }
+      if (oldStudent.assignedTeachers && Array.isArray(oldStudent.assignedTeachers)) {
+        oldStudent.assignedTeachers.forEach(id => {
+          const idStr = id.toString().trim();
+          if (!oldTeacherIds.includes(idStr)) oldTeacherIds.push(idStr);
+        });
+      }
+      const legacyId = (oldStudent.assignedTeacherId || oldStudent.assignedTeacher)?.toString().trim();
+      if (legacyId && !oldTeacherIds.includes(legacyId)) {
+        oldTeacherIds.push(legacyId);
+      }
+    }
+
+    // Collect new teacher IDs from request
+    const newTeacherIds = [];
+    if (studentData.assignedTeacherIds && Array.isArray(studentData.assignedTeacherIds)) {
+      newTeacherIds.push(...studentData.assignedTeacherIds.map(id => id.toString().trim()));
+    }
+    if (studentData.assignedTeachers && Array.isArray(studentData.assignedTeachers)) {
+      studentData.assignedTeachers.forEach(id => {
+        const idStr = id.toString().trim();
+        if (!newTeacherIds.includes(idStr)) newTeacherIds.push(idStr);
+      });
+    }
+    const legacyNewId = (studentData.assignedTeacherId || studentData.assignedTeacher)?.toString().trim();
+    if (legacyNewId && !newTeacherIds.includes(legacyNewId)) {
+      newTeacherIds.push(legacyNewId);
+    }
 
     const updatedStudent = await Student.findByIdAndUpdate(
       req.params.id,
@@ -2598,77 +2687,94 @@ app.put('/api/students/:id', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    // If teacher assignment changed, update teacher's assignedStudents array
+    // If teacher assignment changed, update teachers' assignedStudents arrays
     const studentId = updatedStudent._id.toString();
     
-    // Remove from old teacher's assignedStudents array using $pull
-    if (oldTeacherId && oldTeacherId !== newTeacherId) {
-      let oldTeacher = null;
-      if (mongoose.Types.ObjectId.isValid(oldTeacherId)) {
-        oldTeacher = await Teacher.findById(oldTeacherId);
+    // Helper function to normalize teacher IDs to MongoDB ObjectIds
+    const normalizeTeacherIds = async (teacherIds) => {
+      const normalized = [];
+      for (const teacherId of teacherIds) {
+        let teacher = null;
+        if (mongoose.Types.ObjectId.isValid(teacherId)) {
+          teacher = await Teacher.findById(teacherId);
+        }
+        if (!teacher) {
+          // Try to find by userId (User document ID) - convert to ObjectId if needed
+          let userIdToSearch = teacherId;
+          if (mongoose.Types.ObjectId.isValid(teacherId)) {
+            userIdToSearch = new mongoose.Types.ObjectId(teacherId);
+          }
+          teacher = await Teacher.findOne({
+            $or: [
+              { teacherId: teacherId },
+              { email: teacherId },
+              { fullName: teacherId },
+              { userId: userIdToSearch },
+              { userId: teacherId },
+              { _id: teacherId }
+            ]
+          });
+        }
+        if (teacher) {
+          normalized.push(teacher._id.toString());
+        }
       }
-      if (!oldTeacher) {
-        oldTeacher = await Teacher.findOne({
-          $or: [
-            { teacherId: oldTeacherId },
-            { email: oldTeacherId },
-            { fullName: oldTeacherId }
-          ]
-        });
-      }
-      
-      if (oldTeacher) {
+      return normalized;
+    };
+
+    const normalizedOldIds = await normalizeTeacherIds(oldTeacherIds);
+    const normalizedNewIds = await normalizeTeacherIds(newTeacherIds);
+
+    // Find teachers to remove from (in old but not in new)
+    const teachersToRemove = normalizedOldIds.filter(id => !normalizedNewIds.includes(id));
+    // Find teachers to add to (in new but not in old)
+    const teachersToAdd = normalizedNewIds.filter(id => !normalizedOldIds.includes(id));
+
+    // Remove student from old teachers' assignedStudents arrays
+    for (const teacherIdStr of teachersToRemove) {
+      const teacher = await Teacher.findById(teacherIdStr);
+      if (teacher) {
         const updateResult = await Teacher.findByIdAndUpdate(
-          oldTeacher._id,
+          teacher._id,
           { $pull: { assignedStudents: studentId } },
           { new: true }
         );
         if (updateResult) {
-          console.log(`✅ Removed student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array using $pull`);
-        } else {
-          console.error(`❌ Failed to remove student ${studentId} from teacher ${oldTeacher.fullName}'s assignedStudents array`);
+          console.log(`✅ Removed student ${studentId} from teacher ${teacher.fullName}'s assignedStudents array`);
         }
       }
     }
     
-    // Add to new teacher's assignedStudents array using $addToSet
-    if (newTeacherId) {
-      let newTeacher = null;
-      if (mongoose.Types.ObjectId.isValid(newTeacherId)) {
-        newTeacher = await Teacher.findById(newTeacherId);
-      }
-      if (!newTeacher) {
-        newTeacher = await Teacher.findOne({
-          $or: [
-            { teacherId: newTeacherId },
-            { email: newTeacherId },
-            { fullName: newTeacherId }
-          ]
-        });
-      }
-      
-      if (newTeacher) {
-        // Set assignedTeacherId on student if not already set
-        if (!updatedStudent.assignedTeacherId) {
-          updatedStudent.assignedTeacherId = newTeacher._id.toString();
-          await updatedStudent.save();
-        }
-        
-        // Use $addToSet to atomically add student to teacher's assignedStudents array
+    // Add student to new teachers' assignedStudents arrays
+    for (const teacherIdStr of teachersToAdd) {
+      const teacher = await Teacher.findById(teacherIdStr);
+      if (teacher) {
         const updateResult = await Teacher.findByIdAndUpdate(
-          newTeacher._id,
+          teacher._id,
           { $addToSet: { assignedStudents: studentId } },
           { new: true }
         );
-        
         if (updateResult) {
-          console.log(`✅ Added student ${studentId} to teacher ${newTeacher.fullName}'s assignedStudents array using $addToSet`);
-        } else {
-          console.error(`❌ Failed to add student ${studentId} to teacher ${newTeacher.fullName}'s assignedStudents array`);
+          console.log(`✅ Added student ${studentId} to teacher ${teacher.fullName}'s assignedStudents array`);
         }
-      } else {
-        console.log(`⚠️ Teacher not found for ID: ${newTeacherId}`);
       }
+    }
+
+    // Update student with normalized teacher IDs
+    if (normalizedNewIds.length > 0) {
+      await Student.findByIdAndUpdate(
+        req.params.id,
+        {
+          $set: {
+            assignedTeacherIds: normalizedNewIds,
+            assignedTeachers: normalizedNewIds,
+            // Keep legacy fields for backward compatibility
+            assignedTeacherId: normalizedNewIds[0],
+            assignedTeacher: normalizedNewIds[0]
+          }
+        }
+      );
+      console.log(`✅ Updated student ${studentId} with ${normalizedNewIds.length} teacher(s): [${normalizedNewIds.join(', ')}]`);
     }
 
     // Also update the User record if student has a userId

@@ -552,6 +552,18 @@ const SabqForm: React.FC<SabqFormProps> = React.memo(({ currentItem, onUpdate, e
           />
         </div>
       </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes/Comments (optional)
+        </label>
+        <textarea
+          value={currentItem.content || ''}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          placeholder="Add any notes or instructions for this Sabq homework..."
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition resize-none"
+        />
+      </div>
       {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
     </div>
   );
@@ -692,6 +704,18 @@ const SabqiForm: React.FC<SabqiFormProps> = React.memo(({ currentItem, onUpdate,
           </select>
         </div>
       )}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes/Comments (optional)
+        </label>
+        <textarea
+          value={currentItem.content || ''}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          placeholder="Add any notes or instructions for this Sabqi homework..."
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
+        />
+      </div>
       {error && <p className="text-sm text-red-600 mt-1">{error}</p>}
     </div>
   );
@@ -742,6 +766,18 @@ const ManzilForm: React.FC<ManzilFormProps> = React.memo(({ currentItem, onUpdat
       {juzList.length === 0 && (
         <p className="text-sm text-gray-500 mt-2">Select at least one Juz</p>
       )}
+      <div className="mt-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes/Comments (optional)
+        </label>
+        <textarea
+          value={currentItem.content || ''}
+          onChange={(e) => onUpdate({ content: e.target.value })}
+          placeholder="Add any notes or instructions for this Manzil homework..."
+          rows={3}
+          className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 transition resize-none"
+        />
+      </div>
     </div>
   );
 });
@@ -767,10 +803,15 @@ const HomeworkItemsList: React.FC<HomeworkItemsListProps> = React.memo(({ items,
               className={`flex items-center justify-between ${colors.bg} border ${colors.border} rounded-lg p-3 transition-all hover:shadow-md animate-slideIn`}
             >
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-gray-900 capitalize">{item.type}:</span>
-                <span className="text-sm text-gray-700 ml-2">{formatRange(item.range)}</span>
-                {item.source.suggestedFrom === 'ticket' && (
-                  <span className="text-xs text-blue-600 ml-2">(from tickets)</span>
+                <div className="flex items-center flex-wrap gap-2">
+                  <span className="text-sm font-medium text-gray-900 capitalize">{item.type}:</span>
+                  <span className="text-sm text-gray-700">{formatRange(item.range)}</span>
+                  {item.source.suggestedFrom === 'ticket' && (
+                    <span className="text-xs text-blue-600">(from tickets)</span>
+                  )}
+                </div>
+                {item.content && (
+                  <p className="text-xs text-gray-600 mt-1 italic">"{item.content}"</p>
                 )}
               </div>
               <button
