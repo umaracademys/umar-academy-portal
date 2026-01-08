@@ -336,7 +336,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                       return [];
                     })()}
                     onChange={(e) => {
-                      const selectedOptions = Array.from(e.target.selectedOptions, (option: HTMLOptionElement) => option.value);
+                      const selectElement = e.target as HTMLSelectElement;
+                      const selectedOptions = Array.from(selectElement.selectedOptions).map(option => option.value);
                       setFormData({ 
                         ...formData, 
                         assignedTeacher: selectedOptions.length > 0 ? selectedOptions : []
