@@ -2395,11 +2395,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const response = await fetch(`${API_BASE}/tickets`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
         body: JSON.stringify(ticket)
       });
       if (!response.ok) {
-        throw new Error('Failed to create ticket');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create ticket' }));
+        throw new Error(errorData.error || 'Failed to create ticket');
       }
       const newTicket = await response.json();
       const mappedTicket = {
@@ -2421,6 +2422,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const response = await fetch(`${API_BASE}/tickets/${id}`, {
         method: 'PUT',
+        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ticket)
       });
@@ -2446,10 +2448,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const startTicket = async (id: string): Promise<Ticket> => {
     try {
       const response = await fetch(`${API_BASE}/tickets/${id}/start`, {
-        method: 'POST'
+        method: 'POST',
+        headers: getAuthHeaders() // Use getAuthHeaders() to include authentication token
       });
       if (!response.ok) {
-        throw new Error('Failed to start ticket');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to start ticket' }));
+        throw new Error(errorData.error || 'Failed to start ticket');
       }
       const ticket = await response.json();
       const mappedTicket = {
@@ -2480,11 +2484,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const response = await fetch(`${API_BASE}/tickets/${id}/submit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
         body: JSON.stringify(data)
       });
       if (!response.ok) {
-        throw new Error('Failed to submit ticket');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to submit ticket' }));
+        throw new Error(errorData.error || 'Failed to submit ticket');
       }
       const ticket = await response.json();
       const mappedTicket = {
@@ -2516,7 +2521,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('📤 Sending approve request for ticket:', id, 'with recording:', !!recordingData);
       const response = await fetch(`${API_BASE}/tickets/${id}/approve-send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
         body: JSON.stringify({ 
           assignmentId,
           ...(recordingData && {
@@ -2634,11 +2639,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const response = await fetch(`${API_BASE}/tickets/${id}/reassign`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
         body: JSON.stringify({ teacherId, teacherName, reason })
       });
       if (!response.ok) {
-        throw new Error('Failed to reassign ticket');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to reassign ticket' }));
+        throw new Error(errorData.error || 'Failed to reassign ticket');
       }
       const ticket = await response.json();
       const mappedTicket = {
