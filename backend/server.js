@@ -2938,9 +2938,9 @@ const normalizeTeacherData = (teacherData) => {
       
       // Module Permissions - Tickets
       canAccessTickets: perms.canAccessTickets !== undefined ? perms.canAccessTickets : true,
-      canCreateTickets: perms.canCreateTickets !== undefined ? perms.canCreateTickets : false,
+      canCreateTickets: perms.canCreateTickets !== undefined ? perms.canCreateTickets : true, // Teachers can now create tickets
       canReviewTickets: perms.canReviewTickets !== undefined ? perms.canReviewTickets : true,
-      canApproveTickets: perms.canApproveTickets !== undefined ? perms.canApproveTickets : false,
+      canApproveTickets: perms.canApproveTickets !== undefined ? perms.canApproveTickets : false, // Only admins can approve
       canFinalizeTickets: perms.canFinalizeTickets !== undefined ? perms.canFinalizeTickets : false,
       
       // Module Permissions - Attendance
@@ -5893,8 +5893,47 @@ app.get('/api/tickets/:id', async (req, res) => {
 });
 
 // Create new ticket
-app.post('/api/tickets', async (req, res) => {
+app.post('/api/tickets', authenticateToken, async (req, res) => {
   try {
+    const user = req.user;
+    
+    // If teacher is creating ticket, validate they can only create for assigned students
+    if (user.role === 'teacher') {
+      const teacher = await Teacher.findOne({ userId: user.id || user._id });
+      if (!teacher) {
+        return res.status(403).json({ error: 'Teacher not found' });
+      }
+      
+      // Check permission
+      const canCreate = await checkTeacherPermission(user.id || user._id, 'canCreateTickets');
+      if (!canCreate) {
+        return res.status(403).json({ error: 'You do not have permission to create tickets' });
+      }
+      
+      // Validate student is assigned to this teacher
+      const studentId = req.body.studentId;
+      const assignedStudentIds = teacher.assignedStudents || [];
+      
+      // Check if studentId matches any assigned student
+      const isAssigned = assignedStudentIds.some(assignedId => {
+        const assignedIdStr = String(assignedId);
+        const studentIdStr = String(studentId);
+        return assignedIdStr === studentIdStr || 
+               assignedIdStr === studentId || 
+               assignedId === studentIdStr;
+      });
+      
+      if (!isAssigned) {
+        return res.status(403).json({ error: 'You can only create tickets for your assigned students' });
+      }
+      
+      // Auto-fill teacher info
+      req.body.assignedTeacherId = teacher._id.toString();
+      req.body.assignedTeacherName = teacher.fullName;
+      req.body.createdBy = user.id || user._id;
+      req.body.createdByName = teacher.fullName;
+    }
+    
     const ticket = new Ticket(req.body);
     await ticket.save();
     res.status(201).json(ticket);

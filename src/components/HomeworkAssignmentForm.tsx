@@ -24,6 +24,13 @@ interface HomeworkSuggestions {
 interface HomeworkAssignmentFormProps {
   studentId: string;
   assignmentId?: string;
+  ticketMistakes?: Array<{
+    surah: number;
+    ayah: number;
+    page: number;
+    type: string;
+  }>; // Optional: mistakes from ticket for smart suggestions
+  ticketType?: 'sabq' | 'sabqi' | 'manzil'; // Optional: ticket type for suggestions
   onSave: (homeworkItems: HomeworkItem[], notes: string) => Promise<void>;
   onClose: () => void;
 }
@@ -861,26 +868,113 @@ ModalFooterActions.displayName = 'ModalFooterActions';
 const HomeworkAssignmentForm: React.FC<HomeworkAssignmentFormProps> = ({
   studentId,
   assignmentId,
+  ticketMistakes = [],
+  ticketType,
   onSave,
   onClose
 }) => {
   const [state, dispatch] = useReducer(formReducer, initialState);
   const formRef = useRef<HTMLDivElement>(null);
 
-  // Fetch suggestions on mount
+  // Generate suggestions from ticket mistakes or fetch from API
   useEffect(() => {
     let mounted = true;
-    const fetchSuggestions = async () => {
+    const loadSuggestions = async () => {
       dispatch({ type: 'SET_LOADING', payload: true });
       try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-        const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
-        const response = await fetch(`${API_BASE}/students/${studentId}/homework-suggestions`, {
-          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-        if (response.ok && mounted) {
-          const data = await response.json();
-          dispatch({ type: 'SET_SUGGESTIONS', payload: data });
+        // If ticket mistakes provided, generate suggestions from them
+        if (ticketMistakes.length > 0 && ticketType) {
+          const suggestions: HomeworkSuggestions = {
+            sabq: { suggested: false },
+            sabqi: { suggested: false },
+            manzil: { suggested: false }
+          };
+
+          // Group mistakes by surah
+          const mistakesBySurah: Record<number, number[]> = {};
+          ticketMistakes.forEach(mistake => {
+            if (mistake.surah && mistake.ayah) {
+              if (!mistakesBySurah[mistake.surah]) {
+                mistakesBySurah[mistake.surah] = [];
+              }
+              if (!mistakesBySurah[mistake.surah].includes(mistake.ayah)) {
+                mistakesBySurah[mistake.surah].push(mistake.ayah);
+              }
+            }
+          });
+
+          // Generate suggestion based on ticket type
+          if (ticketType === 'sabq' && Object.keys(mistakesBySurah).length > 0) {
+            const surahs = Object.keys(mistakesBySurah).map(Number).sort((a, b) => a - b);
+            const firstSurah = surahs[0];
+            const ayahs = mistakesBySurah[firstSurah].sort((a, b) => a - b);
+            
+            if (ayahs.length > 0) {
+              suggestions.sabq = {
+                suggested: true,
+                range: {
+                  mode: 'surah_ayah',
+                  from: {
+                    surah: firstSurah,
+                    surahName: SURAH_NAMES[firstSurah] || `Surah ${firstSurah}`,
+                    ayah: Math.min(...ayahs)
+                  },
+                  to: {
+                    surah: firstSurah,
+                    surahName: SURAH_NAMES[firstSurah] || `Surah ${firstSurah}`,
+                    ayah: Math.max(...ayahs)
+                  }
+                },
+                ticketIds: [],
+                lastApprovedAt: new Date().toISOString()
+              };
+            }
+          } else if (ticketType === 'sabqi' || ticketType === 'manzil') {
+            // For sabqi/manzil, suggest based on pages (convert to juz)
+            const pages = [...new Set(ticketMistakes.map(m => m.page).filter(Boolean))].sort((a, b) => a - b);
+            if (pages.length > 0) {
+              // Rough conversion: page 1-20 ≈ Juz 1, page 21-40 ≈ Juz 2, etc.
+              const juzs = [...new Set(pages.map(page => Math.ceil(page / 20)))].filter(juz => juz >= 1 && juz <= 30);
+              
+              if (juzs.length > 0 && ticketType === 'sabqi') {
+                suggestions.sabqi = {
+                  suggested: true,
+                  range: {
+                    mode: 'juz_juz',
+                    juzList: [juzs[0]]
+                  },
+                  ticketIds: [],
+                  lastApprovedAt: new Date().toISOString()
+                };
+              } else if (juzs.length > 0 && ticketType === 'manzil') {
+                suggestions.manzil = {
+                  suggested: true,
+                  range: {
+                    mode: 'multiple_juz',
+                    juzList: juzs.slice(0, 5) // Limit to 5 juz
+                  },
+                  ticketIds: [],
+                  lastApprovedAt: new Date().toISOString()
+                };
+              }
+            }
+          }
+
+          if (mounted) {
+            dispatch({ type: 'SET_SUGGESTIONS', payload: suggestions });
+            dispatch({ type: 'SET_LOADING', payload: false });
+          }
+        } else {
+          // Fallback to API suggestions
+          const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+          const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+          const response = await fetch(`${API_BASE}/students/${studentId}/homework-suggestions`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+          });
+          if (response.ok && mounted) {
+            const data = await response.json();
+            dispatch({ type: 'SET_SUGGESTIONS', payload: data });
+          }
         }
       } catch (error) {
         // Silent fail - suggestions are optional
@@ -891,9 +985,9 @@ const HomeworkAssignmentForm: React.FC<HomeworkAssignmentFormProps> = ({
       }
     };
 
-    fetchSuggestions();
+    loadSuggestions();
     return () => { mounted = false; };
-  }, [studentId]);
+  }, [studentId, ticketMistakes, ticketType]);
 
   // Auto-hide toast
   useEffect(() => {

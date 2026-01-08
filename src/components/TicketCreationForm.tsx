@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Ticket, TicketType } from '../types/ticket';
 
 interface TicketCreationFormProps {
-  studentId: string;
+  studentId?: string; // Optional - if not provided, show student selector
   onClose: () => void;
   onSuccess: (ticket: Ticket) => void;
   ticket?: Ticket; // Optional ticket for editing mode
@@ -16,10 +17,12 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   onSuccess,
   ticket: existingTicket
 }) => {
-  const { students, teachers, createTicket, updateRecitationTicket, getPreviousReports, assignments, getStudentAssignments } = useBackendData();
+  const { students, teachers, createTicket, updateRecitationTicket, getPreviousReports, assignments, getStudentAssignments, getStudentsByTeacher } = useBackendData();
   const { user } = useAuth();
   const isEditMode = !!existingTicket;
+  const isTeacher = user?.role === 'teacher';
   const [isCreating, setIsCreating] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState(studentId || '');
   const [ticketType, setTicketType] = useState<TicketType | ''>(existingTicket?.type || '');
   const [adminComment, setAdminComment] = useState(existingTicket?.adminComment || '');
   const [selectedTeacherId, setSelectedTeacherId] = useState(existingTicket?.assignedTeacherId || '');
@@ -29,7 +32,19 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const previousReportsKeyRef = React.useRef<string>('');
 
-  const student = students.find(s => s.id === studentId);
+  // Get available students - for teachers, only show assigned students
+  const availableStudents = React.useMemo(() => {
+    if (isTeacher && user) {
+      const currentTeacher = teachers.find(t => t.email === user.email);
+      if (currentTeacher) {
+        return getStudentsByTeacher(currentTeacher.id);
+      }
+      return [];
+    }
+    return students;
+  }, [isTeacher, user, teachers, students, getStudentsByTeacher]);
+
+  const student = availableStudents.find(s => s.id === selectedStudentId);
 
   // Get recent homework assignments (last 30 days for better history)
   const previousDayHomework = useMemo(() => {
@@ -92,18 +107,18 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   // Load previous reports when sabqi or manzil is selected
   useEffect(() => {
     // Create a unique key for this combination
-    const reportsKey = `${studentId}-${ticketType}`;
+    const reportsKey = `${selectedStudentId}-${ticketType}`;
     
     // Skip if we've already loaded reports for this combination
     if (previousReportsKeyRef.current === reportsKey && previousReports.length > 0) {
       return;
     }
     
-    if ((ticketType === 'sabqi' || ticketType === 'manzil') && studentId && !isLoadingReports) {
+    if ((ticketType === 'sabqi' || ticketType === 'manzil') && selectedStudentId && !isLoadingReports) {
       setIsLoadingReports(true);
       previousReportsKeyRef.current = reportsKey;
       
-      getPreviousReports(studentId, ticketType).then(reports => {
+      getPreviousReports(selectedStudentId, ticketType).then(reports => {
         if (import.meta.env.DEV) {
           console.log('📋 Previous reports found:', reports.length);
         }
@@ -123,7 +138,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
       setShowReminder(false);
       previousReportsKeyRef.current = '';
     }
-  }, [ticketType, studentId]); // Removed getPreviousReports from dependencies
+  }, [ticketType, selectedStudentId]); // Removed getPreviousReports from dependencies
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,8 +159,9 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
       return;
     }
 
-    // For sabqi/manzil, teacher selection and notes are required
-    if ((ticketType === 'sabqi' || ticketType === 'manzil') && !selectedTeacherId) {
+    // For teachers creating sabqi/manzil tickets, teacher is auto-assigned (backend handles this)
+    // For admins, teacher selection is required
+    if (!isTeacher && (ticketType === 'sabqi' || ticketType === 'manzil') && !selectedTeacherId) {
       alert('Please select a teacher');
       return;
     }
@@ -177,6 +193,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         ticketData.status = ticketType === 'sabq' ? 'sent_to_assignment' : 'pending';
         ticketData.createdBy = user.id || '';
         ticketData.createdByName = user.name || user.email || 'Unknown';
+        
+        // For teachers, don't set assignedTeacherId here - backend will auto-assign
+        if (isTeacher && (ticketType === 'sabqi' || ticketType === 'manzil')) {
+          // Backend will auto-assign the teacher
+          ticketData.assignedTeacherId = undefined;
+          ticketData.assignedTeacherName = undefined;
+        }
+        
         updatedTicket = await createTicket(ticketData);
       }
       
@@ -332,6 +356,33 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
 
         {/* Form Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 bg-white">
+          {/* Student Selection - Show if studentId not provided (for teachers) */}
+          {!studentId && (
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Select Student <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm"
+                required
+              >
+                <option value="">Choose a student...</option>
+                {availableStudents.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.fullName} {s.program ? `- ${s.program}` : ''}
+                  </option>
+                ))}
+              </select>
+              {isTeacher && availableStudents.length === 0 && (
+                <p className="text-xs text-slate-500 mt-2">
+                  No students assigned to you. Contact admin to get students assigned.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Ticket Type Selection - Modern Card Design */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-slate-700 mb-3">
@@ -418,37 +469,42 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
 
           {(ticketType === 'sabqi' || ticketType === 'manzil') && (
             <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Select Teacher <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedTeacherId}
-                  onChange={(e) => setSelectedTeacherId(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm"
-                  required
-                >
-                  <option value="">Choose a teacher...</option>
-                  {teachers
-                    .filter(t => t.status === 'active')
-                    .map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.fullName}
-                      </option>
-                    ))}
-                </select>
-              </div>
+              {/* Teacher Selection - Only show for admins */}
+              {!isTeacher && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Select Teacher <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={selectedTeacherId}
+                    onChange={(e) => setSelectedTeacherId(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm"
+                    required
+                  >
+                    <option value="">Choose a teacher...</option>
+                    {teachers
+                      .filter(t => t.status === 'active')
+                      .map(teacher => (
+                        <option key={teacher.id} value={teacher.id}>
+                          {teacher.fullName}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
 
+              {/* Notes - For teachers, this is their own notes. For admins, notes for teacher */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Notes for Teacher <span className="text-red-500">*</span>
+                  {isTeacher ? 'Notes' : 'Notes for Teacher'} <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={teacherNotes}
                   onChange={(e) => setTeacherNotes(e.target.value)}
                   rows={4}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg bg-white text-slate-700 focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm resize-none placeholder:text-slate-400"
-                  placeholder="Enter notes or instructions for the teacher..."
+                  placeholder={isTeacher ? "Enter your notes about this recitation..." : "Enter notes or instructions for the teacher..."}
+                  required={!isTeacher}
                 />
               </div>
             </div>

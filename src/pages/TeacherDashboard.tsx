@@ -23,10 +23,11 @@ import TeacherStudentMessage from '../components/TeacherStudentMessage';
 import TeacherPersonalMushaf from '../components/TeacherPersonalMushaf';
 import TeacherAssessmentForm from '../components/TeacherAssessmentForm';
 import TeacherNotificationCenter from '../components/TeacherNotificationCenter';
+import TicketCreationForm from '../components/TicketCreationForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
-  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -55,6 +56,11 @@ const TeacherDashboard: React.FC = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [studentWeeklyEvaluations, setStudentWeeklyEvaluations] = useState<Record<string, any[]>>({});
   const [loadingEvaluations, setLoadingEvaluations] = useState<Record<string, boolean>>({});
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const [selectedStudentForTicket, setSelectedStudentForTicket] = useState<string | null>(null);
+  const [showHomeworkForm, setShowHomeworkForm] = useState(false);
+  const [selectedTicketForHomework, setSelectedTicketForHomework] = useState<Ticket | null>(null);
+  const [selectedAssignmentForHomework, setSelectedAssignmentForHomework] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -267,6 +273,25 @@ const TeacherDashboard: React.FC = () => {
     }
     return getTeacherTickets(currentTeacher.id);
   }, [currentTeacher?.id, getTeacherTickets, recitationTickets]);
+
+  // Get approved tickets that need homework assignment
+  const approvedTicketsNeedingHomework = useMemo(() => {
+    if (!currentTeacher?.id) return [];
+    
+    // Get tickets that are approved (sent_to_assignment) and assigned to this teacher
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    const teacherIdStr = teacherDocId.toString();
+    
+    return recitationTickets.filter(ticket => {
+      // Check if ticket is approved and assigned to this teacher
+      const isAssignedToTeacher = ticket.assignedTeacherId === teacherIdStr || 
+                                   String(ticket.assignedTeacherId) === teacherIdStr ||
+                                   ticket.assignedTeacherId === currentTeacher.id ||
+                                   String(ticket.assignedTeacherId) === String(currentTeacher.id);
+      
+      return ticket.status === 'sent_to_assignment' && isAssignedToTeacher;
+    });
+  }, [recitationTickets, currentTeacher]);
 
   const permissions = (currentTeacher?.permissions) || {
     canViewAssessments: true,
@@ -543,6 +568,79 @@ const TeacherDashboard: React.FC = () => {
             </Card>
           </div>
 
+          {/* Approved Tickets Needing Homework - Takes full width */}
+          {approvedTicketsNeedingHomework.length > 0 && (
+            <div className="lg:col-span-3">
+              <Card title={`Approved Tickets - Assign Homework (${approvedTicketsNeedingHomework.length})`}>
+                <div className="space-y-4">
+                  {approvedTicketsNeedingHomework.map((ticket) => {
+                    const handleAssignHomework = async () => {
+                      // Find the assignment linked to this ticket
+                      const assignmentId = ticket.sentToAssignmentId;
+                      if (assignmentId) {
+                        setSelectedTicketForHomework(ticket);
+                        setSelectedAssignmentForHomework(assignmentId);
+                        setShowHomeworkForm(true);
+                      } else {
+                        alert('Assignment not found for this ticket. Please contact admin.');
+                      }
+                    };
+
+                    return (
+                      <div
+                        key={ticket.id}
+                        className="w-full rounded-xl border-2 border-green-200 bg-green-50 p-6 shadow-sm hover:shadow-md transition-all"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide ${
+                                ticket.type === 'sabqi' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : ticket.type === 'manzil'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {ticket.type}
+                              </span>
+                              <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 text-green-800">
+                                ✓ Approved
+                              </span>
+                            </div>
+                            <h4 className="text-xl font-bold text-primary mb-2">
+                              {ticket.studentName}
+                            </h4>
+                            {ticket.teacherComment && (
+                              <p className="text-sm text-gray-700 mb-2">
+                                <span className="font-semibold">Your Review:</span> {ticket.teacherComment}
+                              </p>
+                            )}
+                            {ticket.mistakes && ticket.mistakes.length > 0 && (
+                              <p className="text-sm text-gray-600 mb-2">
+                                <span className="font-semibold">Mistakes Marked:</span> {ticket.mistakes.length}
+                              </p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-3">
+                              Approved: {ticket.sentAt ? new Date(ticket.sentAt).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                          <div className="flex items-center">
+                            <button
+                              onClick={handleAssignHomework}
+                              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold transition-all shadow-md whitespace-nowrap"
+                            >
+                              Assign Homework
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </div>
+          )}
+
           {/* Quick Actions - Takes 1 column */}
           <div className="lg:col-span-1">
             <Card title="Quick Actions">
@@ -589,6 +687,20 @@ const TeacherDashboard: React.FC = () => {
                   <div className="font-bold text-primary mb-1">My Attendance</div>
                   <div className="text-sm text-primary/70">View your attendance history and paid days</div>
                   <div className="text-xs text-gray-600">Access comprehensive reports</div>
+                </button>
+                <button
+                  onClick={() => setShowCreateTicket(true)}
+                  className="w-full text-left px-4 py-4 rounded-xl border-2 border-primary bg-primary/5 hover:border-primary hover:bg-primary/10 transition-all shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-white text-lg font-bold">
+                      🎫
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">Create Ticket</p>
+                      <p className="text-xs text-gray-600">Start new recitation review</p>
+                    </div>
+                  </div>
                 </button>
                 <button
                   onClick={() => setShowPairDailyReport(true)}
@@ -1404,6 +1516,87 @@ const TeacherDashboard: React.FC = () => {
         <Suspense fallback={null}>
           <DebugPanel />
         </Suspense>
+      )}
+
+      {/* Create Ticket Modal */}
+      {showCreateTicket && (
+        <TicketCreationForm
+          studentId={selectedStudentForTicket || ''}
+          onClose={() => {
+            setShowCreateTicket(false);
+            setSelectedStudentForTicket(null);
+          }}
+          onSuccess={(ticket) => {
+            setShowCreateTicket(false);
+            setSelectedStudentForTicket(null);
+            setRefreshKey(prev => prev + 1);
+            // Optionally show success message
+          }}
+        />
+      )}
+
+      {/* Homework Assignment Modal */}
+      {showHomeworkForm && selectedTicketForHomework && selectedAssignmentForHomework && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 md:p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col border border-gray-200">
+            <div className="relative px-6 py-5 bg-gradient-to-r from-green-500 via-green-500/95 to-green-500/90 border-b border-green-200">
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-0.5">
+                    Assign Homework
+                  </h2>
+                  <p className="text-white/80 text-sm font-medium">
+                    {selectedTicketForHomework.studentName} - {selectedTicketForHomework.type.toUpperCase()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowHomeworkForm(false);
+                    setSelectedTicketForHomework(null);
+                    setSelectedAssignmentForHomework(null);
+                  }}
+                  className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-lg transition-all hover:scale-110 text-xl font-semibold border border-white/20"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <HomeworkAssignmentForm
+                studentId={selectedTicketForHomework.studentId}
+                assignmentId={selectedAssignmentForHomework}
+                ticketMistakes={selectedTicketForHomework.mistakes || []}
+                ticketType={selectedTicketForHomework.type}
+                onClose={() => {
+                  setShowHomeworkForm(false);
+                  setSelectedTicketForHomework(null);
+                  setSelectedAssignmentForHomework(null);
+                }}
+                onSave={async (homeworkItems, notes) => {
+                  try {
+                    // Update assignment with homework
+                    await updateAssignment(selectedAssignmentForHomework, {
+                      homework: {
+                        enabled: true,
+                        items: homeworkItems,
+                        notes: notes
+                      }
+                    });
+                    setShowHomeworkForm(false);
+                    setSelectedTicketForHomework(null);
+                    setSelectedAssignmentForHomework(null);
+                    setRefreshKey(prev => prev + 1);
+                    setSaveSuccess('Homework assigned successfully!');
+                    setTimeout(() => setSaveSuccess(null), 3000);
+                  } catch (error) {
+                    console.error('Error assigning homework:', error);
+                    setSaveError('Failed to assign homework. Please try again.');
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
