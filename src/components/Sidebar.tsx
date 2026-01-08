@@ -10,9 +10,10 @@ interface SidebarProps {
   isMobileOpen?: boolean;
   onMobileToggle?: () => void;
   onHelpClick?: () => void;
+  onTeacherStudentAssignmentClick?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle, onHelpClick }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle, onHelpClick, onTeacherStudentAssignmentClick }) => {
   const { user } = useAuth();
   const { admins } = useData();
   
@@ -51,6 +52,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
     // Add Teachers if admin has permission
     if (user?.role !== 'admin' || adminPermissions?.canManageTeachers) {
       items.push({ id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' });
+    }
+    
+    // Add Teacher-Student Assignment for super admin only
+    if (user?.role === 'superadmin') {
+      items.push({ id: 'teacher-student-assignment', icon: '👥', label: 'Teacher-Student Assignment', badge: null, isLink: false });
     }
     
     // Add Assignments if admin has permission
@@ -198,8 +204,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
               ) : (
                 <button
                   onClick={() => {
-                    onSectionChange(item.id);
-                    setIsMobileOpen(false);
+                    if (item.id === 'teacher-student-assignment' && onTeacherStudentAssignmentClick) {
+                      onTeacherStudentAssignmentClick();
+                      setIsMobileOpen(false);
+                    } else {
+                      onSectionChange(item.id);
+                      setIsMobileOpen(false);
+                    }
                   }}
                   className={`w-full flex items-center justify-between p-3 rounded-lg transition-all font-medium ${
                     activeSection === item.id

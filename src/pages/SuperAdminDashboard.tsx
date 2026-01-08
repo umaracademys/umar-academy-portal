@@ -58,6 +58,7 @@ const ApprovedTicketsAdmin = lazy(() => import('../components/ApprovedTicketsAdm
 const SuperAdminProfile = lazy(() => import('../components/SuperAdminProfile'));
 const HelpAndSupport = lazy(() => import('../components/HelpAndSupport'));
 const LockedAccountsManager = lazy(() => import('../components/LockedAccountsManager'));
+const TeacherStudentAssignmentManager = lazy(() => import('../components/TeacherStudentAssignmentManager'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -155,6 +156,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherAnalytics, setShowTeacherAnalytics] = useState(false);
   const [showTeacherBulkOperations, setShowTeacherBulkOperations] = useState(false);
   const [showRecitationReview, setShowRecitationReview] = useState(false);
+  const [showTeacherStudentAssignment, setShowTeacherStudentAssignment] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
@@ -1428,6 +1430,7 @@ const SuperAdminDashboard: React.FC = () => {
         onSectionChange={setActiveSection}
         isMobileOpen={isSidebarOpen}
         onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+        onTeacherStudentAssignmentClick={() => setShowTeacherStudentAssignment(true)}
       />
       
       {/* Main Content */}
@@ -1923,6 +1926,35 @@ const SuperAdminDashboard: React.FC = () => {
           />
         </Suspense>
       )}
+
+      {/* Teacher-Student Assignment Manager - Full Page (No Sidebar) */}
+      {showTeacherStudentAssignment ? (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <TeacherStudentAssignmentManager
+            onClose={() => setShowTeacherStudentAssignment(false)}
+          />
+        </Suspense>
+      ) : (
+        <>
+          {/* Sidebar */}
+          <Sidebar 
+            activeSection={activeSection} 
+            onSectionChange={setActiveSection}
+            isMobileOpen={isSidebarOpen}
+            onMobileToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+            onTeacherStudentAssignmentClick={() => setShowTeacherStudentAssignment(true)}
+          />
+          
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+            <Header 
+              onNotificationClick={() => setShowNotificationCenter(true)}
+              onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            />
+            
+            {/* Content Area */}
+            <main className="flex-1 overflow-y-auto">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
       {isDevelopment && DebugPanel && (
         <Suspense fallback={null}>
