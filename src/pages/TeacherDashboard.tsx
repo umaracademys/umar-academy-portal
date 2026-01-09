@@ -353,6 +353,28 @@ const TeacherDashboard: React.FC = () => {
     });
   }, [recitationTickets, currentTeacher, assignments]);
 
+  // Get all approved tickets (sent_to_assignment) assigned to this teacher
+  const allApprovedTickets = useMemo(() => {
+    if (!currentTeacher?.id) return [];
+    
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    const teacherIdStr = teacherDocId.toString();
+    
+    return recitationTickets.filter(ticket => {
+      // Check if ticket is approved and assigned to this teacher
+      const isAssignedToTeacher = ticket.assignedTeacherId === teacherIdStr || 
+                                   String(ticket.assignedTeacherId) === teacherIdStr ||
+                                   ticket.assignedTeacherId === currentTeacher.id ||
+                                   String(ticket.assignedTeacherId) === String(currentTeacher.id);
+      
+      return ticket.status === 'sent_to_assignment' && isAssignedToTeacher;
+    }).sort((a, b) => {
+      const dateA = a.sentAt ? new Date(a.sentAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const dateB = b.sentAt ? new Date(b.sentAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      return dateB - dateA; // Most recent first
+    });
+  }, [recitationTickets, currentTeacher]);
+
   const permissions = (currentTeacher?.permissions) || {
     canViewAssessments: true,
     canEditAssessments: true,
