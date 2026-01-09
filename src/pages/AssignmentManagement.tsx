@@ -293,8 +293,13 @@ const AssignmentManagement: React.FC = () => {
         throw new Error(error.error || 'Failed to save homework');
       }
 
-      // Refresh data
-      await refreshData();
+      // Refresh assignments only (faster than full refreshData)
+      // Use refreshDataLight which only refreshes assignments, tickets, notifications
+      if (refreshDataLight) {
+        await refreshDataLight();
+      } else {
+        await refreshData();
+      }
     } catch (error) {
       console.error('Error saving homework:', error);
       throw error;
@@ -768,8 +773,15 @@ const AssignmentManagement: React.FC = () => {
             }
           }}
           onSave={async () => {
-            // Refresh data and wait for it to complete
-            await refreshData();
+            // Refresh assignments only (faster than full refreshData)
+            // refreshData() loads ALL data (users, teachers, students, assignments, tickets, notifications, reviews)
+            // For assignments page, we only need assignments to refresh
+            // Use refreshDataLight which only refreshes assignments, tickets, notifications (much faster)
+            if (refreshDataLight) {
+              await refreshDataLight();
+            } else {
+              await refreshData();
+            }
             setShowAssignmentForm(false);
             setEditingAssignment(null);
             setPrefillTicket(null);
