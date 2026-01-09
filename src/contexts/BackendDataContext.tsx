@@ -299,20 +299,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     needsNotifications: boolean;
     needsReviews: boolean;
   } => {
+    // Normalize pathname (remove trailing slash, query params, hash)
+    const normalizedPath = pathname.split('?')[0].split('#')[0].replace(/\/$/, '') || '/';
+    const isDashboard = normalizedPath === '/dashboard';
+    
     // Pages that need assignments (assignment management, student assignments, dashboards)
     const needsAssignments = 
-      pathname.includes('/assignments') ||
-      pathname.includes('/student/assignments') ||
-      pathname === '/dashboard';
+      normalizedPath.includes('/assignments') ||
+      normalizedPath.includes('/student/assignments') ||
+      isDashboard;
     
     // Pages that need tickets (dashboards only for now)
-    const needsTickets = pathname === '/dashboard';
+    const needsTickets = isDashboard;
     
     // Pages that need notifications (dashboards only)
-    const needsNotifications = pathname === '/dashboard';
+    const needsNotifications = isDashboard;
     
     // Pages that need reviews (dashboards only)
-    const needsReviews = pathname === '/dashboard';
+    const needsReviews = isDashboard;
     
     return { needsAssignments, needsTickets, needsNotifications, needsReviews };
   };
