@@ -5398,6 +5398,72 @@ app.put('/api/recitation-reviews/:id', async (req, res) => {
   }
 });
 
+// Convert recitation review to assignment
+app.post('/api/recitation-reviews/:reviewId/convert-to-assignment', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is Admin or Super Admin
+    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
+      return res.status(403).json({ error: 'Access denied. Only Admin or Super Admin can convert reviews to assignments.' });
+    }
+
+    // Find RecitationReview by reviewId
+    const review = await RecitationReview.findById(req.params.reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Recitation review not found' });
+    }
+
+    // Prevent double conversion - check if convertedToAssignmentId exists
+    if (review.convertedToAssignmentId) {
+      return res.status(400).json({ error: 'This review has already been converted to an assignment' });
+    }
+
+    // Get user info for assignment
+    const assignedBy = req.user.userId || req.user.id;
+    const assignedByName = req.user.name || req.user.email || 'Admin';
+    const assignedByRole = req.user.role === 'superadmin' ? 'super_admin' : 'admin';
+
+    // Create a new Assignment
+    const assignment = new Assignment({
+      studentId: review.studentId,
+      studentName: review.studentName,
+      assignedBy: assignedBy,
+      assignedByName: assignedByName,
+      assignedByRole: assignedByRole,
+      program: review.program,
+      comment: review.notes || '',
+      fromRecitationReviewId: review._id.toString(),
+      status: 'active',
+      homework: {
+        enabled: false,
+        content: '',
+        link: ''
+      },
+      classwork: {
+        sabq: [],
+        sabqi: [],
+        manzil: []
+      }
+    });
+
+    // Save assignment
+    await assignment.save();
+
+    // Update RecitationReview
+    review.status = 'converted_to_assignment';
+    review.convertedToAssignmentId = assignment._id.toString();
+    await review.save();
+
+    // Return full assignment object
+    res.json({
+      ...assignment.toObject(),
+      id: assignment._id.toString()
+    });
+  } catch (error) {
+    console.error('❌ Error converting recitation review to assignment:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Assignment Routes
 // Get all assignments (with optional filters)
 app.get('/api/assignments', async (req, res) => {
