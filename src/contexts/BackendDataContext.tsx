@@ -351,7 +351,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   // Load data from backend API - wrapped in useCallback to prevent recreation
-  const loadData = useCallback(async () => {
+  // OPTIMIZED: Progressive loading with caching for faster initial render
+  const loadData = useCallback(async (useCache = true) => {
     // Prevent concurrent calls
     if (isLoadingRef.current) {
       if (import.meta.env.DEV) {
@@ -360,86 +361,106 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       return;
     }
     
-    // Set a maximum timeout for the entire data loading process (30 seconds)
-    const maxTimeout = setTimeout(() => {
-      if (isLoadingRef.current) {
-        console.warn('⚠️ Data loading timed out after 30 seconds, setting loading to false');
-        setLoading(false);
-        isLoadingRef.current = false;
-        setError('Data loading timed out. Please refresh the page.');
-      }
-    }, 30000);
+    const startTime = Date.now();
     
     try {
       isLoadingRef.current = true;
-      setLoading(true);
       setError(null);
-      setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
+      
+      // PHASE 1: Load critical data first (users, teachers, students) - show UI immediately
+      setLoadingStep('Loading essential data...');
       if (import.meta.env.DEV) {
-        console.log('🔄 Loading data from backend...', new Date().toISOString());
+        console.log('🚀 Phase 1: Loading critical data...', new Date().toISOString());
       }
 
-      // Load users from backend with timeout (no auth required for backward compatibility)
-      // Reduced timeout to 5 seconds for faster loading
-      setLoadingStep('Loading users...');
-      const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 5000, false);
-      if (import.meta.env.DEV) {
-        console.log('📡 Backend response status:', usersResponse.status);
-      }
-      
-      if (!usersResponse.ok) {
-        throw new Error(`Failed to fetch users: ${usersResponse.status}`);
-      }
-      const users = await usersResponse.json();
-      if (import.meta.env.DEV) {
-        console.log('👥 Users loaded from backend:', users.length);
+      // Try to load from cache first for instant UI
+      const cachedUsers = useCache ? dataCache.get<any[]>('users') : null;
+      const cachedTeachers = useCache ? dataCache.get<any[]>('teachers') : null;
+      const cachedStudents = useCache ? dataCache.get<any[]>('students') : null;
+
+      let users: any[] = [];
+      let teacherRecords: any[] = [];
+      let studentRecords: any[] = [];
+
+      // Load users - check cache first
+      if (cachedUsers) {
+        console.log('⚡ Using cached users');
+        users = cachedUsers;
+      } else {
+        setLoadingStep('Loading users...');
+        const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 5000, false);
+        if (import.meta.env.DEV) {
+          console.log('📡 Backend response status:', usersResponse.status);
+        }
+        
+        if (!usersResponse.ok) {
+          throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+        }
+        users = await usersResponse.json();
+        if (import.meta.env.DEV) {
+          console.log('👥 Users loaded from backend:', users.length);
+        }
+        // Cache users for next time
+        dataCache.set('users', users);
       }
 
       // Load teachers and students in parallel for faster loading (NO SYNC on initial load)
       setLoadingStep('Loading teachers and students...');
-      const [teachersResponse, studentsResponse] = await Promise.allSettled([
-        fetchWithTimeout(`${API_BASE}/teachers`, {}, 8000), // No sync on initial load - much faster
-        fetchWithTimeout(`${API_BASE}/students`, {}, 8000)
-      ]);
+      
+      // Check cache for teachers and students
+      if (cachedTeachers && cachedStudents) {
+        console.log('⚡ Using cached teachers and students');
+        teacherRecords = cachedTeachers;
+        studentRecords = cachedStudents;
+      } else {
+        const [teachersResponse, studentsResponse] = await Promise.allSettled([
+          fetchWithTimeout(`${API_BASE}/teachers`, {}, 8000), // No sync on initial load - much faster
+          fetchWithTimeout(`${API_BASE}/students`, {}, 8000)
+        ]);
 
-      // Process teachers
-      let teacherRecords: any[] = [];
-      if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
-        try {
-          teacherRecords = await teachersResponse.value.json();
-          if (import.meta.env.DEV) {
-            console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
-          }
-          // Merge teacher data with user data
-          teacherRecords.forEach((teacher: any) => {
-            const user = users.find((u: any) => 
-              u._id === teacher.userId?._id || 
-              u._id === teacher.userId ||
-              (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
-            );
-            if (user) {
-              user.teacherProfile = teacher;
+        // Process teachers
+        if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
+          try {
+            teacherRecords = await teachersResponse.value.json();
+            if (import.meta.env.DEV) {
+              console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
             }
-          });
-        } catch (err) {
-          console.error('❌ Error processing teachers:', err);
-        }
-      }
-
-      // Process students - store the data for later use
-      let studentRecords: any[] = [];
-      if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
-        try {
-          studentRecords = await studentsResponse.value.json();
-          if (import.meta.env.DEV) {
-            console.log('👨‍🎓 Students loaded:', studentRecords.length);
+            // Cache teachers
+            dataCache.set('teachers', teacherRecords);
+            // Merge teacher data with user data
+            teacherRecords.forEach((teacher: any) => {
+              const user = users.find((u: any) => 
+                u._id === teacher.userId?._id || 
+                u._id === teacher.userId ||
+                (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
+              );
+              if (user) {
+                user.teacherProfile = teacher;
+              }
+            });
+          } catch (err) {
+            console.error('❌ Error processing teachers:', err);
           }
-          // Don't set students here - we'll process them later with full data mapping
-        } catch (err) {
-          console.error('❌ Error processing students:', err);
-          studentRecords = [];
+        }
+
+        // Process students - store the data for later use
+        if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
+          try {
+            studentRecords = await studentsResponse.value.json();
+            if (import.meta.env.DEV) {
+              console.log('👨‍🎓 Students loaded:', studentRecords.length);
+            }
+            // Cache students
+            dataCache.set('students', studentRecords);
+          } catch (err) {
+            console.error('❌ Error processing students:', err);
+            studentRecords = [];
+          }
         }
       }
+      
+      // PHASE 1 COMPLETE - Critical data loaded, can show UI now
+      // Continue processing students/teachers below, but UI is no longer blocked
 
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
       // Increased timeout to 8 seconds for assignments and tickets to reduce timeout errors
@@ -1105,8 +1126,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setAdmins(finalAdminsData);
       
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
+      // Cache assignments and tickets for faster subsequent loads
+      if (assignments.length > 0) {
+        dataCache.set('assignments', assignments);
+      }
+      if (tickets.length > 0) {
+        dataCache.set('tickets', tickets);
+      }
+      
       if (import.meta.env.DEV) {
-        console.log('✅ All data loaded successfully');
+        const loadTime = Date.now() - startTime;
+        console.log(`✅ All data loaded successfully in ${loadTime}ms`);
       }
 
     } catch (err) {
