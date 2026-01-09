@@ -249,10 +249,24 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         // Don't fail the whole operation if sync fails
       }
 
+      // Clear cache to force fresh data load
+      try {
+        const { dataCache } = await import('../utils/dataCache');
+        dataCache.clear();
+        console.log('🗑️ Cache cleared');
+      } catch (cacheError) {
+        console.warn('⚠️ Could not clear cache:', cacheError);
+      }
+
       // Refresh data to ensure UI updates (this will reload teachers with updated assignedStudents)
       if (refreshData) {
+        console.log('🔄 Refreshing data after assignment update...');
         await refreshData();
+        console.log('✅ Data refreshed');
       }
+
+      // Wait a moment for state to update
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       alert(`✅ Successfully updated student assignments for ${selectedTeacher.fullName}`);
     } catch (error) {
