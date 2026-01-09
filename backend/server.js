@@ -7043,11 +7043,6 @@ app.post('/api/admin-notifications', async (req, res) => {
 // PUBLIC REGISTRATION ENDPOINT (No Auth Required)
 // ============================================
 app.post('/api/public/student-registration', async (req, res) => {
-
-// ============================================
-// PUBLIC REGISTRATION ENDPOINT (No Auth Required)
-// ============================================
-app.post('/api/public/student-registration', async (req, res) => {
   try {
     const registrationData = req.body;
 
