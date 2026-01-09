@@ -77,14 +77,17 @@ const TeacherDashboard: React.FC = () => {
 
   const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
   const assignedStudents = useMemo(() => {
-    if (!currentTeacher?.id) {
+    if (!currentTeacher) {
       console.log('⚠️ No current teacher found, returning empty assigned students');
       return [];
     }
-    const students = getStudentsByTeacher(currentTeacher.id);
-    console.log('✅ Assigned students for teacher:', currentTeacher.fullName, '- Count:', students.length);
+    // Use Teacher Document ID (_id or teacherDocumentId) instead of User ID (id)
+    // Students are assigned using Teacher Document IDs in assignedTeacherIds array
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    const students = getStudentsByTeacher(teacherDocId);
+    console.log('✅ Assigned students for teacher:', currentTeacher.fullName, '- Count:', students.length, '- Teacher Doc ID:', teacherDocId);
     return students;
-  }, [currentTeacher?.id, currentTeacher?.fullName, getStudentsByTeacher]);
+  }, [currentTeacher, getStudentsByTeacher]);
   
   // Get pair partner teacher
   const pairPartner = useMemo(() => {
