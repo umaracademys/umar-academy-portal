@@ -6240,18 +6240,38 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
       });
       
       // Check permission directly from teacher object (we already have it)
-      // Default to true for canCreateTickets unless explicitly false
+      // Teachers can create tickets by default - only block if explicitly set to false
       const permissions = teacher.permissions || {};
-      const canCreateTickets = permissions.canCreateTickets !== false; // Default to true unless explicitly false
+      // Explicitly default to true: if canCreateTickets is undefined/null/not set, allow it
+      // Only block if explicitly set to false
+      const canCreateTickets = permissions.canCreateTickets === undefined || 
+                               permissions.canCreateTickets === null || 
+                               permissions.canCreateTickets === true ||
+                               permissions.canCreateTickets !== false; // Default to true unless explicitly false
+      
+      console.log('🔍 Teacher permission check:', {
+        teacherId: teacher._id,
+        teacherName: teacher.fullName,
+        email: teacher.email,
+        hasPermissions: !!teacher.permissions,
+        permissions: JSON.stringify(permissions),
+        canCreateTicketsValue: permissions.canCreateTickets,
+        canCreateTicketsType: typeof permissions.canCreateTickets,
+        finalCanCreateTickets: canCreateTickets
+      });
       
       if (!canCreateTickets) {
         console.log('❌ Teacher does not have canCreateTickets permission:', {
           teacherId: teacher._id,
           teacherName: teacher.fullName,
-          permissions: permissions
+          email: teacher.email,
+          permissions: JSON.stringify(permissions),
+          canCreateTickets: permissions.canCreateTickets
         });
         return res.status(403).json({ error: 'You do not have permission to create tickets' });
       }
+      
+      console.log('✅ Teacher has permission to create tickets');
       
       // Validate student is assigned to this teacher
       const studentId = req.body.studentId;
