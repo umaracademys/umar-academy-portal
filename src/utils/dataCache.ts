@@ -1,6 +1,10 @@
 /**
  * Data caching utility for faster initial loads
  * Uses localStorage with timestamps to cache API responses
+ * 
+ * This module provides caching functionality to speed up data loading
+ * by storing API responses locally and serving cached data immediately
+ * while fresh data loads in the background.
  */
 
 const CACHE_PREFIX = 'umar_academy_cache_';
