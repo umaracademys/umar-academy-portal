@@ -6242,12 +6242,9 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
       // Check permission directly from teacher object (we already have it)
       // Teachers can create tickets by default - only block if explicitly set to false
       const permissions = teacher.permissions || {};
-      // Explicitly default to true: if canCreateTickets is undefined/null/not set, allow it
+      // Default to true: if canCreateTickets is undefined/null/not set, allow it
       // Only block if explicitly set to false
-      const canCreateTickets = permissions.canCreateTickets === undefined || 
-                               permissions.canCreateTickets === null || 
-                               permissions.canCreateTickets === true ||
-                               permissions.canCreateTickets !== false; // Default to true unless explicitly false
+      const canCreateTickets = permissions.canCreateTickets !== false; // Default to true unless explicitly false
       
       console.log('🔍 Teacher permission check:', {
         teacherId: teacher._id,
