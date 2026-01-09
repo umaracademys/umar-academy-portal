@@ -42,6 +42,18 @@ const ParentRegistrationForm: React.FC = () => {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
+  const getApiBase = () => {
+    const raw =
+      import.meta.env.VITE_API_BASE_URL ||
+      // Backward compatibility: older codepaths used VITE_API_BASE
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (import.meta.env as any).VITE_API_BASE ||
+      'http://localhost:3001/api';
+
+    const trimmed = String(raw).replace(/\/+$/, '');
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -63,8 +75,9 @@ const ParentRegistrationForm: React.FC = () => {
     setSubmitStatus('idle');
 
     try {
+      const API_BASE = getApiBase();
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE || 'http://localhost:3001/api'}/public/student-registration`,
+        `${API_BASE}/public/student-registration`,
         {
           method: 'POST',
           headers: {
