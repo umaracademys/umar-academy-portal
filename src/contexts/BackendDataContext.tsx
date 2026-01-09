@@ -23,6 +23,7 @@ import { MushafMistake } from '@umar-academy/mushaf';
 import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../utils/dataMasking';
 import { dataCache } from '../utils/dataCache';
 import { useAuth } from './AuthContext';
+import { useLocation } from 'react-router-dom';
 
 interface BackendDataContextType {
   students: Student[];
@@ -288,6 +289,33 @@ const normalizeId = (id: any): string => {
 
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user: currentUser } = useAuth(); // Get current user from AuthContext
+  const location = useLocation();
+  
+  // Route-based data requirements - only load what each page needs
+  // This dramatically improves performance by skipping unnecessary API calls
+  const getRequiredData = (pathname: string): {
+    needsAssignments: boolean;
+    needsTickets: boolean;
+    needsNotifications: boolean;
+    needsReviews: boolean;
+  } => {
+    // Pages that need assignments (assignment management, student assignments, dashboards)
+    const needsAssignments = 
+      pathname.includes('/assignments') ||
+      pathname.includes('/student/assignments') ||
+      pathname === '/dashboard';
+    
+    // Pages that need tickets (dashboards only for now)
+    const needsTickets = pathname === '/dashboard';
+    
+    // Pages that need notifications (dashboards only)
+    const needsNotifications = pathname === '/dashboard';
+    
+    // Pages that need reviews (dashboards only)
+    const needsReviews = pathname === '/dashboard';
+    
+    return { needsAssignments, needsTickets, needsNotifications, needsReviews };
+  };
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -475,13 +503,25 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // PHASE 1 COMPLETE - Critical data loaded, can show UI now
       // Continue processing students/teachers below, but UI is no longer blocked
 
-      // Load assignments, reviews, notifications, and tickets in parallel for faster loading
-      // OPTIMIZED: Check cache first for assignments - skip fetch if cached (much faster)
+      // ROUTE-BASED SELECTIVE LOADING: Only load data needed for current page
+      // This dramatically improves performance by skipping unnecessary API calls
+      const { needsAssignments, needsTickets, needsNotifications, needsReviews } = getRequiredData(location.pathname);
+      
+      if (import.meta.env.DEV) {
+        console.log('🎯 Route-based data loading:', {
+          pathname: location.pathname,
+          needsAssignments,
+          needsTickets,
+          needsNotifications,
+          needsReviews
+        });
+      }
+      
       setLoadingStep('Loading additional data...');
       
-      // Check cache first for assignments - use cached if available (instant, no API call)
+      // OPTIMIZED: Check cache first for assignments - skip fetch if cached (much faster)
       const cachedAssignments = useCache ? dataCache.get<any[]>('assignments') : null;
-      if (cachedAssignments && cachedAssignments.length > 0) {
+      if (cachedAssignments && cachedAssignments.length > 0 && needsAssignments) {
         console.log('⚡ Using cached assignments:', cachedAssignments.length, '- skipping API call');
         const mappedAssignments = cachedAssignments.map((assignment: any) => ({
           ...assignment,
@@ -493,20 +533,32 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setAssignments(mappedAssignments);
       }
 
-      // Only fetch assignments if cache expired/missing (non-blocking)
-      // Increased timeout for assignments to handle Render cold starts (can take 30-60 seconds)
-      const assignmentsPromise = cachedAssignments 
-        ? Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any })
-        : fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
+      // Only fetch data that's needed for current route
+      // Skip unnecessary API calls for better performance
+      const assignmentsPromise = needsAssignments && !cachedAssignments
+        ? fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
-          });
+          })
+        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+      
+      const reviewsPromise = needsReviews
+        ? fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any))
+        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+      
+      const notificationsPromise = needsNotifications
+        ? fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any))
+        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+      
+      const ticketsPromise = needsTickets
+        ? fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => ({ ok: false, json: async () => [] } as any))
+        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
 
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
         assignmentsPromise,
-        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any)),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any)),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => ({ ok: false, json: async () => [] } as any))
+        reviewsPromise,
+        notificationsPromise,
+        ticketsPromise
       ]);
 
       // Process assignments
