@@ -142,11 +142,19 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
       // Update ALL students, not just filtered ones, to ensure we catch all changes
       const updatePromises = students.map(async (student) => {
-        const studentId = student.id || (student as any)._id || '';
+        // Use studentRecordId (Student document ID) for backend API, fallback to id/_id
+        const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
         if (!studentId) {
           console.warn('⚠️ Student missing ID:', student);
           return;
         }
+        
+        console.log(`🔍 Updating student ${student.fullName}:`, {
+          studentRecordId: (student as any).studentRecordId,
+          userId: student.id,
+          _id: (student as any)._id,
+          usingId: studentId
+        });
 
         const currentAssignedTeachers = (student as any).assignedTeachers || [];
         const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
