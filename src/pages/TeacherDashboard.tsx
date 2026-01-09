@@ -28,7 +28,7 @@ import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
-  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment, deleteTicket } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -852,7 +852,26 @@ const TeacherDashboard: React.FC = () => {
                               Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'} at {ticket.createdAt ? new Date(ticket.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
                             </p>
                           </div>
-                          <div className="flex items-center flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (confirm(`Are you sure you want to delete this ticket for ${ticket.studentName}?`)) {
+                                  try {
+                                    await deleteTicket(ticket.id);
+                                    setRefreshKey(prev => prev + 1);
+                                    refreshData();
+                                  } catch (error) {
+                                    console.error('Error deleting ticket:', error);
+                                    alert('Failed to delete ticket: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                                  }
+                                }
+                              }}
+                              className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl whitespace-nowrap"
+                              title="Delete ticket"
+                            >
+                              🗑️ Delete
+                            </button>
                             <div className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl whitespace-nowrap group-hover:scale-105">
                               {ticket.status === 'pending' || ticket.status === 'reassigned' 
                                 ? 'Start Review' 

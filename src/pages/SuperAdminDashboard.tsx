@@ -38,6 +38,7 @@ const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')
 const AdminRecitationReview = lazy(() => import('../components/AdminRecitationReview'));
 const StudentReports = lazy(() => import('../components/StudentReports'));
 const AdminTicketReview = lazy(() => import('../components/AdminTicketReview'));
+const ActiveTicketsManagement = lazy(() => import('../components/ActiveTicketsManagement'));
 const AdminNotificationCenter = lazy(() => import('../components/AdminNotificationCenter'));
 const ActivityLog = lazy(() => import('../components/ActivityLog'));
 const EmailModule = lazy(() => import('../components/EmailModule'));
@@ -85,7 +86,7 @@ const SuperAdminDashboard: React.FC = () => {
     deleteTeacher,
   } = useData();
 
-  const { getPendingReviewTickets, recitationTickets, assignments, fixMissingAssignmentIds, loadingStep } = useBackendData();
+  const { getPendingReviewTickets, recitationTickets, assignments, fixMissingAssignmentIds, loadingStep, deleteTicket, updateRecitationTicket } = useBackendData();
 
   // Track tickets with missing assignment IDs
   const [ticketsWithMissingIds, setTicketsWithMissingIds] = useState<number>(0);
@@ -306,6 +307,13 @@ const SuperAdminDashboard: React.FC = () => {
       emphasis: 'accent' as const,
     },
     {
+      id: 'active-tickets-management',
+      label: 'Active Tickets Management',
+      description: 'View, edit, and delete all active tickets.',
+      onClick: () => setShowActiveTicketsManagement(true),
+      emphasis: 'primary' as const,
+    },
+    {
       id: 'manage-assignments',
       label: 'Manage Assignments',
       description: 'Create and manage assignments with multi-phase classwork.',
@@ -313,7 +321,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: pendingHomeworkCount,
       emphasis: 'primary' as const,
     },
-  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations, setShowApprovedEvaluations, setShowApprovedTickets, setShowSuperAdminProfile]);
+  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations, setShowApprovedEvaluations, setShowApprovedTickets, setShowActiveTicketsManagement, setShowSuperAdminProfile]);
 
   const [showMoreActions, setShowMoreActions] = useState(false);
   
@@ -1934,6 +1942,15 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <LockedAccountsManager
             onClose={() => setShowLockedAccounts(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Active Tickets Management Modal */}
+      {showActiveTicketsManagement && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <ActiveTicketsManagement
+            onClose={() => setShowActiveTicketsManagement(false)}
           />
         </Suspense>
       )}
