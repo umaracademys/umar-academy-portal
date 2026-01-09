@@ -1125,7 +1125,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setTeachers(finalTeachersData);
       setAdmins(finalAdminsData);
       
+      // PHASE 1 COMPLETE - Critical data loaded! Show UI immediately
+      // Set loading to false NOW so dashboard can render
+      // Phase 2 data (assignments, tickets) will continue loading in background
+      setLoading(false);
+      isLoadingRef.current = false; // Allow background loading to continue
+      
+      if (import.meta.env.DEV) {
+        const phase1Time = Date.now() - startTime;
+        console.log(`⚡ Phase 1 complete - UI rendering now! (${phase1Time}ms)`);
+        console.log('🔄 Phase 2: Loading assignments, tickets, notifications in background...');
+      }
+      
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
+      
       // Cache assignments and tickets for faster subsequent loads
       if (assignments.length > 0) {
         dataCache.set('assignments', assignments);
@@ -1135,8 +1148,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       if (import.meta.env.DEV) {
-        const loadTime = Date.now() - startTime;
-        console.log(`✅ All data loaded successfully in ${loadTime}ms`);
+        const totalTime = Date.now() - startTime;
+        console.log(`✅ All data loaded successfully in ${totalTime}ms`);
       }
 
     } catch (err) {
