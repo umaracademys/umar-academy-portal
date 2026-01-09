@@ -268,8 +268,17 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                         };
                         
                         return (
-                          <div key={itemIdx} className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1">
-                            <span className="font-medium text-primary capitalize">{item.type}:</span> {getRangeText()}
+                          <div key={itemIdx} className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1 mb-1">
+                            <div className="flex items-start gap-2">
+                              <span className="font-medium text-primary capitalize">{item.type}:</span>
+                              <span>{getRangeText()}</span>
+                            </div>
+                            {item.content && item.content.trim() && (
+                              <div className="mt-1 pt-1 border-t border-slate-200">
+                                <span className="text-slate-500 italic text-[10px]">Instructions: </span>
+                                <span className="text-slate-600">{item.content}</span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
