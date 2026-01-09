@@ -4,10 +4,15 @@
 
 Your backend service requires these environment variables to be set in Render:
 
-### 1. JWT_SECRET (Required)
+### 1. JWT_SECRET (Required) ⚠️ CURRENTLY MISSING
 A secure random string used to sign JWT tokens. 
 
-**How to generate:**
+**Generated Secret (Ready to Use):**
+```
+4qEy82CMuJ1yhM0wcgE7gkYGQpNMwnR3WfudA30VuVI=
+```
+
+**How to generate (if you need a new one):**
 ```bash
 openssl rand -base64 32
 ```
@@ -18,9 +23,13 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
 **Set in Render:**
-- Go to Render Dashboard → Your Backend Service
-- Click "Environment" tab
-- Add or update: `JWT_SECRET` = (generated value)
+1. Go to Render Dashboard → Your Backend Service
+2. Click "Environment" tab
+3. Click "Add Environment Variable"
+4. Key: `JWT_SECRET`
+5. Value: `4qEy82CMuJ1yhM0wcgE7gkYGQpNMwnR3WfudA30VuVI=`
+6. Click "Save Changes"
+7. Wait for auto-redeploy (2-5 minutes)
 
 ### 2. MONGODB_URI (Required)
 Your MongoDB connection string.
