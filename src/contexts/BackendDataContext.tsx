@@ -1408,6 +1408,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...getAuthHeaders(), // Add authentication headers
         },
         body: JSON.stringify(student),
       });
@@ -1418,6 +1419,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
+            ...getAuthHeaders(), // Add authentication headers
           },
           body: JSON.stringify(student),
         });

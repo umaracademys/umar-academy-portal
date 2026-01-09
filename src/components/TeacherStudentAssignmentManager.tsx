@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useData } from '../contexts/DataContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 import { Student, Teacher } from '../types';
 import Card from './Card';
 
@@ -8,7 +8,7 @@ interface TeacherStudentAssignmentManagerProps {
 }
 
 const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerProps> = ({ onClose }) => {
-  const { teachers, students, updateStudent, refreshData, getStudentsByTeacher } = useData();
+  const { teachers, students, updateStudent, refreshData, getStudentsByTeacher } = useBackendData();
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
@@ -131,10 +131,20 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       const teacherDocId = (selectedTeacher as any)._id || (selectedTeacher as any).teacherDocumentId || selectedTeacher.id;
       const selectedIdsArray = Array.from(selectedStudentIds);
 
-      // Update each student's assignedTeachers array
-      const updatePromises = filteredStudents.map(async (student) => {
+      console.log('💾 Saving teacher-student assignments:', {
+        teacherId: teacherDocId,
+        teacherName: selectedTeacher.fullName,
+        selectedStudentIds: selectedIdsArray.length,
+        totalStudents: students.length
+      });
+
+      // Update ALL students, not just filtered ones, to ensure we catch all changes
+      const updatePromises = students.map(async (student) => {
         const studentId = student.id || (student as any)._id || '';
-        if (!studentId) return;
+        if (!studentId) {
+          console.warn('⚠️ Student missing ID:', student);
+          return;
+        }
 
         const currentAssignedTeachers = (student as any).assignedTeachers || [];
         const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
@@ -152,23 +162,37 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
             // Add teacher if not already present
             updatedTeachers = [...new Set([...currentAssignedTeachers, teacherDocId])];
             updatedTeacherIds = [...new Set([...currentAssignedTeacherIds, teacherDocId])];
+            console.log(`➕ Adding teacher ${selectedTeacher.fullName} to student ${student.fullName}`);
           } else {
             // Remove teacher
             updatedTeachers = currentAssignedTeachers.filter((id: string) => id !== teacherDocId);
             updatedTeacherIds = currentAssignedTeacherIds.filter((id: string) => id !== teacherDocId);
+            console.log(`➖ Removing teacher ${selectedTeacher.fullName} from student ${student.fullName}`);
           }
 
-          await updateStudent(studentId, {
-            assignedTeachers: updatedTeachers,
-            assignedTeacherIds: updatedTeacherIds,
-            // Keep legacy fields for backward compatibility
-            assignedTeacher: updatedTeachers.length > 0 ? updatedTeachers[0] : '',
-            assignedTeacherId: updatedTeacherIds.length > 0 ? updatedTeacherIds[0] : '',
-          });
+          try {
+            await updateStudent(studentId, {
+              assignedTeachers: updatedTeachers,
+              assignedTeacherIds: updatedTeacherIds,
+              // Keep legacy fields for backward compatibility
+              assignedTeacher: updatedTeachers.length > 0 ? updatedTeachers[0] : '',
+              assignedTeacherId: updatedTeacherIds.length > 0 ? updatedTeacherIds[0] : '',
+            });
+            console.log(`✅ Updated student ${student.fullName} (${studentId})`);
+          } catch (error) {
+            console.error(`❌ Failed to update student ${student.fullName} (${studentId}):`, error);
+            throw error; // Re-throw to stop the process
+          }
         }
       });
 
-      await Promise.all(updatePromises);
+      const results = await Promise.allSettled(updatePromises);
+      const failed = results.filter(r => r.status === 'rejected');
+      
+      if (failed.length > 0) {
+        console.error(`❌ ${failed.length} student updates failed:`, failed);
+        throw new Error(`${failed.length} student update(s) failed. Check console for details.`);
+      }
 
       // Trigger backend sync to update teacher's assignedStudents arrays
       try {
