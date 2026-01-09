@@ -445,7 +445,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Increased timeout to 8 seconds for assignments and tickets to reduce timeout errors
       setLoadingStep('Loading assignments, reviews, notifications, and tickets...');
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000).catch(() => ({ ok: false, json: async () => [] } as any)),
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000).catch((error) => {
+          console.error('❌ Failed to fetch assignments:', error);
+          return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
+        }),
         fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any)),
         fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any)),
         fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000).catch(() => ({ ok: false, json: async () => [] } as any))
@@ -455,35 +458,63 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok) {
         try {
           const assignmentsData = await assignmentsResponse.value.json();
-          if (import.meta.env.DEV) {
-            console.log('📝 Assignments loaded from backend:', assignmentsData.length);
+          console.log('📝 Assignments loaded from backend:', assignmentsData.length);
+          if (assignmentsData.length === 0) {
+            console.warn('⚠️ No assignments found in database. Check if assignments exist.');
           }
-          const mappedAssignments = assignmentsData.map((assignment: any) => ({
-            ...assignment,
-            id: assignment._id || assignment.id,
-            studentId: normalizeId(assignment.studentId), // Normalize studentId
-            createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
-            updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
-            completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
-          }));
-          setAssignments(mappedAssignments);
-          if (import.meta.env.DEV) {
-            console.log('✅ Mapped assignments:', mappedAssignments.length, 'assignments set');
-            if (mappedAssignments.length > 0) {
-              console.log('📝 Sample mapped assignment:', {
-                id: mappedAssignments[0].id,
-                studentId: mappedAssignments[0].studentId,
-                status: mappedAssignments[0].status,
-                sabqiCount: mappedAssignments[0].classwork?.sabqi?.length || 0,
-                fromTicketId: mappedAssignments[0].fromTicketId
+          const mappedAssignments = assignmentsData.map((assignment: any) => {
+            const normalizedStudentId = normalizeId(assignment.studentId);
+            if (!normalizedStudentId && import.meta.env.DEV) {
+              console.warn('⚠️ Assignment missing studentId:', {
+                assignmentId: assignment._id || assignment.id,
+                rawStudentId: assignment.studentId,
+                assignment: assignment
               });
             }
+            return {
+              ...assignment,
+              id: assignment._id || assignment.id,
+              studentId: normalizedStudentId, // Normalize studentId
+              createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+              updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+              completedAt: assignment.completedAt ? new Date(assignment.completedAt) : undefined
+            };
+          });
+          setAssignments(mappedAssignments);
+          console.log('✅ Mapped assignments:', mappedAssignments.length, 'assignments set');
+          if (mappedAssignments.length > 0) {
+            console.log('📝 Sample mapped assignment:', {
+              id: mappedAssignments[0].id,
+              studentId: mappedAssignments[0].studentId,
+              status: mappedAssignments[0].status,
+              sabqiCount: mappedAssignments[0].classwork?.sabqi?.length || 0,
+              fromTicketId: mappedAssignments[0].fromTicketId
+            });
           }
         } catch (err) {
           console.error('❌ Error processing assignments:', err);
           setAssignments([]);
         }
       } else {
+        // Log why assignments failed to load
+        if (assignmentsResponse.status === 'rejected') {
+          console.error('❌ Assignments API call rejected:', assignmentsResponse.reason);
+        } else if (assignmentsResponse.status === 'fulfilled') {
+          const response = assignmentsResponse.value;
+          console.error('❌ Assignments API call failed:', {
+            ok: response.ok,
+            status: response.status,
+            statusText: response.statusText,
+            url: `${API_BASE}/assignments`
+          });
+          // Try to get error message from response
+          try {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('❌ Assignments API error details:', errorData);
+          } catch (e) {
+            // Ignore JSON parse errors
+          }
+        }
         setAssignments([]);
       }
 
