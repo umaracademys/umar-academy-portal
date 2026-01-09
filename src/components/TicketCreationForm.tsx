@@ -17,7 +17,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   onSuccess,
   ticket: existingTicket
 }) => {
-  const { students, teachers, createTicket, updateRecitationTicket, getPreviousReports, assignments, getStudentAssignments, getStudentsByTeacher } = useBackendData();
+  const { students, teachers, createTicket, updateRecitationTicket, assignments, getStudentAssignments, getStudentsByTeacher } = useBackendData();
   const { user } = useAuth();
   const isEditMode = !!existingTicket;
   const isTeacher = user?.role === 'teacher';
@@ -27,11 +27,6 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   const [adminComment, setAdminComment] = useState(existingTicket?.adminComment || '');
   const [selectedTeacherId, setSelectedTeacherId] = useState(existingTicket?.assignedTeacherId || '');
   const [teacherNotes, setTeacherNotes] = useState(existingTicket?.teacherNotes || '');
-  const [previousReports, setPreviousReports] = useState<Ticket[]>([]);
-  const [showReminder, setShowReminder] = useState(false);
-  const [isLoadingReports, setIsLoadingReports] = useState(false);
-  const previousReportsKeyRef = React.useRef<string>('');
-
   // Get available students - for teachers, only show assigned students
   const availableStudents = React.useMemo(() => {
     if (isTeacher && user) {
@@ -46,19 +41,14 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
 
   const student = availableStudents.find(s => s.id === selectedStudentId);
 
-  // Get recent homework assignments (last 30 days for better history)
+  // Get recent homework assignments from latest date only
   const previousDayHomework = useMemo(() => {
     if (!studentId) return [];
     
     const studentAssignments = getStudentAssignments(studentId);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     
-    // Get assignments from last 30 days (more history)
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    return studentAssignments
+    // Filter assignments with homework
+    const assignmentsWithHomework = studentAssignments
       .filter((assignment: any) => {
         // Check if assignment has homework (either new format with items or legacy format with content)
         const hasNewFormatHomework = assignment.homework?.enabled && assignment.homework?.items?.length > 0;
@@ -67,18 +57,8 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         if (!hasNewFormatHomework && !hasLegacyHomework) return false;
         
         const assignmentDate = assignment.createdAt ? new Date(assignment.createdAt) : null;
-        if (!assignmentDate) return false;
-        
-        assignmentDate.setHours(0, 0, 0, 0);
-        // Include assignments from last 30 days (including today)
-        return assignmentDate.getTime() >= thirtyDaysAgo.getTime();
+        return assignmentDate !== null;
       })
-      .sort((a: any, b: any) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA; // Most recent first
-      })
-      .slice(0, 10) // Show max 10 recent assignments
       .map((assignment: any) => {
         const assignmentDate = assignment.createdAt ? new Date(assignment.createdAt) : null;
         const dateStr = assignmentDate ? assignmentDate.toLocaleDateString('en-US', { 
@@ -101,44 +81,32 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
           notes: assignment.homework?.notes || '',
           assignedBy: assignment.assignedByName || 'Unknown'
         };
+      })
+      .sort((a: any, b: any) => {
+        const dateA = a.fullDate ? a.fullDate.getTime() : 0;
+        const dateB = b.fullDate ? b.fullDate.getTime() : 0;
+        return dateB - dateA; // Most recent first
       });
+    
+    // If no assignments, return empty array
+    if (assignmentsWithHomework.length === 0) return [];
+    
+    // Get the latest date (first item after sorting)
+    const latestDate = assignmentsWithHomework[0].fullDate;
+    if (!latestDate) return [];
+    
+    // Normalize latest date to midnight for comparison
+    const latestDateNormalized = new Date(latestDate);
+    latestDateNormalized.setHours(0, 0, 0, 0);
+    
+    // Filter to only show homework from the latest date
+    return assignmentsWithHomework.filter((hw: any) => {
+      if (!hw.fullDate) return false;
+      const hwDateNormalized = new Date(hw.fullDate);
+      hwDateNormalized.setHours(0, 0, 0, 0);
+      return hwDateNormalized.getTime() === latestDateNormalized.getTime();
+    });
   }, [studentId, assignments, getStudentAssignments]);
-
-  // Load previous reports when sabqi or manzil is selected
-  useEffect(() => {
-    // Create a unique key for this combination
-    const reportsKey = `${selectedStudentId}-${ticketType}`;
-    
-    // Skip if we've already loaded reports for this combination
-    if (previousReportsKeyRef.current === reportsKey && previousReports.length > 0) {
-      return;
-    }
-    
-    if ((ticketType === 'sabqi' || ticketType === 'manzil') && selectedStudentId && !isLoadingReports) {
-      setIsLoadingReports(true);
-      previousReportsKeyRef.current = reportsKey;
-      
-      getPreviousReports(selectedStudentId, ticketType).then(reports => {
-        if (import.meta.env.DEV) {
-          console.log('📋 Previous reports found:', reports.length);
-        }
-        setPreviousReports(reports);
-        if (reports.length > 0) {
-          setShowReminder(true);
-        }
-        setIsLoadingReports(false);
-      }).catch(err => {
-        console.error('Error loading previous reports:', err);
-        setPreviousReports([]);
-        setShowReminder(false);
-        setIsLoadingReports(false);
-      });
-    } else if (ticketType !== 'sabqi' && ticketType !== 'manzil') {
-      setPreviousReports([]);
-      setShowReminder(false);
-      previousReportsKeyRef.current = '';
-    }
-  }, [ticketType, selectedStudentId]); // Removed getPreviousReports from dependencies
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,42 +285,6 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
           </div>
         )}
 
-        {/* Previous Reports Alert - Modern Design */}
-        {showReminder && previousReports.length > 0 && (
-          <div className="mx-6 mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <span className="text-amber-600 text-sm font-bold">⚠</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-amber-900 mb-2">
-                  Previous {ticketType === 'sabqi' ? 'Sabqi' : 'Manzil'} Tickets Found
-                </h3>
-                <p className="text-xs text-amber-700 mb-2 font-medium">
-                  Found {previousReports.length} approved ticket(s). Review to avoid duplicates:
-                </p>
-                <div className="space-y-1.5 mb-2">
-                  {previousReports.slice(0, 2).map((report, idx) => (
-                    <div key={report.id || idx} className="text-xs text-amber-800 bg-white rounded px-2 py-1.5 border border-amber-100">
-                      <span className="font-medium">{report.teacherComment || report.adminComment || 'No comment'}</span>
-                      {report.sentAt && (
-                        <span className="text-amber-600 ml-2">
-                          • {new Date(report.sentAt).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setShowReminder(false)}
-                  className="text-xs text-amber-600 hover:text-amber-800 font-medium underline"
-                >
-                  Dismiss
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Form Content */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 bg-white">
