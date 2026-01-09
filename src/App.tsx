@@ -26,6 +26,7 @@ const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
 const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
 const StudentPdfHomework = lazy(() => import('./components/StudentPdfHomework'));
+const TeacherStudentAssignmentManager = lazy(() => import('./components/TeacherStudentAssignmentManager'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -164,6 +165,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <TeachersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher-student-assignment"
+          element={
+            <ProtectedRoute>
+              <TeacherStudentAssignmentManager />
             </ProtectedRoute>
           }
         />

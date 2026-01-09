@@ -56,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
     
     // Add Teacher-Student Assignment for super admin only
     if (user?.role === 'superadmin') {
-      items.push({ id: 'teacher-student-assignment', icon: '👥', label: 'Teacher-Student Assignment', badge: null, isLink: false });
+      items.push({ id: 'teacher-student-assignment', icon: '👥', label: 'Teacher-Student Assignment', badge: null, isLink: true, href: '/teacher-student-assignment' });
     }
     
     // Add Assignments if admin has permission

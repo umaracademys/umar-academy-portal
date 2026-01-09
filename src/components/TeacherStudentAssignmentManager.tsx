@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { Student, Teacher } from '../types';
 import Card from './Card';
@@ -8,6 +9,7 @@ interface TeacherStudentAssignmentManagerProps {
 }
 
 const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerProps> = ({ onClose }) => {
+  const navigate = useNavigate();
   const { teachers, students, updateStudent, refreshData, getStudentsByTeacher } = useBackendData();
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -242,9 +244,15 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                 Manage which students are assigned to each teacher
               </p>
             </div>
-            {onClose && (
+            {(onClose || true) && (
               <button
-                onClick={onClose}
+                onClick={() => {
+                  if (onClose) {
+                    onClose();
+                  } else {
+                    navigate('/dashboard');
+                  }
+                }}
                 className="w-full sm:w-auto px-4 py-2 text-sm sm:text-base text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Close
