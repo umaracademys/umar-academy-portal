@@ -2662,10 +2662,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const getTeacherTickets = (teacherId: string): Ticket[] => {
     // Match by assignedTeacherId or reassignedToTeacherId (for reassigned tickets)
+    // Use robust ID matching to handle different ID formats
     return recitationTickets.filter(t => {
+      const teacherIdStr = String(teacherId);
+      const assignedTeacherIdStr = t.assignedTeacherId ? String(t.assignedTeacherId) : '';
+      const reassignedToTeacherIdStr = t.reassignedToTeacherId ? String(t.reassignedToTeacherId) : '';
+      
       const matchesTeacher = 
-        t.assignedTeacherId === teacherId || 
+        assignedTeacherIdStr === teacherIdStr ||
+        assignedTeacherIdStr === teacherId ||
+        reassignedToTeacherIdStr === teacherIdStr ||
+        reassignedToTeacherIdStr === teacherId ||
+        t.assignedTeacherId === teacherId ||
         t.reassignedToTeacherId === teacherId;
+      
       const validStatus = ['pending', 'in_progress', 'reassigned'].includes(t.status);
       return matchesTeacher && validStatus;
     });

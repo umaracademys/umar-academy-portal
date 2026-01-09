@@ -81,6 +81,10 @@ const TeacherDashboard: React.FC = () => {
           // Silently handle 403 - teacher might not have access yet or token expired
           console.warn('⚠️ Access denied to broadcast messages (403)');
           setBroadcastUnreadCount(0);
+        } else if (response.status === 404) {
+          // Handle 404 - endpoint might not exist or teacher not found
+          console.warn('⚠️ Broadcast messages endpoint not found (404)');
+          setBroadcastUnreadCount(0);
         }
       } catch (err) {
         console.error('❌ Error fetching broadcast unread count:', err);
@@ -273,8 +277,10 @@ const TeacherDashboard: React.FC = () => {
           }
         });
         
+        let allEvaluations: any[] = [];
+        
         if (response.ok) {
-          const allEvaluations = await response.json();
+          allEvaluations = await response.json();
           if (import.meta.env.DEV) {
             console.log('✅ Weekly evaluations loaded:', allEvaluations.length);
           }
@@ -288,6 +294,17 @@ const TeacherDashboard: React.FC = () => {
           
           setStudentWeeklyEvaluations(evaluationsMap);
           setLoadingEvaluations(loadingMap);
+        } else if (response.status === 404) {
+          // Handle 404 - endpoint might not exist or teacher not found
+          console.warn('⚠️ Weekly evaluations endpoint not found (404)');
+          // Set empty evaluations for all students
+          const emptyMap: Record<string, any[]> = {};
+          allPairStudents.forEach(student => {
+            emptyMap[student.id] = [];
+          });
+          setStudentWeeklyEvaluations(emptyMap);
+          setLoadingEvaluations({});
+          return;
         } else {
           // If fetch fails, set empty arrays for all students
           const evaluationsMap: Record<string, any[]> = {};
@@ -323,8 +340,22 @@ const TeacherDashboard: React.FC = () => {
     if (!currentTeacher?.id) {
       return [];
     }
-    return getTeacherTickets(currentTeacher.id);
-  }, [currentTeacher?.id, getTeacherTickets, recitationTickets]);
+    // Use the same robust ID matching as approvedTicketsNeedingHomework
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    const teacherIdStr = teacherDocId.toString();
+    
+    // Try both teacher.id and teacherDocId to ensure we catch all tickets
+    const ticketsById = getTeacherTickets(currentTeacher.id);
+    const ticketsByDocId = getTeacherTickets(teacherIdStr);
+    
+    // Combine and deduplicate
+    const allTickets = [...ticketsById, ...ticketsByDocId];
+    const uniqueTickets = allTickets.filter((ticket, index, self) => 
+      index === self.findIndex(t => t.id === ticket.id)
+    );
+    
+    return uniqueTickets;
+  }, [currentTeacher?.id, currentTeacher, getTeacherTickets, recitationTickets]);
 
   // Get approved tickets that need homework assignment
   const approvedTicketsNeedingHomework = useMemo(() => {

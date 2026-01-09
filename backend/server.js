@@ -6064,28 +6064,103 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
   try {
     const user = req.user;
     
+    // Ensure createdBy and createdByName are set (required fields) - set defaults first
+    const defaultCreatedBy = user.userId || user.id || user._id || '';
+    const defaultCreatedByName = user.name || user.email || 'Unknown';
+    
+    if (!req.body.createdBy) {
+      req.body.createdBy = defaultCreatedBy;
+    }
+    if (!req.body.createdByName || req.body.createdByName.trim() === '') {
+      req.body.createdByName = defaultCreatedByName;
+    }
+    
     // If teacher is creating ticket, validate they can only create for assigned students
     if (user.role === 'teacher') {
+      console.log('📝 Ticket creation - Teacher lookup:', { 
+        email: user.email, 
+        id: user.id, 
+        _id: user._id,
+        userId: user.userId 
+      });
+      
       // Find teacher by email first (most reliable), then fallback to userId
       let teacher = await Teacher.findOne({ email: user.email });
+      
+      // If not found by email, try userId lookup (JWT token contains userId field)
+      if (!teacher && user.userId) {
+        const userId = user.userId;
+        console.log('🔍 Trying userId lookup:', userId);
+        
+        if (userId) {
+          // Try finding by userId with proper ObjectId conversion
+          if (mongoose.Types.ObjectId.isValid(userId)) {
+            teacher = await Teacher.findOne({ 
+              $or: [
+                { userId: new mongoose.Types.ObjectId(userId) },
+                { userId: userId },
+                { _id: new mongoose.Types.ObjectId(userId) }
+              ]
+            });
+          } else {
+            teacher = await Teacher.findOne({ 
+              $or: [
+                { userId: userId },
+                { _id: userId }
+              ]
+            });
+          }
+        }
+      }
+      
+      // Fallback: try user.id or user._id if userId didn't work
       if (!teacher && (user.id || user._id)) {
-        // Try finding by userId with proper ObjectId conversion
         const userId = user.id || user._id;
+        console.log('🔍 Trying fallback userId lookup:', userId);
         if (mongoose.Types.ObjectId.isValid(userId)) {
           teacher = await Teacher.findOne({ 
             $or: [
               { userId: new mongoose.Types.ObjectId(userId) },
-              { userId: userId }
+              { userId: userId },
+              { _id: new mongoose.Types.ObjectId(userId) }
             ]
           });
-        } else {
-          teacher = await Teacher.findOne({ userId: userId });
         }
       }
+      
       if (!teacher) {
-        console.error('❌ Teacher not found for user:', { email: user.email, id: user.id, _id: user._id });
-        return res.status(403).json({ error: 'Teacher not found' });
+        console.error('❌ Teacher not found for ticket creation:', { 
+          email: user.email, 
+          id: user.id, 
+          _id: user._id,
+          userId: user.userId,
+          role: user.role
+        });
+        
+        // List all teachers for debugging
+        const allTeachers = await Teacher.find({}).select('email userId _id fullName').limit(10).lean();
+        console.error('📋 Sample teachers in database:', allTeachers);
+        
+        // Also check if User exists
+        const userRecord = await User.findOne({ email: user.email });
+        if (userRecord) {
+          console.error('📋 User record found:', { 
+            _id: userRecord._id, 
+            email: userRecord.email, 
+            role: userRecord.role 
+          });
+        } else {
+          console.error('❌ User record not found for email:', user.email);
+        }
+        
+        return res.status(403).json({ error: 'Teacher not found. Please ensure your account is properly linked to a teacher record.' });
       }
+      
+      console.log('✅ Teacher found:', { 
+        teacherId: teacher._id, 
+        email: teacher.email, 
+        fullName: teacher.fullName 
+      });
       
       // Check permission directly from teacher object (we already have it)
       // Default to true for canCreateTickets unless explicitly false
@@ -6103,32 +6178,124 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
       
       // Validate student is assigned to this teacher
       const studentId = req.body.studentId;
-      const assignedStudentIds = teacher.assignedStudents || [];
+      const teacherId = teacher._id.toString();
+      const teacherUserId = teacher.userId?.toString();
       
-      // Check if studentId matches any assigned student
-      const isAssigned = assignedStudentIds.some(assignedId => {
-        const assignedIdStr = String(assignedId);
-        const studentIdStr = String(studentId);
-        return assignedIdStr === studentIdStr || 
-               assignedIdStr === studentId || 
-               assignedId === studentIdStr;
+      // Get the student record to check their assignedTeacherIds
+      const student = await Student.findById(studentId).lean();
+      
+      if (!student) {
+        console.error('❌ Student not found:', studentId);
+        return res.status(404).json({ error: 'Student not found' });
+      }
+      
+      // Get student's assigned teacher IDs (check both new and legacy fields)
+      const studentAssignedTeacherIds = [
+        ...(student.assignedTeacherIds || []),
+        ...(student.assignedTeachers || []),
+        student.assignedTeacherId,
+        student.assignedTeacher
+      ].filter(Boolean).map(id => String(id));
+      
+      // Also check teacher's assignedStudents array (for backward compatibility)
+      const teacherAssignedStudentIds = (teacher.assignedStudents || []).map(id => String(id));
+      
+      console.log('🔍 Checking student assignment:', {
+        studentId,
+        studentName: student.fullName,
+        studentAssignedTeacherIds,
+        teacherId,
+        teacherUserId,
+        teacherAssignedStudentIds,
+        teacherName: teacher.fullName
       });
       
+      // Normalize IDs for comparison
+      const studentIdStr = String(studentId);
+      const normalizedTeacherId = teacherId;
+      const normalizedTeacherUserId = teacherUserId;
+      
+      // Check if teacher is assigned to this student (check student's assignedTeacherIds)
+      const isAssignedViaStudent = studentAssignedTeacherIds.some(assignedTeacherId => {
+        const assignedIdStr = String(assignedTeacherId);
+        return assignedIdStr === normalizedTeacherId || 
+               assignedIdStr === normalizedTeacherUserId ||
+               (mongoose.Types.ObjectId.isValid(assignedIdStr) && 
+                mongoose.Types.ObjectId.isValid(normalizedTeacherId) &&
+                new mongoose.Types.ObjectId(assignedIdStr).equals(new mongoose.Types.ObjectId(normalizedTeacherId)));
+      });
+      
+      // Also check teacher's assignedStudents array (backward compatibility)
+      const isAssignedViaTeacher = teacherAssignedStudentIds.includes(studentIdStr) ||
+        teacherAssignedStudentIds.some(assignedId => {
+          const assignedIdStr = String(assignedId);
+          const studentIdObjId = mongoose.Types.ObjectId.isValid(studentId) ? new mongoose.Types.ObjectId(studentId) : null;
+          const assignedIdObjId = mongoose.Types.ObjectId.isValid(assignedId) ? new mongoose.Types.ObjectId(assignedId) : null;
+          
+          if (assignedIdStr === studentIdStr) return true;
+          if (assignedIdObjId && studentIdObjId && assignedIdObjId.equals(studentIdObjId)) return true;
+          return false;
+        });
+      
+      const isAssigned = isAssignedViaStudent || isAssignedViaTeacher;
+      
       if (!isAssigned) {
+        console.error('❌ Student not assigned to teacher:', {
+          studentId,
+          studentName: student.fullName,
+          studentAssignedTeacherIds,
+          teacherId,
+          teacherUserId,
+          teacherAssignedStudentIds,
+          teacherName: teacher.fullName,
+          isAssignedViaStudent,
+          isAssignedViaTeacher
+        });
         return res.status(403).json({ error: 'You can only create tickets for your assigned students' });
       }
       
+      console.log('✅ Student assignment verified:', { 
+        studentId, 
+        studentName: student.fullName,
+        teacherId: teacher._id,
+        method: isAssignedViaStudent ? 'student-assignedTeacherIds' : 'teacher-assignedStudents'
+      });
+      
       // Auto-fill teacher info
       req.body.assignedTeacherId = teacher._id.toString();
-      req.body.assignedTeacherName = teacher.fullName;
-      req.body.createdBy = user.id || user._id;
-      req.body.createdByName = teacher.fullName;
+      req.body.assignedTeacherName = teacher.fullName || teacher.email || defaultCreatedByName;
+      // Ensure createdBy and createdByName are set (use teacher info if available, otherwise use defaults)
+      req.body.createdBy = user.userId || user.id || user._id || defaultCreatedBy;
+      req.body.createdByName = teacher.fullName || teacher.email || defaultCreatedByName;
     }
     
-    const ticket = new Ticket(req.body);
-    await ticket.save();
-    res.status(201).json(ticket);
+    console.log('📝 Creating ticket with data:', {
+      studentId: req.body.studentId,
+      studentName: req.body.studentName,
+      type: req.body.type,
+      status: req.body.status,
+      assignedTeacherId: req.body.assignedTeacherId,
+      createdBy: req.body.createdBy
+    });
+    
+    try {
+      const ticket = new Ticket(req.body);
+      await ticket.save();
+      console.log('✅ Ticket created successfully:', {
+        ticketId: ticket._id,
+        studentId: ticket.studentId,
+        type: ticket.type,
+        status: ticket.status
+      });
+      res.status(201).json(ticket);
+    } catch (ticketError) {
+      console.error('❌ Error creating ticket document:', ticketError);
+      console.error('❌ Ticket data that failed:', req.body);
+      throw ticketError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
+    console.error('❌ Error in ticket creation endpoint:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
 });
@@ -6936,9 +7103,49 @@ app.get('/api/broadcast-messages', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Only teachers can view broadcast messages.' });
     }
 
-    // Get teacher ID
-    const teacher = await Teacher.findOne({ email: req.user.email });
+    // Get teacher ID - use same lookup logic as unread count endpoint
+    let teacher = await Teacher.findOne({ email: req.user.email });
+    
+    // If not found by email, try userId lookup
+    if (!teacher && req.user.userId) {
+      const userId = req.user.userId;
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { userId: new mongoose.Types.ObjectId(userId) },
+            { userId: userId },
+            { _id: new mongoose.Types.ObjectId(userId) }
+          ]
+        });
+      } else {
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { userId: userId },
+            { _id: userId }
+          ]
+        });
+      }
+    }
+    
+    // Fallback: try user.id or user._id
+    if (!teacher && (req.user.id || req.user._id)) {
+      const userId = req.user.id || req.user._id;
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { userId: new mongoose.Types.ObjectId(userId) },
+            { userId: userId },
+            { _id: new mongoose.Types.ObjectId(userId) }
+          ]
+        });
+      }
+    }
+    
     if (!teacher) {
+      console.error('❌ Teacher not found for broadcast messages:', { 
+        email: req.user.email,
+        userId: req.user.userId 
+      });
       return res.status(404).json({ error: 'Teacher not found' });
     }
 
@@ -6995,14 +7202,74 @@ app.get('/api/broadcast-messages', authenticateToken, async (req, res) => {
 // Get unread count for teacher
 app.get('/api/broadcast-messages/unread/count', authenticateToken, async (req, res) => {
   try {
+    console.log('📬 Broadcast messages unread count endpoint hit', { 
+      role: req.user?.role, 
+      email: req.user?.email,
+      userId: req.user?.userId,
+      path: req.path 
+    });
+    
     if (req.user.role !== 'teacher') {
       return res.status(403).json({ error: 'Access denied. Only teachers can view broadcast message counts.' });
     }
 
-    const teacher = await Teacher.findOne({ email: req.user.email });
-    if (!teacher) {
-      return res.status(404).json({ error: 'Teacher not found' });
+    // Find teacher by email first (most reliable), then fallback to userId
+    let teacher = await Teacher.findOne({ email: req.user.email });
+    
+    // If not found by email, try userId lookup (JWT token contains userId field)
+    if (!teacher && req.user.userId) {
+      const userId = req.user.userId;
+      console.log('🔍 Trying userId lookup for broadcast messages:', userId);
+      
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { userId: new mongoose.Types.ObjectId(userId) },
+            { userId: userId },
+            { _id: new mongoose.Types.ObjectId(userId) }
+          ]
+        });
+      } else {
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { userId: userId },
+            { _id: userId }
+          ]
+        });
+      }
     }
+    
+    // Fallback: try user.id or user._id if userId didn't work
+    if (!teacher && (req.user.id || req.user._id)) {
+      const userId = req.user.id || req.user._id;
+      console.log('🔍 Trying fallback userId lookup for broadcast messages:', userId);
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        teacher = await Teacher.findOne({ 
+          $or: [
+            { userId: new mongoose.Types.ObjectId(userId) },
+            { userId: userId },
+            { _id: new mongoose.Types.ObjectId(userId) }
+          ]
+        });
+      }
+    }
+    
+    if (!teacher) {
+      console.error('❌ Teacher not found for broadcast messages unread count:', { 
+        email: req.user.email,
+        userId: req.user.userId,
+        id: req.user.id,
+        _id: req.user._id
+      });
+      // Return 200 with 0 count instead of 404, so the frontend doesn't show errors
+      return res.json({ unreadCount: 0, totalCount: 0 });
+    }
+    
+    console.log('✅ Teacher found for broadcast messages:', { 
+      teacherId: teacher._id, 
+      email: teacher.email, 
+      fullName: teacher.fullName 
+    });
 
     const teacherId = teacher._id?.toString() || teacher.id;
 
@@ -8070,6 +8337,13 @@ app.post('/api/weekly-evaluations/:id/submit', authenticateToken, async (req, re
 // NOTE: This must come BEFORE /api/weekly-evaluations/:id to avoid route conflicts
 app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
   try {
+    console.log('📊 Weekly evaluations endpoint hit', { 
+      role: req.user?.role, 
+      email: req.user?.email,
+      path: req.path,
+      query: req.query 
+    });
+    
     const { status, teacherId, studentId, weekStartDate } = req.query;
     const query = {};
 
@@ -14453,6 +14727,11 @@ app.use((req, res) => {
       method: req.method,
       message: 'The requested file does not exist in the uploads directory'
     });
+  }
+  
+  // Log 404s for API routes to help debug
+  if (req.path.startsWith('/api')) {
+    console.log(`⚠️  404 - API route not found: ${req.method} ${req.path}`);
   }
   
   // Special logging for API routes to help diagnose routing issues
