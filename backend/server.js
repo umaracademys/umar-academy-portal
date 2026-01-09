@@ -514,13 +514,26 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
 .then(async () => {
   console.log(`📊 Connected to MongoDB`);
   console.log(`   Connection State: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
+  console.log(`   Database: ${mongoose.connection.name}`);
+  console.log(`   Host: ${mongoose.connection.host}${mongoose.connection.port ? ':' + mongoose.connection.port : ''}`);
   
   // Verify connection with a test query
   try {
     const testResult = await mongoose.connection.db.admin().ping();
     console.log(`✅ MongoDB connection verified: ${JSON.stringify(testResult)}`);
+    
+    // Test assignment count to verify data access
+    const assignmentCount = await Assignment.countDocuments().catch(() => 0);
+    console.log(`📝 Assignments in database: ${assignmentCount}`);
+    
+    // Test student count
+    const studentCount = await Student.countDocuments().catch(() => 0);
+    console.log(`👥 Students in database: ${studentCount}`);
+    
+    console.log(`✅ MongoDB is fully operational and accessible`);
   } catch (error) {
     console.error('⚠️  MongoDB connection verification failed:', error.message);
+    console.error('   Error details:', error);
   }
   
   // Auto-initialize AI Phrase categories if they don't exist
@@ -11602,10 +11615,21 @@ app.get('/api/health', async (req, res) => {
     // Try to ping the database to verify actual connectivity
     let dbPing = false;
     let dbError = null;
+    let assignmentCount = 0;
+    let studentCount = 0;
+    
     if (readyState === 1) {
       try {
         await mongoose.connection.db.admin().ping();
         dbPing = true;
+        
+        // Get assignment and student counts to verify data access
+        try {
+          assignmentCount = await Assignment.countDocuments();
+          studentCount = await Student.countDocuments();
+        } catch (countError) {
+          console.warn('⚠️  Could not get document counts:', countError.message);
+        }
       } catch (error) {
         dbError = error.message;
       }
@@ -11622,6 +11646,9 @@ app.get('/api/health', async (req, res) => {
         ping: dbPing,
         error: dbError,
         host: mongoose.connection.host,
+        database: mongoose.connection.name,
+        assignments: assignmentCount,
+        students: studentCount,
         port: mongoose.connection.port,
         name: mongoose.connection.name
       },
