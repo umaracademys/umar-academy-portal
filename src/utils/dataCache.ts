@@ -16,7 +16,15 @@ interface CachedData<T> {
   expiresAt: number;
 }
 
-export const dataCache = {
+// Export interface for type checking
+export interface DataCache {
+  get<T>(key: string): T | null;
+  set<T>(key: string, data: T, duration?: number): void;
+  clear(): void;
+  clearExpired(): void;
+}
+
+export const dataCache: DataCache = {
   /**
    * Get cached data if it exists and hasn't expired
    */
