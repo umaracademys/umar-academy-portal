@@ -284,10 +284,22 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
                       })}
                     </div>
                   ) : hw.legacyContent ? (
-                    <div className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1 whitespace-pre-wrap line-clamp-2">
-                      {hw.legacyContent}
+                    <div className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1 whitespace-pre-wrap">
+                      <div className="line-clamp-2">{hw.legacyContent}</div>
+                      {hw.notes && hw.notes.trim() && (
+                        <div className="mt-1 pt-1 border-t border-slate-200">
+                          <span className="text-slate-500 italic text-[10px]">Notes: </span>
+                          <span className="text-slate-600">{hw.notes}</span>
+                        </div>
+                      )}
                     </div>
                   ) : null}
+                  {hw.notes && hw.notes.trim() && !hw.homeworkItems.length && !hw.legacyContent && (
+                    <div className="text-xs text-slate-600 bg-slate-50 rounded px-2 py-1 mt-1">
+                      <span className="text-slate-500 italic text-[10px]">Notes: </span>
+                      <span className="text-slate-600">{hw.notes}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
