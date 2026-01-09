@@ -6087,9 +6087,17 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
         return res.status(403).json({ error: 'Teacher not found' });
       }
       
-      // Check permission
-      const canCreate = await checkTeacherPermission(user.id || user._id, 'canCreateTickets');
-      if (!canCreate) {
+      // Check permission directly from teacher object (we already have it)
+      // Default to true for canCreateTickets unless explicitly false
+      const permissions = teacher.permissions || {};
+      const canCreateTickets = permissions.canCreateTickets !== false; // Default to true unless explicitly false
+      
+      if (!canCreateTickets) {
+        console.log('❌ Teacher does not have canCreateTickets permission:', {
+          teacherId: teacher._id,
+          teacherName: teacher.fullName,
+          permissions: permissions
+        });
         return res.status(403).json({ error: 'You do not have permission to create tickets' });
       }
       
