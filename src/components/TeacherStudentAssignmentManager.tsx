@@ -190,7 +190,14 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       // 2. CREATE UPDATE PROMISES - Don't throw errors, let Promise.allSettled handle them
       // Why: Allows partial success - some students update even if others fail
       // Reliability: One failure doesn't stop all updates
-      const updatePromises = studentsToUpdate.map(async (student) => {
+      type UpdateResult = {
+        success: boolean;
+        studentId: string;
+        studentName: string;
+        error?: string;
+      };
+
+      const updatePromises = studentsToUpdate.map(async (student): Promise<UpdateResult> => {
         const studentId = (student as any).studentRecordId;
         const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
         const currentAssignedTeachers = (student as any).assignedTeachers || [];
@@ -234,7 +241,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       // Why: Prevents backend timeout and resource exhaustion
       // Performance: More predictable performance, prevents overwhelming backend
       const BATCH_SIZE = 5;
-      const results = [];
+      const results: UpdateResult[] = [];
       
       for (let i = 0; i < updatePromises.length; i += BATCH_SIZE) {
         const batch = updatePromises.slice(i, i + BATCH_SIZE);
@@ -269,12 +276,12 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       // Performance: 10x faster (30-50s → 3-5s) - single refresh instead of N refreshes
       // Reliability: All updates complete before refresh, consistent state
       if (successful.length > 0) {
-        // Clear cache for students and teachers to force fresh load
+        // Clear cache to force fresh load
+        // Note: dataCache.clear() clears all cache (no arguments needed)
         try {
           const { dataCache } = await import('../utils/dataCache');
-          dataCache.clear('students');
-          dataCache.clear('teachers');
-          console.log('🗑️ Cache cleared for students and teachers');
+          dataCache.clear();
+          console.log('🗑️ Cache cleared');
         } catch (cacheError) {
           console.warn('⚠️ Could not clear cache:', cacheError);
         }
