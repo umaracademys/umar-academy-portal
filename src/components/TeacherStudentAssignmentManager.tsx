@@ -28,9 +28,20 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   // Initialize selected student IDs when teacher is selected
   useEffect(() => {
     if (selectedTeacher && assignedStudents.length > 0) {
+      // Use studentRecordId consistently (matches update logic)
       const assignedIds = new Set(
-        assignedStudents.map(s => s.id || (s as any)._id || '').filter(Boolean)
+        assignedStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean)
       );
+      console.log('🔍 Initializing selectedStudentIds from assignedStudents:', {
+        teacherId: (selectedTeacher as any)._id || selectedTeacher.id,
+        assignedCount: assignedStudents.length,
+        assignedIds: Array.from(assignedIds),
+        sampleStudent: assignedStudents[0] ? {
+          fullName: assignedStudents[0].fullName,
+          studentRecordId: (assignedStudents[0] as any).studentRecordId,
+          userId: assignedStudents[0].id
+        } : null
+      });
       setSelectedStudentIds(assignedIds);
     } else {
       setSelectedStudentIds(new Set());
@@ -117,7 +128,8 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   };
 
   const handleSelectAll = () => {
-    const allIds = new Set(filteredStudents.map(s => s.id || (s as any)._id || '').filter(Boolean));
+    // Use studentRecordId consistently (matches update logic)
+    const allIds = new Set(filteredStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean));
     setSelectedStudentIds(allIds);
   };
 
