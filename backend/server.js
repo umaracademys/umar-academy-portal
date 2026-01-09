@@ -2771,20 +2771,24 @@ app.put('/api/students/:id', async (req, res) => {
     }
 
     // Update student with normalized teacher IDs
-    if (normalizedNewIds.length > 0) {
-      await Student.findByIdAndUpdate(
+    if (normalizedNewIds.length > 0 || normalizedOldIds.length > 0) {
+      const finalUpdate = await Student.findByIdAndUpdate(
         req.params.id,
         {
           $set: {
             assignedTeacherIds: normalizedNewIds,
             assignedTeachers: normalizedNewIds,
             // Keep legacy fields for backward compatibility
-            assignedTeacherId: normalizedNewIds[0],
-            assignedTeacher: normalizedNewIds[0]
+            assignedTeacherId: normalizedNewIds.length > 0 ? normalizedNewIds[0] : '',
+            assignedTeacher: normalizedNewIds.length > 0 ? normalizedNewIds[0] : ''
           }
-        }
+        },
+        { new: true, runValidators: true }
       );
-      console.log(`✅ Updated student ${studentId} with ${normalizedNewIds.length} teacher(s): [${normalizedNewIds.join(', ')}]`);
+      if (finalUpdate) {
+        updatedStudent = finalUpdate;
+        console.log(`✅ Updated student ${studentId} with ${normalizedNewIds.length} teacher(s): [${normalizedNewIds.join(', ')}]`);
+      }
     }
 
     // Also update the User record if student has a userId
