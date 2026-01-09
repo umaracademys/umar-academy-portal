@@ -535,24 +535,25 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Only fetch data that's needed for current route
       // Skip unnecessary API calls for better performance
+      // Use Promise.allSettled with proper response objects for skipped calls
       const assignmentsPromise = needsAssignments && !cachedAssignments
         ? fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
           })
-        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+        : Promise.resolve({ ok: false, skipped: true } as any);
       
       const reviewsPromise = needsReviews
         ? fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any))
-        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+        : Promise.resolve({ ok: false, skipped: true } as any);
       
       const notificationsPromise = needsNotifications
         ? fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any))
-        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+        : Promise.resolve({ ok: false, skipped: true } as any);
       
       const ticketsPromise = needsTickets
         ? fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => ({ ok: false, json: async () => [] } as any))
-        : Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any });
+        : Promise.resolve({ ok: false, skipped: true } as any);
 
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
         assignmentsPromise,
@@ -561,8 +562,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         ticketsPromise
       ]);
 
-      // Process assignments
-      if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok) {
+      // Process assignments - skip if not needed for this route or already cached
+      if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok && !assignmentsResponse.value.skipped) {
         try {
           const assignmentsData = await assignmentsResponse.value.json();
           console.log('📝 Assignments loaded from backend:', assignmentsData.length);
@@ -604,11 +605,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           console.error('❌ Error processing assignments:', err);
           setAssignments([]);
         }
+      } else if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.skipped) {
+        // Assignments skipped for this route - this is expected, not an error
+        if (import.meta.env.DEV) {
+          console.log('⏭️ Assignments skipped for route:', location.pathname);
+        }
       } else {
-        // Log why assignments failed to load
+        // Log why assignments failed to load (only if it was actually attempted)
         if (assignmentsResponse.status === 'rejected') {
           console.error('❌ Assignments API call rejected:', assignmentsResponse.reason);
-        } else if (assignmentsResponse.status === 'fulfilled') {
+          if (needsAssignments) {
+            setAssignments([]);
+          }
+        } else if (assignmentsResponse.status === 'fulfilled' && !assignmentsResponse.value.skipped) {
           const response = assignmentsResponse.value;
           console.error('❌ Assignments API call failed:', {
             ok: response.ok,
@@ -616,19 +625,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             statusText: response.statusText,
             url: `${API_BASE}/assignments`
           });
-          // Try to get error message from response
-          try {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('❌ Assignments API error details:', errorData);
-          } catch (e) {
-            // Ignore JSON parse errors
+          // Only set empty if assignments were actually attempted but failed
+          if (needsAssignments) {
+            setAssignments([]);
           }
         }
-        setAssignments([]);
       }
 
-      // Process recitation reviews
-      if (reviewsResponse.status === 'fulfilled' && reviewsResponse.value.ok) {
+      // Process recitation reviews - skip if not needed for this route
+      if (reviewsResponse.status === 'fulfilled' && reviewsResponse.value.ok && !reviewsResponse.value.skipped) {
         try {
           const reviewsData = await reviewsResponse.value.json();
           if (import.meta.env.DEV) {
@@ -654,8 +659,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setRecitationReviews([]);
       }
 
-      // Process notifications
-      if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok) {
+      // Process notifications - skip if not needed for this route
+      if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok && !notificationsResponse.value.skipped) {
         try {
           const notificationsData = await notificationsResponse.value.json();
           if (import.meta.env.DEV) {
@@ -670,8 +675,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setAdminNotifications([]);
       }
 
-      // Process tickets
-      if (ticketsResponse.status === 'fulfilled' && ticketsResponse.value.ok) {
+      // Process tickets - skip if not needed for this route
+      if (ticketsResponse.status === 'fulfilled' && ticketsResponse.value.ok && !ticketsResponse.value.skipped) {
         try {
           const ticketsData = await ticketsResponse.value.json();
           if (import.meta.env.DEV) {
