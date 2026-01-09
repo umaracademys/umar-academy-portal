@@ -19,9 +19,8 @@ const MushafDemo = lazy(() => import('./pages/MushafDemo'));
 const StudentRouter = lazy(() => import('./modules/student/StudentRouter'));
 const ParentRegistrationForm = lazy(() => import('./pages/ParentRegistrationForm'));
 const MessagesPage = lazy(() => import('./pages/MessagesPage'));
-const SuperAdminMessagesPage = lazy(() => import('./pages/SuperAdminMessagesPage'));
 const ProfessionalMessagesPage = lazy(() => import('./components/messaging/ProfessionalMessagesPage'));
-const SuperAdminMessagesPageNew = lazy(() => import('./components/messaging/SuperAdminMessagesPage'));
+const SuperAdminMessagesPage = lazy(() => import('./components/messaging/SuperAdminMessagesPage'));
 const QaidahIndex = lazy(() => import('./pages/qaidah/index'));
 const QaidahPageViewer = lazy(() => import('./pages/qaidah/PageViewer'));
 const TeacherPdfViewer = lazy(() => import('./components/TeacherPdfViewer'));
@@ -196,7 +195,7 @@ function AppContent() {
           path="/super-admin/messages"
           element={
             <ProtectedRoute>
-              <SuperAdminMessagesPageNew />
+              <SuperAdminMessagesPage />
             </ProtectedRoute>
           }
         />
