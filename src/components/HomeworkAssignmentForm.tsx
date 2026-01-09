@@ -915,27 +915,39 @@ const STUDENT_TEMPLATES: Record<string, {
       type: 'sabq',
       range: {
         mode: 'surah_ayah',
-        fromSurah: 1,
-        fromAyah: 1,
-        toSurah: 2,
-        toAyah: 5
+        from: {
+          surah: 1,
+          surahName: 'Al-Fatihah',
+          ayah: 1
+        },
+        to: {
+          surah: 2,
+          surahName: 'Al-Baqarah',
+          ayah: 5
+        }
       }
     },
     sabqi: {
       type: 'sabqi',
       range: {
         mode: 'surah_ayah',
-        fromSurah: 1,
-        fromAyah: 1,
-        toSurah: 1,
-        toAyah: 7
+        from: {
+          surah: 1,
+          surahName: 'Al-Fatihah',
+          ayah: 1
+        },
+        to: {
+          surah: 1,
+          surahName: 'Al-Fatihah',
+          ayah: 7
+        }
       }
     },
     manzil: {
       type: 'manzil',
       range: {
         mode: 'juz_juz',
-        juz: [1]
+        juzList: [1]
       }
     },
     notes: 'Practice with proper tajweed and makhraj. Focus on correct pronunciation.'
