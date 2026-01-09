@@ -444,14 +444,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
       // Increased timeout to 8 seconds for assignments and tickets to reduce timeout errors
       setLoadingStep('Loading assignments, reviews, notifications, and tickets...');
+      // Increased timeout for assignments to handle Render cold starts (can take 30-60 seconds)
+      // Render free tier services spin down after inactivity and need time to wake up
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000).catch((error) => {
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
           console.error('❌ Failed to fetch assignments:', error);
           return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
         }),
-        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any)),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any)),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000).catch(() => ({ ok: false, json: async () => [] } as any))
+        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any)),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any)),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => ({ ok: false, json: async () => [] } as any))
       ]);
 
       // Process assignments
@@ -1161,11 +1163,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       isLoadingRef.current = true;
       setLoadingStep('Refreshing...');
       
-      // Refresh only critical data in parallel - increased timeout and silent error handling
+      // Refresh only critical data in parallel - increased timeout for Render cold starts
       const [assignmentsRes, ticketsRes, notificationsRes] = await Promise.all([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => null)
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => null)
       ]);
 
       if (assignmentsRes?.ok) {
