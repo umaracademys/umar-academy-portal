@@ -161,7 +161,10 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         
         const isCurrentlyAssigned = currentAssignedTeacherIds.includes(teacherDocId) || 
                                      currentAssignedTeachers.includes(teacherDocId);
-        const shouldBeAssigned = selectedStudentIds.has(studentId);
+        
+        // Check if this student should be assigned - use studentRecordId for comparison if available
+        const studentIdForComparison = (student as any).studentRecordId || student.id || (student as any)._id || '';
+        const shouldBeAssigned = selectedStudentIds.has(studentIdForComparison);
 
         // Only update if assignment status changed
         if (isCurrentlyAssigned !== shouldBeAssigned) {
@@ -437,10 +440,14 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                     </div>
                   ) : (
                     filteredStudents.map((student) => {
-                      const studentId = student.id || (student as any)._id || '';
+                      // Use studentRecordId for consistency with update logic
+                      const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
                       const isAssigned = selectedStudentIds.has(studentId);
                       const isCurrentlyAssigned = assignedStudents.some(
-                        s => (s.id || (s as any)._id) === studentId
+                        s => {
+                          const sId = (s as any).studentRecordId || s.id || (s as any)._id;
+                          return sId === studentId;
+                        }
                       );
 
                       return (
