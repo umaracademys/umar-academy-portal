@@ -275,6 +275,9 @@ const TeacherDashboard: React.FC = () => {
         
         if (response.ok) {
           const allEvaluations = await response.json();
+          if (import.meta.env.DEV) {
+            console.log('✅ Weekly evaluations loaded:', allEvaluations.length);
+          }
           
           // Group evaluations by studentId
           const evaluationsMap: Record<string, any[]> = {};
