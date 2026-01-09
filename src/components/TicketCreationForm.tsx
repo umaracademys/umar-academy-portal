@@ -184,7 +184,7 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 md:p-6">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col border border-gray-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col border border-gray-200">
         {/* Elegant Header */}
         <div className="relative px-6 py-5 bg-gradient-to-r from-primary via-primary/95 to-primary/90 border-b border-primary/20">
           <div className="absolute inset-0 opacity-20" style={{
