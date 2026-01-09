@@ -921,18 +921,13 @@ const TeacherDashboard: React.FC = () => {
               <Card title={`Approved Tickets (${allApprovedTickets.length})`}>
                 <div className="space-y-3">
                   {(showAllApprovedTickets ? allApprovedTickets : allApprovedTickets.slice(0, 5)).map((ticket) => {
-                    const hasHomework = ticket.sentToAssignmentId && assignments.find(a => {
+                    const assignment = ticket.sentToAssignmentId ? assignments.find(a => {
                       const aId = (a as any)._id || a.id;
                       return String(aId) === String(ticket.sentToAssignmentId);
-                    })?.homework?.enabled && (
-                      (assignments.find(a => {
-                        const aId = (a as any)._id || a.id;
-                        return String(aId) === String(ticket.sentToAssignmentId);
-                      })?.homework?.items?.length > 0) ||
-                      assignments.find(a => {
-                        const aId = (a as any)._id || a.id;
-                        return String(aId) === String(ticket.sentToAssignmentId);
-                      })?.homework?.content?.trim()
+                    }) : null;
+                    const hasHomework = assignment?.homework?.enabled && (
+                      (assignment.homework.items && assignment.homework.items.length > 0) ||
+                      assignment.homework.content?.trim()
                     );
 
                     return (
