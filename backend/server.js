@@ -6934,19 +6934,36 @@ app.get('/api/teacher-notifications', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Access denied. Only teachers can view their notifications.' });
     }
 
-    // Get teacher ID from user
-    const teacher = await Teacher.findOne({ email: req.user.email });
+    // Get teacher ID from user - robust lookup
+    let teacher = null;
+    if (req.user.userId) {
+      teacher = await Teacher.findOne({ _id: req.user.userId });
+    }
+    if (!teacher && req.user.email) {
+      teacher = await Teacher.findOne({ email: req.user.email });
+    }
+    if (!teacher && req.user.id) {
+      teacher = await Teacher.findOne({ _id: req.user.id });
+    }
+    
     if (!teacher) {
+      console.log('⚠️ Teacher not found for notifications:', { userId: req.user.userId, email: req.user.email, id: req.user.id });
       return res.status(404).json({ error: 'Teacher not found' });
     }
 
-    const teacherId = teacher.id || teacher._id?.toString();
+    const teacherId = teacher._id?.toString() || teacher.id?.toString();
+    if (!teacherId) {
+      return res.status(500).json({ error: 'Invalid teacher ID' });
+    }
+
     const notifications = await TeacherNotification.find({ teacherId })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(100); // Increased limit for better data
+    
+    console.log(`✅ Fetched ${notifications.length} notifications for teacher ${teacherId}`);
     res.json(notifications);
   } catch (error) {
-    console.error('Error fetching teacher notifications:', error);
+    console.error('❌ Error fetching teacher notifications:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -6985,15 +7002,26 @@ app.put('/api/teacher-notifications/:id/read', authenticateToken, async (req, re
       return res.status(403).json({ error: 'Access denied. Only teachers can mark their notifications as read.' });
     }
 
-    const teacher = await Teacher.findOne({ email: req.user.email });
+    // Robust teacher lookup
+    let teacher = null;
+    if (req.user.userId) {
+      teacher = await Teacher.findOne({ _id: req.user.userId });
+    }
+    if (!teacher && req.user.email) {
+      teacher = await Teacher.findOne({ email: req.user.email });
+    }
+    if (!teacher && req.user.id) {
+      teacher = await Teacher.findOne({ _id: req.user.id });
+    }
+    
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
 
-    const teacherId = teacher.id || teacher._id?.toString();
+    const teacherId = teacher._id?.toString() || teacher.id?.toString();
     const notification = await TeacherNotification.findOneAndUpdate(
       { _id: req.params.id, teacherId },
-      { read: true },
+      { read: true, readAt: new Date() },
       { new: true }
     );
     
@@ -7002,6 +7030,7 @@ app.put('/api/teacher-notifications/:id/read', authenticateToken, async (req, re
     }
     res.json(notification);
   } catch (error) {
+    console.error('❌ Error marking teacher notification as read:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -7013,15 +7042,31 @@ app.put('/api/teacher-notifications/read-all', authenticateToken, async (req, re
       return res.status(403).json({ error: 'Access denied. Only teachers can mark their notifications as read.' });
     }
 
-    const teacher = await Teacher.findOne({ email: req.user.email });
+    // Robust teacher lookup
+    let teacher = null;
+    if (req.user.userId) {
+      teacher = await Teacher.findOne({ _id: req.user.userId });
+    }
+    if (!teacher && req.user.email) {
+      teacher = await Teacher.findOne({ email: req.user.email });
+    }
+    if (!teacher && req.user.id) {
+      teacher = await Teacher.findOne({ _id: req.user.id });
+    }
+    
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
 
-    const teacherId = teacher.id || teacher._id?.toString();
-    await TeacherNotification.updateMany({ teacherId }, { read: true });
-    res.json({ message: 'All notifications marked as read' });
+    const teacherId = teacher._id?.toString() || teacher.id?.toString();
+    const result = await TeacherNotification.updateMany(
+      { teacherId, read: false }, 
+      { read: true, readAt: new Date() }
+    );
+    console.log(`✅ Marked ${result.modifiedCount} notifications as read for teacher ${teacherId}`);
+    res.json({ message: 'All notifications marked as read', count: result.modifiedCount });
   } catch (error) {
+    console.error('❌ Error marking all teacher notifications as read:', error);
     res.status(500).json({ error: error.message });
   }
 });

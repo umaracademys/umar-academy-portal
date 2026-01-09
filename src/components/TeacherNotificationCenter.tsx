@@ -25,9 +25,16 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'unread' | 'high'>('all');
 
-  // Refresh notifications when component opens
+  // Refresh notifications when component opens and periodically
   useEffect(() => {
     refreshTeacherNotifications();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      refreshTeacherNotifications();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [refreshTeacherNotifications]);
 
   // Filter notifications
@@ -49,6 +56,23 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
 
   const unreadCount = useMemo(() => {
     return teacherNotifications.filter(n => !n.read).length;
+  }, [teacherNotifications]);
+
+  const newCount = useMemo(() => {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    return teacherNotifications.filter(n => {
+      const createdAt = n.createdAt instanceof Date ? n.createdAt : new Date(n.createdAt);
+      return createdAt >= oneDayAgo;
+    }).length;
+  }, [teacherNotifications]);
+
+  const highPriorityCount = useMemo(() => {
+    return teacherNotifications.filter(n => n.priority === 'high').length;
+  }, [teacherNotifications]);
+
+  const unreadHighPriorityCount = useMemo(() => {
+    return teacherNotifications.filter(n => !n.read && n.priority === 'high').length;
   }, [teacherNotifications]);
 
   const handleNotificationClick = async (notification: TeacherNotification) => {
@@ -125,9 +149,18 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
               </div>
               <div>
                 <h2 className="text-xl font-bold">Notifications</h2>
-                {unreadCount > 0 && (
-                  <p className="text-white/90 text-sm">{unreadCount} unread</p>
-                )}
+                <div className="flex items-center gap-3 mt-1">
+                  {newCount > 0 && (
+                    <span className="text-white/90 text-sm font-semibold">{newCount} NEW</span>
+                  )}
+                  {unreadCount > 0 && (
+                    <span className="text-white/90 text-sm">{unreadCount} unread</span>
+                  )}
+                  {unreadHighPriorityCount > 0 && (
+                    <span className="text-white/90 text-sm font-semibold">{unreadHighPriorityCount} high priority</span>
+                  )}
+                  <span className="text-white/80 text-sm">{teacherNotifications.length} total</span>
+                </div>
               </div>
             </div>
             <button
@@ -171,7 +204,7 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            High Priority
+            High Priority ({highPriorityCount})
           </button>
         </div>
 

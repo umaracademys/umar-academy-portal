@@ -1843,6 +1843,7 @@ const TeacherDashboard: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-6">
               <HomeworkAssignmentForm
                 studentId={selectedTicketForHomework.studentId}
+                studentName={selectedTicketForHomework.studentName}
                 assignmentId={selectedAssignmentForHomework}
                 ticketMistakes={selectedTicketForHomework.mistakes || []}
                 ticketType={selectedTicketForHomework.type}

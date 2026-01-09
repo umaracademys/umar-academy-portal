@@ -304,7 +304,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000, requireAuth = true) => {
     const controller = new AbortController();
     const id = setTimeout(() => {
-      console.warn(`⏱️ Request timeout for ${url} after ${timeout}ms`);
+      // Only log timeout warnings in development mode
+      if (import.meta.env.DEV) {
+        console.warn(`⏱️ Request timeout for ${url} after ${timeout}ms`);
+      }
       controller.abort();
     }, timeout);
     
@@ -335,8 +338,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       return response;
     } catch (error: any) {
       clearTimeout(id);
-      console.error(`❌ Error fetching ${url}:`, error?.message || error);
+      // Only log errors in development mode, and skip AbortError (timeout) messages
+      if (import.meta.env.DEV && error.name !== 'AbortError') {
+        console.error(`❌ Error fetching ${url}:`, error?.message || error);
+      }
       if (error.name === 'AbortError' || error.message?.includes('timeout')) {
+        // Silently handle timeout - don't throw error, just return null or handle gracefully
         throw new Error(`Request timeout after ${timeout}ms for ${url}`);
       }
       throw error;
@@ -435,13 +442,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
-      // Reduced timeout to 5 seconds for faster failure recovery
+      // Increased timeout to 8 seconds for assignments and tickets to reduce timeout errors
       setLoadingStep('Loading assignments, reviews, notifications, and tickets...');
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 5000),
-        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 5000),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 5000)
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000).catch(() => ({ ok: false, json: async () => [] } as any)),
+        fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any)),
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any)),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000).catch(() => ({ ok: false, json: async () => [] } as any))
       ]);
 
       // Process assignments
@@ -1053,9 +1060,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             teachers: finalTeachersData.length, 
             admins: finalAdminsData.length 
           });
-        } else {
-          console.log('ℹ️ Not a developer account, data masking not applied');
         }
+        // Silently skip masking for non-developer accounts - no need to log
       } catch (error) {
         // If we can't read user, proceed without masking
         console.warn('⚠️ Could not check for developer account, proceeding without masking:', error);
@@ -1124,10 +1130,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       isLoadingRef.current = true;
       setLoadingStep('Refreshing...');
       
-      // Refresh only critical data in parallel
+      // Refresh only critical data in parallel - increased timeout and silent error handling
       const [assignmentsRes, ticketsRes, notificationsRes] = await Promise.all([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 5000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 5000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 8000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 8000).catch(() => null),
         fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => null)
       ]);
 
@@ -2875,10 +2881,26 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
       if (response.ok) {
         const notifications = await response.json();
-        setTeacherNotifications(notifications);
+        // Ensure notifications are properly formatted
+        const formattedNotifications = notifications.map((n: any) => ({
+          ...n,
+          id: n.id || n._id?.toString() || '',
+          createdAt: n.createdAt ? new Date(n.createdAt) : new Date(),
+          read: n.read || false,
+          priority: n.priority || 'low'
+        }));
+        setTeacherNotifications(formattedNotifications);
+        console.log(`✅ Loaded ${formattedNotifications.length} teacher notifications`);
+      } else {
+        console.warn(`⚠️ Failed to fetch teacher notifications: ${response.status}`);
+        if (response.status === 404) {
+          // Teacher not found - set empty array instead of error
+          setTeacherNotifications([]);
+        }
       }
     } catch (error) {
-      console.error('Error loading teacher notifications:', error);
+      console.error('❌ Error loading teacher notifications:', error);
+      // Don't set error state - just log it
     }
   };
 
@@ -2894,11 +2916,25 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       const updatedNotification = await response.json();
-      setTeacherNotifications(prev => prev.map(n => 
-        (n.id === notificationId || n.id === updatedNotification._id || n._id === notificationId || n._id === updatedNotification._id) ? updatedNotification : n
-      ));
+      // Update local state immediately
+      setTeacherNotifications(prev => prev.map(n => {
+        const nId = n.id || n._id?.toString() || '';
+        const updatedId = updatedNotification.id || updatedNotification._id?.toString() || '';
+        if (nId === notificationId || nId === updatedId) {
+          return {
+            ...updatedNotification,
+            id: updatedNotification.id || updatedNotification._id?.toString() || '',
+            createdAt: updatedNotification.createdAt ? new Date(updatedNotification.createdAt) : new Date(),
+            read: true
+          };
+        }
+        return n;
+      }));
+      
+      // Refresh to ensure consistency
+      setTimeout(() => refreshTeacherNotifications(), 500);
     } catch (error) {
-      console.error('Error marking teacher notification as read:', error);
+      console.error('❌ Error marking teacher notification as read:', error);
       throw error;
     }
   };
@@ -2914,9 +2950,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error('Failed to mark all notifications as read');
       }
       
+      // Update local state immediately
+      setTeacherNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      
+      // Refresh to ensure consistency
       await refreshTeacherNotifications();
     } catch (error) {
-      console.error('Error marking all teacher notifications as read:', error);
+      console.error('❌ Error marking all teacher notifications as read:', error);
       throw error;
     }
   };

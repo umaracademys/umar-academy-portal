@@ -177,7 +177,7 @@ export const maskAssignment = (assignment: any, studentIndex: number = 0, option
  */
 export const isDeveloperAccount = (user: any): boolean => {
   if (!user) {
-    console.log('🔍 isDeveloperAccount: No user provided');
+    // Silently return false - no need to log when user is not provided
     return false;
   }
   
@@ -197,13 +197,16 @@ export const isDeveloperAccount = (user: any): boolean => {
     isTestAccount
   );
   
-  console.log('🔍 isDeveloperAccount check:', {
-    email,
-    role,
-    isDeveloper,
-    isTestAccount,
-    result
-  });
+  // Only log in development mode
+  if (import.meta.env.DEV && result) {
+    console.log('🔍 isDeveloperAccount check:', {
+      email,
+      role,
+      isDeveloper,
+      isTestAccount,
+      result
+    });
+  }
   
   return result;
 };
