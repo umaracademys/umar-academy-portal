@@ -476,15 +476,34 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Continue processing students/teachers below, but UI is no longer blocked
 
       // Load assignments, reviews, notifications, and tickets in parallel for faster loading
-      // Increased timeout to 8 seconds for assignments and tickets to reduce timeout errors
-      setLoadingStep('Loading assignments, reviews, notifications, and tickets...');
+      // OPTIMIZED: Check cache first for assignments - skip fetch if cached (much faster)
+      setLoadingStep('Loading additional data...');
+      
+      // Check cache first for assignments - use cached if available (instant, no API call)
+      const cachedAssignments = useCache ? dataCache.get<any[]>('assignments') : null;
+      if (cachedAssignments && cachedAssignments.length > 0) {
+        console.log('⚡ Using cached assignments:', cachedAssignments.length, '- skipping API call');
+        const mappedAssignments = cachedAssignments.map((assignment: any) => ({
+          ...assignment,
+          id: assignment._id || assignment.id,
+          studentId: normalizeId(assignment.studentId),
+          createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
+          updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
+        }));
+        setAssignments(mappedAssignments);
+      }
+
+      // Only fetch assignments if cache expired/missing (non-blocking)
       // Increased timeout for assignments to handle Render cold starts (can take 30-60 seconds)
-      // Render free tier services spin down after inactivity and need time to wake up
+      const assignmentsPromise = cachedAssignments 
+        ? Promise.resolve({ status: 'fulfilled' as const, value: { ok: false } as any })
+        : fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
+            console.error('❌ Failed to fetch assignments:', error);
+            return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
+          });
+
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
-          console.error('❌ Failed to fetch assignments:', error);
-          return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
-        }),
+        assignmentsPromise,
         fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any)),
         fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any)),
         fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => ({ ok: false, json: async () => [] } as any))
@@ -517,6 +536,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             };
           });
           setAssignments(mappedAssignments);
+          // Cache assignments for next time
+          dataCache.set('assignments', mappedAssignments);
           console.log('✅ Mapped assignments:', mappedAssignments.length, 'assignments set');
           if (mappedAssignments.length > 0) {
             console.log('📝 Sample mapped assignment:', {
