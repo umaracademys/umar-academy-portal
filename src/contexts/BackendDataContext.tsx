@@ -21,6 +21,7 @@ import { ClassworkSection, Assignment } from '../types/assignment';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../utils/dataMasking';
+import { dataCache } from '../utils/dataCache';
 import { useAuth } from './AuthContext';
 
 interface BackendDataContextType {
@@ -363,8 +364,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     
     const startTime = Date.now();
     
+    // Set a maximum timeout for the entire data loading process (30 seconds)
+    const maxTimeout = setTimeout(() => {
+      if (isLoadingRef.current) {
+        console.warn('⚠️ Data loading timed out after 30 seconds, setting loading to false');
+        setLoading(false);
+        isLoadingRef.current = false;
+        setError('Data loading timed out. Please refresh the page.');
+      }
+    }, 30000);
+    
     try {
       isLoadingRef.current = true;
+      setLoading(true);
       setError(null);
       
       // PHASE 1: Load critical data first (users, teachers, students) - show UI immediately
