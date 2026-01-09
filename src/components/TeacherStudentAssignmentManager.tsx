@@ -20,9 +20,17 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   const [filterProgram, setFilterProgram] = useState<string>('all');
 
   // Get assigned students for selected teacher
+  // Use teacherDocId (Teacher document ID) to match what we store in assignedTeacherIds
   const assignedStudents = useMemo(() => {
     if (!selectedTeacher) return [];
-    return getStudentsByTeacher(selectedTeacher.id || (selectedTeacher as any)._id || '');
+    const teacherDocId = (selectedTeacher as any)._id || (selectedTeacher as any).teacherDocumentId || selectedTeacher.id;
+    console.log('🔍 Getting assigned students for teacher:', {
+      teacherName: selectedTeacher.fullName,
+      teacherDocId: teacherDocId,
+      teacherId: selectedTeacher.id,
+      _id: (selectedTeacher as any)._id
+    });
+    return getStudentsByTeacher(teacherDocId);
   }, [selectedTeacher, getStudentsByTeacher, students]);
 
   // Initialize selected student IDs when teacher is selected
