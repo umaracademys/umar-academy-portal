@@ -25,7 +25,6 @@ import TeacherAssessmentForm from '../components/TeacherAssessmentForm';
 import TeacherNotificationCenter from '../components/TeacherNotificationCenter';
 import TicketCreationForm from '../components/TicketCreationForm';
 import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
-import TeacherBroadcastMessages from '../components/TeacherBroadcastMessages';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
@@ -54,49 +53,6 @@ const TeacherDashboard: React.FC = () => {
   const [teacherPairs, setTeacherPairs] = useState<any[]>([]);
   const [pairStudentsMap, setPairStudentsMap] = useState<Record<string, any[]>>({});
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
-  const [showBroadcastMessages, setShowBroadcastMessages] = useState(false);
-  const [broadcastUnreadCount, setBroadcastUnreadCount] = useState(0);
-
-  // Fetch broadcast message unread count
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const token = localStorage.getItem('umar_academy_token'); // Use correct token key
-        if (!token) {
-          console.warn('⚠️ No auth token found, skipping broadcast message count');
-          return;
-        }
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${API_BASE}/broadcast-messages/unread/count`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setBroadcastUnreadCount(data.unreadCount || 0);
-        } else if (response.status === 403) {
-          // Silently handle 403 - teacher might not have access yet or token expired
-          console.warn('⚠️ Access denied to broadcast messages (403)');
-          setBroadcastUnreadCount(0);
-        } else if (response.status === 404) {
-          // Handle 404 - endpoint might not exist or teacher not found
-          console.warn('⚠️ Broadcast messages endpoint not found (404)');
-          setBroadcastUnreadCount(0);
-        }
-      } catch (err) {
-        console.error('❌ Error fetching broadcast unread count:', err);
-        // Don't set error state - just log it
-      }
-    };
-
-    fetchUnreadCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
   const [selectedEvaluationId, setSelectedEvaluationId] = useState<string | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [studentWeeklyEvaluations, setStudentWeeklyEvaluations] = useState<Record<string, any[]>>({});
@@ -512,22 +468,6 @@ const TeacherDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {/* Broadcast Messages Button */}
-              <button
-                onClick={() => setShowBroadcastMessages(true)}
-                className="relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-accent px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-primary transition-all shadow-lg hover:shadow-xl hover:scale-105"
-                title="Broadcast Messages"
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                </svg>
-                <span className="hidden sm:inline">Messages</span>
-                {broadcastUnreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full">
-                    {broadcastUnreadCount > 99 ? '99+' : broadcastUnreadCount}
-                  </span>
-                )}
-              </button>
               <Link
                 to="/assignments"
                 className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
@@ -1881,35 +1821,6 @@ const TeacherDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Broadcast Messages Modal */}
-      {showBroadcastMessages && (
-        <TeacherBroadcastMessages
-          onClose={() => {
-            setShowBroadcastMessages(false);
-            // Refresh unread count when closing
-            const fetchUnreadCount = async () => {
-              try {
-                const token = localStorage.getItem('umar_academy_token');
-                if (!token) return;
-                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-                const response = await fetch(`${API_BASE}/broadcast-messages/unread/count`, {
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  }
-                });
-                if (response.ok) {
-                  const data = await response.json();
-                  setBroadcastUnreadCount(data.unreadCount || 0);
-                }
-              } catch (err) {
-                console.error('❌ Error fetching broadcast unread count:', err);
-              }
-            };
-            fetchUnreadCount();
-          }}
-        />
-      )}
     </div>
   );
 };

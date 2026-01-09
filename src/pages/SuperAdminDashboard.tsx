@@ -59,7 +59,6 @@ const SuperAdminProfile = lazy(() => import('../components/SuperAdminProfile'));
 const HelpAndSupport = lazy(() => import('../components/HelpAndSupport'));
 const LockedAccountsManager = lazy(() => import('../components/LockedAccountsManager'));
 const TeacherStudentAssignmentManager = lazy(() => import('../components/TeacherStudentAssignmentManager'));
-const BroadcastMessageForm = lazy(() => import('../components/BroadcastMessageForm'));
 
 // Loading fallback for lazy components
 const ModalLoadingFallback: React.FC = () => (
@@ -178,7 +177,6 @@ const SuperAdminDashboard: React.FC = () => {
   const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
   const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
   const [showApprovedEvaluations, setShowApprovedEvaluations] = useState(false);
-  const [showBroadcastMessageForm, setShowBroadcastMessageForm] = useState(false);
   const [showLockedAccounts, setShowLockedAccounts] = useState(false);
   const [showApprovedTickets, setShowApprovedTickets] = useState(false);
   const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
@@ -1940,18 +1938,6 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {/* Broadcast Message Form Modal */}
-      {showBroadcastMessageForm && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <BroadcastMessageForm
-            onClose={() => setShowBroadcastMessageForm(false)}
-            onSuccess={() => {
-              // Refresh notifications or show success message
-              refreshNotifications();
-            }}
-          />
-        </Suspense>
-      )}
 
       {/* Debug Panel */}
       {isDevelopment && DebugPanel && (
