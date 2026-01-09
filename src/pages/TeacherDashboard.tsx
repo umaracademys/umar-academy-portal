@@ -916,6 +916,82 @@ const TeacherDashboard: React.FC = () => {
               )}
             </Card>
 
+            {/* All Approved Tickets */}
+            {allApprovedTickets.length > 0 && (
+              <Card title={`Approved Tickets (${allApprovedTickets.length})`}>
+                <div className="space-y-3">
+                  {(showAllApprovedTickets ? allApprovedTickets : allApprovedTickets.slice(0, 5)).map((ticket) => {
+                    const hasHomework = ticket.sentToAssignmentId && assignments.find(a => {
+                      const aId = (a as any)._id || a.id;
+                      return String(aId) === String(ticket.sentToAssignmentId);
+                    })?.homework?.enabled && (
+                      (assignments.find(a => {
+                        const aId = (a as any)._id || a.id;
+                        return String(aId) === String(ticket.sentToAssignmentId);
+                      })?.homework?.items?.length > 0) ||
+                      assignments.find(a => {
+                        const aId = (a as any)._id || a.id;
+                        return String(aId) === String(ticket.sentToAssignmentId);
+                      })?.homework?.content?.trim()
+                    );
+
+                    return (
+                      <div
+                        key={ticket.id}
+                        className="border border-slate-700/50 rounded-lg p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                ticket.type === 'sabqi' ? 'bg-primary/20 text-primary' :
+                                ticket.type === 'manzil' ? 'bg-accent/20 text-accent' :
+                                'bg-primary/20 text-primary'
+                              }`}>
+                                {ticket.type?.toUpperCase()}
+                              </span>
+                              {hasHomework && (
+                                <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">
+                                  ✓ Homework Assigned
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-100 mb-1">{ticket.studentName}</h4>
+                            {ticket.teacherComment && (
+                              <p className="text-sm text-slate-300 mb-2">{ticket.teacherComment}</p>
+                            )}
+                            <p className="text-xs text-slate-500">
+                              Approved: {ticket.sentAt ? new Date(ticket.sentAt).toLocaleDateString() : 'N/A'}
+                            </p>
+                          </div>
+                          {!hasHomework && ticket.sentToAssignmentId && (
+                            <button
+                              onClick={async () => {
+                                setSelectedTicketForHomework(ticket);
+                                setSelectedAssignmentForHomework(ticket.sentToAssignmentId!);
+                                setShowHomeworkForm(true);
+                              }}
+                              className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg text-sm font-bold transition-all"
+                            >
+                              Assign Homework
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {allApprovedTickets.length > 5 && (
+                    <button
+                      onClick={() => setShowAllApprovedTickets(!showAllApprovedTickets)}
+                      className="w-full py-3 text-sm font-bold text-accent hover:text-accent/80 transition-colors border border-slate-700/50 rounded-lg hover:border-accent/30 bg-slate-800/30"
+                    >
+                      {showAllApprovedTickets ? 'Show Less' : `Show All (${allApprovedTickets.length})`}
+                    </button>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Approved Tickets Needing Homework */}
             {approvedTicketsNeedingHomework.length > 0 && (
               <Card title={`Approved Tickets - Assign Homework (${approvedTicketsNeedingHomework.length})`}>
