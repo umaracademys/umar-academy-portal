@@ -160,6 +160,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTeacherStudentAssignment, setShowTeacherStudentAssignment] = useState(false);
   const [showStudentReports, setShowStudentReports] = useState(false);
   const [showTicketReview, setShowTicketReview] = useState(false);
+  const [showActiveTicketsManagement, setShowActiveTicketsManagement] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showActivityLog, setShowActivityLog] = useState(false);
   const [showEmailModule, setShowEmailModule] = useState(false);
