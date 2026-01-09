@@ -2422,8 +2422,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const response = await fetch(`${API_BASE}/tickets/${id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token (already includes Content-Type)
         body: JSON.stringify(ticket)
       });
       if (!response.ok) {
