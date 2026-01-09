@@ -6066,8 +6066,24 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
     
     // If teacher is creating ticket, validate they can only create for assigned students
     if (user.role === 'teacher') {
-      const teacher = await Teacher.findOne({ userId: user.id || user._id });
+      // Find teacher by email first (most reliable), then fallback to userId
+      let teacher = await Teacher.findOne({ email: user.email });
+      if (!teacher && (user.id || user._id)) {
+        // Try finding by userId with proper ObjectId conversion
+        const userId = user.id || user._id;
+        if (mongoose.Types.ObjectId.isValid(userId)) {
+          teacher = await Teacher.findOne({ 
+            $or: [
+              { userId: new mongoose.Types.ObjectId(userId) },
+              { userId: userId }
+            ]
+          });
+        } else {
+          teacher = await Teacher.findOne({ userId: userId });
+        }
+      }
       if (!teacher) {
+        console.error('❌ Teacher not found for user:', { email: user.email, id: user.id, _id: user._id });
         return res.status(403).json({ error: 'Teacher not found' });
       }
       
