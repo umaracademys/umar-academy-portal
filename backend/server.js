@@ -6242,9 +6242,13 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
       // Check permission directly from teacher object (we already have it)
       // Teachers can create tickets by default - only block if explicitly set to false
       const permissions = teacher.permissions || {};
-      // Default to true: if canCreateTickets is undefined/null/not set, allow it
-      // Only block if explicitly set to false
-      const canCreateTickets = permissions.canCreateTickets !== false; // Default to true unless explicitly false
+      
+      // Explicitly check: allow if undefined/null/not set, only block if explicitly false
+      const canCreateTicketsValue = permissions.canCreateTickets;
+      const canCreateTickets = canCreateTicketsValue === undefined || 
+                               canCreateTicketsValue === null || 
+                               canCreateTicketsValue === true ||
+                               canCreateTicketsValue !== false; // Default to true unless explicitly false
       
       console.log('🔍 Teacher permission check:', {
         teacherId: teacher._id,
@@ -6252,23 +6256,26 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
         email: teacher.email,
         hasPermissions: !!teacher.permissions,
         permissions: JSON.stringify(permissions),
-        canCreateTicketsValue: permissions.canCreateTickets,
-        canCreateTicketsType: typeof permissions.canCreateTickets,
+        canCreateTicketsValue: canCreateTicketsValue,
+        canCreateTicketsType: typeof canCreateTicketsValue,
+        isUndefined: canCreateTicketsValue === undefined,
+        isNull: canCreateTicketsValue === null,
+        isFalse: canCreateTicketsValue === false,
         finalCanCreateTickets: canCreateTickets
       });
       
-      if (!canCreateTickets) {
-        console.log('❌ Teacher does not have canCreateTickets permission:', {
+      if (canCreateTicketsValue === false) {
+        console.log('❌ Teacher does not have canCreateTickets permission (explicitly set to false):', {
           teacherId: teacher._id,
           teacherName: teacher.fullName,
           email: teacher.email,
           permissions: JSON.stringify(permissions),
-          canCreateTickets: permissions.canCreateTickets
+          canCreateTickets: canCreateTicketsValue
         });
         return res.status(403).json({ error: 'You do not have permission to create tickets' });
       }
       
-      console.log('✅ Teacher has permission to create tickets');
+      console.log('✅ Teacher has permission to create tickets (default or explicitly allowed)');
       
       // Validate student is assigned to this teacher
       const studentId = req.body.studentId;
