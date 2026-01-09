@@ -13,7 +13,7 @@ import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
 
 const AssignmentManagement: React.FC = () => {
-  const { students: allStudents, assignments, getStudentAssignments, refreshData } = useBackendData();
+  const { students: allStudents, assignments, getStudentAssignments, refreshData, refreshDataLight } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
   const { user } = useAuth();
   const [selectedProgram, setSelectedProgram] = useState<ProgramType | 'all'>('all');
