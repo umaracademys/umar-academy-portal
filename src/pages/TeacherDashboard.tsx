@@ -6,13 +6,15 @@ import Card from '../components/Card';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
+const PermissionManager = lazy(() => import('../components/PermissionManager'));
 import StudentReports from '../components/StudentReports';
 import TeacherTicketReview from '../components/TeacherTicketReview';
 import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Student, Assessment, Evaluation } from '../types';
+import { Student, Assessment, Evaluation, TeacherPermissions } from '../types';
 import { Ticket } from '../types/ticket';
+import { hasTeacherPermission, canAccessModule } from '../utils/permissions';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import EnhancedWeeklyEvaluationForm from '../components/EnhancedWeeklyEvaluationForm';
@@ -375,18 +377,69 @@ const TeacherDashboard: React.FC = () => {
     });
   }, [recitationTickets, currentTeacher]);
 
-  const permissions = (currentTeacher?.permissions) || {
-    canViewAssessments: true,
-    canEditAssessments: true,
-    canViewEvaluations: true,
-    canEditEvaluations: true,
-    canViewFinancials: false,
-    canManageSchedule: true,
-    canContactParents: true,
-    canViewStudentEmail: true,
-    canViewStudentContact: true,
-    canViewStudentPersonalInfo: true,
-  };
+  // Get teacher permissions with proper defaults
+  const permissions: TeacherPermissions = useMemo(() => {
+    if (!currentTeacher?.permissions) {
+      // Return minimal default permissions - most should be false for security
+      return {
+        canViewAssessments: false,
+        canEditAssessments: false,
+        canViewEvaluations: false,
+        canEditEvaluations: false,
+        canViewFinancials: false,
+        canManageSchedule: false,
+        canContactParents: false,
+        canViewStudentEmail: false,
+        canViewStudentContact: false,
+        canViewStudentPersonalInfo: false,
+        canAccessMessages: false,
+        canSendMessages: false,
+        canViewAllMessages: false,
+        canAccessPdf: false,
+        canUploadPdf: false,
+        canAnnotatePdf: false,
+        canViewPdfAnnotations: false,
+        canAccessHomework: false,
+        canCreateHomework: false,
+        canGradeHomework: false,
+        canViewHomeworkSubmissions: false,
+        canAccessEvaluations: false,
+        canCreateEvaluations: false,
+        canReviewEvaluations: false,
+        canApproveEvaluations: false,
+        canAccessTickets: false,
+        canCreateTickets: false,
+        canReviewTickets: false,
+        canApproveTickets: false,
+        canFinalizeTickets: false,
+        canAccessAttendance: false,
+        canRecordAttendance: false,
+        canViewAttendanceReports: false,
+        canAccessRecordings: false,
+        canUploadRecordings: false,
+        canDeleteRecordings: false,
+        canViewAllRecordings: false,
+        canAccessMushaf: false,
+        canMarkMistakes: false,
+        canViewMistakeHistory: false,
+        canManageMistakeLibrary: false,
+        canAccessQaidah: false,
+        canManageQaidah: false,
+        canViewQaidahProgress: false,
+        canAccessAssignments: false,
+        canCreateAssignments: false,
+        canEditAssignments: false,
+        canDeleteAssignments: false,
+        canManageStudentAssignments: false,
+        canViewReports: false,
+        canViewAnalytics: false,
+        canExportReports: false,
+      };
+    }
+    return currentTeacher.permissions;
+  }, [currentTeacher]);
+
+  const [showPermissionManager, setShowPermissionManager] = useState(false);
 
   const formatDate = (date: string | Date | undefined | null): string => {
     if (!date) return 'Not set';
@@ -493,26 +546,55 @@ const TeacherDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <Link
-                to="/assignments"
-                className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
-                style={{ boxShadow: '0 4px 14px rgba(31, 50, 36, 0.3)' }}
-              >
-                <span className="relative z-10">Manage Assignments</span>
-                <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
-              </Link>
-              <button
-                onClick={() => setShowStudentReports(true)}
-                className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
-              >
-                Student Reports
-              </button>
+              {hasTeacherPermission(permissions, 'canAccessAssignments') ? (
+                <Link
+                  to="/assignments"
+                  className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                  style={{ boxShadow: '0 4px 14px rgba(31, 50, 36, 0.3)' }}
+                >
+                  <span className="relative z-10">Manage Assignments</span>
+                  <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-gray-300 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-500 cursor-not-allowed opacity-50"
+                  title="Permission required: Access Assignments"
+                >
+                  Manage Assignments 🔒
+                </button>
+              )}
+              {hasTeacherPermission(permissions, 'canViewReports') ? (
+                <button
+                  onClick={() => setShowStudentReports(true)}
+                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
+                >
+                  Student Reports
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-gray-300 bg-gray-100 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-400 cursor-not-allowed opacity-50"
+                  title="Permission required: View Reports"
+                >
+                  Student Reports 🔒
+                </button>
+              )}
               <Link
                 to="/profile"
                 className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-gray-300 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-400 shadow-md"
               >
                 My Profile
               </Link>
+              {user?.role === 'superadmin' && (
+                <button
+                  onClick={() => setShowPermissionManager(true)}
+                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-red-500 bg-red-50 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-red-700 transition-all hover:bg-red-100 hover:border-red-600 shadow-md"
+                  title="Open Permission Management Center"
+                >
+                  🔐 Control Center
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -674,22 +756,40 @@ const TeacherDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
               <Card title="Quick Actions" className="lg:col-span-1">
                 <div className="space-y-2">
-                  <button
-                    onClick={() => setShowCreateTicket(true)}
-                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
-                  >
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg flex-shrink-0">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
+                  {hasTeacherPermission(permissions, 'canCreateTickets') ? (
+                    <button
+                      onClick={() => setShowCreateTicket(true)}
+                      className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg flex-shrink-0">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-bold text-primary group-hover:text-primary transition-colors truncate">Create Ticket</p>
+                          <p className="text-[10px] sm:text-xs text-gray-600 truncate">Start new review</p>
+                        </div>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs sm:text-sm font-bold text-primary group-hover:text-primary transition-colors truncate">Create Ticket</p>
-                        <p className="text-[10px] sm:text-xs text-gray-600 truncate">Start new review</p>
+                    </button>
+                  ) : (
+                    <button
+                      disabled
+                      className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
+                      title="Permission required: Create Tickets - Contact admin to request access"
+                    >
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gray-200 flex-shrink-0">
+                          <span className="text-lg">🔒</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs sm:text-sm font-bold text-gray-500 truncate">Create Ticket 🔒</p>
+                          <p className="text-[10px] sm:text-xs text-gray-400 truncate">Permission required</p>
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                  )}
                   <button
                     onClick={() => setShowEvaluationAssignments(true)}
                     className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/15 transition-all shadow-md hover:shadow-lg group"
@@ -1849,6 +1949,17 @@ const TeacherDashboard: React.FC = () => {
       {isDevelopment && DebugPanel && (
         <Suspense fallback={null}>
           <DebugPanel />
+        </Suspense>
+      )}
+
+      {/* Permission Management Center Modal */}
+      {showPermissionManager && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white rounded-xl p-6">Loading Permission Manager...</div>
+          </div>
+        }>
+          <PermissionManager onClose={() => setShowPermissionManager(false)} />
         </Suspense>
       )}
 

@@ -7,6 +7,7 @@ import Card from '../components/Card';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
+const PermissionManager = lazy(() => import('../components/PermissionManager'));
 import StudentList from '../components/StudentList';
 import StudentProfile from '../components/StudentProfile';
 import StudentEnrollment from '../components/StudentEnrollment';
@@ -141,6 +142,7 @@ const AdminDashboard: React.FC = () => {
   const [showTestResults, setShowTestResults] = useState(false);
   const [showEvaluationManagement, setShowEvaluationManagement] = useState(false);
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
+  const [showPermissionManager, setShowPermissionManager] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   
   // Student Management State
@@ -511,6 +513,25 @@ const AdminDashboard: React.FC = () => {
               Open workflow
             </span>
           </button>
+          {permissions.canManagePermissions && (
+            <button
+              onClick={() => setShowPermissionManager(true)}
+              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-red-500/50 bg-red-50 hover:bg-red-100 hover:border-red-600 touch-target"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-lg">🔐</span>
+                  <p className="text-xs sm:text-sm font-bold text-red-700">Permission Manager</p>
+                </div>
+                <p className="mt-1 text-[10px] sm:text-xs text-red-600">
+                  Control Center - Manage access
+                </p>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wide text-red-600/70 mt-1">
+                Open Control Center
+              </span>
+            </button>
+          )}
           <button
             onClick={() => setShowTestResults(true)}
             className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 touch-target"
@@ -977,6 +998,17 @@ const AdminDashboard: React.FC = () => {
         <TestResultsPage
           onClose={() => setShowTestResults(false)}
         />
+      )}
+
+      {/* Permission Management Center Modal */}
+      {showPermissionManager && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white rounded-xl p-6">Loading Permission Manager...</div>
+          </div>
+        }>
+          <PermissionManager onClose={() => setShowPermissionManager(false)} />
+        </Suspense>
       )}
 
     </div>

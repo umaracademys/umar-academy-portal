@@ -50,7 +50,8 @@ export function hasTeacherPermission(
       'canAccessAssignments',
       'canCreateAssignments',
       'canEditAssignments',
-      'canViewReports'
+      'canViewReports',
+      'canViewAnalytics'
     ];
     
     if (defaultTruePermissions.includes(permissionKey)) {
