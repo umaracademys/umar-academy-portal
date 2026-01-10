@@ -2589,14 +2589,26 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Assignment management functions
   const addAssignment = async (assignment: Assignment) => {
     try {
-      const response = await fetch(`${API_BASE}/assignments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assignment)
-      });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/assignments`,
+        {
+          method: 'POST',
+          body: JSON.stringify(assignment)
+        },
+        10000,
+        true // requireAuth = true - includes Authorization header
+      );
       
       if (!response.ok) {
-        throw new Error('Failed to create assignment');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to create assignment';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       
       const newAssignment = await response.json();
@@ -2622,16 +2634,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         });
       }
       
-      const response = await fetch(`${API_BASE}/assignments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assignment)
-      });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/assignments/${id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(assignment)
+        },
+        10000,
+        true // requireAuth = true - includes Authorization header
+      );
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('❌ Update failed:', errorData);
-        throw new Error(errorData.error || 'Failed to update assignment');
+        const errorText = await response.text();
+        let errorMessage = 'Failed to update assignment';
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        console.error('❌ Update failed:', errorMessage);
+        throw new Error(errorMessage);
       }
       
       const updatedAssignment = await response.json();
