@@ -376,23 +376,23 @@ const StudentAssignments: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-primary">My Assignments</h1>
-            <p className="text-primary-soft mt-2">View all your assignments and classwork</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-primary">My Assignments</h1>
+            <p className="text-sm sm:text-base text-primary-soft mt-1 sm:mt-2">View all your assignments and classwork</p>
           </div>
           <button
             onClick={() => navigate('/student/dashboard')}
-            className="px-6 py-3 border border-accent-soft text-primary rounded-full font-semibold hover:bg-soft-accent transition-colors"
+            className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 border border-accent-soft text-primary rounded-lg sm:rounded-full text-sm sm:text-base font-semibold hover:bg-soft-accent transition-colors touch-target min-h-[44px]"
           >
             Back to Dashboard
           </button>
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
           <Card title="Total Assignments">
             <div className="text-3xl font-bold text-primary">{studentAssignments.length}</div>
           </Card>
@@ -491,7 +491,7 @@ const StudentAssignments: React.FC = () => {
                                   }
                                 }
                               }}
-                              className="px-4 py-2 bg-soft-primary text-primary rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.1)] transition-colors whitespace-nowrap text-sm"
+                              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-soft-primary text-primary rounded-lg sm:rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.1)] transition-colors whitespace-nowrap text-sm touch-target min-h-[44px]"
                             >
                               {isSelected ? 'Hide Details' : 'View Details'}
                             </button>
@@ -772,7 +772,7 @@ const StudentAssignments: React.FC = () => {
                                                       <button
                                                         type="button"
                                                         onClick={startRecording}
-                                                        className="px-4 py-2 bg-red-600 text-white rounded-full font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
+                                                        className="px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg sm:rounded-full font-semibold hover:bg-red-700 transition-colors flex items-center gap-2 touch-target min-h-[44px] text-sm sm:text-base"
                                                       >
                                                         <span className="w-3 h-3 bg-white rounded-full"></span>
                                                         Start Recording
@@ -782,7 +782,7 @@ const StudentAssignments: React.FC = () => {
                                                         <button
                                                           type="button"
                                                           onClick={stopRecording}
-                                                          className="px-4 py-2 bg-red-600 text-white rounded-full font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
+                                                          className="px-4 py-2.5 sm:py-2 bg-red-600 text-white rounded-lg sm:rounded-full font-semibold hover:bg-red-700 transition-colors flex items-center gap-2 touch-target min-h-[44px] text-sm sm:text-base"
                                                         >
                                                           <span className="w-3 h-3 bg-white rounded-full animate-pulse"></span>
                                                           Stop Recording ({formatTime(recordingTime)})
@@ -854,7 +854,7 @@ const StudentAssignments: React.FC = () => {
                                                 </div>
                                               )}
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                               <button
                                                 onClick={() => {
                                                   if (isRecording && mediaRecorder) {
@@ -866,14 +866,14 @@ const StudentAssignments: React.FC = () => {
                                                   setAudioUrl(null);
                                                   setRecordingTime(0);
                                                 }}
-                                                className="px-4 py-2 border border-accent-soft text-primary rounded-full font-semibold hover:bg-soft-accent transition-colors"
+                                                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 border border-accent-soft text-primary rounded-lg sm:rounded-full font-semibold hover:bg-soft-accent transition-colors touch-target min-h-[44px] text-sm sm:text-base"
                                               >
                                                 Cancel
                                               </button>
                                               <button
                                                 onClick={() => handleSubmitHomework(assignment.id)}
                                                 disabled={isSubmittingHomework}
-                                                className="px-4 py-2 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary text-white rounded-lg sm:rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target min-h-[44px] text-sm sm:text-base"
                                               >
                                                 {isSubmittingHomework ? 'Submitting...' : 'Submit'}
                                               </button>

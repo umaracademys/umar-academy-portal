@@ -288,7 +288,7 @@ const normalizeId = (id: any): string => {
 };
 
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user: currentUser } = useAuth(); // Get current user from AuthContext
+  const { user: currentUser, logout } = useAuth(); // Get current user and logout from AuthContext
   const location = useLocation();
   
   // Route-based data requirements - only load what each page needs
@@ -307,6 +307,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     const needsAssignments = 
       normalizedPath.includes('/assignments') ||
       normalizedPath.includes('/student/assignments') ||
+      normalizedPath.includes('/student/dashboard') ||
+      normalizedPath.includes('/student') ||
       isDashboard;
     
     // Pages that need tickets (dashboards only for now)
@@ -369,6 +371,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (import.meta.env.DEV) {
         console.log(`✅ Response received for ${url}:`, response.status);
       }
+      
+      // Phase 5: Check for PERMISSIONS_OUTDATED error code
+      if (!response.ok && response.status === 401) {
+        try {
+          const errorData = await response.clone().json();
+          if (errorData.code === 'PERMISSIONS_OUTDATED') {
+            console.log('🔄 Permissions updated - logging out user');
+            // Auto logout user
+            logout();
+            // Return error response so caller can handle it
+            return response;
+          }
+        } catch (e) {
+          // Not JSON or parse error - continue normally
+        }
+      }
+      
       return response;
     } catch (error: any) {
       clearTimeout(id);
@@ -460,7 +479,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       } else {
         const [teachersResponse, studentsResponse] = await Promise.allSettled([
           fetchWithTimeout(`${API_BASE}/teachers`, {}, 8000), // No sync on initial load - much faster
-          fetchWithTimeout(`${API_BASE}/students`, {}, 8000)
+          fetchWithTimeout(`${API_BASE}/students`, {}, 8000, true) // Phase 7: Requires auth for PII filtering
         ]);
 
         // Process teachers
@@ -540,8 +559,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Only fetch data that's needed for current route
       // Skip unnecessary API calls for better performance
       // Use Promise.allSettled with proper response objects for skipped calls
+      // For students, use authenticated endpoint /api/assignments/me
+      const isStudent = currentUser?.role === 'student';
+      const assignmentsEndpoint = isStudent ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments`;
       const assignmentsPromise = needsAssignments && !cachedAssignments
-        ? fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch((error) => {
+        ? fetchWithTimeout(assignmentsEndpoint, {}, 60000, isStudent).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
           })
@@ -570,9 +592,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok && !assignmentsResponse.value.skipped) {
         try {
           const assignmentsData = await assignmentsResponse.value.json();
-          console.log('📝 Assignments loaded from backend:', assignmentsData.length);
+          console.log(`📝 Assignments loaded from backend (${isStudent ? 'student' : 'admin/teacher'} endpoint):`, assignmentsData.length);
           if (assignmentsData.length === 0) {
             console.warn('⚠️ No assignments found in database. Check if assignments exist.');
+            if (isStudent && import.meta.env.DEV) {
+              console.log('   Student endpoint used:', assignmentsEndpoint);
+              console.log('   Current user:', { role: currentUser?.role, email: currentUser?.email, userId: currentUser?.id });
+            }
           }
           const mappedAssignments = assignmentsData.map((assignment: any) => {
             const normalizedStudentId = normalizeId(assignment.studentId);
@@ -1376,7 +1402,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       // Fetch ONLY students and teachers in parallel (no assignments, tickets, notifications)
       const [studentsResponse, teachersResponse] = await Promise.all([
-        fetchWithTimeout(`${API_BASE}/students`, {}, 8000).catch(() => null),
+        fetchWithTimeout(`${API_BASE}/students`, {}, 8000, true).catch(() => null), // Phase 7: Requires auth for PII filtering
         fetchWithTimeout(`${API_BASE}/teachers`, {}, 8000).catch(() => null)
       ]);
 
@@ -1967,7 +1993,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           body: JSON.stringify(teacherPayload),
         },
         10000,
-        false // Teachers endpoint doesn't require auth
+        true // Phase 7: Teachers endpoint now requires auth and canManageTeachers permission
       );
 
       if (!teacherResponse.ok) {

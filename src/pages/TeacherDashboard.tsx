@@ -14,7 +14,9 @@ import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Student, Assessment, Evaluation, TeacherPermissions } from '../types';
 import { Ticket } from '../types/ticket';
-import { hasTeacherPermission, canAccessModule } from '../utils/permissions';
+import { usePermission } from '../hooks/usePermission';
+import { RequirePermission } from '../components/RequirePermission';
+import { TeacherPermissionKey } from '../shared/permissions';
 import TeacherEvaluationAssignments from '../components/TeacherEvaluationAssignments';
 import TeacherAttendanceView from '../components/TeacherAttendanceView';
 import EnhancedWeeklyEvaluationForm from '../components/EnhancedWeeklyEvaluationForm';
@@ -377,67 +379,8 @@ const TeacherDashboard: React.FC = () => {
     });
   }, [recitationTickets, currentTeacher]);
 
-  // Get teacher permissions with proper defaults
-  const permissions: TeacherPermissions = useMemo(() => {
-    if (!currentTeacher?.permissions) {
-      // Return minimal default permissions - most should be false for security
-      return {
-        canViewAssessments: false,
-        canEditAssessments: false,
-        canViewEvaluations: false,
-        canEditEvaluations: false,
-        canViewFinancials: false,
-        canManageSchedule: false,
-        canContactParents: false,
-        canViewStudentEmail: false,
-        canViewStudentContact: false,
-        canViewStudentPersonalInfo: false,
-        canAccessMessages: false,
-        canSendMessages: false,
-        canViewAllMessages: false,
-        canAccessPdf: false,
-        canUploadPdf: false,
-        canAnnotatePdf: false,
-        canViewPdfAnnotations: false,
-        canAccessHomework: false,
-        canCreateHomework: false,
-        canGradeHomework: false,
-        canViewHomeworkSubmissions: false,
-        canAccessEvaluations: false,
-        canCreateEvaluations: false,
-        canReviewEvaluations: false,
-        canApproveEvaluations: false,
-        canAccessTickets: false,
-        canCreateTickets: false,
-        canReviewTickets: false,
-        canApproveTickets: false,
-        canFinalizeTickets: false,
-        canAccessAttendance: false,
-        canRecordAttendance: false,
-        canViewAttendanceReports: false,
-        canAccessRecordings: false,
-        canUploadRecordings: false,
-        canDeleteRecordings: false,
-        canViewAllRecordings: false,
-        canAccessMushaf: false,
-        canMarkMistakes: false,
-        canViewMistakeHistory: false,
-        canManageMistakeLibrary: false,
-        canAccessQaidah: false,
-        canManageQaidah: false,
-        canViewQaidahProgress: false,
-        canAccessAssignments: false,
-        canCreateAssignments: false,
-        canEditAssignments: false,
-        canDeleteAssignments: false,
-        canManageStudentAssignments: false,
-        canViewReports: false,
-        canViewAnalytics: false,
-        canExportReports: false,
-      };
-    }
-    return currentTeacher.permissions;
-  }, [currentTeacher]);
+  // Phase 4: Use new permission hook (type-safe, reads from JWT token)
+  const { can } = usePermission();
 
   const [showPermissionManager, setShowPermissionManager] = useState(false);
 
@@ -546,7 +489,7 @@ const TeacherDashboard: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {hasTeacherPermission(permissions, 'canAccessAssignments') ? (
+              <RequirePermission permission="canAccessAssignments">
                 <Link
                   to="/assignments"
                   className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
@@ -555,31 +498,15 @@ const TeacherDashboard: React.FC = () => {
                   <span className="relative z-10">Manage Assignments</span>
                   <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
                 </Link>
-              ) : (
-                <button
-                  disabled
-                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-gray-300 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-500 cursor-not-allowed opacity-50"
-                  title="Permission required: Access Assignments"
-                >
-                  Manage Assignments 🔒
-                </button>
-              )}
-              {hasTeacherPermission(permissions, 'canViewReports') ? (
+              </RequirePermission>
+              <RequirePermission permission="canViewReports">
                 <button
                   onClick={() => setShowStudentReports(true)}
                   className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
                 >
                   Student Reports
                 </button>
-              ) : (
-                <button
-                  disabled
-                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-gray-300 bg-gray-100 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-400 cursor-not-allowed opacity-50"
-                  title="Permission required: View Reports"
-                >
-                  Student Reports 🔒
-                </button>
-              )}
+              </RequirePermission>
               <Link
                 to="/profile"
                 className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-gray-300 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-400 shadow-md"
@@ -756,7 +683,10 @@ const TeacherDashboard: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
               <Card title="Quick Actions" className="lg:col-span-1">
                 <div className="space-y-2">
-                  {hasTeacherPermission(permissions, 'canCreateTickets') ? (
+                  <RequirePermission 
+                    permission="canCreateTickets" 
+                    tooltipMessage="Permission required: Create Tickets - Contact admin to request access"
+                  >
                     <button
                       onClick={() => setShowCreateTicket(true)}
                       className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
@@ -773,23 +703,7 @@ const TeacherDashboard: React.FC = () => {
                         </div>
                       </div>
                     </button>
-                  ) : (
-                    <button
-                      disabled
-                      className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-gray-300 bg-gray-100 opacity-50 cursor-not-allowed"
-                      title="Permission required: Create Tickets - Contact admin to request access"
-                    >
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-gray-200 flex-shrink-0">
-                          <span className="text-lg">🔒</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-bold text-gray-500 truncate">Create Ticket 🔒</p>
-                          <p className="text-[10px] sm:text-xs text-gray-400 truncate">Permission required</p>
-                        </div>
-                      </div>
-                    </button>
-                  )}
+                  </RequirePermission>
                   <button
                     onClick={() => setShowEvaluationAssignments(true)}
                     className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/15 transition-all shadow-md hover:shadow-lg group"
@@ -1448,13 +1362,13 @@ const TeacherDashboard: React.FC = () => {
                                 <p className="truncate">Teacher: <span className="font-semibold">{teacher.fullName}</span></p>
                               ) : null;
                             })()}
-                            {permissions.canViewStudentPersonalInfo && (
+                            {can('canViewStudentPersonalInfo') && (
                               <p className="truncate">Parent: {student.parentName}</p>
                             )}
                             <p className="truncate text-gray-500">
-                              {permissions.canViewStudentEmail && student.email}
-                              {permissions.canViewStudentEmail && permissions.canViewStudentContact && ' · '}
-                              {permissions.canViewStudentContact && student.contact}
+                              {can('canViewStudentEmail') && student.email}
+                              {can('canViewStudentEmail') && can('canViewStudentContact') && ' · '}
+                              {can('canViewStudentContact') && student.contact}
                             </p>
                           </div>
                         </div>
@@ -1491,7 +1405,7 @@ const TeacherDashboard: React.FC = () => {
 
                     {/* Compact Stats Row */}
                     <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-100">
-                      {permissions.canViewAssessments && (
+                      {can('canViewAssessments') && (
                         <button
                           onClick={() => {
                             setSelectedStudent(student);
@@ -1504,7 +1418,7 @@ const TeacherDashboard: React.FC = () => {
                           Assessments ({Array.isArray(student.assessments) ? student.assessments.length : 0})
                         </button>
                       )}
-                      {permissions.canViewEvaluations && (
+                      {can('canViewEvaluations') && (
                         <button
                           onClick={() => {
                             setSelectedStudent(student);
@@ -1574,7 +1488,7 @@ const TeacherDashboard: React.FC = () => {
                           <span>👥</span> Both teachers can assess & evaluate
                         </span>
                       )}
-                      {permissions.canContactParents && (
+                      {can('canContactParents') && (
                         <button
                           disabled
                           className="rounded-lg border-2 border-gray-300 bg-gray-100 px-3 py-2 text-xs font-bold text-gray-400 cursor-not-allowed"

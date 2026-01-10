@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import { AdminPermissions } from '../types';
+import { usePermission } from '../hooks/usePermission';
 
 interface SidebarProps {
   activeSection: string;
@@ -16,13 +17,19 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMobileOpen: externalIsMobileOpen, onMobileToggle, onHelpClick, onTeacherStudentAssignmentClick }) => {
   const { user } = useAuth();
   const { admins } = useData();
+  const { can, permissions: jwtPermissions } = usePermission(); // Phase 4: Use JWT permissions
   
-  // Get current admin's permissions if user is admin
+  // Get current admin's permissions if user is admin (fallback to JWT permissions)
   const adminPermissions: AdminPermissions | null = useMemo(() => {
+    // Phase 4: Prioritize JWT permissions over DB permissions
+    if (jwtPermissions && typeof jwtPermissions === 'object' && user?.role === 'admin') {
+      return jwtPermissions as AdminPermissions;
+    }
+    
     if (user?.role !== 'admin' || !user?.email) return null;
     const currentAdmin = admins.find(admin => admin.email === user.email);
     return currentAdmin?.permissions || null;
-  }, [user?.role, user?.email, admins]);
+  }, [user?.role, user?.email, admins, jwtPermissions]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   

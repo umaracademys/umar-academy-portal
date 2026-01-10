@@ -1,9 +1,12 @@
 /**
  * Permission Checking Middleware
  * Ensures users can only access modules they have permissions for
+ * 
+ * Uses backend/shared/permissions.js as the single source of truth for permission keys
  */
 
 const mongoose = require('mongoose');
+const { DEFAULT_TRUE_TEACHER_PERMISSIONS } = require('../shared/permissions');
 
 // Get Teacher model (assuming it's available globally or passed)
 let Teacher, Admin;
@@ -23,47 +26,8 @@ async function checkTeacherPermission(userId, permissionKey) {
     if (!teacher || !teacher.permissions) {
       return false;
     }
-    // Default to true for basic permissions if not explicitly set
-    const defaultTruePermissions = [
-      'canViewAssessments',
-      'canEditAssessments',
-      'canViewEvaluations',
-      'canEditEvaluations',
-      'canManageSchedule',
-      'canContactParents',
-      'canViewStudentEmail',
-      'canViewStudentContact',
-      'canViewStudentPersonalInfo',
-      'canAccessMessages',
-      'canSendMessages',
-      'canAccessPdf',
-      'canAnnotatePdf',
-      'canViewPdfAnnotations',
-      'canAccessHomework',
-      'canCreateHomework',
-      'canGradeHomework',
-      'canViewHomeworkSubmissions',
-      'canAccessEvaluations',
-      'canCreateEvaluations',
-      'canAccessTickets',
-      'canCreateTickets',
-      'canReviewTickets',
-      'canAccessAttendance',
-      'canRecordAttendance',
-      'canViewAttendanceReports',
-      'canAccessRecordings',
-      'canUploadRecordings',
-      'canAccessMushaf',
-      'canMarkMistakes',
-      'canViewMistakeHistory',
-      'canAccessQaidah',
-      'canAccessAssignments',
-      'canCreateAssignments',
-      'canEditAssignments',
-      'canViewReports'
-    ];
-    
-    if (defaultTruePermissions.includes(permissionKey)) {
+    // Use shared permissions definition for default permissions
+    if (DEFAULT_TRUE_TEACHER_PERMISSIONS.includes(permissionKey)) {
       return teacher.permissions[permissionKey] !== false; // Default to true unless explicitly false
     }
     

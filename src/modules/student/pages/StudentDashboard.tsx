@@ -316,36 +316,36 @@ const StudentDashboard: React.FC = () => {
                 Track your assignments, monitor progress, and access your academic resources.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link
                 to="/student/assignments"
-                className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2 text-xs font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg"
+                className="inline-flex items-center justify-center rounded-lg bg-accent px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-bold text-white transition-all hover:bg-[rgba(var(--color-accent-rgb),0.9)] shadow-md hover:shadow-lg touch-target min-h-[44px]"
               >
                 View All Assignments
               </Link>
               <button
                 onClick={() => setShowPersonalMushaf(true)}
-                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-soft-primary shadow-sm touch-target min-h-[44px]"
               >
                 Personal Mushaf
               </button>
               {!isAfterSchool && (
                 <button
                   onClick={() => setShowTestResults(true)}
-                  className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+                  className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-soft-primary shadow-sm touch-target min-h-[44px]"
                 >
                   Test Results
                 </button>
               )}
               <button
                 onClick={() => setShowWeeklyEvaluations(true)}
-                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition-all hover:bg-soft-primary shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg border-2 border-primary px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-soft-primary shadow-sm touch-target min-h-[44px]"
               >
                 Weekly Evaluations
               </button>
               <Link
                 to="/student/profile"
-                className="inline-flex items-center justify-center rounded-lg border-2 border-gray-300 px-4 py-2 text-xs font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm"
+                className="inline-flex items-center justify-center rounded-lg border-2 border-gray-300 px-4 py-2.5 sm:px-5 sm:py-3 text-xs sm:text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 shadow-sm touch-target min-h-[44px]"
               >
                 My Profile
               </Link>
@@ -530,6 +530,15 @@ const StudentDashboard: React.FC = () => {
                     </p>
                   </div>
                 )}
+                <div className="pt-2 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowPasswordChangeModal(true)}
+                    className="w-full px-4 py-2.5 bg-primary text-white rounded-lg font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition-colors text-sm touch-target min-h-[44px] flex items-center justify-center gap-2"
+                  >
+                    <span>🔒</span>
+                    <span>Change Password</span>
+                  </button>
+                </div>
               </div>
             </Card>
           </div>

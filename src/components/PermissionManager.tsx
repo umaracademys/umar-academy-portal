@@ -6,11 +6,16 @@ import {
   AdminPermissions,
 } from '../types';
 import { useData } from '../contexts/DataContext';
+import { 
+  ALL_TEACHER_PERMISSIONS, 
+  ALL_ADMIN_PERMISSIONS,
+  TeacherPermissionKey,
+  AdminPermissionKey,
+  PERMISSION_MAP,
+  PermissionDefinition as SharedPermissionDefinition
+} from '../shared/permissions';
 
-type TeacherPermissionKey = keyof TeacherPermissions;
-type AdminPermissionKey = keyof AdminPermissions;
-
-type PermissionDefinition<K extends string> = {
+type PermissionManagerDefinition<K extends string> = {
   key: K;
   label: string;
   description: string;
@@ -204,7 +209,53 @@ const ADMIN_PERMISSION_GROUP_METADATA: Record<
   },
 };
 
-const TEACHER_PERMISSION_DEFINITIONS = [
+/**
+ * Phase 4: Convert shared permissions to PermissionManager format
+ * Maps modules to groups and adds UI metadata
+ */
+function mapModuleToGroup(module: string): string {
+  const moduleToGroupMap: Record<string, string> = {
+    'assessments': 'Assessments & Grading',
+    'evaluations': 'Progress & Evaluations',
+    'scheduling': 'Scheduling & Logistics',
+    'financial': 'Finance & Billing',
+    'communication': 'Family Communication',
+    'student-info': 'Student Information',
+    'messages': 'Messages Module',
+    'pdf': 'PDF Module',
+    'homework': 'Homework Module',
+    'tickets': 'Tickets Module',
+    'attendance': 'Attendance Module',
+    'recordings': 'Recordings Module',
+    'mushaf': 'Mushaf Module',
+    'qaidah': 'Qaidah Module',
+    'assignments': 'Assignments Module',
+    'student-assignment': 'People Operations',
+    'notifications': 'Notifications Module',
+    'reports': 'Reports & Analytics',
+    'people': 'People Operations',
+    'security': 'Security & Governance',
+  };
+  return moduleToGroupMap[module] || 'Other';
+}
+
+/**
+ * Phase 4: Generate permission definitions from shared permissions
+ * This ensures we use the single source of truth
+ */
+const TEACHER_PERMISSION_DEFINITIONS = ALL_TEACHER_PERMISSIONS.map((perm, index) => ({
+  key: perm.key as TeacherPermissionKey,
+  label: perm.label,
+  description: perm.description || '',
+  group: mapModuleToGroup(perm.module),
+  icon: '🔑', // Default icon - can be customized per permission if needed
+  defaultView: perm.defaultTeacher,
+  risk: perm.risk,
+  order: index + 1,
+}));
+
+// Legacy TEACHER_PERMISSION_DEFINITIONS (replaced above) - keeping for reference:
+const _LEGACY_TEACHER_PERMISSION_DEFINITIONS = [
   {
     key: 'canViewAssessments',
     label: 'View assessments',
@@ -691,9 +742,24 @@ const TEACHER_PERMISSION_DEFINITIONS = [
     risk: 'medium',
     order: 52,
   },
-] satisfies PermissionDefinition<TeacherPermissionKey>[];
+] satisfies PermissionManagerDefinition<TeacherPermissionKey>[];
 
-const ADMIN_PERMISSION_DEFINITIONS = [
+/**
+ * Phase 4: Generate admin permission definitions from shared permissions
+ */
+const ADMIN_PERMISSION_DEFINITIONS = ALL_ADMIN_PERMISSIONS.map((perm, index) => ({
+  key: perm.key as AdminPermissionKey,
+  label: perm.label,
+  description: perm.description || '',
+  group: mapModuleToGroup(perm.module),
+  icon: '🔑', // Default icon - can be customized per permission if needed
+  defaultView: perm.defaultAdmin,
+  risk: perm.risk,
+  order: index + 1,
+}));
+
+// Legacy ADMIN_PERMISSION_DEFINITIONS (replaced above) - keeping for reference:
+const _LEGACY_ADMIN_PERMISSION_DEFINITIONS = [
   {
     key: 'canManageTeachers',
     label: 'Manage teachers',
@@ -1115,7 +1181,7 @@ const ADMIN_PERMISSION_DEFINITIONS = [
     risk: 'high',
     order: 45,
   },
-] satisfies PermissionDefinition<AdminPermissionKey>[];
+] satisfies PermissionManagerDefinition<AdminPermissionKey>[];
 
 const TEACHER_PERMISSION_KEYS = TEACHER_PERMISSION_DEFINITIONS.map(
   (definition) => definition.key,
@@ -1148,7 +1214,7 @@ const TEACHER_DEFINITION_MAP = TEACHER_PERMISSION_DEFINITIONS.reduce(
   },
   {} as Record<
     TeacherPermissionKey,
-    PermissionDefinition<TeacherPermissionKey>
+    PermissionManagerDefinition<TeacherPermissionKey>
   >,
 );
 
@@ -1157,7 +1223,7 @@ const ADMIN_DEFINITION_MAP = ADMIN_PERMISSION_DEFINITIONS.reduce(
     acc[definition.key] = definition;
     return acc;
   },
-  {} as Record<AdminPermissionKey, PermissionDefinition<AdminPermissionKey>>,
+  {} as Record<AdminPermissionKey, PermissionManagerDefinition<AdminPermissionKey>>,
 );
 
 type FeedbackTone = 'success' | 'error' | 'info';
@@ -1622,7 +1688,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       [] as Array<{
         name: string;
         items: Array<{
-          definition: PermissionDefinition<TeacherPermissionKey>;
+          definition: PermissionManagerDefinition<TeacherPermissionKey>;
           value: boolean;
         }>;
       }>,
@@ -1874,7 +1940,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
       [] as Array<{
         name: string;
         items: Array<{
-          definition: PermissionDefinition<AdminPermissionKey>;
+          definition: PermissionManagerDefinition<AdminPermissionKey>;
           value: boolean;
         }>;
       }>,

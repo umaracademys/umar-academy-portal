@@ -37,6 +37,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (savedUser && savedToken) {
       try {
         const parsedUser = JSON.parse(savedUser);
+        
+        // Phase 4: Extract permissions from saved token if not already in user object
+        if (!parsedUser.permissions) {
+          try {
+            const base64Url = savedToken.split('.')[1];
+            if (base64Url) {
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(
+                atob(base64)
+                  .split('')
+                  .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                  .join('')
+              );
+              const decoded = JSON.parse(jsonPayload);
+              
+              if (decoded.permissions) {
+                parsedUser.permissions = decoded.permissions;
+              }
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to extract permissions from saved token:', error);
+            // Continue without permissions (backward compatibility)
+          }
+        }
+        
         console.log('✅ AuthContext: User loaded from localStorage:', parsedUser.name, parsedUser.role);
         setUser(parsedUser);
       } catch (error) {
@@ -118,6 +143,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           // Ignore JSON parse errors
         }
 
+        // Phase 5: Handle PERMISSIONS_OUTDATED error code
+        let errorData: any = {};
+        try {
+          errorData = await response.json().catch(() => ({}));
+        } catch (e) {
+          // Ignore parse errors
+        }
+        
+        // Check for PERMISSIONS_OUTDATED code - auto logout user
+        if (errorData.code === 'PERMISSIONS_OUTDATED') {
+          console.log('🔄 Permissions updated - logging out user');
+          logout(); // Auto logout on permission change
+          errorMessage = 'Your permissions have been updated. Please log in again.';
+          setError(errorMessage);
+          return false;
+        }
+        
         // Provide more specific error messages based on status code
         if (response.status === 401) {
           errorMessage = errorMessage || 'Invalid email, password, or role. Please check your credentials and try again.';
@@ -138,6 +180,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await response.json();
       
       if (data.token && data.user) {
+        // Phase 4: Extract permissions from JWT token and attach to user object
+        try {
+          // Decode JWT to extract permissions
+          const token = data.token;
+          const base64Url = token.split('.')[1];
+          if (base64Url) {
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(
+              atob(base64)
+                .split('')
+                .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+            );
+            const decoded = JSON.parse(jsonPayload);
+            
+            // Attach permissions to user object if present in token
+            if (decoded.permissions) {
+              data.user.permissions = decoded.permissions;
+            }
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to extract permissions from token:', error);
+          // Continue without permissions (backward compatibility)
+        }
+        
         // Store token and user data
         localStorage.setItem('umar_academy_token', data.token);
         localStorage.setItem('umar_academy_user', JSON.stringify(data.user));

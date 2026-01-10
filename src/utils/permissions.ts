@@ -1,58 +1,26 @@
 /**
  * Permission Utility Functions
  * Helper functions to check permissions in frontend components
+ * 
+ * Uses shared/permissions.ts as the single source of truth for permission keys
  */
 
 import { TeacherPermissions, AdminPermissions } from '../types';
+import { ALL_TEACHER_PERMISSIONS, TeacherPermissionKey } from '../shared/permissions';
 
 /**
  * Check if a teacher has a specific permission
  */
 export function hasTeacherPermission(
   permissions: TeacherPermissions | undefined | null,
-  permissionKey: keyof TeacherPermissions
+  permissionKey: TeacherPermissionKey
 ): boolean {
   if (!permissions) {
     // Default permissions for backward compatibility
-    const defaultTruePermissions: (keyof TeacherPermissions)[] = [
-      'canViewAssessments',
-      'canEditAssessments',
-      'canViewEvaluations',
-      'canEditEvaluations',
-      'canManageSchedule',
-      'canContactParents',
-      'canViewStudentEmail',
-      'canViewStudentContact',
-      'canViewStudentPersonalInfo',
-      'canAccessMessages',
-      'canSendMessages',
-      'canAccessPdf',
-      'canAnnotatePdf',
-      'canViewPdfAnnotations',
-      'canAccessHomework',
-      'canCreateHomework',
-      'canGradeHomework',
-      'canViewHomeworkSubmissions',
-      'canAccessEvaluations',
-      'canCreateEvaluations',
-      'canAccessTickets',
-      'canCreateTickets',
-      'canReviewTickets',
-      'canAccessAttendance',
-      'canRecordAttendance',
-      'canViewAttendanceReports',
-      'canAccessRecordings',
-      'canUploadRecordings',
-      'canAccessMushaf',
-      'canMarkMistakes',
-      'canViewMistakeHistory',
-      'canAccessQaidah',
-      'canAccessAssignments',
-      'canCreateAssignments',
-      'canEditAssignments',
-      'canViewReports',
-      'canViewAnalytics'
-    ];
+    // Use shared permissions definition to get default permissions
+    const defaultTruePermissions: TeacherPermissionKey[] = ALL_TEACHER_PERMISSIONS
+      .filter(perm => perm.defaultTeacher)
+      .map(perm => perm.key as TeacherPermissionKey);
     
     if (defaultTruePermissions.includes(permissionKey)) {
       return true; // Default to true for basic permissions

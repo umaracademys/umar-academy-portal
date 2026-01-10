@@ -30,18 +30,22 @@ import { useData } from '../contexts/DataContext';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { AdminPermissions } from '../types';
+import { usePermission } from '../hooks/usePermission';
+import { RequirePermission } from '../components/RequirePermission';
+import AdminNotificationCenter from '../components/AdminNotificationCenter';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const { students, teachers, admins, refreshData } = useData();
   const { assignments } = useBackendData();
+  const { can, permissions: jwtPermissions } = usePermission(); // Phase 4: Use JWT permissions
   
   // Refresh data on mount to ensure latest permissions are loaded
   useEffect(() => {
     refreshData();
   }, [refreshData]);
   
-  // Get current admin's permissions
+  // Get current admin's permissions (fallback to JWT permissions)
   const currentAdmin = useMemo(() => {
     if (!user?.email) return null;
     const foundAdmin = admins.find(admin => admin.email === user.email);
@@ -50,14 +54,21 @@ const AdminDashboard: React.FC = () => {
         email: foundAdmin.email,
         fullName: foundAdmin.fullName,
         permissionsCount: foundAdmin.permissions ? Object.keys(foundAdmin.permissions).length : 0,
-        enabledPermissions: foundAdmin.permissions ? Object.values(foundAdmin.permissions).filter(v => v === true).length : 0
+        enabledPermissions: foundAdmin.permissions ? Object.values(foundAdmin.permissions).filter(v => v === true).length : 0,
+        jwtPermissions: jwtPermissions ? Object.keys(jwtPermissions).length : 0
       });
     }
     return foundAdmin;
-  }, [user?.email, admins]);
+  }, [user?.email, admins, jwtPermissions]);
   
   // Get admin permissions with defaults - ensure all keys are present
+  // Phase 4: Prioritize JWT permissions over DB permissions (JWT is source of truth)
   const permissions: AdminPermissions = useMemo(() => {
+    // Use JWT permissions as primary source (Phase 3/4)
+    if (jwtPermissions && typeof jwtPermissions === 'object') {
+      return jwtPermissions as AdminPermissions;
+    }
+    
     // Default permissions object with all keys set to false
     const defaultPermissions: AdminPermissions = {
       canManageTeachers: false,
@@ -143,6 +154,7 @@ const AdminDashboard: React.FC = () => {
   const [showEvaluationManagement, setShowEvaluationManagement] = useState(false);
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
   const [showPermissionManager, setShowPermissionManager] = useState(false);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   
   // Student Management State
@@ -198,6 +210,22 @@ const AdminDashboard: React.FC = () => {
               View Teachers
             </button>
           )}
+          <RequirePermission permission="canViewNotifications" hideIfDenied>
+            <button
+              onClick={() => setShowNotificationCenter(true)}
+              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+            >
+              🔔 Notifications
+            </button>
+          </RequirePermission>
+          <RequirePermission permission="canManageNotifications" hideIfDenied>
+            <button
+              onClick={() => setShowNotificationCenter(true)}
+              className="inline-flex items-center justify-center rounded-lg border-2 border-accent/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-accent/90 hover:border-accent touch-target"
+            >
+              ⚙️ Manage Notifications
+            </button>
+          </RequirePermission>
         </div>
       </div>
 
@@ -497,6 +525,36 @@ const AdminDashboard: React.FC = () => {
               Open workflow
             </span>
           </button>
+          <RequirePermission permission="canViewNotifications" hideIfDenied>
+            <button
+              onClick={() => setShowNotificationCenter(true)}
+              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs sm:text-sm font-bold text-primary">🔔 Notifications</p>
+                </div>
+                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
+                  View and manage system notifications
+                </p>
+              </div>
+            </button>
+          </RequirePermission>
+          <RequirePermission permission="canManageNotifications" hideIfDenied>
+            <button
+              onClick={() => setShowNotificationCenter(true)}
+              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-accent/30 bg-accent/20 hover:bg-accent/40 touch-target"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs sm:text-sm font-bold text-primary">⚙️ Manage Notifications</p>
+                </div>
+                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
+                  Create and send notifications
+                </p>
+              </div>
+            </button>
+          </RequirePermission>
           <button
             onClick={() => setShowTestingModule(true)}
             className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-transparent bg-primary text-white hover:bg-[rgba(var(--color-primary-rgb),0.9)] touch-target"
@@ -1009,6 +1067,11 @@ const AdminDashboard: React.FC = () => {
         }>
           <PermissionManager onClose={() => setShowPermissionManager(false)} />
         </Suspense>
+      )}
+
+      {/* Notification Center Modal */}
+      {showNotificationCenter && (
+        <AdminNotificationCenter onClose={() => setShowNotificationCenter(false)} />
       )}
 
     </div>

@@ -17,6 +17,7 @@ export interface User {
   isDeveloper?: boolean; // Developer account flag
   isTestAccount?: boolean; // Test account flag
   passwordChangeRequired?: boolean; // Flag to indicate password needs to be changed
+  permissions?: TeacherPermissions | AdminPermissions | { '*': true }; // Phase 3: Permissions from JWT token (optional for backward compatibility)
 }
 
 export interface Sibling {

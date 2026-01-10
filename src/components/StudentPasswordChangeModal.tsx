@@ -118,19 +118,19 @@ const StudentPasswordChangeModal: React.FC<StudentPasswordChangeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-3 sm:p-4">
       <div 
-        className="bg-white rounded-xl shadow-xl max-w-md w-full"
+        className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="bg-gradient-to-r from-primary to-primary/90 px-6 py-5 rounded-t-xl">
-          <h2 className="text-xl font-bold text-white">Change Your Password</h2>
-          <p className="text-white/90 text-sm mt-1">
+        <div className="bg-gradient-to-r from-primary to-primary/90 px-4 sm:px-6 py-4 sm:py-5 rounded-t-xl">
+          <h2 className="text-lg sm:text-xl font-bold text-white">Change Your Password</h2>
+          <p className="text-white/90 text-xs sm:text-sm mt-1">
             For security, please change your password from the default one.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           {error && (
             <div className="p-3 bg-red-50 border-2 border-red-200 rounded-lg text-red-700 text-sm">
               {error}
@@ -150,14 +150,14 @@ const StudentPasswordChangeModal: React.FC<StudentPasswordChangeModalProps> = ({
                   setCurrentPassword(e.target.value);
                   setError('');
                 }}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none"
+                className="w-full px-4 py-3 sm:py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none text-base"
                 placeholder="Enter your current password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 touch-target min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 {showCurrentPassword ? '👁️' : '👁️‍🗨️'}
               </button>
@@ -174,14 +174,14 @@ const StudentPasswordChangeModal: React.FC<StudentPasswordChangeModalProps> = ({
                 type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={handleNewPasswordChange}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none"
+                className="w-full px-4 py-3 sm:py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none text-base"
                 placeholder="Enter your new password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 touch-target min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 {showNewPassword ? '👁️' : '👁️‍🗨️'}
               </button>
@@ -230,14 +230,14 @@ const StudentPasswordChangeModal: React.FC<StudentPasswordChangeModalProps> = ({
                   setConfirmPassword(e.target.value);
                   setError('');
                 }}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none"
+                className="w-full px-4 py-3 sm:py-3 border-2 border-gray-300 rounded-lg focus:border-primary focus:outline-none text-base"
                 placeholder="Confirm your new password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 touch-target min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
               </button>
@@ -248,11 +248,18 @@ const StudentPasswordChangeModal: React.FC<StudentPasswordChangeModalProps> = ({
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full sm:w-auto px-6 py-2.5 sm:py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all touch-target min-h-[44px] text-sm sm:text-base"
+            >
+              Cancel
+            </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:flex-1 px-6 py-2.5 sm:py-3 bg-primary text-white rounded-lg font-bold hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed touch-target min-h-[44px] text-sm sm:text-base"
             >
               {loading ? 'Changing...' : 'Change Password'}
             </button>

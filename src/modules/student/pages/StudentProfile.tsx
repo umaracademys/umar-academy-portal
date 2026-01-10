@@ -38,40 +38,40 @@ const StudentProfile: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-2">View your complete academic and enrollment information</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Profile</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">View your complete academic and enrollment information</p>
           </div>
           <a
             href="/student/dashboard"
-            className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition"
+            className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition text-sm sm:text-base text-center touch-target min-h-[44px]"
           >
             ← Back to Dashboard
           </a>
         </div>
 
         {/* Profile Card */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex items-center space-x-4">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
             <img
               src={currentStudent.avatar}
               alt={currentStudent.fullName}
-              className="h-20 w-20 rounded-full border-4 border-white"
+              className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-4 border-white flex-shrink-0"
             />
-            <div>
-              <h2 className="text-2xl font-bold">{currentStudent.fullName}</h2>
-              <p className="text-primary-100">{currentStudent.program} • {(currentStudent as any).level}</p>
-              <p className="text-primary-200 text-sm mt-1">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold">{currentStudent.fullName}</h2>
+              <p className="text-sm sm:text-base text-primary-100 mt-1">{currentStudent.program} • {(currentStudent as any).level}</p>
+              <p className="text-xs sm:text-sm text-primary-200 mt-1">
                 Student ID: {currentStudent.id} • {currentStudent.status === 'active' ? '✓ Active' : '✗ Inactive'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Personal Information */}
           <Card title="👤 Personal Information">
             <div className="space-y-3">
@@ -298,9 +298,10 @@ const StudentProfile: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setShowPasswordChangeModal(true)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition"
+                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition text-sm sm:text-base touch-target min-h-[44px] flex items-center justify-center gap-2"
                 >
-                  Change Password
+                  <span>🔒</span>
+                  <span>Change Password</span>
                 </button>
               </div>
               {user?.passwordChangeRequired && (

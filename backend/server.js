@@ -664,6 +664,8 @@ const adminSchema = new mongoose.Schema({
   fullName: String,
   email: { type: String, unique: true, sparse: true },
   contact: String,
+  // Phase 5: Permission versioning for token invalidation
+  permissionsVersion: { type: Number, default: 1 },
   permissions: {
     // People Operations
     canManageTeachers: { type: Boolean, default: false },
@@ -1152,6 +1154,8 @@ const teacherSchema = new mongoose.Schema({
   status: String,
   assignedStudents: [String],
   idDocument: String, // Base64 encoded document
+  // Phase 5: Permission versioning for token invalidation
+  permissionsVersion: { type: Number, default: 1 },
   permissions: {
     // Assessments & Evaluations
     canViewAssessments: Boolean,
@@ -1304,9 +1308,13 @@ const Teacher = mongoose.model('Teacher', teacherSchema);
 
 // Initialize permission middleware with models (after Admin is defined)
 const { initializeModels, requireTeacherPermission, requireAdminPermission, checkTeacherPermission, checkAdminPermission } = require('./middleware/permissions');
+const { requirePermission, initializePermissionModels } = require('./middleware/requirePermission');
+const { checkPermissionVersion, initializeVersionModels } = require('./middleware/checkPermissionVersion');
 // Note: Admin is defined earlier in the file, so this should work
 if (typeof Admin !== 'undefined') {
   initializeModels(Teacher, Admin);
+  initializePermissionModels(Teacher, Admin);
+  initializeVersionModels(Teacher, Admin);
 }
 
 // Teacher Attendance Schema
@@ -1478,7 +1486,7 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, JWT_SECRET, async (err, user) => {
+  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
     if (err) {
       await logActivity('unauthorized_access', {
         req,
@@ -1488,7 +1496,18 @@ const authenticateToken = (req, res, next) => {
       });
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
-    req.user = user;
+    
+    // Phase 3: Attach permissions from token to req.user
+    // Phase 5: Also attach permissionsVersion for version checking
+    // Backward compatibility: if token has no permissions, set to null (will fallback to DB)
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      permissions: decoded.permissions || null, // null for old tokens (backward compatibility)
+      permissionsVersion: decoded.permissionsVersion || null // null for old tokens (backward compatibility)
+    };
+    
     next();
   });
 };
@@ -1685,13 +1704,85 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     user.lastFailedLoginAttempt = null;
     await user.save();
 
-    // Generate JWT token
+    // Phase 3: Fetch permissions from DB and embed in JWT
+    // Phase 5: Also fetch permissionsVersion for token invalidation
+    let userPermissions = null;
+    let permissionsVersion = 1; // Default version
+    
+    if (user.role === 'superadmin') {
+      // Superadmin has all permissions - use special marker
+      userPermissions = { '*': true };
+      permissionsVersion = 1; // Superadmin doesn't need versioning
+    } else if (user.role === 'teacher') {
+      // Fetch teacher permissions
+      // Note: Teacher model is defined earlier in the file
+      const teacher = await Teacher.findOne({ userId: user._id });
+      if (teacher && teacher.permissions) {
+        // Convert mongoose document to plain object (remove mongoose metadata)
+        // Ensure we only include valid permission keys
+        const rawPerms = teacher.permissions.toObject ? teacher.permissions.toObject() : { ...teacher.permissions };
+        const { isValidPermissionKey } = require('./shared/permissions');
+        
+        // Security: Only include valid permission keys (ignore any invalid keys)
+        userPermissions = {};
+        for (const key in rawPerms) {
+          if (isValidPermissionKey(key)) {
+            userPermissions[key] = rawPerms[key] === true;
+          }
+          // Ignore invalid keys (security hardening)
+        }
+        
+        // Phase 5: Extract permissionsVersion from teacher record
+        permissionsVersion = teacher.permissionsVersion || 1;
+      } else {
+        // Teacher record not found - use empty permissions (will fallback to DB in requirePermission)
+        userPermissions = {};
+        permissionsVersion = 1;
+      }
+    } else if (user.role === 'admin') {
+      // Fetch admin permissions
+      // Note: Admin model is defined earlier in the file
+      const admin = await Admin.findOne({ userId: user._id });
+      if (admin && admin.permissions) {
+        // Convert mongoose document to plain object (remove mongoose metadata)
+        // Ensure we only include valid permission keys
+        const rawPerms = admin.permissions.toObject ? admin.permissions.toObject() : { ...admin.permissions };
+        const { isValidPermissionKey } = require('./shared/permissions');
+        
+        // Security: Only include valid permission keys (ignore any invalid keys)
+        userPermissions = {};
+        for (const key in rawPerms) {
+          if (isValidPermissionKey(key)) {
+            userPermissions[key] = rawPerms[key] === true;
+          }
+          // Ignore invalid keys (security hardening)
+        }
+        
+        // Phase 5: Extract permissionsVersion from admin record
+        permissionsVersion = admin.permissionsVersion || 1;
+      } else {
+        // Admin record not found - use empty permissions (will fallback to DB in requirePermission)
+        userPermissions = {};
+        permissionsVersion = 1;
+      }
+    }
+
+    // Generate JWT token with permissions embedded
+    // Phase 5: Include permissionsVersion in token
+    const tokenPayload = {
+      userId: user._id,
+      email: user.email,
+      role: user.role
+    };
+    
+    // Only include permissions if they exist (backward compatibility for old tokens)
+    if (userPermissions !== null) {
+      tokenPayload.permissions = userPermissions;
+      tokenPayload.permissionsVersion = permissionsVersion;
+    }
+    
     const token = jwt.sign(
-      { 
-        userId: user._id, 
-        email: user.email, 
-        role: user.role 
-      },
+      tokenPayload,
       JWT_SECRET,
       { expiresIn: '7d' } // Token expires in 7 days
     );
@@ -2122,12 +2213,54 @@ app.get('/api/users/:id', apiLimiter, async (req, res) => {
 });
 
 // Get all students
-app.get('/api/students', async (req, res) => {
+// Phase 7: CRITICAL - Filter PII based on permissions
+app.get('/api/students', authenticateToken, async (req, res) => {
   try {
     const students = await Student.find({})
       .populate('userId')
       .sort({ program: 1, fullName: 1 }); // Sort by program first, then A-Z by name
-    res.json(students);
+    
+    // Phase 7: CRITICAL - Filter PII based on permissions
+    const canViewEmail = req.user.role === 'superadmin' || 
+                        (req.user.permissions && req.user.permissions['*'] === true) ||
+                        (req.user.permissions && req.user.permissions.canViewStudentEmail === true);
+    
+    const canViewContact = req.user.role === 'superadmin' || 
+                          (req.user.permissions && req.user.permissions['*'] === true) ||
+                          (req.user.permissions && req.user.permissions.canViewStudentContact === true);
+    
+    const canViewPersonalInfo = req.user.role === 'superadmin' || 
+                                (req.user.permissions && req.user.permissions['*'] === true) ||
+                                (req.user.permissions && req.user.permissions.canViewStudentPersonalInfo === true);
+    
+    // Filter PII from student data
+    const filteredStudents = students.map(student => {
+      const studentObj = student.toObject();
+      
+      if (!canViewEmail) {
+        delete studentObj.email;
+        if (studentObj.userId && studentObj.userId.email) {
+          delete studentObj.userId.email;
+        }
+      }
+      
+      if (!canViewContact) {
+        delete studentObj.contact;
+        delete studentObj.phoneNumber;
+        delete studentObj.parentContact;
+      }
+      
+      if (!canViewPersonalInfo) {
+        delete studentObj.parentName;
+        delete studentObj.siblings;
+        delete studentObj.address;
+        delete studentObj.dateOfBirth;
+      }
+      
+      return studentObj;
+    });
+    
+    res.json(filteredStudents);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2456,7 +2589,8 @@ app.get('/api/teachers/sync-status', async (req, res) => {
 });
 
 // Create a new user (protected route - requires authentication)
-app.post('/api/users', apiLimiter, authenticateToken, async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
     const { name, email, role, password, avatar } = req.body;
 
@@ -2534,7 +2668,8 @@ app.post('/api/users', apiLimiter, authenticateToken, async (req, res) => {
 });
 
 // Create a new student
-app.post('/api/students', async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.post('/api/students', authenticateToken, requirePermission('canManageStudents'), async (req, res) => {
   try {
     // Convert userId to ObjectId if it's a string
     const studentData = { ...req.body };
@@ -2659,7 +2794,8 @@ app.post('/api/students', async (req, res) => {
 // 2. Bulk teacher queries eliminate N+1 problem (10x faster)
 // 3. Bulk teacher updates using bulkWrite (5-10x faster)
 // 4. Better error logging with context and timing
-app.put('/api/students/:id', async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.put('/api/students/:id', authenticateToken, requirePermission('canManageStudents'), async (req, res) => {
   const startTime = Date.now();
   const studentId = req.params.id;
   
@@ -3183,7 +3319,8 @@ app.get('/api/admins', async (req, res) => {
 });
 
 // Create a new admin
-app.post('/api/admins', authenticateToken, async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.post('/api/admins', authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
     const { userId, fullName, email, contact, permissions, assignedDepartments, hireDate, status, avatar } = req.body;
 
@@ -3332,6 +3469,10 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
     const adminId = req.params.id;
     console.log(`🔄 PUT /api/admins/${adminId}`);
     
+    // Convert ID to ObjectId early (needed for permission version check)
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(adminId);
+    const queryId = isValidObjectId ? new mongoose.Types.ObjectId(adminId) : adminId;
+    
     const adminData = { ...req.body };
     if (adminData.userId && typeof adminData.userId === 'string') {
       adminData.userId = new mongoose.Types.ObjectId(adminData.userId);
@@ -3340,8 +3481,20 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
       adminData.hireDate = new Date(adminData.hireDate);
     }
 
-    // Preserve permissions exactly as sent (including false values)
+    // Phase 7: CRITICAL - Protect permission updates
+    // Check if updating permissions - requires canManagePermissions
     if (adminData.permissions) {
+      // Check permission using requirePermission logic
+      const hasPermission = req.user.role === 'superadmin' || 
+                           (req.user.permissions && req.user.permissions['*'] === true) ||
+                           (req.user.permissions && req.user.permissions.canManagePermissions === true);
+      
+      if (!hasPermission) {
+        return res.status(403).json({ 
+          error: 'Access denied. You need canManagePermissions to update permissions.',
+          permission: 'canManagePermissions'
+        });
+      }
       console.log('🔐 Updating admin permissions:', {
         adminId,
         permissionCount: Object.keys(adminData.permissions).length,
@@ -3350,11 +3503,35 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
       });
       // Use exact permissions as sent - don't override with defaults
       adminData.permissions = adminData.permissions;
+      
+      // Phase 5: Increment permissions version to invalidate old tokens
+      const currentAdmin = await Admin.findById(queryId) || await Admin.findOne({ $or: [
+        { _id: mongoose.Types.ObjectId.isValid(adminId) ? new mongoose.Types.ObjectId(adminId) : adminId },
+        { userId: mongoose.Types.ObjectId.isValid(adminId) ? new mongoose.Types.ObjectId(adminId) : adminId },
+        { adminId: adminId }
+      ]});
+      if (currentAdmin) {
+        adminData.permissionsVersion = (currentAdmin.permissionsVersion || 1) + 1;
+        console.log(`🔄 Incremented admin permissions version: ${currentAdmin.permissionsVersion || 1} → ${adminData.permissionsVersion}`);
+      } else {
+        adminData.permissionsVersion = 1; // First time setting permissions
+      }
     }
-
-    // Try to convert ID to ObjectId if it's a valid ObjectId string
-    const isValidObjectId = mongoose.Types.ObjectId.isValid(adminId);
-    const queryId = isValidObjectId ? new mongoose.Types.ObjectId(adminId) : adminId;
+    
+    // Phase 7: CRITICAL - Protect non-permission updates (requires canManageTeachers)
+    // Only check if NOT updating permissions (permission check already done above)
+    if (!adminData.permissions) {
+      const hasPermission = req.user.role === 'superadmin' || 
+                           (req.user.permissions && req.user.permissions['*'] === true) ||
+                           (req.user.permissions && req.user.permissions.canManageTeachers === true);
+      
+      if (!hasPermission) {
+        return res.status(403).json({ 
+          error: 'Access denied. You need canManageTeachers to update admin profiles.',
+          permission: 'canManageTeachers'
+        });
+      }
+    }
     
     let admin = await Admin.findByIdAndUpdate(queryId, adminData, { new: true, runValidators: true });
     
@@ -3384,7 +3561,8 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
 });
 
 // Create a new teacher
-app.post('/api/teachers', async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.post('/api/teachers', authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
     // Convert userId to ObjectId if it's a string
     const teacherData = { ...req.body };
@@ -3408,7 +3586,8 @@ app.post('/api/teachers', async (req, res) => {
 });
 
 // Update teacher profile
-app.put('/api/teachers/:id', async (req, res) => {
+// Phase 7: CRITICAL - Protect user management (permission updates handled separately above)
+app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
   try {
     const teacherId = req.params.id;
     console.log(`🔄 PUT /api/teachers/${teacherId}`);
@@ -3418,14 +3597,42 @@ app.put('/api/teachers/:id', async (req, res) => {
       teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
     }
     
-    // Preserve permissions exactly as sent (including false values)
+    // Phase 7: CRITICAL - Protect permission updates
+    // Check if updating permissions - requires canManagePermissions
     if (teacherData.permissions) {
+      // Check permission using requirePermission logic
+      const hasPermission = req.user.role === 'superadmin' || 
+                           (req.user.permissions && req.user.permissions['*'] === true) ||
+                           (req.user.permissions && req.user.permissions.canManagePermissions === true);
+      
+      if (!hasPermission) {
+        return res.status(403).json({ 
+          error: 'Access denied. You need canManagePermissions to update permissions.',
+          permission: 'canManagePermissions'
+        });
+      }
+      
       console.log('🔐 Updating teacher permissions:', {
         teacherId,
         permissionCount: Object.keys(teacherData.permissions).length,
         enabledCount: Object.values(teacherData.permissions).filter(v => v === true).length,
         disabledCount: Object.values(teacherData.permissions).filter(v => v === false).length
       });
+      
+      // Phase 5: Increment permissions version to invalidate old tokens
+      const isValidObjectId = mongoose.Types.ObjectId.isValid(teacherId);
+      const queryId = isValidObjectId ? new mongoose.Types.ObjectId(teacherId) : teacherId;
+      const currentTeacher = await Teacher.findById(queryId) || await Teacher.findOne({ $or: [
+        { _id: queryId },
+        { userId: queryId },
+        { teacherId: teacherId }
+      ]});
+      if (currentTeacher) {
+        teacherData.permissionsVersion = (currentTeacher.permissionsVersion || 1) + 1;
+        console.log(`🔄 Incremented teacher permissions version: ${currentTeacher.permissionsVersion || 1} → ${teacherData.permissionsVersion}`);
+      } else {
+        teacherData.permissionsVersion = 1; // First time setting permissions
+      }
       // Use exact permissions as sent - don't override with defaults
       teacherData.permissions = teacherData.permissions;
     }
@@ -4070,6 +4277,7 @@ app.delete('/api/teacher-attendance/:id', authenticateToken, async (req, res) =>
 });
 
 // Update user - users can update their own profile, admins can update any user
+// Phase 7: CRITICAL - Protect user management
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.userId);
@@ -4086,8 +4294,23 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     const isSelfUpdate = req.user.userId === req.params.id;
     const isAdmin = requestingUser.role === 'superadmin' || requestingUser.role === 'admin';
 
-    if (!isSelfUpdate && !isAdmin) {
-      return res.status(403).json({ error: 'Access denied. You can only update your own profile.' });
+    // Phase 7: CRITICAL - Require canManageTeachers for non-self updates
+    if (!isSelfUpdate) {
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Access denied. You can only update your own profile.' });
+      }
+      
+      // Check permission for admin updates
+      const hasPermission = req.user.role === 'superadmin' || 
+                           (req.user.permissions && req.user.permissions['*'] === true) ||
+                           (req.user.permissions && req.user.permissions.canManageTeachers === true);
+      
+      if (!hasPermission) {
+        return res.status(403).json({ 
+          error: 'Access denied. You need canManageTeachers to update user profiles.',
+          permission: 'canManageTeachers'
+        });
+      }
     }
 
     // Don't allow updating password or sensitive fields through this endpoint
@@ -4496,14 +4719,9 @@ app.post('/api/users/:id/unlock', authenticateToken, async (req, res) => {
 });
 
 // Get user details including settings
-app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
+// Phase 7: CRITICAL - Protect PII access
+app.get('/api/users/:id/details', authenticateToken, requirePermission('canViewStudentPersonalInfo'), async (req, res) => {
   try {
-    // Check if user has admin permissions
-    const adminUser = await User.findById(req.user.userId);
-    if (!adminUser || (adminUser.role !== 'superadmin' && adminUser.role !== 'admin')) {
-      return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
-    }
-
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -4553,7 +4771,8 @@ app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
 });
 
 // Delete student
-app.delete('/api/students/:id', async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.delete('/api/students/:id', authenticateToken, requirePermission('canManageStudents'), async (req, res) => {
   try {
     const studentId = req.params.id;
     console.log(`🗑️ DELETE /api/students/${studentId}`);
@@ -4617,7 +4836,8 @@ app.delete('/api/students/:id', async (req, res) => {
 });
 
 // Delete user
-app.delete('/api/users/:id', async (req, res) => {
+// Phase 7: CRITICAL - Protect user management
+app.delete('/api/users/:id', authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: 'User deleted successfully' });
@@ -5585,6 +5805,97 @@ app.get('/api/assignments/student/:studentId', async (req, res) => {
   }
 });
 
+// Get assignments for the authenticated student (student portal)
+app.get('/api/assignments/me', authenticateToken, async (req, res) => {
+  try {
+    // Only allow students to access this endpoint
+    if (req.user.role !== 'student') {
+      return res.status(403).json({ error: 'Access denied. This endpoint is for students only.' });
+    }
+
+    // Find student by userId from token, or by email as fallback
+    let student = await Student.findOne({ userId: req.user.userId });
+    
+    // Fallback: If not found by userId, try finding by email
+    if (!student && req.user.email) {
+      console.log(`⚠️ Student not found by userId ${req.user.userId}, trying email: ${req.user.email}`);
+      student = await Student.findOne({ email: req.user.email });
+    }
+    
+    // If still not found, try finding by _id if userId is an ObjectId
+    if (!student && req.user.userId) {
+      try {
+        const userIdObj = new mongoose.Types.ObjectId(req.user.userId);
+        student = await Student.findOne({ _id: userIdObj });
+      } catch (e) {
+        // userId is not a valid ObjectId, skip
+      }
+    }
+    
+    if (!student) {
+      console.error(`❌ Student not found for userId: ${req.user.userId}, email: ${req.user.email}`);
+      return res.status(404).json({ 
+        error: 'Student profile not found',
+        debug: {
+          userId: req.user.userId,
+          email: req.user.email,
+          role: req.user.role
+        }
+      });
+    }
+
+    // Get assignments for this student - try multiple ID formats
+    const studentId = student._id.toString();
+    const studentIdStr = student.id || student.studentId || studentId;
+    
+    console.log(`🔍 Looking for assignments with studentId:`, {
+      studentId,
+      studentIdStr,
+      student_id: student._id,
+      studentId_field: student.studentId,
+      id_field: student.id
+    });
+    
+    const assignments = await Assignment.find({ 
+      $or: [
+        { studentId: studentId },
+        { studentId: student._id },
+        { studentId: studentIdStr },
+        { studentId: student.id },
+        { studentId: student.studentId },
+        // Also try as ObjectId if studentId is a string that looks like ObjectId
+        ...(mongoose.Types.ObjectId.isValid(studentId) ? [{ studentId: new mongoose.Types.ObjectId(studentId) }] : [])
+      ]
+    })
+      .sort({ createdAt: -1 })
+      .limit(1000);
+
+    console.log(`📚 GET /api/assignments/me - Found ${assignments.length} assignments for student ${studentId} (email: ${student.email || req.user.email})`);
+    
+    // Debug: Log sample assignment studentIds if any found
+    if (assignments.length > 0) {
+      console.log(`   Sample assignment studentIds:`, assignments.slice(0, 3).map(a => ({
+        assignmentId: a._id,
+        studentId: a.studentId,
+        studentIdType: typeof a.studentId
+      })));
+    } else {
+      console.log(`   ⚠️ No assignments found. Checking all assignments in database...`);
+      const allAssignments = await Assignment.find({}).limit(5);
+      console.log(`   Sample assignment studentIds from DB:`, allAssignments.map(a => ({
+        assignmentId: a._id,
+        studentId: a.studentId,
+        studentIdType: typeof a.studentId
+      })));
+    }
+    
+    res.json(assignments);
+  } catch (error) {
+    console.error('❌ Error fetching student assignments:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single assignment by ID
 app.get('/api/assignments/:id', async (req, res) => {
   try {
@@ -5599,7 +5910,8 @@ app.get('/api/assignments/:id', async (req, res) => {
 });
 
 // Create new assignment
-app.post('/api/assignments', async (req, res) => {
+// Create assignment - Teachers need canCreateAssignments, Admins need canManageAssignments
+app.post('/api/assignments', authenticateToken, requirePermission('canCreateAssignments'), async (req, res) => {
   try {
     const { ticketId, ...assignmentData } = req.body;
     
@@ -5655,6 +5967,7 @@ app.post('/api/assignments', async (req, res) => {
 });
 
 // Submit homework for an assignment (MUST be before /api/assignments/:id PUT route)
+// Note: Students can submit homework, so no permission check needed here
 app.post('/api/assignments/:id/submit-homework', async (req, res) => {
   try {
     const assignment = await Assignment.findById(req.params.id);
@@ -5711,7 +6024,8 @@ app.post('/api/assignments/:id/submit-homework', async (req, res) => {
 });
 
 // Grade homework (for teachers/admins) (MUST be before /api/assignments/:id PUT route)
-app.post('/api/assignments/:id/grade-homework', async (req, res) => {
+// Teachers need canGradeHomework, Admins need canManageHomework
+app.post('/api/assignments/:id/grade-homework', authenticateToken, requirePermission('canGradeHomework'), async (req, res) => {
   try {
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) {
@@ -5747,8 +6061,8 @@ app.post('/api/assignments/:id/grade-homework', async (req, res) => {
   }
 });
 
-// Update assignment
-app.put('/api/assignments/:id', async (req, res) => {
+// Update assignment - Teachers need canEditAssignments, Admins need canManageAssignments
+app.put('/api/assignments/:id', authenticateToken, requirePermission('canEditAssignments'), async (req, res) => {
   try {
     const updateData = { ...req.body };
     
@@ -5930,8 +6244,8 @@ app.put('/api/assignments/:id', async (req, res) => {
   }
 });
 
-// Delete assignment
-app.delete('/api/assignments/:id', async (req, res) => {
+// Delete assignment - Teachers need canDeleteAssignments, Admins need canManageAssignments
+app.delete('/api/assignments/:id', authenticateToken, requirePermission('canDeleteAssignments'), async (req, res) => {
   try {
     const assignment = await Assignment.findByIdAndDelete(req.params.id);
     if (!assignment) {
