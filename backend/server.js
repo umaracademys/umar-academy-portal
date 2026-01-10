@@ -732,6 +732,14 @@ const adminSchema = new mongoose.Schema({
     canManageAssignments: { type: Boolean, default: false },
     canBulkCreateAssignments: { type: Boolean, default: false },
     
+    // Teacher-Student Assignment
+    canManageStudentAssignments: { type: Boolean, default: false },
+    
+    // Notifications Module
+    canManageNotifications: { type: Boolean, default: false },
+    canViewNotifications: { type: Boolean, default: false },
+    canSendNotifications: { type: Boolean, default: false },
+    
     // Reports & Analytics
     canViewAnalytics: { type: Boolean, default: false },
     canExportReports: { type: Boolean, default: false },
@@ -1223,6 +1231,9 @@ const teacherSchema = new mongoose.Schema({
     canCreateAssignments: Boolean,
     canEditAssignments: Boolean,
     canDeleteAssignments: Boolean,
+    
+    // Teacher-Student Assignment
+    canManageStudentAssignments: Boolean,
     
     // Reports & Analytics
     canViewReports: Boolean,
@@ -3130,6 +3141,9 @@ const normalizeTeacherData = (teacherData) => {
       canEditAssignments: perms.canEditAssignments !== undefined ? perms.canEditAssignments : false,
       canDeleteAssignments: perms.canDeleteAssignments !== undefined ? perms.canDeleteAssignments : false,
       
+      // Teacher-Student Assignment
+      canManageStudentAssignments: perms.canManageStudentAssignments !== undefined ? perms.canManageStudentAssignments : false,
+      
       // Module Permissions - Reports & Analytics
       canViewReports: perms.canViewReports !== undefined ? perms.canViewReports : true,
       canViewAnalytics: perms.canViewAnalytics !== undefined ? perms.canViewAnalytics : true,
@@ -3256,6 +3270,14 @@ app.post('/api/admins', authenticateToken, async (req, res) => {
         canAccessAssignments: false,
         canManageAssignments: false,
         canBulkCreateAssignments: false,
+        
+        // Teacher-Student Assignment
+        canManageStudentAssignments: false,
+        
+        // Notifications Module
+        canManageNotifications: false,
+        canViewNotifications: false,
+        canSendNotifications: false,
         
         // Module Permissions - Reports & Analytics
         canViewAnalytics: false,

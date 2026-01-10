@@ -288,6 +288,9 @@ export interface TeacherPermissions {
   canEditAssignments: boolean;
   canDeleteAssignments: boolean;
   
+  // Teacher-Student Assignment
+  canManageStudentAssignments: boolean;
+  
   // Reports & Analytics
   canViewReports: boolean;
   canViewAnalytics: boolean;
@@ -383,6 +386,14 @@ export interface AdminPermissions {
   canAccessAssignments: boolean;
   canManageAssignments: boolean;
   canBulkCreateAssignments: boolean;
+  
+  // Teacher-Student Assignment
+  canManageStudentAssignments: boolean;
+  
+  // Notifications Module
+  canManageNotifications: boolean;
+  canViewNotifications: boolean;
+  canSendNotifications: boolean;
   
   // Reports & Analytics
   canViewAnalytics: boolean;
