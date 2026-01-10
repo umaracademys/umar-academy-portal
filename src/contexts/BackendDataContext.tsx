@@ -909,6 +909,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             canEditAssignments: permissionsFromRecord.canEditAssignments ?? false,
             canDeleteAssignments: permissionsFromRecord.canDeleteAssignments ?? false,
             
+            // Teacher-Student Assignment
+            canManageStudentAssignments: permissionsFromRecord.canManageStudentAssignments ?? false,
+            
             // Module Permissions - Reports & Analytics
             canViewReports: permissionsFromRecord.canViewReports ?? true,
             canViewAnalytics: permissionsFromRecord.canViewAnalytics ?? true,

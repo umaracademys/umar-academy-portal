@@ -150,6 +150,9 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     canEditAssignments: false,
     canDeleteAssignments: false,
     
+    // Teacher-Student Assignment
+    canManageStudentAssignments: false,
+    
     // Module Permissions - Reports & Analytics
     canViewReports: true,
     canViewAnalytics: true,
@@ -460,6 +463,9 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
           canEditAssignments: teacher.permissions.canEditAssignments ?? false,
           canDeleteAssignments: teacher.permissions.canDeleteAssignments ?? false,
           
+          // Teacher-Student Assignment
+          canManageStudentAssignments: teacher.permissions.canManageStudentAssignments ?? false,
+          
           // Module Permissions - Reports & Analytics
           canViewReports: teacher.permissions.canViewReports ?? true,
           canViewAnalytics: teacher.permissions.canViewAnalytics ?? true,
@@ -559,6 +565,8 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         canCreateAssignments: true,
         canEditAssignments: true,
         canDeleteAssignments: false,
+        // Teacher-Student Assignment
+        canManageStudentAssignments: false,
         // Reports & Analytics
         canViewReports: true,
         canViewAnalytics: false,

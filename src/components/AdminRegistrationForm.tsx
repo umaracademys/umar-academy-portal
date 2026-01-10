@@ -83,6 +83,14 @@ const AdminRegistrationForm: React.FC<AdminRegistrationFormProps> = ({ onClose }
     canManageAssignments: false,
     canBulkCreateAssignments: false,
     
+    // Teacher-Student Assignment
+    canManageStudentAssignments: false,
+    
+    // Notifications Module
+    canManageNotifications: false,
+    canViewNotifications: false,
+    canSendNotifications: false,
+    
     // Module Permissions - Reports & Analytics
     canViewAnalytics: false,
     canExportReports: false,
