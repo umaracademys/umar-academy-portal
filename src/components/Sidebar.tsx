@@ -61,8 +61,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       items.push({ id: 'teachers', icon: 'TC', label: 'Teachers', badge: null, isLink: true, href: '/teachers' });
     }
     
-    // Add Teacher-Student Assignment for super admin only
-    if (user?.role === 'superadmin') {
+    // Add Teacher-Student Assignment for super admin and admins with permission
+    if (user?.role === 'superadmin' || (user?.role === 'admin' && adminPermissions?.canManageStudentAssignments)) {
       items.push({ id: 'teacher-student-assignment', icon: '👥', label: 'Teacher-Student Assignment', badge: null, isLink: true, href: '/teacher-student-assignment' });
     }
     
