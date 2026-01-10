@@ -622,8 +622,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const assignmentsTimeout = isStudentUser 
         ? 5000  // Students: 5s (faster endpoint)
         : (isProduction ? 20000 : 10000); // Admin/Teacher: 20s in production, 10s in dev
+      // FIXED: Always require auth for assignments endpoint (backend now requires authenticateToken)
       const assignmentsPromise = needsAssignments && !cachedAssignments
-        ? fetchWithTimeout(assignmentsEndpoint, {}, assignmentsTimeout, isStudentUser).catch((error) => {
+        ? fetchWithTimeout(assignmentsEndpoint, {}, assignmentsTimeout, true).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
           })
@@ -1398,9 +1399,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       // Refresh only critical data in parallel - increased timeout for Render cold starts
       const [assignmentsRes, ticketsRes, notificationsRes] = await Promise.all([
-        fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => null),
-        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => null)
+        fetchWithTimeout(`${API_BASE}/assignments`, {}, 60000, true).catch(() => null), // FIXED: Require auth
+        fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000, true).catch(() => null), // FIXED: Require auth
+        fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000, true).catch(() => null) // FIXED: Require auth
       ]);
 
       if (assignmentsRes?.ok) {
