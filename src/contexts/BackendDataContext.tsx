@@ -478,8 +478,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         studentRecords = cachedStudents;
       } else {
         const [teachersResponse, studentsResponse] = await Promise.allSettled([
-          fetchWithTimeout(`${API_BASE}/teachers`, {}, 8000), // No sync on initial load - much faster
-          fetchWithTimeout(`${API_BASE}/students`, {}, 8000, true) // Phase 7: Requires auth for PII filtering
+          fetchWithTimeout(`${API_BASE}/teachers`, {}, 5000), // Reduced timeout for faster failure
+          fetchWithTimeout(`${API_BASE}/students`, {}, 5000, true) // Phase 7: Requires auth for PII filtering
         ]);
 
         // Process teachers
@@ -524,8 +524,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       // PHASE 1 COMPLETE - Critical data loaded, can show UI now
-      // Continue processing students/teachers below, but UI is no longer blocked
-
+      // Set data immediately so UI can render (will be updated with full data below)
+      // This allows UI to show instantly while we continue loading in background
+      
       // ROUTE-BASED SELECTIVE LOADING: Only load data needed for current page
       // This dramatically improves performance by skipping unnecessary API calls
       const { needsAssignments, needsTickets, needsNotifications, needsReviews } = getRequiredData(location.pathname);
@@ -540,6 +541,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         });
       }
       
+      // Continue loading additional data in background (non-blocking)
       setLoadingStep('Loading additional data...');
       
       // OPTIMIZED: Check cache first for assignments - skip fetch if cached (much faster)
@@ -563,22 +565,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const isStudent = currentUser?.role === 'student';
       const assignmentsEndpoint = isStudent ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments`;
       const assignmentsPromise = needsAssignments && !cachedAssignments
-        ? fetchWithTimeout(assignmentsEndpoint, {}, 60000, isStudent).catch((error) => {
+        ? fetchWithTimeout(assignmentsEndpoint, {}, 10000, isStudent).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
           })
         : Promise.resolve({ ok: false, skipped: true } as any);
       
       const reviewsPromise = needsReviews
-        ? fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any))
+        ? fetchWithTimeout(`${API_BASE}/recitation-reviews`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any))
         : Promise.resolve({ ok: false, skipped: true } as any);
       
       const notificationsPromise = needsNotifications
-        ? fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 30000).catch(() => ({ ok: false, json: async () => [] } as any))
+        ? fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 5000).catch(() => ({ ok: false, json: async () => [] } as any))
         : Promise.resolve({ ok: false, skipped: true } as any);
       
       const ticketsPromise = needsTickets
-        ? fetchWithTimeout(`${API_BASE}/tickets`, {}, 60000).catch(() => ({ ok: false, json: async () => [] } as any))
+        ? fetchWithTimeout(`${API_BASE}/tickets`, {}, 10000).catch(() => ({ ok: false, json: async () => [] } as any))
         : Promise.resolve({ ok: false, skipped: true } as any);
 
       const [assignmentsResponse, reviewsResponse, notificationsResponse, ticketsResponse] = await Promise.allSettled([

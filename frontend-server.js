@@ -207,6 +207,16 @@ app.use('/qaidah', async (req, res) => {
 app.use(express.static(distPath, {
   index: false, // Don't serve index.html for directories
   setHeaders: (res, filePath) => {
+    // Prevent caching of index.html to avoid stale asset references
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    // Cache assets with hash in filename (they're versioned)
+    else if (filePath.match(/\/assets\/.*-[a-zA-Z0-9]+\.(js|css)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
     // Ensure JavaScript modules are served with correct MIME type
     if (filePath.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
@@ -243,6 +253,11 @@ app.get('/health', (req, res) => {
 // Handle SPA routing - all routes serve index.html
 // This must be last, after all other routes
 app.get('*', (req, res) => {
+  // Prevent caching of index.html to avoid stale asset references
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  
   // Check if files exist before serving
   if (!existsSync(distPath) || !existsSync(indexPath)) {
     return res.status(503).json({
