@@ -437,6 +437,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log('🚀 Phase 1: Loading critical data...', new Date().toISOString());
       }
 
+      // OPTIMIZED: For students, skip loading unnecessary data (teachers, all users)
+      const isStudentUser = currentUser?.role === 'student';
+      
       // Try to load from cache first for instant UI
       const cachedUsers = useCache ? dataCache.get<any[]>('users') : null;
       const cachedTeachers = useCache ? dataCache.get<any[]>('teachers') : null;
@@ -446,81 +449,114 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       let teacherRecords: any[] = [];
       let studentRecords: any[] = [];
 
-      // Load users - check cache first
-      if (cachedUsers) {
-        console.log('⚡ Using cached users');
-        users = cachedUsers;
+      // OPTIMIZED: For students, skip users/teachers loading (not needed)
+      if (!isStudentUser) {
+        // Load users - check cache first
+        if (cachedUsers) {
+          console.log('⚡ Using cached users');
+          users = cachedUsers;
+        } else {
+          setLoadingStep('Loading users...');
+          const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 3000, false);
+          if (import.meta.env.DEV) {
+            console.log('📡 Backend response status:', usersResponse.status);
+          }
+          
+          if (!usersResponse.ok) {
+            throw new Error(`Failed to fetch users: ${usersResponse.status}`);
+          }
+          users = await usersResponse.json();
+          if (import.meta.env.DEV) {
+            console.log('👥 Users loaded from backend:', users.length);
+          }
+          // Cache users for next time
+          dataCache.set('users', users);
+        }
+
+        // Load teachers and students in parallel for faster loading
+        setLoadingStep('Loading teachers and students...');
+        
+        // Check cache for teachers and students
+        if (cachedTeachers && cachedStudents) {
+          console.log('⚡ Using cached teachers and students');
+          teacherRecords = cachedTeachers;
+          studentRecords = cachedStudents;
+        } else {
+          const [teachersResponse, studentsResponse] = await Promise.allSettled([
+            fetchWithTimeout(`${API_BASE}/teachers`, {}, 3000),
+            fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true)
+          ]);
+
+          // Process teachers
+          if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
+            try {
+              teacherRecords = await teachersResponse.value.json();
+              if (import.meta.env.DEV) {
+                console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
+              }
+              dataCache.set('teachers', teacherRecords);
+              // Merge teacher data with user data
+              teacherRecords.forEach((teacher: any) => {
+                const user = users.find((u: any) => 
+                  u._id === teacher.userId?._id || 
+                  u._id === teacher.userId ||
+                  (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
+                );
+                if (user) {
+                  user.teacherProfile = teacher;
+                }
+              });
+            } catch (err) {
+              console.error('❌ Error processing teachers:', err);
+            }
+          }
+
+          // Process students
+          if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
+            try {
+              studentRecords = await studentsResponse.value.json();
+              if (import.meta.env.DEV) {
+                console.log('👨‍🎓 Students loaded:', studentRecords.length);
+              }
+              dataCache.set('students', studentRecords);
+            } catch (err) {
+              console.error('❌ Error processing students:', err);
+              studentRecords = [];
+            }
+          }
+        }
       } else {
-        setLoadingStep('Loading users...');
-        const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 5000, false);
-        if (import.meta.env.DEV) {
-          console.log('📡 Backend response status:', usersResponse.status);
+        // STUDENT PORTAL: Only load student's own data
+        setLoadingStep('Loading your data...');
+        
+        if (cachedStudents) {
+          console.log('⚡ Using cached students');
+          // Filter to only current student
+          const currentStudentEmail = currentUser?.email;
+          studentRecords = cachedStudents.filter((s: any) => s.email === currentStudentEmail);
+        } else {
+          // Load only current student's data
+          const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true);
+          if (studentsResponse.ok) {
+            try {
+              const allStudents = await studentsResponse.json();
+              const currentStudentEmail = currentUser?.email;
+              studentRecords = allStudents.filter((s: any) => s.email === currentStudentEmail);
+              if (import.meta.env.DEV) {
+                console.log('👨‍🎓 Student data loaded:', studentRecords.length);
+              }
+              // Cache all students for next time
+              dataCache.set('students', allStudents);
+            } catch (err) {
+              console.error('❌ Error processing student data:', err);
+              studentRecords = [];
+            }
+          }
         }
         
-        if (!usersResponse.ok) {
-          throw new Error(`Failed to fetch users: ${usersResponse.status}`);
-        }
-        users = await usersResponse.json();
-        if (import.meta.env.DEV) {
-          console.log('👥 Users loaded from backend:', users.length);
-        }
-        // Cache users for next time
-        dataCache.set('users', users);
-      }
-
-      // Load teachers and students in parallel for faster loading (NO SYNC on initial load)
-      setLoadingStep('Loading teachers and students...');
-      
-      // Check cache for teachers and students
-      if (cachedTeachers && cachedStudents) {
-        console.log('⚡ Using cached teachers and students');
-        teacherRecords = cachedTeachers;
-        studentRecords = cachedStudents;
-      } else {
-        const [teachersResponse, studentsResponse] = await Promise.allSettled([
-          fetchWithTimeout(`${API_BASE}/teachers`, {}, 5000), // Reduced timeout for faster failure
-          fetchWithTimeout(`${API_BASE}/students`, {}, 5000, true) // Phase 7: Requires auth for PII filtering
-        ]);
-
-        // Process teachers
-        if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
-          try {
-            teacherRecords = await teachersResponse.value.json();
-            if (import.meta.env.DEV) {
-              console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
-            }
-            // Cache teachers
-            dataCache.set('teachers', teacherRecords);
-            // Merge teacher data with user data
-            teacherRecords.forEach((teacher: any) => {
-              const user = users.find((u: any) => 
-                u._id === teacher.userId?._id || 
-                u._id === teacher.userId ||
-                (teacher.userId && typeof teacher.userId === 'object' && teacher.userId._id === u._id)
-              );
-              if (user) {
-                user.teacherProfile = teacher;
-              }
-            });
-          } catch (err) {
-            console.error('❌ Error processing teachers:', err);
-          }
-        }
-
-        // Process students - store the data for later use
-        if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
-          try {
-            studentRecords = await studentsResponse.value.json();
-            if (import.meta.env.DEV) {
-              console.log('👨‍🎓 Students loaded:', studentRecords.length);
-            }
-            // Cache students
-            dataCache.set('students', studentRecords);
-          } catch (err) {
-            console.error('❌ Error processing students:', err);
-            studentRecords = [];
-          }
-        }
+        // Students don't need users or teachers - set empty arrays
+        users = [];
+        teacherRecords = [];
       }
       
       // PHASE 1 COMPLETE - Critical data loaded, can show UI now
@@ -548,7 +584,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const cachedAssignments = useCache ? dataCache.get<any[]>('assignments') : null;
       if (cachedAssignments && cachedAssignments.length > 0 && needsAssignments) {
         console.log('⚡ Using cached assignments:', cachedAssignments.length, '- skipping API call');
-        const mappedAssignments = cachedAssignments.map((assignment: any) => ({
+        
+        // For students, filter cached assignments to only their own
+        let filteredAssignments = cachedAssignments;
+        if (isStudentUser && currentUser?.email) {
+          // Find student ID from cached students
+          const cachedStudents = dataCache.get<any[]>('students') || [];
+          const currentStudent = cachedStudents.find((s: any) => s.email === currentUser.email);
+          if (currentStudent?.id || currentStudent?._id) {
+            const studentId = String(currentStudent.id || currentStudent._id);
+            filteredAssignments = cachedAssignments.filter((a: any) => {
+              const assignmentStudentId = String(a.studentId || a._id?.studentId || '');
+              return assignmentStudentId === studentId;
+            });
+            console.log(`🎓 Filtered cached assignments for student: ${filteredAssignments.length} assignments`);
+          }
+        }
+        
+        const mappedAssignments = filteredAssignments.map((assignment: any) => ({
           ...assignment,
           id: assignment._id || assignment.id,
           studentId: normalizeId(assignment.studentId),
@@ -562,10 +615,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Skip unnecessary API calls for better performance
       // Use Promise.allSettled with proper response objects for skipped calls
       // For students, use authenticated endpoint /api/assignments/me
-      const isStudent = currentUser?.role === 'student';
-      const assignmentsEndpoint = isStudent ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments`;
+      const assignmentsEndpoint = isStudentUser ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments`;
+      // OPTIMIZED: Timeout based on environment and user type
+      // Production may need longer timeout due to network latency and cold starts
+      const isProduction = API_BASE_RAW.includes('render.com') || API_BASE_RAW.includes('onrender.com') || !import.meta.env.DEV;
+      const assignmentsTimeout = isStudentUser 
+        ? 5000  // Students: 5s (faster endpoint)
+        : (isProduction ? 20000 : 10000); // Admin/Teacher: 20s in production, 10s in dev
       const assignmentsPromise = needsAssignments && !cachedAssignments
-        ? fetchWithTimeout(assignmentsEndpoint, {}, 10000, isStudent).catch((error) => {
+        ? fetchWithTimeout(assignmentsEndpoint, {}, assignmentsTimeout, isStudentUser).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
           })
@@ -594,10 +652,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok && !assignmentsResponse.value.skipped) {
         try {
           const assignmentsData = await assignmentsResponse.value.json();
-          console.log(`📝 Assignments loaded from backend (${isStudent ? 'student' : 'admin/teacher'} endpoint):`, assignmentsData.length);
+          console.log(`📝 Assignments loaded from backend (${isStudentUser ? 'student' : 'admin/teacher'} endpoint):`, assignmentsData.length);
           if (assignmentsData.length === 0) {
             console.warn('⚠️ No assignments found in database. Check if assignments exist.');
-            if (isStudent && import.meta.env.DEV) {
+            if (isStudentUser && import.meta.env.DEV) {
               console.log('   Student endpoint used:', assignmentsEndpoint);
               console.log('   Current user:', { role: currentUser?.role, email: currentUser?.email, userId: currentUser?.id });
             }
@@ -1262,7 +1320,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (import.meta.env.DEV) {
         const phase1Time = Date.now() - startTime;
         console.log(`⚡ Phase 1 complete - UI rendering now! (${phase1Time}ms)`);
-        console.log('🔄 Phase 2: Loading assignments, tickets, notifications in background...');
+        if (isStudentUser) {
+          console.log('🎓 Student portal: UI ready, loading assignments in background...');
+        } else {
+          console.log('🔄 Phase 2: Loading assignments, tickets, notifications in background...');
+        }
       }
       
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');

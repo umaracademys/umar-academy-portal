@@ -5747,9 +5747,10 @@ app.post('/api/recitation-reviews/:reviewId/convert-to-assignment', authenticate
 
 // Assignment Routes
 // Get all assignments (with optional filters)
-app.get('/api/assignments', async (req, res) => {
+// OPTIMIZED: Reduced logging, added pagination, optimized queries
+app.get('/api/assignments', authenticateToken, async (req, res) => {
   try {
-    const { studentId, assignedBy, program } = req.query;
+    const { studentId, assignedBy, program, limit = 500, skip = 0 } = req.query;
     const query = {};
     
     if (studentId) {
@@ -5763,30 +5764,25 @@ app.get('/api/assignments', async (req, res) => {
       if (/^[0-9a-fA-F]{24}$/.test(studentIdStr)) {
         query.$or.push({ studentId: new mongoose.Types.ObjectId(studentIdStr) });
       }
-      console.log('🔍 GET /api/assignments - Query for studentId:', studentIdStr, 'Query:', JSON.stringify(query));
     }
     if (assignedBy) query.assignedBy = assignedBy;
     if (program) {
-      // If program filter is provided, we need to join with students
-      const students = await Student.find({ program }).select('_id');
+      // OPTIMIZED: Use lean() and only select _id for faster query
+      const students = await Student.find({ program }).select('_id').lean();
       const studentIds = students.map(s => s._id.toString());
       query.studentId = { $in: studentIds };
     }
     
-    console.log('📋 GET /api/assignments - Query:', query);
+    // OPTIMIZED: Use lean() for faster queries, reduce limit, add pagination
+    const limitNum = Math.min(parseInt(limit) || 500, 500); // Max 500 per request
+    const skipNum = parseInt(skip) || 0;
+    
     const assignments = await Assignment.find(query)
       .sort({ createdAt: -1 })
-      .limit(1000);
-    console.log('📋 GET /api/assignments - Found:', assignments.length, 'assignments');
-    if (assignments.length > 0) {
-      console.log('📋 Sample assignment:', {
-        id: assignments[0]._id,
-        studentId: assignments[0].studentId,
-        sabqCount: assignments[0].classwork?.sabq?.length || 0,
-        sabqiCount: assignments[0].classwork?.sabqi?.length || 0,
-        manzilCount: assignments[0].classwork?.manzil?.length || 0
-      });
-    }
+      .limit(limitNum)
+      .skip(skipNum)
+      .lean(); // Use lean() for faster queries (returns plain objects)
+    
     res.json(assignments);
   } catch (error) {
     console.error('❌ Error fetching assignments:', error);
