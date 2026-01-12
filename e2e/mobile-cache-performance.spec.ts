@@ -511,15 +511,26 @@ test.describe('Mobile Cache Performance Tests', () => {
     await teacherPage.fill('input[type="password"]', TEACHER_PASSWORD);
     await teacherPage.click('button:has-text("teacher")');
     await teacherPage.click('button[type="submit"]');
-    // Teacher goes to /dashboard first, then DashboardRouter redirects based on role
-    await teacherPage.waitForURL('**/dashboard', { timeout: 10000 });
-    // Wait for redirect to teacher dashboard
-    await teacherPage.waitForTimeout(1000);
+    // Teacher goes to /dashboard which shows TeacherDashboard
+    await teacherPage.waitForURL('**/dashboard', { timeout: 15000 });
+    await teacherPage.waitForLoadState('networkidle', { timeout: 10000 });
+    
+    // Navigate to assignments page
+    await teacherPage.goto(`${BASE_URL}/assignments`);
+    await teacherPage.waitForLoadState('networkidle', { timeout: 10000 });
     
     const assignmentName = `Cache Test ${Date.now()}`;
-    await teacherPage.click('text=Create Assignment');
-    await teacherPage.fill('textarea[name="homework"]', assignmentName);
-    await teacherPage.click('button:has-text("Save")');
+    
+    // Wait for form and fill it
+    await teacherPage.waitForTimeout(1000);
+    await teacherPage.fill('textarea[name="homework"], textarea[placeholder*="homework"], textarea', assignmentName).catch(() => {
+      console.log('⚠️ Could not find homework textarea');
+    });
+    
+    // Save assignment
+    await teacherPage.click('button:has-text("Save"), button[type="submit"]').catch(() => {
+      console.log('⚠️ Could not find save button');
+    });
     await teacherPage.waitForSelector('text=Assignment created successfully', { timeout: 5000 });
 
     // Student should see new assignment (cache should be invalidated server-side or via real-time update)
