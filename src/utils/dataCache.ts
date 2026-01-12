@@ -9,6 +9,8 @@
 
 const CACHE_PREFIX = 'umar_academy_cache_';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Shorter cache for assignments to ensure fresh data (collaborative data needs to be more up-to-date)
+const ASSIGNMENTS_CACHE_DURATION = 1 * 60 * 1000; // 1 minute for assignments
 
 interface CachedData<T> {
   data: T;

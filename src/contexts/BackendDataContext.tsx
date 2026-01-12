@@ -21,7 +21,7 @@ import { ClassworkSection, Assignment } from '../types/assignment';
 import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../utils/dataMasking';
-import { dataCache } from '../utils/dataCache';
+import { dataCache, ASSIGNMENTS_CACHE_DURATION } from '../utils/dataCache';
 import { useAuth } from './AuthContext';
 import { useLocation } from 'react-router-dom';
 
@@ -580,10 +580,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Continue loading additional data in background (non-blocking)
       setLoadingStep('Loading additional data...');
       
-      // OPTIMIZED: Check cache first for assignments - skip fetch if cached (much faster)
+      // ✅ STALE-WHILE-REVALIDATE: Serve cache immediately, fetch fresh data in background
+      // This ensures fast initial load while keeping data up-to-date
       const cachedAssignments = useCache ? dataCache.get<any[]>('assignments') : null;
       if (cachedAssignments && cachedAssignments.length > 0 && needsAssignments) {
-        console.log('⚡ Using cached assignments:', cachedAssignments.length, '- skipping API call');
+        console.log('⚡ Using cached assignments:', cachedAssignments.length, '- serving immediately, fetching fresh in background');
         
         // For students, filter cached assignments to only their own
         let filteredAssignments = cachedAssignments;
@@ -612,7 +613,6 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Only fetch data that's needed for current route
-      // Skip unnecessary API calls for better performance
       // Use Promise.allSettled with proper response objects for skipped calls
       // For students, use authenticated endpoint /api/assignments/me
       const assignmentsEndpoint = isStudentUser ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments`;
@@ -623,7 +623,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         ? 5000  // Students: 5s (faster endpoint)
         : (isProduction ? 20000 : 10000); // Admin/Teacher: 20s in production, 10s in dev
       // FIXED: Always require auth for assignments endpoint (backend now requires authenticateToken)
-      const assignmentsPromise = needsAssignments && !cachedAssignments
+      // ✅ STALE-WHILE-REVALIDATE: Always fetch fresh assignments in background (even if cache exists)
+      // This ensures new assignments appear quickly for all users
+      const assignmentsPromise = needsAssignments // Always fetch, even if cache exists
         ? fetchWithTimeout(assignmentsEndpoint, {}, assignmentsTimeout, true).catch((error) => {
             console.error('❌ Failed to fetch assignments:', error);
             return { ok: false, json: async () => [], status: 0, statusText: String(error) } as any;
@@ -680,8 +682,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             };
           });
           setAssignments(mappedAssignments);
-          // Cache assignments for next time
-          dataCache.set('assignments', mappedAssignments);
+          // Cache assignments for next time (use shorter duration for fresh data)
+          dataCache.set('assignments', mappedAssignments, ASSIGNMENTS_CACHE_DURATION);
           console.log('✅ Mapped assignments:', mappedAssignments.length, 'assignments set');
           if (mappedAssignments.length > 0) {
             console.log('📝 Sample mapped assignment:', {
