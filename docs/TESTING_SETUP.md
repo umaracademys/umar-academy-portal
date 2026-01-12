@@ -56,17 +56,19 @@ pnpm exec playwright install --with-deps chromium
 
 ## Environment Variables
 
-Set these for E2E tests:
+Set these for E2E tests (use actual credentials from your database):
 
 ```bash
 export BASE_URL=http://localhost:5173
-export E2E_ADMIN_EMAIL=admin@test.com
-export E2E_ADMIN_PASSWORD=admin123
-export E2E_TEACHER_EMAIL=teacher@test.com
-export E2E_TEACHER_PASSWORD=teacher123
-export E2E_STUDENT_EMAIL=student@test.com
-export E2E_STUDENT_PASSWORD=student123
+export E2E_ADMIN_EMAIL=admin@umaracademy.com
+export E2E_ADMIN_PASSWORD=password123
+export E2E_TEACHER_EMAIL=teacher@umaracademy.com
+export E2E_TEACHER_PASSWORD=password123
+export E2E_STUDENT_EMAIL=ahmed@umaracademy.com
+export E2E_STUDENT_PASSWORD=password123
 ```
+
+**Note:** The default test credentials in the test files (`admin@test.com`, etc.) are placeholders and will NOT work. You must set these environment variables with valid credentials from your database. See `CREDENTIALS.md` for available test accounts.
 
 ## CI/CD Setup
 
