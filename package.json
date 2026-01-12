@@ -28,7 +28,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:cache": "playwright test e2e/cache-consistency.spec.ts",
     "test:e2e:mobile": "playwright test e2e/mobile-cache-performance.spec.ts",
-    "test:e2e:mobile:ui": "playwright test e2e/mobile-cache-performance.spec.ts --ui"
+    "test:e2e:mobile:ui": "playwright test e2e/mobile-cache-performance.spec.ts --ui",
+    "setup:test-users": "node backend/createTestUsers.js"
   },
   "dependencies": {
     "@umar-academy/mushaf": "workspace:*",

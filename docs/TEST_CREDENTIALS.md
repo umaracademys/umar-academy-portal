@@ -56,3 +56,21 @@ curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"umairrasheed969@gmail.com","password":"Umair123!!!","role":"admin"}'
 ```
+
+## Setting Up Test Users
+
+Before running tests, ensure the test users exist in your database:
+
+```bash
+# Create/update test users in database
+pnpm setup:test-users
+
+# Or run directly
+node backend/createTestUsers.js
+```
+
+This script will:
+- Create the test users if they don't exist
+- Update passwords if users already exist
+- Enable login for all test users
+- Disable password change requirement for testing
