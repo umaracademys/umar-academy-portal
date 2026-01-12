@@ -112,27 +112,19 @@ const StudentDashboard: React.FC = () => {
                        assignmentStudentId === currentStudent.id.toString() ||
                        String(assignmentStudentId) === String(currentStudent.id);
         
+        if (!matches) return false;
+        
         // For After School students, only show assignments that are specifically for them
         // or assignments that don't have program restrictions
         if (isAfterSchool) {
           // Filter to show only After School specific assignments
           // You can add additional filtering logic here if needed
-          return matches;
+          return true;
         }
         
-        // Filter out assignments that ONLY have Qaidah homework
-        const hasQaidahHomework = assignment.homework?.qaidahHomework;
-        const hasClasswork = (assignment.classwork?.sabq?.length || 0) +
-                            (assignment.classwork?.sabqi?.length || 0) +
-                            (assignment.classwork?.manzil?.length || 0) > 0;
-        const hasRegularHomework = assignment.homework?.enabled && !hasQaidahHomework;
-        
-        // If assignment only has Qaidah homework and nothing else, hide it
-        if (hasQaidahHomework && !hasClasswork && !hasRegularHomework) {
-          return false;
-        }
-        
-        return matches;
+        // Show all assignments that match the student (same as assignments page)
+        // Removed Qaidah homework filtering to match assignments page behavior
+        return true;
       })
       .map((assignment: any) => {
         const assignmentId = assignment._id || assignment.id;

@@ -17,6 +17,8 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const helmet = require('helmet');
+const http = require('http');
+const { Server } = require('socket.io');
 const { validatePassword, sanitizeObject, validateEmail, getAccountLockoutConfig } = require('./security');
 
 // Use axios for making HTTP requests
@@ -32,10 +34,114 @@ try {
 }
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: process.env.NODE_ENV !== 'production' 
+      ? true 
+      : [
+          'http://localhost:5173',
+          'http://localhost:3000',
+          process.env.FRONTEND_URL,
+          'https://umar-academy-frontend-m2at.onrender.com',
+          'https://umar-academy-frontend.onrender.com',
+          ...(process.env.ADDITIONAL_FRONTEND_URLS ? process.env.ADDITIONAL_FRONTEND_URLS.split(',') : [])
+        ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST']
+  }
+});
+
+// Socket.IO authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token) {
+    return next(new Error('Authentication error: No token provided'));
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    socket.userId = decoded.userId;
+    socket.userEmail = decoded.email;
+    socket.userRole = decoded.role;
+    next();
+  } catch (error) {
+    next(new Error('Authentication error: Invalid token'));
+  }
+});
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  console.log(`✅ Socket connected: ${socket.userEmail} (${socket.userRole})`);
+  
+  // Join room based on user role and ID
+  if (socket.userRole === 'student') {
+    socket.join(`student:${socket.userId}`);
+  } else if (socket.userRole === 'teacher') {
+    socket.join(`teacher:${socket.userId}`);
+  } else if (socket.userRole === 'admin' || socket.userRole === 'superadmin') {
+    socket.join('admins');
+  }
+  
+  socket.on('disconnect', () => {
+    console.log(`❌ Socket disconnected: ${socket.userEmail}`);
+  });
+});
+
+// Helper function to emit assignment events
+const emitAssignmentEvent = (event, assignment, targetUsers = null) => {
+  try {
+    // Convert Mongoose document to plain object if needed
+    const assignmentData = assignment.toObject 
+      ? { ...assignment.toObject(), id: assignment._id?.toString() || assignment.id }
+      : { ...assignment, id: assignment._id?.toString() || assignment.id };
+    
+    if (targetUsers && Array.isArray(targetUsers)) {
+      // Emit to specific users (e.g., specific student)
+      targetUsers.forEach(userId => {
+        if (userId) {
+          io.to(`student:${userId}`).emit(event, assignmentData);
+        }
+      });
+    } else {
+      // Emit to all connected clients
+      io.emit(event, assignmentData);
+    }
+  } catch (error) {
+    console.error('⚠️ Error emitting assignment event:', error);
+  }
+};
+
+// Helper function to emit general data events (students, teachers, tickets, etc.)
+const emitDataEvent = (event, data, targetRooms = null) => {
+  try {
+    // Convert Mongoose document to plain object if needed
+    const eventData = data.toObject 
+      ? { ...data.toObject(), id: data._id?.toString() || data.id }
+      : { ...data, id: data._id?.toString() || data.id };
+    
+    if (targetRooms && Array.isArray(targetRooms)) {
+      // Emit to specific rooms
+      targetRooms.forEach(room => {
+        if (room) {
+          io.to(room).emit(event, eventData);
+        }
+      });
+    } else {
+      // Emit to all connected clients
+      io.emit(event, eventData);
+    }
+  } catch (error) {
+    console.error(`⚠️ Error emitting ${event} event:`, error);
+  }
+};
 
 // Validate critical environment variables in production
 if (isProduction) {
@@ -2518,6 +2624,14 @@ const handleManualSync = async (req, res) => {
         assignedStudentsCount: Array.isArray(t.assignedStudents) ? t.assignedStudents.length : 0,
         assignedStudents: t.assignedStudents || []
       }));
+      // Emit WebSocket event for teacher-student assignment sync
+      try {
+        io.emit('teacher:students:synced', { summary });
+        console.log(`🔌 Emitted teacher:students:synced event`);
+      } catch (socketError) {
+        console.error('⚠️ Error emitting teacher:students:synced event:', socketError);
+      }
+      
       res.json({ 
         message: 'Successfully synced all teachers\' assignedStudents arrays',
         summary: summary
@@ -2782,6 +2896,14 @@ app.post('/api/students', authenticateToken, requirePermission('canManageStudent
       }
     }
     
+    // Emit WebSocket event for student creation
+    try {
+      emitDataEvent('student:created', student.toObject ? student.toObject() : student);
+      console.log(`🔌 Emitted student:created event`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting student:created event:', socketError);
+    }
+    
     res.json(student);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -3003,6 +3125,24 @@ app.put('/api/students/:id', authenticateToken, requirePermission('canManageStud
     // 11. LOG PERFORMANCE - Track timing for monitoring
     const duration = Date.now() - startTime;
     console.log(`✅ Student ${studentIdStr} updated in ${duration}ms`);
+
+    // Emit WebSocket event for student update
+    try {
+      emitDataEvent('student:updated', updatedStudent);
+      // Also emit to teachers if assignment changed
+      if (teachersToAdd.length > 0 || teachersToRemove.length > 0) {
+        const affectedTeachers = [...teachersToAdd, ...teachersToRemove];
+        affectedTeachers.forEach(teacherId => {
+          io.to(`teacher:${teacherId}`).emit('teacher:students:updated', {
+            studentId: studentIdStr,
+            student: updatedStudent.toObject ? updatedStudent.toObject() : updatedStudent
+          });
+        });
+      }
+      console.log(`🔌 Emitted student:updated event`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting student:updated event:', socketError);
+    }
 
     res.json(updatedStudent);
   } catch (error) {
@@ -4827,6 +4967,15 @@ app.delete('/api/students/:id', authenticateToken, requirePermission('canManageS
     }
     
     console.log(`✅ Student deleted successfully: ${student._id}`);
+    
+    // Emit WebSocket event for student deletion
+    try {
+      emitDataEvent('student:deleted', { id: student._id?.toString() || studentId });
+      console.log(`🔌 Emitted student:deleted event`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting student:deleted event:', socketError);
+    }
+    
     res.json({ message: 'Student deleted successfully', deletedId: student._id });
     
   } catch (error) {
@@ -5956,6 +6105,18 @@ app.post('/api/assignments', authenticateToken, requirePermission('canCreateAssi
       }
     }
     
+    // Emit WebSocket event for new assignment
+    try {
+      const studentId = assignment.studentId?.toString();
+      if (studentId) {
+        emitAssignmentEvent('assignment:created', assignment, [studentId]);
+        console.log(`🔌 Emitted assignment:created event for student ${studentId}`);
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitting assignment:created event:', socketError);
+      // Don't fail the request if socket emit fails
+    }
+    
     res.status(201).json(assignment);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -6012,6 +6173,17 @@ app.post('/api/assignments/:id/submit-homework', async (req, res) => {
       attachmentsCount: attachments?.length || 0
     });
 
+    // Emit WebSocket event for homework submission
+    try {
+      const assignmentStudentId = assignment.studentId?.toString();
+      if (assignmentStudentId) {
+        emitAssignmentEvent('assignment:updated', assignment, [assignmentStudentId]);
+        console.log(`🔌 Emitted assignment:updated event for homework submission (student ${assignmentStudentId})`);
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitting assignment:updated event:', socketError);
+    }
+
     res.json(assignment);
   } catch (error) {
     console.error('Error submitting homework:', error);
@@ -6049,6 +6221,17 @@ app.post('/api/assignments/:id/grade-homework', authenticateToken, requirePermis
       grade,
       hasFeedback: !!feedback
     });
+
+    // Emit WebSocket event for homework grading
+    try {
+      const assignmentStudentId = assignment.studentId?.toString();
+      if (assignmentStudentId) {
+        emitAssignmentEvent('assignment:updated', assignment, [assignmentStudentId]);
+        console.log(`🔌 Emitted assignment:updated event for homework grading (student ${assignmentStudentId})`);
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitting assignment:updated event:', socketError);
+    }
 
     res.json(assignment);
   } catch (error) {
@@ -6234,6 +6417,17 @@ app.put('/api/assignments/:id', authenticateToken, requirePermission('canEditAss
       homeworkItems: JSON.stringify(assignment.homework?.items || [], null, 2)
     });
     
+    // Emit WebSocket event for assignment update
+    try {
+      const assignmentStudentId = assignment.studentId?.toString();
+      if (assignmentStudentId) {
+        emitAssignmentEvent('assignment:updated', assignment, [assignmentStudentId]);
+        console.log(`🔌 Emitted assignment:updated event for student ${assignmentStudentId}`);
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitting assignment:updated event:', socketError);
+    }
+    
     res.json(assignment);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -6243,10 +6437,24 @@ app.put('/api/assignments/:id', authenticateToken, requirePermission('canEditAss
 // Delete assignment - Teachers need canDeleteAssignments, Admins need canManageAssignments
 app.delete('/api/assignments/:id', authenticateToken, requirePermission('canDeleteAssignments'), async (req, res) => {
   try {
-    const assignment = await Assignment.findByIdAndDelete(req.params.id);
+    const assignment = await Assignment.findById(req.params.id);
     if (!assignment) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
+    
+    const assignmentStudentId = assignment.studentId?.toString();
+    await Assignment.findByIdAndDelete(req.params.id);
+    
+    // Emit WebSocket event for assignment deletion
+    try {
+      if (assignmentStudentId) {
+        emitAssignmentEvent('assignment:deleted', { id: req.params.id, studentId: assignmentStudentId }, [assignmentStudentId]);
+        console.log(`🔌 Emitted assignment:deleted event for student ${assignmentStudentId}`);
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitting assignment:deleted event:', socketError);
+    }
+    
     res.json({ message: 'Assignment deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -6643,6 +6851,24 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
         type: ticket.type,
         status: ticket.status
       });
+      
+      // Emit WebSocket event for ticket creation
+      try {
+        const ticketData = ticket.toObject ? ticket.toObject() : ticket;
+        // Emit to student and assigned teacher
+        if (ticket.studentId) {
+          io.to(`student:${ticket.studentId}`).emit('ticket:created', ticketData);
+        }
+        if (ticket.assignedTeacherId) {
+          io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:created', ticketData);
+        }
+        // Also emit to admins
+        io.to('admins').emit('ticket:created', ticketData);
+        console.log(`🔌 Emitted ticket:created event`);
+      } catch (socketError) {
+        console.error('⚠️ Error emitting ticket:created event:', socketError);
+      }
+      
       res.status(201).json(ticket);
     } catch (ticketError) {
       console.error('❌ Error creating ticket document:', ticketError);
@@ -6667,6 +6893,22 @@ app.put('/api/tickets/:id', async (req, res) => {
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    // Emit WebSocket event for ticket update
+    try {
+      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
+      if (ticket.studentId) {
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+      }
+      if (ticket.assignedTeacherId) {
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketData);
+      }
+      io.to('admins').emit('ticket:updated', ticketData);
+      console.log(`🔌 Emitted ticket:updated event`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting ticket:updated event:', socketError);
+    }
+    
     res.json(ticket);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -6739,6 +6981,22 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
     }
     
     console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
+    
+    // Emit WebSocket event for ticket submission
+    try {
+      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
+      if (ticket.studentId) {
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+      }
+      if (ticket.assignedTeacherId) {
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketData);
+      }
+      io.to('admins').emit('ticket:updated', ticketData);
+      console.log(`🔌 Emitted ticket:updated event for submission`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting ticket:updated event:', socketError);
+    }
+    
     res.json(ticket);
   } catch (error) {
     console.error('❌ Error submitting ticket:', error);
@@ -6880,7 +7138,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     
     // OPTIMIZED: Save assignment without unnecessary verification
     await assignment.save();
-
+    
     // Update ticket
     // Update ticket status
     ticket.status = 'sent_to_assignment';
@@ -6899,8 +7157,31 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     
     await ticket.save();
     
+    // Emit WebSocket events for ticket approval and assignment update
+    try {
+      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
+      
+      // Emit ticket update
+      if (ticket.studentId) {
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+      }
+      if (ticket.assignedTeacherId) {
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketData);
+      }
+      io.to('admins').emit('ticket:updated', ticketData);
+      
+      // Emit assignment update (since assignment was created/updated)
+      if (assignment.studentId) {
+        emitAssignmentEvent('assignment:updated', assignment, [assignment.studentId?.toString()]);
+      }
+      
+      console.log(`🔌 Emitted ticket:updated and assignment:updated events`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting socket events:', socketError);
+    }
+    
     // OPTIMIZED: Save ticket and sync Personal Mushaf in parallel (non-blocking)
-    const savePromises = [ticket.save()];
+    const savePromises = [];
     
     // Sync mistakes to Student Personal Mushaf (non-blocking - don't wait for it)
     if (ticket.mistakes && ticket.mistakes.length > 0) {
@@ -6969,6 +7250,29 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     
     // Wait for ticket save (required), Personal Mushaf sync happens in background
     await Promise.all(savePromises);
+
+    // Emit WebSocket events for ticket approval and assignment update
+    try {
+      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
+      
+      // Emit ticket update
+      if (ticket.studentId) {
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+      }
+      if (ticket.assignedTeacherId) {
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketData);
+      }
+      io.to('admins').emit('ticket:updated', ticketData);
+      
+      // Emit assignment update (since assignment was created/updated)
+      if (assignment.studentId) {
+        emitAssignmentEvent('assignment:updated', assignment, [assignment.studentId?.toString()]);
+      }
+      
+      console.log(`🔌 Emitted ticket:updated and assignment:updated events`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting socket events:', socketError);
+    }
 
     // OPTIMIZED: Convert to plain objects and send response immediately
     const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
@@ -14687,10 +14991,11 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Test Results Routes
 // Create test result
 
-app.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, () => {
   console.log(`🚀 Backend server running on ${HOST}:${PORT}`);
   console.log(`📊 MongoDB URI: ${MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`); // Hide credentials in logs
   console.log(`✅ Server is ready to accept connections`);
+  console.log(`🔌 WebSocket (Socket.IO) is enabled`);
 });
 
 // Handle uncaught exceptions and unhandled rejections to prevent crashes

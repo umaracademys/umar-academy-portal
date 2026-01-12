@@ -1252,6 +1252,19 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     value: boolean;
   } | null>(null);
 
+  // Collapsible groups state
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (groupName: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(groupName)) {
+      newExpanded.delete(groupName);
+    } else {
+      newExpanded.add(groupName);
+    }
+    setExpandedGroups(newExpanded);
+  };
+
   const sortedTeachers = useMemo(
     () =>
       [...teachers].sort((a, b) => a.fullName.localeCompare(b.fullName, 'en')),
@@ -1695,22 +1708,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     );
 
   return (
-      <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="space-y-1.5">
+        <section className="rounded border border-gray-200 bg-white p-1.5 shadow-sm">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
               <img
                 src={teacherAvatar}
                 alt={selectedTeacher.fullName}
-                className="h-12 w-12 sm:h-14 sm:w-14 rounded-full border border-gray-200 object-cover flex-shrink-0"
+                className="h-8 w-8 rounded-full border border-gray-200 object-cover flex-shrink-0"
               />
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <h3 className="text-xs font-semibold text-gray-900">
                     {selectedTeacher.fullName}
                   </h3>
                   <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
                       selectedTeacher.status === 'active'
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-gray-200 text-gray-600'
@@ -1721,81 +1734,71 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       : 'Inactive'}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
+                <p className="text-[9px] text-gray-600 truncate">
                   {selectedTeacher.department} • {selectedTeacher.email}
                 </p>
-                <p className="text-xs text-gray-500">
-                  Assigned students: {selectedTeacher.assignedStudents.length}
+                <p className="text-[9px] text-gray-500">
+                  Students: {selectedTeacher.assignedStudents.length}
                 </p>
               </div>
         </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <div className="flex flex-wrap gap-1">
               <button
                 type="button"
                 onClick={() => handleTeacherPreset('all')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-purple-200 bg-purple-50 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-purple-700 transition hover:bg-purple-100 disabled:opacity-50"
+                className="inline-flex items-center gap-0.5 rounded border border-purple-200 bg-purple-50 px-1.5 py-0.5 text-[9px] font-semibold text-purple-700 transition hover:bg-purple-100 disabled:opacity-50"
               >
-                Grant full access
+                Full access
               </button>
               <button
                 type="button"
                 onClick={() => handleTeacherPreset('view')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+                className="inline-flex items-center gap-0.5 rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
               >
-                Apply view-only
+                View-only
               </button>
               <button
                 type="button"
                 onClick={() => handleTeacherPreset('none')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                className="inline-flex items-center gap-0.5 rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[9px] font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
               >
                 Revoke all
               </button>
             </div>
           </div>
 
-          <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-3">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Active permissions
+          <div className="mt-1.5 grid gap-1 grid-cols-3">
+            <div className="rounded border border-gray-200 bg-gray-50 p-1">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">
+                Active
               </p>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold text-gray-900">
+              <p className="mt-0.5 text-xs font-semibold text-gray-900">
                 {teacherSummary.activeCount}/{totalPermissions}
               </p>
-              <div className="mt-3 h-2 w-full rounded-full bg-gray-200">
+              <div className="mt-1 h-1 w-full rounded-full bg-gray-200">
                 <div
-                  className="h-2 rounded-full bg-purple-500 transition-all"
+                  className="h-1 rounded-full bg-purple-500 transition-all"
                   style={{ width: `${activePercentage}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-gray-500">
-                {activePercentage}% of capabilities in use
-              </p>
             </div>
-            <div className="rounded-lg border border-red-100 bg-red-50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-red-500">
-                High-impact toggles
+            <div className="rounded border border-red-100 bg-red-50 p-1">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-red-500">
+                High-impact
               </p>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold text-red-700">
+              <p className="mt-0.5 text-xs font-semibold text-red-700">
                 {teacherSummary.highImpactCount}
               </p>
-              <p className="mt-1 text-xs text-red-600">
-                Financial and scheduling access is closely monitored.
-              </p>
             </div>
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">
-                Guardian comms
+            <div className="rounded border border-blue-200 bg-blue-50 p-1">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-blue-500">
+                Comms
               </p>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold text-blue-700">
+              <p className="mt-0.5 text-xs font-semibold text-blue-700">
                 {teacherSummary.communicationEnabled ? 'Allowed' : 'Restricted'}
-              </p>
-              <p className="mt-1 text-xs text-blue-600">
-                Direct parent messaging is{' '}
-                {teacherSummary.communicationEnabled ? 'enabled' : 'disabled'}.
               </p>
             </div>
           </div>
@@ -1811,92 +1814,101 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
             (a, b) =>
               (a.definition.order ?? 0) - (b.definition.order ?? 0),
           );
+          const isExpanded = expandedGroups.has(group.name);
 
           return (
             <section
               key={group.name}
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5"
+              className="rounded border border-gray-200 bg-white p-1.5 shadow-sm"
             >
-              <header className="mb-3 sm:mb-4 flex items-start gap-2 sm:gap-3">
-                <span className="text-lg sm:text-xl flex-shrink-0">{metadata.icon}</span>
-                <div className="min-w-0">
-                  <h4 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-gray-500">
-                    {group.name}
-                  </h4>
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    {metadata.description}
-                  </p>
+              <header 
+                className="flex items-start gap-1 cursor-pointer"
+                onClick={() => toggleGroup(group.name)}
+              >
+                <span className="text-sm flex-shrink-0">{metadata.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                      {group.name}
+                    </h4>
+                    <span className="text-[9px] text-gray-400">
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <p className="text-[9px] text-gray-600 mt-0.5">
+                      {metadata.description}
+                    </p>
+                  )}
                 </div>
               </header>
-              <div className="space-y-2 sm:space-y-3">
-                {sortedItems.map(({ definition }) => {
-                  const value = teacherPermissions[definition.key];
-                  return (
-                    <div
-                      key={definition.key}
-                      className={`rounded-lg border px-3 py-2 sm:px-4 sm:py-3 transition ${
-                        value
-                          ? 'border-purple-200 bg-purple-50'
-                          : 'border-gray-200 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        {definition.icon && (
-                          <span className="mt-0.5 sm:mt-1 text-sm sm:text-base text-gray-500 flex-shrink-0">
-                            {definition.icon}
-                          </span>
-                        )}
-                    <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                            <p className="text-xs sm:text-sm font-semibold text-gray-900">
-                              {definition.label}
-                            </p>
-                            {definition.risk === 'high' && (
-                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-                                High impact
-                              </span>
-                            )}
-                            {definition.defaultView && (
-                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                                View preset
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 text-xs sm:text-sm text-gray-600">
-                            {definition.description}
-                          </p>
-                          {definition.helper && (
-                            <p className="mt-1.5 sm:mt-2 text-xs text-gray-500">
-                              {definition.helper}
-                            </p>
+              {isExpanded && (
+                <div className="mt-1 space-y-1">
+                  {sortedItems.map(({ definition }) => {
+                    const value = teacherPermissions[definition.key];
+                    return (
+                      <div
+                        key={definition.key}
+                        className={`rounded border px-1.5 py-1 transition ${
+                          value
+                            ? 'border-purple-200 bg-purple-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-start gap-1">
+                          {definition.icon && (
+                            <span className="mt-0.5 text-xs text-gray-500 flex-shrink-0">
+                              {definition.icon}
+                            </span>
                           )}
+                    <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-1">
+                                <p className="text-[10px] font-semibold text-gray-900">
+                                  {definition.label}
+                                </p>
+                                {definition.risk === 'high' && (
+                                  <span className="inline-flex items-center rounded-full bg-red-100 px-1 py-0.5 text-[8px] font-semibold text-red-700">
+                                    High
+                                  </span>
+                                )}
+                                {definition.defaultView && (
+                                  <span className="inline-flex items-center rounded-full bg-blue-100 px-1 py-0.5 text-[8px] font-semibold text-blue-700">
+                                    View
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-0.5 text-[9px] text-gray-600">
+                                {definition.description}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTeacherPermissionChange(
+                                  definition.key,
+                                  !value,
+                                );
+                              }}
+                              disabled={isSaving}
+                              role="switch"
+                              aria-checked={value}
+                              className={`relative inline-flex h-4 w-7 items-center rounded-full transition flex-shrink-0 ${
+                                value ? 'bg-purple-600' : 'bg-gray-300'
+                              } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                            >
+                              <span
+                                className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
+                                  value ? 'translate-x-3' : 'translate-x-0.5'
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleTeacherPermissionChange(
-                              definition.key,
-                              !value,
-                            )
-                          }
-                          disabled={isSaving}
-                          role="switch"
-                          aria-checked={value}
-                          className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition flex-shrink-0 ${
-                            value ? 'bg-purple-600' : 'bg-gray-300'
-                          } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 sm:h-4 sm:w-4 transform rounded-full bg-white transition ${
-                              value ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5 sm:translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                </div>
+              )}
             </section>
           );
         })}
@@ -1947,22 +1959,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     );
 
     return (
-      <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+      <div className="space-y-1.5">
+        <section className="rounded border border-amber-200 bg-amber-50 p-1.5 shadow-sm">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-1.5 min-w-0">
               <img
                 src={adminAvatar}
                 alt={selectedAdmin.fullName}
-                className="h-12 w-12 sm:h-14 sm:w-14 rounded-full border border-amber-300 object-cover flex-shrink-0"
+                className="h-8 w-8 rounded-full border border-amber-300 object-cover flex-shrink-0"
               />
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  <h3 className="text-lg sm:text-xl font-semibold text-amber-900">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <h3 className="text-xs font-semibold text-amber-900">
                     {selectedAdmin.fullName}
                   </h3>
                   <span
-                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
                       selectedAdmin.status === 'active'
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-gray-200 text-gray-600'
@@ -1971,18 +1983,18 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                     {selectedAdmin.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
                     </div>
-                <p className="text-xs sm:text-sm text-amber-900/80 truncate">{selectedAdmin.email}</p>
-                <p className="text-xs text-amber-900/60">
-                  Departments: {selectedAdmin.assignedDepartments.join(', ')}
+                <p className="text-[9px] text-amber-900/80 truncate">{selectedAdmin.email}</p>
+                <p className="text-[9px] text-amber-900/60">
+                  Depts: {selectedAdmin.assignedDepartments.join(', ')}
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <div className="flex flex-wrap gap-1">
               <button
                 type="button"
                 onClick={() => handleAdminPreset('all')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-amber-400 bg-amber-100 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-amber-800 transition hover:bg-amber-200 disabled:opacity-50"
+                className="inline-flex items-center gap-0.5 rounded border border-amber-400 bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800 transition hover:bg-amber-200 disabled:opacity-50"
               >
                 Full control
               </button>
@@ -1990,7 +2002,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 type="button"
                 onClick={() => handleAdminPreset('financeReports')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-blue-300 bg-blue-100 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-blue-800 transition hover:bg-blue-200 disabled:opacity-50"
+                className="inline-flex items-center gap-0.5 rounded border border-blue-300 bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-800 transition hover:bg-blue-200 disabled:opacity-50"
               >
                 Finance & reports
               </button>
@@ -1998,53 +2010,42 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 type="button"
                 onClick={() => handleAdminPreset('none')}
                 disabled={isSaving}
-                className="inline-flex items-center gap-1 sm:gap-2 rounded-lg border border-gray-300 bg-white px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+                className="inline-flex items-center gap-0.5 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
               >
                 Lock down
               </button>
             </div>
           </div>
 
-          <div className="mt-3 sm:mt-4 grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-3">
-            <div className="rounded-lg border border-amber-200 bg-white p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
-                Active permissions
+          <div className="mt-1.5 grid gap-1 grid-cols-3">
+            <div className="rounded border border-amber-200 bg-white p-1">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                Active
               </p>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold text-amber-900">
+              <p className="mt-0.5 text-xs font-semibold text-amber-900">
                 {adminSummary.activeCount}/{totalPermissions}
               </p>
-              <div className="mt-3 h-2 w-full rounded-full bg-amber-100">
+              <div className="mt-1 h-1 w-full rounded-full bg-amber-100">
                 <div
-                  className="h-2 rounded-full bg-amber-500 transition-all"
+                  className="h-1 rounded-full bg-amber-500 transition-all"
                   style={{ width: `${activePercentage}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-amber-800">
-                {activePercentage}% of admin capabilities granted
-              </p>
             </div>
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
-                High impact toggles
+            <div className="rounded border border-red-200 bg-red-50 p-1">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-red-600">
+                High-impact
               </p>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold text-red-700">
+              <p className="mt-0.5 text-xs font-semibold text-red-700">
                 {adminSummary.highImpactCount}
               </p>
-              <p className="mt-1 text-xs text-red-600">
-                Includes finance access and permission delegation.
-              </p>
             </div>
-            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 sm:p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">
-                Permission admin
+            <div className="rounded border border-indigo-200 bg-indigo-50 p-1">
+              <p className="text-[9px] font-semibold uppercase tracking-wide text-indigo-500">
+                Perm admin
               </p>
-              <p className="mt-2 text-xl sm:text-2xl font-semibold text-indigo-700">
+              <p className="mt-0.5 text-xs font-semibold text-indigo-700">
                 {adminSummary.isPermissionAdmin ? 'Yes' : 'No'}
-              </p>
-              <p className="mt-1 text-xs text-indigo-600">
-                {adminSummary.isPermissionAdmin
-                  ? 'This user can elevate other accounts.'
-                  : 'Cannot delegate platform access.'}
               </p>
             </div>
           </div>
@@ -2060,86 +2061,95 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
             (a, b) =>
               (a.definition.order ?? 0) - (b.definition.order ?? 0),
           );
+          const isExpanded = expandedGroups.has(group.name);
 
           return (
             <section
               key={group.name}
-              className="rounded-xl border border-amber-200 bg-white p-4 shadow-sm sm:p-5"
+              className="rounded border border-amber-200 bg-white p-1.5 shadow-sm"
             >
-              <header className="mb-3 sm:mb-4 flex items-start gap-2 sm:gap-3">
-                <span className="text-lg sm:text-xl flex-shrink-0">{metadata.icon}</span>
-                <div className="min-w-0">
-                  <h4 className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-amber-700">
-                    {group.name}
-                  </h4>
-                  <p className="text-xs sm:text-sm text-amber-900/80">
-                    {metadata.description}
-                  </p>
+              <header 
+                className="flex items-start gap-1 cursor-pointer"
+                onClick={() => toggleGroup(group.name)}
+              >
+                <span className="text-sm flex-shrink-0">{metadata.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                      {group.name}
+                    </h4>
+                    <span className="text-[9px] text-gray-400">
+                      {isExpanded ? '▼' : '▶'}
+                    </span>
+                  </div>
+                  {isExpanded && (
+                    <p className="text-[9px] text-amber-900/80 mt-0.5">
+                      {metadata.description}
+                    </p>
+                  )}
                 </div>
               </header>
-              <div className="space-y-2 sm:space-y-3">
-                {sortedItems.map(({ definition, value }) => (
-                  <div
-                    key={definition.key}
-                    className={`rounded-lg border px-3 py-2 sm:px-4 sm:py-3 transition ${
-                      value
-                        ? 'border-amber-300 bg-amber-100'
-                        : 'border-amber-100 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2 sm:gap-3">
-                      {definition.icon && (
-                        <span className="mt-0.5 sm:mt-1 text-sm sm:text-base text-amber-600 flex-shrink-0">
-                          {definition.icon}
-                        </span>
-                      )}
-                    <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                          <p className="text-xs sm:text-sm font-semibold text-amber-900">
-                            {definition.label}
-                          </p>
-                          {definition.risk === 'high' && (
-                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700">
-                              Escalated
-                            </span>
-                          )}
-                          {definition.defaultView && (
-                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
-                              Analytics preset
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-xs sm:text-sm text-amber-900/80">
-                          {definition.description}
-                        </p>
-                        {definition.helper && (
-                          <p className="mt-1.5 sm:mt-2 text-xs text-amber-900/70">
-                            {definition.helper}
-                          </p>
+              {isExpanded && (
+                <div className="mt-1 space-y-1">
+                  {sortedItems.map(({ definition, value }) => (
+                    <div
+                      key={definition.key}
+                      className={`rounded border px-1.5 py-1 transition ${
+                        value
+                          ? 'border-amber-300 bg-amber-100'
+                          : 'border-amber-100 bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start gap-1">
+                        {definition.icon && (
+                          <span className="mt-0.5 text-xs text-amber-600 flex-shrink-0">
+                            {definition.icon}
+                          </span>
                         )}
-                    </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleAdminPermissionChange(definition.key, !value)
-                        }
-                        disabled={isSaving}
-                        role="switch"
-                        aria-checked={value}
-                        className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition flex-shrink-0 ${
-                          value ? 'bg-amber-600' : 'bg-amber-200'
-                        } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                      >
-                        <span
-                          className={`inline-block h-3.5 w-3.5 sm:h-4 sm:w-4 transform rounded-full bg-white transition ${
-                            value ? 'translate-x-4 sm:translate-x-5' : 'translate-x-0.5 sm:translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1">
+                              <p className="text-[10px] font-semibold text-amber-900">
+                                {definition.label}
+                              </p>
+                              {definition.risk === 'high' && (
+                                <span className="inline-flex items-center rounded-full bg-red-100 px-1 py-0.5 text-[8px] font-semibold text-red-700">
+                                  Escalated
+                                </span>
+                              )}
+                              {definition.defaultView && (
+                                <span className="inline-flex items-center rounded-full bg-blue-100 px-1 py-0.5 text-[8px] font-semibold text-blue-700">
+                                  Analytics
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-0.5 text-[9px] text-amber-900/80">
+                              {definition.description}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAdminPermissionChange(definition.key, !value);
+                            }}
+                            disabled={isSaving}
+                            role="switch"
+                            aria-checked={value}
+                            className={`relative inline-flex h-4 w-7 items-center rounded-full transition flex-shrink-0 ${
+                              value ? 'bg-amber-600' : 'bg-amber-200'
+                            } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                          >
+                            <span
+                              className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
+                                value ? 'translate-x-3' : 'translate-x-0.5'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
             </section>
           );
         })}
@@ -2148,64 +2158,64 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-1 sm:p-2 md:p-4 lg:p-6">
-      <div className="flex h-full w-full max-h-[98vh] sm:max-h-[95vh] max-w-[100vw] sm:max-w-[95vw] flex-col overflow-hidden rounded-lg sm:rounded-xl lg:rounded-2xl bg-white shadow-2xl sm:max-w-7xl lg:max-w-[90vw] xl:max-w-7xl">
-        <div className="flex-shrink-0 bg-gradient-to-r from-red-600 to-red-800 px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 text-white">
-          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-1">
+      <div className="flex h-full w-full max-h-[98vh] max-w-[100vw] flex-col overflow-hidden rounded-lg bg-white shadow-2xl sm:max-w-[95vw]">
+        <div className="flex-shrink-0 bg-gradient-to-r from-red-600 to-red-800 px-2 py-2 text-white">
+          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between sm:block">
-                <span className="text-[10px] sm:text-xs uppercase tracking-widest text-red-200">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] uppercase tracking-widest text-red-200">
                 Control Center
               </span>
                 <button
                   onClick={onClose}
-                  className="sm:hidden text-white hover:text-red-200 transition"
+                  className="text-white hover:text-red-200 transition text-xs"
                   aria-label="Close"
                 >
                   ✕
                 </button>
               </div>
-              <h2 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mt-1">
+              <h2 className="text-sm font-bold mt-0.5">
                 🔐 Permission Management Center
               </h2>
-              <p className="mt-1 text-[11px] sm:text-xs md:text-sm text-red-100">
+              <p className="mt-0.5 text-[10px] text-red-100">
                 Micro-manage user access, reduce risk, and keep teams aligned.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-[10px] sm:text-xs md:text-sm text-red-50 sm:grid-cols-4 lg:flex-shrink-0">
-              <div className="bg-red-700/30 rounded-lg p-2 sm:p-3">
-                <p className="font-semibold text-white text-[10px] sm:text-xs">Teachers</p>
-                <p className="text-red-100 text-sm sm:text-base font-bold">{teachers.length}</p>
+            <div className="grid grid-cols-4 gap-1 text-[9px] text-red-50">
+              <div className="bg-red-700/30 rounded p-1">
+                <p className="font-semibold text-white text-[9px]">Teachers</p>
+                <p className="text-red-100 text-xs font-bold">{teachers.length}</p>
               </div>
-              <div className="bg-red-700/30 rounded-lg p-2 sm:p-3">
-                <p className="font-semibold text-white text-[10px] sm:text-xs">Admins</p>
-                <p className="text-red-100 text-sm sm:text-base font-bold">{admins.length}</p>
+              <div className="bg-red-700/30 rounded p-1">
+                <p className="font-semibold text-white text-[9px]">Admins</p>
+                <p className="text-red-100 text-xs font-bold">{admins.length}</p>
               </div>
-              <div className="bg-red-700/30 rounded-lg p-2 sm:p-3">
-                <p className="font-semibold text-white text-[10px] sm:text-xs">Active role</p>
-                <p className="text-red-100 text-sm sm:text-base font-bold truncate">
+              <div className="bg-red-700/30 rounded p-1">
+                <p className="font-semibold text-white text-[9px]">Active</p>
+                <p className="text-red-100 text-xs font-bold truncate">
                   {selectedType === 'teacher' ? 'Teachers' : 'Admins'}
                 </p>
               </div>
-              <div className="bg-red-700/30 rounded-lg p-2 sm:p-3">
-                <p className="font-semibold text-white text-[10px] sm:text-xs">Last action</p>
-                <p className="text-red-100 text-sm sm:text-base font-bold truncate">
-                  {feedback?.message ? 'Updated' : '—'}
+              <div className="bg-red-700/30 rounded p-1">
+                <p className="font-semibold text-white text-[9px]">Status</p>
+                <p className="text-red-100 text-xs font-bold truncate">
+                  {feedback?.message ? '✓' : '—'}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-3 sm:gap-4 overflow-hidden bg-gray-50 px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-6 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
-            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-              <div className="flex items-center justify-between mb-2 sm:mb-3">
-              <p className="text-xs sm:text-sm font-semibold text-gray-900">Role type</p>
+        <div className="grid min-h-0 flex-1 gap-1.5 overflow-hidden bg-gray-50 px-1.5 py-1.5 lg:grid-cols-[200px_minmax(0,1fr)]">
+          <aside className="flex flex-col space-y-1.5 overflow-y-auto">
+            <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
+              <div className="flex items-center justify-between mb-1">
+              <p className="text-[10px] font-semibold text-gray-900">Role type</p>
                 <button
                   type="button"
                   onClick={toggleBulkMode}
-                  className={`text-xs sm:text-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg font-semibold transition ${
+                  className={`text-[9px] px-1.5 py-0.5 rounded font-semibold transition ${
                     bulkMode
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -2214,12 +2224,12 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                   {bulkMode ? '📦 Bulk' : '👤 Single'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mb-3 sm:mb-4">
+              <p className="text-[9px] text-gray-500 mb-1.5">
                 {bulkMode
                   ? 'Select multiple users to apply permissions in bulk.'
-                  : 'Switch between teacher and admin directories to start managing their access.'}
+                  : 'Switch between teacher and admin directories.'}
               </p>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -2230,7 +2240,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       setSelectedUsers(new Set());
                     }
                   }}
-                  className={`rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold transition ${
+                  className={`rounded px-1.5 py-1 text-[10px] font-semibold transition ${
                     selectedType === 'teacher'
                       ? 'bg-purple-600 text-white'
                       : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
@@ -2248,7 +2258,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       setSelectedUsers(new Set());
                     }
                   }}
-                  className={`rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-semibold transition ${
+                  className={`rounded px-1.5 py-1 text-[10px] font-semibold transition ${
                     selectedType === 'admin'
                       ? 'bg-amber-500 text-white'
                       : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
@@ -2261,45 +2271,45 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
 
             {bulkMode ? (
               <>
-                <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-                  <div className="flex items-center justify-between mb-2 sm:mb-3">
-                    <label className="text-xs sm:text-sm font-semibold text-gray-900">
+                <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-semibold text-gray-900">
                       Select {selectedType === 'teacher' ? 'teachers' : 'admins'} ({selectedUsers.size})
                     </label>
-                    <div className="flex gap-1 sm:gap-2">
+                    <div className="flex gap-0.5">
                       <button
                         type="button"
                         onClick={selectAllUsers}
-                        className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        className="text-[9px] px-1 py-0.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                       >
                         All
                       </button>
                       <button
                         type="button"
                         onClick={clearSelection}
-                        className="text-xs px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        className="text-[9px] px-1 py-0.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                       >
                         Clear
                       </button>
                     </div>
                   </div>
-                  <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-2">
+                  <div className="max-h-40 overflow-y-auto space-y-1 border border-gray-200 rounded p-1">
                     {(selectedType === 'teacher' ? sortedTeachers : sortedAdmins).map((user) => (
                       <label
                         key={user.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                        className="flex items-center gap-1 p-1 rounded hover:bg-gray-50 cursor-pointer"
                       >
                         <input
                           type="checkbox"
                           checked={selectedUsers.has(user.id)}
                           onChange={() => toggleUserSelection(user.id)}
-                          className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                          className="w-3 h-3 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                          <p className="text-[10px] font-medium text-gray-900 truncate">
                             {user.fullName}
                           </p>
-                          <p className="text-xs text-gray-500 truncate">
+                          <p className="text-[9px] text-gray-500 truncate">
                             {user.email}
                           </p>
                         </div>
@@ -2309,11 +2319,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 </section>
 
                 {selectedUsers.size > 0 && (
-                  <section className="flex-shrink-0 rounded-xl border border-blue-200 bg-blue-50 p-3 shadow-sm sm:p-4">
-                    <label className="text-xs sm:text-sm font-semibold text-gray-900 mb-2 block">
-                      Apply permission to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
+                  <section className="flex-shrink-0 rounded border border-blue-200 bg-blue-50 p-1.5 shadow-sm">
+                    <label className="text-[10px] font-semibold text-gray-900 mb-1 block">
+                      Apply to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
                     </label>
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       <select
                         value={bulkPermission?.key || ''}
                         onChange={(e) => {
@@ -2328,7 +2338,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                             setBulkPermission(null);
                           }
                         }}
-                        className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full rounded border border-gray-300 px-1.5 py-1 text-[10px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
                       >
                         <option value="">— Select permission —</option>
                         {(selectedType === 'teacher' ? TEACHER_PERMISSION_DEFINITIONS : ADMIN_PERMISSION_DEFINITIONS).map((def) => (
@@ -2338,11 +2348,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                         ))}
                       </select>
                       {bulkPermission && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-1">
                           <button
                             type="button"
                             onClick={() => setBulkPermission({ ...bulkPermission, value: true })}
-                            className={`flex-1 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-semibold transition ${
+                            className={`flex-1 rounded px-1.5 py-1 text-[10px] font-semibold transition ${
                               bulkPermission.value
                                 ? 'bg-green-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -2353,7 +2363,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                           <button
                             type="button"
                             onClick={() => setBulkPermission({ ...bulkPermission, value: false })}
-                            className={`flex-1 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-semibold transition ${
+                            className={`flex-1 rounded px-1.5 py-1 text-[10px] font-semibold transition ${
                               !bulkPermission.value
                                 ? 'bg-red-600 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -2368,7 +2378,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                           type="button"
                           onClick={applyBulkPermission}
                           disabled={isSaving}
-                          className="w-full rounded-lg bg-blue-600 px-3 py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+                          className="w-full rounded bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
                         >
                           {isSaving ? 'Applying...' : `Apply to ${selectedUsers.size} ${selectedType}${selectedUsers.size !== 1 ? 's' : ''}`}
                         </button>
@@ -2378,14 +2388,14 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 )}
               </>
             ) : (
-            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-              <label className="text-xs sm:text-sm font-semibold text-gray-900">
+            <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
+              <label className="text-[10px] font-semibold text-gray-900">
                 Select {selectedType === 'teacher' ? 'teacher' : 'admin'}
               </label>
               <select
                 value={selectedUser}
                 onChange={(event) => setSelectedUser(event.target.value)}
-                className="mt-2 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+                className="mt-1 w-full rounded border border-gray-300 px-1.5 py-1 text-[10px] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-200"
               >
                 <option value="">— Choose a user —</option>
                 {selectedType === 'teacher'
@@ -2400,30 +2410,30 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       </option>
                     ))}
               </select>
-              <p className="mt-3 text-xs text-gray-500">
+              <p className="mt-1 text-[9px] text-gray-500">
                 {selectedType === 'teacher'
-                  ? 'Tip: Assign only the permissions needed for their classroom responsibilities.'
-                  : 'Tip: Reserve elevated permissions for trusted senior admins.'}
+                  ? 'Tip: Assign only needed permissions.'
+                  : 'Tip: Reserve elevated permissions for trusted admins.'}
               </p>
             </section>
             )}
 
-            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-              <p className="text-xs sm:text-sm font-semibold text-gray-900">
+            <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
+              <p className="text-[10px] font-semibold text-gray-900">
                 Safety checklist
               </p>
-              <ul className="mt-2 sm:mt-3 space-y-1.5 sm:space-y-2 text-xs text-gray-600">
+              <ul className="mt-1 space-y-0.5 text-[9px] text-gray-600">
                 <li>• Review high-impact toggles regularly.</li>
                 <li>• Pair communication access with accountability.</li>
-                <li>• Keep permission presets aligned with school policy.</li>
+                <li>• Keep permission presets aligned with policy.</li>
               </ul>
             </section>
           </aside>
 
-          <main className="min-h-0 overflow-y-auto space-y-3 sm:space-y-4 md:space-y-6">
+          <main className="min-h-0 overflow-y-auto space-y-1.5">
             {feedback && (
               <div
-                className={`flex-shrink-0 rounded-lg border px-3 py-2 text-xs sm:px-4 sm:py-3 sm:text-sm ${
+                className={`flex-shrink-0 rounded border px-2 py-1 text-[10px] ${
                   feedback.tone === 'success'
                     ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
                     : feedback.tone === 'error'
@@ -2435,22 +2445,22 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
             </div>
           )}
             {bulkMode && selectedUsers.size === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-12 sm:py-16 text-center text-gray-500">
-                <div className="mb-3 text-4xl">📦</div>
-                <p className="text-base sm:text-lg font-semibold text-gray-700">
+              <div className="flex flex-col items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 px-2 py-8 text-center text-gray-500">
+                <div className="mb-2 text-2xl">📦</div>
+                <p className="text-xs font-semibold text-gray-700">
                   Bulk Mode Active
                 </p>
-                <p className="mt-2 text-xs sm:text-sm max-w-md">
+                <p className="mt-1 text-[10px] max-w-md">
                   Select {selectedType === 'teacher' ? 'teachers' : 'admins'} from the sidebar to apply permissions in bulk.
                 </p>
               </div>
             ) : !bulkMode && !selectedUser ? (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-12 sm:py-16 text-center text-gray-500">
-                <div className="mb-3 text-4xl">{selectedType === 'teacher' ? '👆' : '🛡️'}</div>
-                <p className="text-base sm:text-lg font-semibold text-gray-700">
+              <div className="flex flex-col items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 px-2 py-8 text-center text-gray-500">
+                <div className="mb-2 text-2xl">{selectedType === 'teacher' ? '👆' : '🛡️'}</div>
+                <p className="text-xs font-semibold text-gray-700">
                   Select a {selectedType === 'teacher' ? 'teacher' : 'admin'} to continue
                 </p>
-                <p className="mt-2 text-xs sm:text-sm max-w-md">
+                <p className="mt-1 text-[10px] max-w-md">
                   Use the directory on the left to load an account and adjust its privileges.
                 </p>
               </div>
@@ -2460,27 +2470,27 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           </main>
         </div>
 
-        <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between sm:justify-end gap-2 sm:gap-3 border-t border-gray-200 bg-white px-3 py-3 sm:px-4 sm:py-3 md:px-6 md:py-4">
+        <div className="flex-shrink-0 flex flex-col sm:flex-row justify-between sm:justify-end gap-1 border-t border-gray-200 bg-white px-1.5 py-1.5">
           {bulkMode && (
-            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600">
+            <div className="flex items-center gap-1 text-[10px] text-gray-600">
               <span className="font-semibold">{selectedUsers.size}</span>
               <span>{selectedType}{selectedUsers.size !== 1 ? 's' : ''} selected</span>
             </div>
           )}
-          <div className="flex gap-2 sm:gap-3">
+          <div className="flex gap-1">
             {bulkMode && (
               <button
                 type="button"
                 onClick={toggleBulkMode}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="rounded border border-gray-300 bg-white px-2 py-1 text-[10px] font-semibold text-gray-700 transition hover:bg-gray-50"
               >
-                Exit Bulk Mode
+                Exit Bulk
               </button>
             )}
             <button
             type="button"
               onClick={onClose}
-              className="flex-1 sm:flex-none rounded-lg bg-gray-900 px-4 py-1.5 sm:px-6 sm:py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-gray-700"
+              className="flex-1 sm:flex-none rounded bg-gray-900 px-3 py-1 text-[10px] font-semibold text-white transition hover:bg-gray-700"
             >
               Done
             </button>

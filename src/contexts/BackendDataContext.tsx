@@ -24,6 +24,7 @@ import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../uti
 import { dataCache, ASSIGNMENTS_CACHE_DURATION } from '../utils/dataCache';
 import { useAuth } from './AuthContext';
 import { useLocation } from 'react-router-dom';
+import { useSocket } from '../hooks/useSocket';
 
 interface BackendDataContextType {
   students: Student[];
@@ -290,6 +291,7 @@ const normalizeId = (id: any): string => {
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user: currentUser, logout } = useAuth(); // Get current user and logout from AuthContext
   const location = useLocation();
+  const socket = useSocket(); // Get socket connection
   
   // Route-based data requirements - only load what each page needs
   // This dramatically improves performance by skipping unnecessary API calls
@@ -1370,6 +1372,226 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []); // Empty deps - loadData should only be created once
 
   // Load cache IMMEDIATELY on mount for instant display (before API calls)
+  // WebSocket event listeners for real-time assignment updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAssignmentCreated = (assignmentData: any) => {
+      console.log('🔌 Received assignment:created event', assignmentData);
+      
+      // Normalize assignment data
+      const normalizedAssignment = {
+        ...assignmentData,
+        id: assignmentData._id || assignmentData.id,
+        studentId: normalizeId(assignmentData.studentId),
+        createdAt: assignmentData.createdAt ? new Date(assignmentData.createdAt) : new Date(),
+        updatedAt: assignmentData.updatedAt ? new Date(assignmentData.updatedAt) : new Date(),
+      };
+
+      // Check if this assignment is for the current user (if student)
+      const isForCurrentUser = currentUser?.role === 'student' 
+        ? (() => {
+            const students = dataCache.get<any[]>('students') || [];
+            const currentStudent = students.find((s: any) => s.email === currentUser.email);
+            if (currentStudent) {
+              const studentId = String(currentStudent.id || currentStudent._id);
+              return normalizedAssignment.studentId === studentId;
+            }
+            return false;
+          })()
+        : true; // For teachers/admins, show all assignments
+
+      if (isForCurrentUser) {
+        // Add to assignments list
+        setAssignments(prev => {
+          // Check if assignment already exists
+          const exists = prev.some(a => a.id === normalizedAssignment.id);
+          if (exists) {
+            return prev.map(a => 
+              a.id === normalizedAssignment.id ? normalizedAssignment : a
+            );
+          }
+          return [normalizedAssignment, ...prev];
+        });
+
+        // Update cache
+        const cachedAssignments = dataCache.get<any[]>('assignments') || [];
+        const updatedCache = cachedAssignments.some((a: any) => 
+          (a._id || a.id) === normalizedAssignment.id
+        )
+          ? cachedAssignments.map((a: any) => 
+              (a._id || a.id) === normalizedAssignment.id ? normalizedAssignment : a
+            )
+          : [normalizedAssignment, ...cachedAssignments];
+        dataCache.set('assignments', updatedCache, ASSIGNMENTS_CACHE_DURATION);
+      }
+    };
+
+    const handleAssignmentUpdated = (assignmentData: any) => {
+      console.log('🔌 Received assignment:updated event', assignmentData);
+      
+      // Normalize assignment data
+      const normalizedAssignment = {
+        ...assignmentData,
+        id: assignmentData._id || assignmentData.id,
+        studentId: normalizeId(assignmentData.studentId),
+        createdAt: assignmentData.createdAt ? new Date(assignmentData.createdAt) : new Date(),
+        updatedAt: assignmentData.updatedAt ? new Date(assignmentData.updatedAt) : new Date(),
+      };
+
+      // Update assignments list
+      setAssignments(prev => 
+        prev.map(a => 
+          a.id === normalizedAssignment.id ? normalizedAssignment : a
+        )
+      );
+
+      // Update cache
+      const cachedAssignments = dataCache.get<any[]>('assignments') || [];
+      const updatedCache = cachedAssignments.map((a: any) => 
+        (a._id || a.id) === normalizedAssignment.id ? normalizedAssignment : a
+      );
+      dataCache.set('assignments', updatedCache, ASSIGNMENTS_CACHE_DURATION);
+    };
+
+    const handleAssignmentDeleted = (data: { id: string; studentId: string }) => {
+      console.log('🔌 Received assignment:deleted event', data);
+      
+      // Remove from assignments list
+      setAssignments(prev => prev.filter(a => a.id !== data.id));
+
+      // Update cache
+      const cachedAssignments = dataCache.get<any[]>('assignments') || [];
+      const updatedCache = cachedAssignments.filter((a: any) => 
+        (a._id || a.id) !== data.id
+      );
+      dataCache.set('assignments', updatedCache, ASSIGNMENTS_CACHE_DURATION);
+    };
+
+    // Student event handlers
+    const handleStudentCreated = (studentData: any) => {
+      console.log('🔌 Received student:created event', studentData);
+      const normalizedStudent = {
+        ...studentData,
+        id: studentData._id || studentData.id,
+      };
+      setStudents(prev => {
+        const exists = prev.some(s => s.id === normalizedStudent.id);
+        if (exists) {
+          return prev.map(s => s.id === normalizedStudent.id ? normalizedStudent as Student : s);
+        }
+        return [...prev, normalizedStudent as Student];
+      });
+      // Update cache
+      const cachedStudents = dataCache.get<Student[]>('students') || [];
+      dataCache.set('students', [...cachedStudents, normalizedStudent as Student]);
+    };
+
+    const handleStudentUpdated = (studentData: any) => {
+      console.log('🔌 Received student:updated event', studentData);
+      const normalizedStudent = {
+        ...studentData,
+        id: studentData._id || studentData.id,
+      };
+      setStudents(prev => 
+        prev.map(s => s.id === normalizedStudent.id ? normalizedStudent as Student : s)
+      );
+      // Update cache
+      const cachedStudents = dataCache.get<Student[]>('students') || [];
+      const updatedCache = cachedStudents.map((s: any) => 
+        (s._id || s.id) === normalizedStudent.id ? normalizedStudent : s
+      );
+      dataCache.set('students', updatedCache);
+    };
+
+    const handleStudentDeleted = (data: { id: string }) => {
+      console.log('🔌 Received student:deleted event', data);
+      setStudents(prev => prev.filter(s => s.id !== data.id));
+      // Update cache
+      const cachedStudents = dataCache.get<Student[]>('students') || [];
+      dataCache.set('students', cachedStudents.filter((s: any) => (s._id || s.id) !== data.id));
+    };
+
+    // Teacher-student assignment event handlers
+    const handleTeacherStudentsSynced = (data: { summary: any[] }) => {
+      console.log('🔌 Received teacher:students:synced event', data);
+      // Refresh students and teachers to get updated assignments
+      // Trigger a data refresh (will be handled by loadData when needed)
+      loadData(false); // Don't use cache, get fresh data
+    };
+
+    const handleTeacherStudentsUpdated = (data: { studentId: string; student: any }) => {
+      console.log('🔌 Received teacher:students:updated event', data);
+      // Update the specific student
+      const normalizedStudent = {
+        ...data.student,
+        id: data.student._id || data.student.id,
+      };
+      setStudents(prev => 
+        prev.map(s => s.id === normalizedStudent.id ? normalizedStudent as Student : s)
+      );
+      // Also refresh to get updated teacher assignments
+      loadData(false); // Don't use cache, get fresh data
+    };
+
+    // Ticket event handlers
+    const handleTicketCreated = (ticketData: any) => {
+      console.log('🔌 Received ticket:created event', ticketData);
+      const normalizedTicket = {
+        ...ticketData,
+        id: ticketData._id || ticketData.id,
+        createdAt: ticketData.createdAt ? new Date(ticketData.createdAt) : new Date(),
+        updatedAt: ticketData.updatedAt ? new Date(ticketData.updatedAt) : new Date(),
+      };
+      setRecitationTickets(prev => {
+        const exists = prev.some(t => t.id === normalizedTicket.id);
+        if (exists) {
+          return prev.map(t => t.id === normalizedTicket.id ? normalizedTicket as Ticket : t);
+        }
+        return [normalizedTicket as Ticket, ...prev];
+      });
+    };
+
+    const handleTicketUpdated = (ticketData: any) => {
+      console.log('🔌 Received ticket:updated event', ticketData);
+      const normalizedTicket = {
+        ...ticketData,
+        id: ticketData._id || ticketData.id,
+        createdAt: ticketData.createdAt ? new Date(ticketData.createdAt) : new Date(),
+        updatedAt: ticketData.updatedAt ? new Date(ticketData.updatedAt) : new Date(),
+      };
+      setRecitationTickets(prev => 
+        prev.map(t => t.id === normalizedTicket.id ? normalizedTicket as Ticket : t)
+      );
+    };
+
+    // Register event listeners
+    socket.on('assignment:created', handleAssignmentCreated);
+    socket.on('assignment:updated', handleAssignmentUpdated);
+    socket.on('assignment:deleted', handleAssignmentDeleted);
+    socket.on('student:created', handleStudentCreated);
+    socket.on('student:updated', handleStudentUpdated);
+    socket.on('student:deleted', handleStudentDeleted);
+    socket.on('teacher:students:synced', handleTeacherStudentsSynced);
+    socket.on('teacher:students:updated', handleTeacherStudentsUpdated);
+    socket.on('ticket:created', handleTicketCreated);
+    socket.on('ticket:updated', handleTicketUpdated);
+
+    // Cleanup
+    return () => {
+      socket.off('assignment:created', handleAssignmentCreated);
+      socket.off('assignment:updated', handleAssignmentUpdated);
+      socket.off('assignment:deleted', handleAssignmentDeleted);
+      socket.off('student:created', handleStudentCreated);
+      socket.off('student:updated', handleStudentUpdated);
+      socket.off('student:deleted', handleStudentDeleted);
+      socket.off('teacher:students:synced', handleTeacherStudentsSynced);
+      socket.off('teacher:students:updated', handleTeacherStudentsUpdated);
+      socket.off('ticket:created', handleTicketCreated);
+      socket.off('ticket:updated', handleTicketUpdated);
+    };
+  }, [socket, currentUser]);
+
   useEffect(() => {
     // Load cache and set state immediately for instant UI (critical for mobile)
     try {
