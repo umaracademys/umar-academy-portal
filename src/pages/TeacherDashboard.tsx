@@ -490,22 +490,22 @@ const TeacherDashboard: React.FC = () => {
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <RequirePermission permission="canAccessAssignments">
-                <Link
-                  to="/assignments"
-                  className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
-                  style={{ boxShadow: '0 4px 14px rgba(31, 50, 36, 0.3)' }}
-                >
-                  <span className="relative z-10">Manage Assignments</span>
-                  <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
-                </Link>
+              <Link
+                to="/assignments"
+                className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
+                style={{ boxShadow: '0 4px 14px rgba(31, 50, 36, 0.3)' }}
+              >
+                <span className="relative z-10">Manage Assignments</span>
+                <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
+              </Link>
               </RequirePermission>
               <RequirePermission permission="canViewReports">
-                <button
-                  onClick={() => setShowStudentReports(true)}
-                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
-                >
-                  Student Reports
-                </button>
+              <button
+                onClick={() => setShowStudentReports(true)}
+                className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
+              >
+                Student Reports
+              </button>
               </RequirePermission>
               <Link
                 to="/profile"
@@ -687,22 +687,22 @@ const TeacherDashboard: React.FC = () => {
                     permission="canCreateTickets" 
                     tooltipMessage="Permission required: Create Tickets - Contact admin to request access"
                   >
-                    <button
-                      onClick={() => setShowCreateTicket(true)}
-                      className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
-                    >
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg flex-shrink-0">
-                          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs sm:text-sm font-bold text-primary group-hover:text-primary transition-colors truncate">Create Ticket</p>
-                          <p className="text-[10px] sm:text-xs text-gray-600 truncate">Start new review</p>
-                        </div>
+                  <button
+                    onClick={() => setShowCreateTicket(true)}
+                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
                       </div>
-                    </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs sm:text-sm font-bold text-primary group-hover:text-primary transition-colors truncate">Create Ticket</p>
+                        <p className="text-[10px] sm:text-xs text-gray-600 truncate">Start new review</p>
+                      </div>
+                    </div>
+                  </button>
                   </RequirePermission>
                   <button
                     onClick={() => setShowEvaluationAssignments(true)}

@@ -159,7 +159,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setError(errorMessage);
           return false;
         }
-        
+
         // Provide more specific error messages based on status code
         if (response.status === 401) {
           errorMessage = errorMessage || 'Invalid email, password, or role. Please check your credentials and try again.';

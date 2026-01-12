@@ -20,6 +20,7 @@ interface CachedData<T> {
 export interface DataCache {
   get<T>(key: string): T | null;
   set<T>(key: string, data: T, duration?: number): void;
+  delete(key: string): void;
   clear(): void;
   clearExpired(): void;
 }
@@ -67,6 +68,17 @@ export const dataCache: DataCache = {
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         dataCache.clear();
       }
+    }
+  },
+
+  /**
+   * Delete a specific cache entry
+   */
+  delete(key: string): void {
+    try {
+      localStorage.removeItem(`${CACHE_PREFIX}${key}`);
+    } catch (error) {
+      console.warn(`Failed to delete cache for ${key}:`, error);
     }
   },
 

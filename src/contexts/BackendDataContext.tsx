@@ -1738,7 +1738,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         recitationProfile: normalizedProfile
       };
 
-      setStudents(prev => [...prev, enhancedStudent]);
+      setStudents(prev => {
+        const updated = [...prev, enhancedStudent];
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('students');
+        dataCache.set('students', updated);
+        // Also invalidate users cache (student creates user)
+        dataCache.delete('users');
+        return updated;
+      });
       if (import.meta.env.DEV) {
         console.log('✅ Student added successfully to MongoDB:', enhancedStudent.fullName);
       }
@@ -1806,26 +1814,29 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Why: Immediate UI feedback without waiting for refresh
       // Performance: 20-50x faster (3-5s → 100-200ms) - removed expensive refreshData() call
       // Reliability: If refresh fails, student still updated locally
-      setStudents(prev => prev.map(s => {
-        const sId = s.id || (s as any)._id;
-        const studentRecordId = (s as any).studentRecordId;
+      setStudents(prev => {
+        const updated = prev.map(s => {
+          const sId = s.id || (s as any)._id;
+          const studentRecordId = (s as any).studentRecordId;
+          
+          // Match by studentRecordId (preferred) or id/_id
+          if (studentRecordId === id || sId === id || sId === mappedStudent.id || sId === mappedStudent._id) {
+            return { 
+              ...s, 
+              ...mappedStudent, 
+              ...student,
+              studentRecordId: mappedStudent._id || mappedStudent.id || studentRecordId
+            };
+          }
+          return s;
+        });
         
-        // Match by studentRecordId (preferred) or id/_id
-        if (studentRecordId === id || sId === id || sId === mappedStudent.id || sId === mappedStudent._id) {
-          return { 
-            ...s, 
-            ...mappedStudent, 
-            ...student,
-            studentRecordId: mappedStudent._id || mappedStudent.id || studentRecordId
-          };
-        }
-        return s;
-      }));
-      
-      // REMOVED: refreshData() call - moved to batch update handler
-      // Why: refreshData() fetches ALL data (users, teachers, students, assignments, tickets, etc.)
-      // Performance impact: 3-5 seconds per call × N students = 30-50 seconds for 10 students
-      // Solution: Call refreshData() once after batch completes (see handleSave)
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('students');
+        dataCache.set('students', updated);
+        
+        return updated;
+      });
       
       // Log success (dev only)
       if (import.meta.env.DEV) {
@@ -1949,13 +1960,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       // Remove from local state (handle both id and _id matching)
-      setStudents(prev => prev.filter(s => {
-        const sId = s.id || (s as any)._id;
-        return sId !== id && sId !== (studentToDelete?.id) && sId !== (studentToDelete as any)?._id;
-      }));
-      
-      // Refresh data from backend to ensure consistency
-      await refreshData();
+      setStudents(prev => {
+        const updated = prev.filter(s => {
+          const sId = s.id || (s as any)._id;
+          return sId !== id && sId !== (studentToDelete?.id) && sId !== (studentToDelete as any)?._id;
+        });
+        
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('students');
+        dataCache.set('students', updated);
+        // Also invalidate users cache (student deletion affects users)
+        dataCache.delete('users');
+        
+        return updated;
+      });
 
       if (import.meta.env.DEV) {
         console.log('✅ Student deleted successfully');
@@ -2084,8 +2102,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
 
       // Update local state
-      setTeachers(prev => [...prev, mappedTeacher]);
-      await refreshData();
+      setTeachers(prev => {
+        const updated = [...prev, mappedTeacher];
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('teachers');
+        dataCache.set('teachers', updated);
+        // Also invalidate users cache (teacher creates user)
+        dataCache.delete('users');
+        return updated;
+      });
 
       if (import.meta.env.DEV) {
         console.log('✅ Teacher created successfully:', mappedTeacher.fullName);
@@ -2177,20 +2202,26 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       };
 
       // Update local state - merge to preserve all fields, prioritize backend response permissions
-      setTeachers(prev => prev.map(t => {
-        const tId = t.id || (t as any)._id;
-        if (tId === id || tId === mappedTeacher.id || tId === mappedTeacher._id) {
-          return {
-            ...t,
-            ...mappedTeacher,
-            // Use permissions from backend response if available, otherwise use what we sent
-            permissions: updatedTeacher.permissions || teacher.permissions || t.permissions
-          };
-        }
-        return t;
-      }));
-      
-      await refreshData();
+      setTeachers(prev => {
+        const updated = prev.map(t => {
+          const tId = t.id || (t as any)._id;
+          if (tId === id || tId === mappedTeacher.id || tId === mappedTeacher._id) {
+            return {
+              ...t,
+              ...mappedTeacher,
+              // Use permissions from backend response if available, otherwise use what we sent
+              permissions: updatedTeacher.permissions || teacher.permissions || t.permissions
+            };
+          }
+          return t;
+        });
+        
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('teachers');
+        dataCache.set('teachers', updated);
+        
+        return updated;
+      });
 
       if (import.meta.env.DEV) {
         console.log('✅ Teacher updated successfully:', mappedTeacher.fullName || mappedTeacher.name || 'Teacher');
@@ -2214,7 +2245,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error('Failed to delete teacher');
       }
 
-      setTeachers(prev => prev.filter(t => t.id !== id));
+      setTeachers(prev => {
+        const updated = prev.filter(t => t.id !== id);
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('teachers');
+        dataCache.set('teachers', updated);
+        // Also invalidate users cache (teacher deletion affects users)
+        dataCache.delete('users');
+        return updated;
+      });
       if (import.meta.env.DEV) {
         console.log('✅ Teacher deleted successfully from MongoDB');
       }
@@ -2290,7 +2329,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         userId: newUser._id || newUser.id
       };
       
-      setAdmins(prev => [...prev, adminWithId]);
+      setAdmins(prev => {
+        const updated = [...prev, adminWithId];
+        // ✅ FIX: Invalidate users cache (admins stored in users collection)
+        dataCache.delete('users');
+        return updated;
+      });
       if (import.meta.env.DEV) {
         console.log('✅ Admin created successfully in MongoDB:', admin.fullName);
       }
@@ -2348,14 +2392,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const updatedAdmin = await response.json();
       
       // Update local state with the response from server
-      setAdmins(prev => prev.map(a => {
-        const aId = a.id || (a as any)._id;
-        const updatedId = updatedAdmin._id || updatedAdmin.id || id;
-        return (aId === id || aId === updatedId) ? { ...a, ...admin, ...updatedAdmin } : a;
-      }));
-      
-      // Refresh data to ensure we have the latest from backend
-      await refreshData();
+      setAdmins(prev => {
+        const updated = prev.map(a => {
+          const aId = a.id || (a as any)._id;
+          const updatedId = updatedAdmin._id || updatedAdmin.id || id;
+          return (aId === id || aId === updatedId) ? { ...a, ...admin, ...updatedAdmin } : a;
+        });
+        
+        // ✅ FIX: Invalidate users cache (admins stored in users collection)
+        dataCache.delete('users');
+        
+        return updated;
+      });
       
       if (import.meta.env.DEV) {
         console.log('✅ Admin updated successfully in MongoDB');
@@ -2393,10 +2441,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(errorMessage);
       }
 
-      setAdmins(prev => prev.filter(a => {
-        const aId = a.id || (a as any)._id;
-        return aId !== id;
-      }));
+      setAdmins(prev => {
+        const updated = prev.filter(a => {
+          const aId = a.id || (a as any)._id;
+          return aId !== id;
+        });
+        
+        // ✅ FIX: Invalidate users cache (admins stored in users collection)
+        dataCache.delete('users');
+        
+        return updated;
+      });
       
       if (import.meta.env.DEV) {
         console.log('✅ Admin deleted successfully from MongoDB');
@@ -2615,9 +2670,29 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Map _id to id for consistency
       const mappedAssignment = {
         ...newAssignment,
-        id: newAssignment._id || newAssignment.id
+        id: newAssignment._id || newAssignment.id,
+        studentId: normalizeId(newAssignment.studentId),
+        createdAt: newAssignment.createdAt ? new Date(newAssignment.createdAt) : new Date(),
+        updatedAt: newAssignment.updatedAt ? new Date(newAssignment.updatedAt) : new Date(),
       };
+      
+      // Update React state
       setAssignments(prev => [...prev, mappedAssignment]);
+      
+      // ✅ FIX: Invalidate cache to ensure students see new assignment immediately
+      dataCache.delete('assignments');
+      
+      // ✅ FIX: Update cache with new assignment for immediate visibility
+      const currentAssignments = assignments;
+      const updatedAssignments = [...currentAssignments, mappedAssignment];
+      dataCache.set('assignments', updatedAssignments);
+      
+      if (import.meta.env.DEV) {
+        console.log('✅ Assignment created, cache invalidated and updated:', {
+          assignmentId: mappedAssignment.id,
+          studentId: mappedAssignment.studentId
+        });
+      }
     } catch (error) {
       console.error('Error adding assignment:', error);
       throw error;
@@ -2723,6 +2798,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           updated.push(normalizedUpdatedAssignment as Assignment);
         }
         
+        // ✅ FIX: Invalidate and update cache with updated assignments
+        dataCache.delete('assignments');
+        dataCache.set('assignments', updated);
+        
+        if (import.meta.env.DEV) {
+          console.log('✅ Assignment updated, cache invalidated and updated:', {
+            assignmentId: normalizedId
+          });
+        }
+        
         return updated;
       });
     } catch (error) {
@@ -2742,10 +2827,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       // Update local state immediately for instant UI feedback
-      setAssignments(prev => prev.filter(a => {
-        const aId = a._id || a.id;
-        return aId !== id;
-      }));
+      setAssignments(prev => {
+        const updated = prev.filter(a => {
+          const aId = a._id || a.id;
+          return aId !== id;
+        });
+        
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('assignments');
+        dataCache.set('assignments', updated);
+        
+        return updated;
+      });
       
       console.log('✅ Assignment deleted successfully. Local state updated.');
     } catch (error) {
@@ -2845,8 +2938,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         createdAt: newTicket.createdAt ? new Date(newTicket.createdAt) : new Date(),
         updatedAt: newTicket.updatedAt ? new Date(newTicket.updatedAt) : new Date()
       };
-      setRecitationTickets(prev => [...prev, mappedTicket]);
-      await refreshData();
+      setRecitationTickets(prev => {
+        const updated = [...prev, mappedTicket];
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('tickets');
+        dataCache.set('tickets', updated);
+        return updated;
+      });
       return mappedTicket;
     } catch (error) {
       console.error('Error creating ticket:', error);
@@ -2871,8 +2969,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         createdAt: updatedTicket.createdAt ? new Date(updatedTicket.createdAt) : new Date(),
         updatedAt: updatedTicket.updatedAt ? new Date(updatedTicket.updatedAt) : new Date()
       };
-      setRecitationTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
-      await refreshData();
+      setRecitationTickets(prev => {
+        const updated = prev.map(t => t.id === id ? mappedTicket : t);
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('tickets');
+        dataCache.set('tickets', updated);
+        return updated;
+      });
       return mappedTicket;
     } catch (error) {
       console.error('Error updating ticket:', error);
@@ -3000,9 +3103,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setAssignments(prev => {
           // Check if assignment already exists
           const exists = prev.some(a => (a.id || a._id) === assignment.id);
+          let updated;
           if (exists) {
             // Update existing assignment
-            return prev.map(a => (a.id || a._id) === assignment.id ? {
+            updated = prev.map(a => (a.id || a._id) === assignment.id ? {
               ...assignment,
               id: assignment.id || assignment._id,
               studentId: normalizeId(assignment.studentId),
@@ -3011,7 +3115,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             } : a);
           } else {
             // Add new assignment
-            return [...prev, {
+            updated = [...prev, {
               ...assignment,
               id: assignment.id || assignment._id,
               studentId: normalizeId(assignment.studentId),
@@ -3019,6 +3123,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date()
             }];
           }
+          
+          // ✅ FIX: Invalidate and update assignments cache
+          dataCache.delete('assignments');
+          dataCache.set('assignments', updated);
+          
+          return updated;
         });
       }
       
@@ -3040,12 +3150,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const updated = prev.map(t => t.id === id ? mappedTicket : t);
         console.log('✅ Updated tickets array. Ticket with ID', id, 'now has:', 
           updated.find(t => t.id === id)?.sentToAssignmentId || 'N/A');
+        
+        // ✅ FIX: Invalidate and update tickets cache
+        dataCache.delete('tickets');
+        dataCache.set('tickets', updated);
+        
         return updated;
       });
-      
-      // Force refresh assignments to ensure new assignment is visible
-      console.log('🔄 Refreshing assignments after ticket approval...');
-      await refreshData();
       
       // Double-check: Verify assignment was created and is in the assignments array
       if (import.meta.env.DEV && result.assignment) {
@@ -3468,11 +3579,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(message || 'Failed to delete ticket');
       }
 
-      setRecitationTickets(prev => prev.filter(ticket => {
-        const ticketId = ticket._id || ticket.id;
-        return ticketId !== id;
-      }));
-      await refreshData();
+      setRecitationTickets(prev => {
+        const updated = prev.filter(ticket => {
+          const ticketId = ticket._id || ticket.id;
+          return ticketId !== id;
+        });
+        
+        // ✅ FIX: Invalidate and update cache
+        dataCache.delete('tickets');
+        dataCache.set('tickets', updated);
+        
+        return updated;
+      });
     } catch (error) {
       console.error('Error deleting ticket:', error);
       throw error;

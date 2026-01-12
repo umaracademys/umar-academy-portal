@@ -298,7 +298,7 @@ const AssignmentManagement: React.FC = () => {
       if (refreshDataLight) {
         await refreshDataLight();
       } else {
-        await refreshData();
+      await refreshData();
       }
     } catch (error) {
       console.error('Error saving homework:', error);
@@ -780,7 +780,7 @@ const AssignmentManagement: React.FC = () => {
             if (refreshDataLight) {
               await refreshDataLight();
             } else {
-              await refreshData();
+            await refreshData();
             }
             setShowAssignmentForm(false);
             setEditingAssignment(null);

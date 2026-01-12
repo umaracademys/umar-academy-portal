@@ -2155,8 +2155,8 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between sm:block">
                 <span className="text-[10px] sm:text-xs uppercase tracking-widest text-red-200">
-                  Control Center
-                </span>
+                Control Center
+              </span>
                 <button
                   onClick={onClose}
                   className="sm:hidden text-white hover:text-red-200 transition"
@@ -2201,7 +2201,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           <aside className="flex flex-col space-y-3 sm:space-y-4 overflow-y-auto">
             <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
               <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <p className="text-xs sm:text-sm font-semibold text-gray-900">Role type</p>
+              <p className="text-xs sm:text-sm font-semibold text-gray-900">Role type</p>
                 <button
                   type="button"
                   onClick={toggleBulkMode}
@@ -2378,34 +2378,34 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 )}
               </>
             ) : (
-              <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
-                <label className="text-xs sm:text-sm font-semibold text-gray-900">
-                  Select {selectedType === 'teacher' ? 'teacher' : 'admin'}
-                </label>
-                <select
-                  value={selectedUser}
-                  onChange={(event) => setSelectedUser(event.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
-                >
-                  <option value="">— Choose a user —</option>
-                  {selectedType === 'teacher'
-                    ? sortedTeachers.map((teacher) => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.fullName} — {teacher.email}
-                        </option>
-                      ))
-                    : sortedAdmins.map((admin) => (
-                        <option key={admin.id} value={admin.id}>
-                          {admin.fullName} — {admin.email}
-                        </option>
-                      ))}
-                </select>
-                <p className="mt-3 text-xs text-gray-500">
-                  {selectedType === 'teacher'
-                    ? 'Tip: Assign only the permissions needed for their classroom responsibilities.'
-                    : 'Tip: Reserve elevated permissions for trusted senior admins.'}
-                </p>
-              </section>
+            <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
+              <label className="text-xs sm:text-sm font-semibold text-gray-900">
+                Select {selectedType === 'teacher' ? 'teacher' : 'admin'}
+              </label>
+              <select
+                value={selectedUser}
+                onChange={(event) => setSelectedUser(event.target.value)}
+                className="mt-2 w-full rounded-lg border border-gray-300 px-2 py-1.5 text-xs sm:px-3 sm:py-2 sm:text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
+              >
+                <option value="">— Choose a user —</option>
+                {selectedType === 'teacher'
+                  ? sortedTeachers.map((teacher) => (
+                      <option key={teacher.id} value={teacher.id}>
+                        {teacher.fullName} — {teacher.email}
+                      </option>
+                    ))
+                  : sortedAdmins.map((admin) => (
+                      <option key={admin.id} value={admin.id}>
+                        {admin.fullName} — {admin.email}
+                      </option>
+                    ))}
+              </select>
+              <p className="mt-3 text-xs text-gray-500">
+                {selectedType === 'teacher'
+                  ? 'Tip: Assign only the permissions needed for their classroom responsibilities.'
+                  : 'Tip: Reserve elevated permissions for trusted senior admins.'}
+              </p>
+            </section>
             )}
 
             <section className="flex-shrink-0 rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
@@ -2432,8 +2432,8 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 }`}
               >
                 {feedback.message}
-              </div>
-            )}
+            </div>
+          )}
             {bulkMode && selectedUsers.size === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-12 sm:py-16 text-center text-gray-500">
                 <div className="mb-3 text-4xl">📦</div>
@@ -2478,7 +2478,7 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
               </button>
             )}
             <button
-              type="button"
+            type="button"
               onClick={onClose}
               className="flex-1 sm:flex-none rounded-lg bg-gray-900 px-4 py-1.5 sm:px-6 sm:py-2 text-xs sm:text-sm font-semibold text-white transition hover:bg-gray-700"
             >
