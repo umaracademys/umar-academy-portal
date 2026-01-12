@@ -107,13 +107,36 @@ pnpm exec playwright test e2e/mobile-cache-performance.spec.ts -g "Student Assig
 
 ## Test Credentials
 
-Set these environment variables:
-- `E2E_STUDENT_EMAIL`
-- `E2E_STUDENT_PASSWORD`
-- `E2E_TEACHER_EMAIL`
-- `E2E_TEACHER_PASSWORD`
-- `E2E_ADMIN_EMAIL`
-- `E2E_ADMIN_PASSWORD`
+⚠️ **IMPORTANT:** Tests require real users to exist in your database!
+
+### Option 1: Seed Database First
+
+Seed the database to create standard test users:
+
+```bash
+cd backend
+node seedDatabase.js
+```
+
+This creates:
+- Student: `ahmed@umaracademy.com` / `password123`
+- Teacher: `teacher@umaracademy.com` / `password123`
+- Admin: `admin@umaracademy.com` / `password123`
+
+### Option 2: Use Existing Users
+
+Set environment variables with credentials of existing users in your database:
+
+```bash
+export E2E_STUDENT_EMAIL=your-student-email@example.com
+export E2E_STUDENT_PASSWORD=password123
+export E2E_TEACHER_EMAIL=your-teacher-email@example.com
+export E2E_TEACHER_PASSWORD=password123
+export E2E_ADMIN_EMAIL=your-admin-email@example.com
+export E2E_ADMIN_PASSWORD=password123
+```
+
+See `docs/TESTING_CREDENTIALS.md` for detailed setup instructions.
 
 ## Report Generation
 
