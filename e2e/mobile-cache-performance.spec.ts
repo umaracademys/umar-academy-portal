@@ -225,7 +225,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await page.waitForURL('**/student/dashboard', { timeout: 10000 });
     
     // Navigate to assignments (populate cache)
-    await page.click('text=Assignments');
+    await page.click('text=View All Assignments');
     await page.waitForURL('**/student/assignments', { timeout: 5000 });
     await waitForAssignments(page, 15000);
     
@@ -241,7 +241,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await page.waitForTimeout(500);
     
     const cacheStart = Date.now();
-    await page.click('text=Assignments');
+    await page.click('text=View All Assignments');
     await page.waitForURL('**/student/assignments', { timeout: 5000 });
     await waitForAssignments(page, 5000); // Should be faster with cache
     
@@ -307,7 +307,7 @@ test.describe('Mobile Cache Performance Tests', () => {
 
     // Step 3: Student navigates to assignments
     const studentNavStart = Date.now();
-    await studentPage.click('text=Assignments');
+    await studentPage.click('text=View All Assignments');
     await studentPage.waitForURL('**/student/assignments', { timeout: 5000 });
     
     // Step 4: Wait for assignment to appear (should be immediate due to cache invalidation)
@@ -351,7 +351,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await tab1.click('button:has-text("student")');
     await tab1.click('button[type="submit"]');
     await tab1.waitForURL('**/student/dashboard', { timeout: 10000 });
-    await tab1.click('text=Assignments');
+    await tab1.click('text=View All Assignments');
     await tab1.waitForURL('**/student/assignments', { timeout: 5000 });
     await waitForAssignments(tab1, 15000);
 
@@ -365,7 +365,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await tab2.waitForURL('**/student/dashboard', { timeout: 10000 });
     
     const tab2Start = Date.now();
-    await tab2.click('text=Assignments');
+    await tab2.click('text=View All Assignments');
     await tab2.waitForURL('**/student/assignments', { timeout: 5000 });
     await waitForAssignments(tab2, 5000); // Should use cache
     
@@ -401,7 +401,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await page.waitForURL('**/student/dashboard', { timeout: 10000 });
 
     // Navigate to assignments (populate cache)
-    await page.click('text=Assignments');
+    await page.click('text=View All Assignments');
     await page.waitForURL('**/student/assignments', { timeout: 10000 });
     await waitForAssignments(page, 15000);
 
@@ -418,7 +418,7 @@ test.describe('Mobile Cache Performance Tests', () => {
 
     // Try to navigate to assignments (should use cache)
     const offlineStart = Date.now();
-    await page.click('text=Assignments');
+    await page.click('text=View All Assignments');
     
     // Should still work with cache
     const assignmentsVisible = await waitForAssignments(page, 5000);
@@ -454,7 +454,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await studentPage.click('button:has-text("student")');
     await studentPage.click('button[type="submit"]');
     await studentPage.waitForURL('**/student/dashboard', { timeout: 10000 });
-    await studentPage.click('text=Assignments');
+    await studentPage.click('text=View All Assignments');
     await studentPage.waitForURL('**/student/assignments', { timeout: 5000 });
     await waitForAssignments(studentPage, 15000);
 
