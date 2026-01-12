@@ -2,9 +2,11 @@
 
 ## Super Admin Credentials
 
-**Email:** `sadmin@umaracademy.org`  
-**Password:** `password123`  
+**Email:** `ssadmin@umaracademy.org`  
+**Password:** `Password123!!!`  
 **Role:** Super Admin
+
+⚠️ **Note:** Password is case-sensitive and contains special characters.
 
 ---
 
