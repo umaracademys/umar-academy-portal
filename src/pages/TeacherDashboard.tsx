@@ -682,9 +682,22 @@ const TeacherDashboard: React.FC = () => {
                     <div
                       key={ticket.id}
                       className="p-3 rounded-lg border-2 border-primary/20 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-colors cursor-pointer"
-                      onClick={() => {
+                      onClick={async () => {
                         setActiveTab('tickets');
                         if (ticket.status === 'pending' || ticket.status === 'reassigned') {
+                          // Show alert before starting review
+                          const reminderMessage = `Before starting the review, please ensure:\n\n` +
+                            `✓ Make sure the student is sitting properly\n` +
+                            `✓ You can see their hands all the time\n` +
+                            `✓ Make them ready for fluency\n` +
+                            `✓ Make sure they have pencil to mark\n\n` +
+                            `Once you click OK, the review will start.`;
+                          
+                          const confirmed = window.confirm(reminderMessage);
+                          if (!confirmed) {
+                            return; // User cancelled, don't start the review
+                          }
+                          
                           startTicket(ticket.id).then(updatedTicket => {
                             setSelectedTicket(updatedTicket);
                             setShowTicketReview(true);
@@ -748,6 +761,19 @@ const TeacherDashboard: React.FC = () => {
                     const handleTicketClick = async () => {
                       try {
                         if (ticket.status === 'pending' || ticket.status === 'reassigned') {
+                          // Show alert before starting review
+                          const reminderMessage = `Before starting the review, please ensure:\n\n` +
+                            `✓ Make sure the student is sitting properly\n` +
+                            `✓ You can see their hands all the time\n` +
+                            `✓ Make them ready for fluency\n` +
+                            `✓ Make sure they have pencil to mark\n\n` +
+                            `Once you click OK, the review will start.`;
+                          
+                          const confirmed = window.confirm(reminderMessage);
+                          if (!confirmed) {
+                            return; // User cancelled, don't start the review
+                          }
+                          
                           const updatedTicket = await startTicket(ticket.id);
                           setSelectedTicket(updatedTicket);
                           setShowTicketReview(true);

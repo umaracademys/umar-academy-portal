@@ -19,6 +19,8 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
   const [additionalNotes, setAdditionalNotes] = useState('');
   const [assigningHomework, setAssigningHomework] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'sabq' | 'sabqi' | 'manzil'>('all');
+  const [viewingTicket, setViewingTicket] = useState<any>(null);
+  const [deletingTicketId, setDeletingTicketId] = useState<string | null>(null);
 
   useEffect(() => {
     loadTickets();
@@ -283,6 +285,59 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
     }
   };
 
+  const handleViewTicket = async (ticket: any) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/tickets/${ticket._id || ticket.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const ticketDetails = await response.json();
+        setViewingTicket(ticketDetails);
+      } else {
+        alert('Failed to load ticket details');
+      }
+    } catch (error) {
+      console.error('Error viewing ticket:', error);
+      alert('Failed to load ticket details');
+    }
+  };
+
+  const handleDeleteTicket = async (ticket: any) => {
+    if (!window.confirm(`Are you sure you want to delete this ${ticket.type.toUpperCase()} ticket for ${ticket.studentName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingTicketId(ticket._id || ticket.id);
+    try {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/tickets/${ticket._id || ticket.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        alert('Ticket deleted successfully!');
+        loadTickets();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete ticket');
+      }
+    } catch (error) {
+      console.error('Error deleting ticket:', error);
+      alert('Failed to delete ticket');
+    } finally {
+      setDeletingTicketId(null);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-2 border-primary/30">
@@ -395,12 +450,29 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
                             Approved: {formatDateTime(ticketDate)}
                           </p>
                         </div>
-                        <button
-                          onClick={() => setSelectedTicket(ticket)}
-                          className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
-                        >
-                          {ticket.sentToAssignmentId ? 'Update Homework' : 'Assign Homework'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleViewTicket(ticket)}
+                            className="px-3 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors text-sm"
+                            title="View Ticket Details"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTicket(ticket)}
+                            disabled={deletingTicketId === (ticket._id || ticket.id)}
+                            className="px-3 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete Ticket"
+                          >
+                            {deletingTicketId === (ticket._id || ticket.id) ? 'Deleting...' : 'Delete'}
+                          </button>
+                          <button
+                            onClick={() => setSelectedTicket(ticket)}
+                            className="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
+                          >
+                            {ticket.sentToAssignmentId ? 'Update Homework' : 'Assign Homework'}
+                          </button>
+                        </div>
                       </div>
 
                       {ticket.teacherComment && (
@@ -530,6 +602,108 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
                   className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Details Modal */}
+      {viewingTicket && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border-2 border-primary/30">
+            <div className="px-6 py-4 bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-2 border-accent/50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-extrabold text-white">
+                  Ticket Details - {viewingTicket.studentName}
+                </h3>
+                <button
+                  onClick={() => setViewingTicket(null)}
+                  className="w-10 h-10 flex items-center justify-center bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors text-xl font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">Type</p>
+                  <p className={`inline-block px-3 py-1 rounded-full text-sm font-bold border mt-1 ${getTypeColor(viewingTicket.type)}`}>
+                    {viewingTicket.type.toUpperCase()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">Status</p>
+                  <p className="text-sm text-gray-800 mt-1">{viewingTicket.status}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">Student</p>
+                  <p className="text-sm text-gray-800 mt-1">{viewingTicket.studentName}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">Teacher</p>
+                  <p className="text-sm text-gray-800 mt-1">{viewingTicket.assignedTeacherName || viewingTicket.assignedTeacherId || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">Created By</p>
+                  <p className="text-sm text-gray-800 mt-1">{viewingTicket.createdByName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-600">Created At</p>
+                  <p className="text-sm text-gray-800 mt-1">{viewingTicket.createdAt ? formatDateTime(viewingTicket.createdAt) : 'N/A'}</p>
+                </div>
+                {viewingTicket.sentAt && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-600">Sent At</p>
+                    <p className="text-sm text-gray-800 mt-1">{formatDateTime(viewingTicket.sentAt)}</p>
+                  </div>
+                )}
+                {viewingTicket.sentToAssignmentId && (
+                  <div>
+                    <p className="text-sm font-semibold text-gray-600">Assignment ID</p>
+                    <p className="text-sm text-gray-800 mt-1 font-mono">{viewingTicket.sentToAssignmentId}</p>
+                  </div>
+                )}
+              </div>
+
+              {viewingTicket.adminComment && (
+                <div className="p-3 bg-yellow-50 rounded-lg">
+                  <p className="font-semibold text-yellow-700 mb-1">Admin Comment:</p>
+                  <p className="text-gray-700 text-sm">{viewingTicket.adminComment}</p>
+                </div>
+              )}
+
+              {viewingTicket.teacherComment && (
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="font-semibold text-blue-700 mb-1">Teacher Comment:</p>
+                  <p className="text-gray-700 text-sm">{viewingTicket.teacherComment}</p>
+                </div>
+              )}
+
+              {viewingTicket.mistakes && viewingTicket.mistakes.length > 0 && (
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <p className="font-semibold text-gray-700 mb-2">Mistakes Marked: {viewingTicket.mistakes.length}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                    {viewingTicket.mistakes.map((mistake: any, idx: number) => (
+                      <div key={idx} className="text-xs bg-white p-2 rounded border">
+                        <span className="font-semibold">{mistake.type}</span>
+                        {mistake.page && <span className="text-gray-600"> - Page {mistake.page}</span>}
+                        {mistake.note && <p className="text-gray-600 mt-1">{mistake.note}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setViewingTicket(null)}
+                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Close
                 </button>
               </div>
             </div>

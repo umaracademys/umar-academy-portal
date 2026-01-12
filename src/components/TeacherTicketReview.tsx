@@ -41,6 +41,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     comment: false
   });
   const initialMistakesRef = useRef<Set<string>>(new Set(ticket.mistakes?.map(m => m.id || '') || []));
+  const [showPeriodicAlert, setShowPeriodicAlert] = useState(false);
 
   // Load student's personal mushaf when ticket is opened
   useEffect(() => {
@@ -168,6 +169,23 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     return () => window.removeEventListener('keydown', handleEscKey);
   }, [fullMushafView]);
 
+  // Periodic alerts every 4 minutes when ticket is in_progress
+  useEffect(() => {
+    if (ticket.status === 'in_progress') {
+      // Set up interval to show alert every 4 minutes
+      const intervalId = window.setInterval(() => {
+        setShowPeriodicAlert(true);
+      }, 4 * 60 * 1000); // 4 minutes
+
+      return () => {
+        clearInterval(intervalId);
+      };
+    } else {
+      // Clear alert if ticket is not in_progress
+      setShowPeriodicAlert(false);
+    }
+  }, [ticket.status]);
+
   // Validation: Submit enabled if mistakes OR comment exists
   const canSubmit = useMemo(() => {
     return mistakes.length > 0 || teacherComment.trim().length > 0;
@@ -225,7 +243,52 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
   const colors = typeColors[ticket.type as keyof typeof typeColors] || typeColors.sabq;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+    <>
+      {/* Periodic Alert Modal - Full Screen */}
+      {showPeriodicAlert && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 border-4 border-primary">
+            <div className="text-center space-y-6">
+              <div className="text-6xl mb-4">📋</div>
+              <h2 className="text-3xl font-bold text-primary mb-6">Review Checklist</h2>
+              <div className="space-y-4 text-left">
+                <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                  <span className="text-2xl">👀</span>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">Can you see student's hands?</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg">
+                  <span className="text-2xl">📖</span>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">Can you see their Quran?</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-4 bg-purple-50 rounded-lg">
+                  <span className="text-2xl">🎯</span>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">Are they reading with fluency?</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg">
+                  <span className="text-2xl">💪</span>
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900">Motivate them: "Good job!"</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPeriodicAlert(false)}
+                className="mt-6 px-8 py-3 bg-primary text-white rounded-lg font-bold text-lg hover:bg-primary/90 transition-colors"
+              >
+                Continue Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
         {/* Compact Header */}
         <div className="px-3 py-2 bg-primary border-b border-primary/20">
@@ -537,6 +600,7 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
         </div>
       </div>
     </div>
+    </>
   );
 };
 

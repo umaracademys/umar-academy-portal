@@ -40,6 +40,7 @@ const StudentAssignments: React.FC = () => {
     homework?: boolean;
     mistakes?: boolean;
   }>>({});
+  const [showHomeworkOnly, setShowHomeworkOnly] = useState(false);
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
 
@@ -50,9 +51,22 @@ const StudentAssignments: React.FC = () => {
     return backendAssignments
       .filter((assignment: any) => {
         const assignmentStudentId = assignment.studentId || assignment._id?.studentId;
-        return assignmentStudentId === currentStudent.id || 
+        const matchesStudent = assignmentStudentId === currentStudent.id || 
                assignmentStudentId === currentStudent.id.toString() ||
                String(assignmentStudentId) === String(currentStudent.id);
+        
+        if (!matchesStudent) return false;
+        
+        // If homework filter is enabled, only show assignments with homework
+        if (showHomeworkOnly) {
+          return assignment.homework?.enabled === true && (
+            (assignment.homework?.items && assignment.homework.items.length > 0) ||
+            assignment.homework?.content ||
+            assignment.homework?.pdfId
+          );
+        }
+        
+        return true;
       })
       .map((assignment: any) => ({
         ...assignment,
@@ -64,7 +78,7 @@ const StudentAssignments: React.FC = () => {
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
-  }, [backendAssignments, currentStudent]);
+  }, [backendAssignments, currentStudent, showHomeworkOnly]);
 
   // Group assignments by date
   const groupedAssignments = useMemo(() => {
@@ -388,12 +402,24 @@ const StudentAssignments: React.FC = () => {
           <div>
             <h1 className="text-lg font-bold text-primary">My Assignments</h1>
           </div>
-          <button
-            onClick={() => navigate('/student/dashboard')}
-            className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 text-primary rounded text-xs font-semibold hover:bg-gray-50 transition-colors"
-          >
-            Back to Dashboard
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHomeworkOnly(!showHomeworkOnly)}
+              className={`w-full sm:w-auto px-2.5 py-1.5 border rounded text-xs font-semibold transition-colors ${
+                showHomeworkOnly
+                  ? 'bg-primary text-white border-primary hover:bg-primary/90'
+                  : 'border-gray-300 text-primary hover:bg-gray-50'
+              }`}
+            >
+              {showHomeworkOnly ? 'Show All' : 'Previous Homework Only'}
+            </button>
+            <button
+              onClick={() => navigate('/student/dashboard')}
+              className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 text-primary rounded text-xs font-semibold hover:bg-gray-50 transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          </div>
         </div>
 
         {/* Statistics - Compact */}
