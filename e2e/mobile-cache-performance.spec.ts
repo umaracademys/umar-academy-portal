@@ -145,13 +145,9 @@ async function waitForAssignments(page: Page, timeout = 10000): Promise<boolean>
 
 // Test suite for mobile devices
 test.describe('Mobile Cache Performance Tests', () => {
-  // Test on iPhone 8 viewport
-  test.use({
-    ...devices['iPhone 8'],
-    viewport: { width: 375, height: 667 },
-  });
-
   test.beforeEach(async ({ page, context }) => {
+    // Set mobile viewport (iPhone 8)
+    await page.setViewportSize({ width: 375, height: 667 });
     // Clear cache before each test
     await clearCache(page);
     await context.clearCookies();
