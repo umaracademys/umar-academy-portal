@@ -12,16 +12,14 @@
 import { test, expect, devices, Page } from '@playwright/test';
 import { chromium, BrowserContext } from 'playwright';
 
-// Test credentials (MUST be set via environment variables)
-// Default values are placeholders and will NOT work
-// See CREDENTIALS.md for available test accounts
-// Example: export E2E_STUDENT_EMAIL=ahmed@umaracademy.com
-const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'admin@umaracademy.com';
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'password123';
-const TEACHER_EMAIL = process.env.E2E_TEACHER_EMAIL || 'teacher@umaracademy.com';
-const TEACHER_PASSWORD = process.env.E2E_TEACHER_PASSWORD || 'password123';
-const STUDENT_EMAIL = process.env.E2E_STUDENT_EMAIL || 'ahmed@umaracademy.com';
-const STUDENT_PASSWORD = process.env.E2E_STUDENT_PASSWORD || 'password123';
+// Test credentials (can be overridden via environment variables)
+// Default values are actual test accounts
+const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || 'umairrasheed969@gmail.com';
+const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || 'Umair123!!!';
+const TEACHER_EMAIL = process.env.E2E_TEACHER_EMAIL || 'rashid86amir82@gmail.com';
+const TEACHER_PASSWORD = process.env.E2E_TEACHER_PASSWORD || 'Rashid2025';
+const STUDENT_EMAIL = process.env.E2E_STUDENT_EMAIL || 'saria_mdn@yahoo.com';
+const STUDENT_PASSWORD = process.env.E2E_STUDENT_PASSWORD || 'Maya2025!';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
 
