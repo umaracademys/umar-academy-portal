@@ -121,10 +121,22 @@ async function checkCacheKey(page: Page, key: string): Promise<{ exists: boolean
 
 // Helper: Clear all cache
 async function clearCache(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
-  });
+  try {
+    // Only clear cache if we're on a page that allows it (not about:blank)
+    const url = page.url();
+    if (url && url !== 'about:blank' && !url.startsWith('data:')) {
+      await page.evaluate(() => {
+        try {
+          localStorage.clear();
+          sessionStorage.clear();
+        } catch (e) {
+          // Ignore errors if storage is not accessible
+        }
+      });
+    }
+  } catch (e) {
+    // Ignore errors - cache clearing is best effort
+  }
 }
 
 // Helper: Wait for assignments to load
@@ -148,8 +160,7 @@ test.describe('Mobile Cache Performance Tests', () => {
   test.beforeEach(async ({ page, context }) => {
     // Set mobile viewport (iPhone 8)
     await page.setViewportSize({ width: 375, height: 667 });
-    // Clear cache before each test
-    await clearCache(page);
+    // Clear cookies before each test
     await context.clearCookies();
   });
 
@@ -250,7 +261,6 @@ test.describe('Mobile Cache Performance Tests', () => {
       viewport: { width: 375, height: 667 },
     });
     const teacherPage = await teacherContext.newPage();
-    await clearCache(teacherPage);
 
     // Create student context (simulating different device/user)
     const studentContext = await browser.newContext({
@@ -258,10 +268,10 @@ test.describe('Mobile Cache Performance Tests', () => {
       viewport: { width: 414, height: 896 },
     });
     const studentPage = await studentContext.newPage();
-    await clearCache(studentPage);
 
     // Step 1: Teacher logs in and creates assignment
     await teacherPage.goto(`${BASE_URL}/login`);
+    await clearCache(teacherPage);
     await teacherPage.fill('input[type="email"]', TEACHER_EMAIL);
     await teacherPage.fill('input[type="password"]', TEACHER_PASSWORD);
     await teacherPage.selectOption('select[name="role"]', 'teacher');
@@ -283,6 +293,7 @@ test.describe('Mobile Cache Performance Tests', () => {
 
     // Step 2: Student logs in immediately
     await studentPage.goto(`${BASE_URL}/login`);
+    await clearCache(studentPage);
     await studentPage.fill('input[type="email"]', STUDENT_EMAIL);
     await studentPage.fill('input[type="password"]', STUDENT_PASSWORD);
     await studentPage.selectOption('select[name="role"]', 'student');
