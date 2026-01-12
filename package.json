@@ -31,6 +31,8 @@
     "test:e2e:mobile:ui": "playwright test e2e/mobile-cache-performance.spec.ts --ui",
     "test:e2e:data-loading": "playwright test e2e/data-loading.spec.ts",
     "test:e2e:data-loading:ui": "playwright test e2e/data-loading.spec.ts --ui",
+    "test:e2e:teacher": "playwright test e2e/teacher-portal.spec.ts",
+    "test:e2e:teacher:ui": "playwright test e2e/teacher-portal.spec.ts --ui",
     "setup:test-users": "node backend/createTestUsers.js"
   },
   "dependencies": {
