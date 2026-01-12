@@ -20,6 +20,6 @@
     "tsBuildInfoFile": ".tsbuildinfo"
   },
   "include": ["src"],
-  "exclude": ["src/scripts/**/*", "src/config/**/*"],
+  "exclude": ["src/scripts/**/*", "src/config/**/*", "src/__tests__/**/*", "**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.spec.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
