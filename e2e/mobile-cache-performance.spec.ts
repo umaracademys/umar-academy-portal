@@ -143,16 +143,20 @@ async function clearCache(page: Page): Promise<void> {
 // Helper: Wait for assignments to load
 async function waitForAssignments(page: Page, timeout = 10000): Promise<boolean> {
   try {
-    // Wait for assignment cards or list to appear
-    await page.waitForSelector('[data-testid="assignment-card"], .assignment-card, [class*="assignment"]', {
-      timeout,
-      state: 'visible',
-    });
-    return true;
+    // Wait for assignments page to load (either assignments or "no assignments" message)
+    await page.waitForLoadState('networkidle', { timeout });
+    
+    // Check if page loaded successfully by looking for page title or content
+    const pageTitle = await page.locator('text=/My Assignments/i').isVisible({ timeout: 5000 }).catch(() => false);
+    if (!pageTitle) return false;
+    
+    // Check if assignments exist OR "no assignments" message exists
+    const hasAssignments = await page.locator('[data-testid="assignment-card"], .assignment-card, article, [class*="assignment"]').first().isVisible({ timeout: 2000 }).catch(() => false);
+    const noAssignments = await page.locator('text=/no assignments/i, text=/No assignments yet/i, text=/Your teacher will assign work soon/i').isVisible({ timeout: 2000 }).catch(() => false);
+    
+    return hasAssignments || noAssignments;
   } catch {
-    // Check if "no assignments" message appears
-    const noAssignments = await page.locator('text=/no assignments/i').isVisible().catch(() => false);
-    return noAssignments;
+    return false;
   }
 }
 
