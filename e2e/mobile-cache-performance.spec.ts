@@ -296,7 +296,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await clearCache(studentPage);
     await studentPage.fill('input[type="email"]', STUDENT_EMAIL);
     await studentPage.fill('input[type="password"]', STUDENT_PASSWORD);
-    await studentPage.selectOption('select[name="role"]', 'student');
+    await studentPage.click('button:has-text("student")');
     await studentPage.click('button[type="submit"]');
     await studentPage.waitForURL('**/student/dashboard', { timeout: 10000 });
 
@@ -343,7 +343,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await tab1.goto(`${BASE_URL}/login`);
     await tab1.fill('input[type="email"]', STUDENT_EMAIL);
     await tab1.fill('input[type="password"]', STUDENT_PASSWORD);
-    await tab1.selectOption('select[name="role"]', 'student');
+    await tab1.click('button:has-text("student")');
     await tab1.click('button[type="submit"]');
     await tab1.waitForURL('**/student/dashboard', { timeout: 10000 });
     await tab1.click('text=Assignments');
@@ -355,7 +355,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await tab2.goto(`${BASE_URL}/login`);
     await tab2.fill('input[type="email"]', STUDENT_EMAIL);
     await tab2.fill('input[type="password"]', STUDENT_PASSWORD);
-    await tab2.selectOption('select[name="role"]', 'student');
+    await tab2.click('button:has-text("student")');
     await tab2.click('button[type="submit"]');
     await tab2.waitForURL('**/student/dashboard', { timeout: 10000 });
     
@@ -446,7 +446,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await studentPage.goto(`${BASE_URL}/login`);
     await studentPage.fill('input[type="email"]', STUDENT_EMAIL);
     await studentPage.fill('input[type="password"]', STUDENT_PASSWORD);
-    await studentPage.selectOption('select[name="role"]', 'student');
+    await studentPage.click('button:has-text("student")');
     await studentPage.click('button[type="submit"]');
     await studentPage.waitForURL('**/student/dashboard', { timeout: 10000 });
     await studentPage.click('text=Assignments');
