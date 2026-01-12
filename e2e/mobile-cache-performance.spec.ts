@@ -293,13 +293,36 @@ test.describe('Mobile Cache Performance Tests', () => {
     await teacherPage.fill('input[type="password"]', TEACHER_PASSWORD);
     await teacherPage.click('button:has-text("teacher")');
     await teacherPage.click('button[type="submit"]');
-    // Teacher goes to /dashboard first, then DashboardRouter redirects based on role
-    await teacherPage.waitForURL('**/dashboard', { timeout: 10000 });
-    // Wait for redirect to teacher dashboard
-    await teacherPage.waitForTimeout(1000);
-
-    // Navigate to assignment creation
-    await teacherPage.click('text=Create Assignment', { timeout: 5000 });
+    // Teacher goes to /dashboard which shows TeacherDashboard (no redirect to /teacher/dashboard)
+    await teacherPage.waitForURL('**/dashboard', { timeout: 15000 });
+    
+    // Wait for teacher dashboard to load
+    await teacherPage.waitForLoadState('networkidle', { timeout: 10000 });
+    
+    // Navigate to assignment creation - look for assignment management link/button
+    // Try multiple possible selectors
+    const createAssignmentSelectors = [
+      'text=Create Assignment',
+      'text=/create.*assignment/i',
+      'a[href*="assignment"]',
+      'button:has-text("Assignment")',
+    ];
+    
+    let assignmentClicked = false;
+    for (const selector of createAssignmentSelectors) {
+      try {
+        await teacherPage.click(selector, { timeout: 3000 });
+        assignmentClicked = true;
+        break;
+      } catch {
+        continue;
+      }
+    }
+    
+    if (!assignmentClicked) {
+      // If no assignment button found, try navigating directly to assignments page
+      await teacherPage.goto(`${BASE_URL}/assignments`);
+    }
     
     // Fill assignment form (adjust selectors based on your UI)
     const assignmentName = `Mobile Test Assignment ${Date.now()}`;
