@@ -1369,9 +1369,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, []); // Empty deps - loadData should only be created once
 
-  // Only load data once on mount
+  // Only load data once on mount, or when user logs in
   const hasLoadedRef = useRef(false);
+  const previousUserRef = useRef<string | null>(null);
+  const isInitialMountRef = useRef(true);
+  
   useEffect(() => {
+    // Load data on initial mount
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
       if (import.meta.env.DEV) {
@@ -1383,7 +1387,36 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log('⏸️ Data already loaded, skipping initial load');
       }
     }
+    // Mark initial mount as complete
+    isInitialMountRef.current = false;
   }, [loadData]);
+
+  // Reload data when user logs in (currentUser changes from null to a user)
+  // Skip on initial mount (user might already be logged in from localStorage)
+  useEffect(() => {
+    // Skip on initial mount - let the initial useEffect handle it
+    if (isInitialMountRef.current) {
+      const currentUserId = currentUser?._id || currentUser?.id || null;
+      previousUserRef.current = currentUserId;
+      return;
+    }
+    
+    const currentUserId = currentUser?._id || currentUser?.id || null;
+    const previousUserId = previousUserRef.current;
+    
+    // If user changed from null/undefined to a user (login), reload data
+    if (!previousUserId && currentUserId) {
+      if (import.meta.env.DEV) {
+        console.log('🔑 User logged in - reloading data...');
+      }
+      // Reset hasLoadedRef to allow reload
+      hasLoadedRef.current = false;
+      loadData();
+    }
+    
+    // Update previous user ref
+    previousUserRef.current = currentUserId;
+  }, [currentUser?._id || currentUser?.id, loadData]);
 
   // Lightweight refresh - only refresh assignments, tickets, and notifications (faster)
   // Defined here before useEffect hooks that use it
