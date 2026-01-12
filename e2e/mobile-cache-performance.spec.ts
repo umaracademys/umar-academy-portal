@@ -182,7 +182,7 @@ test.describe('Mobile Cache Performance Tests', () => {
 
     // Navigate to assignments
     const navStart = Date.now();
-    await page.click('text=Assignments', { timeout: 5000 });
+    await page.click('text=View All Assignments', { timeout: 5000 });
     await page.waitForURL('**/student/assignments', { timeout: 5000 });
 
     // Wait for assignments to load
