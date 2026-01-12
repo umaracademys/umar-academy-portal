@@ -1369,6 +1369,46 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   }, []); // Empty deps - loadData should only be created once
 
+  // Load cache IMMEDIATELY on mount for instant display (before API calls)
+  useEffect(() => {
+    // Load cache and set state immediately for instant UI (critical for mobile)
+    try {
+      const cachedStudents = dataCache.get<Student[]>('students');
+      const cachedTeachers = dataCache.get<Teacher[]>('teachers');
+      const cachedAdmins = dataCache.get<Admin[]>('admins');
+      const cachedAssignments = dataCache.get<Assignment[]>('assignments');
+      
+      if (cachedStudents && cachedStudents.length > 0) {
+        setStudents(cachedStudents);
+        if (import.meta.env.DEV) {
+          console.log('⚡ Loaded', cachedStudents.length, 'students from cache (instant)');
+        }
+      }
+      if (cachedTeachers && cachedTeachers.length > 0) {
+        setTeachers(cachedTeachers);
+        if (import.meta.env.DEV) {
+          console.log('⚡ Loaded', cachedTeachers.length, 'teachers from cache (instant)');
+        }
+      }
+      if (cachedAdmins && cachedAdmins.length > 0) {
+        setAdmins(cachedAdmins);
+        if (import.meta.env.DEV) {
+          console.log('⚡ Loaded', cachedAdmins.length, 'admins from cache (instant)');
+        }
+      }
+      if (cachedAssignments && cachedAssignments.length > 0) {
+        setAssignments(cachedAssignments);
+        if (import.meta.env.DEV) {
+          console.log('⚡ Loaded', cachedAssignments.length, 'assignments from cache (instant)');
+        }
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Failed to load cache:', error);
+      }
+    }
+  }, []); // Run once on mount, before loadData()
+
   // Only load data once on mount, or when user logs in
   const hasLoadedRef = useRef(false);
   const previousUserRef = useRef<string | null>(null);
