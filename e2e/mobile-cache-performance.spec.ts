@@ -173,7 +173,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     // Login as student
     await page.fill('input[type="email"]', STUDENT_EMAIL);
     await page.fill('input[type="password"]', STUDENT_PASSWORD);
-    await page.selectOption('select[name="role"]', 'student');
+    await page.click('button:has-text("student")');
     await page.click('button[type="submit"]');
 
     // Wait for dashboard
@@ -215,7 +215,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.fill('input[type="email"]', STUDENT_EMAIL);
     await page.fill('input[type="password"]', STUDENT_PASSWORD);
-    await page.selectOption('select[name="role"]', 'student');
+    await page.click('button:has-text("student")');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/student/dashboard', { timeout: 10000 });
     
@@ -274,7 +274,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await clearCache(teacherPage);
     await teacherPage.fill('input[type="email"]', TEACHER_EMAIL);
     await teacherPage.fill('input[type="password"]', TEACHER_PASSWORD);
-    await teacherPage.selectOption('select[name="role"]', 'teacher');
+    await teacherPage.click('button:has-text("teacher")');
     await teacherPage.click('button[type="submit"]');
     await teacherPage.waitForURL('**/teacher/dashboard', { timeout: 10000 });
 
@@ -391,7 +391,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await page.goto(`${BASE_URL}/login`);
     await page.fill('input[type="email"]', STUDENT_EMAIL);
     await page.fill('input[type="password"]', STUDENT_PASSWORD);
-    await page.selectOption('select[name="role"]', 'student');
+    await page.click('button:has-text("student")');
     await page.click('button[type="submit"]');
     await page.waitForURL('**/student/dashboard', { timeout: 10000 });
 
@@ -460,7 +460,7 @@ test.describe('Mobile Cache Performance Tests', () => {
     await teacherPage.goto(`${BASE_URL}/login`);
     await teacherPage.fill('input[type="email"]', TEACHER_EMAIL);
     await teacherPage.fill('input[type="password"]', TEACHER_PASSWORD);
-    await teacherPage.selectOption('select[name="role"]', 'teacher');
+    await teacherPage.click('button:has-text("teacher")');
     await teacherPage.click('button[type="submit"]');
     await teacherPage.waitForURL('**/teacher/dashboard', { timeout: 10000 });
     

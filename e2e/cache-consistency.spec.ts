@@ -33,7 +33,7 @@ test.describe('Cache Consistency - E2E Tests', () => {
     await page.goto('/login');
     await page.fill('input[type="email"]', TEACHER_EMAIL);
     await page.fill('input[type="password"]', TEACHER_PASSWORD);
-    await page.selectOption('select[name="role"]', 'teacher');
+    await page.click('button:has-text("teacher")');
     await page.click('button[type="submit"]');
     
     // Wait for dashboard
@@ -92,7 +92,7 @@ test.describe('Cache Consistency - E2E Tests', () => {
     await page.goto('/login');
     await page.fill('input[type="email"]', ADMIN_EMAIL);
     await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.selectOption('select[name="role"]', 'admin');
+    await page.click('button:has-text("admin")');
     await page.click('button[type="submit"]');
     
     await page.waitForURL('**/dashboard', { timeout: 10000 });
@@ -133,7 +133,7 @@ test.describe('Cache Consistency - E2E Tests', () => {
     await page.goto('/login');
     await page.fill('input[type="email"]', ADMIN_EMAIL);
     await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.selectOption('select[name="role"]', 'admin');
+    await page.click('button:has-text("admin")');
     await page.click('button[type="submit"]');
     
     await page.waitForURL('**/dashboard', { timeout: 10000 });
@@ -169,7 +169,7 @@ test.describe('Cache Consistency - E2E Tests', () => {
     await page.goto('/login');
     await page.fill('input[type="email"]', TEACHER_EMAIL);
     await page.fill('input[type="password"]', TEACHER_PASSWORD);
-    await page.selectOption('select[name="role"]', 'teacher');
+    await page.click('button:has-text("teacher")');
     await page.click('button[type="submit"]');
     
     await page.waitForURL('**/teacher/dashboard', { timeout: 10000 });
@@ -240,7 +240,7 @@ test.describe('Cache Consistency - E2E Tests', () => {
     await page.goto('/login');
     await page.fill('input[type="email"]', ADMIN_EMAIL);
     await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.selectOption('select[name="role"]', 'admin');
+    await page.click('button:has-text("admin")');
     await page.click('button[type="submit"]');
     
     await page.waitForURL('**/dashboard', { timeout: 10000 });
