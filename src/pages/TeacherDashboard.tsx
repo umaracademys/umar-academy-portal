@@ -457,136 +457,81 @@ const TeacherDashboard: React.FC = () => {
   }, [activityHistory]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-primary/5 to-accent/5">
+    <div className="min-h-screen bg-gray-50">
       <Header onNotificationClick={() => setShowNotificationCenter(true)} />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header Section - High-Tech Design */}
-        <div className="mb-4 sm:mb-6 md:mb-8 relative overflow-hidden rounded-xl sm:rounded-2xl border-2 border-primary/20 bg-white px-4 sm:px-6 py-4 sm:py-6 md:py-8 shadow-lg">
-          {/* Animated background grid */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: `linear-gradient(rgba(31, 50, 36, 0.1) 1px, transparent 1px),
-                                linear-gradient(90deg, rgba(31, 50, 36, 0.1) 1px, transparent 1px)`,
-              backgroundSize: '50px 50px'
-            }}></div>
-          </div>
-          
-          {/* Glowing accent */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-3xl"></div>
-          
-          <div className="relative flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2 sm:space-y-3">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-lg" style={{ boxShadow: '0 0 10px rgba(31, 50, 36, 0.5)' }}></div>
-                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-primary">Teacher Workspace</span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-primary">
-                Dashboard
-              </h1>
-              <p className="text-sm sm:text-base text-gray-700 max-w-2xl">
-                Advanced control center for managing assignments, reviewing student work, and tracking progress.
+      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 lg:px-6">
+        {/* Compact Header */}
+        <div className="mb-3 bg-white rounded-lg border border-gray-200 px-3 py-2 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div>
+              <h1 className="text-lg font-bold text-gray-900">Teacher Dashboard</h1>
+              <p className="text-xs text-gray-600 mt-0.5">
+                {currentTeacher?.fullName || 'Teacher'}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
               <RequirePermission permission="canAccessAssignments">
               <Link
                 to="/assignments"
-                className="group relative inline-flex items-center justify-center rounded-lg sm:rounded-xl bg-primary px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:shadow-xl hover:scale-105"
-                style={{ boxShadow: '0 4px 14px rgba(31, 50, 36, 0.3)' }}
+                className="px-2.5 py-1.5 bg-primary text-white rounded text-xs font-medium hover:bg-primary/90 transition-colors"
               >
-                <span className="relative z-10">Manage Assignments</span>
-                <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-primary opacity-0 group-hover:opacity-90 transition-opacity"></div>
+                Assignments
               </Link>
               </RequirePermission>
               <RequirePermission permission="canViewReports">
               <button
                 onClick={() => setShowStudentReports(true)}
-                className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-primary/50 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-primary transition-all hover:bg-primary/10 hover:border-primary shadow-md"
+                className="px-2.5 py-1.5 border border-primary text-primary rounded text-xs font-medium hover:bg-primary/10 transition-colors"
               >
-                Student Reports
+                Reports
               </button>
               </RequirePermission>
               <Link
                 to="/profile"
-                className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-gray-300 bg-white px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 hover:border-gray-400 shadow-md"
+                className="px-2.5 py-1.5 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50 transition-colors"
               >
-                My Profile
+                Profile
               </Link>
-              {user?.role === 'superadmin' && (
-                <button
-                  onClick={() => setShowPermissionManager(true)}
-                  className="inline-flex items-center justify-center rounded-lg sm:rounded-xl border-2 border-red-500 bg-red-50 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-red-700 transition-all hover:bg-red-100 hover:border-red-600 shadow-md"
-                  title="Open Permission Management Center"
-                >
-                  🔐 Control Center
-                </button>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Success/Error Messages - High-Tech Style */}
+        {/* Compact Success/Error Messages */}
         {saveSuccess && (
-          <div className="mb-6 relative overflow-hidden rounded-xl border border-emerald-500/50 bg-gradient-to-r from-emerald-900/40 to-emerald-800/30 backdrop-blur-xl px-6 py-4 shadow-lg shadow-emerald-500/20">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent"></div>
-            <div className="relative flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
-              <p className="text-sm font-bold text-emerald-300">{saveSuccess}</p>
-            </div>
+          <div className="mb-3 bg-green-50 border border-green-200 rounded px-3 py-2">
+            <p className="text-xs font-medium text-green-800">{saveSuccess}</p>
           </div>
         )}
         {saveError && (
-          <div className="mb-6 relative overflow-hidden rounded-xl border border-red-500/50 bg-gradient-to-r from-red-900/40 to-red-800/30 backdrop-blur-xl px-6 py-4 shadow-lg shadow-red-500/20">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent"></div>
-            <div className="relative">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                <p className="text-sm font-bold text-red-300">{saveError}</p>
-              </div>
+          <div className="mb-3 bg-red-50 border border-red-200 rounded px-3 py-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-red-800">{saveError}</p>
               <button
                 onClick={() => setSaveError(null)}
-                className="mt-3 text-xs text-red-400 hover:text-red-300 underline font-semibold transition-colors"
+                className="text-xs text-red-600 hover:text-red-800"
               >
-                Dismiss
+                ×
               </button>
             </div>
           </div>
         )}
 
-        {/* Pair Teacher Info Banner - High-Tech */}
+        {/* Compact Pair Teacher Info */}
         {pairPartner && (
-          <div className="mb-4 sm:mb-6 relative overflow-hidden rounded-xl border-2 border-primary/30 bg-white p-3 sm:p-4 md:p-5 shadow-lg">
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-              <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                <div className="relative w-10 h-10 sm:w-12 sm:h-14 rounded-xl bg-primary/20 flex items-center justify-center shadow-md border-2 border-primary/40 flex-shrink-0">
-                  <svg className="w-5 h-5 sm:w-6 sm:h-7 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <div className="absolute top-1 right-1 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full animate-pulse"></div>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-primary text-sm sm:text-base md:text-lg mb-1">Teaching Pair</h3>
-                  <p className="text-xs sm:text-sm text-gray-700 truncate">
-                    Paired with <span className="font-semibold text-primary">{pairPartner.fullName}</span>
-                  </p>
-                  <p className="text-[10px] sm:text-xs text-gray-600 mt-1 hidden sm:block">
-                    Shared access to student assessments, evaluations, and assignments
-                  </p>
-                </div>
+          <div className="mb-3 bg-white rounded-lg border border-gray-200 px-3 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-700">Paired with:</span>
+                <span className="text-xs font-semibold text-primary">{pairPartner.fullName}</span>
               </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <div className="text-right px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg bg-primary/10 border-2 border-primary/20">
-                  <p className="text-[10px] sm:text-xs font-semibold text-gray-600 uppercase tracking-wide">Pair Students</p>
-                  <p className="text-xl sm:text-2xl font-black text-primary">{allPairStudents.length}</p>
-                </div>
-              </div>
+              <span className="text-xs text-gray-600">{allPairStudents.length} students</span>
             </div>
           </div>
         )}
 
-        {/* Statistics Grid - Always Visible */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
+        {/* Compact Statistics Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
           <StatCard 
             title="Pair Students" 
             value={currentTeacher ? allPairStudents.length : 0} 
@@ -613,66 +558,57 @@ const TeacherDashboard: React.FC = () => {
           />
         </div>
 
-        {/* Tab Navigation */}
-        <div className="mb-4 sm:mb-6 flex items-center gap-1 sm:gap-2 border-b border-primary/20 bg-white/50 backdrop-blur-sm rounded-t-xl px-1 sm:px-2 pt-2 overflow-x-auto">
+        {/* Compact Tab Navigation */}
+        <div className="mb-3 flex items-center gap-1 border-b border-gray-200 bg-white rounded-t-lg px-2 pt-1 overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'text-primary bg-primary/10 border-b-2 border-primary'
-                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-gray-600 hover:text-primary'
             }`}
           >
             Overview
-            {activeTab === 'overview' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
-            )}
           </button>
           <button
             onClick={() => setActiveTab('tickets')}
-            className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
               activeTab === 'tickets'
-                ? 'text-primary bg-primary/10 border-b-2 border-primary'
-                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-gray-600 hover:text-primary'
             }`}
           >
             Tickets
             {teacherTickets.length > 0 && (
-              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold bg-primary text-white rounded-full">
+              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-primary text-white rounded-full">
                 {teacherTickets.length}
               </span>
-            )}
-            {activeTab === 'tickets' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
             )}
           </button>
           {approvedTicketsNeedingHomework.length > 0 && (
             <button
               onClick={() => setActiveTab('tickets')}
-              className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+              className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
                 activeTab === 'tickets'
-                  ? 'text-accent bg-accent/10 border-b-2 border-accent'
-                  : 'text-slate-600 hover:text-accent hover:bg-accent/5'
+                  ? 'text-accent border-b-2 border-accent'
+                  : 'text-gray-600 hover:text-accent'
               }`}
             >
               Approved
-              <span className="ml-1 sm:ml-2 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold bg-accent text-primary rounded-full">
+              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-accent text-primary rounded-full">
                 {approvedTicketsNeedingHomework.length}
               </span>
             </button>
           )}
           <button
             onClick={() => setActiveTab('actions')}
-            className={`px-3 sm:px-4 md:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold transition-all relative rounded-t-lg whitespace-nowrap ${
+            className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
               activeTab === 'actions'
-                ? 'text-primary bg-primary/10 border-b-2 border-primary'
-                : 'text-slate-600 hover:text-primary hover:bg-primary/5'
+                ? 'text-primary border-b-2 border-primary'
+                : 'text-gray-600 hover:text-primary'
             }`}
           >
-            Quick Actions
-            {activeTab === 'actions' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"></div>
-            )}
+            Actions
           </button>
         </div>
 
@@ -830,69 +766,48 @@ const TeacherDashboard: React.FC = () => {
                       <button
                         key={ticket.id}
                         onClick={handleTicketClick}
-                        className="group w-full text-left relative overflow-hidden rounded-xl border border-slate-700/50 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-5 shadow-lg hover:shadow-xl hover:border-primary/50 transition-all cursor-pointer"
+                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 hover:border-primary hover:bg-gray-50 transition-colors"
                       >
-                        {/* Hover glow effect */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        
-                        {/* Left accent bar */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                          ticket.type === 'sabqi' 
-                            ? 'bg-primary' 
-                            : ticket.type === 'manzil'
-                            ? 'bg-accent'
-                            : 'bg-primary'
-                        }`}></div>
-                        
-                        <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-3">
-                              <span className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide border ${
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
                                 ticket.type === 'sabqi' 
-                                  ? 'bg-soft-primary text-primary border-primary/30' 
+                                  ? 'bg-blue-100 text-blue-800' 
                                   : ticket.type === 'manzil'
-                                  ? 'bg-soft-accent text-accent border-accent/30'
-                                  : 'bg-soft-primary text-primary border-primary/30'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-purple-100 text-purple-800'
                               }`}>
-                                {ticket.type}
+                                {ticket.type?.toUpperCase()}
                               </span>
-                              <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
                                 ticket.status === 'pending'
-                                  ? 'bg-soft-accent text-accent border-accent/30'
+                                  ? 'bg-yellow-100 text-yellow-800'
                                   : ticket.status === 'in_progress'
-                                  ? 'bg-soft-primary text-primary border-primary/30'
-                                  : 'bg-soft-accent text-accent border-accent/30'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-orange-100 text-orange-800'
                               }`}>
                                 {ticket.status === 'in_progress' ? 'In Progress' : ticket.status === 'reassigned' ? 'Reassigned' : 'Pending'}
                               </span>
                             </div>
-                            <h4 className="text-lg font-bold text-slate-100 mb-2 group-hover:text-primary transition-colors">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-1">
                               {ticket.studentName}
                             </h4>
                             {ticket.teacherNotes && (
-                              <div className="mb-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Admin Notes</p>
-                                <p className="text-sm text-slate-300">{ticket.teacherNotes}</p>
-                              </div>
+                              <p className="text-xs text-gray-600 mb-1 line-clamp-2">{ticket.teacherNotes}</p>
                             )}
                             {ticket.status === 'reassigned' && ticket.previousTeacherComment && (
-                              <div className="mt-3 p-3 bg-orange-900/30 border-l-4 border-orange-500 rounded-lg">
-                                <p className="text-xs font-bold text-orange-400 mb-1 uppercase tracking-wide">Previous Review</p>
-                                <p className="text-sm text-orange-300">{ticket.previousTeacherComment}</p>
-                                {ticket.reassignmentReason && (
-                                  <p className="text-xs text-orange-400/70 mt-1">Reason: {ticket.reassignmentReason}</p>
-                                )}
-                              </div>
+                              <p className="text-xs text-orange-700 mb-1 line-clamp-1">Previous: {ticket.previousTeacherComment}</p>
                             )}
-                            <p className="text-xs text-slate-500 mt-3">
-                              Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'} at {ticket.createdAt ? new Date(ticket.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                            <p className="text-xs text-gray-500">
+                              {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
                             <button
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                if (confirm(`Are you sure you want to delete this ticket for ${ticket.studentName}?`)) {
+                                if (confirm(`Delete ticket for ${ticket.studentName}?`)) {
                                   try {
                                     await deleteTicket(ticket.id);
                                     setRefreshKey(prev => prev + 1);
@@ -903,15 +818,15 @@ const TeacherDashboard: React.FC = () => {
                                   }
                                 }
                               }}
-                              className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl whitespace-nowrap"
-                              title="Delete ticket"
+                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                              title="Delete"
                             >
-                              🗑️ Delete
+                              ×
                             </button>
-                            <div className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold transition-all shadow-lg hover:shadow-xl whitespace-nowrap group-hover:scale-105">
+                            <div className="px-3 py-1.5 bg-primary text-white rounded text-xs font-medium">
                               {ticket.status === 'pending' || ticket.status === 'reassigned' 
-                                ? 'Start Review' 
-                                : 'Continue Review'}
+                                ? 'Start' 
+                                : 'Continue'}
                             </div>
                           </div>
                         </div>
@@ -947,30 +862,30 @@ const TeacherDashboard: React.FC = () => {
                     return (
                       <div
                         key={ticket.id}
-                        className="border border-slate-700/50 rounded-lg p-4 bg-gradient-to-br from-slate-800/50 to-slate-900/50"
+                        className="bg-white border border-gray-200 rounded-lg p-2.5"
                       >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                ticket.type === 'sabqi' ? 'bg-primary/20 text-primary' :
-                                ticket.type === 'manzil' ? 'bg-accent/20 text-accent' :
-                                'bg-primary/20 text-primary'
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                                ticket.type === 'sabqi' ? 'bg-blue-100 text-blue-800' :
+                                ticket.type === 'manzil' ? 'bg-green-100 text-green-800' :
+                                'bg-purple-100 text-purple-800'
                               }`}>
                                 {ticket.type?.toUpperCase()}
                               </span>
                               {hasHomework && (
-                                <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">
-                                  ✓ Homework Assigned
+                                <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800">
+                                  ✓ Homework
                                 </span>
                               )}
                             </div>
-                            <h4 className="text-lg font-bold text-slate-100 mb-1">{ticket.studentName}</h4>
+                            <h4 className="text-sm font-semibold text-gray-900 mb-0.5">{ticket.studentName}</h4>
                             {ticket.teacherComment && (
-                              <p className="text-sm text-slate-300 mb-2">{ticket.teacherComment}</p>
+                              <p className="text-xs text-gray-600 mb-1 line-clamp-1">{ticket.teacherComment}</p>
                             )}
-                            <p className="text-xs text-slate-500">
-                              Approved: {ticket.sentAt ? new Date(ticket.sentAt).toLocaleDateString() : 'N/A'}
+                            <p className="text-xs text-gray-500">
+                              {ticket.sentAt ? new Date(ticket.sentAt).toLocaleDateString() : 'N/A'}
                             </p>
                           </div>
                           {!hasHomework && ticket.sentToAssignmentId && (
@@ -980,9 +895,9 @@ const TeacherDashboard: React.FC = () => {
                                 setSelectedAssignmentForHomework(ticket.sentToAssignmentId!);
                                 setShowHomeworkForm(true);
                               }}
-                              className="px-4 py-2 bg-accent hover:bg-accent/90 text-white rounded-lg text-sm font-bold transition-all"
+                              className="px-2.5 py-1.5 bg-accent hover:bg-accent/90 text-white rounded text-xs font-medium transition-colors whitespace-nowrap"
                             >
-                              Assign Homework
+                              Assign HW
                             </button>
                           )}
                         </div>

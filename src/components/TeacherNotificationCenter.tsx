@@ -25,14 +25,15 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'unread' | 'high'>('all');
 
-  // Refresh notifications when component opens and periodically
+  // Refresh notifications when component opens and periodically (faster refresh)
   useEffect(() => {
+    // Load immediately from cache, then refresh in background
     refreshTeacherNotifications();
     
-    // Auto-refresh every 30 seconds
+    // Auto-refresh every 15 seconds (faster updates)
     const interval = setInterval(() => {
       refreshTeacherNotifications();
-    }, 30000);
+    }, 15000);
     
     return () => clearInterval(interval);
   }, [refreshTeacherNotifications]);
@@ -138,47 +139,38 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.9)] text-white p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Compact Header */}
+        <div className="bg-primary text-white px-3 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
-                <span className="text-xl">🔔</span>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Notifications</h2>
-                <div className="flex items-center gap-3 mt-1">
-                  {newCount > 0 && (
-                    <span className="text-white/90 text-sm font-semibold">{newCount} NEW</span>
-                  )}
-                  {unreadCount > 0 && (
-                    <span className="text-white/90 text-sm">{unreadCount} unread</span>
-                  )}
-                  {unreadHighPriorityCount > 0 && (
-                    <span className="text-white/90 text-sm font-semibold">{unreadHighPriorityCount} high priority</span>
-                  )}
-                  <span className="text-white/80 text-sm">{teacherNotifications.length} total</span>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold">Notifications</h2>
+              {unreadCount > 0 && (
+                <span className="bg-white/20 text-white text-xs font-semibold px-1.5 py-0.5 rounded">
+                  {unreadCount} unread
+                </span>
+              )}
+              {unreadHighPriorityCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-semibold px-1.5 py-0.5 rounded">
+                  {unreadHighPriorityCount} high
+                </span>
+              )}
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors"
+              className="text-white hover:text-gray-200 transition-colors text-lg"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              ×
             </button>
           </div>
         </div>
 
-        {/* Filter Tabs */}
+        {/* Compact Filter Tabs */}
         <div className="border-b border-gray-200 flex">
           <button
             onClick={() => setFilter('all')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
               filter === 'all'
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-gray-600 hover:text-gray-900'
@@ -188,7 +180,7 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
           </button>
           <button
             onClick={() => setFilter('unread')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
               filter === 'unread'
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-gray-600 hover:text-gray-900'
@@ -198,70 +190,64 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
           </button>
           <button
             onClick={() => setFilter('high')}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
               filter === 'high'
                 ? 'text-primary border-b-2 border-primary'
                 : 'text-gray-600 hover:text-gray-900'
             }`}
           >
-            High Priority ({highPriorityCount})
+            High ({highPriorityCount})
           </button>
         </div>
 
-        {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* Compact Notifications List */}
+        <div className="flex-1 overflow-y-auto p-2">
           {filteredNotifications.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">🔕</div>
-              <p className="text-gray-500 text-lg">No notifications</p>
-              <p className="text-gray-400 text-sm mt-2">
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-sm">
                 {filter === 'unread' 
                   ? "You're all caught up!" 
                   : filter === 'high'
                   ? 'No high priority notifications'
-                  : 'You have no notifications'}
+                  : 'No notifications'}
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {filteredNotifications.map((notification) => {
                 const notificationId = notification.id || notification._id || '';
                 return (
                   <div
                     key={notificationId}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`border-l-4 rounded-lg p-4 cursor-pointer transition-all hover:shadow-md ${
+                    className={`border-l-2 rounded p-2 cursor-pointer transition-colors hover:bg-gray-50 ${
                       notification.read 
                         ? getNotificationColor(notification.type, notification.priority)
                         : `${getNotificationColor(notification.type, notification.priority)} font-semibold`
                     }`}
                   >
-                    <div className="flex items-start space-x-3">
-                      <div className="text-2xl flex-shrink-0">
+                    <div className="flex items-start gap-2">
+                      <div className="text-base flex-shrink-0">
                         {getNotificationIcon(notification.type)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className={`text-sm ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
-                              {notification.title}
-                            </h3>
-                            <p className={`text-sm mt-1 ${notification.read ? 'text-gray-600' : 'text-gray-800'}`}>
-                              {notification.message}
-                            </p>
-                            <div className="flex items-center space-x-2 mt-2">
-                              <span className="text-xs text-gray-500">
-                                {formatTimeAgo(notification.createdAt)}
-                              </span>
-                              {notification.priority === 'high' && (
-                                <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded">
-                                  High Priority
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                        <h3 className={`text-xs font-medium ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
+                          {notification.title}
+                        </h3>
+                        <p className={`text-xs mt-0.5 line-clamp-2 ${notification.read ? 'text-gray-600' : 'text-gray-800'}`}>
+                          {notification.message}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="text-xs text-gray-500">
+                            {formatTimeAgo(notification.createdAt)}
+                          </span>
+                          {notification.priority === 'high' && (
+                            <span className="px-1.5 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded">
+                              High
+                            </span>
+                          )}
                           {!notification.read && (
-                            <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1"></div>
+                            <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
                           )}
                         </div>
                       </div>
@@ -273,20 +259,20 @@ const TeacherNotificationCenter: React.FC<TeacherNotificationCenterProps> = ({
           )}
         </div>
 
-        {/* Footer Actions */}
+        {/* Compact Footer Actions */}
         {filteredNotifications.length > 0 && (
-          <div className="border-t border-gray-200 p-4 flex justify-between items-center">
+          <div className="border-t border-gray-200 px-2 py-1.5 flex justify-between items-center">
             <button
               onClick={async () => {
                 await markAllTeacherNotificationsAsRead();
               }}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-xs text-gray-600 hover:text-gray-900 transition-colors"
             >
-              Mark all as read
+              Mark all read
             </button>
             <button
               onClick={refreshTeacherNotifications}
-              className="text-sm text-primary hover:text-primary/80 transition-colors"
+              className="text-xs text-primary hover:text-primary/80 transition-colors"
             >
               Refresh
             </button>

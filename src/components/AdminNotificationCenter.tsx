@@ -236,50 +236,35 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-2 sm:p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-primary">
-        {/* Header */}
-        <div className="px-6 sm:px-8 py-8 border-b-4 border-accent bg-gradient-to-r from-[#0f1a12] via-primary to-[#0f1a12] shadow-2xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
-            <div className="flex-1">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="text-5xl">🔔</div>
-                <div>
-                  <h2 className="text-3xl sm:text-4xl font-extrabold text-white drop-shadow-lg">
-                    Notifications
-                  </h2>
-                  {unreadCount > 0 && (
-                    <div className="mt-2">
-                      <span className="px-4 py-2 bg-accent text-primary rounded-full text-base font-extrabold animate-pulse shadow-xl border-2 border-white/30">
-                        {unreadCount} NEW
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 mt-4">
-                <span className="px-4 py-2 bg-black/40 backdrop-blur-sm text-white rounded-full text-sm font-bold border-2 border-white/40 shadow-lg">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
+        {/* Compact Header */}
+        <div className="px-3 py-2 bg-primary border-b border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-white">Notifications</h2>
+              {unreadCount > 0 && (
+                <span className="bg-white/20 text-white text-xs font-semibold px-1.5 py-0.5 rounded">
                   {unreadCount} unread
                 </span>
-                <span className="px-4 py-2 bg-accent/50 backdrop-blur-sm text-white rounded-full text-sm font-bold border-2 border-accent/60 shadow-lg">
-                  {highPriorityCount} high priority
+              )}
+              {highPriorityCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-semibold px-1.5 py-0.5 rounded">
+                  {highPriorityCount} high
                 </span>
-                <span className="px-4 py-2 bg-black/40 backdrop-blur-sm text-white rounded-full text-sm font-bold border-2 border-white/40 shadow-lg">
-                  {allNotifications.length} total
-                </span>
-              </div>
+              )}
             </div>
-            <div className="flex gap-3 items-center">
+            <div className="flex gap-1.5 items-center">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
-                  className="px-6 py-3 bg-accent text-primary rounded-full text-base font-bold transition-all shadow-xl hover:scale-110 hover:bg-accent/90 border-2 border-accent/50 whitespace-nowrap"
+                  className="px-2 py-1 bg-white/20 text-white rounded text-xs font-medium hover:bg-white/30 transition-colors"
                 >
-                  ✓ Mark All Read
+                  Mark All Read
                 </button>
               )}
               <button
                 onClick={onClose}
-                className="w-12 h-12 flex items-center justify-center bg-accent text-primary rounded-full transition-all text-2xl font-bold shadow-xl hover:scale-110 hover:bg-accent/90 border-2 border-accent/50"
+                className="w-7 h-7 flex items-center justify-center bg-white/20 text-white rounded transition-colors hover:bg-white/30 text-lg font-bold"
                 title="Close"
               >
                 ×
@@ -288,100 +273,99 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="px-6 sm:px-8 py-5 border-b-2 border-accent-soft bg-gradient-to-r from-soft-primary to-soft-accent">
-          <div className="flex flex-wrap gap-4">
+        {/* Compact Filters */}
+        <div className="px-2 py-1.5 border-b border-gray-200 bg-gray-50">
+          <div className="flex gap-1">
             <button
               onClick={() => setFilter('all')}
-              className={`px-7 py-3 text-base font-bold rounded-full transition-all shadow-lg border-2 ${
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                 filter === 'all'
-                  ? 'bg-[#0f1a12] text-white scale-110 border-primary shadow-xl'
-                  : 'bg-white text-primary hover:bg-[#0f1a12] hover:text-white hover:scale-110 border-primary/30'
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
               All ({allNotifications.length})
             </button>
             <button
               onClick={() => setFilter('unread')}
-              className={`px-7 py-3 text-base font-bold rounded-full transition-all shadow-lg border-2 ${
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                 filter === 'unread'
-                  ? 'bg-[#0f1a12] text-white scale-110 border-primary shadow-xl'
-                  : 'bg-white text-primary hover:bg-[#0f1a12] hover:text-white hover:scale-110 border-primary/30'
+                  ? 'bg-primary text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
               Unread ({unreadCount})
             </button>
             <button
               onClick={() => setFilter('high')}
-              className={`px-7 py-3 text-base font-bold rounded-full transition-all shadow-lg border-2 ${
+              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                 filter === 'high'
-                  ? 'bg-accent text-primary scale-110 border-accent shadow-xl'
-                  : 'bg-white text-accent hover:bg-accent hover:text-primary hover:scale-110 border-accent/30'
+                  ? 'bg-accent text-primary'
+                  : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
-              High Priority ({highPriorityCount})
+              High ({highPriorityCount})
             </button>
           </div>
         </div>
 
-        {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-gradient-to-b from-white to-gray-50">
+        {/* Compact Notifications List */}
+        <div className="flex-1 overflow-y-auto p-2">
           {filteredNotifications.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-8xl mb-6">🔔</div>
-              <p className="text-primary text-2xl font-bold mb-3">No notifications</p>
-              <p className="text-primary-soft text-base">
+            <div className="text-center py-8">
+              <p className="text-gray-500 text-sm">
                 {filter === 'unread' 
                   ? 'All notifications have been read'
                   : filter === 'high'
                   ? 'No high priority notifications'
-                  : 'You\'re all caught up!'}
+                  : 'No notifications'}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {filteredNotifications.map((notification) => (
                 <button
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
-                  className={`w-full text-left p-5 sm:p-6 rounded-2xl border-4 transition-all transform hover:scale-[1.02] ${
+                  className={`w-full text-left p-2.5 rounded border transition-colors hover:bg-gray-50 ${
                     notification.read
-                      ? 'bg-gray-100 border-gray-300 hover:border-gray-400 shadow-sm'
+                      ? 'bg-gray-50 border-gray-200'
                       : notification.priority === 'high'
-                      ? 'bg-soft-accent border-accent shadow-lg hover:shadow-xl ring-2 ring-accent/30'
+                      ? 'bg-red-50 border-red-200 border-l-2'
                       : notification.priority === 'medium'
-                      ? 'bg-soft-primary border-primary shadow-lg hover:shadow-xl ring-2 ring-primary/30'
-                      : 'bg-soft-primary border-primary/70 shadow-lg hover:shadow-xl ring-2 ring-primary/20'
+                      ? 'bg-blue-50 border-blue-200 border-l-2'
+                      : 'bg-gray-50 border-gray-200 border-l-2'
                   }`}
                 >
-                  <div className="flex items-start gap-4">
-                    {/* Icon */}
-                    <div className="text-4xl flex-shrink-0">
+                  <div className="flex items-start gap-2">
+                    <div className="text-lg flex-shrink-0">
                       {getNotificationIcon(notification.type)}
                     </div>
-
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h4 className={`text-base sm:text-lg font-bold ${notification.read ? 'text-gray-600' : 'text-primary'}`}>
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <h4 className={`text-xs font-semibold ${notification.read ? 'text-gray-600' : 'text-gray-900'}`}>
                           {notification.title}
                         </h4>
                         {!notification.read && (
-                          <span className="w-4 h-4 bg-accent rounded-full flex-shrink-0 mt-1 animate-pulse shadow-lg"></span>
+                          <span className="w-1.5 h-1.5 bg-primary rounded-full flex-shrink-0 mt-1"></span>
                         )}
                       </div>
-                      <p className="text-sm text-primary-soft mb-3 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-gray-700 mb-1.5 line-clamp-2">
                         {notification.message}
                       </p>
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-bold border-2 ${getPriorityColor(notification.priority)} shadow-md`}>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                          notification.priority === 'high' ? 'bg-red-100 text-red-800' :
+                          notification.priority === 'medium' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
                           {notification.priority.toUpperCase()}
                         </span>
-                        <span className="text-xs text-primary-soft font-medium">
+                        <span className="text-xs text-gray-500">
                           {formatDate(notification.createdAt)}
                         </span>
                         {(notification as any).actionLabel && (
-                          <span className="text-xs text-primary font-bold bg-primary/10 px-3 py-1 rounded-full">
+                          <span className="text-xs text-primary font-medium">
                             → {(notification as any).actionLabel}
                           </span>
                         )}

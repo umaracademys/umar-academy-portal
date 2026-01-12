@@ -107,49 +107,48 @@ const StudentCourses: React.FC = () => {
         <StudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         
         <div className="flex-1 lg:ml-64">
-          <div className="p-6">
-            {/* Header */}
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">My Courses</h1>
-              <p className="text-gray-600">Track your course progress and access materials</p>
+          <div className="p-2">
+            {/* Header - Compact */}
+            <div className="mb-2">
+              <h1 className="text-lg font-bold text-gray-900">My Courses</h1>
             </div>
 
-            {/* Course Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center">
-                  <div className="p-3 bg-blue-100 rounded-full">
-                    <span className="text-2xl">📚</span>
+            {/* Course Stats - Compact */}
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="bg-white rounded border border-gray-200 p-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-blue-100 rounded">
+                    <span className="text-xs">📚</span>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Total Courses</p>
-                    <p className="text-2xl font-bold text-gray-900">{courses.length}</p>
+                  <div>
+                    <p className="text-[9px] font-medium text-gray-600">Total</p>
+                    <p className="text-lg font-bold text-gray-900">{courses.length}</p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center">
-                  <div className="p-3 bg-green-100 rounded-full">
-                    <span className="text-2xl">✅</span>
+              <div className="bg-white rounded border border-gray-200 p-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-green-100 rounded">
+                    <span className="text-xs">✅</span>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Active Courses</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                  <div>
+                    <p className="text-[9px] font-medium text-gray-600">Active</p>
+                    <p className="text-lg font-bold text-gray-900">
                       {courses.filter(c => c.status === 'active').length}
                     </p>
                   </div>
                 </div>
               </div>
               
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center">
-                  <div className="p-3 bg-purple-100 rounded-full">
-                    <span className="text-2xl">📈</span>
+              <div className="bg-white rounded border border-gray-200 p-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-purple-100 rounded">
+                    <span className="text-xs">📈</span>
                   </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Avg. Progress</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                  <div>
+                    <p className="text-[9px] font-medium text-gray-600">Progress</p>
+                    <p className="text-lg font-bold text-gray-900">
                       {Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length)}%
                     </p>
                   </div>
@@ -157,54 +156,54 @@ const StudentCourses: React.FC = () => {
               </div>
             </div>
 
-            {/* Courses List */}
-            <div className="space-y-6">
+            {/* Courses List - Compact */}
+            <div className="space-y-2">
               {courses.map((course) => (
-                <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <div className="flex items-start justify-between mb-4">
+                <div key={course.id} className="bg-white rounded border border-gray-200 p-2">
+                  <div className="flex items-start justify-between mb-1.5">
                     <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">{course.title}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(course.status)}`}>
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900">{course.title}</h3>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${getStatusColor(course.status)}`}>
                           {course.status.charAt(0).toUpperCase() + course.status.slice(1)}
                         </span>
                       </div>
                       
-                      <p className="text-gray-600 mb-3">{course.description}</p>
+                      <p className="text-[10px] text-gray-600 mb-1.5">{course.description}</p>
                       
-                      <div className="flex items-center space-x-6 text-sm text-gray-600 mb-4">
-                        <span>👨‍🏫 {course.instructor}</span>
-                        <span>📅 {course.schedule}</span>
-                        {course.nextClass && <span>⏰ Next: {course.nextClass}</span>}
+                      <div className="flex items-center gap-2 text-[10px] text-gray-600 mb-1.5">
+                        <span>{course.instructor}</span>
+                        <span>•</span>
+                        <span>{course.schedule}</span>
                       </div>
                       
-                      {/* Progress Bar */}
-                      <div className="mb-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">Progress</span>
-                          <span className="text-sm font-medium text-gray-900">{course.progress}%</span>
+                      {/* Progress Bar - Compact */}
+                      <div className="mb-1.5">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-medium text-gray-700">Progress</span>
+                          <span className="text-[10px] font-medium text-gray-900">{course.progress}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-gray-200 rounded-full h-1">
                           <div 
-                            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                            className="bg-primary-600 h-1 rounded-full transition-all"
                             style={{ width: `${course.progress}%` }}
                           ></div>
                         </div>
-                        <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
-                          <span>{course.completedLessons} of {course.totalLessons} lessons completed</span>
+                        <div className="text-[9px] text-gray-500 mt-0.5">
+                          {course.completedLessons} of {course.totalLessons} lessons
                         </div>
                       </div>
                       
-                      {/* Materials */}
-                      <div className="mb-4">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Course Materials:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {course.materials.map((material, index) => (
+                      {/* Materials - Compact */}
+                      <div className="mb-1.5">
+                        <h4 className="text-[10px] font-medium text-gray-900 mb-1">Materials:</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {course.materials.slice(0, 3).map((material, index) => (
                             <span
                               key={index}
-                              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 text-gray-800"
                             >
-                              📄 {material}
+                              {material}
                             </span>
                           ))}
                         </div>
@@ -212,21 +211,18 @@ const StudentCourses: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                    <div className="flex space-x-3">
-                      <button className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors">
-                        Continue Learning
+                  <div className="flex items-center justify-between pt-1.5 border-t border-gray-200">
+                    <div className="flex gap-1.5">
+                      <button className="px-2 py-1 bg-primary-600 text-white rounded text-xs hover:bg-primary-700 transition-colors">
+                        Continue
                       </button>
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
-                        View Materials
-                      </button>
-                      <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors">
-                        Contact Instructor
+                      <button className="px-2 py-1 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-50 transition-colors">
+                        Materials
                       </button>
                     </div>
                     
-                    <div className="text-sm text-gray-600">
-                      {course.status === 'completed' ? 'Completed' : 'In Progress'}
+                    <div className="text-[10px] text-gray-600">
+                      {course.status === 'completed' ? 'Done' : 'Active'}
                     </div>
                   </div>
                 </div>

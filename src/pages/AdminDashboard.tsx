@@ -156,6 +156,9 @@ const AdminDashboard: React.FC = () => {
   const [showPermissionManager, setShowPermissionManager] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    completedAssignments: false
+  });
   
   // Student Management State
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -174,92 +177,81 @@ const AdminDashboard: React.FC = () => {
   const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
   const [showTeacherForm, setShowTeacherForm] = useState(false);
 
-  // Overview Section
+  // Overview Section - Compact
   const OverviewSection = () => (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="rounded-xl border-2 border-gray-200 bg-white px-3 py-3 sm:px-4 sm:py-4 flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between shadow-md">
-        <div className="space-y-1 sm:space-y-1.5">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Admin Control</span>
-          <h2 className="text-lg sm:text-xl font-bold text-primary">Dashboard Overview</h2>
-          <p className="text-xs text-gray-600 max-w-xl">
-            Monitor enrollment trends, teacher coverage, and revenue performance at a glance. Use the quick actions to jump directly into the sections that need your attention.
-          </p>
+    <div className="space-y-2">
+      <div className="rounded border border-gray-200 bg-white px-2 py-2 flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-0.5">
+          <span className="text-[9px] font-bold uppercase tracking-wide text-gray-500">Admin Control</span>
+          <h2 className="text-base font-bold text-primary">Dashboard Overview</h2>
         </div>
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-1">
           {(permissions.canAccessAssignments || permissions.canManageAssignments) && (
             <Link
               to="/assignments"
-              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
             >
-              Manage Assignments
+              Assignments
             </Link>
           )}
           {permissions.canManageStudents && (
             <button
               onClick={() => setActiveSection('students')}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
             >
-              View Students
+              Students
             </button>
           )}
           {permissions.canManageTeachers && (
             <button
               onClick={() => setActiveSection('teachers')}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
             >
-              View Teachers
+              Teachers
             </button>
           )}
           <RequirePermission permission="canViewNotifications" hideIfDenied>
             <button
               onClick={() => setShowNotificationCenter(true)}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary touch-target"
+              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
             >
-              🔔 Notifications
-            </button>
-          </RequirePermission>
-          <RequirePermission permission="canManageNotifications" hideIfDenied>
-            <button
-              onClick={() => setShowNotificationCenter(true)}
-              className="inline-flex items-center justify-center rounded-lg border-2 border-accent/30 px-3 py-1.5 sm:px-4 text-xs font-bold text-primary transition hover:bg-accent/90 hover:border-accent touch-target"
-            >
-              ⚙️ Manage Notifications
+              Notifications
             </button>
           </RequirePermission>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         {permissions.canManageStudents && (
-          <StatCard title="Total Students" value={students.length} icon="ST" />
+          <StatCard title="Students" value={students.length} icon="ST" />
         )}
         {permissions.canManageTeachers && (
-          <StatCard title="Total Teachers" value={teachers.length} icon="TC" />
+          <StatCard title="Teachers" value={teachers.length} icon="TC" />
         )}
-        <StatCard title="Active Courses" value={45} icon="AC" />
+        <StatCard title="Courses" value={45} icon="AC" />
         {permissions.canManageFinancials && (
           <StatCard title="Revenue" value={`$${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}`} icon="REV" />
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-1.5 lg:grid-cols-2">
         <Card title="Recent Enrollments">
-          <div className="space-y-2">
+          <div className="space-y-1">
             {students.slice(0, 5).map((student) => (
               <div
                 key={student.id}
-                className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-2 py-2 transition hover:bg-gray-50 hover:shadow-sm"
+                className="flex items-center justify-between rounded border border-gray-200 bg-white px-1.5 py-1 transition hover:bg-gray-50"
               >
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+                <div className="flex items-center gap-1.5">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
                     {student.fullName.charAt(0)}
                   </div>
                   <div>
-                    <p className="font-medium text-primary text-xs">{student.fullName}</p>
-                    <p className="text-[10px] text-gray-500">{student.program}</p>
+                    <p className="font-medium text-primary text-[10px]">{student.fullName}</p>
+                    <p className="text-[9px] text-gray-500">{student.program}</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-medium text-primary-soft">
+                <span className="text-[9px] font-medium text-gray-600">
                   {new Date(student.enrolledDate).toLocaleDateString()}
                 </span>
               </div>
@@ -267,40 +259,40 @@ const AdminDashboard: React.FC = () => {
           </div>
         </Card>
 
-        <Card title="Performance Metrics">
-          <div className="space-y-2">
+        <Card title="Performance">
+          <div className="space-y-1.5">
             <div>
-              <div className="mb-1 flex justify-between text-xs">
-                <span className="text-primary-soft">Student Attendance</span>
+              <div className="mb-0.5 flex justify-between text-[10px]">
+                <span className="text-gray-600">Attendance</span>
                 <span className="font-semibold">94%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-soft-primary">
-                <div className="h-1.5 rounded-full bg-[var(--color-primary)]" style={{ width: '94%' }}></div>
+              <div className="h-1 w-full rounded-full bg-soft-primary">
+                <div className="h-1 rounded-full bg-primary" style={{ width: '94%' }}></div>
               </div>
             </div>
             <div>
-              <div className="mb-1 flex justify-between text-xs">
-                <span className="text-primary-soft">Teacher Satisfaction</span>
+              <div className="mb-0.5 flex justify-between text-[10px]">
+                <span className="text-gray-600">Satisfaction</span>
                 <span className="font-semibold">88%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-soft-accent">
-                <div className="h-1.5 rounded-full bg-[var(--color-accent)]" style={{ width: '88%' }}></div>
+              <div className="h-1 w-full rounded-full bg-soft-accent">
+                <div className="h-1 rounded-full bg-accent" style={{ width: '88%' }}></div>
               </div>
             </div>
             <div>
-              <div className="mb-1 flex justify-between text-xs">
-                <span className="text-primary-soft">Course Completion</span>
+              <div className="mb-0.5 flex justify-between text-[10px]">
+                <span className="text-gray-600">Completion</span>
                 <span className="font-semibold">76%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-soft-primary">
-                <div className="h-1.5 rounded-full bg-[rgba(var(--color-primary-rgb),0.6)]" style={{ width: '76%' }}></div>
+              <div className="h-1 w-full rounded-full bg-soft-primary">
+                <div className="h-1 rounded-full bg-primary/60" style={{ width: '76%' }}></div>
               </div>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Completed Assignments/Homework */}
+      {/* Completed Assignments/Homework - Wrapped */}
       {useMemo(() => {
         const completedAssignments = assignments.filter((assignment: any) => 
           assignment.status === 'completed' || 
@@ -310,16 +302,28 @@ const AdminDashboard: React.FC = () => {
         );
         return completedAssignments.length > 0 ? completedAssignments.slice(0, 5) : [];
       }, [assignments]).length > 0 && (
-        <Card title="✅ Completed Assignments & Homework">
+        <Card title="">
+          <div className="mb-1.5 pb-1.5 border-b border-gray-200">
+            <button
+              onClick={() => setExpandedSections(prev => ({ ...prev, completedAssignments: !prev.completedAssignments }))}
+              className="w-full flex items-center justify-between"
+            >
+              <span className="text-sm font-bold text-primary">Completed Assignments</span>
+              <span className="text-[9px] text-gray-600">
+                {expandedSections.completedAssignments ? '▼' : '▶'}
+              </span>
+            </button>
+          </div>
+          {expandedSections.completedAssignments && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Completed</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Grade</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Student</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Type</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Date</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Grade</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -348,37 +352,37 @@ const AdminDashboard: React.FC = () => {
                   
                   return (
                     <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2">
-                        <div className="font-medium text-gray-900 text-xs">
+                      <td className="px-1.5 py-1">
+                        <div className="font-medium text-gray-900 text-[10px]">
                           {assignment.studentName || 'Unknown'}
                         </div>
                       </td>
-                      <td className="px-3 py-2">
-                        <span className="text-xs text-gray-600">
+                      <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-gray-600">
                           {isGraded ? 'Homework' : 'Assignment'}
                         </span>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-1.5 py-1">
                         {isCompleted ? (
-                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
-                            Completed
+                          <span className="px-1 py-0.5 text-[9px] font-semibold rounded bg-green-100 text-green-800">
+                            Done
                           </span>
                         ) : isGraded ? (
-                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                          <span className="px-1 py-0.5 text-[9px] font-semibold rounded bg-blue-100 text-blue-800">
                             Graded
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-600">
+                      <td className="px-1.5 py-1 text-[10px] text-gray-600">
                         {completedDate ? new Date(completedDate).toLocaleDateString() : 'N/A'}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-1.5 py-1">
                         {grade !== null && grade !== undefined ? (
-                          <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">
+                          <span className="px-1 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
                             {grade}/100
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">—</span>
+                          <span className="text-[10px] text-gray-400">—</span>
                         )}
                       </td>
                     </tr>
@@ -386,23 +390,24 @@ const AdminDashboard: React.FC = () => {
                 })}
               </tbody>
             </table>
+            {useMemo(() => {
+              return assignments.filter((assignment: any) => 
+                assignment.status === 'completed' || 
+                (assignment.homework?.enabled && 
+                 assignment.homework?.submission?.submitted && 
+                 assignment.homework?.submission?.status === 'graded')
+              ).length;
+            }, [assignments]) > 5 && (
+              <div className="mt-1.5 text-center">
+                <Link
+                  to="/assignments"
+                  className="text-[10px] font-semibold text-primary hover:text-accent transition-colors"
+                >
+                  View All →
+                </Link>
+              </div>
+            )}
           </div>
-          {useMemo(() => {
-            return assignments.filter((assignment: any) => 
-              assignment.status === 'completed' || 
-              (assignment.homework?.enabled && 
-               assignment.homework?.submission?.submitted && 
-               assignment.homework?.submission?.status === 'graded')
-            ).length;
-          }, [assignments]) > 5 && (
-            <div className="mt-3 text-center">
-              <Link
-                to="/assignments"
-                className="text-xs font-semibold text-primary hover:text-accent transition-colors"
-              >
-                View All Completed →
-              </Link>
-            </div>
           )}
         </Card>
       )}
@@ -435,61 +440,48 @@ const AdminDashboard: React.FC = () => {
 
     return (
       <div className="space-y-3">
-        {/* Header with Stats */}
-        <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)] rounded-lg p-3 sm:p-4 text-white">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+        {/* Header with Stats - Compact */}
+        <div className="bg-primary rounded p-2 text-white">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 mb-1.5">
             <div className="flex-1">
-              <h2 className="text-lg sm:text-xl font-bold text-white">Student Management</h2>
-              <p className="text-white/90 mt-0.5 text-xs sm:text-sm">Comprehensive student administration and tracking</p>
+              <h2 className="text-sm font-bold text-white">Student Management</h2>
             </div>
             <div className="text-left sm:text-right">
-              <div className="text-xl sm:text-2xl font-bold text-white">{students.length}</div>
-              <div className="text-white/80 text-xs">Total Students</div>
+              <div className="text-lg font-bold text-white">{students.length}</div>
+              <div className="text-[9px] text-white/80">Total</div>
             </div>
           </div>
           
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div className="bg-white/20 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-base sm:text-lg font-bold text-white">{activeStudents}</div>
-                  <div className="text-[10px] sm:text-xs text-white/90">Active Students</div>
-                </div>
-              </div>
+          {/* Quick Stats - Compact */}
+          <div className="grid grid-cols-3 gap-1">
+            <div className="bg-white/20 rounded p-1">
+              <div className="text-sm font-bold text-white">{activeStudents}</div>
+              <div className="text-[9px] text-white/90">Active</div>
             </div>
-            <div className="bg-white/20 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-base sm:text-lg font-bold text-white">{inactiveStudents}</div>
-                  <div className="text-[10px] sm:text-xs text-white/90">Inactive Students</div>
-                </div>
-              </div>
+            <div className="bg-white/20 rounded p-1">
+              <div className="text-sm font-bold text-white">{inactiveStudents}</div>
+              <div className="text-[9px] text-white/90">Inactive</div>
             </div>
-            <div className="bg-white/20 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-base sm:text-lg font-bold text-white">${totalRevenue.toLocaleString()}</div>
-                  <div className="text-[10px] sm:text-xs text-white/90">Total Revenue</div>
-                </div>
-              </div>
+            <div className="bg-white/20 rounded p-1">
+              <div className="text-sm font-bold text-white">${totalRevenue.toLocaleString()}</div>
+              <div className="text-[9px] text-white/90">Revenue</div>
             </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+        {/* Quick Actions - Compact */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
           {(permissions.canAccessEvaluations || permissions.canManageEvaluations) && (
             <button
               onClick={() => setShowEvaluationManagement(true)}
-              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+              className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50"
             >
               <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs sm:text-sm font-bold text-primary">Teacher Evaluations</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-semibold text-primary">Evaluations</p>
                 </div>
-                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                  Create and manage evaluation forms
+                <p className="mt-0.5 text-[9px] text-gray-600">
+                  Manage forms
                 </p>
               </div>
             </button>
@@ -497,114 +489,86 @@ const AdminDashboard: React.FC = () => {
           {(permissions.canAccessEvaluations || permissions.canApproveEvaluations) && (
             <button
               onClick={() => setShowEvaluationResults(true)}
-              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+              className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50"
             >
               <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs sm:text-sm font-bold text-primary">Evaluation Results</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-semibold text-primary">Results</p>
                 </div>
-                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                  View and analyze results
+                <p className="mt-0.5 text-[9px] text-gray-600">
+                  View results
                 </p>
               </div>
             </button>
           )}
           <button
             onClick={() => setShowEmailModule(true)}
-            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-transparent bg-accent text-primary hover:bg-accent/90 touch-target"
+            className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-transparent bg-accent text-primary hover:bg-accent/90"
           >
             <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs sm:text-sm font-bold text-primary">Email Module</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-semibold text-primary">Email</p>
               </div>
-              <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                Send emails from office@umaracademy.org
+              <p className="mt-0.5 text-[9px] text-primary/80">
+                Send emails
               </p>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-primary/70 mt-1">
-              Open workflow
-            </span>
           </button>
           <RequirePermission permission="canViewNotifications" hideIfDenied>
             <button
               onClick={() => setShowNotificationCenter(true)}
-              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50 touch-target"
+              className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-primary/30 bg-white hover:bg-soft-primary hover:border-primary/50"
             >
               <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs sm:text-sm font-bold text-primary">🔔 Notifications</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-semibold text-primary">Notifications</p>
                 </div>
-                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                  View and manage system notifications
-                </p>
-              </div>
-            </button>
-          </RequirePermission>
-          <RequirePermission permission="canManageNotifications" hideIfDenied>
-            <button
-              onClick={() => setShowNotificationCenter(true)}
-              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-accent/30 bg-accent/20 hover:bg-accent/40 touch-target"
-            >
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs sm:text-sm font-bold text-primary">⚙️ Manage Notifications</p>
-                </div>
-                <p className="mt-1 text-[10px] sm:text-xs text-primary/80">
-                  Create and send notifications
+                <p className="mt-0.5 text-[9px] text-gray-600">
+                  View notifications
                 </p>
               </div>
             </button>
           </RequirePermission>
           <button
             onClick={() => setShowTestingModule(true)}
-            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-transparent bg-primary text-white hover:bg-[rgba(var(--color-primary-rgb),0.9)] touch-target"
+            className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-transparent bg-primary text-white hover:bg-primary/90"
           >
             <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs sm:text-sm font-bold text-white">Student Testing</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-semibold text-white">Testing</p>
               </div>
-              <p className="mt-1 text-[10px] sm:text-xs text-white/90">
-                Test students on Memory, Tajweed, and Fluency
+              <p className="mt-0.5 text-[9px] text-white/90">
+                Test students
               </p>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-white/70 mt-1">
-              Open workflow
-            </span>
           </button>
           {permissions.canManagePermissions && (
             <button
               onClick={() => setShowPermissionManager(true)}
-              className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-red-500/50 bg-red-50 hover:bg-red-100 hover:border-red-600 touch-target"
+              className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-red-500/50 bg-red-50 hover:bg-red-100 hover:border-red-600"
             >
               <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-lg">🔐</span>
-                  <p className="text-xs sm:text-sm font-bold text-red-700">Permission Manager</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs font-semibold text-red-700">Permissions</p>
                 </div>
-                <p className="mt-1 text-[10px] sm:text-xs text-red-600">
-                  Control Center - Manage access
+                <p className="mt-0.5 text-[9px] text-red-600">
+                  Manage access
                 </p>
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wide text-red-600/70 mt-1">
-                Open Control Center
-              </span>
             </button>
           )}
           <button
             onClick={() => setShowTestResults(true)}
-            className="flex h-full flex-col justify-between rounded-lg border-2 px-3 py-3 text-left shadow-sm transition border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 touch-target"
+            className="flex h-full flex-col justify-between rounded border px-2 py-2 text-left transition border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300"
           >
             <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs sm:text-sm font-bold text-primary">Test Results</p>
+              <div className="flex items-center gap-1">
+                <p className="text-xs font-semibold text-primary">Test Results</p>
               </div>
-              <p className="mt-1 text-[10px] sm:text-xs text-gray-600">
-                View, edit, and manage student test results
+              <p className="mt-0.5 text-[9px] text-gray-600">
+                View results
               </p>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mt-1">
-              Open workflow
-            </span>
           </button>
         </div>
 
@@ -649,17 +613,17 @@ const AdminDashboard: React.FC = () => {
   };
 
 
-  // Courses Section
+  // Courses Section - Compact
   const CoursesSection = () => (
     <div>
-      <h2 className="text-lg font-bold text-primary mb-3">Courses Management</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <h2 className="text-sm font-bold text-primary mb-2">Courses</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
         {['Quran Recitation', 'Islamic Studies', 'Arabic Language', 'Tajweed', 'Hifz Program'].map((course, index) => (
           <Card key={index}>
-            <h3 className="font-bold text-primary mb-2">{course}</h3>
-            <p className="text-sm text-primary-soft mb-4">Active students: {Math.floor(Math.random() * 50) + 10}</p>
-            <button className="w-full px-4 py-2 bg-primary text-white rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.85)] transition-colors">
-              View Details
+            <h3 className="font-semibold text-primary mb-1 text-xs">{course}</h3>
+            <p className="text-[10px] text-gray-600 mb-1.5">Active: {Math.floor(Math.random() * 50) + 10}</p>
+            <button className="w-full px-2 py-1 bg-primary text-white rounded text-xs font-semibold hover:bg-primary/90 transition-colors">
+              View
             </button>
           </Card>
         ))}
@@ -680,30 +644,30 @@ const AdminDashboard: React.FC = () => {
     
     return (
       <div>
-        <h2 className="text-lg font-bold text-primary mb-3">Financial Overview</h2>
+        <h2 className="text-sm font-bold text-primary mb-2">Financial</h2>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-1.5 mb-2">
           <Card>
             <div className="text-center">
-              <p className="text-xs text-primary-soft">Total Revenue</p>
-              <p className="text-xl font-bold text-primary">${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}</p>
-              <p className="text-[10px] text-primary-soft mt-0.5">This month</p>
+              <p className="text-[9px] text-gray-600">Revenue</p>
+              <p className="text-base font-bold text-primary">${students.reduce((sum, s) => sum + s.tuitionFee, 0).toLocaleString()}</p>
+              <p className="text-[9px] text-gray-500 mt-0.5">This month</p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <p className="text-xs text-primary-soft">Pending Payments</p>
-              <p className="text-xl font-bold text-accent">$12,450</p>
-              <p className="text-xs text-primary-soft mt-1">24 students</p>
+              <p className="text-[9px] text-gray-600">Pending</p>
+              <p className="text-base font-bold text-accent">$12,450</p>
+              <p className="text-[9px] text-gray-500 mt-0.5">24 students</p>
             </div>
           </Card>
           <Card>
             <div className="text-center">
-              <p className="text-sm text-primary-soft">Teacher Salaries</p>
-              <p className="text-3xl font-bold text-primary">
+              <p className="text-[9px] text-gray-600">Salaries</p>
+              <p className="text-base font-bold text-primary">
                 ${teachers.reduce((sum, t) => sum + t.payroll.monthlySalary, 0).toLocaleString()}
               </p>
-              <p className="text-xs text-primary-soft mt-1">Monthly total</p>
+              <p className="text-[9px] text-gray-500 mt-0.5">Monthly</p>
             </div>
           </Card>
         </div>
@@ -711,47 +675,47 @@ const AdminDashboard: React.FC = () => {
     );
   };
 
-  // Reports Section
+  // Reports Section - Compact
   const ReportsSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-primary mb-6">Reports & Analytics</h2>
-      <Card title="Generate Reports">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button className="p-4 border-2 border-accent-soft rounded-lg hover:border-primary hover:bg-soft-primary transition text-left">
-            <h3 className="font-semibold mb-1 text-primary">📊 Student Report</h3>
-            <p className="text-sm text-primary-soft">Enrollment, attendance, and performance</p>
+      <h2 className="text-sm font-bold text-primary mb-2">Reports</h2>
+      <Card title="Generate">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+          <button className="p-2 border border-gray-200 rounded hover:border-primary hover:bg-soft-primary transition text-left">
+            <h3 className="font-semibold mb-0.5 text-primary text-xs">Student Report</h3>
+            <p className="text-[10px] text-gray-600">Enrollment & performance</p>
           </button>
-          <button className="p-4 border-2 border-accent-soft rounded-lg hover:border-accent hover:bg-soft-accent transition text-left">
-            <h3 className="font-semibold mb-1 text-primary">💰 Financial Report</h3>
-            <p className="text-sm text-primary-soft">Revenue, expenses, and projections</p>
+          <button className="p-2 border border-gray-200 rounded hover:border-accent hover:bg-soft-accent transition text-left">
+            <h3 className="font-semibold mb-0.5 text-primary text-xs">Financial Report</h3>
+            <p className="text-[10px] text-gray-600">Revenue & expenses</p>
           </button>
-          <button className="p-4 border-2 border-accent-soft rounded-lg hover:border-primary hover:bg-soft-primary transition text-left">
-            <h3 className="font-semibold mb-1 text-primary">👨‍🏫 Teacher Report</h3>
-            <p className="text-sm text-primary-soft">Performance and assignments</p>
+          <button className="p-2 border border-gray-200 rounded hover:border-primary hover:bg-soft-primary transition text-left">
+            <h3 className="font-semibold mb-0.5 text-primary text-xs">Teacher Report</h3>
+            <p className="text-[10px] text-gray-600">Performance & assignments</p>
           </button>
         </div>
       </Card>
     </div>
   );
 
-  // Activities Section
+  // Activities Section - Compact
   const ActivitiesSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-primary mb-6">Recent Activities</h2>
-      <Card title="Activity Feed">
-        <div className="space-y-4">
+      <h2 className="text-sm font-bold text-primary mb-2">Activities</h2>
+      <Card title="Recent">
+        <div className="space-y-1.5">
           {[
             { type: 'student', action: 'New student enrolled', name: 'Ahmad Ali', time: '2 hours ago', icon: '👨‍🎓', borderColor: 'border-primary', bgColor: 'bg-soft-primary' },
             { type: 'payment', action: 'Payment received', name: '$500 from Fatima Hassan', time: '4 hours ago', icon: '💰', borderColor: 'border-accent', bgColor: 'bg-soft-accent' },
             { type: 'teacher', action: 'Teacher registered', name: 'Dr. Ibrahim Yusuf', time: '1 day ago', icon: '👨‍🏫', borderColor: 'border-primary', bgColor: 'bg-soft-primary' },
             { type: 'course', action: 'New course created', name: 'Advanced Tajweed', time: '2 days ago', icon: '📚', borderColor: 'border-accent', bgColor: 'bg-soft-accent' },
           ].map((activity, index) => (
-            <div key={index} className={`flex items-start space-x-3 p-3 border-l-4 ${activity.borderColor} ${activity.bgColor} rounded`}>
-              <span className="text-2xl">{activity.icon}</span>
+            <div key={index} className={`flex items-start gap-1.5 p-1.5 border-l-2 ${activity.borderColor} ${activity.bgColor} rounded`}>
+              <span className="text-sm">{activity.icon}</span>
               <div className="flex-1">
-                <p className="font-medium text-primary">{activity.action}</p>
-                <p className="text-sm text-primary-soft">{activity.name}</p>
-                <p className="text-xs text-primary-soft mt-1">{activity.time}</p>
+                <p className="font-medium text-primary text-xs">{activity.action}</p>
+                <p className="text-[10px] text-gray-600">{activity.name}</p>
+                <p className="text-[9px] text-gray-500 mt-0.5">{activity.time}</p>
               </div>
             </div>
           ))}
@@ -760,30 +724,30 @@ const AdminDashboard: React.FC = () => {
     </div>
   );
 
-  // Settings Section
+  // Settings Section - Compact
   const SettingsSection = () => (
     <div>
-      <h2 className="text-2xl font-bold text-primary mb-6">Settings</h2>
-      <div className="space-y-6">
-        <Card title="General Settings">
-          <div className="space-y-4">
+      <h2 className="text-sm font-bold text-primary mb-2">Settings</h2>
+      <div className="space-y-2">
+        <Card title="General">
+          <div className="space-y-2">
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">Academy Name</label>
-              <input type="text" defaultValue="Umar Academy" className="w-full px-4 py-2 border border-accent-soft rounded-lg text-primary focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <label className="block text-xs font-medium text-primary mb-1">Academy Name</label>
+              <input type="text" defaultValue="Umar Academy" className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-primary focus:border-primary focus:ring-1 focus:ring-primary/20" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-primary mb-2">Contact Email</label>
-              <input type="email" defaultValue="admin@umaracademy.org" className="w-full px-4 py-2 border border-accent-soft rounded-lg text-primary focus:border-primary focus:ring-2 focus:ring-primary/20" />
+              <label className="block text-xs font-medium text-primary mb-1">Contact Email</label>
+              <input type="email" defaultValue="admin@umaracademy.org" className="w-full px-2 py-1 border border-gray-200 rounded text-xs text-primary focus:border-primary focus:ring-1 focus:ring-primary/20" />
             </div>
           </div>
         </Card>
         
-        <Card title="Notification Preferences">
-          <div className="space-y-3">
+        <Card title="Notifications">
+          <div className="space-y-1.5">
             {['Email Notifications', 'SMS Alerts', 'Payment Reminders', 'Activity Updates'].map((pref, index) => (
-              <label key={index} className="flex items-center space-x-3 cursor-pointer">
-                <input type="checkbox" defaultChecked className="w-4 h-4 text-primary rounded focus:ring-primary" />
-                <span className="text-sm text-primary">{pref}</span>
+              <label key={index} className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" defaultChecked className="w-3 h-3 text-primary rounded focus:ring-primary" />
+                <span className="text-xs text-primary">{pref}</span>
               </label>
             ))}
           </div>
@@ -861,7 +825,7 @@ const AdminDashboard: React.FC = () => {
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
             {renderSection()}
           </div>
         </main>

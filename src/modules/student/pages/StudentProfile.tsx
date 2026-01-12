@@ -38,95 +38,90 @@ const StudentProfile: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <div className="max-w-5xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+      <div className="max-w-5xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
+        {/* Header - Compact */}
+        <div className="mb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">View your complete academic and enrollment information</p>
+            <h1 className="text-lg font-bold text-gray-900">My Profile</h1>
           </div>
           <a
             href="/student/dashboard"
-            className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition text-sm sm:text-base text-center touch-target min-h-[44px]"
+            className="w-full sm:w-auto px-2.5 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 font-medium transition text-xs text-center"
           >
-            ← Back to Dashboard
+            ← Back
           </a>
         </div>
 
-        {/* Profile Card */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-800 text-white rounded-lg shadow-lg p-4 sm:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+        {/* Profile Card - Compact */}
+        <div className="bg-primary-600 text-white rounded shadow p-2 mb-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
             <img
               src={currentStudent.avatar}
               alt={currentStudent.fullName}
-              className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-4 border-white flex-shrink-0"
+              className="h-12 w-12 rounded-full border-2 border-white flex-shrink-0"
             />
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold">{currentStudent.fullName}</h2>
-              <p className="text-sm sm:text-base text-primary-100 mt-1">{currentStudent.program} • {(currentStudent as any).level}</p>
-              <p className="text-xs sm:text-sm text-primary-200 mt-1">
-                Student ID: {currentStudent.id} • {currentStudent.status === 'active' ? '✓ Active' : '✗ Inactive'}
+              <h2 className="text-sm font-bold">{currentStudent.fullName}</h2>
+              <p className="text-xs text-primary-100 mt-0.5">{currentStudent.program} • {(currentStudent as any).level}</p>
+              <p className="text-[10px] text-primary-200 mt-0.5">
+                ID: {currentStudent.id} • {currentStudent.status === 'active' ? '✓ Active' : '✗ Inactive'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Personal Information */}
-          <Card title="👤 Personal Information">
-            <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+          {/* Personal Information - Compact */}
+          <Card title="Personal Info">
+            <div className="space-y-1.5">
               <div>
-                <p className="text-xs text-gray-600">Full Name</p>
-                <p className="font-medium text-gray-900">{currentStudent.fullName}</p>
+                <p className="text-[9px] text-gray-600">Full Name</p>
+                <p className="text-xs font-medium text-gray-900">{currentStudent.fullName}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Email Address</p>
-                <p className="font-medium text-gray-900">{currentStudent.email}</p>
+                <p className="text-[9px] text-gray-600">Email</p>
+                <p className="text-xs font-medium text-gray-900">{currentStudent.email}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Phone Number</p>
-                <p className="font-medium text-gray-900">{currentStudent.contact}</p>
+                <p className="text-[9px] text-gray-600">Phone</p>
+                <p className="text-xs font-medium text-gray-900">{currentStudent.contact}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Program</p>
-                <p className="font-medium text-gray-900">
-                  <span className="bg-primary-100 text-primary-800 px-3 py-1 rounded-full text-sm">
+                <p className="text-[9px] text-gray-600">Program</p>
+                <p className="text-xs font-medium text-gray-900">
+                  <span className="bg-primary-100 text-primary-800 px-1.5 py-0.5 rounded text-[10px]">
                     {currentStudent.program}
                   </span>
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Level</p>
-                <p className="font-medium text-gray-900">{(currentStudent as any).level}</p>
+                <p className="text-[9px] text-gray-600">Level</p>
+                <p className="text-xs font-medium text-gray-900">{(currentStudent as any).level}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Assigned Teacher</p>
-                <p className="font-medium text-gray-900">{currentStudent.assignedTeacher}</p>
+                <p className="text-[9px] text-gray-600">Teacher</p>
+                <p className="text-xs font-medium text-gray-900">{currentStudent.assignedTeacher}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Enrollment Date</p>
-                <p className="font-medium text-gray-900">
+                <p className="text-[9px] text-gray-600">Enrolled</p>
+                <p className="text-xs font-medium text-gray-900">
                   {new Date(currentStudent.enrolledDate).toLocaleDateString('en-US', { 
                     year: 'numeric', 
-                    month: 'long', 
+                    month: 'short', 
                     day: 'numeric' 
                   })}
                 </p>
               </div>
-              <div>
-                <p className="text-xs text-gray-600">Student ID</p>
-                <p className="font-medium text-gray-900">{currentStudent.id}</p>
-              </div>
             </div>
           </Card>
 
-          {/* Academic Information */}
-          <Card title="🎓 Academic Information">
-            <div className="space-y-3">
+          {/* Academic Information - Compact */}
+          <Card title="Academic">
+            <div className="space-y-1.5">
               <div>
-                <p className="text-xs text-gray-600">Current Status</p>
-                <p className="font-medium text-gray-900">
-                  <span className={`px-3 py-1 rounded-full text-sm ${
+                <p className="text-[9px] text-gray-600">Status</p>
+                <p className="text-xs font-medium text-gray-900">
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                     currentStudent.status === 'active' ? 'bg-green-100 text-green-800' :
                     currentStudent.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
                     'bg-red-100 text-red-800'
@@ -136,56 +131,51 @@ const StudentProfile: React.FC = () => {
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Program Duration</p>
-                <p className="font-medium text-gray-900">Full Academic Year</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-600">Class Schedule</p>
-                <p className="font-medium text-gray-900">
+                <p className="text-[9px] text-gray-600">Schedule</p>
+                <p className="text-xs font-medium text-gray-900">
                   {currentStudent.schedule ? 
                     `${currentStudent.schedule.days?.join(', ')} at ${currentStudent.schedule.startTime}` :
-                    'Schedule not set'
+                    'Not set'
                   }
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-600">Academic Progress</p>
-                <p className="font-medium text-gray-900">In Progress</p>
+                <p className="text-[9px] text-gray-600">Progress</p>
+                <p className="text-xs font-medium text-gray-900">In Progress</p>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Financial Information */}
-        <div className="mt-6">
-          <Card title="💰 Financial Information">
-            <div className="mb-4 p-3 bg-cream-100 border border-gold-300 rounded-lg">
-              <p className="text-sm text-primary-800">
-                💵 <strong>Monthly Tuition:</strong> ${currentStudent.tuitionFee} • 
-                <strong> Payment Status:</strong> {(currentStudent as any).paymentStatus}
+        {/* Financial Information - Compact */}
+        <div className="mt-2">
+          <Card title="Financial">
+            <div className="mb-1.5 p-1.5 bg-cream-100 border border-gold-300 rounded text-xs">
+              <p className="text-[10px] text-primary-800">
+                <strong>Tuition:</strong> ${currentStudent.tuitionFee} • 
+                <strong> Status:</strong> {(currentStudent as any).paymentStatus}
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
-                <p className="text-sm text-gray-600">Monthly Tuition</p>
-                <p className="text-2xl font-bold text-primary-600">${currentStudent.tuitionFee}</p>
-                <p className="text-xs text-gray-500">per month</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className="bg-cream-100 p-1.5 rounded border border-gold-200">
+                <p className="text-[9px] text-gray-600">Tuition</p>
+                <p className="text-sm font-bold text-primary-600">${currentStudent.tuitionFee}</p>
+                <p className="text-[9px] text-gray-500">per month</p>
               </div>
-              <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
-                <p className="text-sm text-gray-600">Payment Status</p>
-                <p className={`text-2xl font-bold ${
+              <div className="bg-cream-100 p-1.5 rounded border border-gold-200">
+                <p className="text-[9px] text-gray-600">Status</p>
+                <p className={`text-sm font-bold ${
                     (currentStudent as any).paymentStatus === 'current' ? 'text-green-600' :
                     (currentStudent as any).paymentStatus === 'pending' ? 'text-yellow-600' :
                   'text-red-600'
                 }`}>
                   {(currentStudent as any).paymentStatus}
                 </p>
-                <p className="text-xs text-gray-500">current status</p>
               </div>
-              <div className="bg-cream-100 p-4 rounded-lg border border-gold-200">
-                <p className="text-sm text-gray-600">Enrollment Fee</p>
-                <p className="text-2xl font-bold text-primary-600">$50</p>
-                <p className="text-xs text-gray-500">one-time</p>
+              <div className="bg-cream-100 p-1.5 rounded border border-gold-200">
+                <p className="text-[9px] text-gray-600">Enrollment</p>
+                <p className="text-sm font-bold text-primary-600">$50</p>
+                <p className="text-[9px] text-gray-500">one-time</p>
               </div>
             </div>
           </Card>
@@ -287,44 +277,41 @@ const StudentProfile: React.FC = () => {
           </Card>
         </div>
 
-        {/* Account Settings */}
-        <div className="mt-6">
-          <Card title="🔐 Account Settings">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+        {/* Account Settings - Compact */}
+        <div className="mt-2">
+          <Card title="Account">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between p-1.5 bg-gray-50 rounded">
                 <div>
-                  <p className="font-medium text-gray-900">Password</p>
-                  <p className="text-sm text-gray-600">Change your account password</p>
+                  <p className="text-xs font-medium text-gray-900">Password</p>
+                  <p className="text-[10px] text-gray-600">Change password</p>
                 </div>
                 <button
                   onClick={() => setShowPasswordChangeModal(true)}
-                  className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium transition text-sm sm:text-base touch-target min-h-[44px] flex items-center justify-center gap-2"
+                  className="px-2 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 font-medium transition text-xs"
                 >
-                  <span>🔒</span>
-                  <span>Change Password</span>
+                  Change
                 </button>
               </div>
               {user?.passwordChangeRequired && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    ⚠️ <strong>Action Required:</strong> Please change your password to continue using your account.
-                  </p>
+                <div className="p-1.5 bg-yellow-50 border border-yellow-200 rounded text-[10px] text-yellow-800">
+                  <strong>Action Required:</strong> Please change your password.
                 </div>
               )}
             </div>
           </Card>
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex justify-end space-x-3">
+        {/* Actions - Compact */}
+        <div className="mt-2 flex justify-end gap-1.5">
           <button
             onClick={() => setShowUpdateRequestModal(true)}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition"
+            className="px-2.5 py-1 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 font-medium transition text-xs"
           >
-            Request Information Update
+            Request Update
           </button>
-          <button className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium">
-            Download Academic Record
+          <button className="px-2.5 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 font-medium text-xs">
+            Download Record
           </button>
         </div>
       </div>

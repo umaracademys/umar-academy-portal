@@ -108,28 +108,28 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+      <div className="bg-white rounded-lg p-3 w-full max-w-xl max-h-[85vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold text-gray-900">Notifications</h2>
             {unreadCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
                 {unreadCount}
               </span>
             )}
           </div>
-          <div className="flex space-x-2">
+          <div className="flex gap-1.5">
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Mark All Read
               </button>
             )}
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
+              className="text-gray-400 hover:text-gray-600 text-lg"
             >
               ×
             </button>
@@ -137,51 +137,49 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
         </div>
 
         {notifications.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">🔔</div>
-            <p className="text-gray-500 text-lg">No notifications yet</p>
-            <p className="text-gray-400 text-sm">You'll see assignment updates here</p>
+          <div className="text-center py-6">
+            <p className="text-gray-500 text-sm">No notifications yet</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {notifications.map(notification => (
               <div
                 key={notification.id}
-                className={`p-4 rounded-lg border-2 transition ${
+                className={`p-2.5 rounded border transition ${
                   notification.read 
                     ? 'bg-gray-50 border-gray-200' 
-                    : `${getNotificationColor(notification.type)} border-l-4`
+                    : `${getNotificationColor(notification.type)} border-l-2`
                 }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <div className="text-2xl">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    <div className="text-lg flex-shrink-0">
                       {getNotificationIcon(notification.type)}
                     </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium ${
                         notification.read ? 'text-gray-600' : 'text-gray-900'
                       }`}>
                         {notification.message}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {new Date(notification.createdAt).toLocaleString()}
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {new Date(notification.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center space-x-2 ml-4">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {!notification.read && (
                       <button
                         onClick={() => markAsRead(notification.id)}
-                        className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                        className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded hover:bg-blue-200"
                       >
-                        Mark Read
+                        Read
                       </button>
                     )}
                     <button
                       onClick={() => deleteNotification(notification.id)}
-                      className="text-gray-400 hover:text-red-500 text-lg"
+                      className="text-gray-400 hover:text-red-500 text-sm"
                     >
                       ×
                     </button>
@@ -191,12 +189,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onClose }) => {
             ))}
           </div>
         )}
-
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <p className="text-sm text-gray-500 text-center">
-            Notifications are automatically generated for assignment activities
-          </p>
-        </div>
       </div>
     </div>
   );

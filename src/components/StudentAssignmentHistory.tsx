@@ -272,40 +272,40 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Simple Header */}
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Compact Header */}
+        <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">
+              <h2 className="text-base font-bold text-gray-900">
                 Assignment History
               </h2>
-              <p className="text-sm text-gray-600 mt-0.5">
+              <p className="text-xs text-gray-600 mt-0.5">
                 {student?.fullName || 'Student'} • {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={async () => {
-                  await refreshDataLight(); // Use lightweight refresh for faster update
+                  await refreshDataLight();
                   setRefreshKey(prev => prev + 1);
                 }}
-                className="px-3 py-1.5 text-sm text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-                title="Refresh assignments"
+                className="px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+                title="Refresh"
               >
-                🔄 Refresh
+                Refresh
               </button>
               {onCreateAssignment && (
                 <button
                   onClick={onCreateAssignment}
-                  className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                  className="px-2.5 py-1 bg-primary text-white rounded text-xs font-medium hover:bg-primary/90 transition-colors"
                 >
-                  + New Assignment
+                  + New
                 </button>
               )}
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-200"
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200"
               >
                 ×
               </button>
@@ -313,14 +313,14 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
           </div>
         </div>
 
-        {/* Simple Filter */}
-        <div className="px-6 py-3 border-b border-gray-200 bg-white">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700">Status:</label>
+        {/* Compact Filter */}
+        <div className="px-4 py-2 border-b border-gray-200 bg-white">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-700">Status:</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary"
+              className="px-2 py-1 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-primary focus:border-primary"
             >
               <option value="all">All</option>
               <option value="active">Active</option>
@@ -330,14 +330,14 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Compact Content */}
+        <div className="flex-1 overflow-y-auto p-3">
           {filteredAssignments.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600">No assignments found</p>
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-600">No assignments found</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {(Object.entries(groupedAssignments) as [string, Assignment[]][])
                 .sort(([dateA], [dateB]) => {
                   const a = new Date(dateA);
@@ -345,15 +345,15 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                   return b.getTime() - a.getTime();
                 })
                 .map(([date, dayAssignments]) => (
-                  <div key={date} className="space-y-3">
-                    {/* Date Header */}
-                    <div className="sticky top-0 z-10 bg-gray-100 px-4 py-2 rounded">
-                      <h3 className="text-sm font-semibold text-gray-900">
+                  <div key={date} className="space-y-2">
+                    {/* Compact Date Header */}
+                    <div className="sticky top-0 z-10 bg-gray-100 px-2 py-1 rounded text-xs">
+                      <h3 className="font-semibold text-gray-900">
                         {date} ({dayAssignments.length})
                       </h3>
                     </div>
                     
-                    {/* Assignments */}
+                    {/* Compact Assignments */}
                     {dayAssignments.map(assignment => {
                       const isExpanded = expandedAssignments.has(assignment.id);
                       const mushafState = expandedMushafFor[assignment.id];
@@ -361,37 +361,37 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                       return (
                         <div
                           key={assignment.id}
-                          className="border border-gray-200 rounded-lg overflow-hidden"
+                          className="border border-gray-200 rounded overflow-hidden"
                         >
-                          {/* Assignment Header */}
+                          {/* Compact Assignment Header */}
                           <div
-                            className="px-4 py-3 bg-white hover:bg-gray-50 cursor-pointer"
+                            className="px-3 py-2 bg-white hover:bg-gray-50 cursor-pointer"
                             onClick={() => toggleAssignment(assignment.id)}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3 flex-1">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              <div className="flex items-center gap-2 flex-1">
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                                   assignment.status === 'active' ? 'bg-blue-100 text-blue-800' :
                                   assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
                                   'bg-gray-100 text-gray-800'
                                 }`}>
                                   {assignment.status || 'active'}
                                 </span>
-                                <span className="text-sm text-gray-600">
+                                <span className="text-xs text-gray-600">
                                   {formatDate(assignment.createdAt)}
                                 </span>
                                 <span className="text-xs text-gray-500">
-                                  by {assignment.assignedByName}
+                                  {assignment.assignedByName}
                                 </span>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
                                 {onEditAssignment && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onEditAssignment(assignment.id);
                                     }}
-                                    className="px-3 py-1 text-xs font-medium text-primary border border-primary rounded hover:bg-primary hover:text-white transition-colors"
+                                    className="px-2 py-0.5 text-xs font-medium text-primary border border-primary rounded hover:bg-primary hover:text-white transition-colors"
                                   >
                                     Edit
                                   </button>
@@ -402,9 +402,9 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                       e.stopPropagation();
                                       onAssignHomework(assignment.id, assignment.studentId);
                                     }}
-                                    className="px-3 py-1 text-xs font-medium text-green-600 border border-green-600 rounded hover:bg-green-600 hover:text-white transition-colors"
+                                    className="px-2 py-0.5 text-xs font-medium text-green-600 border border-green-600 rounded hover:bg-green-600 hover:text-white transition-colors"
                                   >
-                                    Assign Homework
+                                    Homework
                                   </button>
                                 )}
                                 <button
@@ -412,27 +412,27 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                     e.stopPropagation();
                                     handleDeleteAssignment(assignment.id);
                                   }}
-                                  className="px-3 py-1 text-xs font-medium text-red-600 border border-red-300 rounded hover:bg-red-50 transition-colors"
+                                  className="px-2 py-0.5 text-xs font-medium text-red-600 border border-red-300 rounded hover:bg-red-50 transition-colors"
                                 >
                                   Delete
                                 </button>
-                                <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
+                                <span className="text-gray-400 text-xs">{isExpanded ? '▼' : '▶'}</span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Expanded Content */}
+                          {/* Compact Expanded Content */}
                           {isExpanded && (
-                            <div className="px-4 py-4 border-t border-gray-200 bg-gray-50 space-y-4">
-                              {/* Classwork */}
+                            <div className="px-3 py-2 border-t border-gray-200 bg-gray-50 space-y-2">
+                              {/* Compact Classwork */}
                               <div>
-                                <h4 className="text-sm font-semibold text-gray-900 mb-3">Classwork</h4>
-                                <div className="space-y-3">
-                                  {/* Sabq */}
+                                <h4 className="text-xs font-semibold text-gray-900 mb-2">Classwork</h4>
+                                <div className="space-y-2">
+                                  {/* Compact Sabq */}
                                   {assignment.classwork.sabq.length > 0 && (
-                                    <div className="bg-white rounded border border-gray-200 p-3">
-                                      <h5 className="text-xs font-semibold text-gray-700 mb-2">Sabq</h5>
-                                      <div className="space-y-2">
+                                    <div className="bg-white rounded border border-gray-200 p-2">
+                                      <h5 className="text-xs font-semibold text-gray-700 mb-1.5">Sabq</h5>
+                                      <div className="space-y-1.5">
                                         {assignment.classwork.sabq.map((phase, idx) => {
                                           const phaseMistakes = getMistakesForPhase(assignment, 'sabq', idx);
                                           const mushafKey = `${assignment.id}-sabq-${idx}`;
@@ -441,27 +441,24 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
-                                            <div key={idx} className="border-l-2 border-blue-300 pl-3 py-2">
-                                              <div className="flex items-start justify-between mb-1">
+                                            <div key={idx} className="border-l-2 border-purple-300 pl-2 py-1">
+                                              <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                  <p className="text-sm font-medium text-gray-900">{phase.assignmentRange}</p>
-                                                  {phase.details && (
-                                                    <p className="text-xs text-gray-600 mt-1">{phase.details}</p>
-                                                  )}
+                                                  <p className="text-xs font-medium text-gray-900">{phase.assignmentRange}</p>
                                                 </div>
                                                 {phaseMistakes.length > 0 && (
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'sabq', idx, phase)}
-                                                    className="px-2 py-1 text-xs font-medium text-blue-600 border border-blue-300 rounded hover:bg-blue-50 transition-colors ml-2"
+                                                    className="px-1.5 py-0.5 text-xs font-medium text-purple-600 border border-purple-300 rounded hover:bg-purple-50 transition-colors ml-2"
                                                   >
-                                                    {isMushafOpen ? 'Hide' : 'View'} Mushaf ({phaseMistakes.length})
+                                                    {isMushafOpen ? 'Hide' : 'View'} ({phaseMistakes.length})
                                                   </button>
                                                 )}
                                               </div>
                                               
                                               {isMushafOpen && (
-                                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                                  <div className="bg-white rounded border border-gray-200 p-3 mb-2">
+                                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                                  <div className="bg-white rounded border border-gray-200 p-2 mb-1" style={{ maxHeight: '400px', overflow: 'auto' }}>
                                                     <InteractiveMushaf
                                                       currentPage={mushafPage}
                                                       onPageChange={(page) => setMushafPages(prev => ({ ...prev, [mushafKey]: page }))}
@@ -472,19 +469,6 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                       studentName={student?.fullName || 'Student'}
                                                     />
                                                   </div>
-                                                  {phaseMistakes.length > 0 && (
-                                                    <div className="space-y-1">
-                                                      {phaseMistakes.map((mistake, mIdx) => (
-                                                        <div key={mistake.id || mIdx} className="text-xs text-gray-700 flex items-center gap-2">
-                                                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-medium">
-                                                            {mistake.type}
-                                                          </span>
-                                                          <span>Page {mistake.page}, Surah {mistake.surah}:{mistake.ayah}</span>
-                                                          {mistake.note && <span className="text-gray-500 italic">"{mistake.note}"</span>}
-                                                        </div>
-                                                      ))}
-                                                    </div>
-                                                  )}
                                                 </div>
                                               )}
                                             </div>
@@ -494,11 +478,11 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                     </div>
                                   )}
 
-                                  {/* Sabqi */}
+                                  {/* Compact Sabqi */}
                                   {assignment.classwork.sabqi.length > 0 && (
-                                    <div className="bg-white rounded border border-gray-200 p-3">
-                                      <h5 className="text-xs font-semibold text-gray-700 mb-2">Sabqi</h5>
-                                      <div className="space-y-2">
+                                    <div className="bg-white rounded border border-gray-200 p-2">
+                                      <h5 className="text-xs font-semibold text-gray-700 mb-1.5">Sabqi</h5>
+                                      <div className="space-y-1.5">
                                         {assignment.classwork.sabqi.map((phase, idx) => {
                                           const phaseMistakes = getMistakesForPhase(assignment, 'sabqi', idx);
                                           const mushafKey = `${assignment.id}-sabqi-${idx}`;
@@ -507,27 +491,24 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
-                                            <div key={idx} className="border-l-2 border-green-300 pl-3 py-2">
-                                              <div className="flex items-start justify-between mb-1">
+                                            <div key={idx} className="border-l-2 border-blue-300 pl-2 py-1">
+                                              <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                  <p className="text-sm font-medium text-gray-900">{phase.assignmentRange}</p>
-                                                  {phase.details && (
-                                                    <p className="text-xs text-gray-600 mt-1">{phase.details}</p>
-                                                  )}
+                                                  <p className="text-xs font-medium text-gray-900">{phase.assignmentRange}</p>
                                                 </div>
                                                 {phaseMistakes.length > 0 && (
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'sabqi', idx, phase)}
-                                                    className="px-2 py-1 text-xs font-medium text-green-600 border border-green-300 rounded hover:bg-green-50 transition-colors ml-2"
+                                                    className="px-1.5 py-0.5 text-xs font-medium text-blue-600 border border-blue-300 rounded hover:bg-blue-50 transition-colors ml-2"
                                                   >
-                                                    {isMushafOpen ? 'Hide' : 'View'} Mushaf ({phaseMistakes.length})
+                                                    {isMushafOpen ? 'Hide' : 'View'} ({phaseMistakes.length})
                                                   </button>
                                                 )}
                                               </div>
                                               
                                               {isMushafOpen && (
-                                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                                  <div className="bg-white rounded border border-gray-200 p-3 mb-2">
+                                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                                  <div className="bg-white rounded border border-gray-200 p-2 mb-1" style={{ maxHeight: '400px', overflow: 'auto' }}>
                                                     <InteractiveMushaf
                                                       currentPage={mushafPage}
                                                       onPageChange={(page) => setMushafPages(prev => ({ ...prev, [mushafKey]: page }))}
@@ -538,19 +519,6 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                       studentName={student?.fullName || 'Student'}
                                                     />
                                                   </div>
-                                                  {phaseMistakes.length > 0 && (
-                                                    <div className="space-y-1">
-                                                      {phaseMistakes.map((mistake, mIdx) => (
-                                                        <div key={mistake.id || mIdx} className="text-xs text-gray-700 flex items-center gap-2">
-                                                          <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-medium">
-                                                            {mistake.type}
-                                                          </span>
-                                                          <span>Page {mistake.page}, Surah {mistake.surah}:{mistake.ayah}</span>
-                                                          {mistake.note && <span className="text-gray-500 italic">"{mistake.note}"</span>}
-                                                        </div>
-                                                      ))}
-                                                    </div>
-                                                  )}
                                                 </div>
                                               )}
                                             </div>
@@ -560,11 +528,11 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                     </div>
                                   )}
 
-                                  {/* Manzil */}
+                                  {/* Compact Manzil */}
                                   {assignment.classwork.manzil.length > 0 && (
-                                    <div className="bg-white rounded border border-gray-200 p-3">
-                                      <h5 className="text-xs font-semibold text-gray-700 mb-2">Manzil</h5>
-                                      <div className="space-y-2">
+                                    <div className="bg-white rounded border border-gray-200 p-2">
+                                      <h5 className="text-xs font-semibold text-gray-700 mb-1.5">Manzil</h5>
+                                      <div className="space-y-1.5">
                                         {assignment.classwork.manzil.map((phase, idx) => {
                                           const phaseMistakes = getMistakesForPhase(assignment, 'manzil', idx);
                                           const mushafKey = `${assignment.id}-manzil-${idx}`;
@@ -573,27 +541,24 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
-                                            <div key={idx} className="border-l-2 border-purple-300 pl-3 py-2">
-                                              <div className="flex items-start justify-between mb-1">
+                                            <div key={idx} className="border-l-2 border-green-300 pl-2 py-1">
+                                              <div className="flex items-start justify-between">
                                                 <div className="flex-1">
-                                                  <p className="text-sm font-medium text-gray-900">{phase.assignmentRange}</p>
-                                                  {phase.details && (
-                                                    <p className="text-xs text-gray-600 mt-1">{phase.details}</p>
-                                                  )}
+                                                  <p className="text-xs font-medium text-gray-900">{phase.assignmentRange}</p>
                                                 </div>
                                                 {phaseMistakes.length > 0 && (
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'manzil', idx, phase)}
-                                                    className="px-2 py-1 text-xs font-medium text-purple-600 border border-purple-300 rounded hover:bg-purple-50 transition-colors ml-2"
+                                                    className="px-1.5 py-0.5 text-xs font-medium text-green-600 border border-green-300 rounded hover:bg-green-50 transition-colors ml-2"
                                                   >
-                                                    {isMushafOpen ? 'Hide' : 'View'} Mushaf ({phaseMistakes.length})
+                                                    {isMushafOpen ? 'Hide' : 'View'} ({phaseMistakes.length})
                                                   </button>
                                                 )}
                                               </div>
                                               
                                               {isMushafOpen && (
-                                                <div className="mt-3 pt-3 border-t border-gray-200">
-                                                  <div className="bg-white rounded border border-gray-200 p-3 mb-2">
+                                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                                  <div className="bg-white rounded border border-gray-200 p-2 mb-1" style={{ maxHeight: '400px', overflow: 'auto' }}>
                                                     <InteractiveMushaf
                                                       currentPage={mushafPage}
                                                       onPageChange={(page) => setMushafPages(prev => ({ ...prev, [mushafKey]: page }))}
@@ -604,19 +569,6 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                       studentName={student?.fullName || 'Student'}
                                                     />
                                                   </div>
-                                                  {phaseMistakes.length > 0 && (
-                                                    <div className="space-y-1">
-                                                      {phaseMistakes.map((mistake, mIdx) => (
-                                                        <div key={mistake.id || mIdx} className="text-xs text-gray-700 flex items-center gap-2">
-                                                          <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded font-medium">
-                                                            {mistake.type}
-                                                          </span>
-                                                          <span>Page {mistake.page}, Surah {mistake.surah}:{mistake.ayah}</span>
-                                                          {mistake.note && <span className="text-gray-500 italic">"{mistake.note}"</span>}
-                                                        </div>
-                                                      ))}
-                                                    </div>
-                                                  )}
                                                 </div>
                                               )}
                                             </div>
@@ -634,17 +586,30 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                 </div>
                               </div>
 
-                              {/* Homework */}
-                              {(assignment.homework?.enabled || (assignment.homework?.items && assignment.homework.items.length > 0)) && (
-                                <div className="bg-white rounded border border-gray-200 p-3">
-                                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Homework</h4>
-                                  <HomeworkDisplay 
-                                    homework={{
-                                      ...assignment.homework,
-                                      enabled: Boolean(assignment.homework?.enabled || (assignment.homework?.items && assignment.homework.items.length > 0))
-                                    }} 
-                                    showSubmission={true}
-                                  />
+                              {/* Compact Homework */}
+                              {(assignment.homework?.enabled || assignment.homework?.content || assignment.homework?.link) && (
+                                <div className="bg-white rounded border border-gray-200 p-2">
+                                  <h4 className="text-xs font-semibold text-gray-900 mb-1.5">Homework</h4>
+                                  {assignment.homework?.content && (
+                                    <p className="text-xs text-gray-700 mb-1">{assignment.homework.content}</p>
+                                  )}
+                                  {assignment.homework?.link && (
+                                    <a 
+                                      href={assignment.homework.link} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-primary hover:underline"
+                                    >
+                                      {assignment.homework.link}
+                                    </a>
+                                  )}
+                                  {assignment.homework?.submission && (
+                                    <div className="mt-1.5 pt-1.5 border-t border-gray-200">
+                                      <p className="text-xs text-gray-600">
+                                        Status: {assignment.homework.submission.status || 'not submitted'}
+                                      </p>
+                                    </div>
+                                  )}
 
                                   {/* Grading Form */}
                                   {assignment.homework.submission?.status === 'submitted' && 

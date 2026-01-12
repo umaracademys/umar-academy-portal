@@ -34,6 +34,12 @@ const StudentAssignments: React.FC = () => {
   const [viewingMistakesFor, setViewingMistakesFor] = useState<{ assignmentId: string; type: 'sabq' | 'sabqi' | 'manzil' | 'all'; index?: number } | null>(null);
   const [personalMushafMistakes, setPersonalMushafMistakes] = useState<MushafMistake[]>([]);
   const [loadingPersonalMushaf, setLoadingPersonalMushaf] = useState(false);
+  const [showMushafForAssignment, setShowMushafForAssignment] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, {
+    classwork?: boolean;
+    homework?: boolean;
+    mistakes?: boolean;
+  }>>({});
 
   const currentStudent = getStudentByEmail(user?.email || '') || students[0];
 
@@ -376,33 +382,32 @@ const StudentAssignments: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
+        {/* Header - Compact */}
+        <div className="mb-2 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary">My Assignments</h1>
-            <p className="text-sm sm:text-base text-primary-soft mt-1 sm:mt-2">View all your assignments and classwork</p>
+            <h1 className="text-lg font-bold text-primary">My Assignments</h1>
           </div>
           <button
             onClick={() => navigate('/student/dashboard')}
-            className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 border border-accent-soft text-primary rounded-lg sm:rounded-full text-sm sm:text-base font-semibold hover:bg-soft-accent transition-colors touch-target min-h-[44px]"
+            className="w-full sm:w-auto px-2.5 py-1.5 border border-gray-300 text-primary rounded text-xs font-semibold hover:bg-gray-50 transition-colors"
           >
             Back to Dashboard
           </button>
         </div>
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
-          <Card title="Total Assignments">
-            <div className="text-3xl font-bold text-primary">{studentAssignments.length}</div>
+        {/* Statistics - Compact */}
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <Card title="Total">
+            <div className="text-xl font-bold text-primary">{studentAssignments.length}</div>
           </Card>
           <Card title="Active">
-            <div className="text-3xl font-bold text-blue-600">
+            <div className="text-xl font-bold text-blue-600">
               {studentAssignments.filter((a: any) => a.status === 'active').length}
             </div>
           </Card>
-          <Card title="Completed">
-            <div className="text-3xl font-bold text-green-600">
+          <Card title="Done">
+            <div className="text-xl font-bold text-green-600">
               {studentAssignments.filter((a: any) => a.status === 'completed').length}
             </div>
           </Card>
@@ -450,20 +455,20 @@ const StudentAssignments: React.FC = () => {
                       return (
                         <div
                           key={assignment.id}
-                          className={`border rounded-2xl p-4 sm:p-6 transition-all ${
+                          className={`border rounded p-2 transition-all ${
                             isSelected 
-                              ? 'border-primary bg-soft-primary shadow-md' 
-                              : 'border-accent-soft hover:border-primary bg-white'
+                              ? 'border-primary bg-soft-primary' 
+                              : 'border-gray-200 hover:border-primary bg-white'
                           }`}
                         >
-                          {/* Assignment Header */}
-                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                          {/* Assignment Header - Compact */}
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1.5 mb-1.5">
                             <div className="flex-1">
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <h3 className="text-lg sm:text-xl font-bold text-primary">
+                              <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                <h3 className="text-sm font-bold text-primary">
                                   Assignment #{studentAssignments.indexOf(assignment) + 1}
                                 </h3>
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
                                   assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
                                   assignment.status === 'archived' ? 'bg-gray-100 text-gray-800' :
                                   'bg-blue-100 text-blue-800'
@@ -471,12 +476,13 @@ const StudentAssignments: React.FC = () => {
                                   {assignment.status === 'active' ? 'Active' : assignment.status}
                                 </span>
                               </div>
-                              <div className="flex flex-wrap items-center gap-3 text-sm text-primary-soft mb-2">
-                                <span>👨‍🏫 Assigned by: {assignment.assignedByName || 'Teacher'}</span>
-                                <span>📅 {formatDate(assignment.createdAt)}</span>
+                              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-gray-600 mb-1">
+                                <span>By: {assignment.assignedByName || 'Teacher'}</span>
+                                <span>•</span>
+                                <span>{formatDate(assignment.createdAt)}</span>
                               </div>
                               {assignment.comment && (
-                                <p className="text-sm text-primary-soft italic mt-2">"{assignment.comment}"</p>
+                                <p className="text-[10px] text-gray-600 italic mt-1">"{assignment.comment.substring(0, 60)}..."</p>
                               )}
                             </div>
                             <button
@@ -491,35 +497,50 @@ const StudentAssignments: React.FC = () => {
                                   }
                                 }
                               }}
-                              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-soft-primary text-primary rounded-lg sm:rounded-full font-semibold hover:bg-[rgba(var(--color-primary-rgb),0.1)] transition-colors whitespace-nowrap text-sm touch-target min-h-[44px]"
+                              className="w-full sm:w-auto px-2 py-1 bg-soft-primary text-primary rounded text-xs font-semibold hover:bg-primary/10 transition-colors"
                             >
-                              {isSelected ? 'Hide Details' : 'View Details'}
+                              {isSelected ? 'Hide' : 'View'}
                             </button>
                           </div>
 
-                          {/* Assignment Details (when expanded) */}
+                          {/* Assignment Details (when expanded) - Compact */}
                           {isSelected && (
-                            <div className="mt-4 pt-4 border-t border-accent-soft space-y-6">
+                            <div className="mt-1.5 pt-1.5 border-t border-gray-200 space-y-2">
                               {/* Integrated Layout: Assignment Info and Mushaf Side by Side */}
-                              <div className={`grid gap-6 ${hasMushafMistakes ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                              <div className={`grid gap-2 ${hasMushafMistakes ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
                                 {/* Left Column: Assignment Details */}
-                                <div className="space-y-4">
-                                  {/* Classwork Section */}
+                                <div className="space-y-2">
+                                  {/* Classwork Section - Wrapped */}
                                   {hasClasswork && (
-                                    <div className="p-4 bg-soft-primary rounded-xl border border-primary-soft">
-                                      <h4 className="text-sm font-semibold text-primary mb-3">📚 Classwork</h4>
-                                      <div className="space-y-3">
-                                        {/* Sabq */}
+                                    <div className="p-1.5 bg-soft-primary rounded border border-gray-200">
+                                      <button
+                                        onClick={() => setExpandedSections(prev => ({
+                                          ...prev,
+                                          [assignment.id]: {
+                                            ...prev[assignment.id],
+                                            classwork: !prev[assignment.id]?.classwork
+                                          }
+                                        }))}
+                                        className="w-full flex items-center justify-between mb-1"
+                                      >
+                                        <h4 className="text-xs font-semibold text-primary">Classwork</h4>
+                                        <span className="text-[9px] text-gray-600">
+                                          {expandedSections[assignment.id]?.classwork ? '▼' : '▶'}
+                                        </span>
+                                      </button>
+                                      {expandedSections[assignment.id]?.classwork && (
+                                      <div className="space-y-1.5">
+                                        {/* Sabq - Compact */}
                                         {classwork.sabq.length > 0 && (
                                           <div>
-                                            <span className="text-xs font-medium text-primary-soft">Sabq:</span>
-                                            <ul className="ml-4 mt-1 space-y-1">
+                                            <span className="text-[10px] font-semibold text-gray-600">Sabq:</span>
+                                            <ul className="ml-2 mt-0.5 space-y-0.5">
                                               {classwork.sabq.map((phase: any, idx: number) => {
                                                 const phaseMistakes = getMistakesForPhase(assignment, 'sabq', idx);
                                                 const hasMistakes = phaseMistakes.length > 0;
                                                 return (
-                                                  <li key={idx} className="text-sm text-primary flex items-center justify-between gap-2">
-                                                    <span>• {phase.assignmentRange || phase.details || 'Sabq recitation'}</span>
+                                                  <li key={idx} className="text-[10px] text-gray-700 flex items-center justify-between gap-1.5">
+                                                    <span>• {phase.assignmentRange || phase.details || 'Sabq'}</span>
                                                     {hasMistakes && (
                                                       <button
                                                         onClick={() => {
@@ -528,7 +549,7 @@ const StudentAssignments: React.FC = () => {
                                                             setMushafPage(phaseMistakes[0].page);
                                                           }
                                                         }}
-                                                        className={`px-2 py-1 text-xs rounded-full transition-colors whitespace-nowrap ${
+                                                        className={`px-1 py-0.5 text-[9px] rounded transition-colors ${
                                                           currentViewingMistakes?.type === 'sabq' && currentViewingMistakes?.index === idx
                                                             ? 'bg-primary text-white'
                                                             : 'bg-primary/20 text-primary hover:bg-primary/30'
@@ -544,17 +565,17 @@ const StudentAssignments: React.FC = () => {
                                           </div>
                                         )}
                                         
-                                        {/* Sabqi */}
+                                        {/* Sabqi - Compact */}
                                         {classwork.sabqi.length > 0 && (
                                           <div>
-                                            <span className="text-xs font-medium text-primary-soft">Sabqi:</span>
-                                            <ul className="ml-4 mt-1 space-y-1">
+                                            <span className="text-[10px] font-semibold text-gray-600">Sabqi:</span>
+                                            <ul className="ml-2 mt-0.5 space-y-0.5">
                                               {classwork.sabqi.map((phase: any, idx: number) => {
                                                 const phaseMistakes = getMistakesForPhase(assignment, 'sabqi', idx);
                                                 const hasMistakes = phaseMistakes.length > 0;
                                                 return (
-                                                  <li key={idx} className="text-sm text-primary flex items-center justify-between gap-2">
-                                                    <span>• {phase.assignmentRange || phase.details || 'Sabqi recitation'}</span>
+                                                  <li key={idx} className="text-[10px] text-gray-700 flex items-center justify-between gap-1.5">
+                                                    <span>• {phase.assignmentRange || phase.details || 'Sabqi'}</span>
                                                     {hasMistakes && (
                                                       <button
                                                         onClick={() => {
@@ -563,7 +584,7 @@ const StudentAssignments: React.FC = () => {
                                                             setMushafPage(phaseMistakes[0].page);
                                                           }
                                                         }}
-                                                        className={`px-2 py-1 text-xs rounded-full transition-colors whitespace-nowrap ${
+                                                        className={`px-1 py-0.5 text-[9px] rounded transition-colors ${
                                                           currentViewingMistakes?.type === 'sabqi' && currentViewingMistakes?.index === idx
                                                             ? 'bg-primary text-white'
                                                             : 'bg-primary/20 text-primary hover:bg-primary/30'
@@ -579,17 +600,17 @@ const StudentAssignments: React.FC = () => {
                                           </div>
                                         )}
                                         
-                                        {/* Manzil */}
+                                        {/* Manzil - Compact */}
                                         {classwork.manzil.length > 0 && (
                                           <div>
-                                            <span className="text-xs font-medium text-primary-soft">Manzil:</span>
-                                            <ul className="ml-4 mt-1 space-y-1">
+                                            <span className="text-[10px] font-semibold text-gray-600">Manzil:</span>
+                                            <ul className="ml-2 mt-0.5 space-y-0.5">
                                               {classwork.manzil.map((phase: any, idx: number) => {
                                                 const phaseMistakes = getMistakesForPhase(assignment, 'manzil', idx);
                                                 const hasMistakes = phaseMistakes.length > 0;
                                                 return (
-                                                  <li key={idx} className="text-sm text-primary flex items-center justify-between gap-2">
-                                                    <span>• {phase.assignmentRange || phase.details || 'Manzil recitation'}</span>
+                                                  <li key={idx} className="text-[10px] text-gray-700 flex items-center justify-between gap-1.5">
+                                                    <span>• {phase.assignmentRange || phase.details || 'Manzil'}</span>
                                                     {hasMistakes && (
                                                       <button
                                                         onClick={() => {
@@ -598,7 +619,7 @@ const StudentAssignments: React.FC = () => {
                                                             setMushafPage(phaseMistakes[0].page);
                                                           }
                                                         }}
-                                                        className={`px-2 py-1 text-xs rounded-full transition-colors whitespace-nowrap ${
+                                                        className={`px-1 py-0.5 text-[9px] rounded transition-colors ${
                                                           currentViewingMistakes?.type === 'manzil' && currentViewingMistakes?.index === idx
                                                             ? 'bg-primary text-white'
                                                             : 'bg-primary/20 text-primary hover:bg-primary/30'
@@ -614,14 +635,29 @@ const StudentAssignments: React.FC = () => {
                                           </div>
                                         )}
                                       </div>
+                                      )}
                                     </div>
                                   )}
 
-                                  {/* Homework Section */}
+                                  {/* Homework Section - Wrapped */}
                                   {hasHomework && (
-                                    <div className="p-4 bg-soft-accent rounded-xl border border-accent-soft">
-                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-                                        <h4 className="text-sm font-semibold text-primary">📝 Homework</h4>
+                                    <div className="p-1.5 bg-soft-accent rounded border border-gray-200">
+                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 mb-1.5">
+                                        <button
+                                          onClick={() => setExpandedSections(prev => ({
+                                            ...prev,
+                                            [assignment.id]: {
+                                              ...prev[assignment.id],
+                                              homework: !prev[assignment.id]?.homework
+                                            }
+                                          }))}
+                                          className="flex items-center gap-1"
+                                        >
+                                          <h4 className="text-xs font-semibold text-primary">Homework</h4>
+                                          <span className="text-[9px] text-gray-600">
+                                            {expandedSections[assignment.id]?.homework ? '▼' : '▶'}
+                                          </span>
+                                        </button>
                                         {assignment.homework.submission?.submitted ? (
                                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                                             assignment.homework.submission.status === 'graded' 
@@ -649,37 +685,39 @@ const StudentAssignments: React.FC = () => {
                                         )}
                                       </div>
                                       
+                                      {expandedSections[assignment.id]?.homework && (
+                                      <>
                                       {/* Display Homework using HomeworkDisplay component */}
                                       <HomeworkDisplay 
                                         homework={assignment.homework} 
                                         showSubmission={false}
                                       />
 
-                                      {/* Homework Submission Status */}
-                                      {assignment.homework.submission?.submitted && (
-                                        <div className="mt-4 pt-4 border-t border-accent-soft">
-                                          <h5 className="text-xs font-semibold text-primary mb-2">Your Submission:</h5>
+                                      {/* Homework Submission Status - Wrapped */}
+                                      {assignment.homework.submission?.submitted && expandedSections[assignment.id]?.homework && (
+                                        <div className="mt-2 pt-2 border-t border-gray-200">
+                                          <h5 className="text-[10px] font-semibold text-primary mb-1.5">Your Submission:</h5>
                                           {assignment.homework.submission.submittedAt && (
-                                            <p className="text-xs text-primary-soft mb-2">
+                                            <p className="text-[10px] text-gray-600 mb-1">
                                               Submitted: {formatDate(assignment.homework.submission.submittedAt)}
                                             </p>
                                           )}
                                           {assignment.homework.submission.content && (
-                                            <p className="text-sm text-primary mb-2">{assignment.homework.submission.content}</p>
+                                            <p className="text-[10px] text-gray-700 mb-1">{assignment.homework.submission.content}</p>
                                           )}
                                           {assignment.homework.submission.link && (
                                             <a 
                                               href={assignment.homework.submission.link} 
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              className="text-sm text-primary hover:underline inline-flex items-center gap-1 mb-2"
+                                              className="text-[10px] text-primary hover:underline inline-flex items-center gap-1 mb-1"
                                             >
-                                              🔗 {assignment.homework.submission.link}
+                                              🔗 {assignment.homework.submission.link.substring(0, 40)}...
                                             </a>
                                           )}
                                           {assignment.homework.submission.audioUrl && (
-                                            <div className="mb-2">
-                                              <p className="text-xs font-semibold text-primary-soft mb-1">Audio Recording:</p>
+                                            <div className="mb-1">
+                                              <p className="text-[9px] font-semibold text-gray-600 mb-0.5">Audio:</p>
                                               <audio
                                                 controls
                                                 src={assignment.homework.submission.audioUrl}
@@ -690,15 +728,15 @@ const StudentAssignments: React.FC = () => {
                                             </div>
                                           )}
                                           {assignment.homework.submission.attachments && assignment.homework.submission.attachments.length > 0 && (
-                                            <div className="mb-2">
-                                              <p className="text-xs font-semibold text-primary-soft mb-1">Attachments:</p>
+                                            <div className="mb-1">
+                                              <p className="text-[9px] font-semibold text-gray-600 mb-0.5">Attachments:</p>
                                               {assignment.homework.submission.attachments.map((att, idx) => (
                                                 <a
                                                   key={idx}
                                                   href={att.url}
                                                   target="_blank"
                                                   rel="noopener noreferrer"
-                                                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 mr-2"
+                                                  className="text-[9px] text-primary hover:underline inline-flex items-center gap-1 mr-1"
                                                 >
                                                   📎 {att.name}
                                                 </a>
@@ -708,11 +746,11 @@ const StudentAssignments: React.FC = () => {
                                           
                                           {/* Feedback */}
                                           {assignment.homework.submission.feedback && (
-                                            <div className="mt-3 p-2 bg-white rounded-lg border border-primary-soft">
-                                              <p className="text-xs font-semibold text-primary mb-1">Feedback:</p>
-                                              <p className="text-sm text-primary">{assignment.homework.submission.feedback}</p>
+                                            <div className="mt-1.5 p-1.5 bg-white rounded border border-gray-200">
+                                              <p className="text-[10px] font-semibold text-primary mb-0.5">Feedback:</p>
+                                              <p className="text-[10px] text-gray-700">{assignment.homework.submission.feedback}</p>
                                               {assignment.homework.submission.gradedByName && (
-                                                <p className="text-xs text-primary-soft mt-1">
+                                                <p className="text-[9px] text-gray-500 mt-0.5">
                                                   - {assignment.homework.submission.gradedByName}
                                                   {assignment.homework.submission.gradedAt && ` (${formatDate(assignment.homework.submission.gradedAt)})`}
                                                 </p>
@@ -722,18 +760,18 @@ const StudentAssignments: React.FC = () => {
                                           
                                           {/* Grade */}
                                           {assignment.homework.submission.grade !== undefined && assignment.homework.submission.grade !== null && (
-                                            <div className="mt-2">
-                                              <span className="text-sm font-semibold text-primary">Grade: </span>
-                                              <span className="text-lg font-bold text-primary">{assignment.homework.submission.grade}</span>
+                                            <div className="mt-1.5">
+                                              <span className="text-[10px] font-semibold text-primary">Grade: </span>
+                                              <span className="text-sm font-bold text-primary">{assignment.homework.submission.grade}</span>
                                             </div>
                                           )}
                                         </div>
                                       )}
 
                                       {/* Homework Submission Form */}
-                                      {showHomeworkForm === assignment.id && !assignment.homework.submission?.submitted && (
-                                        <div className="mt-4 pt-4 border-t border-accent-soft">
-                                          <h5 className="text-sm font-semibold text-primary mb-3">Submit Your Homework</h5>
+                                      {showHomeworkForm === assignment.id && !assignment.homework.submission?.submitted && expandedSections[assignment.id]?.homework && (
+                                        <div className="mt-2 pt-2 border-t border-gray-200">
+                                          <h5 className="text-xs font-semibold text-primary mb-1.5">Submit Your Homework</h5>
                                           <div className="space-y-3">
                                             <div>
                                               <label className="block text-xs font-medium text-primary mb-1">
@@ -881,76 +919,95 @@ const StudentAssignments: React.FC = () => {
                                           </div>
                                         </div>
                                       )}
+                                      </>
+                                      )}
                                     </div>
                                   )}
                                 </div>
 
-                                {/* Right Column: Integrated Mushaf - Always show when assignment is expanded */}
-                                <div className={`space-y-4 ${hasMushafMistakes ? '' : 'lg:col-span-1'}`}>
-                                  <div className="p-4 bg-gradient-to-br from-primary/10 to-white rounded-xl border-2 border-primary/30">
-                                    <div className="flex items-center justify-between mb-4">
-                                      <h4 className="text-lg font-bold text-primary">
-                                        📖 Personal Mushaf
+                                {/* Right Column: Integrated Mushaf - Wrapped until clicked */}
+                                <div className={`space-y-2 ${hasMushafMistakes ? '' : 'lg:col-span-1'}`}>
+                                  <div className="p-1.5 bg-primary/5 rounded border border-primary/20">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <h4 className="text-xs font-bold text-primary">
+                                        Personal Mushaf
                                       </h4>
-                                      {currentViewingMistakes && (
-                                        <button
-                                          onClick={() => {
-                                            setViewingMistakesFor(null);
-                                            if (assignment.mushafMistakes && assignment.mushafMistakes.length > 0) {
-                                              setMushafPage(assignment.mushafMistakes[0].page);
-                                            }
-                                          }}
-                                          className="px-3 py-1 text-xs bg-primary/20 text-primary rounded-full font-semibold hover:bg-primary/30 transition-colors"
-                                        >
-                                          View All
-                                        </button>
-                                      )}
+                                      <button
+                                        onClick={() => {
+                                          if (showMushafForAssignment === assignment.id) {
+                                            setShowMushafForAssignment(null);
+                                          } else {
+                                            setShowMushafForAssignment(assignment.id);
+                                          }
+                                        }}
+                                        className="px-1.5 py-0.5 text-[9px] bg-primary/20 text-primary rounded font-semibold hover:bg-primary/30 transition-colors"
+                                      >
+                                        {showMushafForAssignment === assignment.id ? 'Hide' : 'Show'}
+                                      </button>
                                     </div>
                                     
-                                    {currentViewingMistakes && (
-                                      <div className="mb-3 p-2 bg-primary/5 rounded-lg">
-                                        <p className="text-sm text-primary-soft">
-                                          Showing: <span className="font-semibold text-primary">{currentViewingMistakes.type.toUpperCase()}</span>
-                                          {currentViewingMistakes.index !== undefined && ` (Phase ${(currentViewingMistakes.index || 0) + 1})`}
-                                        </p>
-                                      </div>
+                                    {showMushafForAssignment === assignment.id && (
+                                      <>
+                                        {currentViewingMistakes && (
+                                          <div className="mb-1.5 p-1 bg-primary/5 rounded text-[10px]">
+                                            <p className="text-[10px] text-gray-600">
+                                              Showing: <span className="font-semibold text-primary">{currentViewingMistakes.type.toUpperCase()}</span>
+                                              {currentViewingMistakes.index !== undefined && ` (Phase ${(currentViewingMistakes.index || 0) + 1})`}
+                                            </p>
+                                          </div>
+                                        )}
+                                        
+                                        {!hasMushafMistakes && !currentViewingMistakes && (
+                                          <div className="mb-1.5 p-1.5 bg-blue-50 rounded border border-blue-200 text-[10px] text-blue-700">
+                                            No mistakes marked yet.
+                                          </div>
+                                        )}
+                                        
+                                        <div className="bg-white rounded p-1.5 border border-primary/20 min-h-[300px]">
+                                          <InteractiveMushaf
+                                            currentPage={mushafPage}
+                                            onPageChange={setMushafPage}
+                                            mistakes={displayMistakes}
+                                            historicalMistakes={personalMushafMistakes}
+                                            showHistorical={true}
+                                            onMistakeMark={() => {}}
+                                            readOnly={true}
+                                            mode="viewing"
+                                            showSurahIndexDefault={true}
+                                            studentName={currentStudent.fullName}
+                                          />
+                                        </div>
+                                      </>
                                     )}
-                                    
-                                    {!hasMushafMistakes && !currentViewingMistakes && (
-                                      <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                        <p className="text-sm text-blue-700">
-                                          No mistakes marked yet for this assignment. Your teacher will mark mistakes during your recitation review.
-                                        </p>
-                                      </div>
-                                    )}
-                                    
-                                    <div className="bg-white rounded-xl p-3 border border-primary/20 shadow-lg min-h-[400px]">
-                                      <InteractiveMushaf
-                                        currentPage={mushafPage}
-                                        onPageChange={setMushafPage}
-                                        mistakes={displayMistakes}
-                                        historicalMistakes={personalMushafMistakes}
-                                        showHistorical={true}
-                                        onMistakeMark={() => {}}
-                                        readOnly={true}
-                                        mode="viewing"
-                                        showSurahIndexDefault={true}
-                                        studentName={currentStudent.fullName}
-                                      />
-                                    </div>
                                   </div>
                                   
-                                  {/* Mistake Report - Outside Mushaf, positioned separately */}
+                                  {/* Mistake Report - Wrapped */}
                                   {displayMistakes.length > 0 && (
-                                    <div className="mt-4 p-4 bg-white rounded-xl border-2 border-primary/20 shadow-lg">
-                                      <div className="mb-3">
-                                        <h5 className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
-                                          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                          </svg>
-                                          Mistake Report ({displayMistakes.length})
+                                    <div className="mt-2 p-1.5 bg-white rounded border border-primary/20">
+                                      <button
+                                        onClick={() => setExpandedSections(prev => ({
+                                          ...prev,
+                                          [assignment.id]: {
+                                            ...prev[assignment.id],
+                                            mistakes: !prev[assignment.id]?.mistakes
+                                          }
+                                        }))}
+                                        className="w-full flex items-center justify-between mb-1.5"
+                                      >
+                                        <h5 className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                                          <span>Mistake Report</span>
+                                          <span className="text-[9px] bg-primary text-white px-1 py-0.5 rounded">
+                                            {displayMistakes.length}
+                                          </span>
                                         </h5>
-                                        <div className="flex flex-wrap gap-2 text-xs">
+                                        <span className="text-[9px] text-gray-600">
+                                          {expandedSections[assignment.id]?.mistakes ? '▼' : '▶'}
+                                        </span>
+                                      </button>
+                                      {expandedSections[assignment.id]?.mistakes && (
+                                      <>
+                                      <div className="mb-1.5">
+                                        <div className="flex flex-wrap gap-1.5 text-[10px]">
                                           {(() => {
                                             const regularMistakes = displayMistakes.filter((m: any) => {
                                               const type = (m.type || '').toLowerCase();
@@ -970,17 +1027,17 @@ const StudentAssignments: React.FC = () => {
                                             return (
                                               <>
                                                 {regularMistakes.length > 0 && (
-                                                  <span className="px-2 py-1 bg-red-100 text-red-800 rounded font-semibold">
+                                                  <span className="px-1 py-0.5 bg-red-100 text-red-800 rounded text-[9px] font-semibold">
                                                     Mistakes: {regularMistakes.length}
                                                   </span>
                                                 )}
                                                 {atkeeMistakes.length > 0 && (
-                                                  <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded font-semibold">
+                                                  <span className="px-1 py-0.5 bg-blue-100 text-blue-800 rounded text-[9px] font-semibold">
                                                     Atkee: {atkeeMistakes.length}
                                                   </span>
                                                 )}
                                                 {tajweedMistakes.length > 0 && (
-                                                  <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded font-semibold">
+                                                  <span className="px-1 py-0.5 bg-yellow-100 text-yellow-800 rounded text-[9px] font-semibold">
                                                     Tajweed: {tajweedMistakes.length}
                                                   </span>
                                                 )}
@@ -989,30 +1046,32 @@ const StudentAssignments: React.FC = () => {
                                           })()}
                                         </div>
                                       </div>
-                                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                                      <div className="space-y-1 max-h-48 overflow-y-auto">
                                         {displayMistakes.map((mistake: any, idx: number) => (
                                           <div
                                             key={mistake.id || idx}
-                                            className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-xs hover:shadow-md transition-shadow"
+                                            className="p-1.5 bg-gray-50 rounded border border-gray-200 text-[10px] hover:shadow-sm transition-shadow"
                                           >
-                                            <div className="flex items-start justify-between gap-2">
+                                            <div className="flex items-start justify-between gap-1.5">
                                               <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                  <span className="px-2 py-0.5 rounded-full bg-primary text-white text-xs font-semibold">
+                                                <div className="flex items-center gap-1.5 mb-0.5">
+                                                  <span className="px-1 py-0.5 rounded bg-primary text-white text-[9px] font-semibold">
                                                     {mistake.type || 'Mistake'}
                                                   </span>
-                                                  <span className="text-primary font-medium">
-                                                    Page {mistake.page}, Surah {mistake.surah}, Ayah {mistake.ayah}
+                                                  <span className="text-primary font-medium text-[9px]">
+                                                    P{mistake.page}, S{mistake.surah}, A{mistake.ayah}
                                                   </span>
                                                 </div>
                                                 {mistake.note && (
-                                                  <p className="text-primary-soft italic text-xs mt-1">"{mistake.note}"</p>
+                                                  <p className="text-gray-600 italic text-[9px] mt-0.5">"{mistake.note}"</p>
                                                 )}
                                               </div>
                                             </div>
                                           </div>
                                         ))}
                                       </div>
+                                      </>
+                                      )}
                                     </div>
                                   )}
                                 </div>

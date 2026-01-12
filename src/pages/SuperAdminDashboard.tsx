@@ -184,6 +184,12 @@ const SuperAdminDashboard: React.FC = () => {
   const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
   const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    systemManagement: false,
+    recentActivity: false,
+    completedAssignments: false,
+    systemStatus: false
+  });
 
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
@@ -539,171 +545,186 @@ const SuperAdminDashboard: React.FC = () => {
   }, [recitationReviews, recitationTickets]);
 
   const OverviewSection = () => (
-    <div className="space-y-6">
-      {/* Welcome Header */}
-      <section className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white via-soft-primary/20 to-white px-6 py-6 shadow-lg">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-3 py-1 rounded-full">
-                Super Admin Control Center
+    <div className="space-y-2">
+      {/* Welcome Header - Compact */}
+      <section className="rounded border border-gray-200 bg-white px-2 py-2">
+        <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded">
+                Super Admin
               </span>
               {totalPendingItems > 0 && (
-                <span className="rounded-full bg-red-500 text-white px-2.5 py-1 text-xs font-bold animate-pulse">
+                <span className="rounded bg-red-500 text-white px-1.5 py-0.5 text-[9px] font-bold">
                   {totalPendingItems} pending
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-primary">Dashboard Overview</h1>
-            <p className="max-w-3xl text-sm text-gray-600 leading-relaxed">
-              Monitor system activity, manage workflows, and stay on top of pending reviews and submissions. 
-              Everything you need is just a click away.
-            </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-              <span className="rounded-full bg-primary/10 px-3 py-1.5 text-primary border border-primary/20">
-                {activeStudentCount} active students
+            <h1 className="text-base font-bold text-primary">Dashboard</h1>
+            <div className="flex flex-wrap items-center gap-1 text-[9px] font-semibold">
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary border border-primary/20">
+                {activeStudentCount} students
               </span>
-              <span className="rounded-full bg-accent/10 px-3 py-1.5 text-accent border border-accent/20">
-                {activeTeacherCount} active teachers
+              <span className="rounded bg-accent/10 px-1.5 py-0.5 text-accent border border-accent/20">
+                {activeTeacherCount} teachers
               </span>
-              <span className="rounded-full bg-orange-100 px-3 py-1.5 text-orange-700 border border-orange-200">
-                {pendingReviewsCount} recitation reviews
+              <span className="rounded bg-orange-100 px-1.5 py-0.5 text-orange-700 border border-orange-200">
+                {pendingReviewsCount} reviews
               </span>
-              <span className="rounded-full bg-blue-100 px-3 py-1.5 text-blue-700 border border-blue-200">
-                {pendingTicketCount} pending tickets
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-blue-700 border border-blue-200">
+                {pendingTicketCount} tickets
               </span>
               {pendingWeeklyEvaluationsCount > 0 && (
-                <span className="rounded-full bg-purple-100 px-3 py-1.5 text-purple-700 border border-purple-200">
-                  {pendingWeeklyEvaluationsCount} weekly evaluations
+                <span className="rounded bg-purple-100 px-1.5 py-0.5 text-purple-700 border border-purple-200">
+                  {pendingWeeklyEvaluationsCount} evaluations
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-3">
+            <div className="flex flex-wrap items-center gap-1 mt-1.5">
               <button
                 onClick={() => setShowWeeklyEvaluations(true)}
-                className="inline-flex items-center justify-center rounded-lg border-2 border-primary/30 px-4 py-2 text-xs font-bold text-primary transition hover:bg-soft-primary hover:border-primary"
+                className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-[9px] font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
               >
-                Weekly Evaluations
+                Evaluations
                 {pendingWeeklyEvaluationsCount > 0 && (
-                  <span className="ml-2 rounded-full bg-red-500 text-white px-2 py-0.5 text-xs font-bold">
+                  <span className="ml-1 rounded bg-red-500 text-white px-1 py-0.5 text-[9px] font-bold">
                     {pendingWeeklyEvaluationsCount}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setShowApprovedEvaluations(true)}
-                className="inline-flex items-center justify-center rounded-lg border-2 border-green-500/30 px-4 py-2 text-xs font-bold text-green-600 transition hover:bg-green-50 hover:border-green-500"
+                className="inline-flex items-center justify-center rounded border border-green-500/30 px-2 py-1 text-[9px] font-semibold text-green-600 transition hover:bg-green-50 hover:border-green-500"
               >
-                ✓ Approved Evaluations
+                Approved
               </button>
               <button
                 onClick={() => setShowApprovedTickets(true)}
-                className="inline-flex items-center justify-center rounded-lg border-2 border-purple-500/30 px-4 py-2 text-xs font-bold text-purple-600 transition hover:bg-purple-50 hover:border-purple-500"
+                className="inline-flex items-center justify-center rounded border border-purple-500/30 px-2 py-1 text-[9px] font-semibold text-purple-600 transition hover:bg-purple-50 hover:border-purple-500"
               >
-                🎫 Approved Tickets
+                Tickets
               </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Enhanced Stats Grid */}
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white rounded-xl border-2 border-primary/20 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-primary/40">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Students</p>
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-              <span className="text-lg">👥</span>
+      {/* Enhanced Stats Grid - Compact */}
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+        <div className="bg-white rounded border border-primary/20 p-2 hover:border-primary/40 transition-all">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Students</p>
+            <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
+              <span className="text-xs">👥</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-primary mb-1">{totalStudents}</p>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-green-600 font-semibold">+{activeStudentCount} active</span>
+          <p className="text-xl font-bold text-primary mb-0.5">{totalStudents}</p>
+          <div className="flex items-center gap-1 text-[9px]">
+            <span className="text-green-600 font-semibold">+{activeStudentCount}</span>
             {inactiveStudentCount > 0 && (
-              <span className="text-gray-400">• {inactiveStudentCount} inactive</span>
+              <span className="text-gray-400">• {inactiveStudentCount}</span>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border-2 border-accent/20 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-accent/40">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Teachers</p>
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-accent/20 to-accent/10 flex items-center justify-center">
-              <span className="text-lg">👨‍🏫</span>
+        <div className="bg-white rounded border border-accent/20 p-2 hover:border-accent/40 transition-all">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Teachers</p>
+            <div className="h-6 w-6 rounded bg-accent/10 flex items-center justify-center">
+              <span className="text-xs">👨‍🏫</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-accent mb-1">{totalTeachers}</p>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-green-600 font-semibold">+{activeTeacherCount} active</span>
+          <p className="text-xl font-bold text-accent mb-0.5">{totalTeachers}</p>
+          <div className="flex items-center gap-1 text-[9px]">
+            <span className="text-green-600 font-semibold">+{activeTeacherCount}</span>
             {inactiveTeacherCount > 0 && (
-              <span className="text-gray-400">• {inactiveTeacherCount} inactive</span>
+              <span className="text-gray-400">• {inactiveTeacherCount}</span>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border-2 border-orange-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-orange-300">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Pending Reviews</p>
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-100 to-orange-50 flex items-center justify-center">
-              <span className="text-lg">📋</span>
+        <div className="bg-white rounded border border-orange-200 p-2 hover:border-orange-300 transition-all">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Pending</p>
+            <div className="h-6 w-6 rounded bg-orange-50 flex items-center justify-center">
+              <span className="text-xs">📋</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-orange-600 mb-1">{pendingReviewsCount + pendingTicketCount}</p>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-orange-600 font-semibold">{pendingReviewsCount} recitations</span>
-            <span className="text-gray-400">• {pendingTicketCount} tickets</span>
+          <p className="text-xl font-bold text-orange-600 mb-0.5">{pendingReviewsCount + pendingTicketCount}</p>
+          <div className="flex items-center gap-1 text-[9px]">
+            <span className="text-orange-600 font-semibold">{pendingReviewsCount}</span>
+            <span className="text-gray-400">• {pendingTicketCount}</span>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border-2 border-blue-200 p-6 shadow-md hover:shadow-lg transition-all duration-200 hover:border-blue-300">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recent Activity</p>
-            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center">
-              <span className="text-lg">⚡</span>
+        <div className="bg-white rounded border border-blue-200 p-2 hover:border-blue-300 transition-all">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Activity</p>
+            <div className="h-6 w-6 rounded bg-blue-50 flex items-center justify-center">
+              <span className="text-xs">⚡</span>
             </div>
           </div>
-          <p className="text-3xl font-bold text-blue-600 mb-1">{recentActivityCount}</p>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-blue-600 font-semibold">Last 7 days</span>
+          <p className="text-xl font-bold text-blue-600 mb-0.5">{recentActivityCount}</p>
+          <div className="flex items-center gap-1 text-[9px]">
+            <span className="text-blue-600 font-semibold">7 days</span>
           </div>
         </div>
       </section>
 
 
-      {/* System Management - Simplified */}
-      <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
-        <h3 className="text-lg font-bold text-primary mb-3">System Management</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2">
+      {/* System Management - Wrapped */}
+      <section className="rounded border border-gray-200 bg-white px-2 py-2">
+        <button
+          onClick={() => setExpandedSections(prev => ({ ...prev, systemManagement: !prev.systemManagement }))}
+          className="w-full flex items-center justify-between mb-1.5"
+        >
+          <h3 className="text-sm font-bold text-primary">System Management</h3>
+          <span className="text-[9px] text-gray-600">
+            {expandedSections.systemManagement ? '▼' : '▶'}
+          </span>
+        </button>
+        {expandedSections.systemManagement && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
           {managementActions.map((item) => (
             <button
               key={item.id}
               onClick={item.action}
-              className="flex flex-col items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 text-center transition-all hover:bg-soft-primary hover:border-primary/40"
+              className="flex flex-col items-center gap-1 rounded border border-gray-200 bg-white px-2 py-2 text-center transition-all hover:bg-soft-primary hover:border-primary/40"
             >
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-soft-primary to-primary/10 text-sm font-bold text-primary">
+              <div className="inline-flex h-8 w-8 items-center justify-center rounded bg-soft-primary text-xs font-bold text-primary">
                 {item.badge}
               </div>
               <div className="flex-1">
-                <h4 className="text-xs font-bold text-primary leading-tight">{item.title}</h4>
-                <p className="text-[10px] text-gray-500 mt-1">{item.footer}</p>
+                <h4 className="text-[10px] font-semibold text-primary leading-tight">{item.title}</h4>
+                <p className="text-[9px] text-gray-500 mt-0.5">{item.footer}</p>
               </div>
             </button>
           ))}
         </div>
+        )}
       </section>
 
-      {/* Recent Activity Feed - Simplified */}
-      <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-bold text-primary">Recent Activity</h3>
+      {/* Recent Activity Feed - Wrapped */}
+      <section className="rounded border border-gray-200 bg-white px-2 py-2">
+        <div className="flex items-center justify-between mb-1.5">
+          <button
+            onClick={() => setExpandedSections(prev => ({ ...prev, recentActivity: !prev.recentActivity }))}
+            className="flex items-center gap-1.5"
+          >
+            <h3 className="text-sm font-bold text-primary">Recent Activity</h3>
+            <span className="text-[9px] text-gray-600">
+              {expandedSections.recentActivity ? '▼' : '▶'}
+            </span>
+          </button>
           <button
             onClick={() => setShowActivityLog(true)}
-            className="text-xs font-semibold text-primary hover:text-accent transition-colors"
+            className="text-[10px] font-semibold text-primary hover:text-accent transition-colors"
           >
             View All →
           </button>
         </div>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        {expandedSections.recentActivity && (
+        <div className="space-y-1 max-h-48 overflow-y-auto">
           {useMemo(() => {
             const activities: Array<{
               id: string;
@@ -793,37 +814,47 @@ const SuperAdminDashboard: React.FC = () => {
             <div
               key={activity.id}
               onClick={activity.onClick}
-              className={`flex items-start gap-2 rounded-lg border-l-2 ${activity.color} bg-white px-3 py-2 transition-all hover:shadow-sm cursor-pointer`}
+              className={`flex items-start gap-1.5 rounded border-l-2 ${activity.color} bg-white px-1.5 py-1 transition-all hover:shadow-sm cursor-pointer`}
             >
-              <div className="text-lg">{activity.icon}</div>
+              <div className="text-sm">{activity.icon}</div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-primary mb-0.5">{activity.title}</p>
-                <p className="text-[10px] text-gray-600 truncate">{activity.description}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{activity.time}</p>
+                <p className="text-[10px] font-semibold text-primary mb-0.5">{activity.title}</p>
+                <p className="text-[9px] text-gray-600 truncate">{activity.description}</p>
+                <p className="text-[9px] text-gray-400 mt-0.5">{activity.time}</p>
               </div>
             </div>
           ))}
         </div>
+        )}
       </section>
 
-      {/* Completed Assignments/Homework */}
+      {/* Completed Assignments/Homework - Wrapped */}
       {completedAssignmentsCount > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-bold text-primary">✅ Completed Assignments & Homework</h3>
-            <span className="rounded-full bg-green-100 text-green-800 px-3 py-1 text-xs font-bold">
-              {completedAssignmentsCount} completed
-            </span>
-          </div>
+        <section className="rounded border border-gray-200 bg-white px-2 py-2">
+          <button
+            onClick={() => setExpandedSections(prev => ({ ...prev, completedAssignments: !prev.completedAssignments }))}
+            className="w-full flex items-center justify-between mb-1.5"
+          >
+            <h3 className="text-sm font-bold text-primary">Completed Assignments</h3>
+            <div className="flex items-center gap-1.5">
+              <span className="rounded bg-green-100 text-green-800 px-1.5 py-0.5 text-[9px] font-bold">
+                {completedAssignmentsCount}
+              </span>
+              <span className="text-[9px] text-gray-600">
+                {expandedSections.completedAssignments ? '▼' : '▶'}
+              </span>
+            </div>
+          </button>
+          {expandedSections.completedAssignments && (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Completed</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase">Grade</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Student</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Type</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Status</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Date</th>
+                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Grade</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -838,37 +869,37 @@ const SuperAdminDashboard: React.FC = () => {
                   
                   return (
                     <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2">
-                        <div className="font-medium text-gray-900 text-xs">
+                      <td className="px-1.5 py-1">
+                        <div className="font-medium text-gray-900 text-[10px]">
                           {assignment.studentName || 'Unknown'}
                         </div>
                       </td>
-                      <td className="px-3 py-2">
-                        <span className="text-xs text-gray-600">
+                      <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-gray-600">
                           {isGraded ? 'Homework' : 'Assignment'}
                         </span>
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-1.5 py-1">
                         {isCompleted ? (
-                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
-                            Completed
+                          <span className="px-1 py-0.5 text-[9px] font-semibold rounded bg-green-100 text-green-800">
+                            Done
                           </span>
                         ) : isGraded ? (
-                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 border border-blue-300">
+                          <span className="px-1 py-0.5 text-[9px] font-semibold rounded bg-blue-100 text-blue-800">
                             Graded
                           </span>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-600">
+                      <td className="px-1.5 py-1 text-[10px] text-gray-600">
                         {completedDate ? new Date(completedDate).toLocaleDateString() : 'N/A'}
                       </td>
-                      <td className="px-3 py-2">
+                      <td className="px-1.5 py-1">
                         {grade !== null && grade !== undefined ? (
-                          <span className="px-2 py-1 text-xs font-bold rounded-full bg-purple-100 text-purple-800">
+                          <span className="px-1 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
                             {grade}/100
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-400">—</span>
+                          <span className="text-[10px] text-gray-400">—</span>
                         )}
                       </td>
                     </tr>
@@ -876,112 +907,120 @@ const SuperAdminDashboard: React.FC = () => {
                 })}
               </tbody>
             </table>
+            {completedAssignmentsCount > 10 && (
+              <div className="mt-1.5 text-center">
+                <button
+                  onClick={() => navigate('/assignments')}
+                  className="text-[10px] font-semibold text-primary hover:text-accent transition-colors"
+                >
+                  View All ({completedAssignmentsCount}) →
+                </button>
+              </div>
+            )}
           </div>
-          {completedAssignmentsCount > 10 && (
-            <div className="mt-3 text-center">
-              <button
-                onClick={() => navigate('/assignments')}
-                className="text-xs font-semibold text-primary hover:text-accent transition-colors"
-              >
-                View All Completed ({completedAssignmentsCount}) →
-              </button>
-            </div>
           )}
         </section>
       )}
 
-      {/* System Status */}
-      <section className="rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-white to-gray-50 px-6 py-5 shadow-md">
-        <h3 className="text-lg font-bold text-primary mb-4">System Status</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="font-semibold text-primary">System Operational</span>
+      {/* System Status - Wrapped */}
+      <section className="rounded border border-gray-200 bg-white px-2 py-2">
+        <button
+          onClick={() => setExpandedSections(prev => ({ ...prev, systemStatus: !prev.systemStatus }))}
+          className="w-full flex items-center justify-between mb-1.5"
+        >
+          <h3 className="text-sm font-bold text-primary">System Status</h3>
+          <span className="text-[9px] text-gray-600">
+            {expandedSections.systemStatus ? '▼' : '▶'}
+          </span>
+        </button>
+        {expandedSections.systemStatus && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-green-500"></div>
+              <span className="font-semibold text-primary text-xs">System Operational</span>
             </div>
-            <span className="text-xs font-semibold text-green-600">All systems normal</span>
+            <span className="text-[9px] font-semibold text-green-600">Normal</span>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="h-3 w-3 rounded-full bg-blue-500"></div>
-              <span className="font-semibold text-primary">Unread Notifications</span>
+          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+              <span className="font-semibold text-primary text-xs">Notifications</span>
             </div>
-            <span className="rounded-full bg-blue-500 text-white px-2.5 py-1 text-xs font-bold">
+            <span className="rounded bg-blue-500 text-white px-1.5 py-0.5 text-[9px] font-bold">
               {unreadNotificationsCount}
             </span>
           </div>
         </div>
+        )}
       </section>
 
     </div>
   );
 
-  // System Management Section
+  // System Management Section - Compact
   const SystemSection = () => (
-    <div className="space-y-4">
-      <h2 className="text-lg font-bold text-primary">🔧 System Tools</h2>
-      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+    <div className="space-y-2">
+      <h2 className="text-sm font-bold text-primary">System Tools</h2>
+      <div className="grid grid-cols-1 gap-1.5 md:grid-cols-3">
         <button
           onClick={() => setShowPermissionManager(true)}
-          className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
+          className="flex h-full flex-col gap-1.5 rounded border border-gray-200 bg-white px-2 py-2 text-left transition hover:border-primary/30"
         >
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
             PM
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-primary">Permission Manager</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Adjust role access for teachers, admins, and QA reviewers.
+            <h3 className="text-xs font-semibold text-primary">Permissions</h3>
+            <p className="mt-0.5 text-[10px] text-gray-600">
+              Adjust role access
             </p>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Open manager</span>
         </button>
 
         <button
           onClick={() => setShowDataManager(true)}
-          className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
+          className="flex h-full flex-col gap-1.5 rounded border border-gray-200 bg-white px-2 py-2 text-left transition hover:border-primary/30"
         >
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
             DB
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-primary">Data Manager</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Export student or ticket data and trigger manual backups.
+            <h3 className="text-xs font-semibold text-primary">Data Manager</h3>
+            <p className="mt-0.5 text-[10px] text-gray-600">
+              Export & backup
             </p>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Launch data tools</span>
         </button>
 
         <button
           onClick={() => refreshNotifications()}
-          className="flex h-full flex-col gap-3 rounded-xl border border-gray-200 bg-white px-5 py-5 text-left shadow-sm transition hover:shadow-md hover:border-primary/30"
+          className="flex h-full flex-col gap-1.5 rounded border border-gray-200 bg-white px-2 py-2 text-left transition hover:border-primary/30"
         >
-          <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-soft-primary text-xs font-semibold text-primary">
+          <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-soft-primary text-[10px] font-semibold text-primary">
             🔄
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-semibold text-primary">Refresh Notifications</h3>
-            <p className="mt-1 text-sm text-gray-600">
-              Pull the latest admin notifications and ticket alerts.
+            <h3 className="text-xs font-semibold text-primary">Refresh</h3>
+            <p className="mt-0.5 text-[10px] text-gray-600">
+              Sync notifications
             </p>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Sync now</span>
         </button>
 
       </div>
 
       <Card title="Live Signals">
-        <div className="space-y-3 text-sm text-gray-600">
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-            <span className="font-semibold text-[var(--color-accent)]">Unread admin notifications</span>
-            <span className="rounded-full bg-accent/20 px-3 py-1 text-xs font-semibold text-[var(--color-accent)]">
+        <div className="space-y-1.5 text-xs text-gray-600">
+          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
+            <span className="font-semibold text-accent text-[10px]">Notifications</span>
+            <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-semibold text-accent">
               {unreadNotificationsCount}
             </span>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-            <span className="font-semibold text-primary">Pending recitation reviews</span>
-            <span className="text-sm font-semibold text-primary">{pendingReviewsCount}</span>
+          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
+            <span className="font-semibold text-primary text-[10px]">Reviews</span>
+            <span className="text-[10px] font-semibold text-primary">{pendingReviewsCount}</span>
           </div>
         </div>
       </Card>
@@ -1462,7 +1501,7 @@ const SuperAdminDashboard: React.FC = () => {
         
         {/* Content Area */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-7xl mx-auto px-2 sm:px-3 lg:px-4 py-2">
             {renderSection()}
           </div>
         </main>
