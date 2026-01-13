@@ -12,6 +12,26 @@ import { Ticket } from '../types/ticket';
 import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
 
+// Helper function to normalize IDs (same as in BackendDataContext)
+const normalizeId = (id: any): string => {
+  if (!id) return '';
+  // Handle ObjectId objects (MongoDB) - they have a toString method
+  if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
+    const str = id.toString();
+    // Check if it's an ObjectId string (24 hex characters)
+    if (/^[0-9a-fA-F]{24}$/.test(str)) {
+      return str;
+    }
+    return str;
+  }
+  // Handle strings
+  if (typeof id === 'string') {
+    return id;
+  }
+  // Fallback: convert to string
+  return String(id);
+};
+
 const AssignmentManagement: React.FC = () => {
   const { students: allStudents, assignments, getStudentAssignments, refreshData, refreshDataLight, recitationTickets } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
@@ -128,8 +148,12 @@ const AssignmentManagement: React.FC = () => {
   }, [assignedStudents, selectedProgram, searchQuery, filterStatus, getStudentAssignments]);
 
   const stats = useMemo(() => {
-    const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
-    const relevantAssignments = assignments.filter(a => assignedStudentIds.has(a.studentId));
+    // Normalize student IDs to handle ObjectId vs string mismatches
+    const assignedStudentIds = new Set(assignedStudents.map(s => normalizeId(s.id || (s as any)._id)));
+    const relevantAssignments = assignments.filter(a => {
+      const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
+      return assignedStudentIds.has(assignmentStudentId);
+    });
     const totalAssignments = relevantAssignments.length;
     const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
     const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
@@ -170,9 +194,13 @@ const AssignmentManagement: React.FC = () => {
 
   // Get completed assignments for display
   const completedAssignmentsList = useMemo(() => {
-    const assignedStudentIds = new Set(assignedStudents.map(s => s.id));
+    // Normalize student IDs to handle ObjectId vs string mismatches
+    const assignedStudentIds = new Set(assignedStudents.map(s => normalizeId(s.id || (s as any)._id)));
     return assignments
-      .filter((a: any) => assignedStudentIds.has(a.studentId))
+      .filter((a: any) => {
+        const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
+        return assignedStudentIds.has(assignmentStudentId);
+      })
       .filter((assignment: any) => {
         // Explicitly completed
         if (assignment.status === 'completed') return true;
