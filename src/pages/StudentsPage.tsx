@@ -15,6 +15,7 @@ import StudentWeeklyEvaluations from '../components/StudentWeeklyEvaluations';
 import Card from '../components/Card';
 
 const StudentsPage: React.FC = () => {
+  // useData() from DataContext already re-exports useBackendData, so it has all the backend data
   const { students, deleteStudent, refreshData } = useData();
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showStudentForm, setShowStudentForm] = useState(false);
@@ -40,7 +41,7 @@ const StudentsPage: React.FC = () => {
     setShowStudentForm(true);
   };
 
-  const handleDeleteStudent = async (studentId: string) => {
+  const handleDeleteStudentWrapper = async (studentId: string) => {
     if (!studentId) {
       return;
     }
@@ -51,7 +52,9 @@ const StudentsPage: React.FC = () => {
     }
 
     try {
-      await deleteStudent(studentId);
+      if (deleteStudent) {
+        await deleteStudent(studentId);
+      }
       alert('✅ Student deleted successfully.');
       setSelectedStudent(null);
       setShowStudentProfile(false);
@@ -76,7 +79,7 @@ const StudentsPage: React.FC = () => {
         <StudentList
           onStudentSelect={handleStudentSelect}
           onEditStudent={handleEditStudent}
-          onDeleteStudent={handleDeleteStudent}
+          onDeleteStudent={handleDeleteStudentWrapper}
           onAddStudent={() => {
             setSelectedStudent(null);
             setShowStudentForm(true);
