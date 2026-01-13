@@ -166,12 +166,12 @@ const AssignmentManagement: React.FC = () => {
     });
     
     // Get all unique student IDs from assignments to check for mismatches
-    const assignmentStudentIds = new Set(
-      assignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId)).filter(id => id)
+    const assignmentStudentIds = new Set<string>(
+      assignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId)).filter((id): id is string => !!id)
     );
     
     // Find assignments with studentIds that don't match any assigned students
-    const unmatchedAssignmentIds = Array.from(assignmentStudentIds).filter(
+    const unmatchedAssignmentIds: string[] = Array.from(assignmentStudentIds).filter(
       (assignmentId: string) => !allPossibleStudentIds.has(assignmentId)
     );
     
@@ -184,8 +184,8 @@ const AssignmentManagement: React.FC = () => {
       assignmentStudentIdsCount: assignmentStudentIds.size,
       unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
       unmatchedCount: unmatchedAssignmentIds.length,
-      sampleAssignedStudentIds: Array.from(allPossibleStudentIds).slice(0, 10),
-      sampleAssignmentStudentIds: Array.from(assignmentStudentIds).slice(0, 10),
+      sampleAssignedStudentIds: Array.from<string>(allPossibleStudentIds).slice(0, 10),
+      sampleAssignmentStudentIds: Array.from<string>(assignmentStudentIds).slice(0, 10),
       // Check if there are any students that match the unmatched assignment IDs
       unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
         const foundStudent = allStudents.find(s => {
