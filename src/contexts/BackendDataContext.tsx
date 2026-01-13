@@ -1370,9 +1370,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           };
           
           return {
-            id: teacherRecord.userId?._id || teacherRecord._id || teacherRecord.id,
-            _id: teacherRecord._id?.toString() || teacherRecord._id,
-            teacherDocumentId: teacherRecord._id?.toString() || teacherRecord._id,
+            id: teacherRecord.userId?._id || teacherRecord._id || teacherRecord.id, // User ID for compatibility
+            _id: teacherRecord._id?.toString() || teacherRecord._id, // Teacher Document ID
+            teacherDocumentId: teacherRecord._id?.toString() || teacherRecord._id, // Explicit Teacher Document ID
             fullName: teacherRecord.fullName || 'Unknown',
             email: teacherRecord.email || '',
             phoneNumber: teacherRecord.phoneNumber || teacherRecord.contact || '',

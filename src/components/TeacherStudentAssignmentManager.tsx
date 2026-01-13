@@ -23,14 +23,46 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   // Use teacherDocId (Teacher document ID) to match what we store in assignedTeacherIds
   const assignedStudents = useMemo(() => {
     if (!selectedTeacher) return [];
-    const teacherDocId = (selectedTeacher as any)._id || (selectedTeacher as any).teacherDocumentId || selectedTeacher.id;
+    
+    // CRITICAL: Use Teacher Document ID, not User ID
+    // Priority: teacherDocumentId > _id (if different from id) > fallback to User ID (for backward compatibility)
+    let teacherDocId: string;
+    
+    if ((selectedTeacher as any).teacherDocumentId) {
+      teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
+    } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
+      teacherDocId = (selectedTeacher as any)._id.toString();
+    } else {
+      // Fallback to User ID for backward compatibility (but log warning)
+      teacherDocId = selectedTeacher.id;
+      console.warn('⚠️ Using User ID as fallback for teacher lookup:', {
+        teacherName: selectedTeacher.fullName,
+        teacherId: selectedTeacher.id,
+        _id: (selectedTeacher as any)._id,
+        teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
+        note: 'This may not match students assigned with Teacher Document ID'
+      });
+    }
+    
     console.log('🔍 Getting assigned students for teacher:', {
       teacherName: selectedTeacher.fullName,
       teacherDocId: teacherDocId,
       teacherId: selectedTeacher.id,
-      _id: (selectedTeacher as any)._id
+      _id: (selectedTeacher as any)._id,
+      teacherDocumentId: (selectedTeacher as any).teacherDocumentId
     });
-    return getStudentsByTeacher(teacherDocId);
+    
+    // Try with Teacher Document ID first, then fallback to User ID if no results
+    const students = getStudentsByTeacher(teacherDocId);
+    if (students.length === 0 && teacherDocId !== selectedTeacher.id) {
+      console.log('⚠️ No students found with Teacher Doc ID, trying User ID as fallback...');
+      const studentsByUserId = getStudentsByTeacher(selectedTeacher.id);
+      if (studentsByUserId.length > 0) {
+        console.warn('⚠️ WARNING: Students are assigned using User ID instead of Teacher Document ID!');
+        return studentsByUserId;
+      }
+    }
+    return students;
   }, [selectedTeacher, getStudentsByTeacher, students]);
 
   // Initialize selected student IDs when teacher is selected
@@ -150,14 +182,41 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
     setIsSaving(true);
     try {
-      const teacherDocId = (selectedTeacher as any)._id || (selectedTeacher as any).teacherDocumentId || selectedTeacher.id;
+      // CRITICAL: Use Teacher Document ID, not User ID
+      // Priority: teacherDocumentId > _id (if different from id) > error (don't use User ID)
+      let teacherDocId: string | null = null;
+      
+      // First priority: teacherDocumentId (explicitly set Teacher document _id)
+      if ((selectedTeacher as any).teacherDocumentId) {
+        teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
+      } 
+      // Second priority: _id if it's different from id (id = User._id, _id = Teacher._id)
+      else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
+        teacherDocId = (selectedTeacher as any)._id.toString();
+      }
+      // If we can't find Teacher Document ID, show error - don't use User ID
+      else {
+        console.error('❌ Cannot find Teacher document _id!', {
+          teacherName: selectedTeacher.fullName,
+          teacherId: selectedTeacher.id, // User._id
+          _id: (selectedTeacher as any)._id,
+          teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
+          userId: (selectedTeacher as any).userId
+        });
+        alert(`❌ Error: Cannot find Teacher document ID for ${selectedTeacher.fullName}. Please refresh the page and try again.`);
+        setIsSaving(false);
+        return;
+      }
+
       const selectedIdsArray = Array.from(selectedStudentIds);
 
       console.log('💾 Saving teacher-student assignments:', {
-        teacherId: teacherDocId,
+        teacherDocId: teacherDocId,
         teacherName: selectedTeacher.fullName,
+        userDocumentId: selectedTeacher.id, // For reference
         selectedStudentIds: selectedIdsArray.length,
-        totalStudents: students.length
+        totalStudents: students.length,
+        note: 'Using Teacher Document ID (not User ID)'
       });
 
       // 1. FILTER: Only students that need updates
