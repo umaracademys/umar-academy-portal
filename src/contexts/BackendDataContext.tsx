@@ -1352,8 +1352,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Merge with existing students to preserve data that might be missing from backend response
       setStudents(prev => {
-        const studentMap = new Map(prev.map(s => [s.id, s]));
-        finalStudentsData.forEach(newStudent => {
+        const studentMap = new Map<string, Student>(prev.map(s => [s.id, s]));
+        finalStudentsData.forEach((newStudent: Student) => {
           const existing = studentMap.get(newStudent.id);
           if (existing) {
             // Merge: keep existing data, update with new data, but preserve critical fields if missing

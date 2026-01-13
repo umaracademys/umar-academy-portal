@@ -331,7 +331,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
                   return [];
                 })()}
                 onChange={(e) => {
-                  const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+                  const selectedOptions = Array.from(e.target.selectedOptions).map((option: HTMLOptionElement) => option.value);
                   setFormData({ ...formData, assignedTeacher: selectedOptions.length > 0 ? selectedOptions : [] });
                 }}
                 className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
