@@ -207,9 +207,21 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
             _id: (student as any)._id,
             id: student.id,
             userId: student.userId,
-            fullStudent: student
+            email: student.email,
+            fullName: student.fullName
           });
-          throw new Error('Student Document ID not found. Cannot update student. The student may not have a Student document in the database.');
+          alert('❌ Cannot edit this student.\n\nThis student does not have a Student document in the database. They only have a User account for login.\n\nTo edit this student, please create a Student profile first through the registration form.');
+          setIsSubmitting(false);
+          return;
+        }
+        
+        // Additional validation: Check if studentRecordId exists
+        // If it doesn't exist, the student only has a User document, not a Student document
+        if (!student.studentRecordId && !(student as any)._id) {
+          console.warn('⚠️ Student has no Student document - only User document exists');
+          alert('⚠️ This student does not have a full Student profile.\n\nThey only have a login account. Please create a Student profile first.');
+          setIsSubmitting(false);
+          return;
         }
         
         // Ensure contact and schedule are included in update payload
