@@ -148,8 +148,22 @@ const AssignmentManagement: React.FC = () => {
   }, [assignedStudents, selectedProgram, searchQuery, filterStatus, getStudentAssignments]);
 
   const stats = useMemo(() => {
-    // Normalize student IDs to handle ObjectId vs string mismatches
-    const assignedStudentIds = new Set(assignedStudents.map(s => normalizeId(s.id || (s as any)._id)));
+    // Build a set of all possible student IDs for each assigned student
+    // This includes: id, studentRecordId, _id, userId
+    const assignedStudentIdSets = assignedStudents.map(s => {
+      const ids = new Set<string>();
+      if (s.id) ids.add(normalizeId(s.id));
+      if ((s as any).studentRecordId) ids.add(normalizeId((s as any).studentRecordId));
+      if ((s as any)._id) ids.add(normalizeId((s as any)._id));
+      if ((s as any).userId) ids.add(normalizeId((s as any).userId));
+      return ids;
+    });
+    
+    // Flatten all possible student IDs into a single set for quick lookup
+    const allPossibleStudentIds = new Set<string>();
+    assignedStudentIdSets.forEach(idSet => {
+      idSet.forEach(id => allPossibleStudentIds.add(id));
+    });
     
     // Get all unique student IDs from assignments to check for mismatches
     const assignmentStudentIds = new Set(
@@ -158,7 +172,7 @@ const AssignmentManagement: React.FC = () => {
     
     // Find assignments with studentIds that don't match any assigned students
     const unmatchedAssignmentIds = Array.from(assignmentStudentIds).filter(
-      assignmentId => !assignedStudentIds.has(assignmentId)
+      assignmentId => !allPossibleStudentIds.has(assignmentId)
     );
     
     // Debug logging to identify ID mismatches
@@ -166,19 +180,25 @@ const AssignmentManagement: React.FC = () => {
       totalAssignments: assignments.length,
       assignedStudentsCount: assignedStudents.length,
       allStudentsCount: allStudents.length,
-      assignedStudentIdsCount: assignedStudentIds.size,
+      allPossibleStudentIdsCount: allPossibleStudentIds.size,
       assignmentStudentIdsCount: assignmentStudentIds.size,
       unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
       unmatchedCount: unmatchedAssignmentIds.length,
-      sampleAssignedStudentIds: Array.from(assignedStudentIds).slice(0, 5),
-      sampleAssignmentStudentIds: Array.from(assignmentStudentIds).slice(0, 5),
+      sampleAssignedStudentIds: Array.from(allPossibleStudentIds).slice(0, 10),
+      sampleAssignmentStudentIds: Array.from(assignmentStudentIds).slice(0, 10),
       // Check if there are any students that match the unmatched assignment IDs
       unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map(id => {
         const foundStudent = allStudents.find(s => {
           const studentId = normalizeId(s.id || (s as any)._id);
-          return studentId === id;
+          const studentRecordId = normalizeId((s as any).studentRecordId);
+          return studentId === id || studentRecordId === id;
         });
-        return { assignmentId: id, studentFound: !!foundStudent, studentId: foundStudent?.id };
+        return { 
+          assignmentId: id, 
+          studentFound: !!foundStudent, 
+          studentId: foundStudent?.id,
+          studentRecordId: foundStudent ? normalizeId((foundStudent as any).studentRecordId) : null
+        };
       })
     });
     
@@ -191,13 +211,15 @@ const AssignmentManagement: React.FC = () => {
         });
         return false;
       }
-      const matches = assignedStudentIds.has(assignmentStudentId);
+      // Check against all possible student IDs (id, studentRecordId, _id, userId)
+      const matches = allPossibleStudentIds.has(assignmentStudentId);
       
       // Also check if student exists in allStudents (not just assignedStudents)
       if (!matches) {
         const studentExists = allStudents.some(s => {
           const studentId = normalizeId(s.id || (s as any)._id);
-          return studentId === assignmentStudentId;
+          const studentRecordId = normalizeId((s as any).studentRecordId);
+          return studentId === assignmentStudentId || studentRecordId === assignmentStudentId;
         });
         if (studentExists) {
           console.warn('⚠️ Assignment studentId exists in allStudents but not in assignedStudents:', {

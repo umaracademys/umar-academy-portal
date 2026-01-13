@@ -3236,6 +3236,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     
     const normalizedStudentId = normalizeId(studentId);
     
+    // Find the student to get all possible ID formats
+    const student = students.find(s => {
+      const sId = normalizeId(s.id || (s as any)._id);
+      const sRecordId = normalizeId((s as any).studentRecordId);
+      return sId === normalizedStudentId || sRecordId === normalizedStudentId;
+    });
+    
+    // Collect all possible student IDs to match against
+    const possibleStudentIds = new Set<string>();
+    possibleStudentIds.add(normalizedStudentId);
+    if (student) {
+      // Add student.id (could be User _id or Student _id)
+      if (student.id) possibleStudentIds.add(normalizeId(student.id));
+      // Add studentRecordId (Student document _id)
+      if ((student as any).studentRecordId) possibleStudentIds.add(normalizeId((student as any).studentRecordId));
+      // Add _id (Student document _id)
+      if ((student as any)._id) possibleStudentIds.add(normalizeId((student as any)._id));
+      // Add userId (User document _id)
+      if ((student as any).userId) possibleStudentIds.add(normalizeId((student as any).userId));
+    }
+    
     const filtered = assignments.filter(a => {
       // Extract studentId from multiple possible locations and formats
       let assignmentStudentId = '';
@@ -3253,8 +3274,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         assignmentStudentId = normalizeId((a as any).studentId);
       }
       
-      // Compare normalized IDs
-      const matches = assignmentStudentId === normalizedStudentId;
+      // Compare normalized IDs against all possible student IDs
+      const matches = assignmentStudentId && possibleStudentIds.has(assignmentStudentId);
       
       if (matches) {
         console.log('✅ Assignment matched for student:', {
