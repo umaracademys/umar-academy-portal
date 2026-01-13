@@ -680,32 +680,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
         }
       } else {
-        // STUDENT PORTAL: Only load student's own data
+        // STUDENT PORTAL: Load all students so student can find their own record
+        // We need all students (not just filtered) to properly match by email or userId
         setLoadingStep('Loading your data...');
         
-        if (cachedStudents) {
-          console.log('⚡ Using cached students');
-          // Filter to only current student
-          const currentStudentEmail = currentUser?.email;
-          studentRecords = cachedStudents.filter((s: any) => s.email === currentStudentEmail);
-        } else {
-          // Load only current student's data
+        if (FORCE_FRESH_FETCH || !cachedStudents) {
           const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true);
           if (studentsResponse.ok) {
             try {
-              const allStudents = await studentsResponse.json();
-              const currentStudentEmail = currentUser?.email;
-              studentRecords = allStudents.filter((s: any) => s.email === currentStudentEmail);
+              studentRecords = await studentsResponse.json();
               if (import.meta.env.DEV) {
-                console.log('👨‍🎓 Student data loaded:', studentRecords.length);
+                console.log('🎓 Students loaded for student user:', studentRecords.length);
               }
               // Cache all students for next time
-              dataCache.set('students', allStudents);
+              dataCache.set('students', studentRecords);
             } catch (err) {
-              console.error('❌ Error processing student data:', err);
-              studentRecords = [];
+              console.error('❌ Error processing students for student user:', err);
+              studentRecords = cachedStudents || [];
             }
+          } else {
+            console.error('❌ Failed to fetch students for student user:', studentsResponse.status);
+            studentRecords = cachedStudents || [];
           }
+        } else {
+          console.log('⚡ Using cached students for student user');
+          studentRecords = cachedStudents;
         }
         
         // Students don't need users or teachers - set empty arrays
