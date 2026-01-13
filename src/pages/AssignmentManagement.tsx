@@ -172,7 +172,7 @@ const AssignmentManagement: React.FC = () => {
     
     // Find assignments with studentIds that don't match any assigned students
     const unmatchedAssignmentIds = Array.from(assignmentStudentIds).filter(
-      assignmentId => !allPossibleStudentIds.has(assignmentId)
+      (assignmentId: string) => !allPossibleStudentIds.has(assignmentId)
     );
     
     // Debug logging to identify ID mismatches
