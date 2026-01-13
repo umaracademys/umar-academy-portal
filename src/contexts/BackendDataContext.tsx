@@ -3237,24 +3237,59 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     const normalizedStudentId = normalizeId(studentId);
     
     // Find the student to get all possible ID formats
+    // Try to find by studentRecordId first (most reliable), then by id, then by userId
     const student = students.find(s => {
       const sId = normalizeId(s.id || (s as any)._id);
       const sRecordId = normalizeId((s as any).studentRecordId);
-      return sId === normalizedStudentId || sRecordId === normalizedStudentId;
+      const sUserId = normalizeId((s as any).userId);
+      return sId === normalizedStudentId || 
+             sRecordId === normalizedStudentId || 
+             sUserId === normalizedStudentId;
     });
     
     // Collect all possible student IDs to match against
+    // This includes both User IDs and Student document IDs
     const possibleStudentIds = new Set<string>();
     possibleStudentIds.add(normalizedStudentId);
+    
     if (student) {
       // Add student.id (could be User _id or Student _id)
       if (student.id) possibleStudentIds.add(normalizeId(student.id));
-      // Add studentRecordId (Student document _id)
-      if ((student as any).studentRecordId) possibleStudentIds.add(normalizeId((student as any).studentRecordId));
+      // Add studentRecordId (Student document _id) - THIS IS WHAT ASSIGNMENTS USE
+      if ((student as any).studentRecordId) {
+        const recordId = normalizeId((student as any).studentRecordId);
+        possibleStudentIds.add(recordId);
+      }
       // Add _id (Student document _id)
       if ((student as any)._id) possibleStudentIds.add(normalizeId((student as any)._id));
       // Add userId (User document _id)
       if ((student as any).userId) possibleStudentIds.add(normalizeId((student as any).userId));
+    } else {
+      // If student not found, try to find by checking if the ID matches any studentRecordId
+      // This handles the case where we're passed a User ID but need to find the Student ID
+      const studentByRecordId = students.find(s => {
+        const sRecordId = normalizeId((s as any).studentRecordId);
+        return sRecordId === normalizedStudentId;
+      });
+      if (studentByRecordId && (studentByRecordId as any).studentRecordId) {
+        possibleStudentIds.add(normalizeId((studentByRecordId as any).studentRecordId));
+      }
+      
+      // Also try to find by userId - if the passed ID is a User ID, find the student
+      const studentByUserId = students.find(s => {
+        const sUserId = normalizeId((s as any).userId);
+        return sUserId === normalizedStudentId;
+      });
+      if (studentByUserId) {
+        // If found by userId, add the studentRecordId (which is what assignments use)
+        if ((studentByUserId as any).studentRecordId) {
+          possibleStudentIds.add(normalizeId((studentByUserId as any).studentRecordId));
+        }
+        // Also add the userId in case some assignments use it
+        if ((studentByUserId as any).userId) {
+          possibleStudentIds.add(normalizeId((studentByUserId as any).userId));
+        }
+      }
     }
     
     const filtered = assignments.filter(a => {
