@@ -3426,14 +3426,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     const teacherUserId = (teacher as any).userId?._id?.toString().trim() || (teacher as any).userId?.toString().trim();
     const assignedStudentIds = Array.isArray((teacher as any).assignedStudents) ? (teacher as any).assignedStudents : [];
     
-    if (import.meta.env.DEV) {
-      console.log('🔍 Teacher found:', teacherName, 
-        '- teacherId:', teacherIdFromTeacher,
-        '- teacherUserId:', teacherUserId,
-        '- assignedStudents array length:', assignedStudentIds.length,
-        '- assignedStudents:', assignedStudentIds,
-        '- total students in system:', students.length);
-    }
+    // Production-safe logging (always log, not just in DEV)
+    console.log('🔍 getStudentsByTeacher - Teacher found:', teacherName, 
+      '- teacherDocId:', teacherDocId,
+      '- teacherId (User ID):', teacherIdFromTeacher,
+      '- teacherUserId:', teacherUserId,
+      '- assignedStudents array length:', assignedStudentIds.length,
+      '- total students in system:', students.length,
+      '- searchId (normalizedTeacherId):', normalizedTeacherId);
     
     // Filter students by checking multiple criteria - STRICT MATCHING ONLY
     const filteredStudents = students.filter(student => {
@@ -3514,20 +3514,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       return matches;
     });
     
-    if (import.meta.env.DEV) {
-      console.log('🔍 Filtered students for teacher:', teacherName, '- Count:', filteredStudents.length);
-      if (filteredStudents.length > 0) {
-        console.log('🔍 Matched students:', filteredStudents.map(s => s.fullName || (s as any).fullName));
-      } else {
-        console.log('⚠️ No students matched for teacher:', teacherName);
-        console.log('⚠️ Teacher assignedStudents array:', assignedStudentIds);
-        console.log('⚠️ Sample student assignedTeacher values:', 
-          students.slice(0, 5).map(s => ({
-            name: s.fullName || (s as any).fullName,
-            assignedTeacher: (s.assignedTeacher || (s as any).assignedTeacher || '').toString().trim() || '(empty)'
-          }))
-        );
-      }
+    // Production-safe logging (always log, not just in DEV)
+    console.log('🔍 getStudentsByTeacher - Filtered students for teacher:', teacherName, '- Count:', filteredStudents.length);
+    if (filteredStudents.length > 0) {
+      console.log('✅ getStudentsByTeacher - Matched students:', filteredStudents.map(s => s.fullName || (s as any).fullName));
+    } else {
+      console.log('⚠️ getStudentsByTeacher - No students matched for teacher:', teacherName);
+      console.log('⚠️ getStudentsByTeacher - Teacher assignedStudents array:', assignedStudentIds);
+      console.log('⚠️ getStudentsByTeacher - Sample student data (first 3):', 
+        students.slice(0, 3).map(s => ({
+          name: s.fullName || (s as any).fullName,
+          studentId: (s.id || (s as any)._id)?.toString(),
+          assignedTeacher: (s.assignedTeacher || (s as any).assignedTeacher || '').toString().trim() || '(empty)',
+          assignedTeacherIds: (s as any).assignedTeacherIds || [],
+          assignedTeachers: (s as any).assignedTeachers || []
+        }))
+      );
     }
     
     return filteredStudents;
