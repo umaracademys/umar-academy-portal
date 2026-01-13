@@ -598,7 +598,7 @@ const AssignmentManagement: React.FC = () => {
                       return allRelevantAssignments.map((assignment: any) => {
                         const student = allStudents.find((s: any) => {
                           const studentId = normalizeId(s.id || (s as any)._id);
-                          const assignmentStudentId = normalizeId(assignment.studentId || (a as any)._id?.studentId);
+                          const assignmentStudentId = normalizeId(assignment.studentId || (assignment as any)._id?.studentId);
                           return studentId === assignmentStudentId;
                         });
                         
