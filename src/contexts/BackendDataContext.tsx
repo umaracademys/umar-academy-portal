@@ -3107,7 +3107,39 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const getStudentByEmail = (email: string) => {
-    return students.find(student => student.email === email);
+    if (!email) return undefined;
+    
+    // Normalize email for case-insensitive comparison
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Try exact match first (case-insensitive)
+    let student = students.find(s => {
+      const studentEmail = (s.email || '').trim().toLowerCase();
+      return studentEmail === normalizedEmail;
+    });
+    
+    return student;
+  };
+
+  // Unified student lookup - finds student by email OR userId
+  const getStudentByIdentity = (email?: string, userId?: string) => {
+    // Try email first
+    if (email) {
+      const student = getStudentByEmail(email);
+      if (student) return student;
+    }
+    
+    // Fallback to userId if email lookup failed
+    if (userId) {
+      const normalizedUserId = normalizeId(userId);
+      const student = students.find(s => {
+        const sUserId = normalizeId((s as any).userId);
+        return sUserId === normalizedUserId;
+      });
+      if (student) return student;
+    }
+    
+    return undefined;
   };
 
   // Memoized refreshData to prevent unnecessary re-renders and concurrent calls

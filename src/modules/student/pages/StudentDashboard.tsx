@@ -19,7 +19,7 @@ import { Assignment } from '../../../types/index';
 
 const StudentDashboard: React.FC = () => {
   const { students, getStudentByEmail, updateStudent, teachers } = useData();
-  const { assignments: backendAssignments, getPairStudents, getPairDailyReports } = useBackendData();
+  const { assignments: backendAssignments, getPairStudents, getPairDailyReports, getStudentByIdentity } = useBackendData();
   const { user } = useAuth();
   
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -43,7 +43,40 @@ const StudentDashboard: React.FC = () => {
   };
   const navigate = useNavigate();
 
-  const currentStudent = getStudentByEmail(user?.email || '') || students[0];
+  // Unified Student Identity: Find student by email OR userId (ID-agnostic lookup)
+  // This ensures we always find the correct student regardless of which ID format is used
+  const currentStudent = useMemo(() => {
+    if (!user) return undefined;
+    
+    // Try unified lookup (email OR userId)
+    let student = getStudentByIdentity?.(user.email, user.id);
+    
+    // Fallback to email-only lookup (for backward compatibility)
+    if (!student && user.email) {
+      student = getStudentByEmail(user.email);
+    }
+    
+    // Last resort: try to find by userId directly
+    if (!student && user.id) {
+      const normalizeId = (id: any): string => {
+        if (!id) return '';
+        if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
+          const str = id.toString();
+          if (/^[0-9a-fA-F]{24}$/.test(str)) return str;
+          return str.trim();
+        }
+        return String(id).trim();
+      };
+      
+      const normalizedUserId = normalizeId(user.id);
+      student = students.find(s => {
+        const sUserId = normalizeId((s as any).userId);
+        return sUserId === normalizedUserId;
+      });
+    }
+    
+    return student || undefined; // Return undefined instead of students[0] to avoid wrong student
+  }, [user, students, getStudentByIdentity, getStudentByEmail]);
   const isAfterSchool = currentStudent?.program === 'After School';
   const isFullTimeHQ = currentStudent?.program === 'Full-Time HQ';
   const isPartTimeHQ = currentStudent?.program === 'Part-Time HQ';
