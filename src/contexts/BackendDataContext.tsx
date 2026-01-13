@@ -2251,16 +2251,28 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       
       // Try deleting via /api/students/:id first (preferred endpoint)
-      let response = await fetch(`${API_BASE}/students/${id}`, {
-        method: 'DELETE',
-      });
+      let response = await fetchWithTimeout(
+        `${API_BASE}/students/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
 
       // If that fails, try /api/users/:id as fallback
       if (!response.ok) {
         console.log(`⚠️ DELETE /api/students/${id} failed (${response.status}), trying /api/users/${id}...`);
-        response = await fetch(`${API_BASE}/users/${id}`, {
-          method: 'DELETE',
-        });
+        response = await fetchWithTimeout(
+          `${API_BASE}/users/${id}`,
+          {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+          },
+          15000,
+          true // requireAuth
+        );
       }
 
       if (!response.ok) {
@@ -2554,12 +2566,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteTeacher = async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE}/users/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/users/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to delete teacher');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete teacher' }));
+        throw new Error(errorData.error || 'Failed to delete teacher');
       }
 
       setTeachers(prev => {
@@ -2741,6 +2760,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         `${API_BASE}/users/${id}`,
         {
           method: 'DELETE',
+          headers: getAuthHeaders(),
         },
         10000,
         true // requireAuth = true - includes Authorization header
@@ -3135,12 +3155,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteAssignment = async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE}/assignments/${id}`, {
-        method: 'DELETE'
-      });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/assignments/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
       
       if (!response.ok) {
-        throw new Error('Failed to delete assignment');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete assignment' }));
+        throw new Error(errorData.error || 'Failed to delete assignment');
       }
       
       // Update local state immediately for instant UI feedback
@@ -3887,13 +3914,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteTicket = async (id: string) => {
     try {
-      const response = await fetch(`${API_BASE}/tickets/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/tickets/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
 
       if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || 'Failed to delete ticket');
+        const errorData = await response.json().catch(() => ({ error: 'Failed to delete ticket' }));
+        throw new Error(errorData.error || 'Failed to delete ticket');
       }
 
       setRecitationTickets(prev => {
@@ -3959,11 +3992,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!Array.isArray(ids) || ids.length === 0) return;
 
     try {
-      const response = await fetch(`${API_BASE}/tickets/bulk-delete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketIds: ids }),
-      });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/tickets/bulk-delete`,
+        {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ ticketIds: ids }),
+        },
+        15000,
+        true // requireAuth
+      );
 
       if (!response.ok) {
         const message = await response.text();
@@ -4386,7 +4424,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteTeacherPair = async (id: string): Promise<void> => {
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/teacher-pairs/${id}`, { method: 'DELETE' });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/teacher-pairs/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to delete teacher pair' }));
         throw new Error(errorData.error || 'Failed to delete teacher pair');
@@ -4461,7 +4507,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deletePairStudent = async (id: string): Promise<void> => {
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/pair-students/${id}`, { method: 'DELETE' });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/pair-students/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to delete pair student' }));
         throw new Error(errorData.error || 'Failed to delete pair student');
@@ -4537,7 +4591,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deletePairDailyReport = async (id: string): Promise<void> => {
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/pair-daily-reports/${id}`, { method: 'DELETE' });
+      const response = await fetchWithTimeout(
+        `${API_BASE}/pair-daily-reports/${id}`,
+        {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+        },
+        15000,
+        true // requireAuth
+      );
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to delete daily report' }));
         throw new Error(errorData.error || 'Failed to delete daily report');

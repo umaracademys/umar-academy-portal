@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { useAuth } from '../contexts/AuthContext';
 
 interface EmailModuleProps {
@@ -262,7 +263,13 @@ const EmailModule: React.FC<EmailModuleProps> = ({ onClose }) => {
                   </div>
                   <div className="border-t border-gray-200 pt-2 mt-2">
                     {isHtml ? (
-                      <div dangerouslySetInnerHTML={{ __html: message }} />
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: DOMPurify.sanitize(message, {
+                          ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'b', 'i', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+                          ALLOWED_ATTR: ['href', 'target', 'rel'],
+                          ALLOW_DATA_ATTR: false
+                        })
+                      }} />
                     ) : (
                       <div className="whitespace-pre-wrap">{message}</div>
                     )}

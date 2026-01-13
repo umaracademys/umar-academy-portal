@@ -20,6 +20,7 @@ const helmet = require('helmet');
 const http = require('http');
 const { Server } = require('socket.io');
 const { validatePassword, sanitizeObject, validateEmail, getAccountLockoutConfig } = require('./security');
+const { escapeRegex } = require('./utils/escapeRegex');
 
 // Use axios for making HTTP requests
 const axios = require('axios');
@@ -39,6 +40,14 @@ const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 const isProduction = process.env.NODE_ENV === 'production';
+
+// SECURITY: Warn if using default JWT_SECRET in production
+if (isProduction && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-this-in-production')) {
+  console.error('🚨 CRITICAL SECURITY WARNING: Using default JWT_SECRET in production!');
+  console.error('   Set JWT_SECRET environment variable to a strong random string.');
+  console.error('   This is a critical security vulnerability.');
+  // Don't exit in production to avoid downtime, but log the error
+}
 
 // Initialize Socket.IO
 const io = new Server(server, {
@@ -254,130 +263,293 @@ if (!fs.existsSync(recordingsDir)) {
 }
 
 // Audio upload route - must be before json middleware to handle binary data
+// SECURITY FIX: Add authentication and file validation
 app.post('/api/mistakes/audio', (req, res) => {
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    try {
-      const buffer = Buffer.concat(chunks);
-      
-      // Generate unique filename
-      const timestamp = Date.now();
-      const uniqueFilename = `mistake-${timestamp}-${Math.random().toString(36).substring(7)}.webm`;
-      const filePath = path.join(uploadsDir, uniqueFilename);
-      
-      // Save file
-      fs.writeFileSync(filePath, buffer);
-      
-      // Return URL
-      const audioUrl = `/uploads/mistakes/${uniqueFilename}`;
-      console.log(`✅ Audio uploaded: ${audioUrl}`);
-      res.json({ audioUrl, filename: uniqueFilename });
-    } catch (error) {
-      console.error('Error in audio upload endpoint:', error);
-      res.status(500).json({ error: error.message });
+  // Authenticate first
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
     }
-  });
-  req.on('error', (error) => {
-    console.error('Error reading request:', error);
-    res.status(500).json({ error: error.message });
+    
+    // Attach user to request
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role
+    };
+
+    const chunks = [];
+    let totalSize = 0;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    req.on('data', chunk => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_FILE_SIZE) {
+        req.destroy();
+        return res.status(413).json({ error: 'File too large. Maximum size: 10MB' });
+      }
+      chunks.push(chunk);
+    });
+    
+    req.on('end', () => {
+      try {
+        const buffer = Buffer.concat(chunks);
+        
+        // Validate file type (check Content-Type header)
+        const contentType = req.headers['content-type'] || '';
+        const allowedTypes = ['audio/webm', 'audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/ogg'];
+        if (contentType && !allowedTypes.some(type => contentType.includes(type))) {
+          return res.status(400).json({ error: 'Invalid file type. Allowed: audio/webm, audio/mpeg, audio/wav' });
+        }
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const uniqueFilename = `mistake-${timestamp}-${Math.random().toString(36).substring(7)}.webm`;
+        const filePath = path.join(uploadsDir, uniqueFilename);
+        
+        // Save file
+        fs.writeFileSync(filePath, buffer);
+        
+        // Return URL
+        const audioUrl = `/uploads/mistakes/${uniqueFilename}`;
+        if (!isProduction) {
+          console.log(`✅ Audio uploaded: ${audioUrl}`);
+        }
+        res.json({ audioUrl, filename: uniqueFilename });
+      } catch (error) {
+        console.error('Error in audio upload endpoint:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
+    req.on('error', (error) => {
+      console.error('Error reading request:', error);
+      res.status(500).json({ error: error.message });
+    });
   });
 });
 
 // File upload route for pair teacher messages - must be before json middleware
+// SECURITY FIX: Add authentication and file validation
 app.post('/api/pair-teacher-messages/upload', (req, res) => {
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    try {
-      const buffer = Buffer.concat(chunks);
-      
-      // Get content type and filename from headers
-      const contentType = req.headers['content-type'] || 'application/octet-stream';
-      const filename = req.headers['x-filename'] || `file-${Date.now()}`;
-      
-      // Determine file type
-      let fileType = 'document';
-      if (contentType.startsWith('image/')) fileType = 'image';
-      else if (contentType.startsWith('video/')) fileType = 'video';
-      else if (contentType.startsWith('audio/')) fileType = 'audio';
-      else if (contentType.includes('pdf')) fileType = 'document';
-      else if (contentType.includes('word') || contentType.includes('document')) fileType = 'document';
-      
-      // Create messages directory if it doesn't exist
-      const messagesDir = path.join(__dirname, 'uploads', 'messages');
-      if (!fs.existsSync(messagesDir)) {
-        fs.mkdirSync(messagesDir, { recursive: true });
-      }
-      
-      // Generate unique filename
-      const timestamp = Date.now();
-      const extension = filename.split('.').pop() || 'bin';
-      const uniqueFilename = `message-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
-      const filePath = path.join(messagesDir, uniqueFilename);
-      
-      // Save file
-      fs.writeFileSync(filePath, buffer);
-      
-      // Return URL
-      const fileUrl = `/uploads/messages/${uniqueFilename}`;
-      console.log(`✅ File uploaded: ${fileUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
-      res.json({ 
-        url: fileUrl,
-        filename: uniqueFilename,
-        originalName: filename,
-        type: fileType,
-        size: buffer.length,
-        mimeType: contentType
-      });
-    } catch (error) {
-      console.error('Error in file upload endpoint:', error);
-      res.status(500).json({ error: error.message });
+  // Authenticate first
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
     }
-  });
-  req.on('error', (error) => {
-    console.error('Error reading request:', error);
-    res.status(500).json({ error: error.message });
+    
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role
+    };
+
+    const chunks = [];
+    let totalSize = 0;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    req.on('data', chunk => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_FILE_SIZE) {
+        req.destroy();
+        return res.status(413).json({ error: 'File too large. Maximum size: 10MB' });
+      }
+      chunks.push(chunk);
+    });
+    
+    req.on('end', () => {
+      try {
+        const buffer = Buffer.concat(chunks);
+        
+        // Get content type and filename from headers
+        const contentType = req.headers['content-type'] || 'application/octet-stream';
+        const filename = req.headers['x-filename'] || `file-${Date.now()}`;
+        
+        // Validate file type
+        const allowedTypes = [
+          'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+          'application/pdf',
+          'text/plain',
+          'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/webm',
+          'video/mp4', 'video/webm',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ];
+        
+        const blockedTypes = [
+          'application/x-msdownload',
+          'application/x-executable',
+          'application/x-sharedlib',
+          'application/x-elf',
+          'application/x-mach-binary'
+        ];
+        
+        if (blockedTypes.some(type => contentType.includes(type))) {
+          return res.status(400).json({ error: 'Executable files are not allowed' });
+        }
+        
+        if (!allowedTypes.some(type => contentType.includes(type))) {
+          return res.status(400).json({ error: `File type ${contentType} is not allowed` });
+        }
+        
+        // Sanitize filename to prevent path traversal
+        const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 255);
+        
+        // Determine file type
+        let fileType = 'document';
+        if (contentType.startsWith('image/')) fileType = 'image';
+        else if (contentType.startsWith('video/')) fileType = 'video';
+        else if (contentType.startsWith('audio/')) fileType = 'audio';
+        else if (contentType.includes('pdf')) fileType = 'document';
+        else if (contentType.includes('word') || contentType.includes('document')) fileType = 'document';
+        
+        // Create messages directory if it doesn't exist
+        const messagesDir = path.join(__dirname, 'uploads', 'messages');
+        if (!fs.existsSync(messagesDir)) {
+          fs.mkdirSync(messagesDir, { recursive: true });
+        }
+        
+        // Generate unique filename (prevent path traversal)
+        const timestamp = Date.now();
+        const extension = sanitizedFilename.split('.').pop() || 'bin';
+        const safeExtension = extension.replace(/[^a-zA-Z0-9]/g, '');
+        const uniqueFilename = `message-${timestamp}-${Math.random().toString(36).substring(7)}.${safeExtension}`;
+        const filePath = path.join(messagesDir, uniqueFilename);
+        
+        // Ensure path is within uploads directory (prevent path traversal)
+        if (!filePath.startsWith(path.join(__dirname, 'uploads'))) {
+          return res.status(400).json({ error: 'Invalid file path' });
+        }
+        
+        // Save file
+        fs.writeFileSync(filePath, buffer);
+        
+        // Return URL
+        const fileUrl = `/uploads/messages/${uniqueFilename}`;
+        if (!isProduction) {
+          console.log(`✅ File uploaded: ${fileUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+        }
+        res.json({ 
+          url: fileUrl,
+          filename: uniqueFilename,
+          originalName: sanitizedFilename,
+          type: fileType,
+          size: buffer.length,
+          mimeType: contentType
+        });
+      } catch (error) {
+        console.error('Error in file upload endpoint:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
+    req.on('error', (error) => {
+      console.error('Error reading request:', error);
+      res.status(500).json({ error: error.message });
+    });
   });
 });
 
 // Recording upload route for ticket recordings - must be before json middleware
+// SECURITY FIX: Add authentication and file validation
 app.post('/api/recordings/upload', (req, res) => {
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    try {
-      const buffer = Buffer.concat(chunks);
-      
-      // Get content type from headers to determine format
-      const contentType = req.headers['content-type'] || 'audio/webm';
-      const extension = contentType.includes('webm') ? 'webm' : contentType.includes('mp4') ? 'mp4' : 'webm';
-      
-      // Generate unique filename
-      const timestamp = Date.now();
-      const uniqueFilename = `recording-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
-      const filePath = path.join(recordingsDir, uniqueFilename);
-      
-      // Save file
-      fs.writeFileSync(filePath, buffer);
-      
-      // Return URL
-      const recordingUrl = `/uploads/recordings/${uniqueFilename}`;
-      console.log(`✅ Recording uploaded: ${recordingUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
-      res.json({ 
-        recordingUrl, 
-        filename: uniqueFilename,
-        size: buffer.length,
-        format: extension
-      });
-    } catch (error) {
-      console.error('Error in recording upload endpoint:', error);
-      res.status(500).json({ error: error.message });
+  // Authenticate first
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
     }
-  });
-  req.on('error', (error) => {
-    console.error('Error reading request:', error);
-    res.status(500).json({ error: error.message });
+    
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role
+    };
+
+    const chunks = [];
+    let totalSize = 0;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    
+    req.on('data', chunk => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_FILE_SIZE) {
+        req.destroy();
+        return res.status(413).json({ error: 'File too large. Maximum size: 10MB' });
+      }
+      chunks.push(chunk);
+    });
+    
+    req.on('end', () => {
+      try {
+        const buffer = Buffer.concat(chunks);
+        
+        // Get content type from headers to determine format
+        const contentType = req.headers['content-type'] || 'audio/webm';
+        
+        // Validate file type
+        const allowedTypes = ['audio/webm', 'audio/mpeg', 'audio/mp3', 'audio/wav', 'video/webm', 'video/mp4'];
+        if (contentType && !allowedTypes.some(type => contentType.includes(type))) {
+          return res.status(400).json({ error: 'Invalid file type. Allowed: audio/webm, audio/mpeg, video/webm, video/mp4' });
+        }
+        
+        const extension = contentType.includes('webm') ? 'webm' : contentType.includes('mp4') ? 'mp4' : 'webm';
+        
+        // Generate unique filename
+        const timestamp = Date.now();
+        const uniqueFilename = `recording-${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+        const filePath = path.join(recordingsDir, uniqueFilename);
+        
+        // Ensure path is within uploads directory (prevent path traversal)
+        if (!filePath.startsWith(path.join(__dirname, 'uploads'))) {
+          return res.status(400).json({ error: 'Invalid file path' });
+        }
+        
+        // Save file
+        fs.writeFileSync(filePath, buffer);
+        
+        // Return URL
+        const recordingUrl = `/uploads/recordings/${uniqueFilename}`;
+        if (!isProduction) {
+          console.log(`✅ Recording uploaded: ${recordingUrl} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`);
+        }
+        res.json({ 
+          recordingUrl, 
+          filename: uniqueFilename,
+          size: buffer.length,
+          format: extension
+        });
+      } catch (error) {
+        console.error('Error in recording upload endpoint:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+    
+    req.on('error', (error) => {
+      console.error('Error reading request:', error);
+      res.status(500).json({ error: error.message });
+    });
   });
 });
 
@@ -1982,7 +2154,7 @@ app.get('/api/activity-logs', apiLimiter, authenticateToken, async (req, res) =>
     const query = {};
     if (eventType) query.eventType = eventType;
     if (userId) query.userId = userId;
-    if (email) query.userEmail = { $regex: email, $options: 'i' };
+    if (email) query.userEmail = { $regex: escapeRegex(email), $options: 'i' };
     if (ipAddress) query.ipAddress = ipAddress;
     
     // Date range filter
@@ -9969,7 +10141,7 @@ app.get('/api/ai/phrases', async (req, res) => {
 
     if (search) {
       query.$or = [
-        { phrase: { $regex: search, $options: 'i' } }
+        { phrase: { $regex: escapeRegex(search), $options: 'i' } }
       ];
     }
 
@@ -10145,7 +10317,7 @@ app.get('/api/ai/suggestions', async (req, res) => {
     // Fuzzy matching: if searchQuery provided, find phrases that contain it
     if (searchQuery && searchQuery.trim()) {
       const searchTerm = searchQuery.trim();
-      query.phrase = { $regex: searchTerm, $options: 'i' };
+      query.phrase = { $regex: escapeRegex(searchTerm), $options: 'i' };
     }
 
     // Debug: Log query and count
