@@ -43,7 +43,7 @@ const AssignmentManagement: React.FC = () => {
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [prefillTicket, setPrefillTicket] = useState<Ticket | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'students' | 'completed'>('students');
+  const [viewMode, setViewMode] = useState<'students' | 'completed' | 'all-assignments'>('students');
   const [showHomeworkForm, setShowHomeworkForm] = useState(false);
   const [homeworkAssignmentId, setHomeworkAssignmentId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'with-assignments' | 'without-assignments'>('all');
@@ -552,8 +552,104 @@ const AssignmentManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Students List or Completed Assignments */}
-        {viewMode === 'students' ? (
+        {/* Students List, Completed Assignments, or All Assignments */}
+        {viewMode === 'all-assignments' ? (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">
+                📝 All Assignments ({stats.totalAssignments})
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Showing all {stats.totalAssignments} assignments across all students
+              </p>
+            </div>
+
+            {stats.totalAssignments === 0 ? (
+              <div className="text-center py-12 px-4">
+                <p className="text-gray-600">No assignments found</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Student</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {(() => {
+                      // Normalize student IDs to handle ObjectId vs string mismatches
+                      const assignedStudentIds = new Set(assignedStudents.map(s => normalizeId(s.id || (s as any)._id)));
+                      const allRelevantAssignments = assignments
+                        .filter(a => {
+                          const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
+                          return assignedStudentIds.has(assignmentStudentId);
+                        })
+                        .sort((a: any, b: any) => {
+                          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                          return dateB - dateA;
+                        });
+                      
+                      return allRelevantAssignments.map((assignment: any) => {
+                        const student = allStudents.find((s: any) => {
+                          const studentId = normalizeId(s.id || (s as any)._id);
+                          const assignmentStudentId = normalizeId(assignment.studentId || (a as any)._id?.studentId);
+                          return studentId === assignmentStudentId;
+                        });
+                        
+                        return (
+                          <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-gray-900 text-sm">
+                                {assignment.studentName || student?.fullName || 'Unknown'}
+                              </div>
+                              {student?.program && (
+                                <div className="text-xs text-gray-500 mt-1">{student.program}</div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm text-gray-600">
+                                {assignment.homework?.enabled ? 'Homework' : 'Assignment'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                assignment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                assignment.status === 'archived' ? 'bg-gray-100 text-gray-800' :
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {assignment.status || 'active'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              {assignment.createdAt ? new Date(assignment.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => {
+                                  const studentId = normalizeId(assignment.studentId || (assignment as any)._id?.studentId);
+                                  handleStudentClick(studentId);
+                                }}
+                                className="text-primary hover:text-primary/80 text-sm font-medium"
+                              >
+                                View Student
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : viewMode === 'students' ? (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
             <div className="px-4 sm:px-6 py-4 border-b border-gray-200 bg-gray-50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
