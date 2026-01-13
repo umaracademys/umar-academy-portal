@@ -2001,6 +2001,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       // Create user first (requires authentication)
       // Password is optional - student can set it later via password reset
+      let newUser;
       const userResponse = await fetchWithTimeout(
         `${API_BASE}/users`,
         {
@@ -2018,17 +2019,49 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       );
 
       if (!userResponse.ok) {
-        let message = 'Failed to create user';
-        try {
-          const errorPayload = await userResponse.json();
-          message = errorPayload?.error || message;
-        } catch {
-          // ignore JSON parse errors
+        // Check if user already exists (409 Conflict)
+        if (userResponse.status === 409) {
+          // User already exists - fetch the existing user by email
+          try {
+            const usersResponse = await fetchWithTimeout(
+              `${API_BASE}/users`,
+              {
+                method: 'GET',
+              },
+              10000,
+              true // requireAuth = true
+            );
+            
+            if (usersResponse.ok) {
+              const users = await usersResponse.json();
+              const existingUser = users.find((u: any) => u.email === student.email);
+              if (existingUser) {
+                newUser = existingUser;
+                console.log(`✅ Found existing user for email ${student.email}, using existing user ID`);
+              } else {
+                throw new Error('User with that email already exists, but could not find the user record.');
+              }
+            } else {
+              throw new Error('Failed to fetch existing user');
+            }
+          } catch (error) {
+            throw new Error(`User with email ${student.email} already exists, but could not retrieve the user record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        } else {
+          // Other error - throw it
+          let message = 'Failed to create user';
+          try {
+            const errorPayload = await userResponse.json();
+            message = errorPayload?.error || message;
+          } catch {
+            // ignore JSON parse errors
+          }
+          throw new Error(message);
         }
-        throw new Error(message);
+      } else {
+        // User created successfully
+        newUser = await userResponse.json();
       }
-
-      const newUser = await userResponse.json();
 
       // Create student profile with all data (may or may not require auth, but include it for consistency)
       // Build schedule object - backend may have room field but TypeScript type doesn't
