@@ -434,6 +434,21 @@ const AssignmentManagement: React.FC = () => {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setViewMode('all-assignments')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  viewMode === 'all-assignments'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                All Assignments
+                {stats.totalAssignments > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                    {stats.totalAssignments}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </div>
