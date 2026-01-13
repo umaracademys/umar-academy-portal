@@ -900,7 +900,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             grades: studentRecord.grades || user.grades || [],
             notes: studentRecord.notes || user.notes || [],
             recitationProfile: normalizeRecitationProfile(studentRecord?.recitationProfile),
-            program: studentRecord.program || user.program || '',
+            program: studentRecord.program || user.program || 'Full-Time HQ', // Default to Full-Time HQ if missing
             parentName: studentRecord.parentName || user.parentName || '',
             tuitionFee: studentRecord.tuitionFee || user.tuitionFee || 0,
             registrationAmount: studentRecord.registrationAmount || user.registrationAmount || 0,
@@ -1915,7 +1915,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             grades: studentRecord.grades || user.grades || [],
             notes: studentRecord.notes || user.notes || [],
             recitationProfile: normalizeRecitationProfile(studentRecord?.recitationProfile),
-            program: studentRecord.program || user.program || '',
+            program: studentRecord.program || user.program || 'Full-Time HQ', // Default to Full-Time HQ if missing
             parentName: studentRecord.parentName || user.parentName || '',
             tuitionFee: studentRecord.tuitionFee || user.tuitionFee || 0,
             registrationAmount: studentRecord.registrationAmount || user.registrationAmount || 0,
