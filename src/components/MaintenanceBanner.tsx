@@ -14,8 +14,8 @@ const MaintenanceBanner: React.FC = () => {
     const fetchMaintenanceMode = async () => {
       try {
         const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
-        const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW.replace('/api', '') : API_BASE_RAW;
-        const response = await fetch(`${API_BASE}/api/maintenance`);
+        const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
+        const response = await fetch(`${API_BASE}/maintenance`);
         if (response.ok) {
           const data = await response.json();
           setMaintenanceMode(data);
