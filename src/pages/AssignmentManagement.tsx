@@ -591,7 +591,9 @@ const AssignmentManagement: React.FC = () => {
             ) : (
               <div className="divide-y divide-gray-100">
                 {filteredStudents.map(student => {
-                  const studentAssignments = getStudentAssignments(student.id);
+                  // Normalize student ID to ensure proper matching
+                  const normalizedStudentId = normalizeId(student.id || (student as any)._id);
+                  const studentAssignments = getStudentAssignments(normalizedStudentId);
                   const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
                   const completedAssignments = studentAssignments.filter((a: any) => 
                     a.status === 'completed' || a.status === 'archived' ||
