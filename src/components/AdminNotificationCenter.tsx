@@ -115,7 +115,22 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
   }, [allNotifications, filter]);
 
   const unreadCount = allNotifications.filter(n => !n.read).length;
-  const highPriorityCount = allNotifications.filter(n => n.priority === 'high' && !n.read).length;
+  // High priority count includes both backend high priority and dynamic high priority (homework, tickets)
+  const highPriorityCount = useMemo(() => {
+    // Backend high priority notifications
+    const backendHigh = adminNotifications.filter(n => n.priority === 'high' && !n.read).length;
+    
+    // Dynamic high priority notifications (homework and tickets are always high priority)
+    const pendingHomework = assignments.filter((assignment: any) => 
+      assignment.homework?.enabled && 
+      assignment.homework?.submission?.submitted && 
+      assignment.homework?.submission?.status === 'submitted'
+    ).length;
+    
+    const pendingTickets = recitationTickets.filter(t => t.status === 'submitted').length;
+    
+    return backendHigh + pendingHomework + pendingTickets;
+  }, [adminNotifications, assignments, recitationTickets]);
 
   const handleNotificationClick = async (notification: AdminNotification & { actionUrl?: string; actionLabel?: string }) => {
     // Mark as read

@@ -251,8 +251,41 @@ const SuperAdminDashboard: React.FC = () => {
 
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
-  const unreadNotificationsCount = adminNotifications.filter(n => !n.read).length;
   const pendingTicketCount = getPendingReviewTickets().length;
+  
+  // Calculate total unread notifications (backend + dynamic) - same logic as Header
+  const unreadNotificationsCount = useMemo(() => {
+    // Backend notifications
+    const backendUnread = adminNotifications.filter(n => !n.read).length;
+    
+    // Dynamic notifications (homework, tickets, recitations)
+    const pendingHomework = assignments.filter((assignment: any) => 
+      assignment.homework?.enabled && 
+      assignment.homework?.submission?.submitted && 
+      assignment.homework?.submission?.status === 'submitted'
+    ).length;
+    
+    const pendingTickets = recitationTickets.filter(t => t.status === 'submitted').length;
+    const pendingRecitations = recitationReviews.filter(r => r.status === 'pending_review').length;
+    
+    return backendUnread + pendingHomework + pendingTickets + pendingRecitations;
+  }, [adminNotifications, assignments, recitationTickets, recitationReviews]);
+  
+  // Calculate high priority unread notifications
+  const highPriorityUnreadCount = useMemo(() => {
+    const backendHigh = adminNotifications.filter(n => n.priority === 'high' && !n.read).length;
+    
+    // Dynamic high priority notifications
+    const pendingHomework = assignments.filter((assignment: any) => 
+      assignment.homework?.enabled && 
+      assignment.homework?.submission?.submitted && 
+      assignment.homework?.submission?.status === 'submitted'
+    ).length;
+    
+    const pendingTickets = recitationTickets.filter(t => t.status === 'submitted').length;
+    
+    return backendHigh + pendingHomework + pendingTickets;
+  }, [adminNotifications, assignments, recitationTickets]);
   
   // Get pending homework submissions count
   const pendingHomeworkCount = useMemo(() => {
@@ -1080,9 +1113,16 @@ const SuperAdminDashboard: React.FC = () => {
         <div className="space-y-1.5 text-xs text-gray-600">
           <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
             <span className="font-semibold text-accent text-[10px]">Notifications</span>
-            <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-semibold text-accent">
-              {unreadNotificationsCount}
-            </span>
+            <div className="flex items-center gap-1.5">
+              {highPriorityUnreadCount > 0 && (
+                <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-semibold text-red-700 border border-red-200">
+                  {highPriorityUnreadCount} high
+                </span>
+              )}
+              <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-semibold text-accent">
+                {unreadNotificationsCount} unread
+              </span>
+            </div>
           </div>
           <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
             <span className="font-semibold text-primary text-[10px]">Reviews</span>

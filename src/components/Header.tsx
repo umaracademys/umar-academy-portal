@@ -22,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
       // For teachers, count teacher notifications
       return teacherNotifications.filter(n => !n.read).length;
     } else {
-      // For admins, count admin notifications + dynamic
+      // For admins/superadmins, count admin notifications + dynamic
       const backendUnread = adminNotifications.filter(n => !n.read).length;
       
       // Dynamic notifications (homework, tickets, recitations)
@@ -38,6 +38,27 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
       return backendUnread + pendingHomework + pendingTickets + pendingRecitations;
     }
   }, [adminNotifications, teacherNotifications, assignments, recitationTickets, recitationReviews, user?.role]);
+
+  // Calculate high priority unread notifications (for admins/superadmins only)
+  const highPriorityCount = React.useMemo(() => {
+    if (user?.role === 'teacher') {
+      return 0; // Teachers don't have high priority notifications
+    }
+    
+    // Backend high priority notifications
+    const backendHigh = adminNotifications.filter(n => n.priority === 'high' && !n.read).length;
+    
+    // Dynamic high priority notifications (homework and tickets are high priority)
+    const pendingHomework = assignments.filter((assignment: any) => 
+      assignment.homework?.enabled && 
+      assignment.homework?.submission?.submitted && 
+      assignment.homework?.submission?.status === 'submitted'
+    ).length;
+    
+    const pendingTickets = recitationTickets.filter(t => t.status === 'submitted').length;
+    
+    return backendHigh + pendingHomework + pendingTickets;
+  }, [adminNotifications, assignments, recitationTickets, user?.role]);
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
@@ -129,9 +150,16 @@ const Header: React.FC<HeaderProps> = ({ onNotificationClick, onMenuClick }) => 
                   />
                 </svg>
                 {unreadCount > 0 && (
-                  <span className="absolute top-0 right-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-error rounded-full">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
+                  <div className="absolute top-0 right-0 flex items-center gap-0.5">
+                    {highPriorityCount > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-600 rounded-full border-2 border-white">
+                        {highPriorityCount > 99 ? '99+' : highPriorityCount}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-error rounded-full">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  </div>
                 )}
               </button>
             )}
