@@ -5222,6 +5222,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     getStudentsByTeacher,
     getTeacherById,
     getStudentByEmail,
+    getStudentByIdentity,
     loading,
     loadingStep,
     error,
