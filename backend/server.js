@@ -3086,15 +3086,18 @@ app.post('/api/students', authenticateToken, requirePermission('canManageStudent
       }
     }
     
-    // Emit WebSocket event for student creation
+    // Reload student from database to ensure all fields are populated (including teacher assignments)
+    const savedStudent = await Student.findById(student._id).lean();
+    
+    // Emit WebSocket event for student creation with complete data
     try {
-      emitDataEvent('student:created', student.toObject ? student.toObject() : student);
+      emitDataEvent('student:created', savedStudent);
       console.log(`🔌 Emitted student:created event`);
     } catch (socketError) {
       console.error('⚠️ Error emitting student:created event:', socketError);
     }
     
-    res.json(student);
+    res.json(savedStudent);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

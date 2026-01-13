@@ -256,21 +256,15 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full my-8 border-2 border-primary">
-        <div className="bg-gradient-to-r from-primary to-[rgba(var(--color-primary-rgb),0.85)] p-6 rounded-t-lg">
-          <h2 className="text-2xl font-extrabold text-accent">
-            {isEdit ? 'Edit Student Profile' : 'Register New Student'}
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-4 border border-primary">
+        <div className="bg-primary p-4 rounded-t-lg">
+          <h2 className="text-xl font-bold text-white">
+            {isEdit ? 'Edit Student' : 'Register New Student'}
           </h2>
-          <p className="text-accent/90 text-sm mt-1">
-            {isEdit ? 'Update student information and enrollment details' : 'Complete student profile and enrollment information'}
-          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 max-h-[70vh] overflow-y-auto bg-white">
-          {/* Basic Information */}
-          <div className="mb-6">
-            <h3 className="text-lg font-extrabold text-primary mb-4">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-4 bg-white">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-extrabold text-primary mb-2">Full Name *</label>
                 <input
@@ -427,23 +421,20 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           </div>
 
 
-          {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t-2 border-primary">
+          <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border-2 border-primary rounded-lg hover:bg-primary/10 font-extrabold text-primary shadow-lg"
+              className="px-4 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 text-gray-700"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-primary text-accent rounded-lg hover:bg-primary/90 font-extrabold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105 transition-all"
+              className="px-4 py-1.5 text-sm bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting 
-                ? (isEdit ? 'Updating...' : 'Registering...') 
-                : (isEdit ? 'Update Student' : 'Register Student')}
+              {isSubmitting ? (isEdit ? 'Saving...' : 'Registering...') : (isEdit ? 'Save' : 'Register')}
             </button>
           </div>
         </form>

@@ -1350,7 +1350,30 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.warn('⚠️ Could not check for developer account, proceeding without masking:', error);
       }
 
-      setStudents(finalStudentsData);
+      // Merge with existing students to preserve data that might be missing from backend response
+      setStudents(prev => {
+        const studentMap = new Map(prev.map(s => [s.id, s]));
+        finalStudentsData.forEach(newStudent => {
+          const existing = studentMap.get(newStudent.id);
+          if (existing) {
+            // Merge: keep existing data, update with new data, but preserve critical fields if missing
+            studentMap.set(newStudent.id, {
+              ...existing,
+              ...newStudent,
+              // Preserve critical fields if they're missing in the new data
+              assignedTeacher: newStudent.assignedTeacher || existing.assignedTeacher || '',
+              assignedTeachers: newStudent.assignedTeachers?.length > 0 ? newStudent.assignedTeachers : (existing.assignedTeachers?.length > 0 ? existing.assignedTeachers : []),
+              assignedTeacherIds: newStudent.assignedTeacherIds?.length > 0 ? newStudent.assignedTeacherIds : (existing.assignedTeacherIds?.length > 0 ? existing.assignedTeacherIds : []),
+              program: newStudent.program || existing.program || 'Full-Time HQ',
+              contact: newStudent.contact || existing.contact || '',
+              parentName: newStudent.parentName || existing.parentName || '',
+            } as Student);
+          } else {
+            studentMap.set(newStudent.id, newStudent);
+          }
+        });
+        return Array.from(studentMap.values());
+      });
       setTeachers(finalTeachersData);
       setAdmins(finalAdminsData);
       
