@@ -187,7 +187,7 @@ const AssignmentManagement: React.FC = () => {
       sampleAssignedStudentIds: Array.from(allPossibleStudentIds).slice(0, 10),
       sampleAssignmentStudentIds: Array.from(assignmentStudentIds).slice(0, 10),
       // Check if there are any students that match the unmatched assignment IDs
-      unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map(id => {
+      unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
         const foundStudent = allStudents.find(s => {
           const studentId = normalizeId(s.id || (s as any)._id);
           const studentRecordId = normalizeId((s as any).studentRecordId);
