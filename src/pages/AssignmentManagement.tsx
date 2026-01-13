@@ -150,11 +150,74 @@ const AssignmentManagement: React.FC = () => {
   const stats = useMemo(() => {
     // Normalize student IDs to handle ObjectId vs string mismatches
     const assignedStudentIds = new Set(assignedStudents.map(s => normalizeId(s.id || (s as any)._id)));
+    
+    // Get all unique student IDs from assignments to check for mismatches
+    const assignmentStudentIds = new Set(
+      assignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId)).filter(id => id)
+    );
+    
+    // Find assignments with studentIds that don't match any assigned students
+    const unmatchedAssignmentIds = Array.from(assignmentStudentIds).filter(
+      assignmentId => !assignedStudentIds.has(assignmentId)
+    );
+    
+    // Debug logging to identify ID mismatches
+    console.log('🔍 Assignment-Student ID Matching Analysis:', {
+      totalAssignments: assignments.length,
+      assignedStudentsCount: assignedStudents.length,
+      allStudentsCount: allStudents.length,
+      assignedStudentIdsCount: assignedStudentIds.size,
+      assignmentStudentIdsCount: assignmentStudentIds.size,
+      unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
+      unmatchedCount: unmatchedAssignmentIds.length,
+      sampleAssignedStudentIds: Array.from(assignedStudentIds).slice(0, 5),
+      sampleAssignmentStudentIds: Array.from(assignmentStudentIds).slice(0, 5),
+      // Check if there are any students that match the unmatched assignment IDs
+      unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map(id => {
+        const foundStudent = allStudents.find(s => {
+          const studentId = normalizeId(s.id || (s as any)._id);
+          return studentId === id;
+        });
+        return { assignmentId: id, studentFound: !!foundStudent, studentId: foundStudent?.id };
+      })
+    });
+    
     const relevantAssignments = assignments.filter(a => {
       const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
-      return assignedStudentIds.has(assignmentStudentId);
+      if (!assignmentStudentId) {
+        console.warn('⚠️ Assignment missing studentId:', {
+          assignmentId: a.id || (a as any)._id,
+          assignment: a
+        });
+        return false;
+      }
+      const matches = assignedStudentIds.has(assignmentStudentId);
+      
+      // Also check if student exists in allStudents (not just assignedStudents)
+      if (!matches) {
+        const studentExists = allStudents.some(s => {
+          const studentId = normalizeId(s.id || (s as any)._id);
+          return studentId === assignmentStudentId;
+        });
+        if (studentExists) {
+          console.warn('⚠️ Assignment studentId exists in allStudents but not in assignedStudents:', {
+            assignmentId: a.id || (a as any)._id,
+            assignmentStudentId,
+            isTeacherView: !!currentTeacher
+          });
+        }
+      }
+      
+      return matches;
     });
     const totalAssignments = relevantAssignments.length;
+    
+    console.log('📊 AssignmentManagement Stats Result:', {
+      totalAssignments,
+      relevantAssignmentsCount: relevantAssignments.length,
+      unmatchedAssignments: assignments.length - relevantAssignments.length,
+      studentsWithAssignments: new Set(relevantAssignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId))).size
+    });
     const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
     const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
     const completedAssignments = relevantAssignments.filter((a: any) => {
