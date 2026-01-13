@@ -3521,8 +3521,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     } else {
       console.log('⚠️ getStudentsByTeacher - No students matched for teacher:', teacherName);
       console.log('⚠️ getStudentsByTeacher - Teacher assignedStudents array:', assignedStudentIds);
-      console.log('⚠️ getStudentsByTeacher - Sample student data (first 3):', 
-        students.slice(0, 3).map(s => ({
+      console.log('⚠️ getStudentsByTeacher - Teacher IDs for matching:', {
+        teacherDocId: teacherDocId || '(undefined)',
+        teacherIdFromTeacher: teacherIdFromTeacher || '(undefined)',
+        teacherTeacherId: teacherTeacherId || '(undefined)',
+        teacherUserId: teacherUserId || '(undefined)',
+        normalizedTeacherId: normalizedTeacherId
+      });
+      console.log('⚠️ getStudentsByTeacher - Sample student data (first 5):', 
+        students.slice(0, 5).map(s => ({
           name: s.fullName || (s as any).fullName,
           studentId: (s.id || (s as any)._id)?.toString(),
           assignedTeacher: (s.assignedTeacher || (s as any).assignedTeacher || '').toString().trim() || '(empty)',
