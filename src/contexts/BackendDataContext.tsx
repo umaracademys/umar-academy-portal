@@ -1259,10 +1259,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             canExportReports: permissionsFromRecord.canExportReports ?? false,
           };
           
+          // CRITICAL: Preserve Teacher Document ID - never fall back to User ID for _id
+          // If teacherRecord is not found, we should still try to preserve existing _id from cache
+          const teacherDocId = teacherRecord?._id?.toString() || teacherRecord?._id;
+          
+          if (!teacherDocId && import.meta.env.DEV) {
+            console.warn('⚠️ Teacher record not found or missing _id for user:', {
+              userEmail: user.email,
+              userId: user._id,
+              teacherRecordsCount: teacherRecords.length,
+              availableTeacherIds: teacherRecords.map((tr: any) => ({
+                _id: tr._id,
+                userId: tr.userId?._id || tr.userId,
+                email: tr.email
+              }))
+            });
+          }
+          
           return {
             id: user._id, // Keep user._id for compatibility (this is User._id)
-            _id: teacherRecord?._id?.toString() || teacherRecord?._id || user._id, // Add Teacher document _id if available
-            teacherDocumentId: teacherRecord?._id?.toString() || teacherRecord?._id, // Store Teacher document ID separately
+            _id: teacherDocId || undefined, // CRITICAL: Only use Teacher Document ID, never fall back to User ID
+            teacherDocumentId: teacherDocId || undefined, // Store Teacher document ID separately
             fullName: user.name || user.fullName || teacherProfile.fullName || teacherRecord?.fullName || 'Unknown',
             email: user.email,
             phoneNumber: teacherProfile.phoneNumber || teacherProfile.contact || user.phone || '',
@@ -1743,12 +1760,47 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         return finalStudents;
       });
-      // Only update teachers if we have data (prevent clearing existing data)
-      if (finalTeachersData.length > 0 || teachers.length === 0) {
-        setTeachers(finalTeachersData);
-      } else if (import.meta.env.DEV) {
-        console.warn('⚠️ Skipping teachers update - new data is empty but existing data exists');
-      }
+      // Merge teachers to preserve Teacher Document IDs from existing data
+      // This prevents losing Teacher Document IDs when fresh data doesn't have them
+      setTeachers(prev => {
+        if (finalTeachersData.length === 0 && prev.length > 0) {
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ New teachers data is empty, preserving existing teachers');
+          }
+          return prev; // Preserve existing teachers if new data is empty
+        }
+        
+        // Merge: preserve Teacher Document IDs from existing teachers
+        const teacherMap = new Map<string, any>(prev.map(t => [t.id || (t as any)._id || '', t]));
+        finalTeachersData.forEach((newTeacher: any) => {
+          const existing = teacherMap.get(newTeacher.id);
+          if (existing) {
+            // Preserve Teacher Document ID from existing if new one doesn't have it
+            const preservedDocId = (existing as any)._id || (existing as any).teacherDocumentId;
+            const newDocId = (newTeacher as any)._id || (newTeacher as any).teacherDocumentId;
+            
+            if (preservedDocId && !newDocId && import.meta.env.DEV) {
+              console.log('🔧 Preserving Teacher Document ID from existing teacher:', {
+                teacherName: newTeacher.fullName,
+                preservedDocId: preservedDocId,
+                userId: newTeacher.id
+              });
+            }
+            
+            teacherMap.set(newTeacher.id, {
+              ...existing,
+              ...newTeacher,
+              // Preserve Teacher Document ID if new data doesn't have it
+              _id: newDocId || preservedDocId || undefined,
+              teacherDocumentId: newDocId || preservedDocId || undefined
+            });
+          } else {
+            teacherMap.set(newTeacher.id, newTeacher);
+          }
+        });
+        
+        return Array.from(teacherMap.values());
+      });
       // Only update admins if we have data (prevent clearing existing data)
       if (finalAdminsData.length > 0 || admins.length === 0) {
         setAdmins(finalAdminsData);
