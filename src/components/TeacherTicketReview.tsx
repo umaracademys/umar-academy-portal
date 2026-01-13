@@ -467,103 +467,103 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                 </div>
               </div>
 
-              {/* Compact Wrapped Mistakes Panel */}
+              {/* Compact Wrapped Sidebar Panel */}
               {showSidebar && (
                 <div className="space-y-2">
-                {/* Compact Mistakes List - Wrapped */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <button
-                  onClick={() => setExpandedSections(prev => ({ ...prev, mistakes: !prev.mistakes }))}
-                  className="w-full px-2 py-1.5 flex items-center justify-between border-b border-gray-200 bg-gray-50"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-900">Marked Mistakes</span>
-                    <div className="flex gap-1 text-xs">
-                      {mistakeCategories.mistakes > 0 && (
-                        <span className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-xs">
-                          {mistakeCategories.mistakes}
-                        </span>
-                      )}
-                      {mistakeCategories.atkee > 0 && (
-                        <span className="px-1.5 py-0.5 bg-accent/20 text-accent rounded text-xs">
-                          Atkee: {mistakeCategories.atkee}
-                        </span>
-                      )}
-                      {mistakeCategories.tajweed > 0 && (
-                        <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
-                          Tajweed: {mistakeCategories.tajweed}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <span className="text-xs text-gray-500">{expandedSections.mistakes ? '▼' : '▶'}</span>
-                </button>
-                {expandedSections.mistakes && (
-                <div className="p-2">
-                  {mistakes.length === 0 ? (
-                    <div className="text-center py-4">
-                      <p className="text-xs text-gray-500">Click on words in the Mushaf to mark mistakes</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {mistakes.map((mistake) => {
-                        const isNew = newMistakeIds.has(mistake.id || '');
-                        return (
-                          <MistakeBadgeHighlight
-                            key={mistake.id}
-                            mistake={mistake}
-                            isNew={isNew}
-                            showTimestamp={false}
-                            onRemove={handleRemoveMistake}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                )}
-              </div>
-
-              {/* Compact Comment Section - Wrapped */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <button
-                  onClick={() => setExpandedSections(prev => ({ ...prev, comment: !prev.comment }))}
-                  className="w-full px-2 py-1.5 flex items-center justify-between border-b border-gray-200 bg-gray-50"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold text-gray-900">Review Comment</span>
-                    <span className="text-red-500 text-xs">*</span>
-                    {teacherComment && (
-                      <span className="text-xs text-gray-500">({teacherComment.length} chars)</span>
+                  {/* Compact Mistakes List - Wrapped */}
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedSections(prev => ({ ...prev, mistakes: !prev.mistakes }))}
+                      className="w-full px-2 py-1.5 flex items-center justify-between border-b border-gray-200 bg-gray-50"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-900">Marked Mistakes</span>
+                        <div className="flex gap-1 text-xs">
+                          {mistakeCategories.mistakes > 0 && (
+                            <span className="px-1.5 py-0.5 bg-red-100 text-red-800 rounded text-xs">
+                              {mistakeCategories.mistakes}
+                            </span>
+                          )}
+                          {mistakeCategories.atkee > 0 && (
+                            <span className="px-1.5 py-0.5 bg-accent/20 text-accent rounded text-xs">
+                              Atkee: {mistakeCategories.atkee}
+                            </span>
+                          )}
+                          {mistakeCategories.tajweed > 0 && (
+                            <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 rounded text-xs">
+                              Tajweed: {mistakeCategories.tajweed}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-500">{expandedSections.mistakes ? '▼' : '▶'}</span>
+                    </button>
+                    {expandedSections.mistakes && (
+                      <div className="p-2">
+                        {mistakes.length === 0 ? (
+                          <div className="text-center py-4">
+                            <p className="text-xs text-gray-500">Click on words in the Mushaf to mark mistakes</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 max-h-48 overflow-y-auto">
+                            {mistakes.map((mistake) => {
+                              const isNew = newMistakeIds.has(mistake.id || '');
+                              return (
+                                <MistakeBadgeHighlight
+                                  key={mistake.id}
+                                  mistake={mistake}
+                                  isNew={isNew}
+                                  showTimestamp={false}
+                                  onRemove={handleRemoveMistake}
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <span className="text-xs text-gray-500">{expandedSections.comment ? '▼' : '▶'}</span>
-                </button>
-                {expandedSections.comment && (
-                <div className="p-2">
-                  <div className="mb-2">
-                    <AICommentDraft
-                      mistakes={mistakes}
-                      onDraftGenerated={(draft) => {
-                        setTeacherComment(draft);
-                      }}
-                      disabled={mistakes.length === 0}
-                    />
+
+                  {/* Compact Comment Section - Wrapped */}
+                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedSections(prev => ({ ...prev, comment: !prev.comment }))}
+                      className="w-full px-2 py-1.5 flex items-center justify-between border-b border-gray-200 bg-gray-50"
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-900">Review Comment</span>
+                        <span className="text-red-500 text-xs">*</span>
+                        {teacherComment && (
+                          <span className="text-xs text-gray-500">({teacherComment.length} chars)</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">{expandedSections.comment ? '▼' : '▶'}</span>
+                    </button>
+                    {expandedSections.comment && (
+                      <div className="p-2">
+                        <div className="mb-2">
+                          <AICommentDraft
+                            mistakes={mistakes}
+                            onDraftGenerated={(draft) => {
+                              setTeacherComment(draft);
+                            }}
+                            disabled={mistakes.length === 0}
+                          />
+                        </div>
+                        <textarea
+                          value={teacherComment}
+                          onChange={(e) => setTeacherComment(e.target.value)}
+                          rows={6}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
+                          placeholder="Enter your review comments..."
+                          autoFocus
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          This comment will be sent to the admin for review.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <textarea
-                    value={teacherComment}
-                    onChange={(e) => setTeacherComment(e.target.value)}
-                    rows={6}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                    placeholder="Enter your review comments..."
-                    autoFocus
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    This comment will be sent to the admin for review.
-                  </p>
-                </div>
-                )}
-              </div>
                 </div>
               )}
             </div>
