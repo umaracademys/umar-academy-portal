@@ -49,6 +49,7 @@ interface BackendDataContextType {
   getStudentsByTeacher: (teacherId: string) => Student[];
   getTeacherById: (id: string) => Teacher | undefined;
   getStudentByEmail: (email: string) => Student | undefined;
+  getStudentByIdentity: (email?: string, userId?: string) => Student | undefined;
   loading: boolean;
   loadingStep: string;
   error: string | null;
