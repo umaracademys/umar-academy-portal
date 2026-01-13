@@ -23,7 +23,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
   onCommunication,
   onWeeklyEvaluations,
 }) => {
-  const { students, teachers, assignments } = useData();
+  const { students, teachers } = useData();
   const { assignments: backendAssignments, tickets, recitationReviews, getPairStudents, getTeacherPairs } = useBackendData();
   const [activeTab, setActiveTab] = useState('overview');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -106,14 +106,26 @@ const StudentProfile: React.FC<StudentProfileProps> = ({
     }));
   }, [pairInfo, assignedTeacher?.fullName, currentStudent.schedule]);
 
-  const studentAssignments = useMemo(
-    () =>
-      assignments.filter(
-        (assignment) =>
-          assignment.studentId === currentStudent.id,
-      ),
-    [assignments, currentStudent.id],
-  );
+  const studentAssignments = useMemo(() => {
+    if (!currentStudent?.id) return [];
+    
+    const studentId = currentStudent.id || (currentStudent as any)._id;
+    
+    return backendAssignments.filter((assignment: any) => {
+      // Check multiple possible studentId formats
+      const assignmentStudentId = assignment.studentId || assignment._id?.studentId;
+      const assignedTo = Array.isArray(assignment.assignedTo) ? assignment.assignedTo : [assignment.assignedTo];
+      
+      // Match by studentId or assignedTo array
+      const matches = assignmentStudentId === studentId || 
+                     assignmentStudentId === studentId?.toString() ||
+                     String(assignmentStudentId) === String(studentId) ||
+                     assignedTo.includes(studentId) ||
+                     assignedTo.includes(studentId?.toString());
+      
+      return matches;
+    });
+  }, [backendAssignments, currentStudent.id]);
 
   const gradedAssignments = studentAssignments.filter(
     (assignment) => typeof (assignment as any).grade === 'number',
