@@ -1529,7 +1529,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setStudents(prev => {
         const exists = prev.some(s => s.id === normalizedStudent.id);
         if (exists) {
-          return prev.map(s => s.id === normalizedStudent.id ? normalizedStudent as Student : s);
+          // Merge with existing data to preserve fields that might be missing from WebSocket event
+          return prev.map(s => {
+            if (s.id === normalizedStudent.id) {
+              return {
+                ...s, // Keep existing data
+                ...normalizedStudent, // Override with new data
+                // Preserve critical fields if they're missing in the event
+                assignedTeacher: normalizedStudent.assignedTeacher || s.assignedTeacher || '',
+                assignedTeachers: normalizedStudent.assignedTeachers || normalizedStudent.assignedTeacherIds || s.assignedTeachers || [],
+                assignedTeacherIds: normalizedStudent.assignedTeacherIds || normalizedStudent.assignedTeachers || s.assignedTeacherIds || [],
+                program: normalizedStudent.program || s.program || 'Full-Time HQ',
+                contact: normalizedStudent.contact || normalizedStudent.phone || s.contact || '',
+                parentName: normalizedStudent.parentName || s.parentName || '',
+              } as Student;
+            }
+            return s;
+          });
         }
         return [...prev, normalizedStudent as Student];
       });
@@ -1545,13 +1561,41 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         id: studentData._id || studentData.id,
       };
       setStudents(prev => 
-        prev.map(s => s.id === normalizedStudent.id ? normalizedStudent as Student : s)
+        prev.map(s => {
+          if (s.id === normalizedStudent.id) {
+            // Merge with existing data to preserve fields that might be missing from WebSocket event
+            return {
+              ...s, // Keep existing data
+              ...normalizedStudent, // Override with new data
+              // Preserve critical fields if they're missing in the event
+              assignedTeacher: normalizedStudent.assignedTeacher || s.assignedTeacher || '',
+              assignedTeachers: normalizedStudent.assignedTeachers || normalizedStudent.assignedTeacherIds || s.assignedTeachers || [],
+              assignedTeacherIds: normalizedStudent.assignedTeacherIds || normalizedStudent.assignedTeachers || s.assignedTeacherIds || [],
+              program: normalizedStudent.program || s.program || 'Full-Time HQ',
+              contact: normalizedStudent.contact || normalizedStudent.phone || s.contact || '',
+              parentName: normalizedStudent.parentName || s.parentName || '',
+            } as Student;
+          }
+          return s;
+        })
       );
       // Update cache
       const cachedStudents = dataCache.get<Student[]>('students') || [];
-      const updatedCache = cachedStudents.map((s: any) => 
-        (s._id || s.id) === normalizedStudent.id ? normalizedStudent : s
-      );
+      const updatedCache = cachedStudents.map((s: any) => {
+        if ((s._id || s.id) === normalizedStudent.id) {
+          return {
+            ...s,
+            ...normalizedStudent,
+            assignedTeacher: normalizedStudent.assignedTeacher || s.assignedTeacher || '',
+            assignedTeachers: normalizedStudent.assignedTeachers || normalizedStudent.assignedTeacherIds || s.assignedTeachers || [],
+            assignedTeacherIds: normalizedStudent.assignedTeacherIds || normalizedStudent.assignedTeachers || s.assignedTeacherIds || [],
+            program: normalizedStudent.program || s.program || 'Full-Time HQ',
+            contact: normalizedStudent.contact || normalizedStudent.phone || s.contact || '',
+            parentName: normalizedStudent.parentName || s.parentName || '',
+          };
+        }
+        return s;
+      });
       dataCache.set('students', updatedCache);
     };
 
