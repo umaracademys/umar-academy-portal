@@ -18,7 +18,9 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
   conversationId,
   onMessageSent
 }) => {
-  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  // Handle API base URL - may or may not include /api
+  const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
   const [messageBody, setMessageBody] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
@@ -59,7 +61,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
         const arrayBuffer = await file.arrayBuffer();
         const buffer = new Uint8Array(arrayBuffer);
         
-        const response = await fetch(`${API_BASE}/api/conversations/${conversationId}/messages/upload`, {
+        const response = await fetch(`${API_BASE}/conversations/${conversationId}/messages/upload`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -110,7 +112,7 @@ const MessageComposer: React.FC<MessageComposerProps> = ({
       
       // Send message
       const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
-      const response = await fetch(`${API_BASE}/api/conversations/${conversationId}/messages`, {
+      const response = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

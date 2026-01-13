@@ -34,7 +34,9 @@ interface Conversation {
 
 const ProfessionalMessagesPage: React.FC = () => {
   const { user } = useAuth();
-  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  // Handle API base URL - may or may not include /api
+  const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -60,7 +62,7 @@ const ProfessionalMessagesPage: React.FC = () => {
         params.append('type', filterType);
       }
       
-      const response = await fetch(`${API_BASE}/api/conversations?${params.toString()}`, {
+      const response = await fetch(`${API_BASE}/conversations?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

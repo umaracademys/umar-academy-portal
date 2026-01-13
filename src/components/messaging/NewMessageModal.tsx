@@ -19,7 +19,9 @@ interface NewMessageModalProps {
 const NewMessageModal: React.FC<NewMessageModalProps> = ({ onClose, onSuccess }) => {
   const { user } = useAuth();
   const { teachers, students } = useData();
-  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  // Handle API base URL - may or may not include /api
+  const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
   
   const [messageType, setMessageType] = useState<'teacher_student' | 'pair_teacher'>('teacher_student');
   const [selectedTeacher, setSelectedTeacher] = useState<string>('');
@@ -60,7 +62,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({ onClose, onSuccess })
       }
 
       // Create conversation
-      const convResponse = await fetch(`${API_BASE}/api/conversations`, {
+      const convResponse = await fetch(`${API_BASE}/conversations`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -83,7 +85,7 @@ const NewMessageModal: React.FC<NewMessageModalProps> = ({ onClose, onSuccess })
 
       // Send initial message if provided
       if (initialMessage.trim()) {
-        await fetch(`${API_BASE}/api/conversations/${conversation._id}/messages`, {
+        await fetch(`${API_BASE}/conversations/${conversation._id}/messages`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -58,7 +58,9 @@ const ProfessionalConversationView: React.FC<ProfessionalConversationViewProps> 
   onUpdate
 }) => {
   const { user } = useAuth();
-  const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  // Handle API base URL - may or may not include /api
+  const API_BASE_RAW = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+  const API_BASE = API_BASE_RAW.endsWith('/api') ? API_BASE_RAW : `${API_BASE_RAW}/api`;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -84,7 +86,7 @@ const ProfessionalConversationView: React.FC<ProfessionalConversationViewProps> 
     setLoading(true);
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('umar_academy_token');
-      const response = await fetch(`${API_BASE}/api/conversations/${conversation._id}/messages?page=1&limit=100`, {
+      const response = await fetch(`${API_BASE}/conversations/${conversation._id}/messages?page=1&limit=100`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
