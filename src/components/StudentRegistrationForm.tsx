@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Student,
   ProgramType,
-  ScheduleDay,
-  Sibling,
   StudentRecitationProfile
 } from '../types';
 import { useData } from '../contexts/DataContext';
@@ -23,27 +21,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     email: student?.email || '',
     contact: student?.contact || '',
     program: student?.program || 'Full-Time HQ' as ProgramType,
-    tuitionFee: typeof student?.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : 500,
-    registrationAmount: typeof student?.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : 100,
     assignedTeacher: Array.isArray((student as any)?.assignedTeachers) && (student as any).assignedTeachers.length > 0 
       ? (student as any).assignedTeachers 
       : (student as any)?.assignedTeacher 
         ? (Array.isArray((student as any).assignedTeacher) ? (student as any).assignedTeacher : [(student as any).assignedTeacher])
         : [],
-    scheduleDays: student?.schedule?.days || [] as ScheduleDay[],
-    startTime: student?.schedule?.startTime || '09:00',
-    endTime: student?.schedule?.endTime || '12:00',
   });
-
-  const [siblings, setSiblings] = useState<Sibling[]>(Array.isArray(student?.siblings) ? student.siblings : []);
-  const [showSiblingForm, setShowSiblingForm] = useState(false);
-  const [siblingData, setSiblingData] = useState({
-    fullName: '',
-    program: 'Full-Time HQ' as ProgramType,
-    assignedTeacher: '',
-  });
-
-  const allDays: ScheduleDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Initialize form data when student prop changes (for edit mode)
   useEffect(() => {
@@ -65,18 +48,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         email: student.email || '',
         contact: student.contact || student.phoneNumber || student.contactNumber || '',
         program: student.program || 'Full-Time HQ' as ProgramType,
-        tuitionFee: typeof student.tuitionFee === 'number' && !isNaN(student.tuitionFee) ? student.tuitionFee : (typeof student.tuitionFee === 'string' && student.tuitionFee ? parseFloat(student.tuitionFee) || 500 : 500),
-        registrationAmount: typeof student.registrationAmount === 'number' && !isNaN(student.registrationAmount) ? student.registrationAmount : (typeof student.registrationAmount === 'string' && student.registrationAmount ? parseFloat(student.registrationAmount) || 100 : 100),
         assignedTeacher: Array.isArray((student as any).assignedTeachers) && (student as any).assignedTeachers.length > 0 
           ? (student as any).assignedTeachers 
           : (student as any).assignedTeacher 
             ? (Array.isArray((student as any).assignedTeacher) ? (student as any).assignedTeacher : [(student as any).assignedTeacher])
             : (student.assignedTeacherId ? [student.assignedTeacherId] : []),
-        scheduleDays: Array.isArray(student.schedule?.days) ? student.schedule.days : (Array.isArray(student.schedule?.workingDays) ? student.schedule.workingDays : []) as ScheduleDay[],
-        startTime: student.schedule?.startTime || student.schedule?.workingHours?.start || '09:00',
-        endTime: student.schedule?.endTime || student.schedule?.workingHours?.end || '12:00',
       });
-      setSiblings(Array.isArray(student.siblings) ? student.siblings : []);
     } else if (!isEdit && !student) {
       // Only reset form when explicitly adding a new student (not editing)
       setFormData({
@@ -85,33 +62,11 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         email: '',
         contact: '',
         program: 'Full-Time HQ',
-        tuitionFee: 500,
-        registrationAmount: 100,
         assignedTeacher: [],
-        scheduleDays: [],
-        startTime: '09:00',
-        endTime: '12:00',
       });
-      setSiblings([]);
     }
   }, [isEdit, student?.id]); // Only re-run when edit mode or student ID changes
 
-  const handleDayToggle = (day: ScheduleDay) => {
-    setFormData(prev => ({
-      ...prev,
-      scheduleDays: prev.scheduleDays.includes(day)
-        ? prev.scheduleDays.filter(d => d !== day)
-        : [...prev.scheduleDays, day]
-    }));
-  };
-
-  const handleAddSibling = () => {
-    if (siblingData.fullName) {
-      setSiblings([...siblings, { id: `SIB${Date.now()}`, ...siblingData }]);
-      setSiblingData({ fullName: '', program: 'Full-Time HQ', assignedTeacher: '' });
-      setShowSiblingForm(false);
-    }
-  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -137,16 +92,15 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         history: []
       };
 
-    // Ensure contact and schedule are properly set
+    // Ensure contact is properly set
     const contactValue = formData.contact?.trim() || '';
+    
+    // Default values for fields not in simplified form
     const scheduleData = {
-      days: Array.isArray(formData.scheduleDays) ? formData.scheduleDays : [],
-      startTime: formData.startTime || '09:00',
-      endTime: formData.endTime || '12:00',
+      days: [],
+      startTime: '09:00',
+      endTime: '12:00',
     };
-
-    console.log('💾 Saving student with contact:', contactValue);
-    console.log('💾 Saving student with schedule:', scheduleData);
 
     const studentData: Student = {
       id: isEdit ? student.id : `STU${Date.now()}`,
@@ -156,9 +110,9 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       email: formData.email.trim(),
       contact: contactValue, // Ensure contact is always included
       program: formData.program,
-      siblings: siblings,
-      tuitionFee: formData.tuitionFee,
-      registrationAmount: formData.registrationAmount,
+      siblings: [], // Empty for simplified form
+      tuitionFee: 500, // Default value
+      registrationAmount: 100, // Default value
         assignedTeacher: (() => {
         const teacherValue = formData.assignedTeacher;
         const teacherArray = Array.isArray(teacherValue) ? teacherValue : (teacherValue ? [teacherValue] : []);
@@ -472,169 +426,6 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
             </div>
           </div>
 
-          {/* Financial Information */}
-          <div className="mb-6">
-            <h3 className="text-lg font-extrabold text-primary mb-4">Financial Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Tuition Fee (Monthly) *</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="0.01"
-                  value={isNaN(formData.tuitionFee) ? '' : formData.tuitionFee}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const numValue = value === '' ? 0 : parseFloat(value);
-                    setFormData({ ...formData, tuitionFee: isNaN(numValue) ? 0 : numValue });
-                  }}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Registration Amount *</label>
-                <input
-                  type="number"
-                  required
-                  min="0"
-                  step="0.01"
-                  value={isNaN(formData.registrationAmount) ? '' : formData.registrationAmount}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    const numValue = value === '' ? 0 : parseFloat(value);
-                    setFormData({ ...formData, registrationAmount: isNaN(numValue) ? 0 : numValue });
-                  }}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Schedule */}
-          <div className="mb-6">
-            <h3 className="text-lg font-extrabold text-primary mb-4">Schedule</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-extrabold text-primary mb-2">Days *</label>
-              <div className="flex flex-wrap gap-2">
-                {allDays.map(day => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => handleDayToggle(day)}
-                    className={`px-4 py-2 rounded-lg text-sm font-extrabold transition border-2 ${
-                      formData.scheduleDays.includes(day)
-                        ? 'bg-primary text-accent border-primary shadow-lg'
-                        : 'bg-soft-primary text-primary border-primary hover:bg-primary/20'
-                    }`}
-                  >
-                    {day.substring(0, 3)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Start Time *</label>
-                <input
-                  type="time"
-                  required
-                  value={formData.startTime || '09:00'}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setFormData(prev => ({ ...prev, startTime: newValue || '09:00' }));
-                  }}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">End Time *</label>
-                <input
-                  type="time"
-                  required
-                  value={formData.endTime || '12:00'}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setFormData(prev => ({ ...prev, endTime: newValue || '12:00' }));
-                  }}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-            </div>
-          </div>
-          {/* Siblings */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold text-primary">Siblings (Optional)</h3>
-              <button
-                type="button"
-                onClick={() => setShowSiblingForm(!showSiblingForm)}
-                className="px-4 py-2 bg-accent text-primary rounded-lg hover:bg-accent/90 text-sm font-extrabold shadow-lg"
-              >
-                + Add Sibling
-              </button>
-            </div>
-
-            {showSiblingForm && (
-              <div className="bg-accent/10 p-4 rounded-lg mb-4 border-2 border-accent/30">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                  <input
-                    type="text"
-                    placeholder="Sibling Full Name"
-                    value={siblingData.fullName}
-                    onChange={(e) => setSiblingData({ ...siblingData, fullName: e.target.value })}
-                    className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
-                  />
-                  <select
-                    value={siblingData.program}
-                    onChange={(e) => setSiblingData({ ...siblingData, program: e.target.value as ProgramType })}
-                    className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
-                  >
-                    <option value="Full-Time HQ">Full-Time HQ</option>
-                    <option value="Part-Time HQ">Part-Time HQ</option>
-                    <option value="After School">After School</option>
-                  </select>
-                  <select
-                    value={siblingData.assignedTeacher}
-                    onChange={(e) => setSiblingData({ ...siblingData, assignedTeacher: e.target.value })}
-                    className="px-4 py-2 border-2 border-primary rounded-lg text-primary bg-white"
-                  >
-                    <option value="">Select Teacher</option>
-                    {teachers.map(teacher => (
-                      <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>
-                    ))}
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddSibling}
-                  className="px-4 py-2 bg-accent text-primary rounded-lg hover:bg-accent/90 text-sm font-extrabold shadow-lg"
-                >
-                  Add This Sibling
-                </button>
-              </div>
-            )}
-
-            {siblings.length > 0 && (
-              <div className="space-y-2">
-                {siblings.map((sibling, index) => (
-                  <div key={sibling.id} className="flex justify-between items-center bg-soft-primary p-3 rounded-lg border-2 border-primary">
-                    <div>
-                      <p className="font-extrabold text-primary">{sibling.fullName}</p>
-                      <p className="text-sm text-primary">{sibling.program}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setSiblings(siblings.filter((_, i) => i !== index))}
-                      className="text-primary hover:text-primary/70 font-extrabold"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-4 border-t-2 border-primary">
