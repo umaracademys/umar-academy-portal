@@ -1362,8 +1362,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               ...newStudent,
               // Preserve critical fields if they're missing in the new data
               assignedTeacher: newStudent.assignedTeacher || existing.assignedTeacher || '',
-              assignedTeachers: newStudent.assignedTeachers?.length > 0 ? newStudent.assignedTeachers : (existing.assignedTeachers?.length > 0 ? existing.assignedTeachers : []),
-              assignedTeacherIds: newStudent.assignedTeacherIds?.length > 0 ? newStudent.assignedTeacherIds : (existing.assignedTeacherIds?.length > 0 ? existing.assignedTeacherIds : []),
+              assignedTeachers: (newStudent.assignedTeachers && newStudent.assignedTeachers.length > 0) ? newStudent.assignedTeachers : ((existing.assignedTeachers && existing.assignedTeachers.length > 0) ? existing.assignedTeachers : []),
+              assignedTeacherIds: (newStudent.assignedTeacherIds && newStudent.assignedTeacherIds.length > 0) ? newStudent.assignedTeacherIds : ((existing.assignedTeacherIds && existing.assignedTeacherIds.length > 0) ? existing.assignedTeacherIds : []),
               program: newStudent.program || existing.program || 'Full-Time HQ',
               contact: newStudent.contact || existing.contact || '',
               parentName: newStudent.parentName || existing.parentName || '',
