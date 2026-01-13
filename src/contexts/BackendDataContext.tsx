@@ -578,6 +578,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         // But we can load them in parallel with teachers/students
         if (cachedUsers) {
           users = cachedUsers;
+        } else {
+          // If no cached users, try to load them (but don't block on it)
+          // This ensures teachers can be mapped properly
+          try {
+            const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 3000, true);
+            if (usersResponse.ok) {
+              users = await usersResponse.json();
+              if (import.meta.env.DEV) {
+                console.log('👥 Users loaded for teacher-student-assignment:', users.length);
+              }
+              dataCache.set('users', users);
+            }
+          } catch (err) {
+            console.warn('⚠️ Could not load users for teacher-student-assignment (non-critical):', err);
+            // Continue without users - teachers will still be created from teacherRecords
+          }
         }
 
         // Load teachers and students in parallel for faster loading
@@ -1109,19 +1125,25 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           });
       }
 
-      let teachersData = users
-        .filter((user: any) => user.role === 'teacher')
-        .map((user: any) => {
-          // Find matching teacher record to get actual data
-          const teacherRecord = teacherRecords.find((tr: any) => 
-            tr.userId?._id === user._id || 
-            tr.userId?._id?.toString() === user._id?.toString() ||
-            (tr.userId && typeof tr.userId === 'object' && tr.userId._id === user._id) ||
-            tr._id === user._id ||
-            tr._id?.toString() === user._id?.toString()
-          );
-          
-          const teacherProfile = user.teacherProfile || teacherRecord || {};
+      // Create teachers from users OR teacherRecords (whichever is available)
+      // For teacher-student-assignment page, teacherRecords might be available even if users aren't
+      let teachersData: any[] = [];
+      
+      if (users && users.length > 0) {
+        // Preferred: Create from users (has user data merged with teacher records)
+        teachersData = users
+          .filter((user: any) => user.role === 'teacher')
+          .map((user: any) => {
+            // Find matching teacher record to get actual data
+            const teacherRecord = teacherRecords.find((tr: any) => 
+              tr.userId?._id === user._id || 
+              tr.userId?._id?.toString() === user._id?.toString() ||
+              (tr.userId && typeof tr.userId === 'object' && tr.userId._id === user._id) ||
+              tr._id === user._id ||
+              tr._id?.toString() === user._id?.toString()
+            );
+            
+            const teacherProfile = user.teacherProfile || teacherRecord || {};
           
           // Ensure permissions are properly loaded with all fields
           const permissionsFromRecord = teacherRecord?.permissions || teacherProfile.permissions || {};
@@ -1259,6 +1281,117 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             idDocument: teacherRecord?.idDocument || teacherProfile.idDocument || ''
           };
         });
+      } else if (teacherRecords && teacherRecords.length > 0) {
+        // Fallback: Create teachers from teacherRecords if users are not available
+        // This ensures teachers are available even if users haven't loaded yet
+        if (import.meta.env.DEV) {
+          console.log('⚠️ No users available, creating teachers from teacherRecords:', teacherRecords.length);
+        }
+        teachersData = teacherRecords.map((teacherRecord: any) => {
+          const teacherProfile = teacherRecord || {};
+          const permissionsFromRecord = teacherProfile.permissions || {};
+          const permissions: TeacherPermissions = {
+            canViewAssessments: permissionsFromRecord.canViewAssessments ?? true,
+            canEditAssessments: permissionsFromRecord.canEditAssessments ?? true,
+            canViewEvaluations: permissionsFromRecord.canViewEvaluations ?? true,
+            canEditEvaluations: permissionsFromRecord.canEditEvaluations ?? true,
+            canViewFinancials: permissionsFromRecord.canViewFinancials ?? false,
+            canManageSchedule: permissionsFromRecord.canManageSchedule ?? true,
+            canContactParents: permissionsFromRecord.canContactParents ?? true,
+            canViewStudentEmail: permissionsFromRecord.canViewStudentEmail ?? true,
+            canViewStudentContact: permissionsFromRecord.canViewStudentContact ?? true,
+            canViewStudentPersonalInfo: permissionsFromRecord.canViewStudentPersonalInfo ?? true,
+            canAccessMessages: permissionsFromRecord.canAccessMessages ?? true,
+            canSendMessages: permissionsFromRecord.canSendMessages ?? true,
+            canViewAllMessages: permissionsFromRecord.canViewAllMessages ?? false,
+            canAccessPdf: permissionsFromRecord.canAccessPdf ?? true,
+            canUploadPdf: permissionsFromRecord.canUploadPdf ?? false,
+            canAnnotatePdf: permissionsFromRecord.canAnnotatePdf ?? true,
+            canViewPdfAnnotations: permissionsFromRecord.canViewPdfAnnotations ?? true,
+            canAccessHomework: permissionsFromRecord.canAccessHomework ?? true,
+            canCreateHomework: permissionsFromRecord.canCreateHomework ?? true,
+            canGradeHomework: permissionsFromRecord.canGradeHomework ?? true,
+            canViewHomeworkSubmissions: permissionsFromRecord.canViewHomeworkSubmissions ?? true,
+            canAccessEvaluations: permissionsFromRecord.canAccessEvaluations ?? true,
+            canCreateEvaluations: permissionsFromRecord.canCreateEvaluations ?? false,
+            canReviewEvaluations: permissionsFromRecord.canReviewEvaluations ?? false,
+            canApproveEvaluations: permissionsFromRecord.canApproveEvaluations ?? false,
+            canAccessTickets: permissionsFromRecord.canAccessTickets ?? true,
+            canCreateTickets: permissionsFromRecord.canCreateTickets ?? false,
+            canReviewTickets: permissionsFromRecord.canReviewTickets ?? true,
+            canApproveTickets: permissionsFromRecord.canApproveTickets ?? false,
+            canFinalizeTickets: permissionsFromRecord.canFinalizeTickets ?? false,
+            canAccessAttendance: permissionsFromRecord.canAccessAttendance ?? true,
+            canRecordAttendance: permissionsFromRecord.canRecordAttendance ?? true,
+            canViewAttendanceReports: permissionsFromRecord.canViewAttendanceReports ?? true,
+            canAccessRecordings: permissionsFromRecord.canAccessRecordings ?? true,
+            canUploadRecordings: permissionsFromRecord.canUploadRecordings ?? true,
+            canDeleteRecordings: permissionsFromRecord.canDeleteRecordings ?? false,
+            canViewAllRecordings: permissionsFromRecord.canViewAllRecordings ?? false,
+            canAccessMushaf: permissionsFromRecord.canAccessMushaf ?? true,
+            canMarkMistakes: permissionsFromRecord.canMarkMistakes ?? true,
+            canViewMistakeHistory: permissionsFromRecord.canViewMistakeHistory ?? true,
+            canManageMistakeLibrary: permissionsFromRecord.canManageMistakeLibrary ?? false,
+            canAccessQaidah: permissionsFromRecord.canAccessQaidah ?? true,
+            canManageQaidah: permissionsFromRecord.canManageQaidah ?? false,
+            canViewQaidahProgress: permissionsFromRecord.canViewQaidahProgress ?? true,
+            canAccessAssignments: permissionsFromRecord.canAccessAssignments ?? true,
+            canCreateAssignments: permissionsFromRecord.canCreateAssignments ?? true,
+            canEditAssignments: permissionsFromRecord.canEditAssignments ?? false,
+            canDeleteAssignments: permissionsFromRecord.canDeleteAssignments ?? false,
+            canManageStudentAssignments: permissionsFromRecord.canManageStudentAssignments ?? false,
+            canViewReports: permissionsFromRecord.canViewReports ?? true,
+            canViewAnalytics: permissionsFromRecord.canViewAnalytics ?? true,
+            canExportReports: permissionsFromRecord.canExportReports ?? false,
+          };
+          
+          return {
+            id: teacherRecord.userId?._id || teacherRecord._id || teacherRecord.id,
+            _id: teacherRecord._id?.toString() || teacherRecord._id,
+            teacherDocumentId: teacherRecord._id?.toString() || teacherRecord._id,
+            fullName: teacherRecord.fullName || 'Unknown',
+            email: teacherRecord.email || '',
+            phoneNumber: teacherRecord.phoneNumber || teacherRecord.contact || '',
+            phone: teacherRecord.phone || '',
+            contact: teacherRecord.contact || teacherRecord.phoneNumber || '',
+            emergencyContact: teacherRecord.emergencyContact || '',
+            address: teacherRecord.address || '',
+            dateOfBirth: teacherRecord.dateOfBirth || new Date().toISOString(),
+            hireDate: teacherRecord.hireDate || new Date().toISOString(),
+            specialization: teacherRecord.specialization || [],
+            department: teacherRecord.department || 'General',
+            experience: teacherRecord.experience || { years: 0, previousInstitutions: [] },
+            salary: teacherRecord.salary || 0,
+            status: teacherRecord.status || 'active',
+            avatar: teacherRecord.avatar || '',
+            location: teacherRecord.location || 'Local',
+            employmentType: teacherRecord.employmentType || 'Full Time',
+            shiftType: teacherRecord.shiftType || 'Morning',
+            shifts: teacherRecord.shifts || [],
+            courses: teacherRecord.courses || [],
+            students: teacherRecord.students || [],
+            assignedStudents: teacherRecord.assignedStudents || [],
+            permissions: permissions,
+            schedule: teacherRecord.schedule || {
+              days: [],
+              startTime: '',
+              endTime: ''
+            },
+            performance: teacherRecord.performance || { rating: 0, reviews: [] },
+            attendance: teacherRecord.attendance || { present: 0, absent: 0, total: 0 },
+            assignments: teacherRecord.assignments || [],
+            payroll: teacherRecord.payroll || { 
+              hourlyRate: 0,
+              dailyHours: 0,
+              daysWorking: 0,
+              monthlyHours: 0,
+              monthlySalary: 0,
+              currency: 'USD'
+            },
+            idDocument: teacherRecord.idDocument || ''
+          };
+        });
+      }
 
       // Load admins from Admin collection (has admin-specific data)
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
@@ -1586,8 +1719,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         return finalStudents;
       });
-      setTeachers(finalTeachersData);
-      setAdmins(finalAdminsData);
+      // Only update teachers if we have data (prevent clearing existing data)
+      if (finalTeachersData.length > 0 || teachers.length === 0) {
+        setTeachers(finalTeachersData);
+      } else if (import.meta.env.DEV) {
+        console.warn('⚠️ Skipping teachers update - new data is empty but existing data exists');
+      }
+      // Only update admins if we have data (prevent clearing existing data)
+      if (finalAdminsData.length > 0 || admins.length === 0) {
+        setAdmins(finalAdminsData);
+      } else if (import.meta.env.DEV) {
+        console.warn('⚠️ Skipping admins update - new data is empty but existing data exists');
+      }
       
       // PHASE 1 COMPLETE - Critical data loaded! Show UI immediately
       // Set loading to false NOW so dashboard can render
