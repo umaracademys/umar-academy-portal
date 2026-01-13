@@ -886,9 +886,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             enrollmentDate: studentRecord.enrolledDate || studentRecord.enrollmentDate || user.enrollmentDate || new Date().toISOString(),
             level: studentRecord.level || user.level || 'beginner',
             status: studentRecord.status || user.status || 'active',
-            assignedTeacher: studentRecord.assignedTeacher || studentRecord.assignedTeacherId || (studentRecord.assignedTeacherIds && studentRecord.assignedTeacherIds.length > 0 ? studentRecord.assignedTeacherIds[0] : '') || (studentRecord.assignedTeachers && studentRecord.assignedTeachers.length > 0 ? studentRecord.assignedTeachers[0] : '') || user.assignedTeacher || '',
-            assignedTeachers: studentRecord.assignedTeachers || studentRecord.assignedTeacherIds || (studentRecord.assignedTeacher ? [studentRecord.assignedTeacher] : []) || [],
-            assignedTeacherIds: studentRecord.assignedTeacherIds || studentRecord.assignedTeachers || (studentRecord.assignedTeacherId ? [studentRecord.assignedTeacherId] : []) || (studentRecord.assignedTeacher ? [studentRecord.assignedTeacher] : []) || [],
+            assignedTeacher: studentRecord.assignedTeacher || studentRecord.assignedTeacherId || user.assignedTeacher || '',
             paymentStatus: studentRecord.paymentStatus || user.paymentStatus || 'pending',
             avatar: studentRecord.avatar || user.avatar || '',
             courses: studentRecord.courses || user.courses || [],
@@ -899,7 +897,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             grades: studentRecord.grades || user.grades || [],
             notes: studentRecord.notes || user.notes || [],
             recitationProfile: normalizeRecitationProfile(studentRecord?.recitationProfile),
-            program: studentRecord.program || user.program || 'Full-Time HQ', // Default to prevent "NA"
+            program: studentRecord.program || user.program || '',
             parentName: studentRecord.parentName || user.parentName || '',
             tuitionFee: studentRecord.tuitionFee || user.tuitionFee || 0,
             registrationAmount: studentRecord.registrationAmount || user.registrationAmount || 0,
@@ -1349,39 +1347,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.warn('⚠️ Could not check for developer account, proceeding without masking:', error);
       }
 
-      // Preserve existing student data when refreshing to prevent losing fields
-      // This ensures assignedTeacher and program don't become "unassigned" or "NA"
-      setStudents(prev => {
-        const studentMap = new Map();
-        prev.forEach(s => {
-          const key = s.studentRecordId || s.id || (s as any)._id;
-          if (key) studentMap.set(key.toString(), s);
-        });
-        
-        // Merge fresh data with existing data to preserve fields
-        const merged = finalStudentsData.map(fresh => {
-          const key = fresh.studentRecordId || fresh.id || (fresh as any)._id;
-          const existing = key ? studentMap.get(key.toString()) : null;
-          
-          if (existing) {
-            // Preserve existing fields if fresh data doesn't have them or they're empty
-            return {
-              ...existing, // Start with existing (has all fields)
-              ...fresh, // Override with fresh data
-              // Ensure critical fields are never lost
-              assignedTeacher: fresh.assignedTeacher || fresh.assignedTeacherId || (fresh.assignedTeacherIds && fresh.assignedTeacherIds.length > 0 ? fresh.assignedTeacherIds[0] : '') || existing.assignedTeacher || '',
-              assignedTeachers: fresh.assignedTeachers || fresh.assignedTeacherIds || existing.assignedTeachers || [],
-              assignedTeacherIds: fresh.assignedTeacherIds || fresh.assignedTeachers || existing.assignedTeacherIds || [],
-              program: fresh.program || existing.program || 'Full-Time HQ',
-              contact: fresh.contact || fresh.phone || existing.contact || '',
-              schedule: fresh.schedule || existing.schedule || {},
-            };
-          }
-          return fresh;
-        });
-        
-        return merged;
-      });
+      setStudents(finalStudentsData);
       setTeachers(finalTeachersData);
       setAdmins(finalAdminsData);
       
@@ -2210,24 +2176,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           // Match by studentRecordId (preferred) or id/_id
           if (studentRecordId === id || sId === id || sId === mappedStudent.id || sId === mappedStudent._id) {
-            // Preserve existing fields if backend response doesn't include them
-            const preservedFields = {
-              assignedTeacher: mappedStudent.assignedTeacher || mappedStudent.assignedTeacherId || (mappedStudent.assignedTeacherIds && mappedStudent.assignedTeacherIds.length > 0 ? mappedStudent.assignedTeacherIds[0] : '') || (mappedStudent.assignedTeachers && mappedStudent.assignedTeachers.length > 0 ? mappedStudent.assignedTeachers[0] : '') || s.assignedTeacher || '',
-              assignedTeachers: mappedStudent.assignedTeachers || mappedStudent.assignedTeacherIds || s.assignedTeachers || [],
-              assignedTeacherIds: mappedStudent.assignedTeacherIds || mappedStudent.assignedTeachers || s.assignedTeacherIds || [],
-              program: mappedStudent.program || s.program || 'Full-Time HQ',
-              contact: mappedStudent.contact || mappedStudent.phone || s.contact || '',
-              schedule: mappedStudent.schedule || s.schedule || {},
-              parentName: mappedStudent.parentName || s.parentName || '',
-              tuitionFee: mappedStudent.tuitionFee ?? s.tuitionFee ?? 0,
-              registrationAmount: mappedStudent.registrationAmount ?? s.registrationAmount ?? 0,
-            };
-            
             return { 
-              ...s, // Preserve all existing fields first
-              ...mappedStudent, // Then apply backend response
-              ...preservedFields, // Ensure critical fields are never undefined
-              ...student, // Apply any explicit updates from the update call
+              ...s, 
+              ...mappedStudent, 
+              ...student,
               studentRecordId: mappedStudent._id || mappedStudent.id || studentRecordId
             };
           }
