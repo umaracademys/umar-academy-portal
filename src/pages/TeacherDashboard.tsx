@@ -125,8 +125,32 @@ const TeacherDashboard: React.FC = () => {
     // Use Teacher Document ID (_id or teacherDocumentId) instead of User ID (id)
     // Students are assigned using Teacher Document IDs in assignedTeacherIds array
     const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    
+    // Debug: Log all available IDs to understand the structure
+    console.log('🔍 Teacher ID Debug:', {
+      teacherName: currentTeacher.fullName,
+      teacherId: currentTeacher.id,
+      teacherDocId: teacherDocId,
+      _id: (currentTeacher as any)._id,
+      teacherDocumentId: (currentTeacher as any).teacherDocumentId,
+      userId: (currentTeacher as any).userId?._id || (currentTeacher as any).userId,
+      allKeys: Object.keys(currentTeacher)
+    });
+    
     const students = getStudentsByTeacher(teacherDocId);
     console.log('✅ Assigned students for teacher:', currentTeacher.fullName, '- Count:', students.length, '- Teacher Doc ID:', teacherDocId);
+    
+    // If no students found, try with User ID as fallback (for debugging)
+    if (students.length === 0 && teacherDocId !== currentTeacher.id) {
+      console.log('⚠️ No students found with Teacher Doc ID, trying User ID as fallback...');
+      const studentsByUserId = getStudentsByTeacher(currentTeacher.id);
+      console.log('🔍 Students found with User ID:', studentsByUserId.length);
+      if (studentsByUserId.length > 0) {
+        console.log('⚠️ WARNING: Students are assigned using User ID instead of Teacher Document ID!');
+        return studentsByUserId;
+      }
+    }
+    
     return students;
   }, [currentTeacher, getStudentsByTeacher]);
   

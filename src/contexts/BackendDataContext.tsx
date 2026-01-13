@@ -644,6 +644,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               teacherRecords = await teachersResponse.value.json();
               if (import.meta.env.DEV) {
                 console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
+                if (teacherRecords.length > 0) {
+                  // Log sample teacher record to see structure
+                  const sampleTeacher = teacherRecords[0];
+                  console.log('🔍 Sample teacher record:', {
+                    _id: sampleTeacher._id,
+                    userId: sampleTeacher.userId?._id || sampleTeacher.userId,
+                    fullName: sampleTeacher.fullName,
+                    email: sampleTeacher.email
+                  });
+                }
               }
               dataCache.set('teachers', teacherRecords);
               // Merge teacher data with user data
@@ -655,6 +665,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
                 );
                 if (user) {
                   user.teacherProfile = teacher;
+                  if (import.meta.env.DEV) {
+                    console.log('✅ Matched teacher record to user:', {
+                      userEmail: user.email,
+                      teacherId: teacher._id,
+                      userId: user._id
+                    });
+                  }
+                } else if (import.meta.env.DEV) {
+                  console.warn('⚠️ Could not find user for teacher:', {
+                    teacherId: teacher._id,
+                    teacherEmail: teacher.email,
+                    teacherUserId: teacher.userId?._id || teacher.userId,
+                    availableUserIds: users.map((u: any) => u._id)
+                  });
                 }
               });
             } catch (err) {
