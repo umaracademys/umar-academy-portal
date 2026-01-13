@@ -422,11 +422,11 @@ const StudentDashboard: React.FC = () => {
                     }`}>
                       {pairInfo.pair.status || 'Active'}
                     </span>
-                  </div>
                 </div>
-                
+              </div>
+              
                 {/* Recent Daily Reports - Compact */}
-                {pairDailyReports.length > 0 && (
+              {pairDailyReports.length > 0 && (
                   <div className="mt-2 border-t border-gray-200 pt-2">
                     <h4 className="font-bold text-xs text-primary mb-1.5">Recent Reports</h4>
                     <div className="space-y-1 max-h-32 overflow-y-auto">
@@ -434,25 +434,25 @@ const StudentDashboard: React.FC = () => {
                         <div key={report._id} className="p-1.5 bg-gray-50 rounded text-xs">
                           <div className="flex justify-between items-start mb-1">
                             <span className="text-[10px] font-semibold text-gray-600">
-                              {new Date(report.date).toLocaleDateString()}
-                            </span>
+                            {new Date(report.date).toLocaleDateString()}
+                          </span>
                             <span className="text-[10px] font-semibold text-primary">
-                              {report.teacher?.fullName || 'Teacher'}
-                            </span>
-                          </div>
-                          {(report.sabq || report.sabqi || report.manzil) && (
+                            {report.teacher?.fullName || 'Teacher'}
+                          </span>
+                        </div>
+                        {(report.sabq || report.sabqi || report.manzil) && (
                             <div className="text-[10px] text-gray-700">
                               {report.sabq && <div><span className="font-semibold">Sabq:</span> {report.sabq.substring(0, 40)}...</div>}
                               {report.sabqi && <div><span className="font-semibold">Sabqi:</span> {report.sabqi.substring(0, 40)}...</div>}
                               {report.manzil && <div><span className="font-semibold">Manzil:</span> {report.manzil.substring(0, 40)}...</div>}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                   </div>
                 )}
-              </div>
+                </div>
               )}
             </Card>
           </div>

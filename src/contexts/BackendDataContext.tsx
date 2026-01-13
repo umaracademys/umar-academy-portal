@@ -874,7 +874,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           ) || {};
           
           return {
-            id: studentRecord._id || studentRecord.id || userId,
+            // id should ALWAYS be the Student document _id (not User _id) to match assignment.studentId
+            id: studentRecord._id || studentRecord.id,
             studentRecordId: studentRecord._id || studentRecord.id,
             userId: userId || user._id || user.id, // Add userId field for StudentCredentials component
             fullName: studentRecord.fullName || studentRecord.name || user.name || user.fullName || 'Unknown',
@@ -1844,7 +1845,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           ) || {};
           
           return {
-            id: studentRecord._id || studentRecord.id || userId,
+            // id should ALWAYS be the Student document _id (not User _id) to match assignment.studentId
+            id: studentRecord._id || studentRecord.id,
             studentRecordId: studentRecord._id || studentRecord.id,
             userId: userId || user._id || user.id,
             fullName: studentRecord.fullName || studentRecord.name || user.name || user.fullName || 'Unknown',
