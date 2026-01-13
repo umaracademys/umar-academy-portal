@@ -3089,6 +3089,23 @@ app.post('/api/students', authenticateToken, requirePermission('canManageStudent
     // Reload student from database to ensure all fields are populated (including teacher assignments)
     const savedStudent = await Student.findById(student._id).lean();
     
+    // Create notification for admin about new student enrollment
+    try {
+      const adminNotification = new AdminNotification({
+        type: 'student_enrolled',
+        title: 'New Student Enrolled',
+        message: `${savedStudent.fullName || savedStudent.name || 'A new student'} has been enrolled${savedStudent.program ? ` in ${savedStudent.program}` : ''}${normalizedTeacherIds.length > 0 ? ` and assigned to ${normalizedTeacherIds.length} teacher(s)` : ''}`,
+        studentId: savedStudent._id.toString(),
+        priority: 'medium',
+        read: false
+      });
+      await adminNotification.save();
+      console.log('📢 Admin notification created for new student enrollment');
+    } catch (notifError) {
+      console.error('⚠️ Error creating admin notification for student enrollment:', notifError);
+      // Don't fail the request if notification creation fails
+    }
+    
     // Emit WebSocket event for student creation with complete data
     try {
       emitDataEvent('student:created', savedStudent);
@@ -6290,6 +6307,25 @@ app.post('/api/assignments', authenticateToken, requirePermission('canCreateAssi
     const assignment = new Assignment(assignmentData);
     await assignment.save();
     
+    // Create notification for admin about new assignment
+    try {
+      const assignedByName = assignmentData.assignedByName || req.user?.name || req.user?.email || 'System';
+      const adminNotification = new AdminNotification({
+        type: 'assignment_submitted',
+        title: 'New Assignment Created',
+        message: `${assignedByName} created a new assignment for ${assignmentData.studentName || 'a student'}${assignmentData.homework?.enabled ? ' (with homework)' : ''}`,
+        assignmentId: assignment._id.toString(),
+        studentId: assignmentData.studentId,
+        priority: assignmentData.homework?.enabled ? 'medium' : 'low',
+        read: false
+      });
+      await adminNotification.save();
+      console.log('📢 Admin notification created for new assignment');
+    } catch (notifError) {
+      console.error('⚠️ Error creating admin notification for assignment:', notifError);
+      // Don't fail the request if notification creation fails
+    }
+    
     // If this assignment was created from a sabq ticket, update the ticket's sentToAssignmentId
     if (ticketId) {
       try {
@@ -7055,6 +7091,24 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
         type: ticket.type,
         status: ticket.status
       });
+      
+      // Create notification for admin about new ticket
+      try {
+        const adminNotification = new AdminNotification({
+          type: 'recitation_review_pending',
+          title: 'New Ticket Submitted',
+          message: `${ticket.studentName || 'A student'} submitted a ${ticket.type?.toUpperCase() || 'recitation'} ticket${ticket.assignedTeacherName ? ` (assigned to ${ticket.assignedTeacherName})` : ''}`,
+          recitationReviewId: ticket._id.toString(),
+          studentId: ticket.studentId,
+          priority: 'high',
+          read: false
+        });
+        await adminNotification.save();
+        console.log('📢 Admin notification created for new ticket');
+      } catch (notifError) {
+        console.error('⚠️ Error creating admin notification for ticket:', notifError);
+        // Don't fail the request if notification creation fails
+      }
       
       // Emit WebSocket event for ticket creation
       try {
