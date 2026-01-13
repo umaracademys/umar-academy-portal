@@ -790,8 +790,10 @@ const AssignmentManagement: React.FC = () => {
             ) : (
               <div className="divide-y divide-gray-100">
                 {filteredStudents.map(student => {
-                  // Normalize student ID to ensure proper matching
-                  const normalizedStudentId = normalizeId(student.id || (student as any)._id);
+                  // Use studentRecordId (Student document _id) which matches assignment.studentId
+                  // Fallback to student.id if studentRecordId doesn't exist
+                  const studentIdToUse = (student as any).studentRecordId || student.id || (student as any)._id;
+                  const normalizedStudentId = normalizeId(studentIdToUse);
                   const studentAssignments = getStudentAssignments(normalizedStudentId);
                   const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
                   const completedAssignments = studentAssignments.filter((a: any) => 
