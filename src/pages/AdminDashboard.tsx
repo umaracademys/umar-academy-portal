@@ -33,11 +33,13 @@ import { AdminPermissions } from '../types';
 import { usePermission } from '../hooks/usePermission';
 import { RequirePermission } from '../components/RequirePermission';
 import AdminNotificationCenter from '../components/AdminNotificationCenter';
+const AdminTicketReview = lazy(() => import('../components/AdminTicketReview'));
+const AdminRecitationReview = lazy(() => import('../components/AdminRecitationReview'));
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const { students, teachers, admins, refreshData } = useData();
-  const { assignments } = useBackendData();
+  const { assignments, refreshNotifications } = useBackendData();
   const { can, permissions: jwtPermissions } = usePermission(); // Phase 4: Use JWT permissions
   
   // Refresh data on mount to ensure latest permissions are loaded
@@ -155,6 +157,8 @@ const AdminDashboard: React.FC = () => {
   const [showEvaluationResults, setShowEvaluationResults] = useState(false);
   const [showPermissionManager, setShowPermissionManager] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showTicketReview, setShowTicketReview] = useState(false);
+  const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     completedAssignments: false
@@ -1033,9 +1037,49 @@ const AdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
+      {/* Ticket Review Modal */}
+      {showTicketReview && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white rounded-xl p-6">Loading Ticket Review...</div>
+          </div>
+        }>
+          <AdminTicketReview
+            onClose={() => setShowTicketReview(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Recitation Review Modal */}
+      {showRecitationReview && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+            <div className="bg-white rounded-xl p-6">Loading Recitation Review...</div>
+          </div>
+        }>
+          <AdminRecitationReview
+            onClose={() => setShowRecitationReview(false)}
+            onSuccess={() => {
+              setShowRecitationReview(false);
+              refreshNotifications();
+            }}
+          />
+        </Suspense>
+      )}
+
       {/* Notification Center Modal */}
       {showNotificationCenter && (
-        <AdminNotificationCenter onClose={() => setShowNotificationCenter(false)} />
+        <AdminNotificationCenter
+          onClose={() => setShowNotificationCenter(false)}
+          onOpenTicketReview={() => {
+            setShowNotificationCenter(false);
+            setShowTicketReview(true);
+          }}
+          onOpenRecitationReview={() => {
+            setShowNotificationCenter(false);
+            setShowRecitationReview(true);
+          }}
+        />
       )}
 
     </div>

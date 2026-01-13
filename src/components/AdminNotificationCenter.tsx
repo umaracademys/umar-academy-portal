@@ -159,13 +159,22 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
     // Navigate based on notification type
     // Check for ticket notifications first (before actionUrl check)
     if (notification.type === 'recitation_review_pending' && notification.recitationReviewId) {
-      // Check if it's a ticket notification (starts with 'ticket-')
-      if (notification.id?.startsWith('ticket-') && onOpenTicketReview) {
+      // Check if it's a ticket notification:
+      // 1. Dynamic notifications have ID starting with 'ticket-'
+      // 2. Backend notifications: check if recitationReviewId exists in recitationTickets array
+      const isTicketNotification = notification.id?.startsWith('ticket-') || 
+        recitationTickets.some(t => 
+          t.id === notification.recitationReviewId || 
+          (t as any)._id?.toString() === notification.recitationReviewId ||
+          t.id?.toString() === notification.recitationReviewId?.toString()
+        );
+      
+      if (isTicketNotification && onOpenTicketReview) {
         onOpenTicketReview();
         onClose();
         return;
       } else if (onOpenRecitationReview) {
-        // Open recitation review modal
+        // Open recitation review modal (for recitation reviews, not tickets)
         onOpenRecitationReview();
         onClose();
         return;
