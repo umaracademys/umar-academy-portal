@@ -14,7 +14,7 @@ import HomeworkDisplay from '../../../components/HomeworkDisplay';
 const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
   const { students, getStudentByEmail } = useData();
-  const { assignments: backendAssignments, getStudentPersonalMushaf } = useBackendData();
+  const { assignments: backendAssignments, getStudentPersonalMushaf, getStudentByIdentity } = useBackendData();
   const { user } = useAuth();
   const [selectedAssignment, setSelectedAssignment] = useState<string | null>(null);
   const [mushafPage, setMushafPage] = useState<number>(1);
@@ -42,7 +42,39 @@ const StudentAssignments: React.FC = () => {
   }>>({});
   const [showHomeworkOnly, setShowHomeworkOnly] = useState(false);
 
-  const currentStudent = getStudentByEmail(user?.email || '') || students[0];
+  // Unified Student Identity: Find student by email OR userId (ID-agnostic lookup)
+  const currentStudent = useMemo(() => {
+    if (!user) return undefined;
+    
+    // Try unified lookup (email OR userId)
+    let student = getStudentByIdentity?.(user.email, user.id);
+    
+    // Fallback to email-only lookup (for backward compatibility)
+    if (!student && user.email) {
+      student = getStudentByEmail(user.email);
+    }
+    
+    // Last resort: try to find by userId directly
+    if (!student && user.id) {
+      const normalizeId = (id: any): string => {
+        if (!id) return '';
+        if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
+          const str = id.toString();
+          if (/^[0-9a-fA-F]{24}$/.test(str)) return str;
+          return str.trim();
+        }
+        return String(id).trim();
+      };
+      
+      const normalizedUserId = normalizeId(user.id);
+      student = students.find(s => {
+        const sUserId = normalizeId((s as any).userId);
+        return sUserId === normalizedUserId;
+      });
+    }
+    
+    return student || undefined; // Return undefined instead of students[0] to avoid wrong student
+  }, [user, students, getStudentByIdentity, getStudentByEmail]);
 
   // Helper function to normalize IDs for consistent comparison
   const normalizeId = (id: any): string => {
