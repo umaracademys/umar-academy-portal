@@ -60,14 +60,20 @@ const StudentDashboard: React.FC = () => {
   useEffect(() => {
     if (currentStudent) {
       console.log('🔍 Student Program Check:', {
-        email: currentStudent.email,
-        program: currentStudent.program,
+        email: currentStudent.email || user?.email || 'N/A',
+        studentId: currentStudent.id || currentStudent.studentRecordId || 'N/A',
+        program: currentStudent.program || 'N/A',
         isFullTimeHQ,
         isPartTimeHQ,
         shouldHideQaidah
       });
+    } else if (user) {
+      console.log('🔍 Student Program Check: No student found for user:', {
+        userEmail: user.email,
+        studentsCount: students.length
+      });
     }
-  }, [currentStudent, isFullTimeHQ, isPartTimeHQ, shouldHideQaidah]);
+  }, [currentStudent, user, students.length, isFullTimeHQ, isPartTimeHQ, shouldHideQaidah]);
 
   // Load pair information for student
   useEffect(() => {

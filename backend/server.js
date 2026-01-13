@@ -221,6 +221,7 @@ app.use(helmet({
 }));
 
 // Middleware
+app.use(compression()); // Compress all responses (30-50% faster data transfer)
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
