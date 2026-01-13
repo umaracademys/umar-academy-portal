@@ -210,7 +210,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
             return Array.isArray(teacherValue) ? teacherValue : (teacherValue ? [teacherValue] : []);
           })(),
           schedule: scheduleData,
-          siblings: siblings,
+          siblings: [], // Empty for simplified form
           // Preserve existing fields that aren't being changed
           status: student.status || 'active',
           enrolledDate: student.enrolledDate || new Date().toISOString().split('T')[0],
