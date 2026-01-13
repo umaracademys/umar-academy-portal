@@ -224,15 +224,44 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           return;
         }
         
-        // Ensure contact and schedule are included in update payload
+        // CRITICAL: Only send changed fields to backend, preserve existing data
+        // Backend will merge with existing MongoDB data, not replace it
         const { recitationProfile: _profile, studentRecordId: _recordId, id: _id, ...userUpdatePayload } = studentData;
-        // Explicitly ensure contact and schedule are included
+        
+        // Build update payload with only the fields being changed
+        // Backend uses $set, so it will only update these fields and preserve the rest
         const updatePayload = {
-          ...userUpdatePayload,
+          fullName: formData.fullName.trim(),
+          parentName: formData.parentName.trim(),
+          email: formData.email.trim(),
           contact: contactValue,
+          program: formData.program,
+          tuitionFee: formData.tuitionFee,
+          registrationAmount: formData.registrationAmount,
+          assignedTeacher: (() => {
+            const teacherValue = formData.assignedTeacher;
+            const teacherArray = Array.isArray(teacherValue) ? teacherValue : (teacherValue ? [teacherValue] : []);
+            return teacherArray.length > 0 ? teacherArray[0] : '';
+          })(),
+          assignedTeachers: (() => {
+            const teacherValue = formData.assignedTeacher;
+            return Array.isArray(teacherValue) ? teacherValue : (teacherValue ? [teacherValue] : []);
+          })(),
+          assignedTeacherIds: (() => {
+            const teacherValue = formData.assignedTeacher;
+            return Array.isArray(teacherValue) ? teacherValue : (teacherValue ? [teacherValue] : []);
+          })(),
           schedule: scheduleData,
+          siblings: siblings,
+          // Preserve existing fields that aren't being changed
+          status: student.status || 'active',
+          enrolledDate: student.enrolledDate || new Date().toISOString().split('T')[0],
         };
-        console.log('🔄 Updating student with payload:', updatePayload);
+        
+        console.log('🔄 Updating existing student in MongoDB (no new records will be created):', {
+          studentId: studentIdToUpdate,
+          fieldsBeingUpdated: Object.keys(updatePayload)
+        });
         console.log('🔄 Using student ID:', studentIdToUpdate);
         await updateStudent(studentIdToUpdate, updatePayload);
         

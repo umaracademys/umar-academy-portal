@@ -3221,10 +3221,18 @@ app.put('/api/students/:id', authenticateToken, requirePermission('canManageStud
     const normalizedNewIds = normalizeTeacherIds(newTeacherIds);
 
     // 6. UPDATE STUDENT FIRST - Apply the main update
+    // CRITICAL: Use $set to only update provided fields, preserve existing data
+    // This ensures we UPDATE existing record, never create new ones
+    const updateQuery = { $set: studentData };
+    
     const updatedStudent = await Student.findByIdAndUpdate(
       studentId,
-      studentData,
-      { new: true, runValidators: true }
+      updateQuery,
+      { 
+        new: true, 
+        runValidators: true,
+        upsert: false // CRITICAL: Never create new records, only update existing
+      }
     );
 
     if (!updatedStudent) {
