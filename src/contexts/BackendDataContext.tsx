@@ -2022,6 +2022,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         // Check if user already exists (409 Conflict)
         if (userResponse.status === 409) {
           // User already exists - fetch the existing user by email
+          // This is expected behavior, not an error
           try {
             const usersResponse = await fetchWithTimeout(
               `${API_BASE}/users`,
@@ -2037,7 +2038,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               const existingUser = users.find((u: any) => u.email === student.email);
               if (existingUser) {
                 newUser = existingUser;
-                console.log(`✅ Found existing user for email ${student.email}, using existing user ID`);
+                if (import.meta.env.DEV) {
+                  console.log(`✅ Found existing user for email ${student.email}, using existing user ID`);
+                }
               } else {
                 throw new Error('User with that email already exists, but could not find the user record.');
               }
