@@ -47,24 +47,17 @@ const Login: React.FC = () => {
         const errorMsg = error || 'Invalid credentials. Please check your email, password, and account type.';
         setLoginError(errorMsg);
         
-        // Check if account is locked
+        // Check if account is locked from window object (set by AuthContext)
         const lockedInfo = (window as any).__lockedAccountInfo;
         if (lockedInfo && lockedInfo.accountLocked) {
           setAccountLocked(true);
-          setMinutesRemaining(lockedInfo.minutesRemaining);
+          setMinutesRemaining(lockedInfo.minutesRemaining || 30);
         } else {
+          // Also check error response directly if available
+          // The error might contain account locked info
           setAccountLocked(false);
           setMinutesRemaining(null);
         }
-        
-        // Log for debugging
-        console.warn('⚠️ Login failed:', {
-          email,
-          role,
-          error: errorMsg,
-          accountLocked,
-          timestamp: new Date().toISOString()
-        });
       }
     } catch (err: any) {
       console.error('❌ Login error caught:', err);
@@ -122,6 +115,17 @@ const Login: React.FC = () => {
 
               {accountLocked && !unlockRequestSent && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800 mb-2 font-medium">
+                    🔒 Account Locked
+                  </p>
+                  <p className="text-sm text-blue-700 mb-3">
+                    Your account has been temporarily locked due to too many failed login attempts.
+                    {minutesRemaining !== null && (
+                      <span className="block mt-1">
+                        Account will automatically unlock in {minutesRemaining} minute(s).
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-blue-800 mb-3">
                     Need immediate access? Request an unlock from the administrator.
                   </p>
@@ -129,6 +133,7 @@ const Login: React.FC = () => {
                     type="button"
                     onClick={async () => {
                       setRequestingUnlock(true);
+                      setLoginError(''); // Clear previous errors
                       try {
                         const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
                         const apiUrl = API_BASE.endsWith('/api') ? API_BASE : `${API_BASE}/api`;
@@ -146,18 +151,20 @@ const Login: React.FC = () => {
                         const data = await response.json();
                         if (response.ok) {
                           setUnlockRequestSent(true);
-                          setLoginError(data.message || 'Unlock request sent successfully!');
+                          setLoginError('');
+                          // Show success message
+                          alert(data.message || 'Unlock request sent successfully! The administrator will be notified.');
                         } else {
                           setLoginError(data.error || 'Failed to send unlock request. Please try again.');
                         }
                       } catch (err) {
-                        setLoginError('Failed to send unlock request. Please try again.');
+                        setLoginError('Failed to send unlock request. Please check your connection and try again.');
                       } finally {
                         setRequestingUnlock(false);
                       }
                     }}
                     disabled={requestingUnlock}
-                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                    className="w-full bg-blue-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
                     {requestingUnlock ? 'Sending Request...' : '🔓 Request Account Unlock'}
                   </button>

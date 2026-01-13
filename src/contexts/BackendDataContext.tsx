@@ -408,6 +408,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Load data from backend API - wrapped in useCallback to prevent recreation
   // OPTIMIZED: Progressive loading with caching for faster initial render
   const loadData = useCallback(async (useCache = true) => {
+    // Don't load data if user is not logged in
+    if (!currentUser) {
+      if (import.meta.env.DEV) {
+        console.log('⏸️ loadData skipped - no user logged in');
+      }
+      setLoading(false);
+      isLoadingRef.current = false;
+      return;
+    }
+    
     // Prevent concurrent calls
     if (isLoadingRef.current) {
       if (import.meta.env.DEV) {
@@ -1369,7 +1379,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, []); // Empty deps - loadData should only be created once
+  }, [currentUser]); // Include currentUser since we check it in loadData
 
   // Load cache IMMEDIATELY on mount for instant display (before API calls)
   // WebSocket event listeners for real-time assignment updates
@@ -1637,7 +1647,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   const isInitialMountRef = useRef(true);
   
   useEffect(() => {
-    // Load data on initial mount
+    // Don't load data if user is not logged in
+    if (!currentUser) {
+      if (import.meta.env.DEV) {
+        console.log('⏸️ No user logged in, skipping data load');
+      }
+      setLoading(false);
+      isLoadingRef.current = false;
+      return;
+    }
+    
+    // Load data on initial mount (only if user is logged in)
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
       if (import.meta.env.DEV) {
@@ -1651,7 +1671,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     // Mark initial mount as complete
     isInitialMountRef.current = false;
-  }, [loadData]);
+  }, [loadData, currentUser]);
 
   // Reload data when user logs in (currentUser changes from null to a user)
   // Skip on initial mount (user might already be logged in from localStorage)

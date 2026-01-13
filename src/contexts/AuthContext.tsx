@@ -123,35 +123,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
         
-        // Check if account is locked
-        let accountLocked = false;
-        let minutesRemaining = null;
-        try {
-          const errorData = await response.json().catch(() => ({}));
-          accountLocked = errorData.accountLocked || false;
-          minutesRemaining = errorData.minutesRemaining || null;
-          if (accountLocked) {
-            // Store locked account info for the UI
-            (window as any).__lockedAccountInfo = {
-              email,
-              accountLocked: true,
-              minutesRemaining,
-              canRequestUnlock: errorData.canRequestUnlock || false
-            };
-          }
-        } catch (e) {
-          // Ignore JSON parse errors
-        }
-
-        // Phase 5: Handle PERMISSIONS_OUTDATED error code
+        // Read error response once (can only read response body once)
         let errorData: any = {};
         try {
           errorData = await response.json().catch(() => ({}));
         } catch (e) {
           // Ignore parse errors
         }
+
+        // Check if account is locked
+        const accountLocked = errorData.accountLocked || false;
+        const minutesRemaining = errorData.minutesRemaining || null;
+        const canRequestUnlock = errorData.canRequestUnlock || false;
         
-        // Check for PERMISSIONS_OUTDATED code - auto logout user
+        if (accountLocked) {
+          // Store locked account info for the UI
+          (window as any).__lockedAccountInfo = {
+            email,
+            accountLocked: true,
+            minutesRemaining: minutesRemaining || 30,
+            canRequestUnlock: canRequestUnlock || true
+          };
+        } else {
+          // Clear any previous locked account info
+          delete (window as any).__lockedAccountInfo;
+        }
+        
+        // Phase 5: Handle PERMISSIONS_OUTDATED code - auto logout user
         if (errorData.code === 'PERMISSIONS_OUTDATED') {
           console.log('🔄 Permissions updated - logging out user');
           logout(); // Auto logout on permission change
@@ -162,15 +160,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Provide more specific error messages based on status code
         if (response.status === 401) {
-          errorMessage = errorMessage || 'Invalid email, password, or role. Please check your credentials and try again.';
+          errorMessage = errorData.error || errorMessage || 'Invalid email, password, or role. Please check your credentials and try again.';
         } else if (response.status === 403) {
-          errorMessage = errorMessage || 'Account access denied. Your account may be locked or disabled.';
+          // For 403, use the error message from the response (which includes account lockout info)
+          errorMessage = errorData.error || errorMessage || 'Account access denied. Your account may be locked or disabled.';
         } else if (response.status === 429) {
-          errorMessage = 'Too many login attempts. Please wait a moment and try again.';
+          errorMessage = errorData.error || 'Too many login attempts. Please wait a moment and try again.';
         } else if (response.status === 500) {
-          errorMessage = 'Server error. Please try again later.';
+          errorMessage = errorData.error || 'Server error. Please try again later.';
         } else if (response.status === 0 || response.status >= 500) {
           errorMessage = 'Unable to connect to server. Please check your internet connection.';
+        } else {
+          // Use error from response if available
+          errorMessage = errorData.error || errorMessage;
         }
         
         setError(errorMessage);

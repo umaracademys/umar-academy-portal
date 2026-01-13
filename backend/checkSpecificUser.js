@@ -164,6 +164,6 @@ async function checkUser(email) {
 }
 
 // Check the specific user
-const email = 'fatima.rahmannn@gmail.com';
+const email = process.argv[2] || 'shrashidua@gmail.com';
 checkUser(email);
 
