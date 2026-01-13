@@ -265,158 +265,89 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
         <form onSubmit={handleSubmit} className="p-4 bg-white">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Parent Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.parentName}
-                  onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Email *</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Contact Number *</label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.contact || ''}
-                  onChange={(e) => {
-                    const newValue = e.target.value;
-                    setFormData(prev => ({ ...prev, contact: newValue }));
-                  }}
-                  onBlur={(e) => {
-                    // Ensure value persists on blur
-                    const trimmedValue = e.target.value.trim();
-                    if (trimmedValue !== formData.contact) {
-                      setFormData(prev => ({ ...prev, contact: trimmedValue }));
-                    }
-                  }}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                  placeholder="+1-555-0000"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
+              />
             </div>
-          </div>
-
-          {/* Program Information */}
-          <div className="mb-6">
-            <h3 className="text-lg font-extrabold text-primary mb-4">Program Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-extrabold text-primary mb-2">Program *</label>
-                <select
-                  required
-                  value={formData.program}
-                  onChange={(e) => {
-                    const newProgram = e.target.value as ProgramType;
-                    setFormData({ ...formData, program: newProgram });
-                  }}
-                  className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white"
-                >
-                  <option value="Full-Time HQ">Full-Time HQ</option>
-                  <option value="Part-Time HQ">Part-Time HQ</option>
-                  <option value="After School">After School</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Parent Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.parentName}
+                onChange={(e) => setFormData({ ...formData, parentName: e.target.value })}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
+              />
             </div>
-            
-            {/* Teacher Assignment */}
-            <div className="mt-4">
-              <h4 className="text-lg font-extrabold text-primary mb-3 flex items-center gap-2">
-                <span>👤</span> Teacher Assignment *
-              </h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-extrabold text-primary mb-2">
-                    Select Teacher(s) * (You can select multiple teachers)
-                  </label>
-                  <select
-                    required
-                    multiple
-                    value={(() => {
-                      const teacherValue = formData.assignedTeacher;
-                      if (Array.isArray(teacherValue)) {
-                        return teacherValue;
-                      }
-                      if (teacherValue && typeof teacherValue === 'string') {
-                        return [teacherValue];
-                      }
-                      return [];
-                    })()}
-                    onChange={(e) => {
-                      const selectElement = e.target as HTMLSelectElement;
-                      const selectedOptions = Array.from(selectElement.selectedOptions).map(option => option.value);
-                      setFormData({ 
-                        ...formData, 
-                        assignedTeacher: selectedOptions.length > 0 ? selectedOptions : []
-                      });
-                    }}
-                    className="w-full px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-primary bg-white min-h-[120px]"
-                    size={Math.min(teachers.length + 1, 6)}
-                  >
-                    <option value="" disabled>Select one or more teachers...</option>
-                    {teachers
-                      .filter((teacher: any) => {
-                        // Filter teachers by program if needed
-                        return true; // Show all teachers for now
-                      })
-                      .map((teacher: any) => {
-                        // Use Teacher document _id (MongoDB ID) instead of User id for proper matching
-                        const teacherDocId = (teacher as any)._id || (teacher as any).teacherDocumentId || teacher.id;
-                        return (
-                          <option key={teacher.id} value={teacherDocId}>
-                            {teacher.fullName}
-                          </option>
-                        );
-                      })}
-                  </select>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Hold Ctrl (Windows) or Cmd (Mac) to select multiple teachers. All selected teachers will be able to see this student's assignments and tickets.
-                  </p>
-                  {(() => {
-                    const teacherValue = formData.assignedTeacher;
-                    const teacherArray = Array.isArray(teacherValue) ? teacherValue : (teacherValue ? [teacherValue] : []);
-                    return teacherArray.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {teacherArray.map((teacherId: string) => {
-                          // Find teacher by Teacher document _id, teacherDocumentId, or User id
-                          const teacher = teachers.find((t: any) => {
-                            const tDocId = (t as any)._id?.toString() || (t as any).teacherDocumentId?.toString();
-                            const tUserId = t.id?.toString();
-                            return tDocId === teacherId || tUserId === teacherId;
-                          });
-                          return teacher ? (
-                            <span key={teacherId} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-semibold">
-                              {teacher.fullName}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Email *</label>
+              <input
+                type="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Contact *</label>
+              <input
+                type="tel"
+                required
+                value={formData.contact || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, contact: e.target.value }))}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
+                placeholder="+1-555-0000"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Program *</label>
+              <select
+                required
+                value={formData.program}
+                onChange={(e) => setFormData({ ...formData, program: e.target.value as ProgramType })}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
+              >
+                <option value="Full-Time HQ">Full-Time HQ</option>
+                <option value="Part-Time HQ">Part-Time HQ</option>
+                <option value="After School">After School</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Teacher(s) *</label>
+              <select
+                required
+                multiple
+                value={(() => {
+                  const teacherValue = formData.assignedTeacher;
+                  if (Array.isArray(teacherValue)) return teacherValue;
+                  if (teacherValue && typeof teacherValue === 'string') return [teacherValue];
+                  return [];
+                })()}
+                onChange={(e) => {
+                  const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+                  setFormData({ ...formData, assignedTeacher: selectedOptions.length > 0 ? selectedOptions : [] });
+                }}
+                className="w-full px-3 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm"
+                size={Math.min(teachers.length + 1, 4)}
+              >
+                <option value="" disabled>Select teacher(s)...</option>
+                {teachers.map((teacher: any) => {
+                  const teacherDocId = (teacher as any)._id || (teacher as any).teacherDocumentId || teacher.id;
+                  return (
+                    <option key={teacher.id} value={teacherDocId}>
+                      {teacher.fullName}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-gray-500 mt-0.5">Hold Ctrl/Cmd to select multiple</p>
             </div>
           </div>
 
