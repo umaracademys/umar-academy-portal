@@ -17,6 +17,7 @@ const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const helmet = require('helmet');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const { validatePassword, sanitizeObject, validateEmail, getAccountLockoutConfig } = require('./security');
@@ -1408,6 +1409,15 @@ const studentSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
+// Add indexes for faster queries
+studentSchema.index({ userId: 1 });
+studentSchema.index({ email: 1 });
+studentSchema.index({ assignedTeacherIds: 1 });
+studentSchema.index({ assignedTeacherId: 1 }); // Legacy support
+studentSchema.index({ program: 1 });
+studentSchema.index({ status: 1 });
+studentSchema.index({ email: 1, status: 1 }); // Compound index for common queries
+
 const Student = mongoose.model('Student', studentSchema);
 
 // Teacher Schema
@@ -1581,6 +1591,13 @@ const teacherSchema = new mongoose.Schema({
   avatar: String,
   courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }]
 }, { timestamps: true });
+
+// Add indexes for faster queries
+teacherSchema.index({ userId: 1 });
+teacherSchema.index({ email: 1 });
+teacherSchema.index({ assignedStudents: 1 });
+teacherSchema.index({ status: 1 });
+teacherSchema.index({ email: 1, status: 1 }); // Compound index for common queries
 
 const Teacher = mongoose.model('Teacher', teacherSchema);
 
@@ -5385,6 +5402,9 @@ const ticketSchema = new mongoose.Schema({
 ticketSchema.index({ studentId: 1, status: 1 });
 ticketSchema.index({ assignedTeacherId: 1, status: 1 });
 ticketSchema.index({ type: 1, status: 1 });
+ticketSchema.index({ createdAt: -1 }); // For sorting by date
+ticketSchema.index({ studentId: 1, createdAt: -1 }); // Compound index for student queries
+ticketSchema.index({ assignedTeacherId: 1, createdAt: -1 }); // Compound index for teacher queries
 
 const Ticket = mongoose.model('Ticket', ticketSchema);
 
