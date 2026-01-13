@@ -300,29 +300,36 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     needsTickets: boolean;
     needsNotifications: boolean;
     needsReviews: boolean;
+    needsOnlyStudentsTeachers: boolean; // For teacher-student-assignment page
   } => {
     // Normalize pathname (remove trailing slash, query params, hash)
     const normalizedPath = pathname.split('?')[0].split('#')[0].replace(/\/$/, '') || '/';
     const isDashboard = normalizedPath === '/dashboard';
+    const isTeacherStudentAssignment = normalizedPath === '/teacher-student-assignment';
+    
+    // OPTIMIZATION: teacher-student-assignment only needs students and teachers
+    const needsOnlyStudentsTeachers = isTeacherStudentAssignment;
     
     // Pages that need assignments (assignment management, student assignments, dashboards)
     const needsAssignments = 
-      normalizedPath.includes('/assignments') ||
-      normalizedPath.includes('/student/assignments') ||
-      normalizedPath.includes('/student/dashboard') ||
-      normalizedPath.includes('/student') ||
-      isDashboard;
+      !needsOnlyStudentsTeachers && (
+        normalizedPath.includes('/assignments') ||
+        normalizedPath.includes('/student/assignments') ||
+        normalizedPath.includes('/student/dashboard') ||
+        normalizedPath.includes('/student') ||
+        isDashboard
+      );
     
     // Pages that need tickets (dashboards only for now)
-    const needsTickets = isDashboard;
+    const needsTickets = isDashboard && !needsOnlyStudentsTeachers;
     
     // Pages that need notifications (dashboards only)
-    const needsNotifications = isDashboard;
+    const needsNotifications = isDashboard && !needsOnlyStudentsTeachers;
     
     // Pages that need reviews (dashboards only)
-    const needsReviews = isDashboard;
+    const needsReviews = isDashboard && !needsOnlyStudentsTeachers;
     
-    return { needsAssignments, needsTickets, needsNotifications, needsReviews };
+    return { needsAssignments, needsTickets, needsNotifications, needsReviews, needsOnlyStudentsTeachers };
   };
   const [students, setStudents] = useState<Student[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -428,6 +435,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     
     const startTime = Date.now();
     
+    // Get current route to determine what data is needed
+    const currentPath = location.pathname;
+    const routeData = getRequiredData(currentPath);
+    const { needsAssignments, needsTickets, needsNotifications, needsReviews, needsOnlyStudentsTeachers } = routeData;
+    
     // Set a maximum timeout for the entire data loading process (30 seconds)
     const maxTimeout = setTimeout(() => {
       if (isLoadingRef.current) {
@@ -447,10 +459,16 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoadingStep('Loading essential data...');
       if (import.meta.env.DEV) {
         console.log('🚀 Phase 1: Loading critical data...', new Date().toISOString());
+        if (routeData.needsOnlyStudentsTeachers) {
+          console.log('⚡ OPTIMIZED: Loading only students and teachers for teacher-student-assignment page');
+        }
       }
 
       // OPTIMIZED: For students, skip loading unnecessary data (teachers, all users)
       const isStudentUser = currentUser?.role === 'student';
+      
+      // OPTIMIZED: For teacher-student-assignment page, skip loading admins, assignments, tickets, etc.
+      const isTeacherStudentAssignmentPage = routeData.needsOnlyStudentsTeachers;
       
       // Try to load from cache first for instant UI
       const cachedUsers = useCache ? dataCache.get<any[]>('users') : null;
@@ -462,7 +480,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       let studentRecords: any[] = [];
 
       // OPTIMIZED: For students, skip users/teachers loading (not needed)
-      if (!isStudentUser) {
+      // OPTIMIZED: For teacher-student-assignment page, skip users/admins (only need students/teachers)
+      if (!isStudentUser && !isTeacherStudentAssignmentPage) {
         // Load users - check cache first
         if (cachedUsers) {
           console.log('⚡ Using cached users');
@@ -483,6 +502,12 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
           // Cache users for next time
           dataCache.set('users', users);
+        }
+      } else if (isTeacherStudentAssignmentPage) {
+        // For teacher-student-assignment, we still need users to merge with teachers
+        // But we can load them in parallel with teachers/students
+        if (cachedUsers) {
+          users = cachedUsers;
         }
 
         // Load teachers and students in parallel for faster loading
@@ -1329,6 +1354,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // PHASE 1 COMPLETE - Critical data loaded! Show UI immediately
       // Set loading to false NOW so dashboard can render
       // Phase 2 data (assignments, tickets) will continue loading in background
+      // OPTIMIZATION: Skip Phase 2 for teacher-student-assignment page
+      if (isTeacherStudentAssignmentPage) {
+        if (import.meta.env.DEV) {
+          const phase1Time = Date.now() - startTime;
+          console.log(`⚡ Phase 1 complete - UI rendering now! (${phase1Time}ms)`);
+          console.log('✅ Teacher-student-assignment page: Only students and teachers loaded - skipping assignments/tickets');
+        }
+        setLoading(false);
+        isLoadingRef.current = false;
+        clearTimeout(maxTimeout);
+        return; // Early return - no need to load assignments/tickets
+      }
+      
       setLoading(false);
       isLoadingRef.current = false; // Allow background loading to continue
       
