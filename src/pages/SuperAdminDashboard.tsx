@@ -454,7 +454,7 @@ const SuperAdminDashboard: React.FC = () => {
     },
   ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, setShowApprovedEvaluations, pendingWeeklyEvaluationsCount]);
 
-  const managementActions = [
+  const managementActions = useMemo(() => [
     {
       id: 'manage-students',
       badge: 'ST',
