@@ -202,15 +202,19 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         }
         
         if (!studentIdToUpdate) {
-          console.error('❌ Student ID resolution failed:', {
-            studentRecordId: student.studentRecordId,
-            _id: (student as any)._id,
-            id: student.id,
-            userId: student.userId,
-            email: student.email,
-            fullName: student.fullName
-          });
-          alert('❌ Cannot edit this student.\n\nThis student does not have a Student document in the database. They only have a User account for login.\n\nTo edit this student, please create a Student profile first through the registration form.');
+          // This student only has a User document, not a Student document
+          // Log for debugging but don't show as an error - this is expected for some users
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ Student ID resolution: Student has no Student document (only User document):', {
+              studentRecordId: student.studentRecordId,
+              _id: (student as any)._id,
+              id: student.id,
+              userId: student.userId,
+              email: student.email,
+              fullName: student.fullName
+            });
+          }
+          alert('❌ Cannot edit this student.\n\nThis student does not have a Student document in the database. They only have a User account for login.\n\nTo edit this student:\n1. Close this form\n2. Use "Add Student" to create a Student profile\n3. Link it to the existing User account (same email)');
           setIsSubmitting(false);
           return;
         }
