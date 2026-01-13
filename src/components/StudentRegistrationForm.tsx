@@ -50,6 +50,12 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
     if (isEdit && student) {
       if (import.meta.env.DEV) {
         console.log('🔄 Initializing StudentRegistrationForm with student data:', student);
+        console.log('🆔 Student IDs:', {
+          id: student.id,
+          studentRecordId: student.studentRecordId,
+          _id: (student as any)._id,
+          userId: student.userId
+        });
         console.log('📞 Contact field:', student.contact || student.phone || student.phoneNumber || 'Not set');
         console.log('📅 Schedule:', student.schedule);
       }
@@ -177,8 +183,16 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
 
     try {
       if (isEdit) {
+        // CRITICAL: Use studentRecordId (MongoDB _id) for updates, not user id
+        // The backend /api/students/:id endpoint expects Student Document ID
+        const studentIdToUpdate = student.studentRecordId || (student as any)._id || student.id;
+        
+        if (!studentIdToUpdate) {
+          throw new Error('Student ID not found. Cannot update student.');
+        }
+        
         // Ensure contact and schedule are included in update payload
-        const { recitationProfile: _profile, studentRecordId: _recordId, ...userUpdatePayload } = studentData;
+        const { recitationProfile: _profile, studentRecordId: _recordId, id: _id, ...userUpdatePayload } = studentData;
         // Explicitly ensure contact and schedule are included
         const updatePayload = {
           ...userUpdatePayload,
@@ -186,7 +200,8 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
           schedule: scheduleData,
         };
         console.log('🔄 Updating student with payload:', updatePayload);
-        await updateStudent(student.id, updatePayload);
+        console.log('🔄 Using student ID:', studentIdToUpdate);
+        await updateStudent(studentIdToUpdate, updatePayload);
         
         // Refresh data to ensure UI updates
         if (refreshData) {
