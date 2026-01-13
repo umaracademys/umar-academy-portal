@@ -193,6 +193,60 @@ const SuperAdminDashboard: React.FC = () => {
     systemStatus: false
   });
 
+  // Fetch maintenance mode status
+  useEffect(() => {
+    const fetchMaintenanceMode = async () => {
+      try {
+        const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+        const response = await fetch(`${API_BASE}/api/maintenance`);
+        if (response.ok) {
+          const data = await response.json();
+          setMaintenanceMode(data);
+        }
+      } catch (error) {
+        console.error('Error fetching maintenance mode:', error);
+      }
+    };
+    fetchMaintenanceMode();
+  }, []);
+
+  // Toggle maintenance mode
+  const handleToggleMaintenance = async () => {
+    if (isTogglingMaintenance) return;
+    
+    setIsTogglingMaintenance(true);
+    try {
+      const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001';
+      const token = localStorage.getItem('umar_academy_token');
+      
+      const response = await fetch(`${API_BASE}/api/maintenance`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          enabled: !maintenanceMode.enabled,
+          message: maintenanceMode.message || 'The system is currently under maintenance. Please check back soon.'
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setMaintenanceMode(data);
+        alert(`Maintenance mode ${data.enabled ? 'enabled' : 'disabled'}`);
+      } else {
+        const error = await response.json();
+        alert(`Failed to toggle maintenance mode: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error toggling maintenance mode:', error);
+      alert('Failed to toggle maintenance mode. Please try again.');
+    } finally {
+      setIsTogglingMaintenance(false);
+    }
+  };
+
   // Get pending recitation reviews count
   const pendingReviewsCount = recitationReviews.filter(r => r.status === 'pending_review').length;
   const unreadNotificationsCount = adminNotifications.filter(n => !n.read).length;
