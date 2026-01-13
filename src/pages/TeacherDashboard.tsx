@@ -79,7 +79,44 @@ const TeacherDashboard: React.FC = () => {
   const [showAllPendingTickets, setShowAllPendingTickets] = useState(false);
   const [showAllApprovedTickets, setShowAllApprovedTickets] = useState(false);
 
-  const currentTeacher = user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
+  // Find teacher by email OR userId (more reliable matching)
+  const currentTeacher = useMemo(() => {
+    if (!user || !teachers || teachers.length === 0) {
+      console.log('⚠️ No user or teachers available');
+      return null;
+    }
+    
+    // Try to find by email first
+    let teacher = teachers.find(t => t.email?.toLowerCase() === user.email?.toLowerCase());
+    
+    // If not found by email, try to find by userId (teacher.userId should match user.id)
+    if (!teacher && user.id) {
+      teacher = teachers.find(t => {
+        const teacherUserId = (t as any).userId?._id?.toString() || (t as any).userId?.toString() || (t as any).userId;
+        const userUserId = user.id?.toString() || (user as any)._id?.toString();
+        return teacherUserId && userUserId && teacherUserId === userUserId;
+      });
+    }
+    
+    // If still not found, try to find by user's _id
+    if (!teacher && (user as any)._id) {
+      teacher = teachers.find(t => {
+        const teacherUserId = (t as any).userId?._id?.toString() || (t as any).userId?.toString() || (t as any).userId;
+        const userUserId = (user as any)._id?.toString();
+        return teacherUserId && userUserId && teacherUserId === userUserId;
+      });
+    }
+    
+    if (!teacher) {
+      console.warn('⚠️ Teacher not found for user:', { email: user.email, userId: user.id, teachersCount: teachers.length });
+      // Don't use fallback - return null so we can debug the issue
+      return null;
+    }
+    
+    console.log('✅ Teacher found:', teacher.fullName, '- Email:', teacher.email, '- ID:', teacher.id);
+    return teacher;
+  }, [user, teachers]);
+  
   const assignedStudents = useMemo(() => {
     if (!currentTeacher) {
       console.log('⚠️ No current teacher found, returning empty assigned students');
