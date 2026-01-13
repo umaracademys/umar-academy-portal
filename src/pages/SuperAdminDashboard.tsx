@@ -581,7 +581,7 @@ const SuperAdminDashboard: React.FC = () => {
       action: handleToggleMaintenance,
       footer: isTogglingMaintenance ? 'Updating...' : (maintenanceMode.enabled ? 'Currently ON' : 'Currently OFF'),
     },
-  ];
+  ], [maintenanceMode, isTogglingMaintenance, handleToggleMaintenance, totalStudents, totalTeachers, totalAdmins, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, navigate, setSelectedStudent, setShowStudentForm, setActiveSection, setSelectedTeacher, setShowTeacherForm, setShowAdminForm, setShowPermissionManager, setShowDataManager, refreshNotifications, setShowRecitationReview, setShowWeeklyEvaluations, setShowApprovedEvaluations, setShowApprovedTickets, setShowLockedAccounts]);
 
   // Calculate additional metrics
   const inactiveStudentCount = totalStudents - activeStudentCount;
