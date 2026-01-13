@@ -65,7 +65,9 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   // Normalize program names to canonical ProgramType values to prevent duplicates
   const normalizeProgramName = (program: string | undefined): string | null => {
     if (!program) return null;
-    const normalized = program.trim().toLowerCase();
+    const trimmed = program.trim();
+    if (!trimmed) return null;
+    const normalized = trimmed.toLowerCase();
     
     // Map variations to canonical ProgramType values
     if (normalized.includes('full') && normalized.includes('time')) {
@@ -79,18 +81,28 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     }
     
     // If it matches exactly, return as-is
-    if (program === 'Full-Time HQ' || program === 'Part-Time HQ' || program === 'After School') {
-      return program;
+    if (trimmed === 'Full-Time HQ' || trimmed === 'Part-Time HQ' || trimmed === 'After School') {
+      return trimmed;
     }
     
-    return null;
+    // Return the original program name if it doesn't match known patterns
+    // This ensures we don't lose any programs
+    return trimmed;
   };
   
-  const uniquePrograms = Array.from(new Set(
-    students
-      .map(s => normalizeProgramName(s.program))
-      .filter((p): p is string => p !== null)
-  )).sort(); // Sort alphabetically for better UX
+  // Get unique programs - use normalized names for filtering but show all unique values
+  const uniquePrograms = useMemo(() => {
+    const programSet = new Set<string>();
+    students.forEach(student => {
+      if (student.program) {
+        const normalized = normalizeProgramName(student.program);
+        if (normalized) {
+          programSet.add(normalized);
+        }
+      }
+    });
+    return Array.from(programSet).sort(); // Sort alphabetically for better UX
+  }, [students]);
 
   // Fetch user password status for all students
   useEffect(() => {
