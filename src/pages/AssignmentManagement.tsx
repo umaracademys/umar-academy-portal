@@ -107,7 +107,10 @@ const AssignmentManagement: React.FC = () => {
     // Filter by assignment status
     if (filterStatus !== 'all') {
       filtered = filtered.filter(student => {
-        const studentAssignments = getStudentAssignments(student.id);
+        // Use studentRecordId (Student document _id) which matches assignment.studentId
+        // Fallback to student.id if studentRecordId doesn't exist
+        const studentIdToUse = (student as any).studentRecordId || student.id || (student as any)._id;
+        const studentAssignments = getStudentAssignments(studentIdToUse);
         const hasAssignments = studentAssignments.length > 0;
         
         if (filterStatus === 'with-assignments') return hasAssignments;
