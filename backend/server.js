@@ -7561,6 +7561,45 @@ app.delete('/api/tickets/:id', async (req, res) => {
   }
 });
 
+// Maintenance Mode - Simple in-memory storage (can be moved to database if needed)
+let maintenanceMode = {
+  enabled: false,
+  message: 'The system is currently under maintenance. Please check back soon.'
+};
+
+// Get maintenance mode status (public endpoint - no auth required)
+app.get('/api/maintenance', (req, res) => {
+  res.json(maintenanceMode);
+});
+
+// Update maintenance mode (requires superadmin)
+app.put('/api/maintenance', authenticateToken, async (req, res) => {
+  try {
+    // Check if user is superadmin
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Only superadmins can manage maintenance mode' });
+    }
+
+    const { enabled, message } = req.body;
+    
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean' });
+    }
+
+    maintenanceMode = {
+      enabled,
+      message: message || maintenanceMode.message
+    };
+
+    // Emit socket event to notify all users
+    io.emit('maintenance_mode_changed', maintenanceMode);
+
+    res.json(maintenanceMode);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Admin Notification Routes
 app.get('/api/admin-notifications', async (req, res) => {
   try {

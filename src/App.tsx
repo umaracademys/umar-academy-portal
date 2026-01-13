@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import Login from './pages/Login';
 import DeveloperModeIndicator from './components/DeveloperModeIndicator';
+import MaintenanceBanner from './components/MaintenanceBanner';
 
 // Lazy load heavy components for code-splitting
 const SuperAdminDashboard = lazy(() => import('./pages/SuperAdminDashboard'));
@@ -104,6 +105,7 @@ function AppContent() {
 
   return (
     <>
+      <MaintenanceBanner />
       <DeveloperModeIndicator />
       <Suspense fallback={<LoadingFallback />}>
         <Routes>

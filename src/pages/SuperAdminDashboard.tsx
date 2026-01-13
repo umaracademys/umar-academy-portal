@@ -184,6 +184,8 @@ const SuperAdminDashboard: React.FC = () => {
   const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
   const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState<{ enabled: boolean; message: string }>({ enabled: false, message: '' });
+  const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     systemManagement: false,
     recentActivity: false,
@@ -516,6 +518,14 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'View recently approved tickets and assign homework.',
       action: () => setShowApprovedTickets(true),
       footer: 'Assign homework',
+    },
+    {
+      id: 'maintenance-mode',
+      badge: maintenanceMode.enabled ? '🟢' : '🔴',
+      title: maintenanceMode.enabled ? 'Turn Off Maintenance' : 'Turn On Maintenance',
+      description: maintenanceMode.enabled ? 'Disable maintenance mode for all users' : 'Enable maintenance mode to show message to all users',
+      action: handleToggleMaintenance,
+      footer: isTogglingMaintenance ? 'Updating...' : (maintenanceMode.enabled ? 'Currently ON' : 'Currently OFF'),
     },
   ];
 
