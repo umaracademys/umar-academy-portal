@@ -185,10 +185,31 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
       if (isEdit) {
         // CRITICAL: Use studentRecordId (MongoDB _id) for updates, not user id
         // The backend /api/students/:id endpoint expects Student Document ID
-        const studentIdToUpdate = student.studentRecordId || (student as any)._id || student.id;
+        // Priority: studentRecordId > _id > id (but only if id is not a userId)
+        let studentIdToUpdate = student.studentRecordId || (student as any)._id;
+        
+        // If we don't have studentRecordId or _id, check if id is actually a Student Document ID
+        // We can't use userId for updates - it will fail with 404
+        if (!studentIdToUpdate) {
+          // Check if student.id might be the Student Document ID
+          // If student has both id and userId, and they're different, id might be the Student ID
+          if (student.id && student.userId && student.id !== student.userId) {
+            studentIdToUpdate = student.id;
+          } else if (student.id && !student.userId) {
+            // If there's no userId, then id is likely the Student Document ID
+            studentIdToUpdate = student.id;
+          }
+        }
         
         if (!studentIdToUpdate) {
-          throw new Error('Student ID not found. Cannot update student.');
+          console.error('❌ Student ID resolution failed:', {
+            studentRecordId: student.studentRecordId,
+            _id: (student as any)._id,
+            id: student.id,
+            userId: student.userId,
+            fullStudent: student
+          });
+          throw new Error('Student Document ID not found. Cannot update student. The student may not have a Student document in the database.');
         }
         
         // Ensure contact and schedule are included in update payload
