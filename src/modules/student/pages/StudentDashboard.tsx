@@ -106,17 +106,46 @@ const StudentDashboard: React.FC = () => {
   }, [currentStudent, getPairStudents, getPairDailyReports]);
 
 
+  // Helper function to normalize IDs for consistent comparison
+  const normalizeId = (id: any): string => {
+    if (!id) return '';
+    if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
+      const str = id.toString();
+      if (/^[0-9a-fA-F]{24}$/.test(str)) {
+        return str;
+      }
+      return str.trim();
+    }
+    return String(id).trim();
+  };
+
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
     
     const isAfterSchool = currentStudent?.program === 'After School';
     
+    // Normalize student IDs for comparison
+    const normalizedStudentId = normalizeId(currentStudent.id);
+    const normalizedUserId = normalizeId((currentStudent as any).userId);
+    
     return backendAssignments
       .filter((assignment: any) => {
-        const assignmentStudentId = assignment.studentId || assignment._id?.studentId;
-        const matches = assignmentStudentId === currentStudent.id || 
-                       assignmentStudentId === currentStudent.id.toString() ||
-                       String(assignmentStudentId) === String(currentStudent.id);
+        const assignmentStudentId = normalizeId(assignment.studentId || assignment._id?.studentId);
+        
+        // Check if assignment matches EITHER Student document _id OR User document _id
+        const matchesStudentId = assignmentStudentId && (
+          assignmentStudentId === normalizedStudentId ||
+          assignmentStudentId === normalizeId(currentStudent.id?.toString()) ||
+          String(assignmentStudentId) === String(normalizedStudentId)
+        );
+        
+        const matchesUserId = normalizedUserId && assignmentStudentId && (
+          assignmentStudentId === normalizedUserId ||
+          assignmentStudentId === normalizeId((currentStudent as any).userId?.toString()) ||
+          String(assignmentStudentId) === String(normalizedUserId)
+        );
+        
+        const matches = matchesStudentId || matchesUserId;
         
         if (!matches) return false;
         
