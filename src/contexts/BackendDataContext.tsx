@@ -473,8 +473,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       // Try to load from cache first for instant UI
       const cachedUsers = useCache ? dataCache.get<any[]>('users') : null;
-      const cachedTeachers = useCache ? dataCache.get<any[]>('teachers') : null;
-      const cachedStudents = useCache ? dataCache.get<any[]>('students') : null;
+      // 🔍 DIAGNOSTIC: Force fresh fetch to see what API actually returns
+      // Only enabled in development for debugging (automatically disabled in production)
+      const FORCE_FRESH_FETCH = import.meta.env.DEV && false; // Change to true only when debugging cache issues
+      if (FORCE_FRESH_FETCH && import.meta.env.DEV) {
+        console.log('🔍 DIAGNOSTIC - FORCING FRESH FETCH (cache bypassed)');
+        dataCache.delete('students'); // Clear cache to force fresh fetch
+        dataCache.delete('teachers'); // Also clear teachers cache
+        console.log('🔍 DIAGNOSTIC - Cache cleared. Checking cache state:', {
+          studentsInCache: dataCache.get<any[]>('students')?.length || 0,
+          teachersInCache: dataCache.get<any[]>('teachers')?.length || 0
+        });
+      }
+      const cachedStudents = (useCache && !FORCE_FRESH_FETCH) ? dataCache.get<any[]>('students') : null;
+      const cachedTeachers = (useCache && !FORCE_FRESH_FETCH) ? dataCache.get<any[]>('teachers') : null;
+      
+      // 🔍 DIAGNOSTIC: Log cache state
+      if (import.meta.env.DEV) {
+        console.log('🔍 DIAGNOSTIC - Cache state check:', {
+          useCache,
+          FORCE_FRESH_FETCH,
+          cachedStudents: cachedStudents ? cachedStudents.length : null,
+          cachedTeachers: cachedTeachers ? cachedTeachers.length : null,
+          willUseCache: !!(cachedTeachers && cachedStudents && !FORCE_FRESH_FETCH)
+        });
+      }
 
       let users: any[] = [];
       let teacherRecords: any[] = [];
@@ -504,6 +527,52 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Cache users for next time
           dataCache.set('users', users);
         }
+        
+        // 🔍 FIX: Load students for admin/teacher users (not just teacher-student-assignment page)
+        setLoadingStep('Loading students...');
+        if (FORCE_FRESH_FETCH || !cachedStudents) {
+          if (FORCE_FRESH_FETCH && import.meta.env.DEV) {
+            console.log('🔍 DIAGNOSTIC - Fetching students from API for admin/teacher user');
+          }
+          const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true);
+          if (studentsResponse.ok) {
+            try {
+              studentRecords = await studentsResponse.json();
+              if (import.meta.env.DEV) {
+                console.log('👨‍🎓 Students loaded for admin/teacher:', studentRecords.length);
+                // 🔍 DIAGNOSTIC: Log sample student data from API
+                if (studentRecords.length > 0) {
+                  const sampleStudent = studentRecords[0];
+                  console.log('🔍 DIAGNOSTIC - Sample student from API (admin/teacher path):', {
+                    _id: sampleStudent._id,
+                    id: sampleStudent.id,
+                    fullName: sampleStudent.fullName,
+                    email: sampleStudent.email,
+                    program: sampleStudent.program,
+                    assignedTeacher: sampleStudent.assignedTeacher,
+                    assignedTeacherId: sampleStudent.assignedTeacherId,
+                    assignedTeacherIds: sampleStudent.assignedTeacherIds,
+                    assignedTeachers: sampleStudent.assignedTeachers,
+                    tuitionFee: sampleStudent.tuitionFee,
+                    contact: sampleStudent.contact,
+                    parentName: sampleStudent.parentName,
+                    userId: sampleStudent.userId
+                  });
+                }
+              }
+              dataCache.set('students', studentRecords);
+            } catch (err) {
+              console.error('❌ Error processing students:', err);
+              studentRecords = [];
+            }
+          } else {
+            console.error('❌ Failed to fetch students:', studentsResponse.status, studentsResponse.statusText);
+            studentRecords = [];
+          }
+        } else {
+          console.log('⚡ Using cached students for admin/teacher');
+          studentRecords = cachedStudents;
+        }
       } else if (isTeacherStudentAssignmentPage) {
         // For teacher-student-assignment, we still need users to merge with teachers
         // But we can load them in parallel with teachers/students
@@ -515,11 +584,39 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         setLoadingStep('Loading teachers and students...');
         
         // Check cache for teachers and students
-        if (cachedTeachers && cachedStudents) {
+        // 🔍 DIAGNOSTIC: Force fresh fetch even if cache exists
+        if (FORCE_FRESH_FETCH) {
+          console.log('🔍 DIAGNOSTIC - Bypassing cache, forcing fresh API fetch');
+        } else if (cachedTeachers && cachedStudents) {
           console.log('⚡ Using cached teachers and students');
           teacherRecords = cachedTeachers;
           studentRecords = cachedStudents;
-        } else {
+          // 🔍 DIAGNOSTIC: Log sample student from CACHE
+          if (studentRecords.length > 0 && import.meta.env.DEV) {
+            const sampleCached = studentRecords[0];
+            console.log('🔍 DIAGNOSTIC - Sample student from CACHE:', {
+              _id: sampleCached._id,
+              id: sampleCached.id,
+              fullName: sampleCached.fullName,
+              email: sampleCached.email,
+              program: sampleCached.program,
+              assignedTeacher: sampleCached.assignedTeacher,
+              assignedTeacherId: sampleCached.assignedTeacherId,
+              assignedTeacherIds: sampleCached.assignedTeacherIds,
+              assignedTeachers: sampleCached.assignedTeachers,
+              tuitionFee: sampleCached.tuitionFee,
+              contact: sampleCached.contact,
+              parentName: sampleCached.parentName,
+              userId: sampleCached.userId
+            });
+          }
+        }
+        
+        // 🔍 DIAGNOSTIC: Always fetch fresh if FORCE_FRESH_FETCH is true
+        if (FORCE_FRESH_FETCH || !cachedTeachers || !cachedStudents) {
+          if (FORCE_FRESH_FETCH) {
+            console.log('🔍 DIAGNOSTIC - Fetching fresh data from API (cache bypassed)');
+          }
           const [teachersResponse, studentsResponse] = await Promise.allSettled([
             fetchWithTimeout(`${API_BASE}/teachers`, {}, 3000),
             fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true)
@@ -555,6 +652,25 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               studentRecords = await studentsResponse.value.json();
               if (import.meta.env.DEV) {
                 console.log('👨‍🎓 Students loaded:', studentRecords.length);
+              }
+              // 🔍 DIAGNOSTIC: Log sample student data from API
+              if (studentRecords.length > 0) {
+                const sampleStudent = studentRecords[0];
+                console.log('🔍 DIAGNOSTIC - Sample student from API:', {
+                  _id: sampleStudent._id,
+                  id: sampleStudent.id,
+                  fullName: sampleStudent.fullName,
+                  email: sampleStudent.email,
+                  program: sampleStudent.program,
+                  assignedTeacher: sampleStudent.assignedTeacher,
+                  assignedTeacherId: sampleStudent.assignedTeacherId,
+                  assignedTeacherIds: sampleStudent.assignedTeacherIds,
+                  assignedTeachers: sampleStudent.assignedTeachers,
+                  tuitionFee: sampleStudent.tuitionFee,
+                  contact: sampleStudent.contact,
+                  parentName: sampleStudent.parentName,
+                  userId: sampleStudent.userId
+                });
               }
               dataCache.set('students', studentRecords);
             } catch (err) {
@@ -653,13 +769,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Only fetch data that's needed for current route
       // Use Promise.allSettled with proper response objects for skipped calls
       // For students, use authenticated endpoint /api/assignments/me
-      const assignmentsEndpoint = isStudentUser ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments`;
+      const assignmentsEndpoint = isStudentUser ? `${API_BASE}/assignments/me` : `${API_BASE}/assignments?limit=500`;
       // OPTIMIZED: Timeout based on environment and user type
+      // Increased timeout for MongoDB Atlas (cloud database) which may have network latency
       // Production may need longer timeout due to network latency and cold starts
       const isProduction = API_BASE_RAW.includes('render.com') || API_BASE_RAW.includes('onrender.com') || !import.meta.env.DEV;
       const assignmentsTimeout = isStudentUser 
-        ? 5000  // Students: 5s (faster endpoint)
-        : (isProduction ? 20000 : 10000); // Admin/Teacher: 20s in production, 10s in dev
+        ? 5000  // Students: 5s (faster endpoint, filtered by student)
+        : (isProduction ? 30000 : 20000); // Admin/Teacher: 30s in production, 20s in dev (increased for 458 assignments)
       // FIXED: Always require auth for assignments endpoint (backend now requires authenticateToken)
       // ✅ STALE-WHILE-REVALIDATE: Always fetch fresh assignments in background (even if cache exists)
       // This ensures new assignments appear quickly for all users
@@ -864,8 +981,28 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       let studentsData: any[] = [];
       
       if (studentRecords && studentRecords.length > 0) {
+        // 🔍 DIAGNOSTIC: Log what we're about to map
+        if (import.meta.env.DEV) {
+          console.log('🔍 DIAGNOSTIC - About to map studentRecords:', {
+            count: studentRecords.length,
+            sampleRaw: {
+              _id: studentRecords[0]?._id,
+              id: studentRecords[0]?.id,
+              fullName: studentRecords[0]?.fullName,
+              program: studentRecords[0]?.program,
+              assignedTeacher: studentRecords[0]?.assignedTeacher,
+              assignedTeacherId: studentRecords[0]?.assignedTeacherId,
+              assignedTeacherIds: studentRecords[0]?.assignedTeacherIds,
+              tuitionFee: studentRecords[0]?.tuitionFee,
+              contact: studentRecords[0]?.contact,
+              parentName: studentRecords[0]?.parentName,
+              userId: studentRecords[0]?.userId
+            }
+          });
+        }
         // Use student records directly - they have all the student data
-        studentsData = studentRecords.map((studentRecord: any) => {
+        let firstMappedLogged = false; // 🔍 DIAGNOSTIC: Track if we've logged first student
+        studentsData = studentRecords.map((studentRecord: any, index: number) => {
           const userId = studentRecord.userId?._id || studentRecord.userId || studentRecord.userId?._id?.toString();
           // Find matching user if available
           const user = users.find((u: any) => 
@@ -874,7 +1011,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             (studentRecord.email && u.email === studentRecord.email)
           ) || {};
           
-          return {
+          const mappedStudent = {
             // id should ALWAYS be the Student document _id (not User _id) to match assignment.studentId
             id: studentRecord._id || studentRecord.id,
             studentRecordId: studentRecord._id || studentRecord.id,
@@ -908,11 +1045,40 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             schedule: studentRecord.schedule || user.schedule || {},
             siblings: studentRecord.siblings || user.siblings || []
           };
+          
+          // 🔍 DIAGNOSTIC: Log first mapped student to see what was extracted
+          if (!firstMappedLogged && index === 0 && import.meta.env.DEV) {
+            firstMappedLogged = true;
+            console.log('🔍 DIAGNOSTIC - First mapped student:', {
+              id: mappedStudent.id,
+              fullName: mappedStudent.fullName,
+              email: mappedStudent.email,
+              program: mappedStudent.program,
+              assignedTeacher: mappedStudent.assignedTeacher,
+              tuitionFee: mappedStudent.tuitionFee,
+              contact: mappedStudent.contact,
+              parentName: mappedStudent.parentName,
+              source: {
+                studentRecord_program: studentRecord.program,
+                studentRecord_tuitionFee: studentRecord.tuitionFee,
+                studentRecord_assignedTeacher: studentRecord.assignedTeacher,
+                user_program: user.program,
+                user_tuitionFee: user.tuitionFee
+              }
+            });
+          }
+          
+          return mappedStudent;
         });
       } else {
         // Fallback to users with role === 'student' if no student records
         // NOTE: These users don't have Student documents, so studentRecordId should be undefined
         // They cannot be updated via /api/students/:id endpoint
+        if (import.meta.env.DEV) {
+          console.log('🔍 DIAGNOSTIC - FALLBACK: Using users array instead of studentRecords (studentRecords is empty or missing)');
+          console.log('🔍 DIAGNOSTIC - studentRecords:', studentRecords);
+          console.log('🔍 DIAGNOSTIC - users count:', users.length);
+        }
         studentsData = users
           .filter((user: any) => user.role === 'student')
           .map((user: any) => {
@@ -1312,6 +1478,20 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       setLoadingStep('اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ');
       if (import.meta.env.DEV) {
         console.log('📊 Data separated and mapped:', { students: studentsData.length, teachers: teachersData.length, admins: adminsData.length });
+        // 🔍 DIAGNOSTIC: Log sample of final mapped students before masking
+        if (studentsData.length > 0) {
+          const sampleMapped = studentsData[0];
+          console.log('🔍 DIAGNOSTIC - Sample mapped student (before masking):', {
+            id: sampleMapped.id,
+            fullName: sampleMapped.fullName,
+            email: sampleMapped.email,
+            program: sampleMapped.program,
+            assignedTeacher: sampleMapped.assignedTeacher,
+            tuitionFee: sampleMapped.tuitionFee,
+            contact: sampleMapped.contact,
+            parentName: sampleMapped.parentName
+          });
+        }
       }
 
       // Apply data masking if current user is a developer account
@@ -1344,6 +1524,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             teachers: finalTeachersData.length, 
             admins: finalAdminsData.length 
           });
+          // 🔍 DIAGNOSTIC: Log sample after masking
+          if (finalStudentsData.length > 0 && import.meta.env.DEV) {
+            const sampleMasked = finalStudentsData[0];
+            console.log('🔍 DIAGNOSTIC - Sample student AFTER masking:', {
+              id: sampleMasked.id,
+              fullName: sampleMasked.fullName,
+              program: sampleMasked.program,
+              assignedTeacher: sampleMasked.assignedTeacher,
+              tuitionFee: sampleMasked.tuitionFee
+            });
+          }
+        } else {
+          // 🔍 DIAGNOSTIC: Log that masking was NOT applied
+          if (import.meta.env.DEV && studentsData.length > 0) {
+            console.log('🔍 DIAGNOSTIC - Data masking NOT applied (not developer account)');
+          }
         }
         // Silently skip masking for non-developer accounts - no need to log
       } catch (error) {
@@ -1368,12 +1564,28 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               program: newStudent.program || existing.program || 'Full-Time HQ',
               contact: newStudent.contact || existing.contact || '',
               parentName: newStudent.parentName || existing.parentName || '',
+              tuitionFee: newStudent.tuitionFee || existing.tuitionFee || 0, // 🔍 DIAGNOSTIC: Added tuitionFee to merge
             } as Student);
           } else {
             studentMap.set(newStudent.id, newStudent);
           }
         });
-        return Array.from(studentMap.values());
+        const finalStudents = Array.from(studentMap.values());
+        
+        // 🔍 DIAGNOSTIC: Log final state after merge
+        if (import.meta.env.DEV && finalStudents.length > 0) {
+          const sampleFinal = finalStudents[0];
+          console.log('🔍 DIAGNOSTIC - Final student state (after merge, before setState):', {
+            id: sampleFinal.id,
+            fullName: sampleFinal.fullName,
+            program: sampleFinal.program,
+            assignedTeacher: sampleFinal.assignedTeacher,
+            tuitionFee: sampleFinal.tuitionFee,
+            totalStudents: finalStudents.length
+          });
+        }
+        
+        return finalStudents;
       });
       setTeachers(finalTeachersData);
       setAdmins(finalAdminsData);
