@@ -1292,16 +1292,26 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // If teacherRecord is not found, we should still try to preserve existing _id from cache
           const teacherDocId = teacherRecord?._id?.toString() || teacherRecord?._id;
           
-          if (!teacherDocId && import.meta.env.DEV) {
+          // Production-safe logging for debugging
+          if (!teacherDocId) {
             console.warn('⚠️ Teacher record not found or missing _id for user:', {
               userEmail: user.email,
               userId: user._id,
               teacherRecordsCount: teacherRecords.length,
-              availableTeacherIds: teacherRecords.map((tr: any) => ({
-                _id: tr._id,
-                userId: tr.userId?._id || tr.userId,
+              teacherRecordFound: !!teacherRecord,
+              teacherRecordId: teacherRecord?._id,
+              availableTeacherIds: teacherRecords.slice(0, 5).map((tr: any) => ({
+                _id: tr._id?.toString() || tr._id,
+                userId: tr.userId?._id?.toString() || tr.userId?.toString() || tr.userId,
                 email: tr.email
               }))
+            });
+          } else {
+            // Log successful match (production-safe)
+            console.log('✅ Teacher Document ID found:', {
+              userEmail: user.email,
+              teacherDocId: teacherDocId,
+              userId: user._id
             });
           }
           
