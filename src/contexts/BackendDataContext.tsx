@@ -1179,21 +1179,48 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           .filter((user: any) => user.role === 'teacher')
           .map((user: any) => {
             // Find matching teacher record - try multiple matching strategies
-            let teacherRecord = teacherRecords.find((tr: any) => 
-              tr.userId?._id === user._id || 
-              tr.userId?._id?.toString() === user._id?.toString() ||
-              (tr.userId && typeof tr.userId === 'object' && tr.userId._id === user._id) ||
-              tr.email === user.email ||
-              tr._id === user._id ||
-              tr._id?.toString() === user._id?.toString()
-            );
+            // Strategy 1: Match by userId (most reliable)
+            let teacherRecord = teacherRecords.find((tr: any) => {
+              const trUserId = tr.userId?._id?.toString() || tr.userId?.toString() || tr.userId;
+              const userUserId = user._id?.toString() || user._id;
+              return trUserId === userUserId;
+            });
             
-            // If no match by userId, try matching by email
+            // Strategy 2: Match by email (case-insensitive)
+            if (!teacherRecord && user.email) {
+              teacherRecord = teacherRecords.find((tr: any) => {
+                if (!tr.email) return false;
+                return tr.email.toLowerCase() === user.email.toLowerCase();
+              });
+            }
+            
+            // Strategy 3: Match by _id (if user._id happens to be Teacher Document ID)
             if (!teacherRecord) {
-              teacherRecord = teacherRecords.find((tr: any) => 
-                tr.email === user.email || 
-                (tr.email && user.email && tr.email.toLowerCase() === user.email.toLowerCase())
-              );
+              const userUserId = user._id?.toString() || user._id;
+              teacherRecord = teacherRecords.find((tr: any) => {
+                const trDocId = tr._id?.toString() || tr._id;
+                return trDocId === userUserId;
+              });
+            }
+            
+            // Production-safe logging for debugging
+            if (!teacherRecord) {
+              console.warn('⚠️ No teacher record matched for user:', {
+                userEmail: user.email,
+                userId: user._id,
+                teacherRecordsCount: teacherRecords.length,
+                sampleTeacherRecords: teacherRecords.slice(0, 3).map((tr: any) => ({
+                  _id: tr._id?.toString() || tr._id,
+                  userId: tr.userId?._id?.toString() || tr.userId?.toString() || tr.userId,
+                  email: tr.email
+                }))
+              });
+            } else {
+              console.log('✅ Teacher record matched:', {
+                userEmail: user.email,
+                teacherDocId: teacherRecord._id?.toString() || teacherRecord._id,
+                teacherUserId: teacherRecord.userId?._id?.toString() || teacherRecord.userId
+              });
             }
             
             const teacherProfile = user.teacherProfile || teacherRecord || {};
