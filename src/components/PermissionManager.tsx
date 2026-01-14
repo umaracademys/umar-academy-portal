@@ -1314,14 +1314,28 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
   ) => {
     setIsSaving(true);
     try {
+      // CRITICAL: Use Teacher Document ID, not User ID
+      let teacherDocId: string;
+      if ((teacher as any).teacherDocumentId) {
+        teacherDocId = (teacher as any).teacherDocumentId.toString();
+      } else if ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) {
+        teacherDocId = (teacher as any)._id.toString();
+      } else {
+        teacherDocId = teacher.id;
+        console.warn('⚠️ Using User ID as fallback for teacher permission update:', {
+          teacherName: teacher.fullName,
+          teacherId: teacher.id,
+        });
+      }
+      
       console.log('🔐 Applying teacher permissions:', {
-        teacherId: teacher.id,
+        teacherId: teacherDocId,
         teacherName: teacher.fullName,
         permissions,
         permissionCount: Object.keys(permissions).length
       });
       
-      await updateTeacher(teacher.id, { permissions });
+      await updateTeacher(teacherDocId, { permissions });
       
       // Refresh data from backend to ensure we have latest permissions
       await refreshData();
@@ -1560,7 +1574,17 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
           };
 
           if (selectedType === 'teacher') {
-            await updateTeacher(user.id, { permissions: updatedPermissions as TeacherPermissions });
+            // CRITICAL: Use Teacher Document ID, not User ID
+            const teacher = user as Teacher;
+            let teacherDocId: string;
+            if ((teacher as any).teacherDocumentId) {
+              teacherDocId = (teacher as any).teacherDocumentId.toString();
+            } else if ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) {
+              teacherDocId = (teacher as any)._id.toString();
+            } else {
+              teacherDocId = teacher.id;
+            }
+            await updateTeacher(teacherDocId, { permissions: updatedPermissions as TeacherPermissions });
           } else {
             await updateAdmin(user.id, { permissions: updatedPermissions as AdminPermissions });
           }
