@@ -3187,7 +3187,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           body: JSON.stringify(updatePayload),
         },
         10000,
-        false // Backend endpoint doesn't require auth currently
+        true // Require authentication token
       );
 
       // If that fails, try /api/users/:id as fallback
@@ -3199,7 +3199,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             body: JSON.stringify(updatePayload),
           },
           10000,
-          false // Backend endpoint doesn't require auth currently
+          true // Require authentication token
         );
       }
 
