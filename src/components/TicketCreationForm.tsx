@@ -27,17 +27,11 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
   const [adminComment, setAdminComment] = useState(existingTicket?.adminComment || '');
   const [selectedTeacherId, setSelectedTeacherId] = useState(existingTicket?.assignedTeacherId || '');
   const [teacherNotes, setTeacherNotes] = useState(existingTicket?.teacherNotes || '');
-  // Get available students - for teachers, only show assigned students
+  // Get available students - teachers can now create tickets for all students
   const availableStudents = React.useMemo(() => {
-    if (isTeacher && user) {
-      const currentTeacher = teachers.find(t => t.email === user.email);
-      if (currentTeacher) {
-        return getStudentsByTeacher(currentTeacher.id);
-      }
-      return [];
-    }
+    // All users (teachers and admins) can see all students
     return students;
-  }, [isTeacher, user, teachers, students, getStudentsByTeacher]);
+  }, [students]);
 
   const student = availableStudents.find(s => s.id === selectedStudentId);
 

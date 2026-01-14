@@ -32,7 +32,7 @@ import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
-  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment, deleteTicket } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment, deleteTicket, deleteTickets } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -78,6 +78,12 @@ const TeacherDashboard: React.FC = () => {
   });
   const [showAllPendingTickets, setShowAllPendingTickets] = useState(false);
   const [showAllApprovedTickets, setShowAllApprovedTickets] = useState(false);
+  // Filter and sort states
+  const [selectedProgram, setSelectedProgram] = useState<string>('all');
+  const [sortOrder, setSortOrder] = useState<'a-z' | 'z-a'>('a-z');
+  // Bulk selection states
+  const [selectedTicketIds, setSelectedTicketIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Find teacher by email OR userId (more reliable matching)
   const currentTeacher = useMemo(() => {
@@ -153,6 +159,82 @@ const TeacherDashboard: React.FC = () => {
     
     return students;
   }, [currentTeacher, getStudentsByTeacher]);
+
+  // Get available programs from students
+  const availablePrograms = useMemo(() => {
+    const programs = new Set<string>();
+    assignedStudents.forEach(student => {
+      if (student.program) {
+        programs.add(student.program);
+      }
+    });
+    return Array.from(programs).sort();
+  }, [assignedStudents]);
+
+  // Get teacher tickets first (needed for filteredAndSortedTickets)
+  const teacherTickets = useMemo(() => {
+    if (!currentTeacher?.id) {
+      return [];
+    }
+    // Use the same robust ID matching as approvedTicketsNeedingHomework
+    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
+    const teacherIdStr = teacherDocId.toString();
+    
+    // Try both teacher.id and teacherDocId to ensure we catch all tickets
+    const ticketsById = getTeacherTickets(currentTeacher.id);
+    const ticketsByDocId = getTeacherTickets(teacherIdStr);
+    
+    // Combine and deduplicate
+    const allTickets = [...ticketsById, ...ticketsByDocId];
+    const uniqueTickets = allTickets.filter((ticket, index, self) => 
+      index === self.findIndex(t => t.id === ticket.id)
+    );
+    
+    return uniqueTickets;
+  }, [currentTeacher?.id, currentTeacher, getTeacherTickets, recitationTickets]);
+
+  // Filter and sort students
+  const filteredAndSortedStudents = useMemo(() => {
+    let filtered = assignedStudents;
+
+    // Filter by program
+    if (selectedProgram !== 'all') {
+      filtered = filtered.filter(student => student.program === selectedProgram);
+    }
+
+    // Sort A-Z or Z-A
+    filtered = [...filtered].sort((a, b) => {
+      const nameA = (a.fullName || '').toLowerCase();
+      const nameB = (b.fullName || '').toLowerCase();
+      const comparison = nameA.localeCompare(nameB);
+      return sortOrder === 'a-z' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [assignedStudents, selectedProgram, sortOrder]);
+
+  // Filter and sort tickets
+  const filteredAndSortedTickets = useMemo(() => {
+    let filtered = teacherTickets;
+
+    // Filter by program (get student program from ticket)
+    if (selectedProgram !== 'all') {
+      filtered = filtered.filter(ticket => {
+        const student = assignedStudents.find(s => s.id === ticket.studentId || (s as any).studentRecordId === ticket.studentId);
+        return student?.program === selectedProgram;
+      });
+    }
+
+    // Sort A-Z by student name
+    filtered = [...filtered].sort((a, b) => {
+      const nameA = (a.studentName || '').toLowerCase();
+      const nameB = (b.studentName || '').toLowerCase();
+      const comparison = nameA.localeCompare(nameB);
+      return sortOrder === 'a-z' ? comparison : -comparison;
+    });
+
+    return filtered;
+  }, [teacherTickets, selectedProgram, sortOrder, assignedStudents]);
   
   // Get pair partner teacher
   const pairPartner = useMemo(() => {
@@ -360,43 +442,12 @@ const TeacherDashboard: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [currentTeacher, allPairStudents]);
 
-  const teacherTickets = useMemo(() => {
-    if (!currentTeacher?.id) {
-      return [];
-    }
-    // Use the same robust ID matching as approvedTicketsNeedingHomework
-    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
-    const teacherIdStr = teacherDocId.toString();
-    
-    // Try both teacher.id and teacherDocId to ensure we catch all tickets
-    const ticketsById = getTeacherTickets(currentTeacher.id);
-    const ticketsByDocId = getTeacherTickets(teacherIdStr);
-    
-    // Combine and deduplicate
-    const allTickets = [...ticketsById, ...ticketsByDocId];
-    const uniqueTickets = allTickets.filter((ticket, index, self) => 
-      index === self.findIndex(t => t.id === ticket.id)
-    );
-    
-    return uniqueTickets;
-  }, [currentTeacher?.id, currentTeacher, getTeacherTickets, recitationTickets]);
-
-  // Get approved tickets that need homework assignment
+  // Get approved tickets that need homework assignment (all tickets, not just assigned)
   const approvedTicketsNeedingHomework = useMemo(() => {
-    if (!currentTeacher?.id) return [];
-    
-    // Get tickets that are approved (sent_to_assignment) and assigned to this teacher
-    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
-    const teacherIdStr = teacherDocId.toString();
-    
+    // Teachers can now see all tickets
     return recitationTickets.filter(ticket => {
-      // Check if ticket is approved and assigned to this teacher
-      const isAssignedToTeacher = ticket.assignedTeacherId === teacherIdStr || 
-                                   String(ticket.assignedTeacherId) === teacherIdStr ||
-                                   ticket.assignedTeacherId === currentTeacher.id ||
-                                   String(ticket.assignedTeacherId) === String(currentTeacher.id);
-      
-      if (!(ticket.status === 'sent_to_assignment' && isAssignedToTeacher)) {
+      // Check if ticket is approved (sent_to_assignment)
+      if (ticket.status !== 'sent_to_assignment') {
         return false;
       }
       
@@ -416,29 +467,19 @@ const TeacherDashboard: React.FC = () => {
       
       return true;
     });
-  }, [recitationTickets, currentTeacher, assignments]);
+  }, [recitationTickets, assignments]);
 
-  // Get all approved tickets (sent_to_assignment) assigned to this teacher
+  // Get all approved tickets (sent_to_assignment) - teachers can see all tickets
   const allApprovedTickets = useMemo(() => {
-    if (!currentTeacher?.id) return [];
-    
-    const teacherDocId = (currentTeacher as any)._id || (currentTeacher as any).teacherDocumentId || currentTeacher.id;
-    const teacherIdStr = teacherDocId.toString();
-    
+    // Teachers can now see all approved tickets
     return recitationTickets.filter(ticket => {
-      // Check if ticket is approved and assigned to this teacher
-      const isAssignedToTeacher = ticket.assignedTeacherId === teacherIdStr || 
-                                   String(ticket.assignedTeacherId) === teacherIdStr ||
-                                   ticket.assignedTeacherId === currentTeacher.id ||
-                                   String(ticket.assignedTeacherId) === String(currentTeacher.id);
-      
-      return ticket.status === 'sent_to_assignment' && isAssignedToTeacher;
+      return ticket.status === 'sent_to_assignment';
     }).sort((a, b) => {
       const dateA = a.sentAt ? new Date(a.sentAt).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
       const dateB = b.sentAt ? new Date(b.sentAt).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
       return dateB - dateA; // Most recent first
     });
-  }, [recitationTickets, currentTeacher]);
+  }, [recitationTickets]);
 
   // Phase 4: Use new permission hook (type-safe, reads from JWT token)
   const { can } = usePermission();
@@ -613,7 +654,7 @@ const TeacherDashboard: React.FC = () => {
           />
           <StatCard 
             title="Pending Tickets" 
-            value={teacherTickets.length} 
+            value={filteredAndSortedTickets.length} 
             icon="PT"
             onClick={() => setActiveTab('tickets')}
           />
@@ -640,9 +681,9 @@ const TeacherDashboard: React.FC = () => {
             }`}
           >
             Tickets
-            {teacherTickets.length > 0 && (
+            {filteredAndSortedTickets.length > 0 && (
               <span className="ml-1 px-1 py-0.5 text-[9px] font-bold bg-primary text-white rounded-full">
-                {teacherTickets.length}
+                {filteredAndSortedTickets.length}
               </span>
             )}
           </button>
@@ -739,7 +780,7 @@ const TeacherDashboard: React.FC = () => {
               {/* Recent Activity Preview - Compact */}
               <Card title="Recent Activity" className="lg:col-span-2">
                 <div className="space-y-1.5">
-                  {teacherTickets.slice(0, 3).map((ticket) => (
+                  {filteredAndSortedTickets.slice(0, 3).map((ticket) => (
                     <div
                       key={ticket.id}
                       className="p-2 rounded-lg border border-primary/20 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-all cursor-pointer"
@@ -785,15 +826,15 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     </div>
                   ))}
-                  {teacherTickets.length === 0 && (
+                  {filteredAndSortedTickets.length === 0 && (
                     <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
                   )}
-                  {teacherTickets.length > 3 && (
+                  {filteredAndSortedTickets.length > 3 && (
                     <button
                       onClick={() => setActiveTab('tickets')}
                       className="w-full py-2 text-sm font-semibold text-primary hover:text-primary/80 transition-colors"
                     >
-                      View All Tickets ({teacherTickets.length})
+                      View All Tickets ({filteredAndSortedTickets.length})
                     </button>
                   )}
                 </div>
@@ -804,9 +845,100 @@ const TeacherDashboard: React.FC = () => {
 
         {activeTab === 'tickets' && (
           <div className="space-y-2">
+            {/* Filter Controls */}
+            <Card>
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Filter by Program</label>
+                  <select
+                    value={selectedProgram}
+                    onChange={(e) => setSelectedProgram(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="all">All Programs</option>
+                    {availablePrograms.map(program => (
+                      <option key={program} value={program}>{program}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Sort Order</label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as 'a-z' | 'z-a')}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="a-z">A to Z</option>
+                    <option value="z-a">Z to A</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
             {/* Pending Tickets - Compact */}
-            <Card title={`Pending Tickets (${teacherTickets.length})`}>
-              {teacherTickets.length === 0 ? (
+            <Card title={`Pending Tickets (${filteredAndSortedTickets.length})`}>
+              {filteredAndSortedTickets.length > 0 && (
+                <div className="mb-3 flex items-center justify-between gap-2 pb-3 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedTicketIds.size === filteredAndSortedTickets.length && filteredAndSortedTickets.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedTicketIds(new Set(filteredAndSortedTickets.map(t => t.id)));
+                        } else {
+                          setSelectedTicketIds(new Set());
+                        }
+                      }}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                    <span className="text-sm text-gray-700">
+                      {selectedTicketIds.size > 0 
+                        ? `${selectedTicketIds.size} selected` 
+                        : 'Select all'}
+                    </span>
+                  </div>
+                  {selectedTicketIds.size > 0 && (
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Delete ${selectedTicketIds.size} ticket(s)? This action cannot be undone.`)) {
+                          setIsDeleting(true);
+                          try {
+                            await deleteTickets(Array.from(selectedTicketIds));
+                            setSelectedTicketIds(new Set());
+                            setRefreshKey(prev => prev + 1);
+                            refreshData();
+                          } catch (error) {
+                            console.error('Error deleting tickets:', error);
+                            alert('Failed to delete tickets: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                          } finally {
+                            setIsDeleting(false);
+                          }
+                        }
+                      }}
+                      disabled={isDeleting}
+                      className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded text-sm font-medium transition-colors flex items-center gap-2"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete Selected ({selectedTicketIds.size})
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+              {filteredAndSortedTickets.length === 0 ? (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
                     <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -818,7 +950,7 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {(showAllPendingTickets ? teacherTickets : teacherTickets.slice(0, 5)).map((ticket) => {
+                  {(showAllPendingTickets ? filteredAndSortedTickets : filteredAndSortedTickets.slice(0, 5)).map((ticket) => {
                     const handleTicketClick = async () => {
                       try {
                         if (ticket.status === 'pending' || ticket.status === 'reassigned') {
@@ -850,82 +982,102 @@ const TeacherDashboard: React.FC = () => {
                     };
 
                     return (
-                      <button
+                      <div
                         key={ticket.id}
-                        onClick={handleTicketClick}
-                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-2 hover:border-primary hover:bg-primary/5 transition-all"
+                        className="w-full bg-white border border-gray-200 rounded-lg p-2 hover:border-primary hover:bg-primary/5 transition-all"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-1.5">
-                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
-                                ticket.type === 'sabqi' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : ticket.type === 'manzil'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-purple-100 text-purple-800'
-                              }`}>
-                                {ticket.type?.toUpperCase()}
-                              </span>
-                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
-                                ticket.status === 'pending'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : ticket.status === 'in_progress'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-orange-100 text-orange-800'
-                              }`}>
-                                {ticket.status === 'in_progress' ? 'In Progress' : ticket.status === 'reassigned' ? 'Reassigned' : 'Pending'}
-                              </span>
-                            </div>
-                            <h4 className="text-sm font-semibold text-gray-900 mb-1">
-                              {ticket.studentName}
-                            </h4>
-                            {ticket.teacherNotes && (
-                              <p className="text-xs text-gray-600 mb-1 line-clamp-2">{ticket.teacherNotes}</p>
-                            )}
-                            {ticket.status === 'reassigned' && ticket.previousTeacherComment && (
-                              <p className="text-xs text-orange-700 mb-1 line-clamp-1">Previous: {ticket.previousTeacherComment}</p>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedTicketIds.has(ticket.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              const newSelected = new Set(selectedTicketIds);
+                              if (e.target.checked) {
+                                newSelected.add(ticket.id);
+                              } else {
+                                newSelected.delete(ticket.id);
+                              }
+                              setSelectedTicketIds(newSelected);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1 w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary flex-shrink-0"
+                          />
+                          <div className="flex-1 flex items-start justify-between gap-2">
                             <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (confirm(`Delete ticket for ${ticket.studentName}?`)) {
-                                  try {
-                                    await deleteTicket(ticket.id);
-                                    setRefreshKey(prev => prev + 1);
-                                    refreshData();
-                                  } catch (error) {
-                                    console.error('Error deleting ticket:', error);
-                                    alert('Failed to delete ticket: ' + (error instanceof Error ? error.message : 'Unknown error'));
-                                  }
-                                }
-                              }}
-                              className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
-                              title="Delete"
+                              onClick={handleTicketClick}
+                              className="flex-1 text-left min-w-0"
                             >
-                              ×
+                              <div className="flex items-center gap-1.5 mb-1.5">
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                                  ticket.type === 'sabqi' 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : ticket.type === 'manzil'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-purple-100 text-purple-800'
+                                }`}>
+                                  {ticket.type?.toUpperCase()}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
+                                  ticket.status === 'pending'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : ticket.status === 'in_progress'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-orange-100 text-orange-800'
+                                }`}>
+                                  {ticket.status === 'in_progress' ? 'In Progress' : ticket.status === 'reassigned' ? 'Reassigned' : 'Pending'}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                                {ticket.studentName}
+                              </h4>
+                              {ticket.teacherNotes && (
+                                <p className="text-xs text-gray-600 mb-1 line-clamp-2">{ticket.teacherNotes}</p>
+                              )}
+                              {ticket.status === 'reassigned' && ticket.previousTeacherComment && (
+                                <p className="text-xs text-orange-700 mb-1 line-clamp-1">Previous: {ticket.previousTeacherComment}</p>
+                              )}
+                              <p className="text-xs text-gray-500">
+                                {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A'}
+                              </p>
                             </button>
-                            <div className="px-3 py-1.5 bg-primary text-white rounded text-xs font-medium">
-                              {ticket.status === 'pending' || ticket.status === 'reassigned' 
-                                ? 'Start' 
-                                : 'Continue'}
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Delete ticket for ${ticket.studentName}?`)) {
+                                    try {
+                                      await deleteTicket(ticket.id);
+                                      setRefreshKey(prev => prev + 1);
+                                      refreshData();
+                                    } catch (error) {
+                                      console.error('Error deleting ticket:', error);
+                                      alert('Failed to delete ticket: ' + (error instanceof Error ? error.message : 'Unknown error'));
+                                    }
+                                  }
+                                }}
+                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium transition-colors"
+                                title="Delete"
+                              >
+                                ×
+                              </button>
+                              <div className="px-3 py-1.5 bg-primary text-white rounded text-xs font-medium">
+                                {ticket.status === 'pending' || ticket.status === 'reassigned' 
+                                  ? 'Start' 
+                                  : 'Continue'}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
-                  {teacherTickets.length > 5 && (
+                  {filteredAndSortedTickets.length > 5 && (
                     <button
                       onClick={() => setShowAllPendingTickets(!showAllPendingTickets)}
                       className="w-full py-3 text-sm font-bold text-primary hover:text-primary/80 transition-colors border border-slate-700/50 rounded-lg hover:border-primary/30 bg-slate-800/30"
                     >
-                      {showAllPendingTickets ? 'Show Less' : `Show All (${teacherTickets.length})`}
+                      {showAllPendingTickets ? 'Show Less' : `Show All (${filteredAndSortedTickets.length})`}
                     </button>
                   )}
                 </div>

@@ -16,16 +16,12 @@ const StudentReports: React.FC<StudentReportsProps> = ({ onClose, teacherView = 
   
   // Get current teacher if in teacher view
   const currentTeacher = teacherView && user ? (teachers.find(t => t.email === user.email) || teachers[0]) : null;
-  const assignedStudentIds = currentTeacher?.id ? getStudentsByTeacher(currentTeacher.id).map(s => s.id) : [];
   
-  // Filter students based on view type
+  // Filter students based on view type - teachers can now see all students
   const students = useMemo(() => {
-    if (teacherView && currentTeacher) {
-      // Only show students assigned to this teacher
-      return allStudents.filter(student => assignedStudentIds.includes(student.id));
-    }
+    // Teachers can now see all students
     return allStudents;
-  }, [allStudents, teacherView, currentTeacher, assignedStudentIds]);
+  }, [allStudents]);
   
   const [selectedProgram, setSelectedProgram] = useState<string>('');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);

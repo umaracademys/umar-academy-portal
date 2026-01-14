@@ -19,8 +19,11 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [filterProgram, setFilterProgram] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'by-teacher' | 'by-student'>('by-teacher');
+  const [justSaved, setJustSaved] = useState(false); // Track if we just saved to prevent auto-reset
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null); // For shift-click range selection
 
   // Get assigned students for selected teacher
+  // Filter to show only students actually assigned to this teacher
   const assignedStudents = useMemo(() => {
     if (!selectedTeacher) return [];
     
@@ -33,36 +36,39 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       teacherDocId = (selectedTeacher as any)._id.toString();
     } else {
       teacherDocId = selectedTeacher.id;
-      console.warn('⚠️ Using User ID as fallback for teacher lookup:', {
-        teacherName: selectedTeacher.fullName,
-        teacherId: selectedTeacher.id,
-        _id: (selectedTeacher as any)._id,
-        teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
-      });
     }
     
-    const students = getStudentsByTeacher(teacherDocId);
-    if (students.length === 0 && teacherDocId !== selectedTeacher.id) {
-      const studentsByUserId = getStudentsByTeacher(selectedTeacher.id);
-      if (studentsByUserId.length > 0) {
-        console.warn('⚠️ WARNING: Students are assigned using User ID instead of Teacher Document ID!');
-        return studentsByUserId;
-      }
-    }
-    return students;
-  }, [selectedTeacher, getStudentsByTeacher, students]);
+    // Filter students to only show those assigned to this teacher
+    return students.filter(student => {
+      const assignedTeacherIds = (student as any).assignedTeacherIds || [];
+      const assignedTeachers = (student as any).assignedTeachers || [];
+      const studentRecordId = (student as any).studentRecordId || student.id || (student as any)._id;
+      
+      // Check if this student is assigned to the selected teacher
+      return assignedTeacherIds.includes(teacherDocId) || 
+             assignedTeachers.includes(teacherDocId) ||
+             assignedTeacherIds.includes(selectedTeacher.id) ||
+             assignedTeachers.includes(selectedTeacher.id);
+    });
+  }, [selectedTeacher, students]);
 
   // Initialize selected student IDs when teacher is selected
+  // BUT: Don't auto-reset if we just saved (to prevent reverting user's deselections)
   useEffect(() => {
+    // Skip auto-reset if we just saved - we'll update manually after refresh
+    if (justSaved) {
+      return;
+    }
+    
     if (selectedTeacher && assignedStudents.length > 0) {
       const assignedIds = new Set(
         assignedStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean)
       );
       setSelectedStudentIds(assignedIds);
-    } else {
+    } else if (!selectedTeacher) {
       setSelectedStudentIds(new Set());
     }
-  }, [selectedTeacher, assignedStudents]);
+  }, [selectedTeacher, assignedStudents, justSaved]);
 
   // Filter teachers by search term
   const filteredTeachers = useMemo(() => {
@@ -74,15 +80,53 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     );
   }, [teachers, teacherSearchTerm]);
 
-  // Get unique programs for filter dropdown
+  // Normalize program names to canonical values
+  const normalizeProgramName = (program: string | undefined): string | null => {
+    if (!program) return null;
+    const normalized = program.trim().toLowerCase();
+    
+    // Map variations to canonical ProgramType values
+    if (normalized.includes('full') && normalized.includes('time')) {
+      return 'Full-Time HQ';
+    }
+    if (normalized.includes('part') && normalized.includes('time')) {
+      return 'Part-Time HQ';
+    }
+    if (normalized.includes('after') && normalized.includes('school')) {
+      return 'After School';
+    }
+    
+    // If it matches exactly, return as-is
+    if (program === 'Full-Time HQ' || program === 'Part-Time HQ' || program === 'After School') {
+      return program;
+    }
+    
+    // If no match, return null (invalid program)
+    return null;
+  };
+
+  // Get unique programs for filter dropdown (normalized)
   const availablePrograms = useMemo(() => {
     const programs = new Set<string>();
     students.forEach(student => {
       if (student.program) {
-        programs.add(student.program);
+        const normalized = normalizeProgramName(student.program);
+        if (normalized) {
+          programs.add(normalized);
+        }
       }
     });
-    return Array.from(programs).sort();
+    // Sort in a specific order: Full-Time HQ, Part-Time HQ, After School
+    const sortedPrograms = Array.from(programs);
+    const order = ['Full-Time HQ', 'Part-Time HQ', 'After School'];
+    return sortedPrograms.sort((a, b) => {
+      const indexA = order.indexOf(a);
+      const indexB = order.indexOf(b);
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return a.localeCompare(b);
+    });
   }, [students]);
 
   // Filter students by search term, status, and program
@@ -115,9 +159,12 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       });
     }
 
-    // Filter by program
+    // Filter by program (using normalized program names)
     if (filterProgram !== 'all') {
-      filtered = filtered.filter(student => student.program === filterProgram);
+      filtered = filtered.filter(student => {
+        const normalizedStudentProgram = normalizeProgramName(student.program);
+        return normalizedStudentProgram === filterProgram;
+      });
     }
 
     return filtered;
@@ -140,32 +187,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     setSearchTerm('');
     setFilterStatus('all');
     setFilterProgram('all');
-  };
-
-  const handleStudentToggle = (studentId: string) => {
-    setSelectedStudentIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(studentId)) {
-        newSet.delete(studentId);
-      } else {
-        // Check if student already has 9 teachers assigned
-        const student = students.find(s => {
-          const sId = (s as any).studentRecordId || s.id || (s as any)._id;
-          return sId === studentId;
-        });
-        
-        if (student) {
-          const currentTeachers = getStudentTeachers(student);
-          if (currentTeachers.length >= 9 && !newSet.has(studentId)) {
-            alert(`⚠️ This student already has ${currentTeachers.length} teachers assigned. Maximum is 9 teachers per student.`);
-            return prev;
-          }
-        }
-        
-        newSet.add(studentId);
-      }
-      return newSet;
-    });
+    setLastSelectedIndex(null); // Reset range selection
   };
 
   const handleSelectAll = () => {
@@ -175,6 +197,159 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
   const handleDeselectAll = () => {
     setSelectedStudentIds(new Set());
+    setLastSelectedIndex(null);
+  };
+
+  // Bulk unselect all currently selected students
+  const handleBulkUnselect = () => {
+    if (selectedStudentIds.size === 0) {
+      alert('No students selected to unselect');
+      return;
+    }
+    setSelectedStudentIds(new Set());
+    setLastSelectedIndex(null);
+  };
+
+  // Handle shift-click range selection
+  const handleStudentToggle = (studentId: string, index: number, event?: React.MouseEvent) => {
+    const isShiftClick = event?.shiftKey;
+    const isCtrlClick = event?.ctrlKey || event?.metaKey;
+    
+    setSelectedStudentIds(prev => {
+      const newSet = new Set(prev);
+      
+      if (isShiftClick && lastSelectedIndex !== null) {
+        // Range selection: select all students between lastSelectedIndex and current index
+        const start = Math.min(lastSelectedIndex, index);
+        const end = Math.max(lastSelectedIndex, index);
+        const rangeStudents = filteredStudents.slice(start, end + 1);
+        
+        rangeStudents.forEach(student => {
+          const sId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+          if (!sId) return;
+          
+          // Check if student already has 9 teachers (only when adding)
+          if (!newSet.has(sId)) {
+            const currentTeachers = getStudentTeachers(student);
+            if (currentTeachers.length >= 9) {
+              console.warn(`⚠️ Skipping ${student.fullName} - already has 9 teachers`);
+              return;
+            }
+          }
+          
+          newSet.add(sId);
+        });
+      } else if (isCtrlClick || isShiftClick) {
+        // Multi-select: toggle this student without clearing others
+        if (newSet.has(studentId)) {
+          newSet.delete(studentId);
+        } else {
+          const student = filteredStudents[index];
+          const currentTeachers = getStudentTeachers(student);
+          if (currentTeachers.length >= 9) {
+            alert(`⚠️ This student already has ${currentTeachers.length} teachers assigned. Maximum is 9 teachers per student.`);
+            return prev;
+          }
+          newSet.add(studentId);
+        }
+      } else {
+        // Normal single click: toggle this student
+        if (newSet.has(studentId)) {
+          newSet.delete(studentId);
+        } else {
+          const student = filteredStudents[index];
+          const currentTeachers = getStudentTeachers(student);
+          if (currentTeachers.length >= 9) {
+            alert(`⚠️ This student already has ${currentTeachers.length} teachers assigned. Maximum is 9 teachers per student.`);
+            return prev;
+          }
+          newSet.add(studentId);
+        }
+      }
+      
+      return newSet;
+    });
+    
+    // Update last selected index for range selection
+    setLastSelectedIndex(index);
+  };
+
+  // Get students in a specific program (from filtered students, respecting current filters)
+  // Uses normalized program name matching
+  const getStudentsByProgram = (program: string) => {
+    return filteredStudents.filter(student => {
+      const normalizedStudentProgram = normalizeProgramName(student.program);
+      return normalizedStudentProgram === program;
+    });
+  };
+
+  // Get all students in a program (regardless of filters) - for accurate counts
+  const getAllStudentsByProgram = (program: string) => {
+    return students.filter(student => student.program === program);
+  };
+
+  // Get program selection state: 'all' | 'some' | 'none'
+  const getProgramSelectionState = (program: string): 'all' | 'some' | 'none' => {
+    const programStudents = getStudentsByProgram(program);
+    if (programStudents.length === 0) return 'none';
+    
+    const selectedCount = programStudents.filter(student => {
+      const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+      return selectedStudentIds.has(studentId);
+    }).length;
+    
+    if (selectedCount === 0) return 'none';
+    if (selectedCount === programStudents.length) return 'all';
+    return 'some';
+  };
+
+  // Toggle all students in a program
+  const handleProgramToggle = (program: string) => {
+    const programStudents = getStudentsByProgram(program);
+    const currentState = getProgramSelectionState(program);
+    
+    setSelectedStudentIds(prev => {
+      const newSet = new Set(prev);
+      
+      if (currentState === 'all') {
+        // Deselect all students in this program
+        programStudents.forEach(student => {
+          const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+          if (studentId) newSet.delete(studentId);
+        });
+      } else {
+        // Select all students in this program (check for 9-teacher limit first)
+        const studentsToAdd: string[] = [];
+        const studentsToSkip: string[] = [];
+        
+        programStudents.forEach(student => {
+          const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+          if (!studentId) return;
+          
+          if (newSet.has(studentId)) {
+            // Already selected, skip
+            return;
+          }
+          
+          // Check if student already has 9 teachers
+          const currentTeachers = getStudentTeachers(student);
+          if (currentTeachers.length >= 9) {
+            studentsToSkip.push(student.fullName);
+            return;
+          }
+          
+          studentsToAdd.push(studentId);
+        });
+        
+        if (studentsToSkip.length > 0) {
+          alert(`⚠️ ${studentsToSkip.length} student(s) already have 9 teachers assigned and cannot be added:\n${studentsToSkip.slice(0, 5).join(', ')}${studentsToSkip.length > 5 ? '...' : ''}`);
+        }
+        
+        studentsToAdd.forEach(studentId => newSet.add(studentId));
+      }
+      
+      return newSet;
+    });
   };
 
   const handleSave = async () => {
@@ -182,18 +357,36 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
     setIsSaving(true);
     try {
+      // CRITICAL: Use Teacher Document ID, not User ID
+      // Try multiple strategies to find Teacher document ID
+      // The backend can handle both Teacher._id and User._id, so we'll try to find the best one
       let teacherDocId: string | null = null;
       
+      // Strategy 1: Check teacherDocumentId field (explicit Teacher document ID)
       if ((selectedTeacher as any).teacherDocumentId) {
         teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
-      } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
+      } 
+      // Strategy 2: Check _id field (Teacher document _id) - use it if it exists
+      else if ((selectedTeacher as any)._id) {
         teacherDocId = (selectedTeacher as any)._id.toString();
-      } else {
-        console.error('❌ Cannot find Teacher document _id!', {
+      }
+      // Strategy 3: Use id as fallback (backend can handle User ID lookup)
+      else if (selectedTeacher.id) {
+        teacherDocId = selectedTeacher.id.toString();
+        console.warn('⚠️ Using id as Teacher document ID (backend will handle User ID lookup):', {
+          teacherName: selectedTeacher.fullName,
+          teacherId: selectedTeacher.id,
+        });
+      }
+      
+      // Final fallback: If still no ID, this shouldn't happen but handle gracefully
+      if (!teacherDocId) {
+        console.error('❌ Cannot find any ID for teacher!', {
           teacherName: selectedTeacher.fullName,
           teacherId: selectedTeacher.id,
           _id: (selectedTeacher as any)._id,
           teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
+          allKeys: Object.keys(selectedTeacher),
         });
         alert(`❌ Error: Cannot find Teacher document ID for ${selectedTeacher.fullName}. Please refresh the page and try again.`);
         setIsSaving(false);
@@ -331,30 +524,93 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       }
 
       if (successful.length > 0) {
-        Promise.all([
-          (async () => {
-            try {
-              const { dataCache } = await import('../utils/dataCache');
-              dataCache.clear();
-              console.log('🗑️ Cache cleared');
-            } catch (cacheError) {
-              console.warn('⚠️ Could not clear cache:', cacheError);
+        // Mark that we just saved to prevent auto-reset
+        setJustSaved(true);
+        
+        // Trigger backend sync FIRST, before refreshing
+        try {
+          const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+          const token = localStorage.getItem('umar_academy_token');
+          const syncResponse = await fetch(`${API_BASE}/teachers/sync-assigned-students`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
-          })(),
-          (async () => {
-            if (refreshStudentsAndTeachers) {
-              console.log('🔄 Refreshing students and teachers (background)...');
-              await refreshStudentsAndTeachers();
-              console.log('✅ Students and teachers refreshed');
-            } else if (refreshData) {
-              console.log('🔄 Refreshing data (background)...');
-              await refreshData();
-              console.log('✅ Data refreshed');
+          });
+          
+          if (syncResponse.ok) {
+            console.log('✅ Teacher assignedStudents arrays synced successfully');
+            // Wait a bit for the sync to fully complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+          } else {
+            console.warn('⚠️ Sync request returned non-OK status:', syncResponse.status);
+          }
+        } catch (syncError) {
+          console.warn('⚠️ Could not trigger sync (non-critical):', syncError);
+        }
+        
+        // Now refresh the data
+        try {
+          // Clear cache first
+          try {
+            const { dataCache } = await import('../utils/dataCache');
+            dataCache.clear();
+            console.log('🗑️ Cache cleared');
+          } catch (cacheError) {
+            console.warn('⚠️ Could not clear cache:', cacheError);
+          }
+          
+          // Refresh data
+          if (refreshStudentsAndTeachers) {
+            console.log('🔄 Refreshing students and teachers (background)...');
+            await refreshStudentsAndTeachers();
+            console.log('✅ Students and teachers refreshed');
+          } else if (refreshData) {
+            console.log('🔄 Refreshing data (background)...');
+            await refreshData();
+            console.log('✅ Data refreshed');
+          }
+          
+          // After refresh, update selectedStudentIds to match the actual saved state
+          // Wait a bit to ensure data is updated and re-rendered
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          if (selectedTeacher) {
+            // Get the teacher document ID (same logic as in assignedStudents useMemo)
+            let teacherDocId: string;
+            if ((selectedTeacher as any).teacherDocumentId) {
+              teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
+            } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
+              teacherDocId = (selectedTeacher as any)._id.toString();
+            } else {
+              teacherDocId = selectedTeacher.id;
             }
-          })()
-        ]).catch(err => {
+            
+            // Get the updated assigned students from the refreshed data
+            const updatedAssignedStudents = getStudentsByTeacher(teacherDocId);
+            const updatedAssignedIds = new Set(
+              updatedAssignedStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean)
+            );
+            
+            // Update selectedStudentIds to match what was actually saved
+            setSelectedStudentIds(updatedAssignedIds);
+            console.log('✅ Updated selectedStudentIds to match saved state:', {
+              count: updatedAssignedIds.size,
+              ids: Array.from(updatedAssignedIds).slice(0, 5),
+              expectedCount: selectedStudentIds.size
+            });
+          }
+          
+          // Clear the justSaved flag after update completes
+          setTimeout(() => {
+            setJustSaved(false);
+            console.log('🔄 Cleared justSaved flag, auto-reset now enabled');
+          }, 500);
+        } catch (err) {
           console.warn('⚠️ Background refresh error (non-critical):', err);
-        });
+          setJustSaved(false);
+        }
       }
 
       if (failed.length > 0) {
@@ -364,39 +620,12 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         throw new Error(errorMessage);
       }
 
-      // Trigger backend sync
-      try {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-        const token = localStorage.getItem('umar_academy_token');
-        const syncResponse = await fetch(`${API_BASE}/teachers/sync-assigned-students`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (syncResponse.ok) {
-          console.log('✅ Teacher assignedStudents arrays synced successfully');
-        } else {
-          console.warn('⚠️ Sync request returned non-OK status:', syncResponse.status);
-        }
-      } catch (syncError) {
-        console.warn('⚠️ Could not trigger sync (non-critical):', syncError);
-      }
+      // Note: Backend sync is now handled before refresh (above)
 
       alert(`✅ Successfully updated ${successful.length} student assignment(s) for ${selectedTeacher.fullName}`);
       
-      const updatedSelectedIds = new Set(
-        students
-          .filter(s => {
-            const sId = (s as any).studentRecordId || s.id || (s as any)._id;
-            return selectedStudentIds.has(sId);
-          })
-          .map(s => (s as any).studentRecordId || s.id || (s as any)._id)
-          .filter(Boolean)
-      );
-      setSelectedStudentIds(updatedSelectedIds);
+      // Don't update selectedStudentIds here - let the refresh handler do it
+      // to ensure it matches the actual database state
     } catch (error) {
       console.error('Error updating student assignments:', error);
       alert('❌ Failed to update student assignments: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -477,8 +706,16 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                     <p className="text-gray-500 text-center py-8 text-sm">No teachers found</p>
                   ) : (
                     filteredTeachers.map((teacher) => {
-                      const teacherId = teacher.id || (teacher as any)._id || '';
-                      const assignedCount = getStudentsByTeacher(teacherId).length;
+                      // Calculate actual assigned count for this teacher
+                      const teacherDocId = (teacher as any)._id || (teacher as any).teacherDocumentId || teacher.id;
+                      const assignedCount = students.filter(student => {
+                        const assignedTeacherIds = (student as any).assignedTeacherIds || [];
+                        const assignedTeachers = (student as any).assignedTeachers || [];
+                        return assignedTeacherIds.includes(teacherDocId) || 
+                               assignedTeachers.includes(teacherDocId) ||
+                               assignedTeacherIds.includes(teacher.id) ||
+                               assignedTeachers.includes(teacher.id);
+                      }).length;
                       const isSelected = selectedTeacher?.id === teacher.id || 
                                        (selectedTeacher as any)?._id === (teacher as any)._id;
 
@@ -562,27 +799,102 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                     </div>
                   </div>
 
+                  {/* Program Selection Checkboxes */}
+                  {availablePrograms.length > 0 && (
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-gray-700">Select by Program</h3>
+                        <span className="text-xs text-gray-500">
+                          {availablePrograms.length} program{availablePrograms.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {availablePrograms.map(program => {
+                          const programState = getProgramSelectionState(program);
+                          const programStudents = getStudentsByProgram(program);
+                          const allProgramStudents = getAllStudentsByProgram(program);
+                          const selectedCount = programStudents.filter(student => {
+                            const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+                            return selectedStudentIds.has(studentId);
+                          }).length;
+                          
+                          return (
+                            <label
+                              key={program}
+                              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer transition-all ${
+                                programState === 'all'
+                                  ? 'border-primary bg-primary/10 shadow-sm'
+                                  : programState === 'some'
+                                  ? 'border-primary/50 bg-primary/5'
+                                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={programState === 'all'}
+                                onChange={() => handleProgramToggle(program)}
+                                className="w-4 h-4 flex-shrink-0 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+                              />
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">{program}</span>
+                                <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                  programState === 'all'
+                                    ? 'bg-primary/20 text-primary font-semibold'
+                                    : programState === 'some'
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {selectedCount}/{programStudents.length}
+                                  {programStudents.length !== allProgramStudents.length && (
+                                    <span className="ml-1 text-gray-400">(of {allProgramStudents.length} total)</span>
+                                  )}
+                                </span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        💡 Tip: Check a program to select all students, or uncheck to deselect all students in that program
+                      </p>
+                    </div>
+                  )}
+
                   {/* Action Buttons */}
-                  <div className="mb-4 flex gap-2">
-                    <button
-                      onClick={handleSelectAll}
-                      className="px-3 py-2 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      onClick={handleDeselectAll}
-                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                    >
-                      Deselect All
-                    </button>
-                    <button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-                    >
-                      {isSaving ? 'Saving...' : `Save Changes (${selectedStudentIds.size})`}
-                    </button>
+                  <div className="mb-4 space-y-2">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSelectAll}
+                        className="px-3 py-2 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={handleDeselectAll}
+                        className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Deselect All
+                      </button>
+                      {selectedStudentIds.size > 0 && (
+                        <button
+                          onClick={handleBulkUnselect}
+                          className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 rounded-lg hover:bg-red-100 transition-colors border border-red-200"
+                        >
+                          Unselect Selected ({selectedStudentIds.size})
+                        </button>
+                      )}
+                      <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        {isSaving ? 'Saving...' : `Save Changes (${selectedStudentIds.size})`}
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center gap-4">
+                      <span>💡 Tip: Hold <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">Shift</kbd> + Click for range selection</span>
+                      <span>Hold <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-xs font-mono">Ctrl/Cmd</kbd> + Click for multi-select</span>
+                    </div>
                   </div>
 
                   {/* Students List */}
@@ -604,7 +916,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                         )}
                       </div>
                     ) : (
-                      filteredStudents.map((student) => {
+                      filteredStudents.map((student, index) => {
                         const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
                         const isAssigned = selectedStudentIds.has(studentId);
                         const isCurrentlyAssigned = assignedStudents.some(
@@ -624,11 +936,30 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                                 ? 'border-primary bg-primary/5 shadow-sm'
                                 : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
                             }`}
+                            onClick={(e) => {
+                              // Only handle if clicking on the label itself (not checkbox or button)
+                              const target = e.target as HTMLElement;
+                              if (target.tagName !== 'INPUT' && target.tagName !== 'BUTTON' && !target.closest('button')) {
+                                e.preventDefault();
+                                handleStudentToggle(studentId, index, e);
+                              }
+                            }}
                           >
                             <input
                               type="checkbox"
                               checked={isAssigned}
-                              onChange={() => handleStudentToggle(studentId)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                // Create a synthetic mouse event from the change event
+                                const syntheticEvent = {
+                                  ...e.nativeEvent,
+                                  shiftKey: (e.nativeEvent as any).shiftKey || false,
+                                  ctrlKey: (e.nativeEvent as any).ctrlKey || false,
+                                  metaKey: (e.nativeEvent as any).metaKey || false,
+                                } as React.MouseEvent;
+                                handleStudentToggle(studentId, index, syntheticEvent);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
                               disabled={!isAssigned && teacherCount >= 9}
                               className="w-5 h-5 flex-shrink-0 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
                             />

@@ -6722,11 +6722,11 @@ app.get('/api/tickets', async (req, res) => {
   }
 });
 
-// Get tickets for teacher (pending and in_progress)
+// Get tickets for teacher (pending and in_progress) - teachers can now see all tickets
 app.get('/api/tickets/teacher/:teacherId', async (req, res) => {
   try {
+    // Teachers can now see all tickets, not just assigned ones
     const tickets = await Ticket.find({
-      assignedTeacherId: req.params.teacherId,
       status: { $in: ['pending', 'in_progress', 'reassigned'] }
     })
       .sort({ createdAt: -1 });
@@ -6857,6 +6857,42 @@ app.get('/api/tickets/:id/verify-assignment', async (req, res) => {
 });
 
 // Fix tickets that are missing sentToAssignmentId - MUST come before /:id route
+// Bulk delete tickets - MUST be before /api/tickets/:id route (to avoid route conflict)
+app.post('/api/tickets/bulk-delete', authenticateToken, async (req, res) => {
+  try {
+    const { ticketIds } = req.body;
+    
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({ error: 'ticketIds must be a non-empty array' });
+    }
+
+    // Delete all tickets
+    const result = await Ticket.deleteMany({
+      _id: { $in: ticketIds }
+    });
+
+    console.log(`✅ Deleted ${result.deletedCount} tickets`);
+
+    // Emit WebSocket events for deleted tickets
+    try {
+      ticketIds.forEach(ticketId => {
+        io.to('admins').emit('ticket:deleted', { id: ticketId });
+      });
+    } catch (socketError) {
+      console.error('⚠️ Error emitting ticket:deleted events:', socketError);
+    }
+
+    res.json({ 
+      success: true, 
+      deletedCount: result.deletedCount,
+      message: `Successfully deleted ${result.deletedCount} ticket(s)`
+    });
+  } catch (error) {
+    console.error('❌ Error bulk deleting tickets:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/tickets/fix-missing-assignment-ids', async (req, res) => {
   try {
     // Find all tickets with status 'sent_to_assignment' but no sentToAssignmentId
@@ -7022,50 +7058,18 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
       
       console.log('✅ Teacher has permission to create tickets (default or explicitly allowed)');
       
-      // Validate student is assigned to this teacher
+      // Validate student exists (teachers can now create tickets for all students)
       const studentId = req.body.studentId;
-      const teacherId = teacher._id.toString();
-      const teacherUserId = teacher.userId?.toString();
       
-      // OPTIMIZED: Parallel student lookup and assignment check
-      const [student, teacherWithStudents] = await Promise.all([
-        Student.findById(studentId).select('assignedTeacherIds assignedTeachers assignedTeacherId assignedTeacher fullName').lean(),
-        Teacher.findById(teacher._id).select('assignedStudents').lean()
-      ]);
+      // Check if student exists
+      const student = await Student.findById(studentId).select('fullName').lean();
       
       if (!student) {
         console.error('❌ Student not found:', studentId);
         return res.status(404).json({ error: 'Student not found' });
       }
       
-      // Quick assignment check - normalize IDs once
-      const studentIdStr = String(studentId);
-      const teacherIdStr = String(teacher._id);
-      const teacherUserIdStr = teacher.userId ? String(teacher.userId) : null;
-      
-      // Get student's assigned teacher IDs
-      const studentAssignedTeacherIds = [
-        ...(student.assignedTeacherIds || []),
-        ...(student.assignedTeachers || []),
-        student.assignedTeacherId,
-        student.assignedTeacher
-      ].filter(Boolean).map(id => String(id));
-      
-      // Get teacher's assigned students
-      const teacherAssignedStudentIds = (teacherWithStudents?.assignedStudents || []).map(id => String(id));
-      
-      // Quick check - no need for complex ObjectId comparisons if strings match
-      const isAssignedViaStudent = studentAssignedTeacherIds.some(id => 
-        id === teacherIdStr || id === teacherUserIdStr
-      );
-      const isAssignedViaTeacher = teacherAssignedStudentIds.includes(studentIdStr);
-      const isAssigned = isAssignedViaStudent || isAssignedViaTeacher;
-      
-      if (!isAssigned) {
-        return res.status(403).json({ error: 'You can only create tickets for your assigned students' });
-      }
-      
-      // Auto-fill teacher info
+      // Auto-fill teacher info (teachers can create tickets for any student)
       req.body.assignedTeacherId = teacher._id.toString();
       req.body.assignedTeacherName = teacher.fullName || teacher.email || defaultCreatedByName;
       // Ensure createdBy and createdByName are set (use teacher info if available, otherwise use defaults)
@@ -7605,7 +7609,6 @@ app.post('/api/tickets/:id/reassign', async (req, res) => {
   }
 });
 
-// Delete ticket
 app.delete('/api/tickets/:id', async (req, res) => {
   try {
     const ticket = await Ticket.findByIdAndDelete(req.params.id);
@@ -8844,15 +8847,9 @@ app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
 
     // Role-based access control
     if (req.user.role === 'teacher') {
-      // Permission check for teachers
-      const { checkTeacherPermission } = require('./middleware/permissions');
-      const userId = req.user.userId || req.user.id || req.user._id;
-      const hasPermission = await checkTeacherPermission(userId, 'canAccessEvaluations');
-      if (!hasPermission) {
-        return res.status(403).json({ error: 'Access denied. You don\'t have permission to access evaluations.' });
-      }
       // Teachers can only view their own evaluations
       // Find teacher by email first (most reliable), then fallback to userId
+      const userId = req.user.userId || req.user.id || req.user._id;
       let teacher = await Teacher.findOne({ email: req.user.email });
       if (!teacher && userId) {
         // Try finding by userId with proper ObjectId conversion
@@ -8870,6 +8867,15 @@ app.get('/api/weekly-evaluations', authenticateToken, async (req, res) => {
       if (!teacher) {
         console.error('❌ Teacher not found for weekly evaluations:', { email: req.user.email, userId });
         return res.status(404).json({ error: 'Teacher not found' });
+      }
+      
+      // Permission check for teachers (optional - allow access even without explicit permission)
+      // Most teachers should have access to evaluations
+      const { checkTeacherPermission } = require('./middleware/permissions');
+      const hasPermission = await checkTeacherPermission(userId, 'canAccessEvaluations');
+      if (!hasPermission) {
+        console.warn('⚠️ Teacher does not have canAccessEvaluations permission, but allowing access:', { email: req.user.email, userId });
+        // Allow access anyway - permission check is advisory for this endpoint
       }
       const currentTeacherId = teacher._id?.toString() || teacher.id;
       const teacherUserId = teacher.userId?.toString() || userId?.toString();

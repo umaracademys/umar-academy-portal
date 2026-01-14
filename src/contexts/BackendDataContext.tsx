@@ -506,26 +506,42 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // OPTIMIZED: For students, skip users/teachers loading (not needed)
       // OPTIMIZED: For teacher-student-assignment page, skip users/admins (only need students/teachers)
       if (!isStudentUser && !isTeacherStudentAssignmentPage) {
-        // Load users - check cache first
-        if (cachedUsers) {
-          console.log('⚡ Using cached users');
+        // Load users and teachers in parallel - teachers needed for user processing
+        setLoadingStep('Loading users and teachers...');
+        
+        // Check cache first
+        const cachedTeachers = dataCache.get('teachers') as any[] | null;
+        if (cachedUsers && cachedTeachers) {
+          console.log('⚡ Using cached users and teachers');
           users = cachedUsers;
+          teacherRecords = cachedTeachers;
         } else {
-          setLoadingStep('Loading users...');
-          const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 3000, false);
-          if (import.meta.env.DEV) {
-            console.log('📡 Backend response status:', usersResponse.status);
-          }
+          // Load users and teachers in parallel
+          const [usersResponse, teachersResponse] = await Promise.allSettled([
+            fetchWithTimeout(`${API_BASE}/users`, {}, 3000, false),
+            fetchWithTimeout(`${API_BASE}/teachers`, {}, 3000, false)
+          ]);
           
-          if (!usersResponse.ok) {
+          if (usersResponse.status === 'fulfilled' && usersResponse.value.ok) {
+            users = await usersResponse.value.json();
+            if (import.meta.env.DEV) {
+              console.log('👥 Users loaded from backend:', users.length);
+            }
+            dataCache.set('users', users);
+          } else {
             throw new Error(`Failed to fetch users: ${usersResponse.status}`);
           }
-          users = await usersResponse.json();
-          if (import.meta.env.DEV) {
-            console.log('👥 Users loaded from backend:', users.length);
+          
+          if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
+            teacherRecords = await teachersResponse.value.json();
+            if (import.meta.env.DEV) {
+              console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
+            }
+            dataCache.set('teachers', teacherRecords);
+          } else {
+            console.warn('⚠️ Failed to fetch teachers, continuing without them');
+            teacherRecords = [];
           }
-          // Cache users for next time
-          dataCache.set('users', users);
         }
         
         // 🔍 FIX: Load students for admin/teacher users (not just teacher-student-assignment page)
@@ -1360,7 +1376,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           return {
             id: user._id, // Keep user._id for compatibility (this is User._id)
-            _id: teacherDocId || undefined, // CRITICAL: Only use Teacher Document ID, never fall back to User ID
+            _id: teacherDocId || user._id, // Use Teacher Document ID, fallback to User ID if not found (better than undefined)
             teacherDocumentId: teacherDocId || undefined, // Store Teacher document ID separately
             fullName: user.name || user.fullName || teacherProfile.fullName || teacherRecord?.fullName || 'Unknown',
             email: user.email,
@@ -1468,10 +1484,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             canExportReports: permissionsFromRecord.canExportReports ?? false,
           };
           
+          // Ensure _id is always set (use id as fallback if _id is missing)
+          const teacherDocId = teacherRecord._id?.toString() || teacherRecord._id || teacherRecord.id;
+          const userId = teacherRecord.userId?._id?.toString() || teacherRecord.userId?.toString() || teacherRecord.userId || teacherRecord.id;
+          
           return {
-            id: teacherRecord.userId?._id || teacherRecord._id || teacherRecord.id, // User ID for compatibility
-            _id: teacherRecord._id?.toString() || teacherRecord._id, // Teacher Document ID
-            teacherDocumentId: teacherRecord._id?.toString() || teacherRecord._id, // Explicit Teacher Document ID
+            id: userId, // User ID for compatibility
+            _id: teacherDocId || userId, // Teacher Document ID (always set, fallback to userId if needed)
+            teacherDocumentId: teacherDocId || undefined, // Explicit Teacher Document ID
             fullName: teacherRecord.fullName || 'Unknown',
             email: teacherRecord.email || '',
             phoneNumber: teacherRecord.phoneNumber || teacherRecord.contact || '',
@@ -1804,8 +1824,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Merge with existing students to preserve data that might be missing from backend response
       setStudents(prev => {
-        const studentMap = new Map<string, Student>(prev.map(s => [s.id, s]));
+        const studentMap = new Map<string, Student>();
+        
+        // First, add existing students (filter out any without valid IDs)
+        prev.forEach(s => {
+          if (s.id) {
+            studentMap.set(s.id, s);
+          }
+        });
+        
+        // Then, add/update with new students (filter out any without valid IDs)
         finalStudentsData.forEach((newStudent: Student) => {
+          if (!newStudent.id) {
+            console.warn('⚠️ Skipping student without ID:', newStudent);
+            return;
+          }
+          
           const existing = studentMap.get(newStudent.id);
           if (existing) {
             // Merge: keep existing data, update with new data, but preserve critical fields if missing
@@ -1819,28 +1853,43 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               program: newStudent.program || existing.program || 'Full-Time HQ',
               contact: newStudent.contact || existing.contact || '',
               parentName: newStudent.parentName || existing.parentName || '',
-              tuitionFee: newStudent.tuitionFee || existing.tuitionFee || 0, // 🔍 DIAGNOSTIC: Added tuitionFee to merge
+              tuitionFee: newStudent.tuitionFee || existing.tuitionFee || 0,
             } as Student);
           } else {
             studentMap.set(newStudent.id, newStudent);
           }
         });
+        
         const finalStudents = Array.from(studentMap.values());
         
-        // 🔍 DIAGNOSTIC: Log final state after merge
-        if (import.meta.env.DEV && finalStudents.length > 0) {
-          const sampleFinal = finalStudents[0];
+        // Final deduplication check - ensure no duplicate IDs
+        const seenIds = new Set<string>();
+        const deduplicatedStudents = finalStudents.filter(s => {
+          if (!s.id) return false;
+          if (seenIds.has(s.id)) {
+            console.warn('⚠️ Removing duplicate student:', s.id, s.fullName);
+            return false;
+          }
+          seenIds.add(s.id);
+          return true;
+        });
+        
+        // 🔍 DIAGNOSTIC: Log final state after merge (only once, reduce spam)
+        if (import.meta.env.DEV && deduplicatedStudents.length > 0 && deduplicatedStudents.length !== prev.length) {
+          const sampleFinal = deduplicatedStudents[0];
           console.log('🔍 DIAGNOSTIC - Final student state (after merge, before setState):', {
             id: sampleFinal.id,
             fullName: sampleFinal.fullName,
             program: sampleFinal.program,
             assignedTeacher: sampleFinal.assignedTeacher,
             tuitionFee: sampleFinal.tuitionFee,
-            totalStudents: finalStudents.length
+            totalStudents: deduplicatedStudents.length,
+            prevCount: prev.length,
+            newCount: finalStudentsData.length
           });
         }
         
-        return finalStudents;
+        return deduplicatedStudents;
       });
       // Merge teachers to preserve Teacher Document IDs from existing data
       // This prevents losing Teacher Document IDs when fresh data doesn't have them
@@ -3462,167 +3511,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Helper functions
   const getStudentsByTeacher = useCallback((teacherId: string) => {
-    if (import.meta.env.DEV) {
-      console.log('🔍 getStudentsByTeacher called with teacherId:', teacherId);
-    }
-    
-    // Normalize teacherId to string for comparison
-    const normalizedTeacherId = teacherId?.toString().trim();
-    if (!normalizedTeacherId) {
-      console.log('🔍 Invalid teacherId');
-      return [];
-    }
-    
-    // Find the teacher to get their assignedStudents array
-    // Check multiple ID fields: _id (Teacher document ID), teacherDocumentId, id (User ID), teacherId, userId
-    const teacher = teachers.find(t => {
-      const tDocId = ((t as any)._id || (t as any).teacherDocumentId)?.toString().trim(); // Teacher document _id (priority)
-      const tId = t.id?.toString().trim(); // User ID
-      const tTeacherId = (t as any).teacherId?.toString().trim();
-      const tUserId = (t as any).userId?._id?.toString().trim() || (t as any).userId?.toString().trim();
-      return tDocId === normalizedTeacherId || 
-             normalizedTeacherId === tDocId ||
-             tId === normalizedTeacherId || 
-             tTeacherId === normalizedTeacherId ||
-             tUserId === normalizedTeacherId ||
-             normalizedTeacherId === tId ||
-             normalizedTeacherId === tTeacherId ||
-             normalizedTeacherId === tUserId;
-    });
-    
-    if (!teacher) {
-      console.log('🔍 Teacher not found for ID:', normalizedTeacherId);
-      console.log('🔍 Available teachers:', teachers.map(t => ({ 
-        id: t.id || (t as any)._id, 
-        teacherId: (t as any).teacherId,
-        userId: (t as any).userId?._id || (t as any).userId,
-        name: t.fullName 
-      })));
-      return [];
-    }
-    
-    const teacherName = teacher.fullName?.trim() || '';
-    const teacherDocId = ((teacher as any)._id || (teacher as any).teacherDocumentId)?.toString().trim(); // Teacher document _id (priority)
-    const teacherIdFromTeacher = teacher.id?.toString().trim(); // User ID
-    const teacherTeacherId = (teacher as any).teacherId?.toString().trim();
-    const teacherUserId = (teacher as any).userId?._id?.toString().trim() || (teacher as any).userId?.toString().trim();
-    const assignedStudentIds = Array.isArray((teacher as any).assignedStudents) ? (teacher as any).assignedStudents : [];
-    
-    // Production-safe logging (always log, not just in DEV)
-    console.log('🔍 getStudentsByTeacher - Teacher found:', teacherName, 
-      '- teacherDocId:', teacherDocId,
-      '- teacherId (User ID):', teacherIdFromTeacher,
-      '- teacherUserId:', teacherUserId,
-      '- assignedStudents array length:', assignedStudentIds.length,
-      '- total students in system:', students.length,
-      '- searchId (normalizedTeacherId):', normalizedTeacherId);
-    
-    // Filter students by checking multiple criteria - STRICT MATCHING ONLY
-    const filteredStudents = students.filter(student => {
-      const studentId = (student.id || (student as any)._id)?.toString().trim();
-      const userId = (student as any).userId?._id?.toString().trim() || (student as any).userId?.toString().trim();
-      
-      // Normalize assignedTeacher - handle null, undefined, empty string
-      const rawAssignedTeacher = student.assignedTeacher || (student as any).assignedTeacher;
-      const assignedTeacher = rawAssignedTeacher ? rawAssignedTeacher.toString().trim() : '';
-      
-      // Check 1: If student ID or user ID is in teacher's assignedStudents array
-      const isAssignedById = assignedStudentIds.length > 0 && assignedStudentIds.some((assignedId: string) => {
-        if (!assignedId) return false;
-        const assignedIdStr = assignedId.toString().trim();
-        return assignedIdStr === studentId || 
-               assignedIdStr === userId ||
-               assignedIdStr === (student as any)._id?.toString().trim();
-      });
-      
-      // Check 2: If student's assignedTeacherIds array contains teacher's ID (NEW - multiple teachers support)
-      const assignedTeacherIds = (student as any).assignedTeacherIds || [];
-      const assignedTeachers = (student as any).assignedTeachers || [];
-      const hasAssignedTeacherInArray = Array.isArray(assignedTeacherIds) && assignedTeacherIds.some((tid: string) => {
-        const tidStr = tid?.toString().trim();
-        return tidStr === normalizedTeacherId ||
-               tidStr === teacherDocId ||
-               tidStr === teacherIdFromTeacher ||
-               tidStr === teacherTeacherId ||
-               tidStr === teacherUserId;
-      }) || Array.isArray(assignedTeachers) && assignedTeachers.some((tid: string) => {
-        const tidStr = tid?.toString().trim();
-        return tidStr === normalizedTeacherId ||
-               tidStr === teacherDocId ||
-               tidStr === teacherIdFromTeacher ||
-               tidStr === teacherTeacherId ||
-               tidStr === teacherUserId;
-      });
-      
-      // Check 3: If student's assignedTeacher field matches teacher's ID (legacy - single teacher)
-      // ONLY check if assignedTeacher is NOT empty
-      const hasAssignedTeacherId = assignedTeacher !== '' && (
-        assignedTeacher === normalizedTeacherId ||
-        assignedTeacher === teacherDocId ||
-        assignedTeacher === teacherIdFromTeacher ||
-        assignedTeacher === teacherTeacherId ||
-        assignedTeacher === teacherUserId ||
-        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === normalizedTeacherId) ||
-        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherDocId) ||
-        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherIdFromTeacher) ||
-        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherTeacherId) ||
-        ((student as any).assignedTeacherId && (student as any).assignedTeacherId.toString().trim() === teacherUserId)
-      );
-      
-      // Check 4: If student's assignedTeacher field matches teacher's name (case-insensitive)
-      // ONLY check if assignedTeacher is NOT empty
-      const hasAssignedTeacherName = assignedTeacher !== '' && teacherName !== '' && (
-        assignedTeacher === teacherName ||
-        assignedTeacher === teacher.fullName?.trim() ||
-        assignedTeacher.toLowerCase() === teacherName.toLowerCase() ||
-        assignedTeacher.toLowerCase() === teacher.fullName?.trim().toLowerCase()
-      );
-      
-      // STRICT MATCHING: Only match if at least ONE condition is true
-      // This ensures we NEVER show students that aren't explicitly assigned
-      const matches = isAssignedById || hasAssignedTeacherInArray || hasAssignedTeacherId || hasAssignedTeacherName;
-      
-      if (matches && import.meta.env.DEV) {
-        console.log('✅ Student matched:', student.fullName || (student as any).fullName, 
-          '- assignedTeacher:', assignedTeacher || '(empty)',
-          '- studentId:', studentId,
-          '- teacherId (normalized):', normalizedTeacherId,
-          '- teacherName:', teacherName,
-          '- isAssignedById:', isAssignedById,
-          '- hasAssignedTeacherId:', hasAssignedTeacherId,
-          '- hasAssignedTeacherName:', hasAssignedTeacherName);
-      }
-      
-      return matches;
-    });
-    
-    // Production-safe logging (always log, not just in DEV)
-    console.log('🔍 getStudentsByTeacher - Filtered students for teacher:', teacherName, '- Count:', filteredStudents.length);
-    if (filteredStudents.length > 0) {
-      console.log('✅ getStudentsByTeacher - Matched students:', filteredStudents.map(s => s.fullName || (s as any).fullName));
-    } else {
-      console.log('⚠️ getStudentsByTeacher - No students matched for teacher:', teacherName);
-      console.log('⚠️ getStudentsByTeacher - Teacher assignedStudents array:', assignedStudentIds);
-      console.log('⚠️ getStudentsByTeacher - Teacher IDs for matching:', {
-        teacherDocId: teacherDocId || '(undefined)',
-        teacherIdFromTeacher: teacherIdFromTeacher || '(undefined)',
-        teacherTeacherId: teacherTeacherId || '(undefined)',
-        teacherUserId: teacherUserId || '(undefined)',
-        normalizedTeacherId: normalizedTeacherId
-      });
-      console.log('⚠️ getStudentsByTeacher - Sample student data (first 5):', 
-        students.slice(0, 5).map(s => ({
-          name: s.fullName || (s as any).fullName,
-          studentId: (s.id || (s as any)._id)?.toString(),
-          assignedTeacher: (s.assignedTeacher || (s as any).assignedTeacher || '').toString().trim() || '(empty)',
-          assignedTeacherIds: (s as any).assignedTeacherIds || [],
-          assignedTeachers: (s as any).assignedTeachers || []
-        }))
-      );
-    }
-    
-    return filteredStudents;
-  }, [teachers, students]);
+    // Teachers can now see all students (no restriction)
+    // Return all students regardless of assignment
+    // Note: Removed debug logging to reduce console spam
+    return students;
+  }, [students]);
 
   const getTeacherById = (id: string) => {
     return teachers.find(teacher => teacher.id === id);
@@ -4307,24 +4200,10 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   };
 
   const getTeacherTickets = (teacherId: string): Ticket[] => {
-    // Match by assignedTeacherId or reassignedToTeacherId (for reassigned tickets)
-    // Use robust ID matching to handle different ID formats
-    return recitationTickets.filter(t => {
-      const teacherIdStr = String(teacherId);
-      const assignedTeacherIdStr = t.assignedTeacherId ? String(t.assignedTeacherId) : '';
-      const reassignedToTeacherIdStr = t.reassignedToTeacherId ? String(t.reassignedToTeacherId) : '';
-      
-      const matchesTeacher = 
-        assignedTeacherIdStr === teacherIdStr ||
-        assignedTeacherIdStr === teacherId ||
-        reassignedToTeacherIdStr === teacherIdStr ||
-        reassignedToTeacherIdStr === teacherId ||
-        t.assignedTeacherId === teacherId ||
-        t.reassignedToTeacherId === teacherId;
-      
-      const validStatus = ['pending', 'in_progress', 'reassigned'].includes(t.status);
-      return matchesTeacher && validStatus;
-    });
+    // Teachers can now see all tickets (no restriction by assignment)
+    // Return all tickets with valid status for teachers
+    const validStatus = ['pending', 'in_progress', 'reassigned'];
+    return recitationTickets.filter(t => validStatus.includes(t.status));
   };
 
   const getPendingReviewTickets = (): Ticket[] => {
@@ -4763,10 +4642,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(message || 'Failed to delete tickets');
       }
 
+      // Update both tickets and recitationTickets
       setTickets(prev => prev.filter(ticket => {
         const ticketId = ticket._id || ticket.id;
         return !ids.includes(ticketId);
       }));
+      
+      setRecitationTickets(prev => prev.filter(ticket => {
+        const ticketId = ticket._id || ticket.id;
+        return !ids.includes(ticketId);
+      }));
+      
+      // Invalidate cache
+      dataCache.delete('tickets');
     } catch (error) {
       console.error('Error deleting tickets:', error);
       throw error;
