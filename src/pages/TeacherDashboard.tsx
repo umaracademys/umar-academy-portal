@@ -518,16 +518,16 @@ const TeacherDashboard: React.FC = () => {
   }, [activityHistory]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Header onNotificationClick={() => setShowNotificationCenter(true)} />
 
-      <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 lg:px-6">
-        {/* Compact Header */}
-        <div className="mb-3 bg-white rounded-lg border border-gray-200 px-3 py-2 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+      <div className="mx-auto max-w-7xl px-2 py-2 sm:px-3 lg:px-4">
+        {/* Ultra-Compact Header */}
+        <div className="mb-2 bg-white rounded-lg border border-gray-200 px-2 py-1.5 shadow-sm">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5">
             <div>
-              <h1 className="text-lg font-bold text-gray-900">Teacher Dashboard</h1>
-              <p className="text-xs text-gray-600 mt-0.5">
+              <h1 className="text-base font-bold text-gray-900">Teacher Dashboard</h1>
+              <p className="text-[10px] text-gray-600 mt-0.5">
                 {currentTeacher?.fullName || 'Teacher'}
               </p>
             </div>
@@ -591,8 +591,8 @@ const TeacherDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Compact Statistics Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+        {/* Ultra-Compact Statistics Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-2">
           <StatCard 
             title="Pair Students" 
             value={currentTeacher ? allPairStudents.length : 0} 
@@ -619,29 +619,29 @@ const TeacherDashboard: React.FC = () => {
           />
         </div>
 
-        {/* Compact Tab Navigation */}
-        <div className="mb-3 flex items-center gap-1 border-b border-gray-200 bg-white rounded-t-lg px-2 pt-1 overflow-x-auto">
+        {/* Ultra-Compact Tab Navigation */}
+        <div className="mb-2 flex items-center gap-0.5 border-b border-gray-200 bg-white rounded-t-lg px-1.5 pt-0.5 overflow-x-auto">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
+            className={`px-2 py-1 text-[11px] font-medium transition-all relative rounded-t whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-600 hover:text-primary'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-gray-600 hover:text-primary hover:bg-gray-50'
             }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab('tickets')}
-            className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
+            className={`px-2 py-1 text-[11px] font-medium transition-all relative rounded-t whitespace-nowrap ${
               activeTab === 'tickets'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-gray-600 hover:text-primary'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-gray-600 hover:text-primary hover:bg-gray-50'
             }`}
           >
             Tickets
             {teacherTickets.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold bg-primary text-white rounded-full">
+              <span className="ml-1 px-1 py-0.5 text-[9px] font-bold bg-primary text-white rounded-full">
                 {teacherTickets.length}
               </span>
             )}
@@ -675,21 +675,21 @@ const TeacherDashboard: React.FC = () => {
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {/* Quick Stats Summary */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
               <Card title="Quick Actions" className="lg:col-span-1">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <RequirePermission 
                     permission="canCreateTickets" 
                     tooltipMessage="Permission required: Create Tickets - Contact admin to request access"
                   >
                   <button
                     onClick={() => setShowCreateTicket(true)}
-                    className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-md hover:shadow-lg group"
+                    className="w-full text-left px-2.5 py-2 rounded-lg border border-primary/50 bg-primary/10 hover:border-primary hover:bg-primary/20 transition-all shadow-sm hover:shadow-md group"
                   >
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-lg flex-shrink-0">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary border border-primary/50 shadow-sm flex-shrink-0">
                         <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -736,13 +736,13 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               </Card>
               
-              {/* Recent Activity Preview */}
+              {/* Recent Activity Preview - Compact */}
               <Card title="Recent Activity" className="lg:col-span-2">
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   {teacherTickets.slice(0, 3).map((ticket) => (
                     <div
                       key={ticket.id}
-                      className="p-3 rounded-lg border-2 border-primary/20 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-colors cursor-pointer"
+                      className="p-2 rounded-lg border border-primary/20 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-all cursor-pointer"
                       onClick={async () => {
                         setActiveTab('tickets');
                         if (ticket.status === 'pending' || ticket.status === 'reassigned') {
@@ -803,21 +803,21 @@ const TeacherDashboard: React.FC = () => {
         )}
 
         {activeTab === 'tickets' && (
-          <div className="space-y-4">
-            {/* Pending Tickets */}
+          <div className="space-y-2">
+            {/* Pending Tickets - Compact */}
             <Card title={`Pending Tickets (${teacherTickets.length})`}>
               {teacherTickets.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-xl bg-primary/10 border-2 border-primary/20 flex items-center justify-center">
-                    <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="text-center py-8">
+                  <div className="w-12 h-12 mx-auto mb-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <p className="text-lg font-bold text-gray-800">No pending tickets</p>
-                  <p className="text-sm mt-2 text-gray-600">All tickets have been reviewed.</p>
+                  <p className="text-sm font-bold text-gray-800">No pending tickets</p>
+                  <p className="text-xs mt-1 text-gray-600">All tickets have been reviewed.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   {(showAllPendingTickets ? teacherTickets : teacherTickets.slice(0, 5)).map((ticket) => {
                     const handleTicketClick = async () => {
                       try {
@@ -853,7 +853,7 @@ const TeacherDashboard: React.FC = () => {
                       <button
                         key={ticket.id}
                         onClick={handleTicketClick}
-                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-3 hover:border-primary hover:bg-gray-50 transition-colors"
+                        className="w-full text-left bg-white border border-gray-200 rounded-lg p-2 hover:border-primary hover:bg-primary/5 transition-all"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -932,10 +932,10 @@ const TeacherDashboard: React.FC = () => {
               )}
             </Card>
 
-            {/* All Approved Tickets */}
+            {/* All Approved Tickets - Compact */}
             {allApprovedTickets.length > 0 && (
               <Card title={`Approved Tickets (${allApprovedTickets.length})`}>
-                <div className="space-y-3">
+                <div className="space-y-1.5">
                   {(showAllApprovedTickets ? allApprovedTickets : allApprovedTickets.slice(0, 5)).map((ticket) => {
                     const assignment = ticket.sentToAssignmentId ? assignments.find(a => {
                       const aId = (a as any)._id || a.id;
@@ -949,7 +949,7 @@ const TeacherDashboard: React.FC = () => {
                     return (
                       <div
                         key={ticket.id}
-                        className="bg-white border border-gray-200 rounded-lg p-2.5"
+                        className="bg-white border border-gray-200 rounded-lg p-2 hover:border-primary/50 hover:bg-primary/5 transition-all"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
@@ -1230,11 +1230,11 @@ const TeacherDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Teacher Pairs Section */}
+        {/* Teacher Pairs Section - Compact */}
         {teacherPairs.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-4">
             <Card title={`My Teacher Pairs (${teacherPairs.length})`}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {teacherPairs.map((pair) => {
                   const pairStudents = pairStudentsMap[pair._id] || [];
                   const otherTeacher = pair.teacher1?._id?.toString() === ((currentTeacher as any)?._id || (currentTeacher as any)?.teacherDocumentId || currentTeacher?.id)?.toString()
@@ -1242,8 +1242,8 @@ const TeacherDashboard: React.FC = () => {
                     : pair.teacher1;
                   
                   return (
-                    <div key={pair._id} className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
+                    <div key={pair._id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:shadow-md transition-all">
+                      <div className="flex justify-between items-start mb-2">
                         <div>
                           <h4 className="font-bold text-lg text-primary">{pair.name}</h4>
                           <p className="text-sm text-gray-600">{pair.program}</p>
@@ -1296,19 +1296,19 @@ const TeacherDashboard: React.FC = () => {
           </div>
         )}
 
-        {/* Assigned Students List */}
-        <div className="mb-8">
+        {/* Assigned Students List - Ultra Compact */}
+        <div className="mb-4">
           <Card title={`Assigned Students (${allPairStudents.length})`}>
             {allPairStudents.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-400">AS</span>
+              <div className="text-center py-8 text-gray-500">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                  <span className="text-xl font-bold text-gray-400">AS</span>
                 </div>
-                <p className="text-lg font-semibold">No students assigned</p>
-                <p className="text-sm mt-2">Students will appear here once assigned to you.</p>
+                <p className="text-sm font-semibold">No students assigned</p>
+                <p className="text-xs mt-1">Students will appear here once assigned to you.</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {allPairStudents.map((student) => {
                   // Check if student is in a pair
                   const studentPairInfo = (Object.entries(pairStudentsMap) as [string, any[]][]).find(([_, students]) => 
@@ -1327,17 +1327,17 @@ const TeacherDashboard: React.FC = () => {
                   })() : null;
                   
                   return (
-                    <div key={student.id} className="rounded-lg border-2 border-gray-200 bg-white p-3 sm:p-4 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
-                      <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div key={student.id} className="rounded-lg border border-gray-200 bg-white p-2 shadow-sm hover:shadow-md hover:border-primary/50 transition-all">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                      <div className="flex items-start gap-2 flex-1 min-w-0">
                         <img
                           src={student.avatar}
                           alt={student.fullName}
-                          className="h-10 w-10 sm:h-12 sm:w-12 rounded-full border-2 border-gray-200 flex-shrink-0"
+                          className="h-8 w-8 sm:h-10 sm:w-10 rounded-full border border-gray-200 flex-shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h4 className="font-bold text-sm sm:text-base text-primary truncate">{student.fullName}</h4>
+                          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                            <h4 className="font-bold text-xs sm:text-sm text-primary truncate">{student.fullName}</h4>
                             {isPairStudent && pairPartner && (
                               <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] sm:text-xs font-bold">
                                 Pair
@@ -1405,8 +1405,8 @@ const TeacherDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Compact Stats Row */}
-                    <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-100">
+                    {/* Ultra-Compact Stats Row */}
+                    <div className="flex flex-wrap gap-1.5 mt-1.5 pt-1.5 border-t border-gray-100">
                       {can('canViewAssessments') && (
                         <button
                           onClick={() => {
@@ -1441,8 +1441,8 @@ const TeacherDashboard: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="mt-4 flex gap-2 flex-wrap">
+                    {/* Action Buttons - Compact */}
+                    <div className="mt-2 flex gap-1.5 flex-wrap">
                       <button
                         onClick={() => {
                           setSelectedStudentForMushaf(student);
