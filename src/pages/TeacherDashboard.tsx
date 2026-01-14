@@ -1627,16 +1627,18 @@ const TeacherDashboard: React.FC = () => {
                           <span>💬</span> Message Pair Teacher
                         </button>
                       )}
-                      <button
-                        onClick={() => {
-                          setSelectedStudentForTSMessage(student);
-                          setShowTeacherStudentMessage(true);
-                        }}
-                        className="rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition hover:bg-soft-primary flex items-center gap-1"
-                        title="Message this student"
-                      >
-                        <span>📧</span> Message Student
-                      </button>
+                      {can('canSendMessages') && (
+                        <button
+                          onClick={() => {
+                            setSelectedStudentForTSMessage(student);
+                            setShowTeacherStudentMessage(true);
+                          }}
+                          className="rounded-lg border-2 border-primary px-4 py-2 text-xs font-bold text-primary transition hover:bg-soft-primary flex items-center gap-1"
+                          title="Message this student"
+                        >
+                          <span>📧</span> Message Student
+                        </button>
+                      )}
                       {isPairStudent && pairDetails?.pair && (
                         <span className="rounded-lg bg-primary/10 px-4 py-2 text-xs font-bold text-primary flex items-center gap-1">
                           <span>👥</span> Both teachers can assess & evaluate
