@@ -122,17 +122,21 @@ export default defineConfig({
           }
           
           // Large components - split into separate chunks
-          if (id.includes('StudentPersonalMushaf') || id.includes('MushafDemo')) {
+          if (id.includes('StudentPersonalMushaf') || id.includes('MushafDemo') || id.includes('InteractiveMushaf')) {
             return 'mushaf-components';
           }
           if (id.includes('TeacherAttendanceForm') || id.includes('TeacherAttendanceReport')) {
             return 'attendance-components';
           }
-          if (id.includes('StudentTestingModule') || id.includes('TestResultsPage')) {
+          if (id.includes('StudentTestingModule') || id.includes('TestResultsPage') || id.includes('StudentTest')) {
             return 'testing-components';
           }
-          if (id.includes('StudentAssignments') || id.includes('AssignmentManagement')) {
+          if (id.includes('StudentAssignments') || id.includes('AssignmentManagement') || id.includes('HomeworkDisplay')) {
             return 'assignment-components';
+          }
+          // Student-specific components
+          if (id.includes('modules/student')) {
+            return 'student-modules';
           }
           
           // Context providers (usually large)

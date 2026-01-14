@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import StatCard from '../../../components/StatCard';
@@ -6,12 +6,13 @@ import Card from '../../../components/Card';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../../../components/DebugPanel')) : null;
-import StudentPersonalMushaf from '../../../components/StudentPersonalMushaf';
-import StudentTestResults from '../../../components/StudentTestResults';
-import TeacherStudentMessage from '../../../components/TeacherStudentMessage';
-import StudentWeeklyEvaluationReview from '../../../components/StudentWeeklyEvaluationReview';
-import StudentPasswordChangeModal from '../../../components/StudentPasswordChangeModal';
-import HomeworkDisplay from '../../../components/HomeworkDisplay';
+// Lazy load heavy components for better performance
+const StudentPersonalMushaf = lazy(() => import('../../../components/StudentPersonalMushaf'));
+const StudentTestResults = lazy(() => import('../../../components/StudentTestResults'));
+const TeacherStudentMessage = lazy(() => import('../../../components/TeacherStudentMessage'));
+const StudentWeeklyEvaluationReview = lazy(() => import('../../../components/StudentWeeklyEvaluationReview'));
+const StudentPasswordChangeModal = lazy(() => import('../../../components/StudentPasswordChangeModal'));
+const HomeworkDisplay = lazy(() => import('../../../components/HomeworkDisplay'));
 import { useData } from '../../../contexts/DataContext';
 import { useBackendData } from '../../../contexts/BackendDataContext';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -77,10 +78,16 @@ const StudentDashboard: React.FC = () => {
     
     return student || undefined; // Return undefined instead of students[0] to avoid wrong student
   }, [user, students, getStudentByIdentity, getStudentByEmail]);
-  const isAfterSchool = currentStudent?.program === 'After School';
-  const isFullTimeHQ = currentStudent?.program === 'Full-Time HQ';
-  const isPartTimeHQ = currentStudent?.program === 'Part-Time HQ';
-  const shouldHideQaidah = isFullTimeHQ || isPartTimeHQ;
+  
+  // Memoize program checks to avoid recalculation
+  const programFlags = useMemo(() => ({
+    isAfterSchool: currentStudent?.program === 'After School',
+    isFullTimeHQ: currentStudent?.program === 'Full-Time HQ',
+    isPartTimeHQ: currentStudent?.program === 'Part-Time HQ',
+    shouldHideQaidah: currentStudent?.program === 'Full-Time HQ' || currentStudent?.program === 'Part-Time HQ'
+  }), [currentStudent?.program]);
+  
+  const { isAfterSchool, isFullTimeHQ, isPartTimeHQ, shouldHideQaidah } = programFlags;
   
   // Show password change modal on login if passwordChangeRequired is true
   useEffect(() => {
@@ -139,8 +146,8 @@ const StudentDashboard: React.FC = () => {
   }, [currentStudent, getPairStudents, getPairDailyReports]);
 
 
-  // Helper function to normalize IDs for consistent comparison
-  const normalizeId = (id: any): string => {
+  // Helper function to normalize IDs for consistent comparison - memoized to prevent re-creation
+  const normalizeId = useCallback((id: any): string => {
     if (!id) return '';
     if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
       const str = id.toString();
@@ -150,7 +157,7 @@ const StudentDashboard: React.FC = () => {
       return str.trim();
     }
     return String(id).trim();
-  };
+  }, []);
 
   const studentAssignments = useMemo(() => {
     if (!currentStudent?.id) return [];
@@ -163,18 +170,28 @@ const StudentDashboard: React.FC = () => {
     
     return backendAssignments
       .filter((assignment: any) => {
-        const assignmentStudentId = normalizeId(assignment.studentId || assignment._id?.studentId);
+        const normalizeIdLocal = (id: any): string => {
+          if (!id) return '';
+          if (id && typeof id === 'object' && id.toString && typeof id.toString === 'function') {
+            const str = id.toString();
+            if (/^[0-9a-fA-F]{24}$/.test(str)) return str;
+            return str.trim();
+          }
+          return String(id).trim();
+        };
+        
+        const assignmentStudentId = normalizeIdLocal(assignment.studentId || assignment._id?.studentId);
         
         // Check if assignment matches EITHER Student document _id OR User document _id
         const matchesStudentId = assignmentStudentId && (
           assignmentStudentId === normalizedStudentId ||
-          assignmentStudentId === normalizeId(currentStudent.id?.toString()) ||
+          assignmentStudentId === normalizeIdLocal(currentStudent.id?.toString()) ||
           String(assignmentStudentId) === String(normalizedStudentId)
         );
         
         const matchesUserId = normalizedUserId && assignmentStudentId && (
           assignmentStudentId === normalizedUserId ||
-          assignmentStudentId === normalizeId((currentStudent as any).userId?.toString()) ||
+          assignmentStudentId === normalizeIdLocal((currentStudent as any).userId?.toString()) ||
           String(assignmentStudentId) === String(normalizedUserId)
         );
         
@@ -265,14 +282,32 @@ const StudentDashboard: React.FC = () => {
       });
   }, [backendAssignments, currentStudent]);
 
-  const completedAssignments = studentAssignments.filter((a: any) => a.status === 'completed' || a.status === 'graded');
-  const pendingAssignments = studentAssignments.filter((a: any) => a.status === 'pending' || a.status === 'submitted');
-  const overdueAssignments = studentAssignments.filter((a: any) => a.status === 'overdue');
+  const completedAssignments = useMemo(() => 
+    studentAssignments.filter((a: any) => a.status === 'completed' || a.status === 'graded'),
+    [studentAssignments]
+  );
+  
+  const pendingAssignments = useMemo(() => 
+    studentAssignments.filter((a: any) => a.status === 'pending' || a.status === 'submitted'),
+    [studentAssignments]
+  );
+  
+  const overdueAssignments = useMemo(() => 
+    studentAssignments.filter((a: any) => a.status === 'overdue'),
+    [studentAssignments]
+  );
 
-  const gradedAssignments = studentAssignments.filter((a: any) => a.grade !== null && a.grade !== undefined);
-  const averageGrade = gradedAssignments.length > 0 
-    ? Math.round(gradedAssignments.reduce((sum: number, a: any) => sum + (a.grade || 0), 0) / gradedAssignments.length)
-    : 0;
+  const gradedAssignments = useMemo(() => 
+    studentAssignments.filter((a: any) => a.grade !== null && a.grade !== undefined),
+    [studentAssignments]
+  );
+  
+  const averageGrade = useMemo(() => 
+    gradedAssignments.length > 0 
+      ? Math.round(gradedAssignments.reduce((sum: number, a: any) => sum + (a.grade || 0), 0) / gradedAssignments.length)
+      : 0,
+    [gradedAssignments]
+  );
 
   const studentPayments: any[] = [];
   const totalPaid = 0;
@@ -283,7 +318,7 @@ const StudentDashboard: React.FC = () => {
     attachments: [] as string[],
   });
 
-  const handleSubmitAssignment = async () => {
+  const handleSubmitAssignment = useCallback(async () => {
     if (!selectedAssignment || !currentStudent) {
       console.error('Missing assignment or student', { selectedAssignment, currentStudent });
       return;
@@ -340,7 +375,7 @@ const StudentDashboard: React.FC = () => {
       console.error('Error submitting assignment:', error);
       alert(`Failed to submit assignment: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  };
+  }, [selectedAssignment, currentStudent, submissionData]);
 
   if (!currentStudent) {
     return (
@@ -859,54 +894,64 @@ const StudentDashboard: React.FC = () => {
 
       {/* Personal Mushaf Modal */}
       {showPersonalMushaf && currentStudent && (
-        <StudentPersonalMushaf 
-          studentId={currentStudent.id} 
-          onClose={() => setShowPersonalMushaf(false)} 
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="text-white">Loading Mushaf...</div></div>}>
+          <StudentPersonalMushaf 
+            studentId={currentStudent.id} 
+            onClose={() => setShowPersonalMushaf(false)} 
+          />
+        </Suspense>
       )}
 
       {/* Test Results Modal */}
       {showTestResults && !isAfterSchool && (
-        <StudentTestResults
-          onClose={() => setShowTestResults(false)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="text-white">Loading Test Results...</div></div>}>
+          <StudentTestResults
+            onClose={() => setShowTestResults(false)}
+          />
+        </Suspense>
       )}
 
       {/* Teacher-Student Message Modal */}
       {showTeacherStudentMessage && currentStudent && selectedTeacherForMessage && (
-        <TeacherStudentMessage
-          teacher={selectedTeacherForMessage}
-          student={currentStudent}
-          onClose={() => {
-            setShowTeacherStudentMessage(false);
-            setSelectedTeacherForMessage(null);
-          }}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="text-white">Loading Messages...</div></div>}>
+          <TeacherStudentMessage
+            teacher={selectedTeacherForMessage}
+            student={currentStudent}
+            onClose={() => {
+              setShowTeacherStudentMessage(false);
+              setSelectedTeacherForMessage(null);
+            }}
+          />
+        </Suspense>
       )}
 
       {/* Weekly Evaluations Modal */}
       {showWeeklyEvaluations && currentStudent && (
-        <StudentWeeklyEvaluationReview
-          studentId={currentStudent.id}
-          onClose={() => setShowWeeklyEvaluations(false)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="text-white">Loading Evaluations...</div></div>}>
+          <StudentWeeklyEvaluationReview
+            studentId={currentStudent.id}
+            onClose={() => setShowWeeklyEvaluations(false)}
+          />
+        </Suspense>
       )}
 
       {/* Password Change Modal - Shows when passwordChangeRequired is true */}
       {showPasswordChangeModal && (
-        <StudentPasswordChangeModal
-          onClose={() => setShowPasswordChangeModal(false)}
-          onPasswordChanged={() => {
-            setShowPasswordChangeModal(false);
-            // Update user in localStorage to clear the flag
-            const savedUser = localStorage.getItem('umar_academy_user');
-            if (savedUser) {
-              const userData = JSON.parse(savedUser);
-              userData.passwordChangeRequired = false;
-              localStorage.setItem('umar_academy_user', JSON.stringify(userData));
-            }
-          }}
-        />
+        <Suspense fallback={<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"><div className="text-white">Loading...</div></div>}>
+          <StudentPasswordChangeModal
+            onClose={() => setShowPasswordChangeModal(false)}
+            onPasswordChanged={() => {
+              setShowPasswordChangeModal(false);
+              // Update user in localStorage to clear the flag
+              const savedUser = localStorage.getItem('umar_academy_user');
+              if (savedUser) {
+                const userData = JSON.parse(savedUser);
+                userData.passwordChangeRequired = false;
+                localStorage.setItem('umar_academy_user', JSON.stringify(userData));
+              }
+            }}
+          />
+        </Suspense>
       )}
       
       {isDevelopment && DebugPanel && (

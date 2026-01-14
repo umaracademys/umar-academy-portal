@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import Card from '../../../components/Card';
@@ -139,7 +139,7 @@ const StudentAssignments: React.FC = () => {
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return dateB - dateA;
       });
-  }, [backendAssignments, currentStudent, showHomeworkOnly]);
+  }, [backendAssignments, currentStudent, showHomeworkOnly, normalizeId]);
 
   // Group assignments by date
   const groupedAssignments = useMemo(() => {
@@ -229,7 +229,7 @@ const StudentAssignments: React.FC = () => {
     }));
   }, [selectedAssignment, viewingMistakesFor, studentAssignments]);
 
-  const formatDate = (date: Date | string | undefined) => {
+  const formatDate = useCallback((date: Date | string | undefined) => {
     if (!date) return 'N/A';
     const d = typeof date === 'string' ? new Date(date) : date;
     return d.toLocaleDateString('en-US', { 
@@ -239,7 +239,7 @@ const StudentAssignments: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
+  }, []);
 
   // Load personal mushaf when assignment is selected
   useEffect(() => {
