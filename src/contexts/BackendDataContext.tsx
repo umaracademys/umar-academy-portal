@@ -1155,17 +1155,46 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       if (users && users.length > 0) {
         // Preferred: Create from users (has user data merged with teacher records)
+        // CRITICAL FIX: Prioritize teacherRecords from /api/teachers over users
+        // This ensures Teacher Document IDs are always preserved
+        // First, build teachers from teacherRecords (which have Teacher Document IDs)
+        const teacherMapByDocId = new Map<string, any>();
+        const teacherMapByUserId = new Map<string, any>();
+        
+        // Build map from teacher records (these have Teacher Document IDs)
+        teacherRecords.forEach((teacherRecord: any) => {
+          const teacherDocId = teacherRecord._id?.toString() || teacherRecord._id;
+          const userId = teacherRecord.userId?._id?.toString() || teacherRecord.userId?.toString() || teacherRecord.userId;
+          
+          if (teacherDocId) {
+            teacherMapByDocId.set(teacherDocId, teacherRecord);
+          }
+          if (userId) {
+            teacherMapByUserId.set(userId, teacherRecord);
+          }
+        });
+        
+        // Now build teachersData, prioritizing teacher records
         teachersData = users
           .filter((user: any) => user.role === 'teacher')
           .map((user: any) => {
-            // Find matching teacher record to get actual data
-            const teacherRecord = teacherRecords.find((tr: any) => 
+            // Find matching teacher record - try multiple matching strategies
+            let teacherRecord = teacherRecords.find((tr: any) => 
               tr.userId?._id === user._id || 
               tr.userId?._id?.toString() === user._id?.toString() ||
               (tr.userId && typeof tr.userId === 'object' && tr.userId._id === user._id) ||
+              tr.email === user.email ||
               tr._id === user._id ||
               tr._id?.toString() === user._id?.toString()
             );
+            
+            // If no match by userId, try matching by email
+            if (!teacherRecord) {
+              teacherRecord = teacherRecords.find((tr: any) => 
+                tr.email === user.email || 
+                (tr.email && user.email && tr.email.toLowerCase() === user.email.toLowerCase())
+              );
+            }
             
             const teacherProfile = user.teacherProfile || teacherRecord || {};
           
