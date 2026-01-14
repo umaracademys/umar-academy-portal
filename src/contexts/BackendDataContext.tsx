@@ -642,16 +642,32 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
             try {
               teacherRecords = await teachersResponse.value.json();
-              if (import.meta.env.DEV) {
-                console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
-                if (teacherRecords.length > 0) {
-                  // Log sample teacher record to see structure
-                  const sampleTeacher = teacherRecords[0];
-                  console.log('🔍 Sample teacher record:', {
-                    _id: sampleTeacher._id,
-                    userId: sampleTeacher.userId?._id || sampleTeacher.userId,
-                    fullName: sampleTeacher.fullName,
-                    email: sampleTeacher.email
+              // Production-safe logging
+              console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
+              if (teacherRecords.length > 0) {
+                // Log sample teacher record to see structure
+                const sampleTeacher = teacherRecords[0];
+                console.log('🔍 Sample teacher record from API:', {
+                  _id: sampleTeacher._id,
+                  id: sampleTeacher.id,
+                  userId: sampleTeacher.userId?._id || sampleTeacher.userId,
+                  fullName: sampleTeacher.fullName,
+                  email: sampleTeacher.email,
+                  has_id: !!sampleTeacher._id,
+                  has_id_field: '_id' in sampleTeacher
+                });
+                
+                // Check if any teacher records are missing _id
+                const missingIds = teacherRecords.filter((tr: any) => !tr._id);
+                if (missingIds.length > 0) {
+                  console.warn('⚠️ Some teacher records are missing _id:', {
+                    count: missingIds.length,
+                    sample: missingIds.slice(0, 3).map((tr: any) => ({
+                      email: tr.email,
+                      fullName: tr.fullName,
+                      id: tr.id,
+                      userId: tr.userId?._id || tr.userId
+                    }))
                   });
                 }
               }
