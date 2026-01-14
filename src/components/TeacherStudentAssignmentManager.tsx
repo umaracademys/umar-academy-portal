@@ -18,14 +18,13 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [filterProgram, setFilterProgram] = useState<string>('all');
+  const [viewMode, setViewMode] = useState<'by-teacher' | 'by-student'>('by-teacher');
 
   // Get assigned students for selected teacher
-  // Use teacherDocId (Teacher document ID) to match what we store in assignedTeacherIds
   const assignedStudents = useMemo(() => {
     if (!selectedTeacher) return [];
     
     // CRITICAL: Use Teacher Document ID, not User ID
-    // Priority: teacherDocumentId > _id (if different from id) > fallback to User ID (for backward compatibility)
     let teacherDocId: string;
     
     if ((selectedTeacher as any).teacherDocumentId) {
@@ -33,29 +32,17 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
       teacherDocId = (selectedTeacher as any)._id.toString();
     } else {
-      // Fallback to User ID for backward compatibility (but log warning)
       teacherDocId = selectedTeacher.id;
       console.warn('⚠️ Using User ID as fallback for teacher lookup:', {
         teacherName: selectedTeacher.fullName,
         teacherId: selectedTeacher.id,
         _id: (selectedTeacher as any)._id,
         teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
-        note: 'This may not match students assigned with Teacher Document ID'
       });
     }
     
-    console.log('🔍 Getting assigned students for teacher:', {
-      teacherName: selectedTeacher.fullName,
-      teacherDocId: teacherDocId,
-      teacherId: selectedTeacher.id,
-      _id: (selectedTeacher as any)._id,
-      teacherDocumentId: (selectedTeacher as any).teacherDocumentId
-    });
-    
-    // Try with Teacher Document ID first, then fallback to User ID if no results
     const students = getStudentsByTeacher(teacherDocId);
     if (students.length === 0 && teacherDocId !== selectedTeacher.id) {
-      console.log('⚠️ No students found with Teacher Doc ID, trying User ID as fallback...');
       const studentsByUserId = getStudentsByTeacher(selectedTeacher.id);
       if (studentsByUserId.length > 0) {
         console.warn('⚠️ WARNING: Students are assigned using User ID instead of Teacher Document ID!');
@@ -68,20 +55,9 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   // Initialize selected student IDs when teacher is selected
   useEffect(() => {
     if (selectedTeacher && assignedStudents.length > 0) {
-      // Use studentRecordId consistently (matches update logic)
       const assignedIds = new Set(
         assignedStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean)
       );
-      console.log('🔍 Initializing selectedStudentIds from assignedStudents:', {
-        teacherId: (selectedTeacher as any)._id || selectedTeacher.id,
-        assignedCount: assignedStudents.length,
-        assignedIds: Array.from(assignedIds),
-        sampleStudent: assignedStudents[0] ? {
-          fullName: assignedStudents[0].fullName,
-          studentRecordId: (assignedStudents[0] as any).studentRecordId,
-          userId: assignedStudents[0].id
-        } : null
-      });
       setSelectedStudentIds(assignedIds);
     } else {
       setSelectedStudentIds(new Set());
@@ -94,8 +70,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     const term = teacherSearchTerm.toLowerCase();
     return teachers.filter(teacher => 
       teacher.fullName?.toLowerCase().includes(term) ||
-      teacher.email?.toLowerCase().includes(term) ||
-      (teacher as any).teacherId?.toLowerCase().includes(term)
+      teacher.email?.toLowerCase().includes(term)
     );
   }, [teachers, teacherSearchTerm]);
 
@@ -148,11 +123,23 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     return filtered;
   }, [students, searchTerm, filterStatus, filterProgram, selectedTeacher]);
 
+  // Get teachers assigned to a student
+  const getStudentTeachers = (student: Student) => {
+    const assignedTeacherIds = (student as any).assignedTeacherIds || [];
+    const assignedTeachers = (student as any).assignedTeachers || [];
+    const allIds = [...new Set([...assignedTeacherIds, ...assignedTeachers])];
+    
+    return teachers.filter(teacher => {
+      const teacherDocId = (teacher as any)._id || (teacher as any).teacherDocumentId || teacher.id;
+      return allIds.includes(teacherDocId) || allIds.includes(teacher.id);
+    });
+  };
+
   const handleTeacherSelect = (teacher: Teacher) => {
     setSelectedTeacher(teacher);
-    setSearchTerm(''); // Reset student search when selecting teacher
-    setFilterStatus('all'); // Reset status filter
-    setFilterProgram('all'); // Reset program filter
+    setSearchTerm('');
+    setFilterStatus('all');
+    setFilterProgram('all');
   };
 
   const handleStudentToggle = (studentId: string) => {
@@ -161,6 +148,20 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       if (newSet.has(studentId)) {
         newSet.delete(studentId);
       } else {
+        // Check if student already has 9 teachers assigned
+        const student = students.find(s => {
+          const sId = (s as any).studentRecordId || s.id || (s as any)._id;
+          return sId === studentId;
+        });
+        
+        if (student) {
+          const currentTeachers = getStudentTeachers(student);
+          if (currentTeachers.length >= 9 && !newSet.has(studentId)) {
+            alert(`⚠️ This student already has ${currentTeachers.length} teachers assigned. Maximum is 9 teachers per student.`);
+            return prev;
+          }
+        }
+        
         newSet.add(studentId);
       }
       return newSet;
@@ -168,7 +169,6 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   };
 
   const handleSelectAll = () => {
-    // Use studentRecordId consistently (matches update logic)
     const allIds = new Set(filteredStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean));
     setSelectedStudentIds(allIds);
   };
@@ -182,26 +182,18 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
     setIsSaving(true);
     try {
-      // CRITICAL: Use Teacher Document ID, not User ID
-      // Priority: teacherDocumentId > _id (if different from id) > error (don't use User ID)
       let teacherDocId: string | null = null;
       
-      // First priority: teacherDocumentId (explicitly set Teacher document _id)
       if ((selectedTeacher as any).teacherDocumentId) {
         teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
-      } 
-      // Second priority: _id if it's different from id (id = User._id, _id = Teacher._id)
-      else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
+      } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
         teacherDocId = (selectedTeacher as any)._id.toString();
-      }
-      // If we can't find Teacher Document ID, show error - don't use User ID
-      else {
+      } else {
         console.error('❌ Cannot find Teacher document _id!', {
           teacherName: selectedTeacher.fullName,
-          teacherId: selectedTeacher.id, // User._id
+          teacherId: selectedTeacher.id,
           _id: (selectedTeacher as any)._id,
           teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
-          userId: (selectedTeacher as any).userId
         });
         alert(`❌ Error: Cannot find Teacher document ID for ${selectedTeacher.fullName}. Please refresh the page and try again.`);
         setIsSaving(false);
@@ -213,15 +205,11 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       console.log('💾 Saving teacher-student assignments:', {
         teacherDocId: teacherDocId,
         teacherName: selectedTeacher.fullName,
-        userDocumentId: selectedTeacher.id, // For reference
         selectedStudentIds: selectedIdsArray.length,
         totalStudents: students.length,
-        note: 'Using Teacher Document ID (not User ID)'
       });
 
-      // 1. FILTER: Only students that need updates
-      // Why: Prevents unnecessary API calls (40-80x fewer calls)
-      // Performance: Updates only 1-2 students instead of all 80
+      // Filter: Only students that need updates
       const studentsToUpdate = students.filter((student) => {
         const studentId = (student as any).studentRecordId;
         if (!studentId) {
@@ -235,7 +223,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                                      currentAssignedTeachers.includes(teacherDocId);
         const shouldBeAssigned = selectedStudentIds.has(studentId);
         
-        return isCurrentlyAssigned !== shouldBeAssigned; // Only update if changed
+        return isCurrentlyAssigned !== shouldBeAssigned;
       });
 
       console.log(`📊 Updating ${studentsToUpdate.length} of ${students.length} students`);
@@ -246,9 +234,21 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         return;
       }
 
-      // 2. CREATE UPDATE PROMISES - Don't throw errors, let Promise.allSettled handle them
-      // Why: Allows partial success - some students update even if others fail
-      // Reliability: One failure doesn't stop all updates
+      // Validate: Check if any student would exceed 9 teachers
+      for (const student of studentsToUpdate) {
+        const studentId = (student as any).studentRecordId;
+        const shouldBeAssigned = selectedStudentIds.has(studentId);
+        
+        if (shouldBeAssigned) {
+          const currentTeachers = getStudentTeachers(student);
+          if (currentTeachers.length >= 9) {
+            alert(`⚠️ Cannot assign ${student.fullName} to ${selectedTeacher.fullName}. Student already has ${currentTeachers.length} teachers (maximum is 9).`);
+            setIsSaving(false);
+            return;
+          }
+        }
+      }
+
       type UpdateResult = {
         success: boolean;
         studentId: string;
@@ -269,11 +269,15 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         if (shouldBeAssigned) {
           updatedTeachers = [...new Set([...currentAssignedTeachers, teacherDocId])];
           updatedTeacherIds = [...new Set([...currentAssignedTeacherIds, teacherDocId])];
-          console.log(`➕ Adding teacher ${selectedTeacher.fullName} to student ${student.fullName}`);
+          
+          // Enforce 9 teacher limit
+          if (updatedTeachers.length > 9) {
+            updatedTeachers = updatedTeachers.slice(0, 9);
+            updatedTeacherIds = updatedTeacherIds.slice(0, 9);
+          }
         } else {
           updatedTeachers = currentAssignedTeachers.filter((id: string) => id !== teacherDocId);
           updatedTeacherIds = currentAssignedTeacherIds.filter((id: string) => id !== teacherDocId);
-          console.log(`➖ Removing teacher ${selectedTeacher.fullName} from student ${student.fullName}`);
         }
 
         try {
@@ -296,9 +300,6 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         }
       });
 
-      // 3. EXECUTE IN BATCHES - Process 10 at a time for faster updates
-      // Why: Increased batch size for faster submission while still preventing backend overload
-      // Performance: Faster updates (2x faster) with manageable backend load
       const BATCH_SIZE = 10;
       const results: UpdateResult[] = [];
       
@@ -321,7 +322,6 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         });
       }
 
-      // 4. ANALYZE RESULTS - Collect success/failure statistics
       const successful = results.filter(r => r.success);
       const failed = results.filter(r => !r.success);
       
@@ -330,18 +330,8 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         console.error(`❌ ${failed.length} students failed to update:`, failed);
       }
 
-      // 5. OPTIMISTIC UPDATE + FAST REFRESH - Update UI immediately, then refresh in background
-      // Why: Instant UI feedback, background refresh ensures data consistency
-      // Performance: Perceived speed is instant, actual refresh happens in background
       if (successful.length > 0) {
-        // Optimistic UI update - update local state immediately
-        // This makes the UI feel instant while the refresh happens in background
-        console.log('⚡ Optimistic UI update - changes visible immediately');
-        
-        // Background refresh - don't wait for it to complete
-        // Why: User sees changes immediately, data syncs in background
         Promise.all([
-          // Clear cache in parallel with refresh
           (async () => {
             try {
               const { dataCache } = await import('../utils/dataCache');
@@ -351,7 +341,6 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
               console.warn('⚠️ Could not clear cache:', cacheError);
             }
           })(),
-          // Fast refresh - only students and teachers
           (async () => {
             if (refreshStudentsAndTeachers) {
               console.log('🔄 Refreshing students and teachers (background)...');
@@ -368,8 +357,6 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         });
       }
 
-      // 6. HANDLE ERRORS - Report failures but allow partial success
-      // Why: Better user experience - shows what succeeded and what failed
       if (failed.length > 0) {
         const errorMessage = `${failed.length} of ${studentsToUpdate.length} student update(s) failed:\n` +
           failed.map(f => `- ${f.studentName}: ${f.error}`).join('\n');
@@ -377,8 +364,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         throw new Error(errorMessage);
       }
 
-      // 7. TRIGGER BACKEND SYNC - Update teacher's assignedStudents arrays
-      // Why: Ensures teacher documents reflect student assignments
+      // Trigger backend sync
       try {
         const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
         const token = localStorage.getItem('umar_academy_token');
@@ -397,15 +383,10 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         }
       } catch (syncError) {
         console.warn('⚠️ Could not trigger sync (non-critical):', syncError);
-        // Don't fail the whole operation if sync fails
       }
 
-      // Show success message immediately (optimistic)
       alert(`✅ Successfully updated ${successful.length} student assignment(s) for ${selectedTeacher.fullName}`);
       
-      // Update selected student IDs to reflect current state (optimistic update)
-      // This ensures UI matches the saved state immediately
-      // Note: teacherDocId is already declared at the top of the function
       const updatedSelectedIds = new Set(
         students
           .filter(s => {
@@ -425,170 +406,147 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-50 z-50 overflow-y-auto">
-      <div className="min-h-full px-3 py-3">
-        {/* Compact Header */}
-        <div className="mb-3">
-          <div className="flex items-center justify-between">
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 z-50 overflow-y-auto">
+      <div className="min-h-full px-4 py-4">
+        {/* Enhanced Header */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
             <div>
-              <h1 className="text-base font-bold text-gray-900">Teacher-Student Assignment</h1>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Manage student assignments
+              <h1 className="text-2xl font-bold text-gray-900">Teacher-Student Assignment</h1>
+              <p className="text-sm text-gray-600 mt-1">
+                Assign students to teachers (up to 9 teachers per student)
               </p>
             </div>
-            {(onClose || true) && (
-              <button
-                onClick={() => {
-                  if (onClose) {
-                    onClose();
-                  } else {
-                    navigate('/dashboard');
-                  }
-                }}
-                className="px-2.5 py-1.5 text-xs text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
-              >
-                Close
-              </button>
-            )}
+            <button
+              onClick={() => {
+                if (onClose) {
+                  onClose();
+                } else {
+                  navigate('/dashboard');
+                }
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              Close
+            </button>
+          </div>
+          
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-sm text-gray-600">View:</span>
+            <button
+              onClick={() => setViewMode('by-teacher')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'by-teacher'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              By Teacher
+            </button>
+            <button
+              onClick={() => setViewMode('by-student')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                viewMode === 'by-student'
+                  ? 'bg-primary text-white shadow-sm'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              By Student
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-          {/* Compact Teachers List */}
-          <div className="lg:col-span-1">
-            <Card title="Select Teacher">
-              {/* Compact Teacher Search */}
-              <div className="mb-2">
-                <input
-                  type="text"
-                  placeholder="Search teachers..."
-                  value={teacherSearchTerm}
-                  onChange={(e) => setTeacherSearchTerm(e.target.value)}
-                  className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary"
-                />
-              </div>
-
-              {/* Compact Teachers List */}
-              <div className="space-y-1 max-h-[500px] overflow-y-auto">
-                {filteredTeachers.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4 text-xs">No teachers found</p>
-                ) : (
-                  filteredTeachers.map((teacher) => {
-                    const teacherId = teacher.id || (teacher as any)._id || '';
-                    const assignedCount = getStudentsByTeacher(teacherId).length;
-                    const isSelected = selectedTeacher?.id === teacher.id || 
-                                     (selectedTeacher as any)?._id === (teacher as any)._id;
-
-                    return (
-                      <button
-                        key={teacher.id || (teacher as any)._id}
-                        onClick={() => handleTeacherSelect(teacher)}
-                        className={`w-full text-left px-2 py-1.5 rounded border transition-colors ${
-                          isSelected
-                            ? 'border-primary bg-primary/10'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-xs text-gray-900 truncate">{teacher.fullName}</p>
-                            <p className="text-xs text-gray-600 truncate">{teacher.email}</p>
-                          </div>
-                          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary flex-shrink-0">
-                            {assignedCount}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Compact Students List */}
-          <div className="lg:col-span-2">
-            {selectedTeacher ? (
-              <Card title={`Students - ${selectedTeacher.fullName}`}>
-                {/* Compact Student Filters */}
-                <div className="mb-2 space-y-1.5">
-                  {/* Compact Search Input */}
+        {viewMode === 'by-teacher' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Teachers List */}
+            <div className="lg:col-span-1">
+              <Card title="Select Teacher" className="h-full">
+                <div className="mb-3">
                   <input
                     type="text"
-                    placeholder="Search students..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary"
+                    placeholder="Search teachers..."
+                    value={teacherSearchTerm}
+                    onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                   />
+                </div>
 
-                  {/* Compact Filter Options */}
-                  <div className="flex gap-1.5">
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value as 'all' | 'assigned' | 'unassigned')}
-                      className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary bg-white"
-                    >
-                      <option value="all">All</option>
-                      <option value="assigned">Assigned</option>
-                      <option value="unassigned">Not Assigned</option>
-                    </select>
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {filteredTeachers.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8 text-sm">No teachers found</p>
+                  ) : (
+                    filteredTeachers.map((teacher) => {
+                      const teacherId = teacher.id || (teacher as any)._id || '';
+                      const assignedCount = getStudentsByTeacher(teacherId).length;
+                      const isSelected = selectedTeacher?.id === teacher.id || 
+                                       (selectedTeacher as any)?._id === (teacher as any)._id;
 
-                    {availablePrograms.length > 0 && (
+                      return (
+                        <button
+                          key={teacher.id || (teacher as any)._id}
+                          onClick={() => handleTeacherSelect(teacher)}
+                          className={`w-full text-left px-3 py-3 rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? 'border-primary bg-primary/10 shadow-md'
+                              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-gray-900 truncate">{teacher.fullName}</p>
+                              <p className="text-xs text-gray-600 truncate mt-0.5">{teacher.email}</p>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/20 text-primary flex-shrink-0">
+                              {assignedCount}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </Card>
+            </div>
+
+            {/* Students List */}
+            <div className="lg:col-span-2">
+              {selectedTeacher ? (
+                <Card title={`Students - ${selectedTeacher.fullName}`} className="h-full">
+                  {/* Filters */}
+                  <div className="mb-4 space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Search students..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                    />
+
+                    <div className="flex gap-2">
                       <select
-                        value={filterProgram}
-                        onChange={(e) => setFilterProgram(e.target.value)}
-                        className="flex-1 px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary bg-white"
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value as 'all' | 'assigned' | 'unassigned')}
+                        className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
                       >
-                        <option value="all">All Programs</option>
-                        {availablePrograms.map(program => (
-                          <option key={program} value={program}>{program}</option>
-                        ))}
+                        <option value="all">All Students</option>
+                        <option value="assigned">Assigned</option>
+                        <option value="unassigned">Not Assigned</option>
                       </select>
-                    )}
 
-                    {(searchTerm || filterStatus !== 'all' || filterProgram !== 'all') && (
-                      <button
-                        onClick={() => {
-                          setSearchTerm('');
-                          setFilterStatus('all');
-                          setFilterProgram('all');
-                        }}
-                        className="px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
+                      {availablePrograms.length > 0 && (
+                        <select
+                          value={filterProgram}
+                          onChange={(e) => setFilterProgram(e.target.value)}
+                          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white"
+                        >
+                          <option value="all">All Programs</option>
+                          {availablePrograms.map(program => (
+                            <option key={program} value={program}>{program}</option>
+                          ))}
+                        </select>
+                      )}
 
-                {/* Compact Action Buttons */}
-                <div className="mb-2 flex gap-1.5">
-                  <button
-                    onClick={handleSelectAll}
-                    className="px-2 py-1 text-xs font-medium text-primary bg-primary/10 rounded hover:bg-primary/20 transition-colors"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    onClick={handleDeselectAll}
-                    className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                  >
-                    Deselect All
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex-1 px-3 py-1 text-xs font-medium text-white bg-primary rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isSaving ? 'Saving...' : `Save (${selectedStudentIds.size})`}
-                  </button>
-                </div>
-
-                {/* Compact Students List */}
-                <div className="space-y-1 max-h-[500px] overflow-y-auto">
-                  {filteredStudents.length === 0 ? (
-                    <div className="text-center py-4 px-2">
-                      <p className="text-gray-500 text-xs mb-1">No students found</p>
                       {(searchTerm || filterStatus !== 'all' || filterProgram !== 'all') && (
                         <button
                           onClick={() => {
@@ -596,98 +554,229 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                             setFilterStatus('all');
                             setFilterProgram('all');
                           }}
-                          className="text-xs text-primary hover:underline"
+                          className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                         >
-                          Clear filters
+                          Clear
                         </button>
                       )}
                     </div>
-                  ) : (
-                    filteredStudents.map((student) => {
-                      const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
-                      const isAssigned = selectedStudentIds.has(studentId);
-                      const isCurrentlyAssigned = assignedStudents.some(
-                        s => {
-                          const sId = (s as any).studentRecordId || s.id || (s as any)._id;
-                          return sId === studentId;
-                        }
-                      );
+                  </div>
 
-                      return (
-                        <label
-                          key={studentId}
-                          className={`flex items-center p-2 rounded border cursor-pointer transition-colors ${
-                            isAssigned
-                              ? 'border-primary bg-primary/5'
-                              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isAssigned}
-                            onChange={() => handleStudentToggle(studentId)}
-                            className="w-4 h-4 flex-shrink-0 text-primary border-gray-300 rounded focus:ring-primary focus:ring-1"
-                          />
-                          <div className="ml-2 flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-xs text-gray-900 truncate">{student.fullName}</p>
-                                <p className="text-xs text-gray-600 truncate">
-                                  {student.email} • {student.program}
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0">
-                                {isCurrentlyAssigned && !isAssigned && (
-                                  <span className="text-xs text-orange-600 font-medium px-1.5 py-0.5 bg-orange-50 rounded">
-                                    Remove
-                                  </span>
-                                )}
-                                {!isCurrentlyAssigned && isAssigned && (
-                                  <span className="text-xs text-green-600 font-medium px-1.5 py-0.5 bg-green-50 rounded">
-                                    Add
-                                  </span>
-                                )}
+                  {/* Action Buttons */}
+                  <div className="mb-4 flex gap-2">
+                    <button
+                      onClick={handleSelectAll}
+                      className="px-3 py-2 text-sm font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={handleDeselectAll}
+                      className="px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Deselect All
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    >
+                      {isSaving ? 'Saving...' : `Save Changes (${selectedStudentIds.size})`}
+                    </button>
+                  </div>
+
+                  {/* Students List */}
+                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                    {filteredStudents.length === 0 ? (
+                      <div className="text-center py-8 px-2">
+                        <p className="text-gray-500 text-sm mb-2">No students found</p>
+                        {(searchTerm || filterStatus !== 'all' || filterProgram !== 'all') && (
+                          <button
+                            onClick={() => {
+                              setSearchTerm('');
+                              setFilterStatus('all');
+                              setFilterProgram('all');
+                            }}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Clear filters
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      filteredStudents.map((student) => {
+                        const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+                        const isAssigned = selectedStudentIds.has(studentId);
+                        const isCurrentlyAssigned = assignedStudents.some(
+                          s => {
+                            const sId = (s as any).studentRecordId || s.id || (s as any)._id;
+                            return sId === studentId;
+                          }
+                        );
+                        const studentTeachers = getStudentTeachers(student);
+                        const teacherCount = studentTeachers.length;
+
+                        return (
+                          <label
+                            key={studentId}
+                            className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                              isAssigned
+                                ? 'border-primary bg-primary/5 shadow-sm'
+                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isAssigned}
+                              onChange={() => handleStudentToggle(studentId)}
+                              disabled={!isAssigned && teacherCount >= 9}
+                              className="w-5 h-5 flex-shrink-0 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
+                            />
+                            <div className="ml-3 flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-semibold text-sm text-gray-900 truncate">{student.fullName}</p>
+                                  <p className="text-xs text-gray-600 truncate mt-0.5">
+                                    {student.email} • {student.program}
+                                  </p>
+                                  {teacherCount > 0 && (
+                                    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-xs text-gray-500">Teachers ({teacherCount}/9):</span>
+                                      {studentTeachers.slice(0, 3).map(teacher => (
+                                        <span key={teacher.id} className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                          {teacher.fullName}
+                                        </span>
+                                      ))}
+                                      {teacherCount > 3 && (
+                                        <span className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                          +{teacherCount - 3} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                                  {!isAssigned && teacherCount >= 9 && (
+                                    <span className="text-xs text-red-600 font-medium px-2 py-1 bg-red-50 rounded">
+                                      Max (9)
+                                    </span>
+                                  )}
+                                  {isCurrentlyAssigned && !isAssigned && (
+                                    <span className="text-xs text-orange-600 font-medium px-2 py-1 bg-orange-50 rounded">
+                                      Remove
+                                    </span>
+                                  )}
+                                  {!isCurrentlyAssigned && isAssigned && (
+                                    <span className="text-xs text-green-600 font-medium px-2 py-1 bg-green-50 rounded">
+                                      Add
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </label>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Compact Summary */}
-                <div className="mt-2 p-2 bg-gray-100 rounded">
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-medium text-gray-700">
-                        {filteredStudents.length}/{students.length} students
-                      </span>
-                      <span className="text-gray-600 ml-2">
-                        Selected: <span className="text-primary font-bold">{selectedStudentIds.size}</span> • Assigned: <span className="font-bold">{assignedStudents.length}</span>
-                      </span>
-                    </div>
-                    {selectedStudentIds.size !== assignedStudents.length && (
-                      <span className="text-xs text-orange-600 font-medium px-1.5 py-0.5 bg-orange-50 rounded">
-                        Changes pending
-                      </span>
+                          </label>
+                        );
+                      })
                     )}
                   </div>
-                </div>
-              </Card>
-            ) : (
-              <Card title="Select a Teacher">
-                <div className="text-center py-8 sm:py-12 px-4">
-                  <p className="text-sm sm:text-base text-gray-500">Please select a teacher from the list to manage their student assignments</p>
-                </div>
-              </Card>
-            )}
+
+                  {/* Summary */}
+                  <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <div>
+                        <span className="font-semibold text-gray-700">
+                          {filteredStudents.length}/{students.length} students
+                        </span>
+                        <span className="text-gray-600 ml-3">
+                          Selected: <span className="text-primary font-bold">{selectedStudentIds.size}</span> • 
+                          Assigned: <span className="font-bold">{assignedStudents.length}</span>
+                        </span>
+                      </div>
+                      {selectedStudentIds.size !== assignedStudents.length && (
+                        <span className="text-xs text-orange-600 font-medium px-2 py-1 bg-orange-50 rounded">
+                          Changes pending
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <Card title="Select a Teacher" className="h-full">
+                  <div className="text-center py-12 px-4">
+                    <p className="text-gray-500">Please select a teacher from the list to manage their student assignments</p>
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          // By Student View
+          <Card title="Student-Teacher Assignments">
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Search students..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+              />
+            </div>
+            
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              {filteredStudents.map((student) => {
+                const studentTeachers = getStudentTeachers(student);
+                const teacherCount = studentTeachers.length;
+                
+                return (
+                  <div
+                    key={student.id || (student as any)._id}
+                    className="p-4 bg-white border-2 border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">{student.fullName}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{student.email} • {student.program}</p>
+                        <div className="mt-3">
+                          <p className="text-xs font-medium text-gray-700 mb-2">
+                            Assigned Teachers ({teacherCount}/9):
+                          </p>
+                          {teacherCount > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {studentTeachers.map(teacher => (
+                                <span
+                                  key={teacher.id}
+                                  className="px-2.5 py-1 text-xs font-medium bg-primary/10 text-primary rounded-lg border border-primary/20"
+                                >
+                                  {teacher.fullName}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-500 italic">No teachers assigned</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                          teacherCount >= 9 
+                            ? 'bg-red-100 text-red-700' 
+                            : teacherCount > 0 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {teacherCount}/9
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );
 };
 
 export default TeacherStudentAssignmentManager;
-
