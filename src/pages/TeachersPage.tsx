@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { useData } from '../contexts/DataContext';
 import TeacherList from '../components/TeacherList';
 import TeacherProfile from '../components/TeacherProfile';
@@ -13,7 +15,18 @@ import TeacherCommunication from '../components/TeacherCommunication';
 import Card from '../components/Card';
 
 const TeachersPage: React.FC = () => {
+  const { user } = useAuth();
   const { teachers, admins, deleteTeacher, refreshData } = useData();
+  
+  // Redirect teachers to their dashboard - this page is for admin/superadmin only
+  if (user?.role === 'teacher') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  // Redirect students to their dashboard
+  if (user?.role === 'student') {
+    return <Navigate to="/student/dashboard" replace />;
+  }
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showTeacherForm, setShowTeacherForm] = useState(false);
   const [showTeacherProfile, setShowTeacherProfile] = useState(false);
