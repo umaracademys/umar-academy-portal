@@ -309,69 +309,51 @@ async function reassignReferences(duplicateUserId, canonicalUserId, references) 
     }
     
     if (references.qaidahStudentLearning.length > 0) {
-      const result = await QaidahStudentLearning.updateMany(
-        {
-          $or: [
-            { createdBy: duplicateIdObj },
-            { updatedBy: duplicateIdObj }
-          ]
-        },
-        {
-          $set: {
-            createdBy: references.qaidahStudentLearning[0].createdBy?.toString() === duplicateUserId 
-              ? canonicalIdObj : undefined,
-            updatedBy: references.qaidahStudentLearning[0].updatedBy?.toString() === duplicateUserId 
-              ? canonicalIdObj : undefined
-          }
-        }
+      // Update createdBy if it matches duplicate
+      const result1 = await QaidahStudentLearning.updateMany(
+        { createdBy: duplicateIdObj },
+        { $set: { createdBy: canonicalIdObj } }
       );
-      totalUpdated += result.modifiedCount;
+      // Update updatedBy if it matches duplicate
+      const result2 = await QaidahStudentLearning.updateMany(
+        { updatedBy: duplicateIdObj },
+        { $set: { updatedBy: canonicalIdObj } }
+      );
+      totalUpdated += result1.modifiedCount + result2.modifiedCount;
       if (!stats.referencesUpdated.qaidahStudentLearning) stats.referencesUpdated.qaidahStudentLearning = 0;
-      stats.referencesUpdated.qaidahStudentLearning += result.modifiedCount;
+      stats.referencesUpdated.qaidahStudentLearning += result1.modifiedCount + result2.modifiedCount;
     }
     
     if (references.mushafMistakes.length > 0) {
-      const result = await MushafMistake.updateMany(
-        {
-          $or: [
-            { createdBy: duplicateIdObj },
-            { updatedBy: duplicateIdObj }
-          ]
-        },
-        {
-          $set: {
-            createdBy: references.mushafMistakes[0].createdBy?.toString() === duplicateUserId 
-              ? canonicalIdObj : undefined,
-            updatedBy: references.mushafMistakes[0].updatedBy?.toString() === duplicateUserId 
-              ? canonicalIdObj : undefined
-          }
-        }
+      // Update createdBy if it matches duplicate
+      const result1 = await MushafMistake.updateMany(
+        { createdBy: duplicateIdObj },
+        { $set: { createdBy: canonicalIdObj } }
       );
-      totalUpdated += result.modifiedCount;
+      // Update updatedBy if it matches duplicate
+      const result2 = await MushafMistake.updateMany(
+        { updatedBy: duplicateIdObj },
+        { $set: { updatedBy: canonicalIdObj } }
+      );
+      totalUpdated += result1.modifiedCount + result2.modifiedCount;
       if (!stats.referencesUpdated.mushafMistakes) stats.referencesUpdated.mushafMistakes = 0;
-      stats.referencesUpdated.mushafMistakes += result.modifiedCount;
+      stats.referencesUpdated.mushafMistakes += result1.modifiedCount + result2.modifiedCount;
     }
     
     if (references.mushafAnnotations.length > 0) {
-      const result = await MushafAnnotation.updateMany(
-        {
-          $or: [
-            { createdBy: duplicateIdObj },
-            { updatedBy: duplicateIdObj }
-          ]
-        },
-        {
-          $set: {
-            createdBy: references.mushafAnnotations[0].createdBy?.toString() === duplicateUserId 
-              ? canonicalIdObj : undefined,
-            updatedBy: references.mushafAnnotations[0].updatedBy?.toString() === duplicateUserId 
-              ? canonicalIdObj : undefined
-          }
-        }
+      // Update createdBy if it matches duplicate
+      const result1 = await MushafAnnotation.updateMany(
+        { createdBy: duplicateIdObj },
+        { $set: { createdBy: canonicalIdObj } }
       );
-      totalUpdated += result.modifiedCount;
+      // Update updatedBy if it matches duplicate
+      const result2 = await MushafAnnotation.updateMany(
+        { updatedBy: duplicateIdObj },
+        { $set: { updatedBy: canonicalIdObj } }
+      );
+      totalUpdated += result1.modifiedCount + result2.modifiedCount;
       if (!stats.referencesUpdated.mushafAnnotations) stats.referencesUpdated.mushafAnnotations = 0;
-      stats.referencesUpdated.mushafAnnotations += result.modifiedCount;
+      stats.referencesUpdated.mushafAnnotations += result1.modifiedCount + result2.modifiedCount;
     }
     
     if (references.mushafPageNotes.length > 0) {
