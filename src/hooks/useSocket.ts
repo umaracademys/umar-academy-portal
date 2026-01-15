@@ -11,8 +11,8 @@ export const useSocket = () => {
   const { user, isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
   const tokenRef = useRef<string | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const tokenCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tokenCheckIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Get current token
   const getToken = useCallback(() => {
