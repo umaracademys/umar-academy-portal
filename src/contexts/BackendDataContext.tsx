@@ -1901,9 +1901,44 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           return prev; // Preserve existing teachers if new data is empty
         }
         
+        // ✅ FIX: Deduplicate teachers by email (normalized) and by _id before merging
+        const seenEmails = new Set<string>();
+        const seenIds = new Set<string>();
+        const deduplicatedTeachers: any[] = [];
+        const duplicates: any[] = [];
+        
+        for (const teacher of finalTeachersData) {
+          const normalizedEmail = teacher.email?.toLowerCase().trim();
+          const teacherId = teacher._id?.toString() || teacher.id?.toString() || '';
+          
+          // Check for duplicates by email or ID
+          const isDuplicateByEmail = normalizedEmail && seenEmails.has(normalizedEmail);
+          const isDuplicateById = teacherId && seenIds.has(teacherId);
+          
+          if (isDuplicateByEmail || isDuplicateById) {
+            duplicates.push(teacher);
+            if (import.meta.env.DEV) {
+              console.warn('⚠️ Duplicate teacher detected:', {
+                fullName: teacher.fullName,
+                email: teacher.email,
+                id: teacherId,
+                duplicateBy: isDuplicateByEmail ? 'email' : 'id'
+              });
+            }
+          } else {
+            if (normalizedEmail) seenEmails.add(normalizedEmail);
+            if (teacherId) seenIds.add(teacherId);
+            deduplicatedTeachers.push(teacher);
+          }
+        }
+        
+        if (duplicates.length > 0) {
+          console.warn(`⚠️ Removed ${duplicates.length} duplicate teacher(s) from display`);
+        }
+        
         // Merge: preserve Teacher Document IDs from existing teachers
         const teacherMap = new Map<string, any>(prev.map(t => [t.id || (t as any)._id || '', t]));
-        finalTeachersData.forEach((newTeacher: any) => {
+        deduplicatedTeachers.forEach((newTeacher: any) => {
           const existing = teacherMap.get(newTeacher.id);
           if (existing) {
             // Preserve Teacher Document ID from existing if new one doesn't have it
