@@ -39,6 +39,7 @@ const TeachersPage: React.FC = () => {
   const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
 
   // Combine teachers and admins, marking admins with a flag
+  // ✅ FIX: Deduplicate by email and ID to prevent duplicate display
   const combinedTeachers = React.useMemo(() => {
     const teachersList = teachers.map(t => ({ ...t, isAdmin: false }));
     const adminsList = admins.map(a => ({
@@ -49,7 +50,46 @@ const TeachersPage: React.FC = () => {
       location: 'Local' as const,
       employmentType: 'Full Time' as const,
     }));
-    return [...teachersList, ...adminsList];
+    
+    const combined = [...teachersList, ...adminsList];
+    
+    // Deduplicate by email (normalized) and by ID
+    const seenEmails = new Set<string>();
+    const seenIds = new Set<string>();
+    const deduplicated: any[] = [];
+    const duplicates: any[] = [];
+    
+    for (const teacher of combined) {
+      const normalizedEmail = teacher.email?.toLowerCase().trim();
+      const teacherId = teacher._id?.toString() || teacher.id?.toString() || '';
+      
+      // Check for duplicates
+      const isDuplicateByEmail = normalizedEmail && seenEmails.has(normalizedEmail);
+      const isDuplicateById = teacherId && seenIds.has(teacherId);
+      
+      if (isDuplicateByEmail || isDuplicateById) {
+        duplicates.push(teacher);
+        if (import.meta.env.DEV) {
+          console.warn('⚠️ Duplicate teacher/admin in combined list:', {
+            fullName: teacher.fullName,
+            email: teacher.email,
+            id: teacherId,
+            isAdmin: teacher.isAdmin,
+            duplicateBy: isDuplicateByEmail ? 'email' : 'id'
+          });
+        }
+      } else {
+        if (normalizedEmail) seenEmails.add(normalizedEmail);
+        if (teacherId) seenIds.add(teacherId);
+        deduplicated.push(teacher);
+      }
+    }
+    
+    if (duplicates.length > 0) {
+      console.warn(`⚠️ Removed ${duplicates.length} duplicate teacher/admin(s) from combined list`);
+    }
+    
+    return deduplicated;
   }, [teachers, admins]);
 
   const handleTeacherSelect = (teacher: any) => {

@@ -20,8 +20,9 @@
  * - Can be safely re-run
  */
 
-const mongoose = require('mongoose');
-require('dotenv').config();
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
 
@@ -541,17 +542,15 @@ async function cleanupDuplicateUsers() {
   }
 }
 
-// Run cleanup
-if (require.main === module) {
-  cleanupDuplicateUsers()
-    .then(() => {
-      console.log('\n✅ Script completed');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('\n❌ Script failed:', error);
-      process.exit(1);
-    });
-}
+// Run cleanup (ES module entry point)
+cleanupDuplicateUsers()
+  .then(() => {
+    console.log('\n✅ Script completed');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('\n❌ Script failed:', error);
+    process.exit(1);
+  });
 
-module.exports = { cleanupDuplicateUsers, findDuplicateUsers };
+export { cleanupDuplicateUsers, findDuplicateUsers };
