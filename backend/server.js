@@ -4064,25 +4064,226 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
 // Create a new teacher
 // Phase 7: CRITICAL - Protect user management
 app.post('/api/teachers', authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
+  const requestId = `REQ-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const startTime = Date.now();
+  
   try {
+    console.log(`\n📝 [${requestId}] ========== TEACHER CREATION REQUEST ==========`);
+    console.log(`[${requestId}] Timestamp: ${new Date().toISOString()}`);
+    console.log(`[${requestId}] User: ${req.user?.email} (${req.user?.role})`);
+    console.log(`[${requestId}] Request headers:`, {
+      'content-type': req.headers['content-type'],
+      'authorization': req.headers['authorization'] ? 'Bearer [REDACTED]' : 'missing'
+    });
+    
+    // Log raw request body
+    console.log(`[${requestId}] Raw request body:`, JSON.stringify(req.body, null, 2));
+    
     // Convert userId to ObjectId if it's a string
     const teacherData = { ...req.body };
-    if (teacherData.userId && typeof teacherData.userId === 'string') {
-      teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
+    console.log(`[${requestId}] Step 1: Processing userId...`);
+    if (teacherData.userId) {
+      if (typeof teacherData.userId === 'string') {
+        if (mongoose.Types.ObjectId.isValid(teacherData.userId)) {
+          teacherData.userId = new mongoose.Types.ObjectId(teacherData.userId);
+          console.log(`[${requestId}] ✅ userId converted to ObjectId: ${teacherData.userId}`);
+        } else {
+          console.error(`[${requestId}] ❌ Invalid userId format: ${teacherData.userId}`);
+          return res.status(400).json({ 
+            error: 'Invalid userId format',
+            userId: teacherData.userId,
+            requestId: requestId
+          });
+        }
+      } else {
+        console.log(`[${requestId}] ✅ userId already ObjectId: ${teacherData.userId}`);
+      }
+    } else {
+      console.warn(`[${requestId}] ⚠️ No userId provided in request`);
     }
+    
+    // Validate required fields
+    console.log(`[${requestId}] Step 2: Validating required fields...`);
+    const requiredFields = ['fullName', 'email'];
+    const missingFields = requiredFields.filter(field => !teacherData[field]);
+    if (missingFields.length > 0) {
+      console.error(`[${requestId}] ❌ Missing required fields:`, missingFields);
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        missingFields: missingFields,
+        requestId: requestId
+      });
+    }
+    console.log(`[${requestId}] ✅ Required fields present:`, requiredFields);
+    
+    // Check for duplicate email
+    console.log(`[${requestId}] Step 3: Checking for duplicate email...`);
+    const existingTeacher = await Teacher.findOne({ email: teacherData.email });
+    if (existingTeacher) {
+      console.error(`[${requestId}] ❌ Duplicate email found: ${teacherData.email}`);
+      console.error(`[${requestId}] Existing teacher:`, {
+        _id: existingTeacher._id.toString(),
+        email: existingTeacher.email,
+        fullName: existingTeacher.fullName
+      });
+      return res.status(409).json({ 
+        error: 'A teacher with that email already exists.',
+        existingTeacherId: existingTeacher._id.toString(),
+        requestId: requestId
+      });
+    }
+    console.log(`[${requestId}] ✅ Email is unique: ${teacherData.email}`);
     
     // Normalize the teacher data
+    console.log(`[${requestId}] Step 4: Normalizing teacher data...`);
     const normalizedData = normalizeTeacherData(teacherData);
+    console.log(`[${requestId}] Normalized data:`, JSON.stringify(normalizedData, null, 2));
     
-    const teacher = new Teacher(normalizedData);
-    await teacher.save();
-    res.json(teacher);
-  } catch (error) {
-    console.error('Error creating teacher:', error);
-    if (error.code === 11000) {
-      return res.status(409).json({ error: 'A teacher with that email already exists.' });
+    // Validate userId exists in User collection
+    if (normalizedData.userId) {
+      console.log(`[${requestId}] Step 5: Verifying userId exists in User collection...`);
+      const userExists = await User.findById(normalizedData.userId);
+      if (!userExists) {
+        console.error(`[${requestId}] ❌ User not found for userId: ${normalizedData.userId}`);
+        return res.status(400).json({ 
+          error: 'User not found. Please create user first.',
+          userId: normalizedData.userId.toString(),
+          requestId: requestId
+        });
+      }
+      console.log(`[${requestId}] ✅ User found: ${userExists.email} (${userExists.role})`);
     }
-    res.status(500).json({ error: error.message });
+    
+    // Create teacher instance
+    console.log(`[${requestId}] Step 6: Creating Teacher instance...`);
+    const teacher = new Teacher(normalizedData);
+    
+    // Validate before save
+    console.log(`[${requestId}] Step 7: Validating teacher document...`);
+    const validationError = teacher.validateSync();
+    if (validationError) {
+      console.error(`[${requestId}] ❌ Validation error:`, validationError);
+      const errors = {};
+      Object.keys(validationError.errors || {}).forEach(key => {
+        errors[key] = validationError.errors[key].message;
+      });
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: errors,
+        requestId: requestId
+      });
+    }
+    console.log(`[${requestId}] ✅ Validation passed`);
+    
+    // Save to database
+    console.log(`[${requestId}] Step 8: Saving teacher to database...`);
+    const savedTeacher = await teacher.save();
+    const saveTime = Date.now() - startTime;
+    console.log(`[${requestId}] ✅ Teacher saved successfully in ${saveTime}ms`);
+    console.log(`[${requestId}] Saved teacher ID: ${savedTeacher._id.toString()}`);
+    console.log(`[${requestId}] Saved teacher email: ${savedTeacher.email}`);
+    
+    // Verify teacher exists in database
+    console.log(`[${requestId}] Step 9: Verifying teacher in database...`);
+    const verifyTeacher = await Teacher.findById(savedTeacher._id);
+    if (!verifyTeacher) {
+      console.error(`[${requestId}] ❌ CRITICAL: Teacher not found in database after save!`);
+      return res.status(500).json({ 
+        error: 'Teacher was not saved to database',
+        teacherId: savedTeacher._id.toString(),
+        requestId: requestId
+      });
+    }
+    console.log(`[${requestId}] ✅ Teacher verified in database`);
+    
+    // Log activity
+    try {
+      await logActivity('teacher_created', {
+        req,
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        userRole: req.user?.role,
+        status: 'success',
+        details: {
+          teacherId: savedTeacher._id.toString(),
+          teacherEmail: savedTeacher.email,
+          teacherName: savedTeacher.fullName,
+          requestId: requestId
+        }
+      });
+    } catch (logError) {
+      console.warn(`[${requestId}] ⚠️ Failed to log activity:`, logError);
+    }
+    
+    // Emit WebSocket event
+    try {
+      emitDataEvent('teacher:created', savedTeacher);
+      console.log(`[${requestId}] ✅ WebSocket event emitted`);
+    } catch (socketError) {
+      console.warn(`[${requestId}] ⚠️ Failed to emit WebSocket event:`, socketError);
+    }
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`[${requestId}] ========== TEACHER CREATION SUCCESS (${totalTime}ms) ==========\n`);
+    
+    res.status(201).json(savedTeacher);
+  } catch (error) {
+    const totalTime = Date.now() - startTime;
+    console.error(`\n[${requestId}] ========== TEACHER CREATION FAILED (${totalTime}ms) ==========`);
+    console.error(`[${requestId}] Error name:`, error.name);
+    console.error(`[${requestId}] Error message:`, error.message);
+    console.error(`[${requestId}] Error code:`, error.code);
+    console.error(`[${requestId}] Error stack:`, error.stack);
+    console.error(`[${requestId}] Full error object:`, JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+    
+    // Log activity for error
+    try {
+      await logActivity('teacher_created', {
+        req,
+        userId: req.user?.userId,
+        userEmail: req.user?.email,
+        userRole: req.user?.role,
+        status: 'failure',
+        errorMessage: error.message,
+        details: {
+          errorCode: error.code,
+          errorName: error.name,
+          requestId: requestId
+        }
+      });
+    } catch (logError) {
+      console.warn(`[${requestId}] ⚠️ Failed to log error activity:`, logError);
+    }
+    
+    if (error.code === 11000) {
+      // Duplicate key error
+      const duplicateField = Object.keys(error.keyPattern || {})[0] || 'unknown';
+      console.error(`[${requestId}] ❌ Duplicate key error on field: ${duplicateField}`);
+      return res.status(409).json({ 
+        error: `A teacher with that ${duplicateField} already exists.`,
+        duplicateField: duplicateField,
+        requestId: requestId
+      });
+    }
+    
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors || {}).forEach(key => {
+        errors[key] = error.errors[key].message;
+      });
+      console.error(`[${requestId}] ❌ Validation error details:`, errors);
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: errors,
+        requestId: requestId
+      });
+    }
+    
+    console.error(`[${requestId}] ========== END ERROR LOG ==========\n`);
+    res.status(500).json({ 
+      error: error.message || 'Internal server error',
+      requestId: requestId
+    });
   }
 });
 

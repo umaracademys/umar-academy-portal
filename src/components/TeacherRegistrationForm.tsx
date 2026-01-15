@@ -731,18 +731,32 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
         alert('Teacher updated successfully!');
         onClose();
       } else {
-        console.log('💾 Creating new teacher:', {
+        const formRequestId = `FORM-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`\n📋 [${formRequestId}] ========== FORM: TEACHER SUBMISSION ==========`);
+        console.log(`[${formRequestId}] Timestamp: ${new Date().toISOString()}`);
+        console.log(`[${formRequestId}] Form validation passed`);
+        console.log(`[${formRequestId}] Creating new teacher:`, {
           fullName: newTeacher.fullName,
           email: newTeacher.email,
           employmentType: newTeacher.employmentType,
+          department: newTeacher.department,
           payroll: newTeacher.payroll,
           schedule: {
             ...newTeacher.schedule,
             fullTimeSchedule: (newTeacher.schedule as any).fullTimeSchedule,
             daySchedules: (newTeacher.schedule as any).daySchedules,
           },
+          permissionsCount: Object.keys(newTeacher.permissions || {}).length
         });
-        await addTeacher(newTeacher);
+        console.log(`[${formRequestId}] Full teacher object:`, JSON.stringify(newTeacher, null, 2));
+        
+        try {
+          await addTeacher(newTeacher);
+          console.log(`[${formRequestId}] ✅ Form submission successful\n`);
+        } catch (formError) {
+          console.error(`[${formRequestId}] ❌ Form submission failed:`, formError);
+          throw formError;
+        }
         
         // Refresh data to ensure UI updates
         if (refreshData) {

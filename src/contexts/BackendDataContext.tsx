@@ -3025,9 +3025,33 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Teacher operations
   const addTeacher = async (teacher: Teacher) => {
+    const requestId = `FRONTEND-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = Date.now();
+    
     try {
+      console.log(`\n📝 [${requestId}] ========== FRONTEND: TEACHER CREATION START ==========`);
+      console.log(`[${requestId}] Timestamp: ${new Date().toISOString()}`);
+      console.log(`[${requestId}] Teacher data received:`, {
+        fullName: teacher.fullName,
+        email: teacher.email,
+        employmentType: teacher.employmentType,
+        department: teacher.department,
+        hasPermissions: !!teacher.permissions,
+        hasSchedule: !!teacher.schedule,
+        hasPayroll: !!teacher.payroll
+      });
+      
       // Create user first - use fetchWithTimeout with authentication
       // Password is optional - teacher can set it later via password reset
+      console.log(`[${requestId}] Step 1: Creating user account...`);
+      const userPayload = {
+        name: teacher.fullName,
+        email: teacher.email,
+        role: 'teacher',
+        avatar: teacher.avatar
+      };
+      console.log(`[${requestId}] User payload:`, userPayload);
+      
       const userResponse = await fetchWithTimeout(
         `${API_BASE}/users`,
         {
@@ -3044,19 +3068,34 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         true // requireAuth = true - includes Authorization header
       );
 
+      console.log(`[${requestId}] User creation response status:`, userResponse.status, userResponse.statusText);
+
       if (!userResponse.ok) {
         const errorText = await userResponse.text();
         let errorMessage = 'Failed to create user';
+        let errorDetails = {};
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
+          errorDetails = errorData;
         } catch {
           errorMessage = errorText || errorMessage;
         }
+        console.error(`[${requestId}] ❌ User creation failed:`, {
+          status: userResponse.status,
+          statusText: userResponse.statusText,
+          error: errorMessage,
+          details: errorDetails
+        });
         throw new Error(errorMessage);
       }
 
       const newUser = await userResponse.json();
+      console.log(`[${requestId}] ✅ User created successfully:`, {
+        userId: newUser._id || newUser.id,
+        email: newUser.email,
+        role: newUser.role
+      });
 
       // Create teacher profile with all data from the form
       const teacherPayload = {
@@ -3105,6 +3144,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         specialization: [],
       };
 
+      console.log(`[${requestId}] Step 2: Creating teacher profile...`);
+      console.log(`[${requestId}] Teacher payload:`, JSON.stringify(teacherPayload, null, 2));
+      console.log(`[${requestId}] Request URL: ${API_BASE}/teachers`);
+      console.log(`[${requestId}] Request method: POST`);
+      
       const teacherResponse = await fetchWithTimeout(
         `${API_BASE}/teachers`,
         {
@@ -3115,20 +3159,40 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         true // Phase 7: Teachers endpoint now requires auth and canManageTeachers permission
       );
 
+      console.log(`[${requestId}] Teacher creation response status:`, teacherResponse.status, teacherResponse.statusText);
+
       if (!teacherResponse.ok) {
         const errorText = await teacherResponse.text();
         let errorMessage = 'Failed to create teacher profile';
+        let errorDetails = {};
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
+          errorDetails = errorData;
+          console.error(`[${requestId}] ❌ Teacher creation failed:`, {
+            status: teacherResponse.status,
+            statusText: teacherResponse.statusText,
+            error: errorMessage,
+            details: errorDetails,
+            requestId: errorData.requestId || 'unknown'
+          });
         } catch {
           errorMessage = errorText || errorMessage;
+          console.error(`[${requestId}] ❌ Teacher creation failed (non-JSON response):`, {
+            status: teacherResponse.status,
+            statusText: teacherResponse.statusText,
+            error: errorMessage
+          });
         }
-        console.error('Teacher creation failed:', errorText);
         throw new Error(errorMessage);
       }
 
       const newTeacher = await teacherResponse.json();
+      console.log(`[${requestId}] ✅ Teacher created successfully:`, {
+        teacherId: newTeacher._id || newTeacher.id,
+        email: newTeacher.email,
+        fullName: newTeacher.fullName
+      });
       
       // Map MongoDB _id to id for consistency
       const mappedTeacher = {
@@ -3148,13 +3212,44 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         return updated;
       });
 
+      // Step 3: Verify teacher was saved
+      console.log(`[${requestId}] Step 3: Verifying teacher in database...`);
+      try {
+        const verifyResponse = await fetchWithTimeout(
+          `${API_BASE}/teachers/${newTeacher._id || newTeacher.id}`,
+          { method: 'GET' },
+          5000,
+          true
+        );
+        
+        if (verifyResponse.ok) {
+          const verifiedTeacher = await verifyResponse.json();
+          console.log(`[${requestId}] ✅ Teacher verified in database`);
+        } else {
+          console.warn(`[${requestId}] ⚠️ Could not verify teacher (non-critical):`, verifyResponse.status);
+        }
+      } catch (verifyError) {
+        console.warn(`[${requestId}] ⚠️ Verification failed (non-critical):`, verifyError);
+      }
+
+      const totalTime = Date.now() - startTime;
+      console.log(`[${requestId}] ========== FRONTEND: TEACHER CREATION SUCCESS (${totalTime}ms) ==========\n`);
+      
       if (import.meta.env.DEV) {
         console.log('✅ Teacher created successfully:', mappedTeacher.fullName);
       }
+      
+      return mappedTeacher;
     } catch (err) {
+      const totalTime = Date.now() - startTime;
+      console.error(`\n[${requestId}] ========== FRONTEND: TEACHER CREATION FAILED (${totalTime}ms) ==========`);
+      console.error(`[${requestId}] Error:`, err);
+      console.error(`[${requestId}] Error message:`, err instanceof Error ? err.message : 'Unknown error');
+      console.error(`[${requestId}] Error stack:`, err instanceof Error ? err.stack : 'No stack trace');
+      console.error(`[${requestId}] ========== END FRONTEND ERROR LOG ==========\n`);
+      
       const errorMessage = err instanceof Error ? err.message : 'Failed to add teacher';
       setError(errorMessage);
-      console.error('Error adding teacher:', err);
       throw err;
     }
   };
