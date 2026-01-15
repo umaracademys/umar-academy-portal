@@ -3007,8 +3007,32 @@ app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canMana
       return res.status(400).json({ error: 'Email and role are required' });
     }
 
+    // Normalize email (lowercase, trim) to prevent duplicates
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // ✅ FIX: Explicit duplicate check BEFORE creating user (prevents race conditions)
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      await logActivity('user_created', {
+        req,
+        userId: req.user?.userId || null,
+        status: 'failure',
+        errorMessage: 'User already exists',
+        details: { 
+          email: normalizedEmail,
+          existingUserId: existingUser._id.toString(),
+          existingUserRole: existingUser.role
+        }
+      });
+      return res.status(409).json({ 
+        error: 'A user with that email already exists.',
+        existingUserId: existingUser._id.toString(),
+        existingUserRole: existingUser.role
+      });
+    }
+
     // Validate email format
-    if (!validateEmail(email)) {
+    if (!validateEmail(normalizedEmail)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
@@ -3031,7 +3055,7 @@ app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canMana
 
     const user = new User({
       name,
-      email,
+      email: normalizedEmail, // Use normalized email
       role,
       password: hashedPassword,
       avatar

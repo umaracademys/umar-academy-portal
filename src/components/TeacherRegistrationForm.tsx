@@ -579,6 +579,12 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // ✅ FIX: Prevent double submission - check guard BEFORE setting state
+    if (isSubmitting) {
+      console.warn('⚠️ Form submission already in progress, ignoring duplicate submit');
+      return;
+    }
+    
     // Only allow submission on the last tab (Permissions tab)
     if (currentTab !== tabs.length - 1) {
       // If not on last tab, just navigate to next tab instead
