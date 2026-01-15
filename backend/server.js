@@ -87,21 +87,46 @@ io.use((socket, next) => {
   }
 });
 
-// Socket.IO connection handler
+// Enhanced Socket.IO connection handler with room management
 io.on('connection', (socket) => {
-  console.log(`✅ Socket connected: ${socket.userEmail} (${socket.userRole})`);
+  console.log(`✅ Socket connected: ${socket.userEmail} (${socket.userRole}) [${socket.userId}]`);
   
   // Join room based on user role and ID
-  if (socket.userRole === 'student') {
-    socket.join(`student:${socket.userId}`);
-  } else if (socket.userRole === 'teacher') {
-    socket.join(`teacher:${socket.userId}`);
-  } else if (socket.userRole === 'admin' || socket.userRole === 'superadmin') {
-    socket.join('admins');
-  }
+  const roomName = socket.userRole === 'student' 
+    ? `student:${socket.userId}`
+    : socket.userRole === 'teacher'
+    ? `teacher:${socket.userId}`
+    : 'admins';
   
-  socket.on('disconnect', () => {
-    console.log(`❌ Socket disconnected: ${socket.userEmail}`);
+  socket.join(roomName);
+  console.log(`✅ Socket joined room: ${roomName}`);
+  
+  // Handle explicit room join requests (for reconnection)
+  socket.on('join_room', (room) => {
+    // Verify room is authorized for this user
+    const expectedRoom = socket.userRole === 'student' 
+      ? `student:${socket.userId}`
+      : socket.userRole === 'teacher'
+      ? `teacher:${socket.userId}`
+      : 'admins';
+    
+    if (room === expectedRoom) {
+      socket.join(room);
+      console.log(`✅ Socket joined room: ${room}`);
+    } else {
+      console.warn(`⚠️ Unauthorized room join attempt: ${room} by ${socket.userRole}:${socket.userId} (expected: ${expectedRoom})`);
+    }
+  });
+  
+  socket.on('disconnect', (reason) => {
+    console.log(`❌ Socket disconnected: ${socket.userEmail} (${socket.userRole}) [${reason}]`);
+  });
+  
+  // Handle permission updates
+  socket.on('permissions_updated', () => {
+    // Client requested permission refresh - disconnect them to force re-auth
+    socket.emit('permissions_updated');
+    socket.disconnect();
   });
 });
 
@@ -932,7 +957,9 @@ const userSchema = new mongoose.Schema({
   accountLockedUntil: Date,
   lastFailedLoginAttempt: Date,
   // Password change tracking
-  passwordChangeRequired: { type: Boolean, default: false } // Set to true for generated/default passwords
+  passwordChangeRequired: { type: Boolean, default: false }, // Set to true for generated/default passwords
+  // Phase 4: Permission versioning for token invalidation
+  permissionsVersion: { type: Number, default: 1 }
 }, { timestamps: true });
 
 const User = mongoose.model('User', userSchema);
@@ -1364,6 +1391,26 @@ const recitationHistorySchema = new mongoose.Schema({
   completedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
+// Phase 3: Schema drift detection helper
+const logDroppedFields = (modelName, document, droppedFields) => {
+  if (droppedFields && droppedFields.length > 0) {
+    console.error(`❌ SCHEMA DRIFT DETECTED [${modelName}]:`, {
+      documentId: document._id || document.id,
+      droppedFields: droppedFields,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Log to activity log for monitoring (if logActivity is available)
+    if (typeof logActivity === 'function') {
+      logActivity('schema_drift', {
+        model: modelName,
+        documentId: document._id?.toString() || document.id,
+        droppedFields: droppedFields
+      }).catch(err => console.error('Failed to log schema drift:', err));
+    }
+  }
+};
+
 // Student Schema
 const studentSchema = new mongoose.Schema({
   studentId: String,
@@ -1409,6 +1456,27 @@ const studentSchema = new mongoose.Schema({
     history: { type: [recitationHistorySchema], default: [] }
   }
 }, { timestamps: true });
+
+// Phase 3: Add pre-save hook to detect dropped fields (non-destructive logging)
+studentSchema.pre('save', function(next) {
+  const doc = this;
+  const schemaPaths = Object.keys(studentSchema.paths);
+  const docKeys = Object.keys(doc.toObject({ virtuals: false }));
+  
+  // Find fields in document that aren't in schema
+  const unknownFields = docKeys.filter(key => {
+    return !schemaPaths.includes(key) && 
+           !['_id', '__v', 'createdAt', 'updatedAt'].includes(key);
+  });
+  
+  if (unknownFields.length > 0) {
+    logDroppedFields('Student', doc, unknownFields);
+    // Note: We're not throwing an error (strict mode not enabled yet)
+    // This is just for detection and logging
+  }
+  
+  next();
+});
 
 // Add indexes for faster queries
 studentSchema.index({ userId: 1 });
@@ -1606,6 +1674,9 @@ const Teacher = mongoose.model('Teacher', teacherSchema);
 const { initializeModels, requireTeacherPermission, requireAdminPermission, checkTeacherPermission, checkAdminPermission } = require('./middleware/permissions');
 const { requirePermission, initializePermissionModels } = require('./middleware/requirePermission');
 const { checkPermissionVersion, initializeVersionModels } = require('./middleware/checkPermissionVersion');
+const { errorLogger } = require('./middleware/errorLogger');
+const { validateRequest, commonRules } = require('./middleware/validateRequest');
+const { normalizeStudentAssignmentFields, validateStudentFields } = require('./utils/fieldMapper');
 // Note: Admin is defined earlier in the file, so this should work
 if (typeof Admin !== 'undefined') {
   initializeModels(Teacher, Admin);
@@ -1793,8 +1864,33 @@ const authenticateToken = (req, res, next) => {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
     
+    // Phase 4: Check permission version if user is teacher/admin
+    if ((decoded.role === 'teacher' || decoded.role === 'admin') && decoded.permissionsVersion) {
+      try {
+        const user = await User.findById(decoded.userId).select('permissionsVersion');
+        if (user && user.permissionsVersion && user.permissionsVersion !== decoded.permissionsVersion) {
+          // Permissions were updated - token is outdated
+          await logActivity('permission_version_mismatch', {
+            req,
+            userId: decoded.userId,
+            tokenVersion: decoded.permissionsVersion,
+            dbVersion: user.permissionsVersion,
+            details: { endpoint: req.path, method: req.method }
+          });
+          
+          return res.status(401).json({
+            error: 'Your permissions have been updated. Please log in again.',
+            code: 'PERMISSIONS_OUTDATED'
+          });
+        }
+      } catch (dbError) {
+        // Don't block request if DB check fails, but log it
+        console.error('❌ Error checking permission version:', dbError);
+      }
+    }
+    
     // Phase 3: Attach permissions from token to req.user
-    // Phase 5: Also attach permissionsVersion for version checking
+    // Phase 4: Also attach permissionsVersion for version checking
     // Backward compatibility: if token has no permissions, set to null (will fallback to DB)
     req.user = {
       userId: decoded.userId,
@@ -2075,6 +2171,14 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
     if (userPermissions !== null) {
       tokenPayload.permissions = userPermissions;
       tokenPayload.permissionsVersion = permissionsVersion;
+    }
+    
+    // Phase 4: Store permissionsVersion in user record for comparison
+    if (userPermissions !== null && permissionsVersion) {
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { permissionsVersion: permissionsVersion } }
+      );
     }
     
     const token = jwt.sign(
@@ -3127,7 +3231,23 @@ app.post('/api/students', authenticateToken, requirePermission('canManageStudent
 // 3. Bulk teacher updates using bulkWrite (5-10x faster)
 // 4. Better error logging with context and timing
 // Phase 7: CRITICAL - Protect user management
-app.put('/api/students/:id', authenticateToken, requirePermission('canManageStudents'), async (req, res) => {
+// Phase 3: Added validation and field normalization
+app.put('/api/students/:id', 
+  authenticateToken, 
+  requirePermission('canManageStudents'),
+  validateRequest([
+    commonRules.mongoId('id'),
+    commonRules.optionalString('fullName'),
+    commonRules.optionalString('email'),
+    commonRules.optionalString('contact'),
+    commonRules.optionalString('parentName'),
+    commonRules.optionalString('program'),
+    commonRules.arrayOfMongoIds('assignedTeacherIds'),
+    commonRules.arrayOfStrings('assignedTeachers'),
+    commonRules.number('tuitionFee'),
+    commonRules.number('registrationAmount')
+  ]),
+  async (req, res) => {
   const startTime = Date.now();
   const studentId = req.params.id;
   
@@ -3142,7 +3262,11 @@ app.put('/api/students/:id', authenticateToken, requirePermission('canManageStud
       });
     }
 
-    const studentData = { ...req.body };
+    // Phase 3: Normalize student assignment fields
+    let studentData = normalizeStudentAssignmentFields(req.body);
+    
+    // Phase 3: Validate field consistency
+    validateStudentFields(studentData, 'update');
     
     // Validate userId if provided
     if (studentData.userId && typeof studentData.userId === 'string') {
@@ -3871,6 +3995,25 @@ app.put('/api/admins/:id', authenticateToken, async (req, res) => {
       if (currentAdmin) {
         adminData.permissionsVersion = (currentAdmin.permissionsVersion || 1) + 1;
         console.log(`🔄 Incremented admin permissions version: ${currentAdmin.permissionsVersion || 1} → ${adminData.permissionsVersion}`);
+        
+        // Phase 4: Also update User model's permissionsVersion to invalidate tokens
+        if (currentAdmin.userId) {
+          const newVersion = Date.now();
+          await User.updateOne(
+            { _id: currentAdmin.userId },
+            { $set: { permissionsVersion: newVersion } }
+          );
+          console.log(`🔄 Updated User permissionsVersion to ${newVersion} for userId: ${currentAdmin.userId}`);
+          
+          // Emit event to disconnect socket (force re-auth)
+          try {
+            io.to(`admin:${currentAdmin.userId}`).emit('permissions_updated');
+            io.to('admins').emit('permissions_updated'); // Also emit to admins room
+            console.log(`🔄 Emitted permissions_updated to admin:${currentAdmin.userId}`);
+          } catch (socketError) {
+            console.error('❌ Error emitting permissions_updated:', socketError);
+          }
+        }
       } else {
         adminData.permissionsVersion = 1; // First time setting permissions
       }
@@ -3988,6 +4131,24 @@ app.put('/api/teachers/:id', authenticateToken, async (req, res) => {
       if (currentTeacher) {
         teacherData.permissionsVersion = (currentTeacher.permissionsVersion || 1) + 1;
         console.log(`🔄 Incremented teacher permissions version: ${currentTeacher.permissionsVersion || 1} → ${teacherData.permissionsVersion}`);
+        
+        // Phase 4: Also update User model's permissionsVersion to invalidate tokens
+        if (currentTeacher.userId) {
+          const newVersion = Date.now();
+          await User.updateOne(
+            { _id: currentTeacher.userId },
+            { $set: { permissionsVersion: newVersion } }
+          );
+          console.log(`🔄 Updated User permissionsVersion to ${newVersion} for userId: ${currentTeacher.userId}`);
+          
+          // Emit event to disconnect socket (force re-auth)
+          try {
+            io.to(`teacher:${currentTeacher.userId}`).emit('permissions_updated');
+            console.log(`🔄 Emitted permissions_updated to teacher:${currentTeacher.userId}`);
+          } catch (socketError) {
+            console.error('❌ Error emitting permissions_updated:', socketError);
+          }
+        }
       } else {
         teacherData.permissionsVersion = 1; // First time setting permissions
       }
@@ -12448,6 +12609,43 @@ app.get('/api', (req, res) => {
 });
 
 // Health check - improved with database connectivity check
+// TEST ENDPOINTS FOR PHASE 1 VERIFICATION (Remove after testing)
+// Test endpoint to trigger error logging
+app.get('/api/test/error', authenticateToken, async (req, res) => {
+  // Intentionally throw an error to test error logging
+  throw new Error('Test error for Phase 1 error logging verification');
+});
+
+// Test endpoint to check socket room membership
+app.get('/api/test/socket-rooms', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const role = req.user.role;
+    
+    const expectedRoom = role === 'student' 
+      ? `student:${userId}`
+      : role === 'teacher'
+      ? `teacher:${userId}`
+      : 'admins';
+    
+    // Get all sockets in the expected room
+    const sockets = await io.in(expectedRoom).fetchSockets();
+    
+    res.json({
+      userId,
+      role,
+      expectedRoom,
+      socketCount: sockets.length,
+      socketIds: sockets.map(s => s.id),
+      message: sockets.length > 0 
+        ? `✅ ${sockets.length} socket(s) found in room ${expectedRoom}`
+        : `⚠️ No sockets found in room ${expectedRoom}`
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/health', async (req, res) => {
   try {
     const readyState = mongoose.connection.readyState;
@@ -15268,11 +15466,12 @@ app.use((req, res) => {
   });
 });
 
+// Enhanced error logging middleware (must be before global error handler)
+app.use(errorLogger);
+
 // Global error handler middleware (must be last)
 app.use((err, req, res, next) => {
-  console.error('❌ Global error handler:', err);
-  console.error('Stack:', err.stack);
-  
+  // Error has already been logged by errorLogger middleware
   // Don't expose error details in production
   const errorResponse = {
     error: 'Internal server error',
@@ -15285,7 +15484,7 @@ app.use((err, req, res, next) => {
     errorResponse.stack = err.stack;
   }
   
-  res.status(500).json(errorResponse);
+  res.status(err.status || 500).json(errorResponse);
 });
 
 // Start server regardless of MongoDB connection status

@@ -188,7 +188,7 @@ const StudentRegistrationForm: React.FC<StudentRegistrationFormProps> = ({ onClo
         
         // Build update payload with only the fields being changed
         // Backend uses $set, so it will only update these fields and preserve the rest
-        const updatePayload = {
+        const updatePayload: Partial<Student> = {
           fullName: formData.fullName.trim(),
           parentName: formData.parentName.trim(),
           email: formData.email.trim(),

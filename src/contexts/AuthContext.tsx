@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, UserRole } from '../types';
 
 interface AuthContextType {
@@ -25,40 +25,63 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from localStorage on component mount
-  useEffect(() => {
-    console.log('🔍 AuthContext: Checking for saved user...');
+  // Helper function to extract permissions from token
+  const extractPermissionsFromToken = useCallback((token: string): any => {
+    try {
+      const base64Url = token.split('.')[1];
+      if (base64Url) {
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const decoded = JSON.parse(jsonPayload);
+        return decoded;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to extract data from token:', error);
+    }
+    return null;
+  }, []);
+
+  // Helper function to check if token is expired
+  const isTokenExpired = useCallback((token: string): boolean => {
+    try {
+      const decoded = extractPermissionsFromToken(token);
+      if (decoded && decoded.exp) {
+        return decoded.exp < Date.now() / 1000;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to check token expiration:', error);
+    }
+    return true; // Assume expired on error
+  }, [extractPermissionsFromToken]);
+
+  // Helper function to load user from localStorage
+  const loadUserFromStorage = useCallback(() => {
     const savedUser = localStorage.getItem('umar_academy_user');
     const savedToken = localStorage.getItem('umar_academy_token');
     
-    console.log('🔍 AuthContext: Saved user exists:', !!savedUser);
-    console.log('🔍 AuthContext: Saved token exists:', !!savedToken);
-    
     if (savedUser && savedToken) {
+      // Check if token is expired
+      if (isTokenExpired(savedToken)) {
+        console.warn('⚠️ AuthContext: Saved token is expired, clearing auth data');
+        localStorage.removeItem('umar_academy_user');
+        localStorage.removeItem('umar_academy_token');
+        setUser(null);
+        return;
+      }
+
       try {
         const parsedUser = JSON.parse(savedUser);
         
         // Phase 4: Extract permissions from saved token if not already in user object
         if (!parsedUser.permissions) {
-          try {
-            const base64Url = savedToken.split('.')[1];
-            if (base64Url) {
-              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-              const jsonPayload = decodeURIComponent(
-                atob(base64)
-                  .split('')
-                  .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                  .join('')
-              );
-              const decoded = JSON.parse(jsonPayload);
-              
-              if (decoded.permissions) {
-                parsedUser.permissions = decoded.permissions;
-              }
-            }
-          } catch (error) {
-            console.warn('⚠️ Failed to extract permissions from saved token:', error);
-            // Continue without permissions (backward compatibility)
+          const decoded = extractPermissionsFromToken(savedToken);
+          if (decoded && decoded.permissions) {
+            parsedUser.permissions = decoded.permissions;
           }
         }
         
@@ -68,13 +91,111 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.error('❌ AuthContext: Error parsing saved user:', error);
         localStorage.removeItem('umar_academy_user');
         localStorage.removeItem('umar_academy_token');
+        setUser(null);
       }
     } else {
-      console.log('ℹ️ AuthContext: No saved user found, user needs to login');
+      setUser(null);
     }
+  }, [extractPermissionsFromToken, isTokenExpired]);
+
+  // Load user from localStorage on component mount
+  useEffect(() => {
+    console.log('🔍 AuthContext: Checking for saved user...');
+    const savedUser = localStorage.getItem('umar_academy_user');
+    const savedToken = localStorage.getItem('umar_academy_token');
+    
+    console.log('🔍 AuthContext: Saved user exists:', !!savedUser);
+    console.log('🔍 AuthContext: Saved token exists:', !!savedToken);
+    
+    loadUserFromStorage();
+    
     console.log('✅ AuthContext: Setting isLoading to false');
     setIsLoading(false);
+  }, [loadUserFromStorage]);
+
+  // Define logout function early so it can be used in useEffects
+  const logout = useCallback(() => {
+    setUser(null);
+    setError(null);
+    localStorage.removeItem('umar_academy_user');
+    localStorage.removeItem('umar_academy_token');
+    
+    // Phase 2: Broadcast storage event for multi-tab sync
+    window.dispatchEvent(new Event('storage'));
   }, []);
+
+  // Phase 2: Multi-tab token sync - Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'umar_academy_token' || e.key === 'umar_academy_user') {
+        console.log('🔄 Storage changed in another tab, reloading user...');
+        
+        const newToken = localStorage.getItem('umar_academy_token');
+        const newUser = localStorage.getItem('umar_academy_user');
+        
+        if (newToken && newUser) {
+          // Check if token is expired
+          if (isTokenExpired(newToken)) {
+            console.warn('⚠️ Token from other tab is expired, logging out...');
+            setUser(null);
+            return;
+          }
+
+          try {
+            const parsedUser = JSON.parse(newUser);
+            
+            // Extract permissions from token if needed
+            if (!parsedUser.permissions) {
+              const decoded = extractPermissionsFromToken(newToken);
+              if (decoded && decoded.permissions) {
+                parsedUser.permissions = decoded.permissions;
+              }
+            }
+            
+            setUser(parsedUser);
+            console.log('✅ AuthContext: User synced from other tab');
+          } catch (error) {
+            console.error('❌ Error parsing user from storage:', error);
+            setUser(null);
+          }
+        } else {
+          // Token/user removed in another tab - logout
+          console.log('🔄 Token/user removed in other tab, logging out...');
+          setUser(null);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [extractPermissionsFromToken, isTokenExpired]);
+
+  // Phase 2: Periodic token expiration check
+  useEffect(() => {
+    if (!user) return;
+
+    // Check token expiration every 30 seconds
+    const tokenCheckInterval = setInterval(() => {
+      const token = localStorage.getItem('umar_academy_token');
+      if (token) {
+        if (isTokenExpired(token)) {
+          console.warn('⚠️ Token expired during session, logging out...');
+          logout();
+        }
+      } else {
+        // Token removed - logout
+        console.warn('⚠️ Token removed, logging out...');
+        logout();
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+    };
+  }, [user, isTokenExpired, logout]);
 
   const login = async (email: string, password: string, role?: UserRole): Promise<boolean> => {
     setError(null);
@@ -211,6 +332,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('umar_academy_token', data.token);
         localStorage.setItem('umar_academy_user', JSON.stringify(data.user));
         
+        // Phase 2: Broadcast storage event for multi-tab sync
+        window.dispatchEvent(new Event('storage'));
+        
         setUser(data.user);
         console.log('✅ Login successful:', data.user.name, data.user.role);
         return true;
@@ -232,13 +356,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       return false;
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    setError(null);
-    localStorage.removeItem('umar_academy_user');
-    localStorage.removeItem('umar_academy_token');
   };
 
   const value = {
