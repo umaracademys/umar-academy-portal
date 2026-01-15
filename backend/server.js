@@ -3042,7 +3042,29 @@ app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canMana
       avatar
     };
 
-    // Try to find existing user or create new one atomically
+    // First, try to find existing user (fast check)
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      await logActivity('user_created', {
+        req,
+        userId: req.user?.userId || null,
+        status: 'failure',
+        errorMessage: 'User already exists',
+        details: { 
+          email: normalizedEmail,
+          existingUserId: existingUser._id.toString(),
+          existingUserRole: existingUser.role
+        }
+      });
+      return res.status(409).json({ 
+        error: 'A user with that email already exists.',
+        existingUserId: existingUser._id.toString(),
+        existingUserRole: existingUser.role
+      });
+    }
+
+    // User doesn't exist - create atomically using findOneAndUpdate with upsert
+    // This ensures atomicity even if another request creates the user between findOne and this operation
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       {
@@ -3056,18 +3078,19 @@ app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canMana
       }
     );
 
-    // Check if this was an insert (new user) or update (existing user)
-    // We can detect this by checking if createdAt was just set (within last second)
-    const wasInserted = !user.createdAt || 
-      (new Date() - new Date(user.createdAt)) < 2000; // Created within last 2 seconds
+    // Verify this was actually an insert (not an update)
+    // Check if the document was just created by comparing timestamps
+    const now = new Date();
+    const createdAt = user.createdAt ? new Date(user.createdAt) : null;
+    const wasInserted = createdAt && (now - createdAt) < 3000; // Created within last 3 seconds
 
     if (!wasInserted) {
-      // User already existed - this is a duplicate attempt
+      // Document already existed (race condition: another request created it between our checks)
       await logActivity('user_created', {
         req,
         userId: req.user?.userId || null,
         status: 'failure',
-        errorMessage: 'User already exists',
+        errorMessage: 'User already exists (race condition detected)',
         details: { 
           email: normalizedEmail,
           existingUserId: user._id.toString(),
