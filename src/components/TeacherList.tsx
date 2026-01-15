@@ -322,8 +322,8 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
             </thead>
             <tbody className="divide-y divide-gray-200">
               {paginatedTeachers.length > 0 ? (
-                paginatedTeachers.map((teacher) => (
-                  <tr key={teacher.id} className="hover:bg-gray-50">
+                paginatedTeachers.map((teacher, index) => (
+                  <tr key={`${teacher._id || teacher.id || index}-${teacher.email || ''}`} className="hover:bg-gray-50">
                     <td className="px-2 py-2">
                       <div className="flex items-center">
                         <img 
