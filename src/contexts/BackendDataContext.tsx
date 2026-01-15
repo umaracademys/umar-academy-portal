@@ -31,7 +31,7 @@ interface BackendDataContextType {
   teachers: Teacher[];
   admins: Admin[];
   addStudent: (student: Student) => Promise<void>;
-  addTeacher: (teacher: Teacher) => Promise<void>;
+  addTeacher: (teacher: Teacher) => Promise<Teacher>;
   addAdmin: (admin: Admin) => Promise<void>;
   updateStudent: (id: string, student: Partial<Student>) => Promise<void>;
   updateStudentRecitation: (
@@ -524,9 +524,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           if (usersResponse.status === 'fulfilled' && usersResponse.value.ok) {
             users = await usersResponse.value.json();
-            if (import.meta.env.DEV) {
+          if (import.meta.env.DEV) {
               console.log('👥 Users loaded from backend:', users.length);
-            }
+          }
             dataCache.set('users', users);
           } else {
             throw new Error(`Failed to fetch users: ${usersResponse.status}`);
@@ -534,7 +534,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
             teacherRecords = await teachersResponse.value.json();
-            if (import.meta.env.DEV) {
+          if (import.meta.env.DEV) {
               console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
             }
             dataCache.set('teachers', teacherRecords);
@@ -3148,7 +3148,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log(`[${requestId}] Teacher payload:`, JSON.stringify(teacherPayload, null, 2));
       console.log(`[${requestId}] Request URL: ${API_BASE}/teachers`);
       console.log(`[${requestId}] Request method: POST`);
-      
+
       const teacherResponse = await fetchWithTimeout(
         `${API_BASE}/teachers`,
         {
@@ -3234,7 +3234,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       const totalTime = Date.now() - startTime;
       console.log(`[${requestId}] ========== FRONTEND: TEACHER CREATION SUCCESS (${totalTime}ms) ==========\n`);
-      
+
       if (import.meta.env.DEV) {
         console.log('✅ Teacher created successfully:', mappedTeacher.fullName);
       }
