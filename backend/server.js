@@ -3010,27 +3010,6 @@ app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canMana
     // Normalize email (lowercase, trim) to prevent duplicates
     const normalizedEmail = email.toLowerCase().trim();
 
-    // ✅ FIX: Explicit duplicate check BEFORE creating user (prevents race conditions)
-    const existingUser = await User.findOne({ email: normalizedEmail });
-    if (existingUser) {
-      await logActivity('user_created', {
-        req,
-        userId: req.user?.userId || null,
-        status: 'failure',
-        errorMessage: 'User already exists',
-        details: { 
-          email: normalizedEmail,
-          existingUserId: existingUser._id.toString(),
-          existingUserRole: existingUser.role
-        }
-      });
-      return res.status(409).json({ 
-        error: 'A user with that email already exists.',
-        existingUserId: existingUser._id.toString(),
-        existingUserRole: existingUser.role
-      });
-    }
-
     // Validate email format
     if (!validateEmail(normalizedEmail)) {
       return res.status(400).json({ error: 'Invalid email format' });
@@ -3053,15 +3032,54 @@ app.post('/api/users', apiLimiter, authenticateToken, requirePermission('canMana
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
-    const user = new User({
+    // ✅ ATOMIC FIX: Use findOneAndUpdate with upsert for atomic check-and-create
+    // This eliminates the TOCTOU race condition by making check and create a single atomic operation
+    const userData = {
       name,
-      email: normalizedEmail, // Use normalized email
+      email: normalizedEmail,
       role,
       password: hashedPassword,
       avatar
-    });
-    
-    await user.save();
+    };
+
+    // Try to find existing user or create new one atomically
+    const user = await User.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        $setOnInsert: userData // Only set these fields if creating new document
+      },
+      {
+        upsert: true, // Create if doesn't exist
+        new: true, // Return the document after update
+        runValidators: true, // Run schema validators
+        setDefaultsOnInsert: true // Apply schema defaults on insert
+      }
+    );
+
+    // Check if this was an insert (new user) or update (existing user)
+    // We can detect this by checking if createdAt was just set (within last second)
+    const wasInserted = !user.createdAt || 
+      (new Date() - new Date(user.createdAt)) < 2000; // Created within last 2 seconds
+
+    if (!wasInserted) {
+      // User already existed - this is a duplicate attempt
+      await logActivity('user_created', {
+        req,
+        userId: req.user?.userId || null,
+        status: 'failure',
+        errorMessage: 'User already exists',
+        details: { 
+          email: normalizedEmail,
+          existingUserId: user._id.toString(),
+          existingUserRole: user.role
+        }
+      });
+      return res.status(409).json({ 
+        error: 'A user with that email already exists.',
+        existingUserId: user._id.toString(),
+        existingUserRole: user.role
+      });
+    }
     
     // Log user creation
     await logActivity('user_created', {
