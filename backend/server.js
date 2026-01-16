@@ -7439,11 +7439,22 @@ app.get('/api/tickets', async (req, res) => {
     if (type) query.type = type;
     if (status) query.status = status;
     
+    console.log(`🔵 [GET Tickets] Fetching tickets with query:`, query);
     const tickets = await Ticket.find(query)
       .sort({ createdAt: -1 })
       .limit(1000);
-    res.json(tickets);
+    
+    // Ensure all tickets have both _id and id fields for frontend consistency
+    const ticketsWithId = tickets.map(ticket => {
+      const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+      ticketObj.id = ticket._id.toString(); // Add id field for frontend
+      return ticketObj;
+    });
+    
+    console.log(`✅ [GET Tickets] Returning ${ticketsWithId.length} tickets`);
+    res.json(ticketsWithId);
   } catch (error) {
+    console.error(`❌ [GET Tickets] Error fetching tickets:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -7456,7 +7467,15 @@ app.get('/api/tickets/teacher/:teacherId', async (req, res) => {
       status: { $in: ['pending', 'in_progress', 'reassigned'] }
     })
       .sort({ createdAt: -1 });
-    res.json(tickets);
+    
+    // Ensure all tickets have both _id and id fields for frontend consistency
+    const ticketsWithId = tickets.map(ticket => {
+      const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+      ticketObj.id = ticket._id.toString(); // Add id field for frontend
+      return ticketObj;
+    });
+    
+    res.json(ticketsWithId);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -7469,7 +7488,15 @@ app.get('/api/tickets/pending-review', async (req, res) => {
       status: 'submitted'
     })
       .sort({ submittedAt: -1 });
-    res.json(tickets);
+    
+    // Ensure all tickets have both _id and id fields for frontend consistency
+    const ticketsWithId = tickets.map(ticket => {
+      const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+      ticketObj.id = ticket._id.toString(); // Add id field for frontend
+      return ticketObj;
+    });
+    
+    res.json(ticketsWithId);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -7487,7 +7514,14 @@ app.get('/api/tickets/previous-reports/:studentId/:type', async (req, res) => {
       .sort({ sentAt: -1 })
       .limit(5); // Get last 5 reports
     
-    res.json(tickets);
+    // Ensure all tickets have both _id and id fields for frontend consistency
+    const ticketsWithId = tickets.map(ticket => {
+      const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+      ticketObj.id = ticket._id.toString(); // Add id field for frontend
+      return ticketObj;
+    });
+    
+    res.json(ticketsWithId);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -7685,12 +7719,20 @@ const findTicketById = async (ticketId) => {
 // Get single ticket by ID - MUST come after all specific routes
 app.get('/api/tickets/:id', async (req, res) => {
   try {
-    const ticket = await findTicketById(req.params.id);
+    const ticketId = req.params.id;
+    console.log(`🔵 [GET Ticket] Fetching ticket with ID: ${ticketId}`);
+    const ticket = await findTicketById(ticketId);
     if (!ticket) {
+      console.error(`❌ [GET Ticket] Ticket not found with ID: ${ticketId}`);
       return res.status(404).json({ error: 'Ticket not found' });
     }
-    res.json(ticket);
+    // Ensure response includes both _id and id for frontend consistency
+    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+    ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+    console.log(`✅ [GET Ticket] Ticket found: _id=${ticket._id}, id=${ticketResponse.id}`);
+    res.json(ticketResponse);
   } catch (error) {
+    console.error(`❌ [GET Ticket] Error fetching ticket:`, error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -7857,24 +7899,27 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
         // Don't fail the request if notification creation fails
       }
       
+      // Ensure response includes both _id and id for frontend consistency
+      const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+      ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+      
       // Emit WebSocket event for ticket creation
       try {
-        const ticketData = ticket.toObject ? ticket.toObject() : ticket;
         // Emit to student and assigned teacher
         if (ticket.studentId) {
-          io.to(`student:${ticket.studentId}`).emit('ticket:created', ticketData);
+          io.to(`student:${ticket.studentId}`).emit('ticket:created', ticketResponse);
         }
         if (ticket.assignedTeacherId) {
-          io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:created', ticketData);
+          io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:created', ticketResponse);
         }
         // Also emit to admins
-        io.to('admins').emit('ticket:created', ticketData);
+        io.to('admins').emit('ticket:created', ticketResponse);
         console.log(`🔌 Emitted ticket:created event`);
       } catch (socketError) {
         console.error('⚠️ Error emitting ticket:created event:', socketError);
       }
       
-      res.status(201).json(ticket);
+      res.status(201).json(ticketResponse);
     } catch (ticketError) {
       console.error('❌ Error creating ticket document:', ticketError);
       console.error('❌ Ticket data that failed:', req.body);
@@ -7899,22 +7944,25 @@ app.put('/api/tickets/:id', async (req, res) => {
     Object.assign(ticket, req.body);
     await ticket.save();
     
+    // Ensure response includes both _id and id for frontend consistency
+    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+    ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+    
     // Emit WebSocket event for ticket update
     try {
-      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
       if (ticket.studentId) {
-        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketResponse);
       }
       if (ticket.assignedTeacherId) {
-        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketData);
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketResponse);
       }
-      io.to('admins').emit('ticket:updated', ticketData);
+      io.to('admins').emit('ticket:updated', ticketResponse);
       console.log(`🔌 Emitted ticket:updated event`);
     } catch (socketError) {
       console.error('⚠️ Error emitting ticket:updated event:', socketError);
     }
     
-    res.json(ticket);
+    res.json(ticketResponse);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -7932,7 +7980,10 @@ app.post('/api/tickets/:id/start', async (req, res) => {
     ticket.startedAt = new Date();
     await ticket.save();
     
-    res.json(ticket);
+    // Ensure response includes both _id and id for frontend consistency
+    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+    ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+    res.json(ticketResponse);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -7993,22 +8044,25 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
     
     console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
     
+    // Ensure response includes both _id and id for frontend consistency
+    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+    ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+    
     // Emit WebSocket event for ticket submission
     try {
-      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
       if (ticket.studentId) {
-        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketResponse);
       }
       if (ticket.assignedTeacherId) {
-        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketData);
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', ticketResponse);
       }
-      io.to('admins').emit('ticket:updated', ticketData);
+      io.to('admins').emit('ticket:updated', ticketResponse);
       console.log(`🔌 Emitted ticket:updated event for submission`);
     } catch (socketError) {
       console.error('⚠️ Error emitting ticket:updated event:', socketError);
     }
     
-    res.json(ticket);
+    res.json(ticketResponse);
   } catch (error) {
     console.error('❌ Error submitting ticket:', error);
     res.status(500).json({ error: error.message });
@@ -8298,6 +8352,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
 
     // OPTIMIZED: Convert to plain objects and send response immediately
     const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+    ticketObj.id = ticket._id.toString(); // Add id field for frontend consistency
     const assignmentObj = assignment.toObject ? assignment.toObject() : assignment;
     
     const assignmentResponse = {
@@ -8363,7 +8418,11 @@ app.post('/api/tickets/:id/reassign', async (req, res) => {
     ticket.reassignedAt = new Date();
     
     await ticket.save();
-    res.json(ticket);
+    
+    // Ensure response includes both _id and id for frontend consistency
+    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+    ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+    res.json(ticketResponse);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

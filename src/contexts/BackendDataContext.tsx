@@ -2451,7 +2451,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const ticketsData = await ticketsRes.json();
         const mappedTickets = ticketsData.map((ticket: any) => ({
           ...ticket,
-          id: ticket._id || ticket.id,
+          id: ticket.id || ticket._id || ticket.id, // Prefer id if backend provides it
           createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
         }));
         setTickets(mappedTickets);
@@ -2460,10 +2460,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           .filter((t: any) => t.type && ['sabq', 'sabqi', 'manzil'].includes(t.type))
           .map((ticket: any) => ({
             ...ticket,
-            id: ticket._id || ticket.id,
+            id: ticket.id || ticket._id || ticket.id, // Prefer id if backend provides it
             createdAt: ticket.createdAt ? new Date(ticket.createdAt) : new Date(),
           }));
-        setRecitationTickets(recitationTicketsData);
+        
+        // Merge instead of replace to preserve newly created tickets
+        setRecitationTickets(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const newTickets = recitationTicketsData.filter(t => !existingIds.has(t.id));
+          const merged = [...prev, ...newTickets];
+          // Update existing tickets with fresh data
+          const updated = merged.map(t => {
+            const fresh = recitationTicketsData.find(ft => (ft.id || ft._id) === t.id);
+            return fresh ? { ...t, ...fresh, id: fresh.id || fresh._id || t.id } : t;
+          });
+          return updated;
+        });
       }
 
       if (notificationsRes?.ok) {
@@ -4044,6 +4056,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // New Ticket System Functions (sabq/sabqi/manzil workflow)
   const createTicket = async (ticket: Partial<Ticket>): Promise<Ticket> => {
     try {
+      console.log('📤 [createTicket] Creating ticket:', ticket);
       const response = await fetch(`${API_BASE}/tickets`, {
         method: 'POST',
         headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
@@ -4054,13 +4067,35 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         throw new Error(errorData.error || 'Failed to create ticket');
       }
       const newTicket = await response.json();
+      console.log('✅ [createTicket] Ticket created, response:', {
+        _id: newTicket._id,
+        id: newTicket.id,
+        type: newTicket.type,
+        status: newTicket.status
+      });
+      
+      // Backend now provides both _id and id, prefer id
       const mappedTicket = {
         ...newTicket,
-        id: newTicket._id || newTicket.id,
+        id: newTicket.id || newTicket._id || newTicket.id, // Prefer id if backend provides it
         createdAt: newTicket.createdAt ? new Date(newTicket.createdAt) : new Date(),
         updatedAt: newTicket.updatedAt ? new Date(newTicket.updatedAt) : new Date()
       };
+      
+      console.log('✅ [createTicket] Mapped ticket:', {
+        id: mappedTicket.id,
+        _id: mappedTicket._id,
+        type: mappedTicket.type
+      });
+      
       setRecitationTickets(prev => {
+        // Check if ticket already exists (avoid duplicates)
+        const exists = prev.some(t => t.id === mappedTicket.id);
+        if (exists) {
+          console.log('⚠️ [createTicket] Ticket already in state, updating:', mappedTicket.id);
+          return prev.map(t => t.id === mappedTicket.id ? mappedTicket : t);
+        }
+        console.log('✅ [createTicket] Adding new ticket to state:', mappedTicket.id);
         const updated = [...prev, mappedTicket];
         // ✅ FIX: Invalidate and update cache
         dataCache.delete('tickets');
@@ -4069,7 +4104,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       });
       return mappedTicket;
     } catch (error) {
-      console.error('Error creating ticket:', error);
+      console.error('❌ [createTicket] Error creating ticket:', error);
       throw error;
     }
   };
