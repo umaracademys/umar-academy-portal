@@ -7496,7 +7496,7 @@ app.get('/api/tickets/previous-reports/:studentId/:type', async (req, res) => {
 // Diagnostic endpoint: Check ticket-to-assignment linkage
 app.get('/api/tickets/:id/verify-assignment', async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await findTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
@@ -7665,10 +7665,27 @@ app.post('/api/tickets/fix-missing-assignment-ids', async (req, res) => {
   }
 });
 
+// Helper function to find ticket by ID (handles both _id and id field)
+const findTicketById = async (ticketId) => {
+  // Try to find ticket by _id first, then by id field
+  let ticket = await Ticket.findById(ticketId);
+  if (!ticket) {
+    // Try finding by 'id' field (string ID)
+    ticket = await Ticket.findOne({ id: ticketId });
+  }
+  if (!ticket) {
+    // Try finding by _id as string
+    if (mongoose.Types.ObjectId.isValid(ticketId)) {
+      ticket = await Ticket.findById(new mongoose.Types.ObjectId(ticketId));
+    }
+  }
+  return ticket;
+};
+
 // Get single ticket by ID - MUST come after all specific routes
 app.get('/api/tickets/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await findTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
@@ -7873,14 +7890,14 @@ app.post('/api/tickets', authenticateToken, async (req, res) => {
 // Update ticket
 app.put('/api/tickets/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const ticket = await findTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    // Update ticket fields
+    Object.assign(ticket, req.body);
+    await ticket.save();
     
     // Emit WebSocket event for ticket update
     try {
@@ -7906,17 +7923,15 @@ app.put('/api/tickets/:id', async (req, res) => {
 // Teacher starts ticket (status: pending -> in_progress)
 app.post('/api/tickets/:id/start', async (req, res) => {
   try {
-    const ticket = await Ticket.findByIdAndUpdate(
-      req.params.id,
-      { 
-        status: 'in_progress',
-        startedAt: new Date()
-      },
-      { new: true }
-    );
+    const ticket = await findTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    ticket.status = 'in_progress';
+    ticket.startedAt = new Date();
+    await ticket.save();
+    
     res.json(ticket);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -7926,6 +7941,10 @@ app.post('/api/tickets/:id/start', async (req, res) => {
 // Teacher submits ticket (status: in_progress -> submitted)
 app.post('/api/tickets/:id/submit', async (req, res) => {
   try {
+    const ticketId = req.params.id;
+    console.log(`🔵 [Submit] Submitting ticket with ID: ${ticketId}`);
+    console.log(`🔵 [Submit] Ticket ID type: ${typeof ticketId}`);
+    
     const { 
       teacherComment, 
       mistakes, 
@@ -7958,15 +7977,19 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
       }
     }
     
-    const ticket = await Ticket.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true }
-    );
+    // Use helper function to find ticket (handles both _id and id field)
+    const ticket = await findTicketById(ticketId);
     
     if (!ticket) {
+      console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    console.log(`✅ [Submit] Ticket found: _id=${ticket._id}, id=${ticket.id}, status=${ticket.status}`);
+    
+    // Update the ticket
+    Object.assign(ticket, updateData);
+    await ticket.save();
     
     console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
     
@@ -8002,27 +8025,11 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
     
     const { assignmentId, recordingUrl, recordingFormat, recordingDuration, recordingStartedAt, recordingStoppedAt } = req.body;
     
-    // Try to find ticket by _id first, then by id field
-    let ticket = await Ticket.findById(ticketId);
-    if (!ticket) {
-      // Try finding by 'id' field (string ID)
-      ticket = await Ticket.findOne({ id: ticketId });
-    }
-    if (!ticket) {
-      // Try finding by _id as string
-      if (mongoose.Types.ObjectId.isValid(ticketId)) {
-        ticket = await Ticket.findById(new mongoose.Types.ObjectId(ticketId));
-      }
-    }
+    // Use helper function to find ticket (handles both _id and id field)
+    const ticket = await findTicketById(ticketId);
     
     if (!ticket) {
       console.error(`❌ [Approve] Ticket not found with ID: ${ticketId}`);
-      console.error(`❌ [Approve] Attempted lookups: findById(${ticketId}), findOne({id: ${ticketId}}), findById(ObjectId(${ticketId}))`);
-      // Log sample ticket IDs for debugging
-      const sampleTicket = await Ticket.findOne().limit(1);
-      if (sampleTicket) {
-        console.error(`❌ [Approve] Sample ticket _id: ${sampleTicket._id}, id: ${sampleTicket.id}`);
-      }
       return res.status(404).json({ error: 'Ticket not found' });
     }
     
@@ -8331,7 +8338,7 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
 app.post('/api/tickets/:id/reassign', async (req, res) => {
   try {
     const { teacherId, teacherName, reason } = req.body;
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await findTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
@@ -8364,10 +8371,11 @@ app.post('/api/tickets/:id/reassign', async (req, res) => {
 
 app.delete('/api/tickets/:id', async (req, res) => {
   try {
-    const ticket = await Ticket.findByIdAndDelete(req.params.id);
+    const ticket = await findTicketById(req.params.id);
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    await ticket.deleteOne();
     res.json({ message: 'Ticket deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
