@@ -122,8 +122,15 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     setIsProcessing(true);
     
     try {
-      console.log('✅ Approving ticket:', selectedTicket.id, 'Type:', selectedTicket.type);
-      const result = await approveAndSendTicket(selectedTicket.id, '');
+      // Use _id if available (MongoDB ObjectId), otherwise fall back to id
+      const ticketId = selectedTicket._id || selectedTicket.id;
+      console.log('✅ Approving ticket:', ticketId, 'Type:', selectedTicket.type);
+      console.log('✅ Ticket ID details:', { 
+        _id: selectedTicket._id, 
+        id: selectedTicket.id, 
+        using: ticketId 
+      });
+      const result = await approveAndSendTicket(ticketId, '');
       console.log('✅ Approval result:', result);
       
       // Show success message with details

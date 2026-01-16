@@ -1,3 +1,6 @@
+// 🔒 HARD KILL SWITCH: Disable FFmpeg for live recitation (PCM-only mode)
+process.env.DISABLE_FFMPEG_FOR_LIVE = 'true';
+
 // Load environment variables from .env file if it exists
 try {
   const path = require('path');
@@ -98,6 +101,284 @@ io.on('connection', (socket) => {
     ? `teacher:${socket.userId}`
     : 'admins';
   
+  // ✅ QUEUE + WORKER: Set up queue event listeners for this socket
+  const recitationQueue = require('./services/recitationQueue');
+  
+  // Listen for chunk processing results
+  const onChunkProcessed = ({ sessionId, chunkIndex, result }) => {
+    if (result && result.status === 'processed') {
+      // Emit updates to all clients in session room
+      io.to(`recitation:live:${sessionId}`).emit('recitation:live:update', {
+        text: result.text,
+        fullTranscript: result.fullTranscript,
+        metrics: result.metrics,
+        newMistakes: result.newMistakes,
+        segments: result.segments
+      });
+    } else if (result && result.status === 'error') {
+      console.warn(`⚠️ [Queue] Chunk processing error for session ${sessionId}:`, result.message);
+      io.to(`recitation:live:${sessionId}`).emit('recitation:warning', { 
+        message: result.message,
+        chunkIndex
+      });
+    }
+  };
+
+  const onChunkError = ({ sessionId, chunkIndex, error }) => {
+    io.to(`recitation:live:${sessionId}`).emit('recitation:warning', {
+      message: `Chunk ${chunkIndex} processing error: ${error}`,
+      chunkIndex
+    });
+  };
+
+  recitationQueue.on('chunk-processed', onChunkProcessed);
+  recitationQueue.on('chunk-error', onChunkError);
+
+  // Clean up listeners on disconnect
+  socket.on('disconnect', () => {
+    recitationQueue.removeListener('chunk-processed', onChunkProcessed);
+    recitationQueue.removeListener('chunk-error', onChunkError);
+  });
+  
+  // AI Recitation Monitoring WebSocket handlers
+  socket.on('recitation:start', async (data) => {
+    const { sessionId } = data;
+    if (sessionId) {
+      socket.join(`recitation:${sessionId}`);
+      console.log(`📡 User ${socket.userId} joined recitation session ${sessionId}`);
+    }
+  });
+
+  socket.on('recitation:audio-chunk', async (data) => {
+    const { sessionId, audioChunk } = data;
+    if (!sessionId || !audioChunk) {
+      socket.emit('recitation:error', { message: 'Missing sessionId or audioChunk' });
+      return;
+    }
+
+    try {
+      const recitationProcessor = require('./services/recitationProcessor');
+      const transcription = await recitationProcessor.processStream(
+        Buffer.from(audioChunk, 'base64'),
+        sessionId
+      );
+      
+      // Emit transcription update to all clients in session room
+      io.to(`recitation:${sessionId}`).emit('recitation:transcription', {
+        text: transcription.text,
+        segments: transcription.segments,
+        fullTranscript: transcription.fullTranscript
+      });
+    } catch (error) {
+      console.error('Error processing audio chunk:', error);
+      socket.emit('recitation:error', { message: error.message });
+    }
+  });
+
+  socket.on('recitation:finalize', async (data) => {
+    const { sessionId } = data;
+    if (!sessionId) {
+      socket.emit('recitation:error', { message: 'Missing sessionId' });
+      return;
+    }
+
+    try {
+      const recitationProcessor = require('./services/recitationProcessor');
+      const session = await recitationProcessor.finalizeStream(sessionId);
+      
+      io.to(`recitation:${sessionId}`).emit('recitation:completed', {
+        sessionId,
+        session
+      });
+    } catch (error) {
+      console.error('Error finalizing session:', error);
+      socket.emit('recitation:error', { message: error.message });
+    }
+  });
+
+  // Live recitation monitoring handlers
+  socket.on('recitation:live:start', async (data) => {
+    const { sessionId } = data;
+    if (!sessionId) {
+      socket.emit('recitation:error', { message: 'Missing sessionId' });
+      return;
+    }
+
+    try {
+      const liveRecitationProcessor = require('./services/liveRecitationProcessor');
+      const recitationQueue = require('./services/recitationQueue');
+      const RecitationSession = require('./schemas/recitationSession');
+      const session = await RecitationSession.findById(sessionId);
+      
+      if (!session) {
+        socket.emit('recitation:error', { message: 'Session not found' });
+        return;
+      }
+
+      // Initialize live processing
+      await liveRecitationProcessor.initializeSession(
+        sessionId,
+        session.surahNumber,
+        session.startAyah,
+        session.endAyah
+      );
+
+      // Start queue worker for this session
+      recitationQueue.startWorker(sessionId);
+
+      socket.join(`recitation:live:${sessionId}`);
+      socket.emit('recitation:live:started', { sessionId });
+      
+      console.log(`📡 Live monitoring started for session ${sessionId} (queue worker active)`);
+    } catch (error) {
+      console.error('Error starting live monitoring:', error);
+      socket.emit('recitation:error', { message: error.message });
+    }
+  });
+
+        socket.on('recitation:live:chunk', (payload) => {
+          // ✅ QUEUE + WORKER PATTERN: Non-blocking chunk enqueue
+          // Transcription happens in background worker, keeping Socket.IO responsive
+          console.log(`🔵 [Queue] Chunk enqueued for session ${payload.sessionId}, chunk ${payload.chunkIndex || 0}`);
+          
+          try {
+            const { sessionId, audioChunk, chunkIndex, format, sampleRate } = payload;
+            
+            if (!sessionId || !audioChunk) {
+              socket.emit('recitation:error', { message: 'Missing sessionId or audioChunk' });
+              return;
+            }
+
+            // 🔒 HARD KILL: Reject non-PCM formats
+            if (format && typeof format === 'string' && format !== 'pcm_int16' && format !== 'pcm' && format !== 'pcm_float32') {
+              if (isNaN(parseFloat(format))) {
+                socket.emit('recitation:error', { 
+                  message: `Only PCM audio is supported. Received format: ${format}` 
+                });
+                return;
+              }
+            }
+
+            // 🔒 HARD KILL: Prevent FFmpeg usage
+            if (process.env.DISABLE_FFMPEG_FOR_LIVE === 'true') {
+              if (format === 'webm' || format === 'webm;codecs=opus') {
+                socket.emit('recitation:error', { 
+                  message: 'FFmpeg is DISABLED. WebM format is not supported. Use PCM only.' 
+                });
+                return;
+              }
+            }
+
+            // Enqueue chunk for background processing (NON-BLOCKING)
+            const recitationQueue = require('./services/recitationQueue');
+            const actualSampleRate = (typeof sampleRate === 'number' && sampleRate > 0) 
+              ? sampleRate 
+              : (typeof format === 'number' ? format : 16000);
+            
+            recitationQueue.enqueueChunk(sessionId, {
+              audioChunkBase64: audioChunk,
+              chunkIndex: chunkIndex || 0,
+              sampleRate: actualSampleRate
+            });
+
+            // Immediately acknowledge receipt (Socket.IO stays responsive)
+            socket.emit('recitation:chunk-acknowledged', {
+              sessionId,
+              chunkIndex: chunkIndex || 0,
+              queueSize: recitationQueue.getQueueStatus(sessionId).queueSize
+            });
+
+          } catch (err) {
+            console.error(`❌ [Queue] Error enqueueing chunk:`, err);
+            socket.emit('recitation:error', { message: err.message });
+          }
+        });
+
+  socket.on('recitation:live:finalize', async (data) => {
+    // ✅ QUEUE + WORKER: Process remaining queue items before finalizing
+    const { sessionId } = data;
+    if (!sessionId) {
+      socket.emit('recitation:error', { message: 'Missing sessionId' });
+      return;
+    }
+
+    try {
+      console.log(`🔵 [Queue] Finalizing session ${sessionId}...`);
+      
+      const recitationQueue = require('./services/recitationQueue');
+      const liveRecitationProcessor = require('./services/liveRecitationProcessor');
+      
+      // Process any remaining queued chunks (wait up to 5 seconds)
+      const queueStatus = recitationQueue.getQueueStatus(sessionId);
+      if (queueStatus.queueSize > 0) {
+        console.log(`⏳ [Queue] Processing ${queueStatus.queueSize} remaining chunks before finalization...`);
+        
+        // Wait for queue to empty (with timeout)
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds (50 * 100ms)
+        while (recitationQueue.getQueueStatus(sessionId).queueSize > 0 && attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+        
+        if (recitationQueue.getQueueStatus(sessionId).queueSize > 0) {
+          console.warn(`⚠️ [Queue] ${recitationQueue.getQueueStatus(sessionId).queueSize} chunks still in queue after timeout`);
+        }
+      }
+      
+      // Stop queue worker
+      recitationQueue.stopWorker(sessionId);
+      
+      // Finalize session (process any remaining buffered chunks and generate final report)
+      const finalData = await liveRecitationProcessor.finalizeSession(sessionId);
+      
+      console.log(`✅ [Queue] Session ${sessionId} finalized successfully`);
+      
+      // Emit final completion event
+      io.to(`recitation:live:${sessionId}`).emit('recitation:live:completed', {
+        sessionId,
+        metrics: finalData.metrics,
+        transcript: finalData.transcript,
+        mistakes: finalData.detectedMistakes
+      });
+      
+      console.log(`✅ [Queue] Live monitoring finalized for session ${sessionId}`);
+    } catch (error) {
+      console.error(`❌ [Queue] Error finalizing live session:`, error);
+      socket.emit('recitation:error', { message: error.message });
+    }
+  });
+
+  socket.on('recitation:live:status', async (data) => {
+    const { sessionId } = data;
+    if (!sessionId) {
+      socket.emit('recitation:error', { message: 'Missing sessionId' });
+      return;
+    }
+
+    try {
+      const liveRecitationProcessor = require('./services/liveRecitationProcessor');
+      const state = liveRecitationProcessor.getSessionState(sessionId);
+      
+      if (state) {
+        socket.emit('recitation:live:status', {
+          sessionId,
+          metrics: state.metrics,
+          transcript: state.transcript,
+          mistakesCount: state.detectedMistakes.length
+        });
+      } else {
+        socket.emit('recitation:live:status', {
+          sessionId,
+          status: 'not_active'
+        });
+      }
+    } catch (error) {
+      console.error('Error getting live status:', error);
+      socket.emit('recitation:error', { message: error.message });
+    }
+  });
+  
   socket.join(roomName);
   console.log(`✅ Socket joined room: ${roomName}`);
   
@@ -120,6 +401,8 @@ io.on('connection', (socket) => {
   
   socket.on('disconnect', (reason) => {
     console.log(`❌ Socket disconnected: ${socket.userEmail} (${socket.userRole}) [${reason}]`);
+    // Note: Queue workers are session-based, not socket-based, so they continue running
+    // They will be stopped when the session is finalized
   });
   
   // Handle permission updates
@@ -5848,6 +6131,22 @@ const ticketSchema = new mongoose.Schema({
   recordingDuration: { type: Number }, // Duration in seconds
   recordingStartedAt: { type: Date }, // When recording started
   recordingStoppedAt: { type: Date }, // When recording stopped
+  // AI Recitation Monitoring
+  recitationSessionId: { type: String }, // Link to AI recitation session
+  aiMetrics: {
+    fluencyPercentage: Number,
+    wordsPerMinute: Number,
+    totalMistakes: Number,
+    mistakesByType: {
+      skipped: Number,
+      repeated: Number,
+      incorrect: Number,
+      tajweed: Number,
+      pause: Number
+    },
+    reportGenerated: Boolean,
+    reportGeneratedAt: Date
+  },
   // Timestamps
   startedAt: { type: Date }, // When teacher started
   submittedAt: { type: Date }, // When teacher submitted
@@ -7696,11 +7995,38 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
 // Admin approves and sends to assignment
 app.post('/api/tickets/:id/approve-send', async (req, res) => {
   try {
+    const ticketId = req.params.id;
+    console.log(`🔵 [Approve] Approving ticket with ID: ${ticketId}`);
+    console.log(`🔵 [Approve] Ticket ID type: ${typeof ticketId}`);
+    console.log(`🔵 [Approve] Ticket ID length: ${ticketId?.length}`);
+    
     const { assignmentId, recordingUrl, recordingFormat, recordingDuration, recordingStartedAt, recordingStoppedAt } = req.body;
-    const ticket = await Ticket.findById(req.params.id);
+    
+    // Try to find ticket by _id first, then by id field
+    let ticket = await Ticket.findById(ticketId);
     if (!ticket) {
+      // Try finding by 'id' field (string ID)
+      ticket = await Ticket.findOne({ id: ticketId });
+    }
+    if (!ticket) {
+      // Try finding by _id as string
+      if (mongoose.Types.ObjectId.isValid(ticketId)) {
+        ticket = await Ticket.findById(new mongoose.Types.ObjectId(ticketId));
+      }
+    }
+    
+    if (!ticket) {
+      console.error(`❌ [Approve] Ticket not found with ID: ${ticketId}`);
+      console.error(`❌ [Approve] Attempted lookups: findById(${ticketId}), findOne({id: ${ticketId}}), findById(ObjectId(${ticketId}))`);
+      // Log sample ticket IDs for debugging
+      const sampleTicket = await Ticket.findOne().limit(1);
+      if (sampleTicket) {
+        console.error(`❌ [Approve] Sample ticket _id: ${sampleTicket._id}, id: ${sampleTicket.id}`);
+      }
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    console.log(`✅ [Approve] Ticket found: _id=${ticket._id}, id=${ticket.id}, status=${ticket.status}`);
 
     // OPTIMIZED: Find or create assignment efficiently
     let assignment;
@@ -10248,13 +10574,16 @@ app.post('/api/ai/suggestions', async (req, res) => {
     const fieldSuggestions = suggestions[fieldType] || [];
 
     // If OpenAI API key is available, enhance suggestions
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (openaiApiKey && context) {
+    const openaiService = require('./services/openaiService');
+    if (openaiService.isEnabled() && context) {
       try {
-        // You can integrate OpenAI here for dynamic suggestions
-        // For now, return predefined suggestions
+        const aiSuggestions = await openaiService.generateSuggestions(context, []);
+        if (aiSuggestions && aiSuggestions.length > 0) {
+          // Merge AI suggestions with predefined ones
+          fieldSuggestions.unshift(...aiSuggestions.slice(0, 3)); // Add top 3 AI suggestions at the beginning
+        }
       } catch (error) {
-        console.warn('OpenAI API not available, using predefined suggestions');
+        console.warn('OpenAI API not available, using predefined suggestions:', error.message);
       }
     }
 
@@ -10311,13 +10640,24 @@ app.post('/api/ai/summarize', async (req, res) => {
     }
 
     // If OpenAI API key is available, use it for better summarization
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (openaiApiKey) {
+    const openaiService = require('./services/openaiService');
+    if (openaiService.isEnabled()) {
       try {
-        // You can integrate OpenAI here for AI-powered summarization
-        // For now, return the structured summary
+        const aiSummary = await openaiService.generateSummary({
+          transcript: evaluationData.generalNotes || '',
+          metrics: {
+            fluencyPercentage: evaluationData.tajweedEvaluation?.overallRating ? (evaluationData.tajweedEvaluation.overallRating * 10) : 0,
+            wordsPerMinute: 0
+          },
+          mistakes: evaluationData.mistakes?.mistakesMade || []
+        });
+        
+        if (aiSummary) {
+          // Prepend AI summary to the structured summary
+          summary = `AI-Powered Summary:\n${aiSummary}\n\n${summary}`;
+        }
       } catch (error) {
-        console.warn('OpenAI API not available, using basic summary');
+        console.warn('OpenAI API not available, using basic summary:', error.message);
       }
     }
 
@@ -15692,6 +16032,14 @@ app.use('/pdf-documents', express.static(pdfDocumentsDir));
 // Register new unified messaging routes (before 404 handler)
 const unifiedMessagesRouter = require('./routes/messages');
 app.use('/api', unifiedMessagesRouter);
+
+// AI Recitation Monitoring Routes
+const recitationRoutes = require('./routes/recitationRoutes');
+app.use('/api', recitationRoutes);
+
+// Live Recitation Monitoring Routes
+const liveRecitationRoutes = require('./routes/liveRecitationRoutes');
+app.use('/api', liveRecitationRoutes);
 
 // 404 handler for undefined routes (but skip /uploads as they're handled by static middleware)
 // MUST be after all other routes but before global error handler
