@@ -8705,8 +8705,205 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
   return assignment;
 };
 
+// Helper function to sync missing classwork data from associated tickets using batch-fetched ticket map
+// This eliminates N+1 queries by using pre-fetched tickets
+const syncAssignmentFromTicketsBatch = async (assignment, ticketMap) => {
+  if (!assignment || !assignment.classwork) {
+    return assignment;
+  }
+
+  let wasModified = false;
+
+  // Sync Sabq entries
+  if (assignment.classwork.sabq && Array.isArray(assignment.classwork.sabq)) {
+    for (let i = 0; i < assignment.classwork.sabq.length; i++) {
+      const entry = assignment.classwork.sabq[i];
+      
+      // If entry has fromTicketId but is missing detailed fields, try to sync from ticket map
+      if (entry.fromTicketId && (!entry.surahName || !entry.startAyahText || !entry.mistakes)) {
+        try {
+          // ✅ Use pre-fetched ticket from map instead of querying
+          const ticket = ticketMap.get(entry.fromTicketId) || 
+                        ticketMap.get(String(entry.fromTicketId)) ||
+                        ticketMap.get(entry.fromTicketId?.toString());
+          
+          if (ticket && ticket.type === 'sabq' && ticket.sabqEntries && ticket.sabqEntries.length > 0) {
+            // Find matching sabqEntry by sabqEntryId or by matching surah/ayah
+            let matchingSabqEntry = null;
+            
+            if (entry.sabqEntryId) {
+              matchingSabqEntry = ticket.sabqEntries.find(se => se.id === entry.sabqEntryId);
+            }
+            
+            // If not found by ID, try to match by surah/ayah
+            if (!matchingSabqEntry && entry.surahNumber && entry.fromAyah && entry.toAyah) {
+              matchingSabqEntry = ticket.sabqEntries.find(se => {
+                const range = se.recitationRange || {};
+                return range.surahNumber === entry.surahNumber &&
+                       range.startAyahNumber === entry.fromAyah &&
+                       range.endAyahNumber === entry.toAyah;
+              });
+            }
+            
+            // If still not found, use the first entry
+            if (!matchingSabqEntry && ticket.sabqEntries.length > 0) {
+              matchingSabqEntry = ticket.sabqEntries[0];
+            }
+            
+            if (matchingSabqEntry) {
+              const range = matchingSabqEntry.recitationRange || {};
+              
+              // Populate missing fields (same logic as syncAssignmentFromTickets)
+              if (!entry.surahName && range.surahName) {
+                entry.surahName = range.surahName;
+                wasModified = true;
+              }
+              if (!entry.surahNumber && range.surahNumber) {
+                entry.surahNumber = range.surahNumber;
+                wasModified = true;
+              }
+              if (!entry.startAyahText && range.startAyahText) {
+                entry.startAyahText = range.startAyahText;
+                wasModified = true;
+              }
+              if (!entry.endAyahText && range.endAyahText) {
+                entry.endAyahText = range.endAyahText;
+                wasModified = true;
+              }
+              if (!entry.fromAyah && range.startAyahNumber) {
+                entry.fromAyah = range.startAyahNumber;
+                wasModified = true;
+              }
+              if (!entry.toAyah && range.endAyahNumber) {
+                entry.toAyah = range.endAyahNumber;
+                wasModified = true;
+              }
+              if (!entry.juzNumber && range.juzNumber) {
+                entry.juzNumber = range.juzNumber;
+                wasModified = true;
+              }
+              if (!entry.mistakes && matchingSabqEntry.mistakes && matchingSabqEntry.mistakes.length > 0) {
+                entry.mistakes = matchingSabqEntry.mistakes.map(m => ({
+                  id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+                  type: m.type,
+                  page: m.page,
+                  surah: m.surah,
+                  ayah: m.ayah,
+                  wordIndex: m.wordIndex,
+                  position: m.position,
+                  note: m.note,
+                  audioUrl: m.audioUrl || undefined,
+                  timestamp: m.timestamp || new Date(),
+                  wordText: m.wordText || undefined
+                }));
+                wasModified = true;
+              }
+              
+              // Preserve existing audioUrl in mistakes
+              if (entry.mistakes && Array.isArray(entry.mistakes) && entry.mistakes.length > 0 && matchingSabqEntry.mistakes) {
+                const ticketMistakeAudioMap = new Map();
+                matchingSabqEntry.mistakes.forEach(tm => {
+                  if (tm.id && tm.audioUrl) {
+                    ticketMistakeAudioMap.set(tm.id, tm.audioUrl);
+                  }
+                });
+                
+                let audioUpdated = false;
+                entry.mistakes.forEach(em => {
+                  if (em.id && ticketMistakeAudioMap.has(em.id) && !em.audioUrl) {
+                    em.audioUrl = ticketMistakeAudioMap.get(em.id);
+                    audioUpdated = true;
+                  }
+                });
+                
+                if (audioUpdated) {
+                  wasModified = true;
+                }
+              }
+              if (entry.mistakeCount === undefined && matchingSabqEntry.mistakeCount !== undefined) {
+                entry.mistakeCount = matchingSabqEntry.mistakeCount;
+                wasModified = true;
+              }
+              if (entry.atkees === undefined && matchingSabqEntry.atkees !== undefined) {
+                entry.atkees = matchingSabqEntry.atkees;
+                wasModified = true;
+              }
+              if (!entry.tajweedIssues && matchingSabqEntry.tajweedIssues && matchingSabqEntry.tajweedIssues.length > 0) {
+                entry.tajweedIssues = matchingSabqEntry.tajweedIssues;
+                wasModified = true;
+              }
+              if (!entry.adminComment && matchingSabqEntry.adminComment) {
+                entry.adminComment = matchingSabqEntry.adminComment;
+                wasModified = true;
+              }
+              
+              // Update assignmentRange if it's generic
+              if (entry.assignmentRange && (entry.assignmentRange.includes('times') || entry.assignmentRange === 'Sabq recitation')) {
+                if (range.surahName && range.startAyahNumber && range.endAyahNumber) {
+                  entry.assignmentRange = `Surah ${range.surahName}, Ayah ${range.startAyahNumber}-${range.endAyahNumber}`;
+                  if (range.juzNumber) {
+                    entry.assignmentRange += ` (Juz ${range.juzNumber})`;
+                  }
+                  wasModified = true;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`⚠️ Error syncing Sabq entry ${i} from ticket ${entry.fromTicketId}:`, error);
+          // Continue with other entries
+        }
+      }
+    }
+  }
+
+  // Sync Sabqi and Manzil entries
+  for (const type of ['sabqi', 'manzil']) {
+    if (assignment.classwork[type] && Array.isArray(assignment.classwork[type])) {
+      for (let i = 0; i < assignment.classwork[type].length; i++) {
+        const entry = assignment.classwork[type][i];
+        
+        if (entry.fromTicketId && (!entry.surahName || !entry.startAyahText)) {
+          try {
+            // ✅ Use pre-fetched ticket from map instead of querying
+            const ticket = ticketMap.get(entry.fromTicketId) || 
+                          ticketMap.get(String(entry.fromTicketId)) ||
+                          ticketMap.get(entry.fromTicketId?.toString());
+            
+            if (ticket && ticket.type === type && ticket.recitationRange) {
+              const range = ticket.recitationRange;
+              
+              if (!entry.surahName && range.surahName) {
+                entry.surahName = range.surahName;
+                wasModified = true;
+              }
+              if (!entry.startAyahText && range.startAyahText) {
+                entry.startAyahText = range.startAyahText;
+                wasModified = true;
+              }
+              if (!entry.endAyahText && range.endAyahText) {
+                entry.endAyahText = range.endAyahText;
+                wasModified = true;
+              }
+            }
+          } catch (error) {
+            console.error(`⚠️ Error syncing ${type} entry ${i} from ticket ${entry.fromTicketId}:`, error);
+          }
+        }
+      }
+    }
+  }
+
+  if (wasModified) {
+    assignment.updatedAt = new Date();
+  }
+
+  return assignment;
+};
+
 // Helper function to sync missing classwork data from associated tickets
 // This is called when fetching assignments to populate missing detailed fields
+// NOTE: Use syncAssignmentFromTicketsBatch for better performance (uses pre-fetched tickets)
 const syncAssignmentFromTickets = async (assignment) => {
   if (!assignment || !assignment.classwork) {
     return assignment;
