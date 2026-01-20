@@ -1554,7 +1554,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           if (import.meta.env.DEV) {
             console.log('📡 Fetching admins from:', `${API_BASE}/admins`);
           }
-          const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 5000, false); // Reduced timeout to 5 seconds
+          const adminsResponse = await fetchWithTimeout(`${API_BASE}/admins`, {}, 5000, true); // ✅ Require auth
           if (import.meta.env.DEV) {
             console.log('📡 Admins response status:', adminsResponse.status);
           }
