@@ -298,7 +298,6 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
               <button
                 onClick={async () => {
                   await refreshDataLight();
-                  setRefreshKey(prev => prev + 1);
                 }}
                 className="px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
                 title="Refresh"
