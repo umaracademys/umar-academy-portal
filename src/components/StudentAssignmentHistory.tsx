@@ -755,7 +755,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                 </div>
                               </div>
 
-                              {/* Compact Homework */}
+                              {/* Compact Homework - Structured like Classwork */}
                               {(assignment.homework?.enabled || 
                                 assignment.homework?.content || 
                                 assignment.homework?.link || 
@@ -764,86 +764,175 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                 (assignment.homework?.items && assignment.homework.items.length > 0) ||
                                 assignment.homework?.submission ||
                                 assignment.homework?.notes) && (
-                                <div className="bg-white rounded border border-gray-200 p-3">
+                                <div>
                                   <h4 className="text-sm font-semibold text-gray-900 mb-2">Homework</h4>
-                                  
-                                  {/* Sabqi & Manzil Homework Together */}
-                                  {(assignment.homework?.sabqiContent || assignment.homework?.manzilContent) && (
-                                    <div className="mb-2 p-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded border border-indigo-200">
-                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {assignment.homework?.sabqiContent && (
-                                          <div>
-                                            <span className="text-[10px] font-semibold text-indigo-700">Sabqi:</span>
-                                            <p className="text-xs text-indigo-800 mt-0.5">{assignment.homework.sabqiContent}</p>
-                                          </div>
-                                        )}
-                                        {assignment.homework?.manzilContent && (
-                                          <div>
-                                            <span className="text-[10px] font-semibold text-purple-700">Manzil:</span>
-                                            <p className="text-xs text-purple-800 mt-0.5">{assignment.homework.manzilContent}</p>
-                                          </div>
+                                  <div className="space-y-2">
+                                    {/* Group homework items by type (like classwork) */}
+                                    {(() => {
+                                      // Separate homework items by type
+                                      const sabqItems = assignment.homework?.items?.filter((item: any) => item.type === 'sabq') || [];
+                                      const sabqiItems = assignment.homework?.items?.filter((item: any) => item.type === 'sabqi') || [];
+                                      const manzilItems = assignment.homework?.items?.filter((item: any) => item.type === 'manzil') || [];
+                                      
+                                      // Check for legacy content
+                                      const hasSabqiContent = assignment.homework?.sabqiContent;
+                                      const hasManzilContent = assignment.homework?.manzilContent;
+                                      const hasGeneralContent = assignment.homework?.content || assignment.homework?.link;
+                                      
+                                      return (
+                                        <>
+                                          {/* Sabq Homework */}
+                                          {(sabqItems.length > 0) && (
+                                            <div className="bg-white rounded border border-gray-200 p-3">
+                                              <h5 className="text-xs font-semibold text-gray-700 mb-2">Sabq</h5>
+                                              <div className="space-y-2">
+                                                {sabqItems.map((item: any, idx: number) => (
+                                                  <div key={idx} className="border-l-4 border-purple-400 pl-3 py-1.5">
+                                                    <div className="flex-1">
+                                                      <p className="text-xs font-medium text-gray-900">
+                                                        {item.range?.mode === 'surah_ayah' && item.range.from && item.range.to
+                                                          ? `${item.range.from.surahName || `Surah ${item.range.from.surah}`}, Ayah ${item.range.from.ayah}-${item.range.to.ayah}`
+                                                          : item.range?.mode === 'juz_juz' || item.range?.mode === 'multiple_juz'
+                                                          ? `Juz ${item.range.juzList?.join(', ') || 'N/A'}`
+                                                          : item.range?.mode === 'surah_surah'
+                                                          ? `${item.range.from?.surahName || `Surah ${item.range.from?.surah}`} إلى ${item.range.to?.surahName || `Surah ${item.range.to?.surah}`}`
+                                                          : 'Homework Range'}
+                                                      </p>
+                                                      {item.content && (
+                                                        <p className="text-xs text-gray-700 mt-1">{item.content}</p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Sabqi Homework */}
+                                          {(sabqiItems.length > 0 || hasSabqiContent) && (
+                                            <div className="bg-white rounded border border-gray-200 p-3">
+                                              <h5 className="text-xs font-semibold text-gray-700 mb-2">Sabqi</h5>
+                                              <div className="space-y-2">
+                                                {sabqiItems.map((item: any, idx: number) => (
+                                                  <div key={idx} className="border-l-4 border-blue-400 pl-3 py-1.5">
+                                                    <div className="flex-1">
+                                                      <p className="text-xs font-medium text-gray-900">
+                                                        {item.range?.mode === 'surah_ayah' && item.range.from && item.range.to
+                                                          ? `${item.range.from.surahName || `Surah ${item.range.from.surah}`}, Ayah ${item.range.from.ayah}-${item.range.to.ayah}`
+                                                          : item.range?.mode === 'juz_juz' || item.range?.mode === 'multiple_juz'
+                                                          ? `Juz ${item.range.juzList?.join(', ') || 'N/A'}`
+                                                          : item.range?.mode === 'surah_surah'
+                                                          ? `${item.range.from?.surahName || `Surah ${item.range.from?.surah}`} إلى ${item.range.to?.surahName || `Surah ${item.range.to?.surah}`}`
+                                                          : 'Homework Range'}
+                                                      </p>
+                                                      {item.content && (
+                                                        <p className="text-xs text-gray-700 mt-1">{item.content}</p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                                {hasSabqiContent && (
+                                                  <div className="border-l-4 border-blue-400 pl-3 py-1.5">
+                                                    <p className="text-xs text-gray-700">{assignment.homework.sabqiContent}</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Manzil Homework */}
+                                          {(manzilItems.length > 0 || hasManzilContent) && (
+                                            <div className="bg-white rounded border border-gray-200 p-3">
+                                              <h5 className="text-xs font-semibold text-gray-700 mb-2">Manzil</h5>
+                                              <div className="space-y-2">
+                                                {manzilItems.map((item: any, idx: number) => (
+                                                  <div key={idx} className="border-l-4 border-green-400 pl-3 py-1.5">
+                                                    <div className="flex-1">
+                                                      <p className="text-xs font-medium text-gray-900">
+                                                        {item.range?.mode === 'surah_ayah' && item.range.from && item.range.to
+                                                          ? `${item.range.from.surahName || `Surah ${item.range.from.surah}`}, Ayah ${item.range.from.ayah}-${item.range.to.ayah}`
+                                                          : item.range?.mode === 'juz_juz' || item.range?.mode === 'multiple_juz'
+                                                          ? `Juz ${item.range.juzList?.join(', ') || 'N/A'}`
+                                                          : item.range?.mode === 'surah_surah'
+                                                          ? `${item.range.from?.surahName || `Surah ${item.range.from?.surah}`} إلى ${item.range.to?.surahName || `Surah ${item.range.to?.surah}`}`
+                                                          : 'Homework Range'}
+                                                      </p>
+                                                      {item.content && (
+                                                        <p className="text-xs text-gray-700 mt-1">{item.content}</p>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                                {hasManzilContent && (
+                                                  <div className="border-l-4 border-green-400 pl-3 py-1.5">
+                                                    <p className="text-xs text-gray-700">{assignment.homework.manzilContent}</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* General Homework Content */}
+                                          {hasGeneralContent && (
+                                            <div className="bg-white rounded border border-gray-200 p-3">
+                                              <div className="space-y-2">
+                                                {assignment.homework?.content && (
+                                                  <p className="text-xs text-gray-700">{assignment.homework.content}</p>
+                                                )}
+                                                {assignment.homework?.link && (
+                                                  <a 
+                                                    href={assignment.homework.link} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-primary hover:underline"
+                                                  >
+                                                    {assignment.homework.link}
+                                                  </a>
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
+
+                                          {/* Show message if no homework items */}
+                                          {sabqItems.length === 0 && 
+                                           sabqiItems.length === 0 && 
+                                           manzilItems.length === 0 && 
+                                           !hasSabqiContent && 
+                                           !hasManzilContent && 
+                                           !hasGeneralContent && (
+                                            <p className="text-sm text-gray-500 italic">No homework</p>
+                                          )}
+                                        </>
+                                      );
+                                    })()}
+                                    
+                                    {/* Homework Notes */}
+                                    {assignment.homework?.notes && (
+                                      <div className="bg-white rounded border border-gray-200 p-3">
+                                        <p className="text-xs font-semibold text-gray-600 mb-1">Notes:</p>
+                                        <p className="text-xs text-gray-700">{assignment.homework.notes}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Homework Submission Status */}
+                                    {assignment.homework?.submission && (
+                                      <div className="bg-white rounded border border-gray-200 p-3">
+                                        <p className="text-xs font-semibold text-gray-600 mb-1">Submission Status:</p>
+                                        <p className="text-xs text-gray-700">
+                                          {assignment.homework.submission.status || (assignment.homework.submission.submitted ? 'Submitted' : 'Not submitted')}
+                                        </p>
+                                        {assignment.homework.submission.submittedAt && (
+                                          <p className="text-[10px] text-gray-500 mt-1">
+                                            Submitted: {new Date(assignment.homework.submission.submittedAt).toLocaleString()}
+                                          </p>
                                         )}
                                       </div>
-                                    </div>
-                                  )}
-                                  
-                                  {assignment.homework?.content && (
-                                    <p className="text-xs text-gray-700 mb-1">{assignment.homework.content}</p>
-                                  )}
-                                  {assignment.homework?.link && (
-                                    <a 
-                                      href={assignment.homework.link} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-primary hover:underline"
-                                    >
-                                      {assignment.homework.link}
-                                    </a>
-                                  )}
-                                  {/* Homework Items (Structured) */}
-                                  {assignment.homework?.items && assignment.homework.items.length > 0 && (
-                                    <div className="mb-2 space-y-2">
-                                      {assignment.homework.items.map((item: any, idx: number) => (
-                                        <div key={idx} className="p-2 bg-gray-50 rounded border border-gray-200">
-                                          <p className="text-xs font-semibold text-gray-700 mb-1">
-                                            {item.type === 'sabq' ? '📖 Sabq' : item.type === 'sabqi' ? '📚 Sabqi' : '📿 Manzil'}
-                                          </p>
-                                          {item.range && (
-                                            <p className="text-xs text-gray-600 mb-1">
-                                              {item.range.mode === 'surah_ayah' && item.range.from && item.range.to
-                                                ? `${item.range.from.surahName || `Surah ${item.range.from.surah}`}, Ayah ${item.range.from.ayah}-${item.range.to.ayah}`
-                                                : item.range.mode === 'juz_juz' || item.range.mode === 'multiple_juz'
-                                                ? `Juz ${item.range.juzList?.join(', ') || 'N/A'}`
-                                                : 'Range'}
-                                            </p>
-                                          )}
-                                          {item.content && (
-                                            <p className="text-xs text-gray-700 mt-1">{item.content}</p>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                  
-                                  {assignment.homework?.notes && (
-                                    <div className="mt-2 pt-2 border-t border-gray-200">
-                                      <p className="text-xs font-semibold text-gray-600 mb-1">Notes:</p>
-                                      <p className="text-xs text-gray-700">{assignment.homework.notes}</p>
-                                    </div>
-                                  )}
-                                  
-                                  {assignment.homework?.submission && (
-                                    <div className="mt-1.5 pt-1.5 border-t border-gray-200">
-                                      <p className="text-xs text-gray-600">
-                                        Status: {assignment.homework.submission.status || (assignment.homework.submission.submitted ? 'submitted' : 'not submitted')}
-                                      </p>
-                                    </div>
-                                  )}
+                                    )}
 
-                                  {/* Grading Form */}
-                                  {assignment.homework.submission?.status === 'submitted' && 
-                                   (user?.role === 'admin' || user?.role === 'superadmin') && (
-                                    <div className="mt-3 pt-3 border-t border-gray-200">
+                                    {/* Grading Form */}
+                                    {assignment.homework.submission?.status === 'submitted' && 
+                                     (user?.role === 'admin' || user?.role === 'superadmin') && (
+                                      <div className="bg-white rounded border border-gray-200 p-3 mt-2">
                                       {gradingAssignment === assignment.id ? (
                                         <div className="space-y-2">
                                           <div>
@@ -906,6 +995,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                       )}
                                     </div>
                                   )}
+                                  </div>
                                 </div>
                               )}
 
