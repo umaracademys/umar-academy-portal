@@ -295,8 +295,13 @@ export async function fetchVersesBySurah(surahId: number, version: 'nastaleeq' |
     const data = await response.json();
     const verses = data.verses || data || [];
     
-    if (verses.length === 0) {
-      console.warn(`⚠️ No verses returned for surah ${surahId}`);
+    // Only log warning if we expected data (surah 1-114 are valid)
+    // Some surahs may not have data available, which is expected
+    if (verses.length === 0 && surahId >= 1 && surahId <= 114) {
+      // Use debug level instead of warn - this is expected for some surahs
+      if (import.meta.env?.DEV) {
+        console.debug(`ℹ️ No verses returned for surah ${surahId} (data may not be available)`);
+      }
     }
     
     return verses;

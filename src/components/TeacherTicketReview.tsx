@@ -317,10 +317,16 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
               }
               console.log(`✅ Got full ayah text from verses API for surah ${surahNumber}, ayah ${ayahNumber}, length: ${ayahText?.length || 0}`);
             } else {
-              console.warn(`⚠️ No matching verse found for surah ${surahNumber}, ayah ${ayahNumber} in ${verses.length} verses`);
+              // Use debug level - this is expected when data isn't available
+              if (import.meta.env?.DEV) {
+                console.debug(`ℹ️ No matching verse found for surah ${surahNumber}, ayah ${ayahNumber} in ${verses.length} verses`);
+              }
             }
           } else {
-            console.warn(`⚠️ No verses returned for surah ${surahNumber}`);
+            // Use debug level - this is expected when data isn't available
+            if (import.meta.env?.DEV) {
+              console.debug(`ℹ️ No verses returned for surah ${surahNumber} (data may not be available)`);
+            }
           }
         } catch (verseError) {
           console.warn(`⚠️ Could not fetch verses for surah ${surahNumber}, trying alternative method:`, verseError);
