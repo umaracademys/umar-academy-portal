@@ -9584,7 +9584,7 @@ app.get('/api/maintenance', (req, res) => {
         message: 'The system is currently under maintenance. Please check back soon.'
       };
     }
-    res.json(maintenanceMode);
+  res.json(maintenanceMode);
   } catch (error) {
     console.error('❌ Error in /api/maintenance:', error);
     // Return a safe default response even on error
@@ -12729,12 +12729,26 @@ let wordByWordDb = null; // NEW: Word by Word database
 
 if (Database) {
 try {
-    const quranDbPath = path.join(__dirname, 'qpc-hafs-15-lines.db');
-    if (fs.existsSync(quranDbPath)) {
-  quranDb = new Database(quranDbPath, { readonly: true });
-  console.log('✅ Connected to local Quran database (qpc-hafs-15-lines.db)');
+    // Try multiple locations: public/data (deployed), backend directory (local dev), src/data (alternative)
+    const possiblePaths = [
+      path.join(__dirname, '..', 'public', 'data', 'layouts', 'qpc-v1-15-lines.db'), // Production/deployed location
+      path.join(__dirname, 'qpc-hafs-15-lines.db'), // Local backend directory
+      path.join(__dirname, 'qpc-v1-15-lines.db'), // Alternative name
+    ];
+    
+    let quranDbPath = null;
+    for (const dbPath of possiblePaths) {
+      if (fs.existsSync(dbPath)) {
+        quranDbPath = dbPath;
+        break;
+      }
+    }
+    
+    if (quranDbPath) {
+      quranDb = new Database(quranDbPath, { readonly: true });
+      console.log(`✅ Connected to local Quran database: ${quranDbPath}`);
     } else {
-      console.warn('⚠️  Quran database file not found:', quranDbPath);
+      console.warn('⚠️  Quran database file not found in any of these locations:', possiblePaths);
     }
 } catch (error) {
   console.warn('⚠️ Could not connect to local Quran database:', error.message);
@@ -12743,12 +12757,26 @@ try {
 
 // NEW: Connect to Ayah by Ayah database
 try {
-  const ayahDbPath = path.join(__dirname, '..', 'src', 'data', 'Ayah by Ayah.db');
-  if (fs.existsSync(ayahDbPath)) {
+  // Try multiple locations: public/data (deployed), src/data (local dev)
+  const possibleAyahPaths = [
+      path.join(__dirname, '..', 'public', 'data', 'Ayah by Ayah.db'), // Production/deployed location
+      path.join(__dirname, '..', 'src', 'data', 'Ayah by Ayah.db'), // Local dev location
+      path.join(__dirname, 'Ayah by Ayah.db'), // Backend directory
+  ];
+  
+  let ayahDbPath = null;
+  for (const dbPath of possibleAyahPaths) {
+    if (fs.existsSync(dbPath)) {
+      ayahDbPath = dbPath;
+      break;
+    }
+  }
+  
+  if (ayahDbPath) {
     ayahByAyahDb = new Database(ayahDbPath, { readonly: true });
-    console.log('✅ Connected to Ayah by Ayah database');
+    console.log(`✅ Connected to Ayah by Ayah database: ${ayahDbPath}`);
   } else {
-    console.warn('⚠️  Ayah by Ayah database file not found:', ayahDbPath);
+    console.warn('⚠️  Ayah by Ayah database file not found in any of these locations:', possibleAyahPaths);
   }
 } catch (error) {
   console.warn('⚠️ Could not connect to Ayah by Ayah database:', error.message);
@@ -12756,12 +12784,26 @@ try {
 
 // NEW: Connect to Word by Word database
 try {
-  const wordDbPath = path.join(__dirname, '..', 'src', 'data', 'word by word.db');
-  if (fs.existsSync(wordDbPath)) {
+  // Try multiple locations: public/data (deployed), src/data (local dev)
+  const possibleWordPaths = [
+      path.join(__dirname, '..', 'public', 'data', 'word by word.db'), // Production/deployed location
+      path.join(__dirname, '..', 'src', 'data', 'word by word.db'), // Local dev location
+      path.join(__dirname, 'word by word.db'), // Backend directory
+  ];
+  
+  let wordDbPath = null;
+  for (const dbPath of possibleWordPaths) {
+    if (fs.existsSync(dbPath)) {
+      wordDbPath = dbPath;
+      break;
+    }
+  }
+  
+  if (wordDbPath) {
     wordByWordDb = new Database(wordDbPath, { readonly: true });
-    console.log('✅ Connected to Word by Word database');
+    console.log(`✅ Connected to Word by Word database: ${wordDbPath}`);
   } else {
-    console.warn('⚠️  Word by Word database file not found:', wordDbPath);
+    console.warn('⚠️  Word by Word database file not found in any of these locations:', possibleWordPaths);
   }
 } catch (error) {
   console.warn('⚠️ Could not connect to Word by Word database:', error.message);
@@ -12769,26 +12811,52 @@ try {
 
 // Local SQLite Database for Quran text (Nastaleeq)
 try {
-    const nastaleeqDbPath = path.join(__dirname, 'qpc-nastaleeq.db');
-    if (fs.existsSync(nastaleeqDbPath)) {
-  nastaleeqDb = new Database(nastaleeqDbPath, { readonly: true });
-  console.log('✅ Connected to local Quran text database (qpc-nastaleeq.db)');
+    // Try multiple locations
+    const possibleNastaleeqPaths = [
+      path.join(__dirname, '..', 'public', 'data', 'qpc-nastaleeq.db'), // Production/deployed location
+      path.join(__dirname, 'qpc-nastaleeq.db'), // Local backend directory
+    ];
+    
+    let nastaleeqDbPath = null;
+    for (const dbPath of possibleNastaleeqPaths) {
+      if (fs.existsSync(dbPath)) {
+        nastaleeqDbPath = dbPath;
+        break;
+      }
+    }
+    
+    if (nastaleeqDbPath) {
+      nastaleeqDb = new Database(nastaleeqDbPath, { readonly: true });
+      console.log(`✅ Connected to local Quran text database (Nastaleeq): ${nastaleeqDbPath}`);
     } else {
-      console.warn('⚠️  Nastaleeq database file not found:', nastaleeqDbPath);
+      console.warn('⚠️  Nastaleeq database file not found in any of these locations:', possibleNastaleeqPaths);
     }
 } catch (error) {
-  console.warn('⚠️ Could not connect to local Quran text database:', error.message);
+  console.warn('⚠️ Could not connect to local Quran text database (qpc-nastaleeq.db):', error.message);
   console.log('   Continuing with Quran Foundation API only...');
 }
 
 // Local SQLite Database for Quran text (QPC V4)
 try {
-    const qpcV4DbPath = path.join(__dirname, 'qpc-v4.db');
-    if (fs.existsSync(qpcV4DbPath)) {
-  qpcV4Db = new Database(qpcV4DbPath, { readonly: true });
-  console.log('✅ Connected to local Quran text database (qpc-v4.db)');
+    // Try multiple locations
+    const possibleQpcV4Paths = [
+      path.join(__dirname, '..', 'public', 'data', 'qpc-v4.db'), // Production/deployed location
+      path.join(__dirname, 'qpc-v4.db'), // Local backend directory
+    ];
+    
+    let qpcV4DbPath = null;
+    for (const dbPath of possibleQpcV4Paths) {
+      if (fs.existsSync(dbPath)) {
+        qpcV4DbPath = dbPath;
+        break;
+      }
+    }
+    
+    if (qpcV4DbPath) {
+      qpcV4Db = new Database(qpcV4DbPath, { readonly: true });
+      console.log(`✅ Connected to local Quran text database (QPC V4): ${qpcV4DbPath}`);
     } else {
-      console.warn('⚠️  QPC V4 database file not found:', qpcV4DbPath);
+      console.warn('⚠️  QPC V4 database file not found in any of these locations:', possibleQpcV4Paths);
     }
 } catch (error) {
   console.warn('⚠️ Could not connect to local Quran text database (qpc-v4.db):', error.message);
@@ -13095,11 +13163,11 @@ app.get('/api/quran/chapters', async (req, res) => {
     
     // FALLBACK: Try local database
     try {
-      const surahIds = await getAllSurahsFromDb();
+    const surahIds = await getAllSurahsFromDb();
       if (surahIds.length > 0) {
         // Build chapters array from database
-        const chaptersPromises = surahIds.map(async (id) => {
-          const surahInfo = await getSurahInfoFromDb(id);
+      const chaptersPromises = surahIds.map(async (id) => {
+        const surahInfo = await getSurahInfoFromDb(id);
           return {
             id,
             name_simple: `Surah ${id}`, // We'll need to add names later or use API
@@ -13115,7 +13183,7 @@ app.get('/api/quran/chapters', async (req, res) => {
           };
         });
       
-        const chapters = await Promise.all(chaptersPromises);
+      const chapters = await Promise.all(chaptersPromises);
         
         // Enrich with QUL for surah names (more reliable for Arabic names)
         try {
@@ -13178,62 +13246,62 @@ app.get('/api/quran/chapters', async (req, res) => {
     } catch (dbError) {
       console.error('Error getting chapters from local DB:', dbError.message);
       // Fall through to API
+  }
+  
+  // Fallback to API
+  try {
+    // Try to get token first
+    let token;
+    try {
+      token = await getQuranAccessToken();
+    } catch (tokenError) {
+      console.error('❌ Failed to get access token for chapters:', tokenError.response?.data || tokenError.message);
+      return res.status(500).json({ 
+        error: 'Failed to authenticate with Quran API',
+        details: tokenError.response?.data?.message || tokenError.message 
+      });
     }
     
-    // Fallback to API
-    try {
-      // Try to get token first
-      let token;
+    // Try multiple endpoints
+    const endpoints = [
+      '/content/api/v4/chapters',
+      '/api/v4/chapters',
+    ];
+    
+    let data = null;
+    let lastError = null;
+    
+    for (const endpoint of endpoints) {
       try {
-        token = await getQuranAccessToken();
-      } catch (tokenError) {
-        console.error('❌ Failed to get access token for chapters:', tokenError.response?.data || tokenError.message);
-        return res.status(500).json({ 
-          error: 'Failed to authenticate with Quran API',
-          details: tokenError.response?.data?.message || tokenError.message 
+        const fullUrl = `${API_BASE}${endpoint}`;
+        const response = await axios({
+          method: 'get',
+          url: fullUrl,
+          headers: {
+            'x-auth-token': token,
+            'x-client-id': CLIENT_ID,
+          },
         });
+        
+        data = response.data;
+        console.log(`✅ Quran chapters fetched from ${endpoint} (${data.chapters?.length || 0} chapters)`);
+        break;
+      } catch (e) {
+        lastError = e;
+        console.log(`⚠️ Failed to fetch from ${endpoint}:`, e.response?.data?.message || e.message);
+        continue;
       }
-      
-      // Try multiple endpoints
-      const endpoints = [
-        '/content/api/v4/chapters',
-        '/api/v4/chapters',
-      ];
-      
-      let data = null;
-      let lastError = null;
-      
-      for (const endpoint of endpoints) {
-        try {
-          const fullUrl = `${API_BASE}${endpoint}`;
-          const response = await axios({
-            method: 'get',
-            url: fullUrl,
-            headers: {
-              'x-auth-token': token,
-              'x-client-id': CLIENT_ID,
-            },
-          });
-          
-          data = response.data;
-          console.log(`✅ Quran chapters fetched from ${endpoint} (${data.chapters?.length || 0} chapters)`);
-          break;
-        } catch (e) {
-          lastError = e;
-          console.log(`⚠️ Failed to fetch from ${endpoint}:`, e.response?.data?.message || e.message);
-          continue;
-        }
-      }
-      
-      if (!data) {
-        console.error('❌ All endpoints failed for chapters:', lastError?.response?.data || lastError?.message);
-        return res.status(500).json({ 
-          error: 'Failed to fetch Quran chapters',
-          details: lastError?.response?.data?.message || lastError?.message || 'All endpoints failed'
-        });
-      }
-      
-      res.json(data);
+    }
+    
+    if (!data) {
+      console.error('❌ All endpoints failed for chapters:', lastError?.response?.data || lastError?.message);
+      return res.status(500).json({ 
+        error: 'Failed to fetch Quran chapters',
+        details: lastError?.response?.data?.message || lastError?.message || 'All endpoints failed'
+      });
+    }
+    
+    res.json(data);
     } catch (apiError) {
       console.error('❌ Unexpected error fetching Quran chapters:', apiError.response?.data || apiError.message);
       res.status(500).json({ 
