@@ -9224,10 +9224,17 @@ app.post('/api/tickets/:id/submit-sabq', authenticateToken, validateTicketOwners
       return res.status(400).json({ error: 'Admin comment is required' });
     }
     
-    // Validate all entries have start and end ayah
+    // Validate all entries have start and end ayah, and end ayah comes after start
+    // Note: Frontend enforces same surah constraint, backend validates ayah order
     for (const entry of sabqEntries) {
       if (!entry.recitationRange || !entry.recitationRange.startAyahNumber || !entry.recitationRange.endAyahNumber) {
         return res.status(400).json({ error: 'All Sabq entries must have start and end ayah selected' });
+      }
+      
+      const range = entry.recitationRange;
+      // Validate end ayah comes after or equals start ayah
+      if (range.endAyahNumber < range.startAyahNumber) {
+        return res.status(400).json({ error: 'End ayah must come after or equal to the start ayah' });
       }
     }
     
@@ -10010,6 +10017,13 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
     
     // Add new recitation review fields if provided
     if (recitationRange) {
+      // Validate recitation range: end ayah must come after or equal to start ayah
+      // Note: Frontend enforces same surah constraint, backend validates ayah order
+      if (recitationRange.startAyahNumber && recitationRange.endAyahNumber) {
+        if (recitationRange.endAyahNumber < recitationRange.startAyahNumber) {
+          return res.status(400).json({ error: 'End ayah must come after or equal to the start ayah' });
+        }
+      }
       updateData.recitationRange = recitationRange;
     }
     if (mistakeCount !== undefined && mistakeCount !== null && mistakeCount !== '') {
