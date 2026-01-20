@@ -283,10 +283,30 @@ const normalizeId = (id: any): string => {
     if (/^[0-9a-fA-F]{24}$/.test(str)) {
       return str;
     }
-    // If toString() doesn't give us a valid ObjectId, try the string anyway
+    // If toString() returns "[object Object]", it's not a valid ID - try to extract from common properties
+    if (str === '[object Object]') {
+      // Try to get the actual ID from common MongoDB ObjectId properties
+      if (id._str) return String(id._str);
+      if (id.id) return normalizeId(id.id);
+      if (id.toString && id.toString !== Object.prototype.toString) {
+        // Already tried toString, return empty to indicate invalid
+        return '';
+      }
+      return '';
+    }
+    // If it's a valid-looking string (not "[object Object]"), return it trimmed
     return str.trim();
   }
-  return String(id).trim();
+  // Handle strings
+  if (typeof id === 'string') {
+    return id.trim();
+  }
+  // Fallback: convert to string, but filter out "[object Object]"
+  const str = String(id);
+  if (str === '[object Object]') {
+    return '';
+  }
+  return str.trim();
 };
 
 export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

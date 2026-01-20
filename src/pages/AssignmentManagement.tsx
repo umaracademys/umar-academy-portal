@@ -23,14 +23,30 @@ const normalizeId = (id: any): string => {
     if (/^[0-9a-fA-F]{24}$/.test(str)) {
       return str;
     }
-    return str;
+    // If toString() returns "[object Object]", it's not a valid ID - try to extract from common properties
+    if (str === '[object Object]') {
+      // Try to get the actual ID from common MongoDB ObjectId properties
+      if (id._str) return String(id._str);
+      if (id.id) return normalizeId(id.id);
+      if (id.toString && id.toString !== Object.prototype.toString) {
+        // Already tried toString, return empty to indicate invalid
+        return '';
+      }
+      return '';
+    }
+    // If it's a valid-looking string (not "[object Object]"), return it trimmed
+    return str.trim();
   }
   // Handle strings
   if (typeof id === 'string') {
-    return id;
+    return id.trim();
   }
-  // Fallback: convert to string
-  return String(id);
+  // Fallback: convert to string, but filter out "[object Object]"
+  const str = String(id);
+  if (str === '[object Object]') {
+    return '';
+  }
+  return str.trim();
 };
 
 const AssignmentManagement: React.FC = () => {
@@ -157,17 +173,29 @@ const AssignmentManagement: React.FC = () => {
     // This includes: id, studentRecordId, _id, userId
     const assignedStudentIdSets = assignedStudents.map(s => {
       const ids = new Set<string>();
-      if (s.id) ids.add(normalizeId(s.id));
-      if ((s as any).studentRecordId) ids.add(normalizeId((s as any).studentRecordId));
-      if ((s as any)._id) ids.add(normalizeId((s as any)._id));
-      if ((s as any).userId) ids.add(normalizeId((s as any).userId));
+      const addValidId = (idValue: any) => {
+        const normalized = normalizeId(idValue);
+        // Only add if it's a valid non-empty string and not "[object Object]"
+        if (normalized && normalized !== '[object Object]' && normalized.length > 0) {
+          ids.add(normalized);
+        }
+      };
+      if (s.id) addValidId(s.id);
+      if ((s as any).studentRecordId) addValidId((s as any).studentRecordId);
+      if ((s as any)._id) addValidId((s as any)._id);
+      if ((s as any).userId) addValidId((s as any).userId);
       return ids;
     });
     
     // Flatten all possible student IDs into a single set for quick lookup
     const allPossibleStudentIds = new Set<string>();
     assignedStudentIdSets.forEach(idSet => {
-      idSet.forEach(id => allPossibleStudentIds.add(id));
+      idSet.forEach(id => {
+        // Double-check: only add valid IDs
+        if (id && id !== '[object Object]' && id.length > 0) {
+          allPossibleStudentIds.add(id);
+        }
+      });
     });
     
     // Get all unique student IDs from assignments to check for mismatches
@@ -181,6 +209,14 @@ const AssignmentManagement: React.FC = () => {
     );
     
     // Debug logging to identify ID mismatches
+    // Filter out invalid IDs from samples
+    const validSampleAssignedStudentIds = Array.from<string>(allPossibleStudentIds)
+      .filter(id => id && id !== '[object Object]' && id.length > 0)
+      .slice(0, 10);
+    const validSampleAssignmentStudentIds = Array.from<string>(assignmentStudentIds)
+      .filter(id => id && id !== '[object Object]' && id.length > 0)
+      .slice(0, 10);
+    
     console.log('🔍 Assignment-Student ID Matching Analysis:', {
       totalAssignments: assignments.length,
       assignedStudentsCount: assignedStudents.length,
@@ -189,8 +225,8 @@ const AssignmentManagement: React.FC = () => {
       assignmentStudentIdsCount: assignmentStudentIds.size,
       unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
       unmatchedCount: unmatchedAssignmentIds.length,
-      sampleAssignedStudentIds: Array.from<string>(allPossibleStudentIds).slice(0, 10),
-      sampleAssignmentStudentIds: Array.from<string>(assignmentStudentIds).slice(0, 10),
+      sampleAssignedStudentIds: validSampleAssignedStudentIds,
+      sampleAssignmentStudentIds: validSampleAssignmentStudentIds,
       // Check if there are any students that match the unmatched assignment IDs
       unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
         const foundStudent = allStudents.find(s => {
