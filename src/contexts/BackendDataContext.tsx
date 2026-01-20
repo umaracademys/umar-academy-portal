@@ -4006,17 +4006,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Compare normalized IDs against all possible student IDs
       const matches = assignmentStudentId && possibleStudentIds.has(assignmentStudentId);
       
-      if (matches) {
-        console.log('✅ Assignment matched for student:', {
-          studentId: normalizedStudentId,
-          assignmentId: a.id,
-          assignmentStudentId: assignmentStudentId,
-          assignmentStatus: a.status,
-          homeworkEnabled: a.homework?.enabled,
-          homeworkItemsCount: a.homework?.items?.length || 0,
-          homeworkItems: a.homework?.items,
-          sabqiCount: a.classwork?.sabqi?.length || 0
-        });
+      // Only log matches in dev mode and only for first few matches to reduce console noise
+      if (matches && import.meta.env.DEV) {
+        // Use a static counter to limit logging
+        const logCount = (window as any).__assignmentMatchLogCount || 0;
+        if (logCount < 3) {
+          (window as any).__assignmentMatchLogCount = logCount + 1;
+          console.log('✅ Assignment matched for student:', {
+            studentId: normalizedStudentId,
+            assignmentId: a.id,
+            assignmentStatus: a.status,
+          });
+        }
       }
       
       return matches;
