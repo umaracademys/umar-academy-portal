@@ -21,9 +21,13 @@ export const UserCard: React.FC<UserCardProps> = React.memo(({
   const avatar = user.avatar || 
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=${isSelected ? '6366F1' : 'E5E7EB'}&color=${isSelected ? 'fff' : '111827'}`;
 
-  const handleCheckboxClick = (e: React.MouseEvent) => {
+  const handleCheckboxClick = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation();
-    onCheck?.(!isChecked);
+    onCheck?.(e.target.checked);
+  };
+
+  const handleCheckboxClickWrapper = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
@@ -42,7 +46,7 @@ export const UserCard: React.FC<UserCardProps> = React.memo(({
           type="checkbox"
           checked={isChecked}
           onChange={handleCheckboxClick}
-          onClick={handleCheckboxClick}
+          onClick={handleCheckboxClickWrapper}
           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
       )}

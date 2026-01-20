@@ -23,7 +23,7 @@ export function groupPermissionsByModule(
     acc[module].push({
       key: def.key,
       label: def.label,
-      description: def.description,
+      description: def.description || '',
       risk: def.risk,
       value: permissions[def.key as keyof typeof permissions] || false,
     });
