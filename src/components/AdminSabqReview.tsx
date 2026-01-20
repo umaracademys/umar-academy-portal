@@ -235,10 +235,9 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
             }
           }
         } else if (response.status === 404) {
-          // Gracefully handle 404 - ayah text not available from any source
-          console.warn(`⚠️ Ayah text not available for surah ${surahNumber}, ayah ${ayahNumber}`);
-          // Return empty string instead of throwing error
-          return '';
+          // Gracefully handle 404 - continue to fallback methods
+          console.warn(`⚠️ Ayah text endpoint returned 404 for surah ${surahNumber}, ayah ${ayahNumber}, trying fallback methods...`);
+          // Don't return - continue to fallback methods below
         }
       } catch (error) {
         // Continue to fallback - don't log error for 404s

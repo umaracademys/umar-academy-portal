@@ -730,10 +730,13 @@ export const WordByWordPage: React.FC<{
 
   useEffect(() => {
     let cancelled = false;
-    setLayout(null);
-    setWordsFromApi([]);
-    setBackground("");
-    setFontFamily(defaultFontStack);
+    // Batch state updates to prevent flickering
+    React.startTransition(() => {
+      setLayout(null);
+      setWordsFromApi([]);
+      setBackground("");
+      setFontFamily(defaultFontStack);
+    });
 
     const loadLayout = async () => {
       console.log(`🔄 [PAGE ${pageNumber}] Starting layout load from local data files...`);
@@ -993,7 +996,7 @@ export const WordByWordPage: React.FC<{
         
         if (onMistakesWithWords) {
           // console.log(`📤 Calling onMistakesWithWords with ${mistakesWithWordText.length} mistakes`);
-          onMistakesWithWords(mistakesWithWordText);
+        onMistakesWithWords(mistakesWithWordText);
         } else {
           console.warn(`⚠️ onMistakesWithWords callback is not defined`);
         }
@@ -1593,46 +1596,46 @@ export const WordByWordPage: React.FC<{
                             // We use a timeout to detect if this was a double click
                             // Store the timeout so double-click can cancel it
                             const clickTimeout = setTimeout(() => {
-                              // Detect which letter was clicked based on click position
-                              if (!readOnly && onLetterClick && letters.length > 0) {
-                                const wordSpan = e.currentTarget;
-                                const rect = wordSpan.getBoundingClientRect();
-                                const clickX = e.clientX - rect.left;
+                            // Detect which letter was clicked based on click position
+                            if (!readOnly && onLetterClick && letters.length > 0) {
+                              const wordSpan = e.currentTarget;
+                              const rect = wordSpan.getBoundingClientRect();
+                              const clickX = e.clientX - rect.left;
+                              
+                              // For RTL text, calculate which letter was clicked
+                              // Get all letter spans
+                              const letterSpans = wordSpan.querySelectorAll('span[data-letter-index]');
+                              let clickedLetterIndex: number | undefined = undefined;
+                              
+                              // Find which letter span contains the click
+                              letterSpans.forEach((span) => {
+                                const spanRect = span.getBoundingClientRect();
+                                const spanLeft = spanRect.left - rect.left;
+                                const spanRight = spanRect.right - rect.left;
                                 
-                                // For RTL text, calculate which letter was clicked
-                                // Get all letter spans
-                                const letterSpans = wordSpan.querySelectorAll('span[data-letter-index]');
-                                let clickedLetterIndex: number | undefined = undefined;
-                                
-                                // Find which letter span contains the click
-                                letterSpans.forEach((span) => {
-                                  const spanRect = span.getBoundingClientRect();
-                                  const spanLeft = spanRect.left - rect.left;
-                                  const spanRight = spanRect.right - rect.left;
-                                  
-                                  // Check if click is within this letter's bounds
-                                  if (clickX >= spanLeft && clickX <= spanRight) {
-                                    const idx = parseInt(span.getAttribute('data-letter-index') || '-1');
-                                    if (idx >= 0) {
-                                      clickedLetterIndex = idx;
-                                    }
+                                // Check if click is within this letter's bounds
+                                if (clickX >= spanLeft && clickX <= spanRight) {
+                                  const idx = parseInt(span.getAttribute('data-letter-index') || '-1');
+                                  if (idx >= 0) {
+                                    clickedLetterIndex = idx;
                                   }
-                                });
-                                
-                                // If we found a letter, use letter click handler, otherwise use word click
-                                if (clickedLetterIndex !== undefined) {
-                                  onLetterClick(w, clickedLetterIndex);
-                                } else {
-                                  // Fallback: calculate approximate letter index based on position
-                                  // For RTL, rightmost is index 0
-                                  const relativeX = rect.width - clickX;
-                                  const approximateIndex = Math.floor((relativeX / rect.width) * letters.length);
-                                  const safeIndex = Math.max(0, Math.min(letters.length - 1, approximateIndex));
-                                  onLetterClick(w, safeIndex);
                                 }
+                              });
+                              
+                              // If we found a letter, use letter click handler, otherwise use word click
+                              if (clickedLetterIndex !== undefined) {
+                                onLetterClick(w, clickedLetterIndex);
                               } else {
-                                  onWordClick?.(w);
+                                // Fallback: calculate approximate letter index based on position
+                                // For RTL, rightmost is index 0
+                                const relativeX = rect.width - clickX;
+                                const approximateIndex = Math.floor((relativeX / rect.width) * letters.length);
+                                const safeIndex = Math.max(0, Math.min(letters.length - 1, approximateIndex));
+                                onLetterClick(w, safeIndex);
                               }
+                            } else {
+                              onWordClick?.(w);
+                            }
                             }, 250); // Wait 250ms to see if this becomes a double click (reduced for better double-click detection)
                             
                             // Store timeout on element for cleanup
@@ -1680,7 +1683,7 @@ export const WordByWordPage: React.FC<{
                             
                             (e.currentTarget as any)._lastClickTime = now;
                           }}
-                          className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
+                          className={`cursor-pointer transition-colors duration-150 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
                           dir="rtl"
                           onMouseEnter={(e) => {
                             if (onWordHover && wordMistake) {
@@ -1738,10 +1741,10 @@ export const WordByWordPage: React.FC<{
                                   e.stopPropagation(); // Prevent word click
                                   // Single click: mark mistake (only if not a double click)
                                   const clickTimeout = setTimeout(() => {
-                                    if (!readOnly && onLetterClick) {
-                                      onLetterClick(w, letterIdx, e);
-                                    } else {
-                                      onWordClick?.(w, e);
+                                  if (!readOnly && onLetterClick) {
+                                    onLetterClick(w, letterIdx, e);
+                                  } else {
+                                    onWordClick?.(w, e);
                                     }
                                   }, 300); // Wait 300ms to see if this becomes a double click
                                   
@@ -1764,7 +1767,7 @@ export const WordByWordPage: React.FC<{
                                     onVerseDoubleClick(w.surah, w.ayah, pageNumber);
                                   }
                                 }}
-                                className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-all duration-200 inline-block`}
+                                className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-colors duration-150 inline-block`}
                                 style={{
                                   padding: letterMistake 
                                     ? (isMobile ? '3px 2px' : '2px 1px') 
@@ -3291,7 +3294,7 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
         )}
 
         {/* Mushaf Content - Always visible alongside index */}
-        <div className={`flex-1 min-w-0 overflow-hidden flex justify-center items-start transition-all duration-300 ${
+        <div className={`flex-1 min-w-0 overflow-hidden flex justify-center items-start transition-[margin] duration-300 ${
           showSurahIndex && !isIndexMinimized && !focusMode ? 'lg:ml-4' : ''
         } ${focusMode ? 'w-full' : ''}`}>
 
@@ -3308,12 +3311,13 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
           )}
 
           <div 
-            className={`w-full ${focusMode ? 'max-w-full' : 'max-w-7xl'} flex justify-center transition-transform duration-200`}
+            className={`w-full ${focusMode ? 'max-w-full' : 'max-w-7xl'} flex justify-center`}
             key={`mushaf-container-${currentPage}`}
             style={{
               transform: enableZoom ? `scale(${effectiveZoom})` : 'none',
               transformOrigin: 'center top',
-              willChange: enableZoom ? 'transform' : 'auto',
+              transition: enableZoom ? 'transform 0.2s ease-out' : 'none',
+              willChange: enableZoom ? 'transform' : undefined,
             }}
           >
             <WordByWordPage
