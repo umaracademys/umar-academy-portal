@@ -171,12 +171,12 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
         }
         
         const data = await fallbackResponse.json();
-        const normalized = Array.isArray(data) ? data.map(normalizeNotification) : [];
+        const normalized: Notification[] = Array.isArray(data) ? data.map(normalizeNotification) : [];
         
         if (append) {
           setNotifications(prev => {
             const existingIds = new Set(prev.map(n => n.id || n._id));
-            const newNotifications = normalized.filter(n => !existingIds.has(n.id || n._id));
+            const newNotifications = normalized.filter((n: Notification) => !existingIds.has(n.id || n._id));
             return [...prev, ...newNotifications];
           });
         } else {
@@ -190,12 +190,12 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
       }
       
       const data = await response.json();
-      const normalized = Array.isArray(data) ? data.map(normalizeNotification) : [];
+      const normalized: Notification[] = Array.isArray(data) ? data.map(normalizeNotification) : [];
       
       if (append) {
         setNotifications(prev => {
           const existingIds = new Set(prev.map(n => n.id || n._id));
-          const newNotifications = normalized.filter(n => !existingIds.has(n.id || n._id));
+          const newNotifications = normalized.filter((n: Notification) => !existingIds.has(n.id || n._id));
           return [...prev, ...newNotifications];
         });
       } else {
