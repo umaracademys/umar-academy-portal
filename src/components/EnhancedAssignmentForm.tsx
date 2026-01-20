@@ -86,9 +86,11 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         });
         
         if (response.ok) {
-          const tickets: Ticket[] = await response.json();
+          const data = await response.json();
+          // Ensure tickets is an array - handle both array response and object with tickets property
+          const tickets: Ticket[] = Array.isArray(data) ? data : (Array.isArray(data?.tickets) ? data.tickets : []);
           const logs: TicketLogEntry[] = tickets
-            .filter(t => t.status === 'sent_to_assignment')
+            .filter(t => t && t.status === 'sent_to_assignment')
             .map(ticket => ({
               ticket,
               date: ticket.sentAt ? new Date(ticket.sentAt) : (ticket.createdAt ? new Date(ticket.createdAt) : new Date()),

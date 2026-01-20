@@ -5089,7 +5089,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Get student's personal Mushaf (all historical mistakes)
   const getStudentPersonalMushaf = async (studentId: string) => {
     try {
-      const response = await fetch(`${API_BASE}/students/${studentId}/personal-mushaf`);
+      const response = await fetch(`${API_BASE}/students/${studentId}/personal-mushaf`, {
+        headers: getAuthHeaders()
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch personal Mushaf');
       }
@@ -5109,7 +5111,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (filters?.ayah) params.append('ayah', filters.ayah.toString());
       
       const url = `${API_BASE}/students/${studentId}/personal-mushaf/filter${params.toString() ? '?' + params.toString() : ''}`;
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: getAuthHeaders()
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch filtered personal Mushaf');
       }
@@ -5125,9 +5129,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       const response = await fetch(`${API_BASE}/students/${studentId}/personal-mushaf/mistakes`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           mistake,
           markedBy,
