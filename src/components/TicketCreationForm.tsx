@@ -7,7 +7,7 @@ import { Ticket, TicketType } from '../types/ticket';
 interface TicketCreationFormProps {
   studentId?: string; // Optional - if not provided, show student selector
   onClose: () => void;
-  onSuccess: (ticket: Ticket) => void;
+  onSuccess: (ticket: Ticket, openSabqReview?: boolean) => void;
   ticket?: Ticket; // Optional ticket for editing mode
 }
 
@@ -115,11 +115,8 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
       return;
     }
 
-    // For sabq, adminComment is required
-    if (ticketType === 'sabq' && !adminComment.trim()) {
-      alert('Please enter a comment for sabq');
-      return;
-    }
+    // For sabq, adminComment is optional (will be added in AdminSabqReview)
+    // No validation needed here for Sabq tickets
 
     // For teachers creating sabqi/manzil tickets, teacher is auto-assigned (backend handles this)
     // For admins, teacher selection is required
@@ -134,7 +131,9 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         studentId: student.id,
         studentName: student.fullName,
         type: ticketType,
-        adminComment: adminComment.trim(),
+        // For Sabq, adminComment will be added in AdminSabqReview
+        // For other types, adminComment is required
+        adminComment: ticketType === 'sabq' ? (adminComment.trim() || '') : adminComment.trim(),
         assignedTeacherId: ticketType !== 'sabq' ? selectedTeacherId : undefined,
         assignedTeacherName: ticketType !== 'sabq' 
           ? teachers.find(t => t.id === selectedTeacherId)?.fullName || ''
@@ -147,12 +146,15 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
       if (isEditMode && existingTicket) {
         // Update existing ticket (preserve status unless it's pending/in_progress)
         if (existingTicket.status === 'pending' || existingTicket.status === 'in_progress') {
-          ticketData.status = ticketType === 'sabq' ? 'sent_to_assignment' : 'pending';
+          // For Sabq, keep as pending (admin needs to review)
+          ticketData.status = 'pending';
         }
         updatedTicket = await updateRecitationTicket(existingTicket.id, ticketData);
       } else {
         // Create new ticket
-        ticketData.status = ticketType === 'sabq' ? 'sent_to_assignment' : 'pending';
+        // For Sabq, set to pending so admin can review with Interactive Mushaf
+        // For sabqi/manzil, set to pending for teacher assignment
+        ticketData.status = 'pending';
         ticketData.createdBy = user.id || '';
         ticketData.createdByName = user.name || user.email || 'Unknown';
         
@@ -166,7 +168,8 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
         updatedTicket = await createTicket(ticketData);
       }
       
-      onSuccess(updatedTicket);
+      // Pass the ticket and whether it should open Sabq review
+      onSuccess(updatedTicket, ticketType === 'sabq' && !isEditMode);
       onClose();
     } catch (error) {
       console.error(`Error ${isEditMode ? 'updating' : 'creating'} ticket:`, error);
@@ -338,7 +341,35 @@ const TicketCreationForm: React.FC<TicketCreationFormProps> = ({
             <div className="grid grid-cols-3 gap-3">
               <button
                 type="button"
-                onClick={() => setTicketType('sabq')}
+                onClick={async () => {
+                  setTicketType('sabq');
+                  // If student is selected and not in edit mode, auto-create ticket and open review
+                  if (selectedStudentId && !isEditMode && user && !isTeacher) {
+                    const selectedStudent = availableStudents.find(s => s.id === selectedStudentId);
+                    if (selectedStudent) {
+                      try {
+                        setIsCreating(true);
+                        const ticketData: Partial<Ticket> = {
+                          studentId: selectedStudent.id,
+                          studentName: selectedStudent.fullName,
+                          type: 'sabq',
+                          status: 'pending',
+                          adminComment: '',
+                          createdBy: user.id || '',
+                          createdByName: user.name || user.email || 'Unknown'
+                        };
+                        const newTicket = await createTicket(ticketData);
+                        // Open AdminSabqReview with the new ticket
+                        onSuccess(newTicket, true);
+                        onClose();
+                      } catch (error) {
+                        console.error('Error creating Sabq ticket:', error);
+                        alert('Failed to create Sabq ticket. Please try again.');
+                        setIsCreating(false);
+                      }
+                    }
+                  }
+                }}
                 className={`group relative px-4 py-4 rounded-xl border-2 font-semibold text-sm transition-all duration-200 ${
                   ticketType === 'sabq'
                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-md ring-2 ring-emerald-200'

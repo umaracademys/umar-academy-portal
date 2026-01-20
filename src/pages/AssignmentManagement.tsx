@@ -8,6 +8,7 @@ import EnhancedAssignmentForm from '../components/EnhancedAssignmentForm';
 import TicketCreationForm from '../components/TicketCreationForm';
 import AfterSchoolStudentView from '../components/AfterSchoolStudentView';
 import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
+import AdminSabqReview from '../components/AdminSabqReview';
 import { Ticket } from '../types/ticket';
 import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
@@ -47,6 +48,7 @@ const AssignmentManagement: React.FC = () => {
   const [showHomeworkForm, setShowHomeworkForm] = useState(false);
   const [homeworkAssignmentId, setHomeworkAssignmentId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'with-assignments' | 'without-assignments'>('all');
+  const [sabqReviewTicket, setSabqReviewTicket] = useState<Ticket | null>(null);
 
   const currentTeacher = useMemo(() => {
     if (!user || !teachers) return null;
@@ -385,13 +387,20 @@ const AssignmentManagement: React.FC = () => {
     setShowTicketForm(true);
   };
 
-  const handleTicketSuccess = (ticket: Ticket) => {
-    if (ticket.type === 'sabq') {
+  const handleTicketSuccess = async (ticket: Ticket, openSabqReview?: boolean) => {
+    setShowTicketForm(false);
+    
+    if (ticket.type === 'sabq' && openSabqReview) {
+      // Open AdminSabqReview for new Sabq tickets
+      setSabqReviewTicket(ticket);
+    } else if (ticket.type === 'sabq') {
+      // Legacy flow: open assignment form (for edited tickets)
       setPrefillTicket(ticket);
-      setShowTicketForm(false);
       setShowAssignmentForm(true);
-    } else {
-      setShowTicketForm(false);
+    }
+    // Refresh data to get the new ticket
+    if (refreshDataLight) {
+      await refreshDataLight();
     }
   };
 
@@ -1043,6 +1052,46 @@ const AssignmentManagement: React.FC = () => {
             setShowTicketForm(false);
           }}
           onSuccess={handleTicketSuccess}
+        />
+      )}
+
+      {/* Admin Sabq Review */}
+      {sabqReviewTicket && (
+        <AdminSabqReview
+          ticket={sabqReviewTicket}
+          onClose={() => {
+            setSabqReviewTicket(null);
+          }}
+          onSubmit={async (ticketId, data) => {
+            try {
+              const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+              const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+              
+              const response = await fetch(`${API_BASE}/tickets/${ticketId}/submit-sabq`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+              });
+              
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to submit Sabq');
+              }
+              
+              const result = await response.json();
+              alert('Sabq submitted successfully and assignment updated!');
+              if (refreshDataLight) {
+                await refreshDataLight();
+              }
+              setSabqReviewTicket(null);
+            } catch (error: any) {
+              alert('Failed to submit Sabq: ' + (error.message || 'Unknown error'));
+              throw error;
+            }
+          }}
         />
       )}
 

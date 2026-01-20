@@ -2041,11 +2041,12 @@ const TeacherDashboard: React.FC = () => {
             setShowCreateTicket(false);
             setSelectedStudentForTicket(null);
           }}
-          onSuccess={(ticket) => {
+          onSuccess={(ticket, openSabqReview) => {
             setShowCreateTicket(false);
             setSelectedStudentForTicket(null);
             setRefreshKey(prev => prev + 1);
             // Optionally show success message
+            // Note: Teachers don't create Sabq tickets, so openSabqReview will be false
           }}
         />
       )}

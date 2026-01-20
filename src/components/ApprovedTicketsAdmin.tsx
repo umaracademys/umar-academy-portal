@@ -475,6 +475,54 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
                         </div>
                       </div>
 
+                      {/* Recitation Range */}
+                      {ticket.recitationRange && (ticket.recitationRange.startAyahNumber || ticket.recitationRange.endAyahNumber) && (
+                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
+                          <p className="font-semibold text-green-700 mb-1">Recitation Range:</p>
+                          <p className="text-gray-700 text-sm">
+                            {ticket.recitationRange.surahName || `Surah ${ticket.recitationRange.surahNumber}`}
+                            {ticket.recitationRange.startAyahNumber && ticket.recitationRange.endAyahNumber && (
+                              <> - Ayah {ticket.recitationRange.startAyahNumber}-{ticket.recitationRange.endAyahNumber}</>
+                            )}
+                            {ticket.recitationRange.juzNumber && <> (Juz {ticket.recitationRange.juzNumber})</>}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Mistakes Summary */}
+                      {(ticket.mistakeCount !== undefined && ticket.mistakeCount !== null) || (ticket.mistakeSeverity !== undefined && ticket.mistakeSeverity !== null) ? (
+                        <div className="mb-4 p-3 bg-orange-50 rounded-lg">
+                          <p className="font-semibold text-orange-700 mb-1">Mistakes Summary:</p>
+                          <p className="text-gray-700 text-sm">
+                            {ticket.mistakeCount !== undefined && ticket.mistakeCount !== null && (
+                              <>Count: {ticket.mistakeCount === 'weak' ? 'Weak' : ticket.mistakeCount}</>
+                            )}
+                            {ticket.mistakeCount !== undefined && ticket.mistakeSeverity !== undefined && ' | '}
+                            {ticket.mistakeSeverity !== undefined && ticket.mistakeSeverity !== null && (
+                              <>Severity: {ticket.mistakeSeverity === 'weak' ? 'Weak' : ticket.mistakeSeverity}</>
+                            )}
+                            {ticket.mistakes && ticket.mistakes.length > 0 && (
+                              <> | Total Mistakes: {ticket.mistakes.length}</>
+                            )}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      {/* Tajweed Issues */}
+                      {ticket.tajweedIssues && ticket.tajweedIssues.length > 0 && (
+                        <div className="mb-4 p-3 bg-purple-50 rounded-lg">
+                          <p className="font-semibold text-purple-700 mb-1">Tajweed Issues:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {ticket.tajweedIssues.map((issue: any, idx: number) => (
+                              <span key={idx} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                {issue.type.replace(/_/g, ' ')}
+                                {issue.note && <span className="ml-1 text-purple-600">({issue.note})</span>}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {ticket.teacherComment && (
                         <div className="mb-4 p-3 bg-blue-50 rounded-lg">
                           <p className="font-semibold text-blue-700 mb-1">Teacher Comment:</p>
@@ -676,10 +724,71 @@ const ApprovedTicketsAdmin: React.FC<ApprovedTicketsAdminProps> = ({ onClose }) 
                 </div>
               )}
 
+              {/* Recitation Range */}
+              {viewingTicket.recitationRange && (viewingTicket.recitationRange.startAyahNumber || viewingTicket.recitationRange.endAyahNumber) && (
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <p className="font-semibold text-green-700 mb-1">Recitation Range:</p>
+                  <p className="text-gray-700 text-sm">
+                    {viewingTicket.recitationRange.surahName || `Surah ${viewingTicket.recitationRange.surahNumber}`}
+                    {viewingTicket.recitationRange.startAyahNumber && viewingTicket.recitationRange.endAyahNumber && (
+                      <> - Ayah {viewingTicket.recitationRange.startAyahNumber}-{viewingTicket.recitationRange.endAyahNumber}</>
+                    )}
+                    {viewingTicket.recitationRange.juzNumber && <> (Juz {viewingTicket.recitationRange.juzNumber})</>}
+                  </p>
+                  {viewingTicket.recitationRange.startAyahText && (
+                    <p className="text-gray-600 text-xs mt-1">Start: {viewingTicket.recitationRange.startAyahText}</p>
+                  )}
+                  {viewingTicket.recitationRange.endAyahText && (
+                    <p className="text-gray-600 text-xs mt-1">End: {viewingTicket.recitationRange.endAyahText}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Mistakes Summary */}
+              {(viewingTicket.mistakeCount !== undefined && viewingTicket.mistakeCount !== null) || (viewingTicket.mistakeSeverity !== undefined && viewingTicket.mistakeSeverity !== null) ? (
+                <div className="p-3 bg-orange-50 rounded-lg">
+                  <p className="font-semibold text-orange-700 mb-1">Mistakes Summary:</p>
+                  <p className="text-gray-700 text-sm">
+                    {viewingTicket.mistakeCount !== undefined && viewingTicket.mistakeCount !== null && (
+                      <>Count: {viewingTicket.mistakeCount === 'weak' ? 'Weak' : viewingTicket.mistakeCount}</>
+                    )}
+                    {viewingTicket.mistakeCount !== undefined && viewingTicket.mistakeSeverity !== undefined && ' | '}
+                    {viewingTicket.mistakeSeverity !== undefined && viewingTicket.mistakeSeverity !== null && (
+                      <>Severity: {viewingTicket.mistakeSeverity === 'weak' ? 'Weak' : viewingTicket.mistakeSeverity}</>
+                    )}
+                    {viewingTicket.mistakes && viewingTicket.mistakes.length > 0 && (
+                      <> | Total Mistakes: {viewingTicket.mistakes.length}</>
+                    )}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Tajweed Issues */}
+              {viewingTicket.tajweedIssues && viewingTicket.tajweedIssues.length > 0 && (
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <p className="font-semibold text-purple-700 mb-1">Tajweed Issues:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingTicket.tajweedIssues.map((issue: any, idx: number) => (
+                      <span key={idx} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                        {issue.type.replace(/_/g, ' ')}
+                        {issue.note && <span className="ml-1 text-purple-600">({issue.note})</span>}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {viewingTicket.teacherComment && (
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <p className="font-semibold text-blue-700 mb-1">Teacher Comment:</p>
                   <p className="text-gray-700 text-sm">{viewingTicket.teacherComment}</p>
+                </div>
+              )}
+
+              {viewingTicket.reviewNotes && (
+                <div className="p-3 bg-indigo-50 rounded-lg">
+                  <p className="font-semibold text-indigo-700 mb-1">Review Notes:</p>
+                  <p className="text-gray-700 text-sm">{viewingTicket.reviewNotes}</p>
                 </div>
               )}
 

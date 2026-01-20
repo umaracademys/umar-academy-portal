@@ -7,6 +7,8 @@ import Card from './Card';
 import TicketCreationForm from './TicketCreationForm';
 import { TicketQuickStats } from './workflow/TicketQuickStats';
 import { TicketInsightBanner } from './workflow/TicketInsightBanner';
+import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
+import AdminSabqReview from './AdminSabqReview';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
@@ -36,6 +38,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mushafPage, setMushafPage] = useState(1);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
+  const [showSabqReview, setShowSabqReview] = useState(false);
   const previousTicketIdRef = useRef<string | null>(null); // Track previous ticket ID to prevent unnecessary mushaf page resets
 
   // Get pending tickets (submitted by teachers)
@@ -105,7 +108,14 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     }
     
     console.log('✅ Found ticket:', ticket);
-    setSelectedTicketId(ticketId);
+    
+    // If it's a Sabq ticket with pending status, open AdminSabqReview
+    if (ticket.type === 'sabq' && ticket.status === 'pending') {
+      setShowSabqReview(true);
+      setSelectedTicketId(ticketId);
+    } else {
+      setSelectedTicketId(ticketId);
+    }
   };
 
   const handleBackToList = () => {
@@ -309,7 +319,48 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
           </div>
         </div>
 
+        {/* Admin Sabq Review Modal */}
+        {showSabqReview && selectedTicket && selectedTicket.type === 'sabq' && (
+          <AdminSabqReview
+            ticket={selectedTicket}
+            onClose={() => {
+              setShowSabqReview(false);
+              setSelectedTicketId(null);
+            }}
+            onSubmit={async (ticketId, data) => {
+              try {
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+                const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+                
+                const response = await fetch(`${API_BASE}/tickets/${ticketId}/submit-sabq`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) {
+                  const error = await response.json();
+                  throw new Error(error.error || 'Failed to submit Sabq');
+                }
+                
+                const result = await response.json();
+                alert('Sabq submitted successfully and assignment updated!');
+                await refreshDataLight();
+                setShowSabqReview(false);
+                setSelectedTicketId(null);
+              } catch (error: any) {
+                alert('Failed to submit Sabq: ' + (error.message || 'Unknown error'));
+                throw error;
+              }
+            }}
+          />
+        )}
+
         {/* Content */}
+        {!showSabqReview && (
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-gradient-to-b from-gray-50 to-white">
           {!selectedTicket ? (
             // Modern Ticket List View
@@ -581,74 +632,97 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                 <span>Back to Ticket List</span>
               </button>
 
-              {/* Quick Stats at Top */}
-              {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
-                <TicketQuickStats
-                  mistakes={getMushafMistakes(selectedTicket)}
-                  ticketType={selectedTicket.type as 'sabq' | 'sabqi' | 'manzil'}
+              {/* Compact Header with Stats & Insights */}
+              <div className="bg-white rounded-lg border-2 border-gray-200 shadow-sm p-3 mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* Student Info */}
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm ${
+                      selectedTicket.type === 'sabq' ? 'bg-green-500' :
+                      selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
+                      'bg-purple-500'
+                    }`}>
+                      {selectedTicket.type.toUpperCase().charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-primary">{selectedTicket.studentName}</h3>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-gray-600">Teacher: {selectedTicket.assignedTeacherName || 'Unassigned'}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                          selectedTicket.status === 'submitted' ? 'bg-yellow-100 text-yellow-800' :
+                          selectedTicket.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {getHumanReadableStatus(selectedTicket.status)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Compact Stats */}
+                  {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (() => {
+                    const mistakes = getMushafMistakes(selectedTicket);
+                    const stats = {
+                      total: mistakes.length,
+                      mistakes: mistakes.filter(m => {
+                        const type = m.type?.toLowerCase() || '';
+                        const normalizedType = type.replace('light_j', 'light_l');
+                        return type !== 'atkee' && !['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
+                      }).length,
+                      atkee: mistakes.filter(m => m.type?.toLowerCase() === 'atkee').length,
+                      tajweed: mistakes.filter(m => {
+                        const type = m.type?.toLowerCase() || '';
+                        const normalizedType = type.replace('light_j', 'light_l');
+                        return ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
+                      }).length,
+                    };
+                    
+                    return (
+                      <div className="flex items-center gap-2">
+                        <div className="px-2 py-1 bg-primary/10 rounded text-xs font-semibold text-primary">
+                          Total: {stats.total}
+                        </div>
+                        <div className="px-2 py-1 bg-red-50 rounded text-xs font-semibold text-red-700">
+                          Mistakes: {stats.mistakes}
+                        </div>
+                        {stats.atkee > 0 && (
+                          <div className="px-2 py-1 bg-yellow-50 rounded text-xs font-semibold text-yellow-700">
+                            Atkees: {stats.atkee}
+                          </div>
+                        )}
+                        {stats.tajweed > 0 && (
+                          <div className="px-2 py-1 bg-blue-50 rounded text-xs font-semibold text-blue-700">
+                            Tajweed: {stats.tajweed}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+                
+                {/* Compact Insights */}
+                <TicketInsightBanner
+                  ticket={selectedTicket}
+                  previousTickets={recitationTickets.filter(t => 
+                    t.studentId === selectedTicket.studentId && 
+                    t.id !== selectedTicket.id
+                  )}
                 />
-              )}
-
-              {/* Contextual Insight Banner */}
-              <TicketInsightBanner
-                ticket={selectedTicket}
-                previousTickets={recitationTickets.filter(t => 
-                  t.studentId === selectedTicket.studentId && 
-                  t.id !== selectedTicket.id
-                )}
-              />
+              </div>
 
               {/* Split View: Left → Mushaf Mistakes, Right → Teacher Comment + Stats */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Left Column: Mushaf Mistakes */}
                 <div className="space-y-4">
-                  {/* Ticket Info Card */}
-                  <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                <div className={`h-1 ${
-                  selectedTicket.type === 'sabq' ? 'bg-green-500' :
-                  selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
-                  'bg-purple-500'
-                }`}></div>
-                <div className="p-3">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-1 rounded-lg text-[10px] font-extrabold text-white shadow-md ${
-                          selectedTicket.type === 'sabq' ? 'bg-green-500' :
-                          selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
-                          'bg-purple-500'
-                        }`}>
-                          {selectedTicket.type.toUpperCase()}
-                        </span>
-                        <span className="px-2 py-1 rounded-lg text-[10px] font-extrabold bg-yellow-500 text-white shadow-md">
-                          {getHumanReadableStatus(selectedTicket.status).toUpperCase()}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-extrabold text-primary mb-1">{selectedTicket.studentName}</h3>
-                    </div>
-                  </div>
-
-                  {/* Info Grid - Compact for Split View */}
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Student</p>
-                      <p className="text-xs font-bold text-primary">{selectedTicket.studentName}</p>
-                    </div>
-                    <div className="p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      <p className="text-[10px] font-bold text-primary/60 mb-0.5 uppercase tracking-wide">Teacher</p>
-                      <p className="text-xs font-bold text-primary">{selectedTicket.assignedTeacherName || 'Unassigned'}</p>
-                    </div>
-                  </div>
-
-                  {/* Admin Notes */}
+                  {/* Admin Notes - Compact */}
                   {selectedTicket.teacherNotes && (
-                    <div className="mb-2 p-2 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
-                      <p className="text-[10px] font-bold text-blue-800 mb-1 uppercase tracking-wide">📝 Admin Notes to Teacher</p>
-                      <p className="text-xs text-blue-900">{selectedTicket.teacherNotes}</p>
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-blue-800 mb-1">📝 Admin Notes</h3>
+                        <p className="text-xs text-blue-900">{selectedTicket.teacherNotes}</p>
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
 
               {/* Mushaf View - Left Column */}
               {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
@@ -723,18 +797,101 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
                 {/* Right Column: Teacher Comment + Stats */}
                 <div className="space-y-4">
-                  {/* Teacher Comment Card */}
+                  {/* Recitation Range - Compact */}
+                  {selectedTicket.recitationRange && (selectedTicket.recitationRange.startAyahNumber || selectedTicket.recitationRange.endAyahNumber) && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Recitation Range</h3>
+                        {selectedTicket.recitationRange.surahNumber && (
+                          <div className="mb-2">
+                            <p className="text-xs font-semibold text-primary">Surah {selectedTicket.recitationRange.surahNumber}</p>
+                            {selectedTicket.recitationRange.surahName && (
+                              <p className="text-xs text-gray-600" dir="rtl" style={{ fontFamily: 'Amiri, serif' }}>{selectedTicket.recitationRange.surahName}</p>
+                            )}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedTicket.recitationRange.startAyahNumber && (
+                            <div className="p-2 bg-green-50 border border-green-200 rounded">
+                              <p className="text-[10px] font-semibold text-green-800 mb-0.5">Start</p>
+                              <p className="text-xs font-bold text-green-900">{selectedTicket.recitationRange.surahNumber}:{selectedTicket.recitationRange.startAyahNumber}</p>
+                              {selectedTicket.recitationRange.startAyahText && (
+                                <p className="text-[10px] text-green-700 mt-1 line-clamp-2" dir="rtl" style={{ fontFamily: 'Amiri, serif' }}>{selectedTicket.recitationRange.startAyahText}</p>
+                              )}
+                            </div>
+                          )}
+                          {selectedTicket.recitationRange.endAyahNumber && (
+                            <div className="p-2 bg-green-50 border border-green-200 rounded">
+                              <p className="text-[10px] font-semibold text-green-800 mb-0.5">End</p>
+                              <p className="text-xs font-bold text-green-900">{selectedTicket.recitationRange.surahNumber}:{selectedTicket.recitationRange.endAyahNumber}</p>
+                              {selectedTicket.recitationRange.endAyahText && (
+                                <p className="text-[10px] text-green-700 mt-1 line-clamp-2" dir="rtl" style={{ fontFamily: 'Amiri, serif' }}>{selectedTicket.recitationRange.endAyahText}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mistake Count and Atkees - Compact */}
+                  {(selectedTicket.mistakeCount || selectedTicket.atkees) && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Evaluation</h3>
+                        <div className="flex gap-2">
+                          {selectedTicket.mistakeCount !== undefined && selectedTicket.mistakeCount !== null && (
+                            <div className="flex-1 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                              <p className="text-[10px] font-semibold text-yellow-800 mb-0.5">Mistake Count</p>
+                              <p className="text-xs font-bold text-yellow-900">
+                                {selectedTicket.mistakeCount === 'weak' ? 'Weak' : selectedTicket.mistakeCount}
+                              </p>
+                            </div>
+                          )}
+                          {selectedTicket.atkees !== undefined && selectedTicket.atkees !== null && (
+                            <div className="flex-1 p-2 bg-orange-50 border border-orange-200 rounded">
+                              <p className="text-[10px] font-semibold text-orange-800 mb-0.5">Atkees</p>
+                              <p className="text-xs font-bold text-orange-900">{selectedTicket.atkees}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tajweed Issues - Compact */}
+                  {selectedTicket.tajweedIssues && selectedTicket.tajweedIssues.length > 0 && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Tajweed Issues ({selectedTicket.tajweedIssues.length})</h3>
+                        <div className="space-y-1">
+                          {selectedTicket.tajweedIssues.map((issue: any, idx: number) => (
+                            <div key={idx} className="p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="font-semibold text-blue-900">
+                                {issue.type ? issue.type.split('_').map((word: string) => 
+                                  word.charAt(0).toUpperCase() + word.slice(1)
+                                ).join(' ') : 'Unknown Issue'}
+                              </p>
+                              {issue.note && (
+                                <p className="text-[10px] text-blue-700 mt-0.5">{issue.note}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Teacher Comment - Compact */}
                   {selectedTicket.teacherComment && (
-                    <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                      <div className="p-4">
-                        <h3 className="text-sm font-extrabold text-primary mb-2 flex items-center gap-2">
-                          <span>💬</span> Teacher Comment
-                        </h3>
-                        <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-lg">
-                          <p className="text-sm text-green-900 italic whitespace-pre-wrap">"{selectedTicket.teacherComment}"</p>
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Teacher Comment</h3>
+                        <div className="p-2 bg-green-50 border border-green-200 rounded">
+                          <p className="text-xs text-green-900 whitespace-pre-wrap">"{selectedTicket.teacherComment}"</p>
                         </div>
                         {selectedTicket.submittedAt && (
-                          <p className="text-xs text-gray-500 mt-2">
+                          <p className="text-[10px] text-gray-500 mt-1.5">
                             Submitted: {new Date(selectedTicket.submittedAt).toLocaleString()}
                           </p>
                         )}
@@ -742,79 +899,48 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                     </div>
                   )}
 
-                  {/* Mistake List Summary */}
+                  {/* Review Notes - Compact */}
+                  {selectedTicket.reviewNotes && (
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Review Notes</h3>
+                        <div className="p-2 bg-gray-50 border border-gray-200 rounded">
+                          <p className="text-xs text-gray-900 whitespace-pre-wrap">{selectedTicket.reviewNotes}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Marked Mistakes List - Compact (Same as Teacher Review) */}
                   {selectedTicket.mistakes && selectedTicket.mistakes.length > 0 && (
-                    <div className="bg-white rounded-xl border-2 border-gray-200 shadow-lg overflow-hidden">
-                      <div className="p-4">
-                        {(() => {
-                          // Calculate counts for each category
-                          let mistakeCount = 0;
-                          let atkeeCount = 0;
-                          let tajweedCount = 0;
-                          
-                          selectedTicket.mistakes.forEach((mistake) => {
-                            const mistakeType = mistake.type?.toLowerCase() || '';
-                            const normalizedType = mistakeType.replace('light_j', 'light_l');
-                            const isAtkee = mistakeType === 'atkee';
-                            const isTajweed = ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
-                            
-                            if (isAtkee) {
-                              atkeeCount++;
-                            } else if (isTajweed) {
-                              tajweedCount++;
-                            } else {
-                              mistakeCount++;
-                            }
-                          });
-                          
-                          return (
-                            <h3 className="text-sm font-extrabold text-primary mb-3 flex items-center gap-2 flex-wrap">
-                              <span>🔴</span> 
-                              <span>Markings: {selectedTicket.mistakes.length}</span>
-                              <span className="text-red-600">• Mistakes: {mistakeCount}</span>
-                              <span className="text-yellow-600">• Atkees: {atkeeCount}</span>
-                              <span className="text-gray-600">• Tajweed: {tajweedCount}</span>
-                            </h3>
-                          );
-                        })()}
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {selectedTicket.mistakes.map((mistake, idx) => {
-                            // Categorize mistake type
-                            const mistakeType = mistake.type?.toLowerCase() || '';
-                            const isAtkee = mistakeType === 'atkee';
-                            // Handle both light_l and light_j variations (case-insensitive)
-                            const normalizedType = mistakeType.replace('light_j', 'light_l');
-                            const isTajweed = ['madd', 'ikhfa', 'holding', 'tech', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l'].includes(normalizedType);
-                            const isRegularMistake = !isAtkee && !isTajweed;
-                            
-                            // Get badge color based on category
-                            let badgeColor = 'bg-primary text-white'; // Default for regular mistakes
-                            if (isAtkee) {
-                              badgeColor = 'bg-yellow-500 text-yellow-50';
-                            } else if (isTajweed) {
-                              badgeColor = 'bg-gray-500 text-gray-50';
-                            } else {
-                              badgeColor = 'bg-red-500 text-red-50';
-                            }
+                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                      <div className="p-3">
+                        <h3 className="text-xs font-semibold text-gray-700 mb-2">Marked Mistakes ({selectedTicket.mistakes.length})</h3>
+                        <div className="space-y-1 max-h-96 overflow-y-auto">
+                          {selectedTicket.mistakes.map((mistake) => {
+                            // Convert to MushafMistake format
+                            const mushafMistake = {
+                              id: mistake.id || `mistake-${Date.now()}-${Math.random()}`,
+                              type: mistake.type,
+                              page: mistake.page,
+                              surah: mistake.surah,
+                              ayah: mistake.ayah,
+                              wordIndex: mistake.wordIndex,
+                              position: mistake.position,
+                              note: mistake.note,
+                              audioUrl: mistake.audioUrl,
+                              timestamp: mistake.timestamp || new Date()
+                            };
                             
                             return (
-                              <div
-                                key={mistake.id || idx}
-                                className="p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs"
-                              >
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className={`px-2 py-0.5 rounded font-semibold text-[10px] ${badgeColor}`}>
-                                    {mistake.type}
-                                  </span>
-                                  <span className="text-gray-600">
-                                    Page {mistake.page}
-                                    {mistake.surah && mistake.ayah && ` • Surah ${mistake.surah}:${mistake.ayah}`}
-                                  </span>
-                                </div>
-                                {mistake.note && (
-                                  <p className="text-gray-700 italic mt-1">"{mistake.note}"</p>
-                                )}
-                              </div>
+                              <MistakeBadgeHighlight
+                                key={mushafMistake.id}
+                                mistake={mushafMistake}
+                                isNew={false}
+                                showTimestamp={false}
+                                onRemove={undefined}
+                                wordText={mistake.wordText} // Pass wordText if available from ticket
+                              />
                             );
                           })}
                         </div>
@@ -873,6 +999,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             </div>
           )}
         </div>
+        )}
 
         {/* Modern Reassign Modal */}
         {showReassignModal && selectedTicket && (
@@ -990,11 +1117,16 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
             setEditingTicket(null);
             refreshDataLight(); // Use lightweight refresh for faster update
           }}
-          onSuccess={(updatedTicket) => {
+          onSuccess={async (updatedTicket, openSabqReview) => {
             setEditingTicket(null);
             refreshDataLight(); // Use lightweight refresh for faster update
-            // If we were viewing this ticket, refresh the view
-            if (selectedTicketId === updatedTicket.id) {
+            
+            // If it's a Sabq ticket and should open review, do so
+            if (updatedTicket.type === 'sabq' && openSabqReview && updatedTicket.status === 'pending') {
+              setSelectedTicketId(updatedTicket.id);
+              setShowSabqReview(true);
+            } else if (selectedTicketId === updatedTicket.id) {
+              // If we were viewing this ticket, refresh the view
               setSelectedTicketId(null);
               setTimeout(() => setSelectedTicketId(updatedTicket.id), 100);
             }

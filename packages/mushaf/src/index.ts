@@ -35,6 +35,7 @@ export type {
 export { fetchPageLines, getQuranChapters, fetchPageVerses, API_BASE } from './services/quranApi';
 export type { Chapter } from './services/quranApi';
 export { uploadMistakeAudio } from './services/audioService';
+export { getAllQpcV1Words } from './services/qpcV1Assets';
 
 // Hooks
 export { useMushafViewMode } from './hooks/useMushafViewMode';

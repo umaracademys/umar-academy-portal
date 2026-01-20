@@ -4174,6 +4174,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       recordingDuration?: number;
       recordingStartedAt?: string;
       recordingStoppedAt?: string;
+      recitationRange?: any;
+      mistakeCount?: number | 'weak';
+      mistakeSeverity?: number | 'weak';
+      tajweedIssues?: any[];
+      reviewNotes?: string;
     }
   ): Promise<Ticket> => {
     try {

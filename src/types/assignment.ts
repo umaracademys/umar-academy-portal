@@ -3,13 +3,29 @@
 export interface ClassworkPhase {
   type: 'sabq' | 'sabqi' | 'manzil';
   assignmentRange: string; // e.g., "Surah Al-Fatiha, Ayah 1-7"
-  details?: string; // Additional notes/details
+  details?: string; // Additional notes/details - stores teacher review comment
   fromPage?: number;
   toPage?: number;
-  fromAyah?: number;
-  toAyah?: number;
+  fromAyah?: number; // Start ayah number
+  toAyah?: number; // End ayah number
   surahNumber?: number;
   surahName?: string;
+  // Teacher Recitation Review fields
+  juzNumber?: number; // Juz number
+  startAyahText?: string; // Start ayah text
+  endAyahText?: string; // End ayah text
+  mistakesSummary?: string; // Summary of mistakes (count, severity, etc.)
+  mistakeCount?: number | 'weak'; // Mistake count (separate field)
+  atkees?: number; // Atkees value (1-20)
+  mistakes?: Array<AssignmentMushafMistake & { wordText?: string }>; // Array of mistakes with word text
+  tajweedIssues?: Array<{
+    type: 'heavy_letters' | 'fatha_not_vertical' | 'kasrah_not_horizontal' | 'clarity_compromised' | 'lack_of_confidence' | 'incorrect_stops' | 'other';
+    note?: string;
+  }>;
+  teacherReviewComment?: string; // Teacher's review comment
+  adminComment?: string; // Admin comment (from Sabq entry)
+  fromTicketId?: string; // Link to the ticket that created/updated this entry
+  sabqEntryId?: string; // ID of the Sabq entry (if from Sabq ticket)
   createdAt?: Date | string; // When this classwork entry was added
 }
 
@@ -75,6 +91,8 @@ export interface AssignmentHomework {
   enabled: boolean;
   content: string; // Text content (legacy - kept for backward compatibility)
   link?: string; // Optional link (legacy)
+  sabqiContent?: string; // Sabqi homework content
+  manzilContent?: string; // Manzil homework content
   items?: HomeworkItem[]; // NEW: Structured homework items
   notes?: string; // General notes for all homework items
   submission?: HomeworkSubmission;

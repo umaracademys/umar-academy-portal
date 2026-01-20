@@ -5946,13 +5946,44 @@ const RecitationReview = mongoose.model('RecitationReview', recitationReviewSche
 const classworkPhaseSchema = new mongoose.Schema({
   type: { type: String, enum: ['sabq', 'sabqi', 'manzil'], required: true },
   assignmentRange: { type: String, required: true }, // e.g., "Surah Al-Fatiha, Ayah 1-7"
-  details: { type: String, default: '' }, // Additional notes/details
+  details: { type: String, default: '' }, // Additional notes/details - stores teacher review comment
   fromPage: Number,
   toPage: Number,
-  fromAyah: Number,
-  toAyah: Number,
+  fromAyah: Number, // Start ayah number
+  toAyah: Number, // End ayah number
   surahNumber: Number,
   surahName: String,
+  // New fields for Teacher Recitation Review
+  juzNumber: Number, // Juz number
+  startAyahText: String, // Start ayah text
+  endAyahText: String, // End ayah text
+  mistakesSummary: String, // Summary of mistakes (count, severity, etc.)
+  mistakeCount: mongoose.Schema.Types.Mixed, // Mistake count (number or "weak") - from SabqEntry
+  atkees: { type: Number, min: 1, max: 20 }, // Atkees value (1-20) - from SabqEntry
+  mistakes: [{ // Array of mistakes with wordText - from SabqEntry
+    id: String,
+    type: { type: String, enum: ['madd', 'holding', 'memory', 'ikhfa', 'tech', 'other', 'letter', 'heavy_letter', 'no_rounding_lips', 'heavy_h', 'light_l', 'atkee'] },
+    page: Number,
+    surah: Number,
+    ayah: Number,
+    wordIndex: Number,
+    position: {
+      x: Number,
+      y: Number
+    },
+    note: String,
+    audioUrl: String,
+    timestamp: { type: Date, default: Date.now },
+    wordText: String // Arabic word text from SabqEntry
+  }],
+  tajweedIssues: [{
+    type: { type: String, enum: ['heavy_letters', 'fatha_not_vertical', 'kasrah_not_horizontal', 'clarity_compromised', 'lack_of_confidence', 'incorrect_stops', 'other'] },
+    note: String
+  }],
+  teacherReviewComment: String, // Teacher's review comment
+  adminComment: String, // Admin comment from SabqEntry
+  fromTicketId: String, // Link to the ticket that created/updated this entry
+  sabqEntryId: String, // ID of the Sabq entry (if from Sabq ticket)
   createdAt: { type: Date, default: Date.now } // When this classwork entry was added
 }, { _id: false });
 
@@ -6085,6 +6116,7 @@ const ticketMistakeSchema = new mongoose.Schema({
   surah: Number,
   ayah: Number,
   wordIndex: Number,
+  wordText: String, // Arabic word text where mistake occurred
   position: {
     x: Number,
     y: Number
@@ -6114,6 +6146,60 @@ const ticketSchema = new mongoose.Schema({
   // Teacher submission
   teacherComment: { type: String, default: '' }, // Teacher's comment after review
   mistakes: { type: [ticketMistakeSchema], default: [] }, // Mistakes marked by teacher
+  // Recitation range (new fields)
+  recitationRange: {
+    surahNumber: { type: Number },
+    surahName: { type: String },
+    juzNumber: { type: Number },
+    startAyahNumber: { type: Number },
+    startAyahText: { type: String },
+    endAyahNumber: { type: Number },
+    endAyahText: { type: String }
+  },
+  // Mistake counts and severity (new fields)
+  mistakeCount: { type: mongoose.Schema.Types.Mixed }, // Number 1-20 or 'weak'
+  atkees: { type: Number, min: 1, max: 20 }, // Numeric 1-20 only (replaces mistakeSeverity)
+  // Tajweed issues (new fields)
+  tajweedIssues: [{
+    type: { type: String, enum: ['heavy_letters', 'fatha_not_vertical', 'kasrah_not_horizontal', 'clarity_compromised', 'lack_of_confidence', 'incorrect_stops', 'ghunnah_error', 'qalqalah_error', 'idgham_error', 'madd_error', 'tajweed_rule_violation'] },
+    surahName: { type: String }, // Arabic surah name
+    wordText: { type: String }, // Arabic word text where error occurred
+    note: { type: String }
+  }],
+  // Optional notes
+  reviewNotes: { type: String },
+  // Sabq-specific fields (multiple entries)
+  sabqEntries: [{
+    id: String,
+    recitationRange: {
+      surahNumber: { type: Number },
+      surahName: { type: String },
+      juzNumber: { type: Number },
+      startAyahNumber: { type: Number },
+      startAyahText: { type: String },
+      endAyahNumber: { type: Number },
+      endAyahText: { type: String }
+    },
+    mistakes: { type: [ticketMistakeSchema], default: [] },
+    mistakeCount: { type: mongoose.Schema.Types.Mixed },
+    atkees: { type: Number, min: 1, max: 20 }, // Replaces mistakeSeverity
+    tajweedIssues: [{
+      type: { type: String, enum: ['heavy_letters', 'fatha_not_vertical', 'kasrah_not_horizontal', 'clarity_compromised', 'lack_of_confidence', 'incorrect_stops', 'ghunnah_error', 'qalqalah_error', 'idgham_error', 'madd_error', 'tajweed_rule_violation'] },
+      surahName: { type: String },
+      wordText: { type: String },
+      note: { type: String }
+    }],
+    adminComment: { type: String }
+  }],
+  homeworkRange: {
+    surahNumber: { type: Number },
+    surahName: { type: String },
+    juzNumber: { type: Number },
+    startAyahNumber: { type: Number },
+    startAyahText: { type: String },
+    endAyahNumber: { type: Number },
+    endAyahText: { type: String }
+  },
   // Reassignment tracking
   reassignedFromTeacherId: { type: String }, // If reassigned, track previous teacher
   reassignedFromTeacherName: { type: String },
@@ -6873,11 +6959,36 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
     const limitNum = Math.min(parseInt(limit) || 500, 500); // Max 500 per request
     const skipNum = parseInt(skip) || 0;
     
-    const assignments = await Assignment.find(query)
+    let assignments = await Assignment.find(query)
       .sort({ createdAt: -1 })
       .limit(limitNum)
-      .skip(skipNum)
-      .lean(); // Use lean() for faster queries (returns plain objects)
+      .skip(skipNum);
+    
+    // Sync missing data from tickets for sabq entries
+    for (let assignment of assignments) {
+      const sabqCountBefore = assignment.classwork?.sabq?.length || 0;
+      assignment = await syncAssignmentFromTickets(assignment);
+      const sabqCountAfter = assignment.classwork?.sabq?.length || 0;
+      if (assignment.isModified()) {
+        await assignment.save();
+        if (sabqCountAfter !== sabqCountBefore) {
+          console.log(`✅ [Sync] Assignment ${assignment._id} Sabq entries: ${sabqCountBefore} -> ${sabqCountAfter}`);
+        }
+      }
+      // Debug: Log Sabq entries for this assignment
+      if (assignment.classwork?.sabq?.length > 0) {
+        console.log(`🔵 [GET /api/assignments] Assignment ${assignment._id} has ${assignment.classwork.sabq.length} Sabq entries:`, 
+          assignment.classwork.sabq.map(e => ({ 
+            assignmentRange: e.assignmentRange, 
+            surahName: e.surahName,
+            fromTicketId: e.fromTicketId 
+          }))
+        );
+      }
+    }
+    
+    // Convert to plain objects after syncing
+    assignments = assignments.map(a => a.toObject ? a.toObject() : a);
     
     res.json(assignments);
   } catch (error) {
@@ -6889,8 +7000,20 @@ app.get('/api/assignments', authenticateToken, async (req, res) => {
 // Get assignments for a specific student
 app.get('/api/assignments/student/:studentId', async (req, res) => {
   try {
-    const assignments = await Assignment.find({ studentId: req.params.studentId })
+    let assignments = await Assignment.find({ studentId: req.params.studentId })
       .sort({ createdAt: -1 });
+    
+    // Sync missing data from tickets for sabq entries
+    for (let assignment of assignments) {
+      assignment = await syncAssignmentFromTickets(assignment);
+      if (assignment.isModified && assignment.isModified()) {
+        await assignment.save();
+      }
+    }
+    
+    // Convert to plain objects after syncing
+    assignments = assignments.map(a => a.toObject ? a.toObject() : a);
+    
     res.json(assignments);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -7716,6 +7839,617 @@ const findTicketById = async (ticketId) => {
   return ticket;
 };
 
+// Helper function to update assignment classwork from ticket review data
+// This ensures assignments always reflect the latest approved ticket data
+const updateAssignmentFromTicket = (assignment, ticket) => {
+  const currentDate = new Date();
+  const ticketIdStr = ticket._id.toString();
+  
+  // Ensure classwork object exists
+  if (!assignment.classwork) {
+    assignment.classwork = { sabq: [], sabqi: [], manzil: [] };
+  }
+  if (!assignment.classwork.sabq) {
+    assignment.classwork.sabq = [];
+  }
+  if (!assignment.classwork.sabqi) {
+    assignment.classwork.sabqi = [];
+  }
+  if (!assignment.classwork.manzil) {
+    assignment.classwork.manzil = [];
+  }
+  
+  // Handle Sabq tickets with multiple entries
+  if (ticket.type === 'sabq' && ticket.sabqEntries && ticket.sabqEntries.length > 0) {
+    // Clear existing Sabq entries from this ticket (overwrite)
+    assignment.classwork.sabq = assignment.classwork.sabq.filter(entry => entry.fromTicketId !== ticketIdStr);
+    
+    // Add all Sabq entries from ticket
+    ticket.sabqEntries.forEach((sabqEntry, index) => {
+      const recitationRange = sabqEntry.recitationRange || {};
+      const surahNumber = recitationRange.surahNumber;
+      const surahName = recitationRange.surahName;
+      const juzNumber = recitationRange.juzNumber;
+      const startAyahNumber = recitationRange.startAyahNumber;
+      const startAyahText = recitationRange.startAyahText;
+      const endAyahNumber = recitationRange.endAyahNumber;
+      const endAyahText = recitationRange.endAyahText;
+      
+      // Build assignment range string
+      let assignmentRangeStr = '';
+      if (surahName && startAyahNumber && endAyahNumber) {
+        assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        if (juzNumber) {
+          assignmentRangeStr += ` (Juz ${juzNumber})`;
+        }
+      } else if (surahNumber && startAyahNumber && endAyahNumber) {
+        assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        if (juzNumber) {
+          assignmentRangeStr += ` (Juz ${juzNumber})`;
+        }
+      } else {
+        assignmentRangeStr = sabqEntry.adminComment || ticket.adminComment || 'Sabq recitation';
+      }
+      
+      // Build mistakes summary
+      let mistakesSummary = '';
+      if (sabqEntry.mistakeCount !== undefined && sabqEntry.mistakeCount !== null) {
+        mistakesSummary += `Count: ${sabqEntry.mistakeCount === 'weak' ? 'Weak' : sabqEntry.mistakeCount}`;
+      }
+      if (sabqEntry.atkees !== undefined && sabqEntry.atkees !== null) {
+        if (mistakesSummary) mistakesSummary += ' | ';
+        mistakesSummary += `Atkees: ${sabqEntry.atkees}`;
+      }
+      if (sabqEntry.mistakes && sabqEntry.mistakes.length > 0) {
+        if (mistakesSummary) mistakesSummary += ' | ';
+        mistakesSummary += `Total Mistakes: ${sabqEntry.mistakes.length}`;
+      }
+      
+      // Get tajweed issues
+      const tajweedIssues = sabqEntry.tajweedIssues || [];
+      
+      // Admin comment for this entry
+      const adminComment = sabqEntry.adminComment || '';
+      
+      // Get mistakes array with wordText
+      const mistakesWithWordText = (sabqEntry.mistakes || []).map(m => ({
+        id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+        type: m.type,
+        page: m.page,
+        surah: m.surah,
+        ayah: m.ayah,
+        wordIndex: m.wordIndex,
+        position: m.position,
+        note: m.note,
+        audioUrl: m.audioUrl,
+        workflowStep: 'sabq',
+        timestamp: m.timestamp || new Date(),
+        wordText: m.wordText || undefined // Include wordText from Sabq entry
+      }));
+      
+      // Create classwork entry with ALL SabqEntry fields
+      const classworkEntry = {
+        type: 'sabq',
+        assignmentRange: assignmentRangeStr,
+        details: adminComment,
+        surahNumber: surahNumber,
+        surahName: surahName,
+        juzNumber: juzNumber,
+        fromAyah: startAyahNumber,
+        toAyah: endAyahNumber,
+        startAyahText: startAyahText,
+        endAyahText: endAyahText,
+        mistakesSummary: mistakesSummary,
+        mistakeCount: sabqEntry.mistakeCount !== undefined && sabqEntry.mistakeCount !== null ? sabqEntry.mistakeCount : undefined,
+        atkees: sabqEntry.atkees !== undefined && sabqEntry.atkees !== null ? sabqEntry.atkees : undefined,
+        mistakes: mistakesWithWordText.length > 0 ? mistakesWithWordText : undefined,
+        tajweedIssues: tajweedIssues.length > 0 ? tajweedIssues : undefined,
+        teacherReviewComment: adminComment,
+        adminComment: adminComment,
+        fromTicketId: ticketIdStr,
+        sabqEntryId: sabqEntry.id || undefined,
+        createdAt: currentDate
+      };
+      
+      assignment.classwork.sabq.push(classworkEntry);
+      console.log(`✅ [updateAssignmentFromTicket] Added Sabq entry ${index + 1}:`, {
+        assignmentRange: classworkEntry.assignmentRange,
+        surahName: classworkEntry.surahName,
+        fromTicketId: classworkEntry.fromTicketId,
+        sabqEntryId: classworkEntry.sabqEntryId,
+        mistakesCount: classworkEntry.mistakes?.length || 0
+      });
+    });
+    
+    console.log(`✅ [updateAssignmentFromTicket] Total Sabq entries in assignment: ${assignment.classwork.sabq.length}`);
+    
+    // Handle homework range if provided
+    if (ticket.homeworkRange) {
+      const homeworkRange = ticket.homeworkRange;
+      const homeworkSurahNumber = homeworkRange.surahNumber;
+      const homeworkSurahName = homeworkRange.surahName;
+      const homeworkJuzNumber = homeworkRange.juzNumber;
+      const homeworkStartAyah = homeworkRange.startAyahNumber;
+      const homeworkEndAyah = homeworkRange.endAyahNumber;
+      
+      if (homeworkStartAyah && homeworkEndAyah) {
+        let homeworkRangeStr = '';
+        if (homeworkSurahName && homeworkStartAyah && homeworkEndAyah) {
+          homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          if (homeworkJuzNumber) {
+            homeworkRangeStr += ` (Juz ${homeworkJuzNumber})`;
+          }
+        } else if (homeworkSurahNumber && homeworkStartAyah && homeworkEndAyah) {
+          homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          if (homeworkJuzNumber) {
+            homeworkRangeStr += ` (Juz ${homeworkJuzNumber})`;
+          }
+        }
+        
+        // Add homework as a separate Sabq entry (marked as homework)
+        const homeworkEntry = {
+          type: 'sabq',
+          assignmentRange: `Homework: ${homeworkRangeStr}`,
+          details: 'Homework for next day',
+          surahNumber: homeworkSurahNumber,
+          surahName: homeworkSurahName,
+          juzNumber: homeworkJuzNumber,
+          fromAyah: homeworkStartAyah,
+          toAyah: homeworkEndAyah,
+          startAyahText: homeworkRange.startAyahText,
+          endAyahText: homeworkRange.endAyahText,
+          mistakesSummary: '',
+          tajweedIssues: [],
+          teacherReviewComment: 'Homework assignment',
+          fromTicketId: `${ticketIdStr}-homework`,
+          createdAt: currentDate
+        };
+        
+        assignment.classwork.sabq.push(homeworkEntry);
+      }
+    }
+    
+    // Update assignment comment
+    if (assignment.comment === '' && ticket.adminComment) {
+      assignment.comment = ticket.adminComment;
+    }
+    
+    assignment.updatedAt = new Date();
+    return assignment;
+  }
+  
+  // Handle regular tickets (sabqi/manzil) or single Sabq entry
+  // Get recitation range data
+  const recitationRange = ticket.recitationRange || {};
+  const surahNumber = recitationRange.surahNumber || (ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined);
+  const surahName = recitationRange.surahName;
+  const juzNumber = recitationRange.juzNumber;
+  const startAyahNumber = recitationRange.startAyahNumber;
+  const startAyahText = recitationRange.startAyahText;
+  const endAyahNumber = recitationRange.endAyahNumber;
+  const endAyahText = recitationRange.endAyahText;
+  
+  // Build assignment range string
+  let assignmentRangeStr = '';
+  if (surahName && startAyahNumber && endAyahNumber) {
+    assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    if (juzNumber) {
+      assignmentRangeStr += ` (Juz ${juzNumber})`;
+    }
+  } else if (surahNumber && startAyahNumber && endAyahNumber) {
+    assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    if (juzNumber) {
+      assignmentRangeStr += ` (Juz ${juzNumber})`;
+    }
+  } else {
+    assignmentRangeStr = ticket.teacherComment || ticket.adminComment || `${ticket.type} recitation review`;
+  }
+  
+  // Build mistakes summary
+  let mistakesSummary = '';
+  if (ticket.mistakeCount !== undefined && ticket.mistakeCount !== null) {
+    mistakesSummary += `Count: ${ticket.mistakeCount === 'weak' ? 'Weak' : ticket.mistakeCount}`;
+  }
+  if (ticket.mistakeSeverity !== undefined && ticket.mistakeSeverity !== null) {
+    if (mistakesSummary) mistakesSummary += ' | ';
+    mistakesSummary += `Severity: ${ticket.mistakeSeverity === 'weak' ? 'Weak' : ticket.mistakeSeverity}`;
+  }
+  if (ticket.mistakes && ticket.mistakes.length > 0) {
+    if (mistakesSummary) mistakesSummary += ' | ';
+    mistakesSummary += `Total Mistakes: ${ticket.mistakes.length}`;
+  }
+  
+  // Get tajweed issues
+  const tajweedIssues = ticket.tajweedIssues || [];
+  
+  // Teacher review comment
+  const teacherReviewComment = ticket.teacherComment || ticket.reviewNotes || '';
+  
+  // Create classwork entry with all review data
+  const classworkEntry = {
+    type: ticket.type,
+    assignmentRange: assignmentRangeStr,
+    details: teacherReviewComment, // Store teacher comment in details
+    surahNumber: surahNumber,
+    surahName: surahName,
+    juzNumber: juzNumber,
+    fromAyah: startAyahNumber,
+    toAyah: endAyahNumber,
+    startAyahText: startAyahText,
+    endAyahText: endAyahText,
+    mistakesSummary: mistakesSummary,
+    tajweedIssues: tajweedIssues,
+    teacherReviewComment: teacherReviewComment,
+    fromTicketId: ticketIdStr,
+    createdAt: currentDate
+  };
+  
+  // Get the appropriate classwork array
+  const classworkArray = ticket.type === 'sabq' 
+    ? (assignment.classwork.sabq || [])
+    : ticket.type === 'sabqi'
+    ? (assignment.classwork.sabqi || [])
+    : (assignment.classwork.manzil || []);
+  
+  // Check if an entry with this ticket ID already exists (prevent duplicates)
+  const existingIndex = classworkArray.findIndex(entry => entry.fromTicketId === ticketIdStr);
+  
+  if (existingIndex >= 0) {
+    // Update existing entry (replace with latest data - ensures most recent review is shown)
+    classworkArray[existingIndex] = classworkEntry;
+    console.log(`🔄 Updated existing classwork entry for ticket ${ticketIdStr}`);
+  } else {
+    // Add new entry
+    classworkArray.push(classworkEntry);
+    console.log(`✅ Added new classwork entry for ticket ${ticketIdStr}`);
+  }
+  
+  // Update the assignment's classwork array
+  if (ticket.type === 'sabq') {
+    assignment.classwork.sabq = classworkArray;
+  } else if (ticket.type === 'sabqi') {
+    assignment.classwork.sabqi = classworkArray;
+  } else if (ticket.type === 'manzil') {
+    assignment.classwork.manzil = classworkArray;
+  }
+  
+  // Update assignment comment if empty
+  if (assignment.comment === '' && teacherReviewComment) {
+    assignment.comment = teacherReviewComment;
+  }
+  
+  assignment.updatedAt = new Date();
+  return assignment;
+};
+
+// Helper function to sync missing classwork data from associated tickets
+// This is called when fetching assignments to populate missing detailed fields
+const syncAssignmentFromTickets = async (assignment) => {
+  if (!assignment || !assignment.classwork) {
+    return assignment;
+  }
+
+  let wasModified = false;
+
+  // Sync Sabq entries
+  if (assignment.classwork.sabq && Array.isArray(assignment.classwork.sabq)) {
+    for (let i = 0; i < assignment.classwork.sabq.length; i++) {
+      const entry = assignment.classwork.sabq[i];
+      
+      // If entry has fromTicketId but is missing detailed fields, try to sync from ticket
+      if (entry.fromTicketId && (!entry.surahName || !entry.startAyahText || !entry.mistakes)) {
+        try {
+          const ticket = await findTicketById(entry.fromTicketId);
+          
+          if (ticket && ticket.type === 'sabq' && ticket.sabqEntries && ticket.sabqEntries.length > 0) {
+            // Find matching sabqEntry by sabqEntryId or by matching surah/ayah
+            let matchingSabqEntry = null;
+            
+            if (entry.sabqEntryId) {
+              matchingSabqEntry = ticket.sabqEntries.find(se => se.id === entry.sabqEntryId);
+            }
+            
+            // If not found by ID, try to match by surah/ayah
+            if (!matchingSabqEntry && entry.surahNumber && entry.fromAyah && entry.toAyah) {
+              matchingSabqEntry = ticket.sabqEntries.find(se => {
+                const range = se.recitationRange || {};
+                return range.surahNumber === entry.surahNumber &&
+                       range.startAyahNumber === entry.fromAyah &&
+                       range.endAyahNumber === entry.toAyah;
+              });
+            }
+            
+            // If still not found, use the first entry
+            if (!matchingSabqEntry && ticket.sabqEntries.length > 0) {
+              matchingSabqEntry = ticket.sabqEntries[0];
+            }
+            
+            if (matchingSabqEntry) {
+              const range = matchingSabqEntry.recitationRange || {};
+              
+              // Populate missing fields
+              if (!entry.surahName && range.surahName) {
+                entry.surahName = range.surahName;
+                wasModified = true;
+              }
+              if (!entry.surahNumber && range.surahNumber) {
+                entry.surahNumber = range.surahNumber;
+                wasModified = true;
+              }
+              if (!entry.startAyahText && range.startAyahText) {
+                entry.startAyahText = range.startAyahText;
+                wasModified = true;
+              }
+              if (!entry.endAyahText && range.endAyahText) {
+                entry.endAyahText = range.endAyahText;
+                wasModified = true;
+              }
+              if (!entry.fromAyah && range.startAyahNumber) {
+                entry.fromAyah = range.startAyahNumber;
+                wasModified = true;
+              }
+              if (!entry.toAyah && range.endAyahNumber) {
+                entry.toAyah = range.endAyahNumber;
+                wasModified = true;
+              }
+              if (!entry.juzNumber && range.juzNumber) {
+                entry.juzNumber = range.juzNumber;
+                wasModified = true;
+              }
+              if (!entry.mistakes && matchingSabqEntry.mistakes && matchingSabqEntry.mistakes.length > 0) {
+                entry.mistakes = matchingSabqEntry.mistakes.map(m => ({
+                  id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+                  type: m.type,
+                  page: m.page,
+                  surah: m.surah,
+                  ayah: m.ayah,
+                  wordIndex: m.wordIndex,
+                  position: m.position,
+                  note: m.note,
+                  audioUrl: m.audioUrl,
+                  timestamp: m.timestamp || new Date(),
+                  wordText: m.wordText
+                }));
+                wasModified = true;
+              }
+              if (entry.mistakeCount === undefined && matchingSabqEntry.mistakeCount !== undefined) {
+                entry.mistakeCount = matchingSabqEntry.mistakeCount;
+                wasModified = true;
+              }
+              if (entry.atkees === undefined && matchingSabqEntry.atkees !== undefined) {
+                entry.atkees = matchingSabqEntry.atkees;
+                wasModified = true;
+              }
+              if (!entry.tajweedIssues && matchingSabqEntry.tajweedIssues && matchingSabqEntry.tajweedIssues.length > 0) {
+                entry.tajweedIssues = matchingSabqEntry.tajweedIssues;
+                wasModified = true;
+              }
+              if (!entry.adminComment && matchingSabqEntry.adminComment) {
+                entry.adminComment = matchingSabqEntry.adminComment;
+                wasModified = true;
+              }
+              
+              // Update assignmentRange if it's generic
+              if (entry.assignmentRange && (entry.assignmentRange.includes('times') || entry.assignmentRange === 'Sabq recitation')) {
+                if (range.surahName && range.startAyahNumber && range.endAyahNumber) {
+                  entry.assignmentRange = `Surah ${range.surahName}, Ayah ${range.startAyahNumber}-${range.endAyahNumber}`;
+                  if (range.juzNumber) {
+                    entry.assignmentRange += ` (Juz ${range.juzNumber})`;
+                  }
+                  wasModified = true;
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`⚠️ Error syncing Sabq entry ${i} from ticket ${entry.fromTicketId}:`, error);
+          // Continue with other entries
+        }
+      }
+    }
+  }
+
+  // Sync Sabqi and Manzil entries (similar logic but simpler since they don't have multiple entries)
+  for (const type of ['sabqi', 'manzil']) {
+    if (assignment.classwork[type] && Array.isArray(assignment.classwork[type])) {
+      for (let i = 0; i < assignment.classwork[type].length; i++) {
+        const entry = assignment.classwork[type][i];
+        
+        if (entry.fromTicketId && (!entry.surahName || !entry.startAyahText)) {
+          try {
+            const ticket = await findTicketById(entry.fromTicketId);
+            
+            if (ticket && ticket.type === type && ticket.recitationRange) {
+              const range = ticket.recitationRange;
+              
+              if (!entry.surahName && range.surahName) {
+                entry.surahName = range.surahName;
+                wasModified = true;
+              }
+              if (!entry.startAyahText && range.startAyahText) {
+                entry.startAyahText = range.startAyahText;
+                wasModified = true;
+              }
+              if (!entry.endAyahText && range.endAyahText) {
+                entry.endAyahText = range.endAyahText;
+                wasModified = true;
+              }
+            }
+          } catch (error) {
+            console.error(`⚠️ Error syncing ${type} entry ${i} from ticket ${entry.fromTicketId}:`, error);
+          }
+        }
+      }
+    }
+  }
+
+  if (wasModified) {
+    assignment.updatedAt = new Date();
+  }
+
+  return assignment;
+};
+
+// Admin submits Sabq ticket (with multiple entries) - MUST come before /api/tickets/:id
+app.post('/api/tickets/:id/submit-sabq', async (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    console.log(`🔵 [Submit Sabq] Submitting Sabq ticket with ID: ${ticketId}`);
+    
+    const { sabqEntries, homeworkRange, adminComment } = req.body;
+    
+    if (!sabqEntries || !Array.isArray(sabqEntries) || sabqEntries.length === 0) {
+      return res.status(400).json({ error: 'At least one Sabq entry is required' });
+    }
+    
+    if (!adminComment || !adminComment.trim()) {
+      return res.status(400).json({ error: 'Admin comment is required' });
+    }
+    
+    // Validate all entries have start and end ayah
+    for (const entry of sabqEntries) {
+      if (!entry.recitationRange || !entry.recitationRange.startAyahNumber || !entry.recitationRange.endAyahNumber) {
+        return res.status(400).json({ error: 'All Sabq entries must have start and end ayah selected' });
+      }
+    }
+    
+    const ticket = await findTicketById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
+    if (ticket.type !== 'sabq') {
+      return res.status(400).json({ error: 'This endpoint is only for Sabq tickets' });
+    }
+    
+    // Update ticket
+    ticket.sabqEntries = sabqEntries;
+    ticket.homeworkRange = homeworkRange;
+    ticket.adminComment = adminComment.trim();
+    ticket.status = 'sent_to_assignment';
+    ticket.sentAt = new Date();
+    await ticket.save();
+    
+    // Find or create assignment
+    let assignment;
+    const studentIdStr = String(ticket.studentId);
+    
+    // Try to find existing assignment
+    const studentIdQuery = { status: 'active' };
+    if (/^[0-9a-fA-F]{24}$/.test(studentIdStr)) {
+      studentIdQuery.$or = [
+        { studentId: studentIdStr },
+        { studentId: new mongoose.Types.ObjectId(studentIdStr) }
+      ];
+    } else {
+      studentIdQuery.studentId = studentIdStr;
+    }
+    
+    assignment = await Assignment.findOne(studentIdQuery).sort({ createdAt: -1 });
+    
+    if (!assignment) {
+      // Create new assignment
+      assignment = new Assignment({
+        studentId: ticket.studentId,
+        studentName: ticket.studentName,
+        assignedBy: ticket.createdBy,
+        assignedByName: ticket.createdByName,
+        assignedByRole: 'admin',
+        fromTicketId: ticket._id.toString(),
+        classwork: { sabq: [], sabqi: [], manzil: [] },
+        homework: { enabled: false, content: '', link: '' },
+        comment: '',
+        mushafMistakes: [],
+        status: 'active',
+        createdAt: new Date()
+      });
+    } else if (!assignment.fromTicketId) {
+      assignment.fromTicketId = ticket._id.toString();
+    }
+    
+    // Ensure classwork object exists
+    if (!assignment.classwork) {
+      assignment.classwork = { sabq: [], sabqi: [], manzil: [] };
+    }
+    if (!assignment.classwork.sabq) {
+      assignment.classwork.sabq = [];
+    }
+    if (!assignment.classwork.sabqi) {
+      assignment.classwork.sabqi = [];
+    }
+    if (!assignment.classwork.manzil) {
+      assignment.classwork.manzil = [];
+    }
+    
+    // Update assignment with Sabq entries
+    updateAssignmentFromTicket(assignment, ticket);
+    
+    // Debug: Log Sabq entries after update
+    console.log(`🔵 [Submit Sabq] Assignment classwork.sabq after update:`, {
+      sabqCount: assignment.classwork?.sabq?.length || 0,
+      sabqEntries: assignment.classwork?.sabq?.map(e => ({
+        assignmentRange: e.assignmentRange,
+        surahName: e.surahName,
+        fromTicketId: e.fromTicketId,
+        sabqEntryId: e.sabqEntryId
+      })) || []
+    });
+    
+    // Add all mistakes from all Sabq entries
+    const allMistakes = sabqEntries.flatMap(entry => entry.mistakes || []);
+    if (allMistakes.length > 0) {
+      const assignmentMistakes = allMistakes.map(m => ({
+        id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+        type: m.type,
+        page: m.page,
+        surah: m.surah,
+        ayah: m.ayah,
+        wordIndex: m.wordIndex,
+        position: m.position,
+        note: m.note,
+        audioUrl: m.audioUrl,
+        workflowStep: 'sabq',
+        markedBy: ticket.createdBy,
+        markedByName: ticket.createdByName,
+        timestamp: m.timestamp || new Date()
+      }));
+      assignment.mushafMistakes = [...(assignment.mushafMistakes || []), ...assignmentMistakes];
+    }
+    
+    assignment.updatedAt = new Date();
+    await assignment.save();
+    
+    // Update ticket with assignment ID
+    ticket.sentToAssignmentId = assignment._id.toString();
+    await ticket.save();
+    
+    // Emit WebSocket events
+    try {
+      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
+      ticketData.id = ticket._id.toString();
+      
+      if (ticket.studentId) {
+        io.to(`student:${ticket.studentId}`).emit('ticket:updated', ticketData);
+      }
+      io.to('admins').emit('ticket:updated', ticketData);
+      
+      if (assignment.studentId) {
+        emitAssignmentEvent('assignment:updated', assignment, [assignment.studentId?.toString()]);
+      }
+    } catch (socketError) {
+      console.error('⚠️ Error emitting socket events:', socketError);
+    }
+    
+    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
+    ticketResponse.id = ticket._id.toString();
+    
+    res.json(ticketResponse);
+  } catch (error) {
+    console.error('❌ Error submitting Sabq ticket:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get single ticket by ID - MUST come after all specific routes
 app.get('/api/tickets/:id', async (req, res) => {
   try {
@@ -8003,7 +8737,12 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
       recordingFormat, 
       recordingDuration, 
       recordingStartedAt, 
-      recordingStoppedAt 
+      recordingStoppedAt,
+      recitationRange,
+      mistakeCount,
+      atkees,
+      tajweedIssues,
+      reviewNotes
     } = req.body;
     
     const updateData = {
@@ -8012,6 +8751,23 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
       mistakes: mistakes || [],
       submittedAt: new Date()
     };
+    
+    // Add new recitation review fields if provided
+    if (recitationRange) {
+      updateData.recitationRange = recitationRange;
+    }
+    if (mistakeCount !== undefined && mistakeCount !== null && mistakeCount !== '') {
+      updateData.mistakeCount = mistakeCount;
+    }
+    if (atkees !== undefined && atkees !== null && atkees !== '') {
+      updateData.atkees = atkees;
+    }
+    if (tajweedIssues && Array.isArray(tajweedIssues) && tajweedIssues.length > 0) {
+      updateData.tajweedIssues = tajweedIssues;
+    }
+    if (reviewNotes) {
+      updateData.reviewNotes = reviewNotes;
+    }
     
     // Add recording data if provided
     if (recordingUrl) {
@@ -8043,6 +8799,26 @@ app.post('/api/tickets/:id/submit', async (req, res) => {
     await ticket.save();
     
     console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
+    
+    // If ticket is already linked to an assignment, update the assignment with latest review data
+    if (ticket.sentToAssignmentId) {
+      try {
+        const assignment = await Assignment.findById(ticket.sentToAssignmentId);
+        if (assignment) {
+          updateAssignmentFromTicket(assignment, ticket);
+          await assignment.save();
+          console.log(`✅ [Submit] Updated assignment ${assignment._id} with ticket review data`);
+          
+          // Emit assignment update event
+          if (assignment.studentId) {
+            emitAssignmentEvent('assignment:updated', assignment, [assignment.studentId?.toString()]);
+          }
+        }
+      } catch (assignmentError) {
+        console.error('⚠️ Error updating assignment on ticket submission:', assignmentError);
+        // Don't fail the ticket submission if assignment update fails
+      }
+    }
     
     // Ensure response includes both _id and id for frontend consistency
     const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
@@ -8149,45 +8925,8 @@ app.post('/api/tickets/:id/approve-send', async (req, res) => {
       }
     }
 
-    // OPTIMIZED: Add ticket content to assignment (reduced logging)
-    const currentDate = new Date();
-    const surahNumber = ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined;
-    
-    if (ticket.type === 'sabq') {
-      assignment.classwork.sabq.push({
-        type: 'sabq',
-        assignmentRange: ticket.adminComment || 'Sabq recitation',
-        details: ticket.adminComment || '',
-        surahNumber,
-        surahName: undefined,
-        createdAt: currentDate
-      });
-      if (assignment.comment === '' && ticket.adminComment) {
-        assignment.comment = ticket.adminComment;
-      }
-    } else if (ticket.type === 'sabqi') {
-      if (!assignment.classwork.sabqi) assignment.classwork.sabqi = [];
-      const commentText = ticket.teacherComment || ticket.adminComment || 'Sabqi recitation review';
-      assignment.classwork.sabqi.push({
-        type: 'sabqi',
-        assignmentRange: commentText,
-        details: commentText,
-        surahNumber,
-        surahName: undefined,
-        createdAt: currentDate
-      });
-    } else if (ticket.type === 'manzil') {
-      if (!assignment.classwork.manzil) assignment.classwork.manzil = [];
-      const commentText = ticket.teacherComment || ticket.adminComment || 'Manzil recitation review';
-      assignment.classwork.manzil.push({
-        type: 'manzil',
-        assignmentRange: commentText,
-        details: commentText,
-        surahNumber,
-        surahName: undefined,
-        createdAt: currentDate
-      });
-    }
+    // Update assignment with ticket review data (ensures assignment reflects latest approved review)
+    updateAssignmentFromTicket(assignment, ticket);
 
     // Add mistakes from ticket to assignment
     if (ticket.mistakes && ticket.mistakes.length > 0) {
@@ -8449,7 +9188,27 @@ let maintenanceMode = {
 
 // Get maintenance mode status (public endpoint - no auth required)
 app.get('/api/maintenance', (req, res) => {
-  res.json(maintenanceMode);
+  try {
+    // Ensure maintenanceMode is always defined
+    if (!maintenanceMode) {
+      maintenanceMode = {
+        enabled: false,
+        message: 'The system is currently under maintenance. Please check back soon.'
+      };
+    }
+    res.json(maintenanceMode);
+  } catch (error) {
+    console.error('❌ Error in /api/maintenance:', error);
+    // Return a safe default response even on error
+    res.status(500).json({ 
+      error: 'Failed to get maintenance status', 
+      details: error.message,
+      maintenanceMode: {
+        enabled: false,
+        message: 'The system is currently under maintenance. Please check back soon.'
+      }
+    });
+  }
 });
 
 // Update maintenance mode (requires superadmin)
@@ -11577,6 +12336,8 @@ app.post('/api/ai/phrases/init-categories', async (req, res) => {
 let quranDb = null;
 let nastaleeqDb = null;
 let qpcV4Db = null;
+let ayahByAyahDb = null; // NEW: Ayah by Ayah database
+let wordByWordDb = null; // NEW: Word by Word database
 
 if (Database) {
 try {
@@ -11590,6 +12351,32 @@ try {
 } catch (error) {
   console.warn('⚠️ Could not connect to local Quran database:', error.message);
   console.log('   Continuing with Quran Foundation API only...');
+}
+
+// NEW: Connect to Ayah by Ayah database
+try {
+  const ayahDbPath = path.join(__dirname, '..', 'src', 'data', 'Ayah by Ayah.db');
+  if (fs.existsSync(ayahDbPath)) {
+    ayahByAyahDb = new Database(ayahDbPath, { readonly: true });
+    console.log('✅ Connected to Ayah by Ayah database');
+  } else {
+    console.warn('⚠️  Ayah by Ayah database file not found:', ayahDbPath);
+  }
+} catch (error) {
+  console.warn('⚠️ Could not connect to Ayah by Ayah database:', error.message);
+}
+
+// NEW: Connect to Word by Word database
+try {
+  const wordDbPath = path.join(__dirname, '..', 'src', 'data', 'word by word.db');
+  if (fs.existsSync(wordDbPath)) {
+    wordByWordDb = new Database(wordDbPath, { readonly: true });
+    console.log('✅ Connected to Word by Word database');
+  } else {
+    console.warn('⚠️  Word by Word database file not found:', wordDbPath);
+  }
+} catch (error) {
+  console.warn('⚠️ Could not connect to Word by Word database:', error.message);
 }
 
 // Local SQLite Database for Quran text (Nastaleeq)
@@ -11887,15 +12674,44 @@ async function getPageVersesFromLocalDb(pageNumber, version = 'nastaleeq') {
   }
 }
 
-// Proxy endpoint to get Quran chapters (try MongoDB first, fallback to API)
+// Proxy endpoint to get Quran chapters (try MongoDB first, fallback to QUL/API)
 app.get('/api/quran/chapters', async (req, res) => {
-  // Try MongoDB first
+  try {
+    // PRIMARY: Try MongoDB (QuranChapter schema) first
     try {
-    const surahIds = await getAllSurahsFromDb();
+      const mongoChapters = await QuranChapter.find({})
+        .sort({ id: 1 })
+        .lean();
+      
+      if (mongoChapters && mongoChapters.length > 0) {
+        console.log(`✅ Found ${mongoChapters.length} chapters from MongoDB (QuranChapter schema)`);
+        // Format chapters to match expected structure
+        const formattedChapters = mongoChapters.map(ch => ({
+          id: ch.id,
+          name_simple: ch.name_simple || `Surah ${ch.id}`,
+          name_arabic: ch.name_arabic || '',
+          name_complex: ch.name_complex || '',
+          pages: ch.pages || [],
+          verses_count: ch.verses_count || 0,
+          revelation_place: ch.revelation_place || 'unknown',
+          translated_name: ch.translated_name || {
+            language_name: 'english',
+            name: `Chapter ${ch.id}`
+          }
+        }));
+        return res.json({ chapters: formattedChapters });
+      }
+    } catch (mongoError) {
+      console.warn(`⚠️ MongoDB chapters query failed:`, mongoError.message);
+    }
+    
+    // FALLBACK: Try local database
+    try {
+      const surahIds = await getAllSurahsFromDb();
       if (surahIds.length > 0) {
         // Build chapters array from database
-      const chaptersPromises = surahIds.map(async (id) => {
-        const surahInfo = await getSurahInfoFromDb(id);
+        const chaptersPromises = surahIds.map(async (id) => {
+          const surahInfo = await getSurahInfoFromDb(id);
           return {
             id,
             name_simple: `Surah ${id}`, // We'll need to add names later or use API
@@ -11911,7 +12727,35 @@ app.get('/api/quran/chapters', async (req, res) => {
           };
         });
       
-      const chapters = await Promise.all(chaptersPromises);
+        const chapters = await Promise.all(chaptersPromises);
+        
+        // Enrich with QUL for surah names (more reliable for Arabic names)
+        try {
+          console.log(`📖 Enriching chapters with QUL surah info...`);
+          const enrichedChaptersWithQUL = await Promise.all(chapters.map(async (dbChapter) => {
+            const qulSurahInfo = await getSurahInfoFromQUL(dbChapter.id);
+            if (qulSurahInfo && qulSurahInfo.name_arabic) {
+              return {
+                ...dbChapter,
+                name_simple: qulSurahInfo.name_simple || dbChapter.name_simple,
+                name_arabic: qulSurahInfo.name_arabic,
+                name_complex: qulSurahInfo.name_complex || dbChapter.name_complex,
+                verses_count: qulSurahInfo.verses_count || dbChapter.verses_count,
+                revelation_place: qulSurahInfo.revelation_place || dbChapter.revelation_place,
+              };
+            }
+            return dbChapter;
+          }));
+          
+          // If QUL provided data, return it
+          const hasQULData = enrichedChaptersWithQUL.some(c => c.name_arabic);
+          if (hasQULData) {
+            console.log(`✅ Enriched chapters with QUL data`);
+            return res.json({ chapters: enrichedChaptersWithQUL });
+          }
+        } catch (qulError) {
+          console.warn(`⚠️ QUL enrichment failed, trying Quran Foundation API:`, qulError.message);
+        }
         
         // If we have chapters from DB, try to enrich with API data for names
         try {
@@ -11946,67 +12790,74 @@ app.get('/api/quran/chapters', async (req, res) => {
     } catch (dbError) {
       console.error('Error getting chapters from local DB:', dbError.message);
       // Fall through to API
-  }
-  
-  // Fallback to API
-  try {
-    // Try to get token first
-    let token;
+    }
+    
+    // Fallback to API
     try {
-      token = await getQuranAccessToken();
-    } catch (tokenError) {
-      console.error('❌ Failed to get access token for chapters:', tokenError.response?.data || tokenError.message);
-      return res.status(500).json({ 
-        error: 'Failed to authenticate with Quran API',
-        details: tokenError.response?.data?.message || tokenError.message 
-      });
-    }
-    
-    // Try multiple endpoints
-    const endpoints = [
-      '/content/api/v4/chapters',
-      '/api/v4/chapters',
-    ];
-    
-    let data = null;
-    let lastError = null;
-    
-    for (const endpoint of endpoints) {
+      // Try to get token first
+      let token;
       try {
-        const fullUrl = `${API_BASE}${endpoint}`;
-        const response = await axios({
-          method: 'get',
-          url: fullUrl,
-          headers: {
-            'x-auth-token': token,
-            'x-client-id': CLIENT_ID,
-          },
+        token = await getQuranAccessToken();
+      } catch (tokenError) {
+        console.error('❌ Failed to get access token for chapters:', tokenError.response?.data || tokenError.message);
+        return res.status(500).json({ 
+          error: 'Failed to authenticate with Quran API',
+          details: tokenError.response?.data?.message || tokenError.message 
         });
-        
-        data = response.data;
-        console.log(`✅ Quran chapters fetched from ${endpoint} (${data.chapters?.length || 0} chapters)`);
-        break;
-      } catch (e) {
-        lastError = e;
-        console.log(`⚠️ Failed to fetch from ${endpoint}:`, e.response?.data?.message || e.message);
-        continue;
       }
-    }
-    
-    if (!data) {
-      console.error('❌ All endpoints failed for chapters:', lastError?.response?.data || lastError?.message);
-      return res.status(500).json({ 
-        error: 'Failed to fetch Quran chapters',
-        details: lastError?.response?.data?.message || lastError?.message || 'All endpoints failed'
+      
+      // Try multiple endpoints
+      const endpoints = [
+        '/content/api/v4/chapters',
+        '/api/v4/chapters',
+      ];
+      
+      let data = null;
+      let lastError = null;
+      
+      for (const endpoint of endpoints) {
+        try {
+          const fullUrl = `${API_BASE}${endpoint}`;
+          const response = await axios({
+            method: 'get',
+            url: fullUrl,
+            headers: {
+              'x-auth-token': token,
+              'x-client-id': CLIENT_ID,
+            },
+          });
+          
+          data = response.data;
+          console.log(`✅ Quran chapters fetched from ${endpoint} (${data.chapters?.length || 0} chapters)`);
+          break;
+        } catch (e) {
+          lastError = e;
+          console.log(`⚠️ Failed to fetch from ${endpoint}:`, e.response?.data?.message || e.message);
+          continue;
+        }
+      }
+      
+      if (!data) {
+        console.error('❌ All endpoints failed for chapters:', lastError?.response?.data || lastError?.message);
+        return res.status(500).json({ 
+          error: 'Failed to fetch Quran chapters',
+          details: lastError?.response?.data?.message || lastError?.message || 'All endpoints failed'
+        });
+      }
+      
+      res.json(data);
+    } catch (apiError) {
+      console.error('❌ Unexpected error fetching Quran chapters:', apiError.response?.data || apiError.message);
+      res.status(500).json({ 
+        error: 'Internal server error while fetching Quran chapters',
+        details: apiError.response?.data?.message || apiError.message 
       });
     }
-    
-    res.json(data);
   } catch (error) {
-    console.error('❌ Unexpected error fetching Quran chapters:', error.response?.data || error.message);
+    console.error('❌ Unexpected error in chapters endpoint:', error.message);
     res.status(500).json({ 
       error: 'Internal server error while fetching Quran chapters',
-      details: error.response?.data?.message || error.message 
+      details: error.message 
     });
   }
 });
@@ -12045,6 +12896,350 @@ app.get('/api/quran/pages/:pageNumber', async (req, res) => {
   }
 });
 
+// Get ayah text - Priority: MongoDB > QUL > Local DB > Quran Foundation API
+app.get('/api/quran/surahs/:surahId/ayahs/:ayahNumber/text', async (req, res) => {
+  try {
+    const surahId = parseInt(req.params.surahId);
+    const ayahNumber = parseInt(req.params.ayahNumber);
+    
+    console.log(`📖 Fetching ayah text for surah ${surahId}, ayah ${ayahNumber}`);
+    
+    // PRIMARY: Get from MongoDB (QuranWord schema) - reconstruct ayah from words
+    try {
+      // Try v4 version first (most common)
+      let words = await QuranWord.find({ 
+        surah: surahId,
+        ayah: ayahNumber,
+        version: 'v4'
+      })
+      .sort({ word: 1 })
+      .lean();
+      
+      // If no words found with v4, try nastaleeq
+      if (!words || words.length === 0) {
+        words = await QuranWord.find({ 
+          surah: surahId,
+          ayah: ayahNumber,
+          version: 'nastaleeq'
+        })
+        .sort({ word: 1 })
+        .lean();
+      }
+      
+      if (words && words.length > 0) {
+        // Check if words are valid (not single characters)
+        // For Arabic text, words should typically be 2+ characters
+        // If most words are single characters, the data is corrupted
+        const wordLengths = words.map(w => (w.text || '').length).filter(len => len > 0);
+        const avgWordLength = wordLengths.length > 0 ? wordLengths.reduce((sum, len) => sum + len, 0) / wordLengths.length : 0;
+        const singleCharWords = wordLengths.filter(len => len === 1).length;
+        const isCorrupted = avgWordLength < 1.5 || (singleCharWords / wordLengths.length) > 0.7; // If >70% are single chars, corrupted
+        
+        if (isCorrupted) {
+          console.warn(`⚠️ MongoDB words appear corrupted (avg length: ${avgWordLength.toFixed(2)}, single chars: ${singleCharWords}/${wordLengths.length}), falling back to other sources`);
+        } else {
+          // Join words without spaces (Arabic text should be continuous)
+          const ayahText = words.map(w => w.text || '').filter(Boolean).join('');
+          if (ayahText && ayahText.length > 1) {
+            console.log(`✅ Got ayah text from MongoDB (QuranWord schema) for surah ${surahId}, ayah ${ayahNumber} (${words.length} words, avg length: ${avgWordLength.toFixed(2)})`);
+            return res.json({
+              surah: surahId,
+              ayah: ayahNumber,
+              text: ayahText,
+              text_uthmani: ayahText,
+              verse_key: `${surahId}:${ayahNumber}`,
+              source: 'mongodb'
+            });
+          }
+        }
+      }
+    } catch (dbError) {
+      console.warn(`⚠️ MongoDB query failed:`, dbError.message);
+    }
+    
+    // FALLBACK 1: Try QUL (Quranic Universal Library)
+    const qulAyah = await getAyahFromQUL(surahId, ayahNumber);
+    if (qulAyah && qulAyah.text) {
+      console.log(`✅ Got ayah text from QUL for surah ${surahId}, ayah ${ayahNumber}`);
+      return res.json({
+        surah: surahId,
+        ayah: ayahNumber,
+        text: qulAyah.text,
+        text_uthmani: qulAyah.text_uthmani || qulAyah.text,
+        verse_key: qulAyah.verse_key || `${surahId}:${ayahNumber}`,
+        source: 'qul'
+      });
+    }
+    
+    // FALLBACK 2: Try local SQLite database
+    const localAyah = getAyahFromLocalDb(surahId, ayahNumber);
+    if (localAyah && localAyah.text) {
+      console.log(`✅ Got ayah text from local SQLite database for surah ${surahId}, ayah ${ayahNumber}`);
+      return res.json({
+        surah: surahId,
+        ayah: ayahNumber,
+        text: localAyah.text,
+        text_uthmani: localAyah.text_uthmani || localAyah.text,
+        verse_key: localAyah.verse_key || `${surahId}:${ayahNumber}`,
+        source: 'local-ayah-db'
+      });
+    }
+    
+    // Final fallback: Try Quran Foundation API
+    try {
+      const verseKey = `${surahId}:${ayahNumber}`;
+      const verseData = await makeQuranApiRequest(`/content/api/v4/verses/by_key/${verseKey}?text_type=uthmani`);
+      if (verseData && (verseData.verse?.text_uthmani || verseData.text_uthmani)) {
+        const text = verseData.verse?.text_uthmani || verseData.text_uthmani;
+        console.log(`✅ Got ayah text from Quran Foundation API for surah ${surahId}, ayah ${ayahNumber}`);
+        return res.json({
+          surah: surahId,
+          ayah: ayahNumber,
+          text: text,
+          text_uthmani: text,
+          verse_key: verseKey,
+          source: 'quran-foundation'
+        });
+      }
+    } catch (apiError) {
+      console.warn(`⚠️ Quran Foundation API fallback failed:`, apiError.message);
+    }
+    
+    // If all sources fail
+    console.warn(`⚠️ Could not fetch ayah text for surah ${surahId}, ayah ${ayahNumber} from any source`);
+    res.status(404).json({ 
+      error: 'Ayah text not found',
+      surah: surahId,
+      ayah: ayahNumber
+    });
+  } catch (error) {
+    console.error(`❌ Error fetching ayah text for surah ${req.params.surahId}, ayah ${req.params.ayahNumber}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get words for a specific ayah - Priority: Local DB > MongoDB (with corruption detection)
+app.get('/api/quran/surahs/:surahId/ayahs/:ayahNumber/words', async (req, res) => {
+  try {
+    const surahId = parseInt(req.params.surahId);
+    const ayahNumber = parseInt(req.params.ayahNumber);
+    
+    console.log(`📖 Fetching words for surah ${surahId}, ayah ${ayahNumber}`);
+    
+    // PRIMARY: Try local Word by Word database first (most reliable)
+    const localWords = getWordsFromLocalDb(surahId, ayahNumber);
+    if (localWords && localWords.length > 0) {
+      console.log(`✅ Found ${localWords.length} words from local SQLite database for surah ${surahId}, ayah ${ayahNumber}`);
+      return res.json({ 
+        words: localWords,
+        source: 'local-word-db'
+      });
+    }
+    
+    // FALLBACK: Get words from MongoDB (QuranWord schema) with corruption detection
+    const version = req.query.version || 'v4'; // Default to v4
+    console.log(`📖 Fetching words from MongoDB (version: ${version})`);
+    
+    let words = await QuranWord.find({ 
+      surah: surahId,
+      ayah: ayahNumber,
+      version: version
+    })
+      .sort({ word: 1 })
+      .lean();
+    
+    // If no words found with specified version, try the other version
+    if ((!words || words.length === 0) && version === 'v4') {
+      console.log(`⚠️ No words found with version ${version}, trying nastaleeq`);
+      words = await QuranWord.find({ 
+        surah: surahId,
+        ayah: ayahNumber,
+        version: 'nastaleeq'
+      })
+      .sort({ word: 1 })
+      .lean();
+    }
+    
+    if (words && words.length > 0) {
+      // Check for corruption: if average word length is too short, data is corrupted
+      const avgLength = words.reduce((sum, w) => sum + (w.text?.length || 0), 0) / words.length;
+      const isCorrupted = avgLength < 1.5;
+      
+      if (isCorrupted) {
+        console.warn(`⚠️ MongoDB words appear corrupted (avg length: ${avgLength.toFixed(2)}), skipping MongoDB data`);
+        // Return empty array - frontend will use QPC V1 database or JSON file
+        return res.json({ 
+          words: [],
+          source: 'mongodb-corrupted',
+          error: 'MongoDB data appears corrupted'
+        });
+      }
+      
+      console.log(`✅ Found ${words.length} words from MongoDB (QuranWord schema) for surah ${surahId}, ayah ${ayahNumber}`);
+      
+      // Format words for response
+      const formattedWords = words.map(w => ({
+        word: w.word,
+        text: w.text || '',
+        surah: w.surah,
+        ayah: w.ayah,
+        word_id: w.word_id,
+        page_number: w.page_number
+      }));
+      
+      return res.json({ 
+        words: formattedWords,
+        source: 'mongodb'
+      });
+    }
+    
+    // If no words found in any source
+    console.warn(`⚠️ No words found for surah ${surahId}, ayah ${ayahNumber} in any source`);
+    return res.json({ words: [], source: 'none' });
+  } catch (error) {
+    console.error(`❌ Error fetching words for surah ${req.params.surahId}, ayah ${req.params.ayahNumber}:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to get ayah text from local Ayah by Ayah database (PRIMARY SOURCE)
+function getAyahFromLocalDb(surahId, ayahNumber) {
+  if (!ayahByAyahDb) {
+    return null;
+  }
+  
+  try {
+    const stmt = ayahByAyahDb.prepare('SELECT text, verse_key FROM verses WHERE surah = ? AND ayah = ? LIMIT 1');
+    const result = stmt.get(surahId, ayahNumber);
+    
+    if (result && result.text) {
+      // Strip HTML tags from text (e.g., <rule class=madda_necessary>مٓ</rule>)
+      let cleanText = result.text.replace(/<[^>]+>/g, '');
+      // Remove ayah number at the end if present (e.g., " ١")
+      cleanText = cleanText.replace(/\s*[٠-٩0-9]+\s*$/, '').trim();
+      
+      return {
+        text_uthmani: cleanText,
+        text: cleanText,
+        text_simple: cleanText,
+        surah_number: surahId,
+        ayah_number: ayahNumber,
+        verse_key: result.verse_key || `${surahId}:${ayahNumber}`,
+        source: 'local-ayah-db'
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn(`⚠️ Error querying Ayah by Ayah database:`, error.message);
+    return null;
+  }
+}
+
+// Helper function to get words from local Word by Word database
+function getWordsFromLocalDb(surahId, ayahNumber) {
+  if (!wordByWordDb) {
+    console.warn(`⚠️ Word by Word database not available`);
+    return null;
+  }
+  
+  try {
+    // Database schema: id, location, surah, ayah, word, text
+    const stmt = wordByWordDb.prepare('SELECT word, text FROM words WHERE surah = ? AND ayah = ? ORDER BY word');
+    const results = stmt.all(surahId, ayahNumber);
+    
+    if (results && results.length > 0) {
+      return results.map(r => {
+        // Clean text: strip HTML tags and remove trailing ayah numbers
+        let cleanText = r.text ? r.text.replace(/<[^>]+>/g, '').trim() : '';
+        // Remove Arabic and English numerals at the end
+        cleanText = cleanText.replace(/[\u0660-\u0669\u06F0-\u06F90-9\s]+$/, '').trim();
+        
+        return {
+          word: r.word,
+          text: cleanText,
+          surah: surahId,
+          ayah: ayahNumber,
+          word_id: r.word, // Use word position as word_id (since there's no separate word_id column)
+          page_number: null // Not available in this database
+        };
+      });
+    }
+    return null;
+  } catch (error) {
+    console.warn(`⚠️ Error querying Word by Word database:`, error.message);
+    return null;
+  }
+}
+
+// Helper function to fetch from QUL (Quranic Universal Library)
+async function fetchFromQUL(endpoint) {
+  try {
+    const QUL_BASE = 'https://qul.tarteel.ai';
+    const response = await axios.get(`${QUL_BASE}${endpoint}`, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.warn(`⚠️ QUL API request failed for ${endpoint}:`, error.message);
+    return null;
+  }
+}
+
+// Helper function to get ayah text from QUL
+async function getAyahFromQUL(surahId, ayahNumber) {
+  try {
+    // QUL uses verse_key format: "surah:ayah"
+    const verseKey = `${surahId}:${ayahNumber}`;
+    const data = await fetchFromQUL(`/resources/quran-metadata/${verseKey}`);
+    
+    if (data && data.text) {
+      return {
+        text_uthmani: data.text,
+        text: data.text,
+        text_simple: data.text,
+        surah_number: data.surah_number || surahId,
+        ayah_number: data.ayah_number || ayahNumber,
+        verse_key: data.verse_key || verseKey,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn(`⚠️ Could not fetch ayah ${surahId}:${ayahNumber} from QUL:`, error.message);
+    return null;
+  }
+}
+
+// Helper function to get surah info from QUL
+async function getSurahInfoFromQUL(surahId) {
+  try {
+    const data = await fetchFromQUL(`/resources/surah-info/${surahId}`);
+    
+    if (data) {
+      // QUL surah info may have Arabic name in different fields
+      const arabicName = data.name_arabic || 
+                        data.arabic_name || 
+                        data.names?.find(n => n.language === 'arabic')?.name ||
+                        data.translated_name?.find(n => n.language === 'arabic')?.name;
+      
+      return {
+        id: surahId,
+        name_arabic: arabicName,
+        name_simple: data.name_simple || data.name,
+        name_complex: data.name_complex,
+        verses_count: data.verses_count,
+        revelation_place: data.revelation_place,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn(`⚠️ Could not fetch surah info ${surahId} from QUL:`, error.message);
+    return null;
+  }
+}
+
 // Proxy endpoint to get verses by surah/chapter
 app.get('/api/quran/surahs/:surahId/verses', async (req, res) => {
   try {
@@ -12057,6 +13252,9 @@ app.get('/api/quran/surahs/:surahId/verses', async (req, res) => {
       console.log(`✅ Quran verses for surah ${surahId} from local DB (${version}, ${localVerses.length} verses)`);
       return res.json({ verses: localVerses, pagination: null, version });
     }
+    
+    // NEW: Try QUL for Arabic text (more reliable for Arabic verses)
+    // Note: QUL may require fetching ayahs individually, so we'll use it as fallback for specific ayahs
     
     // Get verses for this surah - try with text parameters first
     const endpoints = [

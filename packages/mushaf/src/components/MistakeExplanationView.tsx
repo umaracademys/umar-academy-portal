@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MushafMistake, StructuredTajweedData } from '../types/mushaf';
 import { Word } from './InteractiveMushaf';
 
@@ -30,6 +30,117 @@ const MistakeExplanationView: React.FC<MistakeExplanationViewProps> = ({
   onClose,
   isMobile = false
 }) => {
+  const [fetchedWordText, setFetchedWordText] = useState<string>('');
+  const [isLoadingWord, setIsLoadingWord] = useState<boolean>(false);
+  
+  // Use word.text if available, otherwise fetch from QPC V1 database or JSON file (same as MistakeBadgeHighlight)
+  useEffect(() => {
+    // If word.text is already available, use it
+    if (word && word.text && word.text.trim().length > 1) {
+      setFetchedWordText('');
+      return;
+    }
+    
+    // Otherwise, fetch word text using the same logic as MistakeBadgeHighlight
+    const fetchWordText = async () => {
+      if (mistake.surah && mistake.ayah && mistake.wordIndex !== undefined) {
+        setIsLoadingWord(true);
+        try {
+          // Strategy 1: Try to load from QPC V1 database (same as Interactive Mushaf)
+          try {
+            const { getAllQpcV1Words } = await import('../services/qpcV1Assets');
+            const allWords = await getAllQpcV1Words();
+            
+            if (Array.isArray(allWords) && allWords.length > 0) {
+              // Find word by word_id (word_index) - this is the primary lookup for large wordIndex values
+              let foundWord = allWords.find((w) => w.word_index === mistake.wordIndex);
+              
+              // If not found by word_id, try to find by surah, ayah, and word position
+              if (!foundWord) {
+                const ayahWords = allWords.filter((w) => w.surah === mistake.surah && w.ayah === mistake.ayah);
+                
+                // Try word position match
+                foundWord = ayahWords.find((w) => {
+                  const wordPos = (w as any).word;
+                  return wordPos === mistake.wordIndex || wordPos === mistake.wordIndex + 1;
+                });
+                
+                // If still not found, try array index within ayah words
+                if (!foundWord && mistake.wordIndex >= 0 && mistake.wordIndex < ayahWords.length) {
+                  foundWord = ayahWords[mistake.wordIndex];
+                }
+              }
+              
+              if (foundWord && foundWord.text && foundWord.text.trim().length > 1) {
+                setFetchedWordText(foundWord.text.trim());
+                setIsLoadingWord(false);
+                return;
+              }
+            }
+          } catch (qpcError) {
+            // QPC V1 database not available, fall through to JSON file
+          }
+          
+          // Strategy 2: Fallback to JSON file (same as Interactive Mushaf)
+          try {
+            const wordsRes = await fetch('/data/words/word_by_word.json');
+            if (wordsRes.ok) {
+              const contentType = wordsRes.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const wordsData = await wordsRes.json();
+                let wordsArray: Array<{ word_index: number; surah: number; ayah: number; text: string }> = [];
+                
+                if (Array.isArray(wordsData)) {
+                  wordsArray = wordsData;
+                } else {
+                  // Convert object format to array
+                  wordsArray = Object.values(wordsData).map((entry: any) => ({
+                    word_index: entry.id || entry.word_index,
+                    surah: parseInt(entry.surah),
+                    ayah: parseInt(entry.ayah),
+                    text: entry.text
+                  }));
+                }
+                
+                // Find word by word_id (word_index)
+                let foundWord = wordsArray.find((w) => w.word_index === mistake.wordIndex);
+                
+                // If not found by word_id, try to find by surah, ayah, and word position
+                if (!foundWord) {
+                  const ayahWords = wordsArray.filter((w) => w.surah === mistake.surah && w.ayah === mistake.ayah);
+                  
+                  // Try array index within ayah words
+                  if (mistake.wordIndex >= 0 && mistake.wordIndex < ayahWords.length) {
+                    foundWord = ayahWords[mistake.wordIndex];
+                  }
+                }
+                
+                if (foundWord && foundWord.text && foundWord.text.trim().length > 1) {
+                  setFetchedWordText(foundWord.text.trim());
+                  setIsLoadingWord(false);
+                  return;
+                }
+              }
+            }
+          } catch (jsonError) {
+            // JSON file not available, word text will remain empty
+          }
+        } catch (error) {
+          // Silently handle errors - word text will remain empty
+        } finally {
+          setIsLoadingWord(false);
+        }
+      }
+    };
+    
+    fetchWordText();
+  }, [mistake.surah, mistake.ayah, mistake.wordIndex, word]);
+  
+  // Use word.text if available, otherwise use fetchedWordText
+  const displayWordText = (word && word.text && word.text.trim().length > 1) 
+    ? word.text.trim() 
+    : fetchedWordText;
+  
   const getRecencyCategory = (): 'today' | 'recent' | 'old' => {
     if (!mistake.timeline?.lastMarkedAt) return 'old';
     const now = new Date();
@@ -106,12 +217,35 @@ const MistakeExplanationView: React.FC<MistakeExplanationViewProps> = ({
                 {getMistakeTypeLabel(mistake.type)}
               </span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900">
-              {word.text || `Surah ${mistake.surah}, Ayah ${mistake.ayah}`}
-            </h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Page {mistake.page} • Word {mistake.wordIndex !== undefined ? mistake.wordIndex + 1 : 'N/A'}
-            </p>
+            {displayWordText && displayWordText.trim().length > 0 ? (
+              <div className="space-y-1">
+                <div 
+                  className="text-2xl font-bold text-primary leading-relaxed"
+                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                  dir="rtl"
+                >
+                  {displayWordText}
+                </div>
+                <p className="text-sm text-gray-600 mt-1">
+                  Page {mistake.page} • Word {mistake.wordIndex !== undefined ? mistake.wordIndex : 'N/A'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Surah {mistake.surah}, Ayah {mistake.ayah}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Surah {mistake.surah}, Ayah {mistake.ayah}
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Page {mistake.page} • Word {mistake.wordIndex !== undefined ? mistake.wordIndex : 'N/A'}
+                </p>
+                {isLoadingWord && (
+                  <p className="text-xs text-gray-400 italic">Loading word...</p>
+                )}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}

@@ -73,12 +73,14 @@ interface InteractiveMushafProps {
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
   showSurahIndexDefault?: boolean; // Default state for surah index visibility
   onVerseSelect?: (surah: number, ayah: number, page: number) => void; // Callback when a verse is clicked for question selection
+  onVerseDoubleClick?: (surah: number, ayah: number, page: number) => void; // Callback when a verse is double-clicked for ayah range selection
   selectedVerses?: Array<{ surah: number; ayah: number }>; // Array of verses that are selected as questions
   focusMode?: boolean; // Focus Mode: hide all UI tools, expand Mushaf
   toolsHidden?: boolean; // Hide Tools: disable marking interactions but keep mistakes visible
   zoom?: number; // Zoom level (0.8 to 1.4)
   onZoomChange?: (zoom: number) => void; // Callback when zoom changes
   enableZoom?: boolean; // Enable zoom controls
+  onMistakesWithWords?: (mistakesWithWords: Array<MushafMistake & { wordText?: string }>) => void; // Callback to provide mistakes with word text
 }
 
 interface MistakeModalProps {
@@ -603,6 +605,7 @@ export const WordByWordPage: React.FC<{
   onWordHover?: (word: Word, event?: React.MouseEvent) => void; // New: handle word hover
   onWordLeave?: () => void; // New: handle word leave
   onLetterClick?: (word: Word, letterIndex: number, event?: React.MouseEvent | React.TouchEvent) => void; // New: handle letter clicks
+  onVerseDoubleClick?: (surah: number, ayah: number, page: number) => void; // New: handle double-click for ayah selection
   mistakes?: MushafMistake[]; // Current mistakes
   historicalMistakes?: MushafMistake[]; // Historical mistakes from student's personal Mushaf
   showHistorical?: boolean; // Toggle to show/hide historical mistakes
@@ -618,6 +621,7 @@ export const WordByWordPage: React.FC<{
   onWordHover,
   onWordLeave,
   onLetterClick,
+  onVerseDoubleClick,
   mistakes: mistakesProp = [],
   historicalMistakes: historicalMistakesProp = [],
   showHistorical = true,
@@ -633,6 +637,7 @@ export const WordByWordPage: React.FC<{
   const [layout, setLayout] = useState<LayoutPage | null>(null);
   const [words, setWords] = useState<Word[]>([]);
   const [wordsFromApi, setWordsFromApi] = useState<Word[]>([]); // Words from API response as fallback
+  const [wordsLoading, setWordsLoading] = useState<boolean>(true); // Track if words are still loading
   const [background, setBackground] = useState<string>("");
   const [chapters, setChapters] = useState<Chapter[]>(FALLBACK_CHAPTERS);
   const defaultFontStack = 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif';
@@ -658,6 +663,7 @@ export const WordByWordPage: React.FC<{
 
   // Load words data on mount
   useEffect(() => {
+    setWordsLoading(true);
     const loadWords = async () => {
       try {
         // Try loading words from QPC V1 glyph database first
@@ -665,6 +671,7 @@ export const WordByWordPage: React.FC<{
           const qpcWords = await getAllQpcV1Words();
           if (Array.isArray(qpcWords) && qpcWords.length > 0) {
             setWords(qpcWords);
+            setWordsLoading(false);
             console.log('✅ Loaded words from QPC V1 glyph database');
             return;
           }
@@ -682,6 +689,7 @@ export const WordByWordPage: React.FC<{
               const wordsData = await wordsRes.json();
               if (Array.isArray(wordsData)) {
                 setWords(wordsData);
+                setWordsLoading(false);
               } else {
                 // Convert object format to array
                 const wordsArray: Word[] = Object.values(wordsData).map((entry: any) => ({
@@ -691,6 +699,7 @@ export const WordByWordPage: React.FC<{
                   text: entry.text
                 }));
                 setWords(wordsArray);
+                setWordsLoading(false);
               }
               console.log('✅ Loaded words from public folder');
             } catch (jsonError) {
@@ -711,6 +720,8 @@ export const WordByWordPage: React.FC<{
       } catch (error) {
         console.error('Error loading words:', error);
         // Don't throw - allow component to continue without words data
+      } finally {
+        setWordsLoading(false); // Mark loading as complete even if it failed
       }
     };
     
@@ -779,9 +790,13 @@ export const WordByWordPage: React.FC<{
 
           if (!cancelled && apiWords.length > 0) {
             setWordsFromApi(apiWords);
+            setWordsLoading(false);
             if (import.meta.env?.DEV) {
               console.log(`✅ Extracted ${apiWords.length} words from MongoDB response`);
             }
+          } else if (!cancelled) {
+            // If no words from API, mark as not loading (will use words from file)
+            setWordsLoading(false);
           }
 
           // Convert MongoDB response to LayoutPage format
@@ -864,9 +879,20 @@ export const WordByWordPage: React.FC<{
   }, [pageNumber, defaultFontStack]);
 
   // Collect mistakes with their word text for the parent component
+  // Use ref to track last processed mistakes to prevent infinite loops
+  const lastProcessedMistakesRef = React.useRef<string>('');
+  
   useEffect(() => {
     const availableWords = words.length > 0 ? words : wordsFromApi;
     if (availableWords.length > 0 && mistakes.length > 0 && onMistakesWithWords) {
+      // Create a stable key from mistakes to detect if they've changed
+      const mistakesKey = mistakes.map(m => `${m.id || ''}:${m.surah}:${m.ayah}:${m.wordIndex}`).join('|');
+      
+      // Skip if we've already processed these exact mistakes
+      if (lastProcessedMistakesRef.current === mistakesKey) {
+        return;
+      }
+      
       // Try to load word-by-word JSON file which has complete words (not glyphs)
       const loadWordByWordFile = async () => {
         try {
@@ -888,7 +914,7 @@ export const WordByWordPage: React.FC<{
                   ayah: parseInt(entry.ayah) || 0,
                   text: entry.text || ''
                 }));
-                console.log(`✅ Loaded ${wordsArray.length} complete words from word_by_word.json (converted from object)`);
+                // console.log(`✅ Loaded ${wordsArray.length} complete words from word_by_word.json (converted from object)`);
                 return wordsArray;
               }
             }
@@ -910,10 +936,10 @@ export const WordByWordPage: React.FC<{
           wordTextMap.set(key, w.text);
         });
         
-        console.log(`📊 Built wordTextMap with ${wordTextMap.size} words for mistake lookup`);
+        // console.log(`📊 Built wordTextMap with ${wordTextMap.size} words for mistake lookup`);
       
+        // Process ALL mistakes, not just those on current page, so word text is available for all
         const mistakesWithWordText = mistakes
-          .filter(m => m.page === pageNumber)
           .map(m => {
             // Find the word text for this mistake
             let wordText: string | undefined = undefined;
@@ -924,12 +950,12 @@ export const WordByWordPage: React.FC<{
               wordText = wordTextMap.get(directKey);
               
               if (wordText) {
-                console.log(`✅ Found word from word_by_word.json:`, {
-                  surah: m.surah,
-                  ayah: m.ayah,
-                  wordIndex: m.wordIndex,
-                  wordText
-                });
+                // console.log(`✅ Found word from word_by_word.json:`, {
+                //   surah: m.surah,
+                //   ayah: m.ayah,
+                //   wordIndex: m.wordIndex,
+                //   wordText
+                // });
               } else {
                 // If not found, try to find the closest word in the ayah
                 const ayahWords = wordsToUse.filter(
@@ -945,13 +971,13 @@ export const WordByWordPage: React.FC<{
                   });
                   
                   wordText = closestWord.text;
-                  console.log(`📝 Using closest word from word_by_word.json:`, {
-                    surah: m.surah,
-                    ayah: m.ayah,
-                    mistakeWordIndex: m.wordIndex,
-                    foundWordIndex: closestWord.word_index,
-                    wordText
-                  });
+                  // console.log(`📝 Using closest word from word_by_word.json:`, {
+                  //   surah: m.surah,
+                  //   ayah: m.ayah,
+                  //   mistakeWordIndex: m.wordIndex,
+                  //   foundWordIndex: closestWord.word_index,
+                  //   wordText
+                  // });
                 }
               }
             }
@@ -961,10 +987,19 @@ export const WordByWordPage: React.FC<{
               wordText: wordText
             };
           });
-        onMistakesWithWords(mistakesWithWordText);
+        
+        // Mark as processed before calling callback to prevent loops
+        lastProcessedMistakesRef.current = mistakesKey;
+        
+        if (onMistakesWithWords) {
+          // console.log(`📤 Calling onMistakesWithWords with ${mistakesWithWordText.length} mistakes`);
+          onMistakesWithWords(mistakesWithWordText);
+        } else {
+          console.warn(`⚠️ onMistakesWithWords callback is not defined`);
+        }
       });
     }
-  }, [words, wordsFromApi, mistakes, pageNumber, onMistakesWithWords, layout]);
+  }, [words, wordsFromApi, mistakes, pageNumber, layout]); // Removed onMistakesWithWords from deps to prevent loops
 
   // Function to get mistake for a specific letter in a word
   const getLetterMistake = (word: Word, letterIndex: number): { mistake: MushafMistake | undefined; isHistorical: boolean } => {
@@ -1175,9 +1210,10 @@ export const WordByWordPage: React.FC<{
   // Use words from API as fallback if word file not loaded
   const availableWords = words.length > 0 ? words : wordsFromApi;
   
-  // Show warning if neither words file nor API words are available
-  if (words.length === 0 && wordsFromApi.length === 0) {
-    console.warn('⚠️ Words data not loaded yet - page may not display correctly');
+  // Show warning only if loading is complete and no words are available
+  // This prevents false warnings during initial load
+  if (!wordsLoading && words.length === 0 && wordsFromApi.length === 0) {
+    console.warn('⚠️ Words data not loaded - page may not display correctly');
   }
 
   return (
@@ -1553,46 +1589,96 @@ export const WordByWordPage: React.FC<{
                     <React.Fragment key={w.word_index}>
                         <span
                           onClick={(e) => {
-                            // Detect which letter was clicked based on click position
-                            if (!readOnly && onLetterClick && letters.length > 0) {
-                              const wordSpan = e.currentTarget;
-                              const rect = wordSpan.getBoundingClientRect();
-                              const clickX = e.clientX - rect.left;
-                              
-                              // For RTL text, calculate which letter was clicked
-                              // Get all letter spans
-                              const letterSpans = wordSpan.querySelectorAll('span[data-letter-index]');
-                              let clickedLetterIndex: number | undefined = undefined;
-                              
-                              // Find which letter span contains the click
-                              letterSpans.forEach((span) => {
-                                const spanRect = span.getBoundingClientRect();
-                                const spanLeft = spanRect.left - rect.left;
-                                const spanRight = spanRect.right - rect.left;
+                            // Single click: mark mistake (only if not a double click)
+                            // We use a timeout to detect if this was a double click
+                            // Store the timeout so double-click can cancel it
+                            const clickTimeout = setTimeout(() => {
+                              // Detect which letter was clicked based on click position
+                              if (!readOnly && onLetterClick && letters.length > 0) {
+                                const wordSpan = e.currentTarget;
+                                const rect = wordSpan.getBoundingClientRect();
+                                const clickX = e.clientX - rect.left;
                                 
-                                // Check if click is within this letter's bounds
-                                if (clickX >= spanLeft && clickX <= spanRight) {
-                                  const idx = parseInt(span.getAttribute('data-letter-index') || '-1');
-                                  if (idx >= 0) {
-                                    clickedLetterIndex = idx;
+                                // For RTL text, calculate which letter was clicked
+                                // Get all letter spans
+                                const letterSpans = wordSpan.querySelectorAll('span[data-letter-index]');
+                                let clickedLetterIndex: number | undefined = undefined;
+                                
+                                // Find which letter span contains the click
+                                letterSpans.forEach((span) => {
+                                  const spanRect = span.getBoundingClientRect();
+                                  const spanLeft = spanRect.left - rect.left;
+                                  const spanRight = spanRect.right - rect.left;
+                                  
+                                  // Check if click is within this letter's bounds
+                                  if (clickX >= spanLeft && clickX <= spanRight) {
+                                    const idx = parseInt(span.getAttribute('data-letter-index') || '-1');
+                                    if (idx >= 0) {
+                                      clickedLetterIndex = idx;
+                                    }
                                   }
+                                });
+                                
+                                // If we found a letter, use letter click handler, otherwise use word click
+                                if (clickedLetterIndex !== undefined) {
+                                  onLetterClick(w, clickedLetterIndex);
+                                } else {
+                                  // Fallback: calculate approximate letter index based on position
+                                  // For RTL, rightmost is index 0
+                                  const relativeX = rect.width - clickX;
+                                  const approximateIndex = Math.floor((relativeX / rect.width) * letters.length);
+                                  const safeIndex = Math.max(0, Math.min(letters.length - 1, approximateIndex));
+                                  onLetterClick(w, safeIndex);
                                 }
-                              });
-                              
-                              // If we found a letter, use letter click handler, otherwise use word click
-                              if (clickedLetterIndex !== undefined) {
-                                onLetterClick(w, clickedLetterIndex);
                               } else {
-                                // Fallback: calculate approximate letter index based on position
-                                // For RTL, rightmost is index 0
-                                const relativeX = rect.width - clickX;
-                                const approximateIndex = Math.floor((relativeX / rect.width) * letters.length);
-                                const safeIndex = Math.max(0, Math.min(letters.length - 1, approximateIndex));
-                                onLetterClick(w, safeIndex);
+                                  onWordClick?.(w);
+                              }
+                            }, 250); // Wait 250ms to see if this becomes a double click (reduced for better double-click detection)
+                            
+                            // Store timeout on element for cleanup
+                            (e.currentTarget as any)._clickTimeout = clickTimeout;
+                          }}
+                          onDoubleClick={(e) => {
+                            // Double click: select ayah for start/end range
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            console.log('🖱️ [WordByWordPage] Double-click event fired on word:', { surah: w.surah, ayah: w.ayah, page: pageNumber });
+                            
+                            // Clear the single click timeout immediately
+                            const timeout = (e.currentTarget as any)._clickTimeout;
+                            if (timeout) {
+                              clearTimeout(timeout);
+                              delete (e.currentTarget as any)._clickTimeout;
+                              console.log('✅ [WordByWordPage] Cleared single-click timeout');
+                            }
+                            
+                            // Call double click handler for ayah selection
+                            if (onVerseDoubleClick) {
+                              console.log('✅ [WordByWordPage] Calling onVerseDoubleClick handler with:', { surah: w.surah, ayah: w.ayah, page: pageNumber });
+                              try {
+                                onVerseDoubleClick(w.surah, w.ayah, pageNumber);
+                              } catch (error) {
+                                console.error('❌ [WordByWordPage] Error calling onVerseDoubleClick:', error);
                               }
                             } else {
-                              onWordClick?.(w);
+                              console.warn('⚠️ [WordByWordPage] onVerseDoubleClick handler not provided');
                             }
+                          }}
+                          onMouseDown={(e) => {
+                            // Track mouse down to help with double-click detection
+                            const now = Date.now();
+                            const lastClick = (e.currentTarget as any)._lastClickTime || 0;
+                            const timeSinceLastClick = now - lastClick;
+                            
+                            // If this is a potential double-click (within 500ms), mark it
+                            if (timeSinceLastClick < 500 && timeSinceLastClick > 0) {
+                              (e.currentTarget as any)._isDoubleClickCandidate = true;
+                            } else {
+                              (e.currentTarget as any)._isDoubleClickCandidate = false;
+                            }
+                            
+                            (e.currentTarget as any)._lastClickTime = now;
                           }}
                           className={`cursor-pointer transition-all duration-200 ${wordMistakeClass} ${verseSelectedClass} relative group inline-block`}
                           dir="rtl"
@@ -1650,10 +1736,32 @@ export const WordByWordPage: React.FC<{
                                 data-letter-index={letterIdx}
                                 onClick={(e) => {
                                   e.stopPropagation(); // Prevent word click
-                                  if (!readOnly && onLetterClick) {
-                                    onLetterClick(w, letterIdx, e);
-                                  } else {
-                                    onWordClick?.(w, e);
+                                  // Single click: mark mistake (only if not a double click)
+                                  const clickTimeout = setTimeout(() => {
+                                    if (!readOnly && onLetterClick) {
+                                      onLetterClick(w, letterIdx, e);
+                                    } else {
+                                      onWordClick?.(w, e);
+                                    }
+                                  }, 300); // Wait 300ms to see if this becomes a double click
+                                  
+                                  // Store timeout on element for cleanup
+                                  (e.currentTarget as any)._clickTimeout = clickTimeout;
+                                }}
+                                onDoubleClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  
+                                  // Clear the single click timeout
+                                  const timeout = (e.currentTarget as any)._clickTimeout;
+                                  if (timeout) {
+                                    clearTimeout(timeout);
+                                    delete (e.currentTarget as any)._clickTimeout;
+                                  }
+                                  
+                                  // Call double click handler for ayah selection
+                                  if (onVerseDoubleClick) {
+                                    onVerseDoubleClick(w.surah, w.ayah, pageNumber);
                                   }
                                 }}
                                 className={`${letterMistake ? letterMistakeClass : ''} ${!readOnly && onLetterClick ? 'cursor-pointer hover:bg-yellow-100' : ''} transition-all duration-200 inline-block`}
@@ -1836,12 +1944,14 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   showHistorical: showHistoricalProp = true,
   showSurahIndexDefault = false, // Default to hidden unless specified
   onVerseSelect,
+  onVerseDoubleClick,
   selectedVerses = [] as Array<{ surah: number; ayah: number }>,
   focusMode: focusModeProp,
   toolsHidden: toolsHiddenProp,
   zoom: zoomProp,
   onZoomChange,
   enableZoom = false,
+  onMistakesWithWords: onMistakesWithWordsProp,
 }) => {
   const historicalMistakes = React.useMemo(() => historicalMistakesProp as MushafMistake[], [historicalMistakesProp]);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
@@ -2082,6 +2192,16 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
   // Convert existing mistakes to local format for display
   // This will be updated when WordByWordPage provides mistakes with word text
   const [mistakesWithWords, setMistakesWithWords] = useState<Array<MushafMistake & { wordText?: string }>>([]);
+  
+  // Memoize the callback to prevent infinite loops
+  const handleMistakesWithWords = React.useCallback((mistakesWithWordsData: Array<MushafMistake & { wordText?: string }>) => {
+    // Update local state
+    setMistakesWithWords(mistakesWithWordsData);
+    // Also call the prop callback if provided
+    if (onMistakesWithWordsProp) {
+      onMistakesWithWordsProp(mistakesWithWordsData);
+    }
+  }, [onMistakesWithWordsProp]);
   
   useEffect(() => {
     // Update localMistakes from mistakesWithWords (which has word text)
@@ -2554,15 +2674,15 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
         const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 1024;
         // On mobile, always show portal when showSurahIndex is true, regardless of focusMode
         const shouldRender = showSurahIndex && isMobileDevice;
-        console.log('📱 Portal render check:', { 
-          showSurahIndex, 
-          focusMode, 
-          isMobileOrTablet, 
-          isMobileDevice,
-          windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'N/A',
-          windowExists: typeof window !== 'undefined',
-          shouldRender 
-        });
+        // console.log('📱 Portal render check:', { 
+        //   showSurahIndex, 
+        //   focusMode,
+        //   isMobileOrTablet,
+        //   isMobileDevice,
+        //   windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'N/A',
+        //   windowExists: typeof window !== 'undefined',
+        //   shouldRender 
+        // });
         return shouldRender;
       })() && typeof window !== 'undefined' && document.body && createPortal(
         <>
@@ -3202,11 +3322,12 @@ const InteractiveMushaf: React.FC<InteractiveMushafProps> = ({
               onWordHover={readOnly || mode === 'viewing' ? handleWordHover : undefined}
               onWordLeave={readOnly || mode === 'viewing' ? handleWordLeave : undefined}
               onLetterClick={handleLetterClick}
+              onVerseDoubleClick={onVerseDoubleClick}
               mistakes={mistakes}
               historicalMistakes={historicalMistakes}
               showHistorical={showHistorical}
-              readOnly={readOnly || !!onVerseSelect || toolsHidden} // Read-only if verse selection mode or tools hidden
-              onMistakesWithWords={setMistakesWithWords}
+              readOnly={readOnly || toolsHidden} // Read-only if tools hidden (allow double-click for ayah selection)
+              onMistakesWithWords={handleMistakesWithWords}
               onPageChange={onPageChange}
               selectedVerses={selectedVerses}
               isMobile={isMobile}

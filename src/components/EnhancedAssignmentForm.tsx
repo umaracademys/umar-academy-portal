@@ -6,6 +6,7 @@ import { Ticket } from '../types/ticket';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { getQuranChapters, Chapter } from '@umar-academy/mushaf';
+import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
 
 interface EnhancedAssignmentFormProps {
   studentId: string;
@@ -155,10 +156,14 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     enabled: boolean;
     content: string;
     link: string;
+    sabqiContent: string;
+    manzilContent: string;
   }>({
     enabled: false,
     content: '',
-    link: ''
+    link: '',
+    sabqiContent: '',
+    manzilContent: ''
   });
 
   const [comment, setComment] = useState('');
@@ -169,12 +174,14 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       const classworkData = existingAssignment.classwork || { sabq: [], sabqi: [], manzil: [] };
       setClasswork(classworkData);
       
-      const hw = existingAssignment.homework || { enabled: false, content: '', link: '' };
+      const hw = existingAssignment.homework || { enabled: false, content: '', link: '', sabqiContent: '', manzilContent: '' };
       
       setHomework({
-        enabled: hw.enabled || !!(hw.content?.trim() || hw.link?.trim()),
+        enabled: hw.enabled || !!(hw.content?.trim() || hw.link?.trim() || hw.sabqiContent?.trim() || hw.manzilContent?.trim()),
         content: hw.content || '',
-        link: hw.link || ''
+        link: hw.link || '',
+        sabqiContent: hw.sabqiContent || '',
+        manzilContent: hw.manzilContent || ''
       });
       
       setComment(existingAssignment.comment || '');
@@ -350,31 +357,83 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     }));
   };
 
-  // Use suggestion from ticket log
+  // Use suggestion from ticket log - populate all new fields
   const useTicketSuggestion = (logEntry: TicketLogEntry) => {
     const currentDate = new Date();
+    const ticket = logEntry.ticket;
     const teacherName = logEntry.teacherName;
-    const mistakeCount = logEntry.ticket.mistakes?.length || 0;
-    const teacherComment = logEntry.notes || logEntry.ticket.teacherComment || '';
     
-    // Format the data: Teacher: [Name] | Mistakes Marked: [Count] | Comments: [Teacher Comments]
-    const formattedData = `Teacher: ${teacherName} | Mistakes Marked: ${mistakeCount} | Comments: ${teacherComment}`;
+    // Get recitation range data
+    const recitationRange = ticket.recitationRange || {};
+    const surahNumber = recitationRange.surahNumber;
+    const surahName = recitationRange.surahName;
+    const juzNumber = recitationRange.juzNumber;
+    const startAyahNumber = recitationRange.startAyahNumber;
+    const startAyahText = recitationRange.startAyahText;
+    const endAyahNumber = recitationRange.endAyahNumber;
+    const endAyahText = recitationRange.endAyahText;
+    
+    // Build assignment range string with surah and ayah info
+    let assignmentRangeStr = '';
+    if (surahName && startAyahNumber && endAyahNumber) {
+      assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+      if (juzNumber) {
+        assignmentRangeStr += ` (Juz ${juzNumber})`;
+      }
+    } else if (surahNumber && startAyahNumber && endAyahNumber) {
+      assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+      if (juzNumber) {
+        assignmentRangeStr += ` (Juz ${juzNumber})`;
+      }
+    } else {
+      assignmentRangeStr = ticket.teacherComment || ticket.adminComment || `${ticket.type} recitation review`;
+    }
+    
+    // Build mistakes summary
+    let mistakesSummary = '';
+    if (ticket.mistakeCount !== undefined && ticket.mistakeCount !== null) {
+      mistakesSummary += `Count: ${ticket.mistakeCount === 'weak' ? 'Weak' : ticket.mistakeCount}`;
+    }
+    if (ticket.mistakeSeverity !== undefined && ticket.mistakeSeverity !== null) {
+      if (mistakesSummary) mistakesSummary += ' | ';
+      mistakesSummary += `Severity: ${ticket.mistakeSeverity === 'weak' ? 'Weak' : ticket.mistakeSeverity}`;
+    }
+    if (ticket.mistakes && ticket.mistakes.length > 0) {
+      if (mistakesSummary) mistakesSummary += ' | ';
+      mistakesSummary += `Total Mistakes: ${ticket.mistakes.length}`;
+    }
+    
+    // Get tajweed issues
+    const tajweedIssues = ticket.tajweedIssues || [];
+    
+    // Teacher review comment
+    const teacherReviewComment = ticket.teacherComment || ticket.reviewNotes || '';
+    
+    // Update classwork phase with all new fields
+    const updatePhase = (type: 'sabq' | 'sabqi' | 'manzil') => {
+      addClassworkPhase(type);
+      const lastIndex = classwork[type].length;
+      updateClassworkPhase(type, lastIndex, 'assignmentRange', assignmentRangeStr);
+      updateClassworkPhase(type, lastIndex, 'details', teacherReviewComment);
+      updateClassworkPhase(type, lastIndex, 'surahNumber', surahNumber);
+      updateClassworkPhase(type, lastIndex, 'surahName', surahName);
+      updateClassworkPhase(type, lastIndex, 'juzNumber', juzNumber);
+      updateClassworkPhase(type, lastIndex, 'fromAyah', startAyahNumber);
+      updateClassworkPhase(type, lastIndex, 'toAyah', endAyahNumber);
+      updateClassworkPhase(type, lastIndex, 'startAyahText', startAyahText);
+      updateClassworkPhase(type, lastIndex, 'endAyahText', endAyahText);
+      updateClassworkPhase(type, lastIndex, 'mistakesSummary', mistakesSummary);
+      updateClassworkPhase(type, lastIndex, 'tajweedIssues', tajweedIssues);
+      updateClassworkPhase(type, lastIndex, 'teacherReviewComment', teacherReviewComment);
+      updateClassworkPhase(type, lastIndex, 'fromTicketId', ticket.id || ticket._id?.toString());
+    };
     
     if (logEntry.type === 'sabq') {
-      addClassworkPhase('sabq');
-      const lastIndex = classwork.sabq.length;
-      updateClassworkPhase('sabq', lastIndex, 'assignmentRange', formattedData);
-      updateClassworkPhase('sabq', lastIndex, 'details', formattedData);
+      updatePhase('sabq');
     } else if (logEntry.type === 'sabqi') {
-      addClassworkPhase('sabqi');
-      const lastIndex = classwork.sabqi.length;
-      updateClassworkPhase('sabqi', lastIndex, 'assignmentRange', formattedData);
-      updateClassworkPhase('sabqi', lastIndex, 'details', formattedData);
+      updatePhase('sabqi');
     } else if (logEntry.type === 'manzil') {
-      addClassworkPhase('manzil');
-      const lastIndex = classwork.manzil.length;
-      updateClassworkPhase('manzil', lastIndex, 'assignmentRange', formattedData);
-      updateClassworkPhase('manzil', lastIndex, 'details', formattedData);
+      updatePhase('manzil');
     }
   };
 
@@ -414,7 +473,12 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       filteredClasswork.sabq.length > 0 ||
       filteredClasswork.sabqi.length > 0 ||
       filteredClasswork.manzil.length > 0;
-    const hasHomework = homework.enabled && (homework.content.trim() || homework.link.trim());
+    const hasHomework = homework.enabled && (
+      homework.content.trim() || 
+      homework.link.trim() || 
+      homework.sabqiContent.trim() || 
+      homework.manzilContent.trim()
+    );
     return hasClasswork || hasHomework;
   }, [filteredClasswork, homework]);
 
@@ -469,7 +533,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         homework: {
           enabled: homework.enabled,
           content: homework.content || '',
-          link: homework.link || ''
+          link: homework.link || '',
+          sabqiContent: homework.sabqiContent || '',
+          manzilContent: homework.manzilContent || ''
         },
         comment: comment.trim(),
         mushafMistakes: mushafMistakes.length > 0 ? mushafMistakes : undefined,
@@ -526,142 +592,417 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col my-4">
-        {/* Compact Header */}
-        <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[96vh] overflow-hidden flex flex-col my-auto">
+        {/* Modern Header with Gradient */}
+        <div className="px-6 py-4 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                {assignmentId ? 'Edit' : 'Create'} Assignment
-              </h2>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {student?.fullName || 'Student'}
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {assignmentId ? 'Edit' : 'Create'} Assignment
+                </h2>
+                <p className="text-sm text-gray-600 mt-0.5 flex items-center gap-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  {student?.fullName || 'Student'}
+                </p>
+              </div>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-xl font-bold w-7 h-7 flex items-center justify-center rounded hover:bg-gray-200"
+              className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-2 transition-colors"
+              aria-label="Close"
             >
-              ×
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           </div>
         </div>
 
-        {/* Compact Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4">
-          {/* Compact Ticket Log Panel - Wrapped by default */}
-          {ticketLogs.length > 0 && (
-            <div className="mb-3">
-              <button
-                type="button"
-                onClick={() => setShowTicketLog(!showTicketLog)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 rounded border border-gray-300 hover:bg-gray-100 transition-colors text-sm"
-              >
-                <span className="font-medium text-gray-700">Ticket History ({ticketLogs.length})</span>
-                <span className="text-gray-500">{showTicketLog ? '▼' : '▶'}</span>
-              </button>
-
-              {showTicketLog && (
-                <div className="mt-2 border border-gray-200 rounded overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Date</th>
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Type</th>
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Mistakes</th>
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {ticketLogs.map((log, idx) => {
-                          const colors = getTypeColor(log.type);
-                          const mistakeCount = log.ticket.mistakes?.length || 0;
-                          return (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="px-2 py-1.5 text-gray-600 text-xs">
-                                {log.date.toLocaleDateString()}
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${colors.bg} ${colors.text}`}>
-                                  {log.type.toUpperCase()}
-                                </span>
-                              </td>
-                              <td className="px-2 py-1.5 text-gray-600 text-xs">
-                                {mistakeCount}
-                              </td>
-                              <td className="px-2 py-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => useTicketSuggestion(log)}
-                                  className="px-2 py-1 text-xs bg-primary text-white rounded hover:bg-primary/90 transition-colors"
-                                >
-                                  Use
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Compact Classwork Section */}
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Classwork</h3>
-            
-            {/* Compact Sabq */}
-            <div className="mb-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
-                  <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">Sabq</span>
-                </label>
+        {/* Modern Form with Better Spacing */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Modern Ticket History Section */}
+            {ticketLogs.length > 0 && (
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => addClassworkPhase('sabq')}
-                  className="px-2 py-1 text-xs font-medium text-primary border border-primary rounded hover:bg-primary hover:text-white transition-colors"
+                  onClick={() => setShowTicketLog(!showTicketLog)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-100/50 transition-colors"
                 >
-                  + Add
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-semibold text-gray-900">Ticket History</span>
+                    <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded-full">
+                      {ticketLogs.length}
+                    </span>
+                  </div>
+                  <svg className={`w-5 h-5 text-gray-600 transition-transform ${showTicketLog ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
-              </div>
-              {classwork.sabq.length === 0 ? (
-                <p className="text-xs text-gray-400 italic py-1">No sabq entries</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {classwork.sabq.map((phase, index) => (
-                    <div key={index} className="border border-gray-200 rounded p-2 bg-purple-50/20">
-                      <input
-                        type="text"
-                        placeholder="Assignment Range"
-                        value={phase.assignmentRange}
-                        onChange={(e) => updateClassworkPhase('sabq', index, 'assignmentRange', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-purple-500 focus:border-purple-500 mb-1"
-                        required
-                      />
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-400">
-                          {phase.createdAt ? new Date(phase.createdAt).toLocaleDateString() : 'Today'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeClassworkPhase('sabq', index)}
-                          className="text-xs text-red-600 hover:text-red-700"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* Compact Sabqi */}
+                {showTicketLog && (
+                  <div className="border-t border-blue-200 bg-white">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Mistakes</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {ticketLogs.map((log, idx) => {
+                            const colors = getTypeColor(log.type);
+                            const mistakeCount = log.ticket.mistakes?.length || 0;
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                                <td className="px-4 py-3 text-sm text-gray-600">
+                                  {log.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${colors.bg} ${colors.text} uppercase tracking-wide`}>
+                                    {log.type}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-sm text-gray-700 font-medium">{mistakeCount}</span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => useTicketSuggestion(log)}
+                                    className="px-3 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+                                  >
+                                    Use
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Modern Classwork Section */}
+            <div className="space-y-5">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-6 bg-primary rounded-full"></div>
+                <h3 className="text-lg font-bold text-gray-900">Classwork</h3>
+              </div>
+            
+              {/* Modern Sabq Section */}
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">S</span>
+                    </div>
+                    <h4 className="text-base font-bold text-gray-900">Sabq</h4>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => addClassworkPhase('sabq')}
+                    className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors shadow-sm flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Entry
+                  </button>
+                </div>
+                {classwork.sabq.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <svg className="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-sm">No Sabq entries yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {classwork.sabq.map((phase, index) => (
+                      <div key={index} className="bg-white rounded-xl border-2 border-purple-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-lg">Entry {index + 1}</span>
+                            {phase.createdAt && (
+                              <span className="text-xs text-gray-500">
+                                {new Date(phase.createdAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Assignment Range Input */}
+                          <input
+                            type="text"
+                            placeholder="Assignment Range (e.g., Surah Al-Fatiha, Ayah 1-7)"
+                            value={phase.assignmentRange}
+                            onChange={(e) => updateClassworkPhase('sabq', index, 'assignmentRange', e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                            required
+                          />
+                      
+                          {/* Modern Detailed Display - Complete Report - Always show if fromTicketId exists */}
+                          {(phase.fromTicketId || phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.mistakes?.length || phase.tajweedIssues?.length || phase.adminComment || phase.teacherReviewComment || phase.details) ? (
+                            <div className="mt-4 pt-4 border-t border-purple-200 space-y-4">
+                              {/* Modern Recitation Range Section */}
+                              {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText) && (
+                                <div className="bg-purple-50 rounded-lg p-4 space-y-3">
+                                  {/* Arabic Surah Name - Prominent */}
+                                  {phase.surahName && (
+                                    <div 
+                                      className="text-base font-bold text-purple-700"
+                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                      dir="rtl"
+                                    >
+                                      {phase.surahName}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Ayah Range Badge */}
+                                  {(phase.fromAyah || phase.toAyah) && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-3 py-1 bg-purple-600 text-white text-sm font-semibold rounded-lg">
+                                        Ayah {phase.fromAyah || '?'}-{phase.toAyah || '?'}
+                                      </span>
+                                      {phase.juzNumber && (
+                                        <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs font-medium rounded">
+                                          Juz {phase.juzNumber}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Start Ayah Text - Modern Card */}
+                                  {phase.startAyahText && (
+                                    <div className="bg-white rounded-lg p-3 border border-purple-200">
+                                      <div className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">Start Ayah</div>
+                                      <p 
+                                        className="text-base text-gray-900 leading-relaxed"
+                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                        dir="rtl"
+                                      >
+                                        {phase.startAyahText}
+                                      </p>
+                                    </div>
+                                  )}
+                                  
+                                  {/* End Ayah Text - Only if different */}
+                                  {phase.endAyahText && phase.endAyahText !== phase.startAyahText && (
+                                    <div className="bg-white rounded-lg p-3 border border-purple-200">
+                                      <div className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">End Ayah</div>
+                                      <p 
+                                        className="text-base text-gray-900 leading-relaxed"
+                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                        dir="rtl"
+                                      >
+                                        {phase.endAyahText}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            
+                              {/* Modern Statistics Badges */}
+                              {(phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.tajweedIssues?.length || phase.mistakes?.length) && (
+                                <div className="flex gap-2 flex-wrap">
+                                  {phase.mistakeCount !== undefined && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+                                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                      </svg>
+                                      <span className="text-sm font-semibold text-red-700">
+                                        Mistakes: {phase.mistakeCount === 'weak' ? 'Weak' : phase.mistakeCount}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {phase.atkees !== undefined && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                      <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                      </svg>
+                                      <span className="text-sm font-semibold text-yellow-700">
+                                        Atkees: {phase.atkees}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                      </svg>
+                                      <span className="text-sm font-semibold text-blue-700">
+                                        Tajweed: {phase.tajweedIssues.length}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            
+                              {/* Marked Mistakes Section - Always show if available */}
+                              {(() => {
+                                // Priority 1: Use mistakes array directly from phase (if available from SabqEntry)
+                                if (phase.mistakes && phase.mistakes.length > 0) {
+                                  return (
+                                    <div className="mt-3 pt-3 border-t border-gray-300">
+                                      <div className="text-sm font-semibold text-gray-700 mb-2">Marked Mistakes ({phase.mistakes.length})</div>
+                                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                                        {phase.mistakes.map((mistake) => (
+                                          <MistakeBadgeHighlight
+                                            key={mistake.id || `mistake-${index}-${mistake.page}-${mistake.wordIndex}`}
+                                            mistake={mistake}
+                                            isNew={false}
+                                            showTimestamp={false}
+                                            onRemove={undefined}
+                                            wordText={mistake.wordText}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                
+                                // Priority 2: Fallback to assignment.mushafMistakes if phase.mistakes not available
+                                const assignment = existingAssignment;
+                                if (!assignment?.mushafMistakes) return null;
+                                
+                                const phaseMistakes = assignment.mushafMistakes.filter((m: AssignmentMushafMistake) => {
+                                  if (m.workflowStep !== 'sabq') return false;
+                                  // Match by surah and ayah range if available
+                                  if (phase.surahNumber && phase.fromAyah && phase.toAyah) {
+                                    return m.surah === phase.surahNumber && 
+                                           m.ayah >= phase.fromAyah && 
+                                           m.ayah <= phase.toAyah;
+                                  }
+                                  return true;
+                                }).map((m: AssignmentMushafMistake) => ({
+                                  id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+                                  type: m.type || 'other',
+                                  page: m.page,
+                                  surah: m.surah,
+                                  ayah: m.ayah,
+                                  wordIndex: m.wordIndex,
+                                  position: m.position,
+                                  note: m.note,
+                                  audioUrl: m.audioUrl,
+                                  timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+                                  wordText: (m as any).wordText
+                                }));
+                                
+                                return phaseMistakes.length > 0 ? (
+                                  <div className="mt-3 pt-3 border-t border-gray-300">
+                                    <div className="text-sm font-semibold text-gray-700 mb-2">Marked Mistakes ({phaseMistakes.length})</div>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                                      {phaseMistakes.map((mistake) => (
+                                        <MistakeBadgeHighlight
+                                          key={mistake.id}
+                                          mistake={mistake}
+                                          isNew={false}
+                                          showTimestamp={false}
+                                          onRemove={undefined}
+                                          wordText={(mistake as any).wordText}
+                                        />
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+                              
+                              {/* Tajweed Issues - Always show if available */}
+                              {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                  <div className="text-sm font-semibold text-gray-700 mb-2">Tajweed Issues</div>
+                                  <div className="space-y-1">
+                                    {phase.tajweedIssues.map((issue, idx) => (
+                                      <div key={idx} className="text-xs text-gray-600 flex items-start gap-2">
+                                        <span className="text-purple-600 mt-0.5">•</span>
+                                        <span>{issue.type}{issue.note ? `: ${issue.note}` : ''}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Admin Comment - Always show if available */}
+                              {phase.adminComment && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                  <div className="text-sm font-semibold text-gray-700 mb-1">Admin Comment</div>
+                                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{phase.adminComment}</p>
+                                </div>
+                              )}
+                              
+                              {/* Teacher Comment - Always show if available */}
+                              {(phase.teacherReviewComment || phase.details) && (
+                                <div className="mt-3 pt-3 border-t border-gray-300">
+                                  <div className="text-sm font-semibold text-gray-700 mb-1">Teacher Comment</div>
+                                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{phase.teacherReviewComment || phase.details}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
+                          
+                          {/* Debug: Show debug info only in development */}
+                          {process.env.NODE_ENV === 'development' && (
+                            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                              <p className="font-semibold mb-2">Debug: Sabq Entry Data</p>
+                              <div className="space-y-1 text-xs font-mono">
+                                <div><strong>fromTicketId:</strong> {phase.fromTicketId || '❌ none'}</div>
+                                <div><strong>sabqEntryId:</strong> {phase.sabqEntryId || '❌ none'}</div>
+                                <div><strong>surahName:</strong> {phase.surahName || '❌ none'}</div>
+                                <div><strong>surahNumber:</strong> {phase.surahNumber || '❌ none'}</div>
+                                <div><strong>fromAyah:</strong> {phase.fromAyah || '❌ none'}</div>
+                                <div><strong>toAyah:</strong> {phase.toAyah || '❌ none'}</div>
+                                <div><strong>startAyahText:</strong> {phase.startAyahText ? `✅ ${phase.startAyahText.substring(0, 40)}...` : '❌ none'}</div>
+                                <div><strong>endAyahText:</strong> {phase.endAyahText ? `✅ ${phase.endAyahText.substring(0, 40)}...` : '❌ none'}</div>
+                                <div><strong>mistakes:</strong> {phase.mistakes?.length || 0} {(phase.mistakes && phase.mistakes.length > 0) ? '✅' : '❌'}</div>
+                                <div><strong>mistakeCount:</strong> {phase.mistakeCount !== undefined ? `✅ ${phase.mistakeCount}` : '❌ none'}</div>
+                                <div><strong>atkees:</strong> {phase.atkees !== undefined ? `✅ ${phase.atkees}` : '❌ none'}</div>
+                                <div><strong>tajweedIssues:</strong> {phase.tajweedIssues?.length || 0} {(phase.tajweedIssues && phase.tajweedIssues.length > 0) ? '✅' : '❌'}</div>
+                                <div><strong>adminComment:</strong> {phase.adminComment ? `✅ ${phase.adminComment.substring(0, 30)}...` : '❌ none'}</div>
+                                <div><strong>teacherReviewComment:</strong> {phase.teacherReviewComment ? `✅ ${phase.teacherReviewComment.substring(0, 30)}...` : '❌ none'}</div>
+                                <div><strong>details:</strong> {phase.details ? `✅ ${phase.details.substring(0, 30)}...` : '❌ none'}</div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Action Footer */}
+                          <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+                            <button
+                              type="button"
+                              onClick={() => removeClassworkPhase('sabq', index)}
+                              className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors shadow-sm flex items-center gap-1.5"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Modern Sabqi Section */}
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
@@ -689,7 +1030,70 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-1"
                         required
                       />
-                      <div className="flex items-center justify-between">
+                      {/* Display all ticket details if they exist */}
+                      {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakesSummary || phase.tajweedIssues?.length || phase.teacherReviewComment) && (
+                        <div className="mt-2 space-y-1 text-[10px] text-gray-600 border-t border-gray-200 pt-1">
+                          {/* Surah Name/Number */}
+                          {(phase.surahName || phase.surahNumber) && (
+                            <div>
+                              <span className="font-semibold">Surah:</span>{' '}
+                              <span 
+                                className="font-bold text-primary"
+                                style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                dir="rtl"
+                              >
+                                {phase.surahName || `Surah ${phase.surahNumber}`}
+                              </span>
+                              {phase.juzNumber && <span className="ml-1">(Juz {phase.juzNumber})</span>}
+                            </div>
+                          )}
+                          {/* Ayah Range with Arabic Text */}
+                          {(phase.fromAyah || phase.toAyah) && (
+                            <div>
+                              <span className="font-semibold">Ayah Range:</span> {phase.fromAyah || '?'}-{phase.toAyah || '?'}
+                              {phase.startAyahText && (
+                                <div 
+                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
+                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                  dir="rtl"
+                                >
+                                  <span className="text-[9px] text-gray-500 mr-1">Start:</span>
+                                  {phase.startAyahText}
+                                </div>
+                              )}
+                              {phase.endAyahText && phase.endAyahText !== phase.startAyahText && (
+                                <div 
+                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
+                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                  dir="rtl"
+                                >
+                                  <span className="text-[9px] text-gray-500 mr-1">End:</span>
+                                  {phase.endAyahText}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Mistakes Summary */}
+                          {phase.mistakesSummary && (
+                            <div>
+                              <span className="font-semibold">Mistakes:</span> {phase.mistakesSummary}
+                            </div>
+                          )}
+                          {/* Tajweed Issues */}
+                          {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
+                            <div>
+                              <span className="font-semibold">Tajweed Issues:</span> {phase.tajweedIssues.map((t: any) => t.type).join(', ')}
+                            </div>
+                          )}
+                          {/* Teacher Review Comment */}
+                          {phase.teacherReviewComment && (
+                            <div>
+                              <span className="font-semibold">Teacher Comment:</span> {phase.teacherReviewComment}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-gray-400">
                           {phase.createdAt ? new Date(phase.createdAt).toLocaleDateString() : 'Today'}
                         </span>
@@ -735,7 +1139,70 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                         className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 focus:border-green-500 mb-1"
                         required
                       />
-                      <div className="flex items-center justify-between">
+                      {/* Display all ticket details if they exist */}
+                      {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakesSummary || phase.tajweedIssues?.length || phase.teacherReviewComment) && (
+                        <div className="mt-2 space-y-1 text-[10px] text-gray-600 border-t border-gray-200 pt-1">
+                          {/* Surah Name/Number */}
+                          {(phase.surahName || phase.surahNumber) && (
+                            <div>
+                              <span className="font-semibold">Surah:</span>{' '}
+                              <span 
+                                className="font-bold text-primary"
+                                style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                dir="rtl"
+                              >
+                                {phase.surahName || `Surah ${phase.surahNumber}`}
+                              </span>
+                              {phase.juzNumber && <span className="ml-1">(Juz {phase.juzNumber})</span>}
+                            </div>
+                          )}
+                          {/* Ayah Range with Arabic Text */}
+                          {(phase.fromAyah || phase.toAyah) && (
+                            <div>
+                              <span className="font-semibold">Ayah Range:</span> {phase.fromAyah || '?'}-{phase.toAyah || '?'}
+                              {phase.startAyahText && (
+                                <div 
+                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
+                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                  dir="rtl"
+                                >
+                                  <span className="text-[9px] text-gray-500 mr-1">Start:</span>
+                                  {phase.startAyahText}
+                                </div>
+                              )}
+                              {phase.endAyahText && phase.endAyahText !== phase.startAyahText && (
+                                <div 
+                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
+                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                  dir="rtl"
+                                >
+                                  <span className="text-[9px] text-gray-500 mr-1">End:</span>
+                                  {phase.endAyahText}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* Mistakes Summary */}
+                          {phase.mistakesSummary && (
+                            <div>
+                              <span className="font-semibold">Mistakes:</span> {phase.mistakesSummary}
+                            </div>
+                          )}
+                          {/* Tajweed Issues */}
+                          {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
+                            <div>
+                              <span className="font-semibold">Tajweed Issues:</span> {phase.tajweedIssues.map((t: any) => t.type).join(', ')}
+                            </div>
+                          )}
+                          {/* Teacher Review Comment */}
+                          {phase.teacherReviewComment && (
+                            <div>
+                              <span className="font-semibold">Teacher Comment:</span> {phase.teacherReviewComment}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mt-1">
                         <span className="text-xs text-gray-400">
                           {phase.createdAt ? new Date(phase.createdAt).toLocaleDateString() : 'Today'}
                         </span>
@@ -771,7 +1238,142 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
             
             {homework.enabled && (
               <div className="space-y-3 border border-gray-200 rounded-lg p-3 bg-gray-50">
-                {/* Comment Box */}
+                {/* Homework Range from Sabq Tickets - Like AdminSabqReview */}
+                {(() => {
+                  // Get homework range from Sabq tickets
+                  const sabqTickets = ticketLogs.filter(log => log.type === 'sabq' && log.ticket.homeworkRange);
+                  
+                  // Also check for homework entries in classwork
+                  const homeworkSabqEntries = classwork.sabq.filter(entry => 
+                    entry.assignmentRange?.toLowerCase().includes('homework:') ||
+                    entry.fromTicketId?.includes('-homework')
+                  );
+                  
+                  // Get the most recent homework range (from ticket or classwork)
+                  const latestHomeworkRange = sabqTickets.length > 0 
+                    ? sabqTickets[0].ticket.homeworkRange 
+                    : homeworkSabqEntries.length > 0 && homeworkSabqEntries[0]
+                      ? {
+                          surahNumber: homeworkSabqEntries[0].surahNumber,
+                          surahName: homeworkSabqEntries[0].surahName,
+                          juzNumber: homeworkSabqEntries[0].juzNumber,
+                          startAyahNumber: homeworkSabqEntries[0].fromAyah,
+                          startAyahText: homeworkSabqEntries[0].startAyahText,
+                          endAyahNumber: homeworkSabqEntries[0].toAyah,
+                          endAyahText: homeworkSabqEntries[0].endAyahText
+                        }
+                      : null;
+                  
+                  // Get admin comment from the most recent Sabq ticket
+                  const adminComment = sabqTickets.length > 0 
+                    ? sabqTickets[0].ticket.adminComment 
+                    : null;
+                  
+                  if (latestHomeworkRange && (latestHomeworkRange.startAyahNumber > 0 || latestHomeworkRange.endAyahNumber > 0)) {
+                    return (
+                      <>
+                        {/* Homework Range - Like the image */}
+                        <div className="bg-blue-50 rounded-lg border border-blue-200 p-3 mb-3">
+                          <h4 className="text-sm font-semibold text-blue-900 mb-3">Homework Range</h4>
+                          <div className="space-y-3">
+                            {/* Start Ayah */}
+                            <div>
+                              <div className="text-xs font-semibold text-gray-700 mb-1">Start Ayah</div>
+                              {latestHomeworkRange.startAyahNumber > 0 ? (
+                                <div>
+                                  <div className="text-sm text-blue-700 font-bold">
+                                    Surah {latestHomeworkRange.surahNumber || latestHomeworkRange.surahName}:{latestHomeworkRange.startAyahNumber}
+                                  </div>
+                                  {latestHomeworkRange.startAyahText && (
+                                    <div 
+                                      className="text-xs text-gray-900 mt-1 leading-relaxed"
+                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                      dir="rtl"
+                                    >
+                                      {latestHomeworkRange.startAyahText}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-400">Not selected</div>
+                              )}
+                            </div>
+                            
+                            {/* End Ayah */}
+                            <div>
+                              <div className="text-xs font-semibold text-gray-700 mb-1">End Ayah</div>
+                              {latestHomeworkRange.endAyahNumber > 0 ? (
+                                <div>
+                                  <div className="text-sm text-blue-700 font-bold">
+                                    Surah {latestHomeworkRange.surahNumber || latestHomeworkRange.surahName}:{latestHomeworkRange.endAyahNumber}
+                                  </div>
+                                  {latestHomeworkRange.endAyahText && (
+                                    <div 
+                                      className="text-xs text-gray-900 mt-1 leading-relaxed"
+                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                                      dir="rtl"
+                                    >
+                                      {latestHomeworkRange.endAyahText}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-400">Not selected</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Admin Comment from Sabq Ticket */}
+                        {adminComment && (
+                          <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 mb-3">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-2">Admin Comment</h4>
+                            <p className="text-xs text-gray-700">{adminComment}</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
+                
+                {/* Sabqi & Manzil Homework Fields Together */}
+                <div className="mb-4 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
+                  <label className="block text-xs font-semibold text-gray-900 mb-3">
+                    Sabqi & Manzil Homework
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Sabqi Field */}
+                    <div>
+                      <label className="block text-xs font-medium text-indigo-700 mb-1">
+                        Sabqi Homework
+                      </label>
+                      <textarea
+                        value={homework.sabqiContent}
+                        onChange={(e) => setHomework(prev => ({ ...prev, sabqiContent: e.target.value }))}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-indigo-300 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none bg-white"
+                        placeholder="Enter Sabqi homework instructions..."
+                      />
+                    </div>
+
+                    {/* Manzil Field */}
+                    <div>
+                      <label className="block text-xs font-medium text-purple-700 mb-1">
+                        Manzil Homework
+                      </label>
+                      <textarea
+                        value={homework.manzilContent}
+                        onChange={(e) => setHomework(prev => ({ ...prev, manzilContent: e.target.value }))}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-purple-300 rounded text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500 resize-none bg-white"
+                        placeholder="Enter Manzil homework instructions..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* General Homework Instructions */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Homework Instructions
@@ -781,7 +1383,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                     onChange={(e) => setHomework(prev => ({ ...prev, content: e.target.value }))}
                     rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-primary focus:border-primary resize-none"
-                    placeholder="Enter homework instructions, notes, or content..."
+                    placeholder="Enter general homework instructions, notes, or content..."
                   />
                 </div>
 
@@ -895,23 +1497,39 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
             />
           </div>
 
-          {/* Compact Submit Buttons */}
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2 border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50 transition-colors"
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 bg-primary text-white rounded text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isSaving || !isValid}
-            >
-              {isSaving ? 'Saving...' : assignmentId ? 'Update' : 'Create'}
-            </button>
+            {/* Modern Submit Buttons */}
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 border-2 border-gray-300 text-gray-700 rounded-xl text-sm font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-sm flex items-center gap-2"
+                disabled={isSaving || !isValid}
+              >
+                {isSaving ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {assignmentId ? 'Update Assignment' : 'Create Assignment'}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>
