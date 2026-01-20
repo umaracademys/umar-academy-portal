@@ -1226,6 +1226,9 @@ const { QuranPage, QuranWord, QuranChapter } = require('./quranSchemas');
 require('./models/Conversation');
 require('./models/Message');
 
+// Import unified notification model (write-optimized, deduplication-enabled)
+const Notification = require('./models/Notification');
+
 // User Schema
 const userSchema = new mongoose.Schema({
   name: String,
