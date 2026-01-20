@@ -2,6 +2,7 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import Login from './pages/Login';
 import DeveloperModeIndicator from './components/DeveloperModeIndicator';
 import MaintenanceBanner from './components/MaintenanceBanner';
@@ -226,9 +227,11 @@ function App() {
       }}
     >
       <AuthProvider>
-        <DataProvider>
-          <AppContent />
-        </DataProvider>
+        <NotificationsProvider>
+          <DataProvider>
+            <AppContent />
+          </DataProvider>
+        </NotificationsProvider>
       </AuthProvider>
     </Router>
   );
