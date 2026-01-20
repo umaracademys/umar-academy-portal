@@ -4035,20 +4035,23 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         rawStudentId: a.studentId
       }));
     
-    console.log('🔍 getStudentAssignments:', {
-      studentId: normalizedStudentId,
-      totalAssignments: assignments.length,
-      filteredCount: filtered.length,
-      assignmentIds: filtered.map(a => a.id),
-      homeworkDetails: filtered.map(a => ({
-        id: a.id,
-        enabled: a.homework?.enabled,
-        itemsCount: a.homework?.items?.length || 0,
-        items: a.homework?.items
-      })),
-      uniqueStudentIds: [...new Set(assignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId)))].slice(0, 10),
-      unmatchedSample: unmatchedSample
-    });
+    // Only log if there are assignments found (reduce console noise)
+    if (filtered.length > 0) {
+      console.log('🔍 getStudentAssignments:', {
+        studentId: normalizedStudentId,
+        totalAssignments: assignments.length,
+        filteredCount: filtered.length,
+        assignmentIds: filtered.map(a => a.id),
+        homeworkDetails: filtered.map(a => ({
+          id: a.id,
+          enabled: a.homework?.enabled,
+          itemsCount: a.homework?.items?.length || 0,
+          items: a.homework?.items
+        })),
+        uniqueStudentIds: [...new Set(assignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId)))].slice(0, 10),
+        unmatchedSample: unmatchedSample
+      });
+    }
     
     return filtered;
   };
