@@ -271,9 +271,16 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
               console.log(`✅ Got full ayah text from QUL for surah ${surahNumber}, ayah ${ayahNumber}, length: ${ayahText.length}, source: ${qulData.source}`);
             }
           }
+        } else if (qulResponse.status === 404) {
+          // Gracefully handle 404 - ayah text not available from any source
+          console.warn(`⚠️ Ayah text not available for surah ${surahNumber}, ayah ${ayahNumber}`);
+          // Continue to fallback - don't throw error
         }
       } catch (qulError) {
-        console.warn(`⚠️ QUL endpoint failed, trying verses API:`, qulError);
+        // Only log non-404 errors
+        if ((qulError as any).status !== 404) {
+          console.warn(`⚠️ QUL endpoint failed, trying verses API:`, qulError);
+        }
       }
       
       // Fallback: Try to fetch verses from API (this gives us the full ayah text)
@@ -667,8 +674,8 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                   <span className="text-white/90 text-xs font-medium">{ticket.studentName}</span>
                   <span className="text-white/70">•</span>
                   <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${colors.bg} ${colors.text}`}>
-                    {ticket.type.toUpperCase()}
-                  </span>
+                {ticket.type.toUpperCase()}
+              </span>
                   {mistakes.length > 0 && (
                     <>
                       <span className="text-white/70">•</span>
@@ -797,45 +804,45 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
             <div className={`space-y-3 ${showSidebar ? 'grid grid-cols-1 lg:grid-cols-3 gap-3' : ''}`}>
               {/* Main Mushaf Area */}
               <div className={showSidebar ? 'lg:col-span-2' : ''}>
-                {/* Compact Mushaf Header */}
+              {/* Compact Mushaf Header */}
                 <div className="bg-white rounded-lg border border-gray-200 p-2 mb-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h3>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setShowSidebar(!showSidebar)}
-                        className="px-2 py-1 bg-gray-600 text-white rounded text-xs font-medium hover:bg-gray-700 transition-colors"
-                        title={showSidebar ? "Hide panel" : "Show panel"}
-                      >
-                        {showSidebar ? 'Hide' : 'Show'} Panel
-                      </button>
-                      <button
-                        onClick={() => setFullMushafView(true)}
-                        className="px-2 py-1 bg-primary text-white rounded text-xs font-medium hover:bg-primary/90 transition-colors"
-                        title="Full view (ESC to exit)"
-                      >
-                        Full View
-                      </button>
-                      {mistakes.length > 0 && (
-                        <span className="px-2 py-1 bg-primary/10 rounded text-xs font-semibold text-primary">
-                          {mistakes.length} mistakes
-                        </span>
-                      )}
-                    </div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-sm font-semibold text-gray-900">Interactive Mushaf</h3>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setShowSidebar(!showSidebar)}
+                      className="px-2 py-1 bg-gray-600 text-white rounded text-xs font-medium hover:bg-gray-700 transition-colors"
+                      title={showSidebar ? "Hide panel" : "Show panel"}
+                    >
+                      {showSidebar ? 'Hide' : 'Show'} Panel
+                    </button>
+                    <button
+                      onClick={() => setFullMushafView(true)}
+                      className="px-2 py-1 bg-primary text-white rounded text-xs font-medium hover:bg-primary/90 transition-colors"
+                      title="Full view (ESC to exit)"
+                    >
+                      Full View
+                    </button>
+                    {mistakes.length > 0 && (
+                      <span className="px-2 py-1 bg-primary/10 rounded text-xs font-semibold text-primary">
+                        {mistakes.length} mistakes
+                      </span>
+                    )}
                   </div>
-                  {loadingPersonalMushaf && (
-                    <div className="text-center py-2 text-xs text-gray-500">
-                      Loading...
-                    </div>
-                  )}
-                  <div className="border border-gray-200 rounded overflow-hidden" style={{ maxHeight: '500px', overflow: 'auto' }}>
-                    <InteractiveMushaf
-                      currentPage={mushafPage}
-                      onPageChange={setMushafPage}
-                      mistakes={mushafMistakes}
-                      historicalMistakes={personalMushafMistakes}
-                      showHistorical={true}
-                      onMistakeMark={handleMistakeMark}
+                </div>
+                {loadingPersonalMushaf && (
+                  <div className="text-center py-2 text-xs text-gray-500">
+                    Loading...
+                  </div>
+                )}
+                <div className="border border-gray-200 rounded overflow-hidden" style={{ maxHeight: '500px', overflow: 'auto' }}>
+                  <InteractiveMushaf
+                    currentPage={mushafPage}
+                    onPageChange={setMushafPage}
+                    mistakes={mushafMistakes}
+                    historicalMistakes={personalMushafMistakes}
+                    showHistorical={true}
+                    onMistakeMark={handleMistakeMark}
                     onVerseDoubleClick={handleVerseDoubleClick}
                     onMistakesWithWords={(mistakesWithWordsData) => {
                       if (!mistakesWithWordsData || mistakesWithWordsData.length === 0) {
@@ -873,13 +880,13 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                         return wordTextMap;
                       });
                     }}
-                      readOnly={false}
-                      mode="marking"
-                      studentName={ticket.studentName}
-                      enableZoom={true}
-                      zoom={mushafZoom}
-                      onZoomChange={setMushafZoom}
-                    />
+                    readOnly={false}
+                    mode="marking"
+                    studentName={ticket.studentName}
+                    enableZoom={true}
+                    zoom={mushafZoom}
+                    onZoomChange={setMushafZoom}
+                  />
                   </div>
                 </div>
               </div>
@@ -997,8 +1004,8 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                         {mistakes.length > 0 && (
                           <span className="px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-semibold">
                             {mistakes.length}
-                          </span>
-                        )}
+                            </span>
+                          )}
                       </div>
                       <span className="text-xs text-gray-500">{expandedSections.mistakes ? '▼' : '▶'}</span>
                     </button>

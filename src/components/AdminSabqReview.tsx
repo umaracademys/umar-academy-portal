@@ -234,9 +234,17 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
               ayahText = '';
             }
           }
+        } else if (response.status === 404) {
+          // Gracefully handle 404 - ayah text not available from any source
+          console.warn(`⚠️ Ayah text not available for surah ${surahNumber}, ayah ${ayahNumber}`);
+          // Return empty string instead of throwing error
+          return '';
         }
       } catch (error) {
-        // Continue to fallback
+        // Continue to fallback - don't log error for 404s
+        if ((error as any).status !== 404) {
+          console.warn('⚠️ Error fetching ayah text:', error);
+        }
       }
       
       // Fallback: Try to fetch verses from API
