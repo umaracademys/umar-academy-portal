@@ -136,15 +136,10 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
         throw new Error('No authentication token');
       }
       
-      // Determine recipient role for API call
-      const recipientRole = user.role === 'superadmin' ? 'admin' : user.role;
-      
-      // Build API endpoint
-      // Note: This assumes a new unified endpoint exists: /api/notifications
-      // If not, fallback to role-specific endpoints
-      const endpoint = user.role === 'teacher' 
+      // Use existing role-specific endpoints directly (unified endpoint not yet implemented)
+      const endpoint = user.role === 'teacher'
         ? `${API_BASE}/teacher-notifications?limit=${fetchLimit}`
-        : `${API_BASE}/notifications?recipientRole=${recipientRole}&limit=${fetchLimit}`;
+        : `${API_BASE}/admin-notifications?limit=${fetchLimit}`;
       
       const response = await fetch(endpoint, {
         headers: {
@@ -154,39 +149,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
       });
       
       if (!response.ok) {
-        // Fallback to old endpoints if new unified endpoint doesn't exist
-        const fallbackEndpoint = user.role === 'teacher'
-          ? `${API_BASE}/teacher-notifications?limit=${fetchLimit}`
-          : `${API_BASE}/admin-notifications?limit=${fetchLimit}`;
-        
-        const fallbackResponse = await fetch(fallbackEndpoint, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!fallbackResponse.ok) {
-          throw new Error(`Failed to fetch notifications: ${fallbackResponse.status}`);
-        }
-        
-        const data = await fallbackResponse.json();
-        const normalized: Notification[] = Array.isArray(data) ? data.map(normalizeNotification) : [];
-        
-        if (append) {
-          setNotifications(prev => {
-            const existingIds = new Set(prev.map(n => n.id || n._id));
-            const newNotifications = normalized.filter((n: Notification) => !existingIds.has(n.id || n._id));
-            return [...prev, ...newNotifications];
-          });
-        } else {
-          setNotifications(normalized);
-          notificationsRef.current = normalized;
-        }
-        
-        setHasMore(normalized.length === fetchLimit && fetchLimit < maxLimit);
-        setIsLoading(false);
-        return;
+        throw new Error(`Failed to fetch notifications: ${response.status}`);
       }
       
       const data = await response.json();
@@ -240,10 +203,10 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
         throw new Error('No authentication token');
       }
       
-      // Determine endpoint based on role
+      // Use existing role-specific endpoints directly
       const endpoint = user.role === 'teacher'
         ? `${API_BASE}/teacher-notifications/${notificationId}/read`
-        : `${API_BASE}/notifications/${notificationId}/read`;
+        : `${API_BASE}/admin-notifications/${notificationId}/read`;
       
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -254,22 +217,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
       });
       
       if (!response.ok) {
-        // Fallback to old endpoint
-        const fallbackEndpoint = user.role === 'teacher'
-          ? `${API_BASE}/teacher-notifications/${notificationId}/read`
-          : `${API_BASE}/admin-notifications/${notificationId}/read`;
-        
-        const fallbackResponse = await fetch(fallbackEndpoint, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!fallbackResponse.ok) {
-          throw new Error('Failed to mark notification as read');
-        }
+        throw new Error('Failed to mark notification as read');
       }
     } catch (err) {
       console.error('Error marking notification as read:', err);
@@ -300,10 +248,10 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
         throw new Error('No authentication token');
       }
       
-      // Determine endpoint based on role
+      // Use existing role-specific endpoints directly
       const endpoint = user.role === 'teacher'
         ? `${API_BASE}/teacher-notifications/read-all`
-        : `${API_BASE}/notifications/read-all`;
+        : `${API_BASE}/admin-notifications/read-all`;
       
       const response = await fetch(endpoint, {
         method: 'PUT',
@@ -314,22 +262,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
       });
       
       if (!response.ok) {
-        // Fallback to old endpoint
-        const fallbackEndpoint = user.role === 'teacher'
-          ? `${API_BASE}/teacher-notifications/read-all`
-          : `${API_BASE}/admin-notifications/read-all`;
-        
-        const fallbackResponse = await fetch(fallbackEndpoint, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!fallbackResponse.ok) {
-          throw new Error('Failed to mark all notifications as read');
-        }
+        throw new Error('Failed to mark all notifications as read');
       }
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
