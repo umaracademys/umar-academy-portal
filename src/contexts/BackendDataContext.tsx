@@ -888,7 +888,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Process assignments - skip if not needed for this route or already cached
       if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok && !assignmentsResponse.value.skipped) {
         try {
-          const assignmentsData = await assignmentsResponse.value.json();
+          const assignmentsResponseData = await assignmentsResponse.value.json();
+          // ✅ Handle paginated response format: { assignments: [...], pagination: {...} }
+          // ✅ Also support backward-compatible array format
+          const assignmentsData = Array.isArray(assignmentsResponseData) 
+            ? assignmentsResponseData 
+            : (assignmentsResponseData.assignments || []);
+          
           console.log(`📝 Assignments loaded from backend (${isStudentUser ? 'student' : 'admin/teacher'} endpoint):`, assignmentsData.length);
           if (assignmentsData.length === 0) {
             console.warn('⚠️ No assignments found in database. Check if assignments exist.');
