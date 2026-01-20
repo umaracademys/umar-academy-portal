@@ -22,7 +22,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   onCreateAssignment,
   onAssignHomework
 }) => {
-  const { students, getStudentAssignments, deleteAssignment, refreshDataLight } = useBackendData();
+  const { students, getStudentAssignments, deleteAssignment, refreshDataLight, assignments: allAssignments } = useBackendData();
   const { user } = useAuth();
   
   const [expandedAssignments, setExpandedAssignments] = useState<Set<string>>(new Set());
@@ -35,7 +35,6 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
 
   const lastRefreshedStudentId = React.useRef<string | null>(null);
   const refreshIntervalRef = React.useRef<number | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
   
   // Force refresh when component mounts or studentId changes
   useEffect(() => {
@@ -44,14 +43,16 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
       refreshDataLight(); // Use lightweight refresh for faster loading
     }
     
-    // Set up periodic refresh to catch newly created assignments
+    // Set up periodic refresh to catch newly created assignments (only when component is visible)
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
+    // Only refresh if document is visible (not in background tab)
     refreshIntervalRef.current = window.setInterval(() => {
-      refreshDataLight(); // Use lightweight refresh for faster periodic updates
-      setRefreshKey(prev => prev + 1); // Force re-render
-    }, 10000); // Refresh every 10 seconds (reduced frequency for better performance)
+      if (!document.hidden) {
+        refreshDataLight(); // Use lightweight refresh for faster periodic updates
+      }
+    }, 30000); // Refresh every 30 seconds (reduced frequency to prevent flickering)
     
     return () => {
       if (refreshIntervalRef.current) {
@@ -65,7 +66,6 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   useEffect(() => {
     const handleStorageChange = () => {
       refreshDataLight(); // Use lightweight refresh for faster updates
-      setRefreshKey(prev => prev + 1);
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -79,7 +79,11 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   }, [refreshDataLight]);
 
   const student = students.find(s => s.id === studentId);
-  const assignments = getStudentAssignments(studentId);
+  
+  // Memoize assignments to prevent unnecessary re-renders
+  const assignments = React.useMemo(() => {
+    return getStudentAssignments(studentId);
+  }, [studentId, getStudentAssignments, allAssignments.length]); // Only recalculate when studentId or total assignments count changes
   
   // Auto-expand all assignments by default for read-only view
   useEffect(() => {
@@ -87,29 +91,26 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
       const allIds = new Set(assignments.map(a => a.id));
       setExpandedAssignments(allIds);
     }
-  }, [assignments.length]);
+  }, [assignments.length, expandedAssignments.size]);
   
-  // Debug logging
+  // Debug logging (only in dev mode and only when assignments actually change)
   useEffect(() => {
-    if (studentId) {
-      console.log('🔍 StudentAssignmentHistory for student:', {
-        studentId: studentId,
-        studentName: student?.fullName,
-        assignmentsFound: assignments.length,
-        assignmentIds: assignments.map(a => a.id),
-        assignmentStatuses: assignments.map(a => a.status),
-        homeworkDetails: assignments.map(a => ({
-          id: a.id,
-          enabled: a.homework?.enabled,
-          itemsCount: a.homework?.items?.length || 0,
-          items: a.homework?.items,
-          notes: a.homework?.notes,
-          willShow: a.homework?.enabled || (a.homework?.items && a.homework.items.length > 0)
-        })),
-        sabqiCounts: assignments.map(a => a.classwork?.sabqi?.length || 0)
-      });
+    if (import.meta.env.DEV && studentId && assignments.length > 0) {
+      const assignmentIds = assignments.map(a => a.id).join(',');
+      const prevIds = React.useRef<string>('');
+      
+      // Only log if assignment IDs actually changed
+      if (prevIds.current !== assignmentIds) {
+        prevIds.current = assignmentIds;
+        console.log('🔍 StudentAssignmentHistory for student:', {
+          studentId: studentId,
+          studentName: student?.fullName,
+          assignmentsFound: assignments.length,
+          assignmentIds: assignments.map(a => a.id),
+        });
+      }
     }
-  }, [studentId, assignments, student, refreshKey]);
+  }, [studentId, assignments.length, student?.fullName]);
 
   useEffect(() => {
     if (assignments.length > 0 && expandedAssignments.size === 0) {
