@@ -3442,27 +3442,27 @@ const syncTeacherAssignedStudents = async () => {
                 teacherId: teacherIdStr,
                 studentId: studentId
               });
-              matchedCount++;
+            matchedCount++;
               console.log(`✅ Found and queued teacher ${teacher.fullName} for batch update (student: ${student.fullName || studentId})`);
-            } else {
-              notFoundCount++;
+        } else {
+          notFoundCount++;
               console.log(`❌ No teacher found for assignedTeacherId: ${assignedTeacherId} (student: ${student.fullName || studentId})`);
+        }
+      }
+      
+          // Update student with normalized teacher IDs if we found any
+      if (normalizedTeacherIds.length > 0) {
+        await Student.updateOne(
+          { _id: student._id },
+          { 
+            $set: { 
+              assignedTeacherIds: normalizedTeacherIds,
+              assignedTeachers: normalizedTeacherIds,
+              assignedTeacherId: normalizedTeacherIds[0],
+              assignedTeacher: normalizedTeacherIds[0]
             }
           }
-          
-          // Update student with normalized teacher IDs if we found any
-          if (normalizedTeacherIds.length > 0) {
-            await Student.updateOne(
-              { _id: student._id },
-              { 
-                $set: { 
-                  assignedTeacherIds: normalizedTeacherIds,
-                  assignedTeachers: normalizedTeacherIds,
-                  assignedTeacherId: normalizedTeacherIds[0],
-                  assignedTeacher: normalizedTeacherIds[0]
-                }
-              }
-            );
+        );
           }
         }
       }
@@ -9032,9 +9032,6 @@ app.post('/api/tickets/:id/submit-sabq', authenticateToken, validateTicketOwners
 // Auth: admin or teacher only
 app.post('/api/audio/sabq/upload', authenticateToken, requirePermission('canUploadRecordings'), async (req, res) => {
   try {
-      return res.status(403).json({ error: 'Only admins and teachers can upload audio' });
-    }
-
     // Use multer for proper multipart/form-data handling
     const multer = require('multer');
     const storage = multer.diskStorage({
@@ -10125,9 +10122,6 @@ app.get('/api/maintenance', (req, res) => {
 // Update maintenance mode (requires superadmin)
 app.put('/api/maintenance', authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
   try {
-      return res.status(403).json({ error: 'Only superadmins can manage maintenance mode' });
-    }
-
     const { enabled, message } = req.body;
     
     if (typeof enabled !== 'boolean') {
@@ -11582,9 +11576,6 @@ app.get('/api/weekly-evaluations/:id', authenticateToken, async (req, res) => {
 // POST /api/weekly-evaluations/:id/approve - Approve evaluation (Super Admin only)
 app.post('/api/weekly-evaluations/:id/approve', authenticateToken, requirePermission('canApproveEvaluations'), async (req, res) => {
   try {
-      return res.status(403).json({ error: 'Access denied. Only Super Admin can approve evaluations.' });
-    }
-
     const { id } = req.params;
     const { adminFeedback, gamePlan, sharedLinks } = req.body;
 
@@ -11874,9 +11865,6 @@ app.delete('/api/weekly-evaluations/:id', authenticateToken, requirePermission('
 // POST /api/weekly-evaluations/:id/assign-homework - Create homework assignment from approved evaluation (Super Admin and Admin only)
 app.post('/api/weekly-evaluations/:id/assign-homework', authenticateToken, requirePermission('canManageAssignments'), async (req, res) => {
   try {
-      return res.status(403).json({ error: 'Access denied. Only Super Admin and Admin can assign homework from evaluations.' });
-    }
-
     const { id } = req.params;
     const { homeworkContent, homeworkLink, additionalNotes } = req.body;
 
@@ -14295,7 +14283,7 @@ app.get('/api/quran/surahs/:surahId/verses', async (req, res) => {
       }
       
       // Fallback: Individual requests (already parallelized with Promise.all)
-      // Try to fetch verses with text using a different endpoint
+    // Try to fetch verses with text using a different endpoint
       try {
         // Try fetching verses with text parameter
         const versesWithTextData = await makeQuranApiRequest(`/content/api/v4/chapters/${surahId}/verses?text_type=uthmani`);
