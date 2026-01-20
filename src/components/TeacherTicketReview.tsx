@@ -80,7 +80,11 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     'clarity_compromised',
     'lack_of_confidence',
     'incorrect_stops',
-    'other'
+    'ghunnah_error',
+    'qalqalah_error',
+    'idgham_error',
+    'madd_error',
+    'tajweed_rule_violation'
   ];
   
   // Review notes state
@@ -257,10 +261,15 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
           const qulData = await qulResponse.json();
           if (qulData.text) {
             // Clean the text: remove any trailing ayah numbers or extra whitespace
-            ayahText = qulData.text.trim();
+            let cleanedText = qulData.text.trim();
             // Remove any Arabic or English numerals at the end (ayah numbers)
-            ayahText = ayahText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
-            console.log(`✅ Got full ayah text from QUL for surah ${surahNumber}, ayah ${ayahNumber}, length: ${ayahText.length}, source: ${qulData.source}`);
+            if (cleanedText) {
+              cleanedText = cleanedText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
+            }
+            ayahText = cleanedText || '';
+            if (ayahText) {
+              console.log(`✅ Got full ayah text from QUL for surah ${surahNumber}, ayah ${ayahNumber}, length: ${ayahText.length}, source: ${qulData.source}`);
+            }
           }
         }
       } catch (qulError) {
@@ -322,15 +331,20 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
             const wordsData = await wordsResponse.json();
             if (wordsData.words && Array.isArray(wordsData.words) && wordsData.words.length > 0) {
               // Reconstruct ayah text from words - join without spaces for proper Arabic text
-              ayahText = wordsData.words.map((w: any) => {
+              let reconstructedText = wordsData.words.map((w: any) => {
                 let wordText = (w.text || w.word_text || '').trim();
                 // Remove any HTML tags or special characters
                 wordText = wordText.replace(/<[^>]+>/g, '');
                 return wordText;
               }).filter(Boolean).join('');
               // Clean the final text: remove any trailing ayah numbers
-              ayahText = ayahText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
-              console.log(`✅ Got ayah text from words API for surah ${surahNumber}, ayah ${ayahNumber} (${wordsData.words.length} words):`, ayahText);
+              if (reconstructedText) {
+                reconstructedText = reconstructedText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
+              }
+              ayahText = reconstructedText || '';
+              if (ayahText) {
+                console.log(`✅ Got ayah text from words API for surah ${surahNumber}, ayah ${ayahNumber} (${wordsData.words.length} words):`, ayahText);
+              }
             }
           }
         } catch (wordsError) {

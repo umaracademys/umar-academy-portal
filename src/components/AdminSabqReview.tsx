@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { Ticket, TajweedIssue, TajweedIssueType, MistakeCount, Atkees, RecitationRange } from '../types/ticket';
+import { ClassworkPhase } from '../types/assignment';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { WorkflowBanner } from './workflow/WorkflowBanner';
@@ -44,8 +45,8 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
   });
   const [selectedStartAyah, setSelectedStartAyah] = useState<{ surah: number; ayah: number } | null>(null);
   const [selectedEndAyah, setSelectedEndAyah] = useState<{ surah: number; ayah: number } | null>(null);
-  const [mistakeCount, setMistakeCount] = useState<MistakeCount>('');
-  const [atkees, setAtkees] = useState<Atkees>('');
+  const [mistakeCount, setMistakeCount] = useState<MistakeCount | undefined>(undefined);
+  const [atkees, setAtkees] = useState<number | undefined>(undefined);
   const [tajweedIssues, setTajweedIssues] = useState<TajweedIssue[]>([]);
   const [mistakesWithWords, setMistakesWithWords] = useState<Map<string, string>>(new Map()); // Map of mistake ID to word text
   const [mistakesWithWordsByKey, setMistakesWithWordsByKey] = useState<Map<string, string>>(new Map()); // Map of composite key (surah:ayah:wordIndex) to word text
@@ -142,7 +143,7 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
         const studentAssignments = getStudentAssignments(ticket.studentId);
         
         // Find the last sabq entry
-        let lastSabqEntry = null;
+        let lastSabqEntry: ClassworkPhase | null = null;
         for (const assignment of studentAssignments) {
           if (assignment.classwork?.sabq && assignment.classwork.sabq.length > 0) {
             // Get the last sabq entry (most recent)
@@ -155,19 +156,21 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
           }
         }
         
-        if (lastSabqEntry && lastSabqEntry.surahNumber && lastSabqEntry.toAyah) {
+        if (lastSabqEntry && typeof lastSabqEntry.surahNumber === 'number' && typeof lastSabqEntry.toAyah === 'number') {
           // Try to find page from mistakes or use estimation
           // First, check if we have mistakes with page numbers for this surah/ayah
+          const surahNum = lastSabqEntry.surahNumber;
+          const toAyahNum = lastSabqEntry.toAyah;
           const relevantMistake = personalMushafMistakes.find(m => 
-            m.surah === lastSabqEntry.surahNumber && 
-            m.ayah === lastSabqEntry.toAyah
+            m.surah === surahNum && 
+            m.ayah === toAyahNum
           );
           
           if (relevantMistake?.page) {
             setMushafPage(relevantMistake.page);
           } else {
             // Fallback: estimate page from surah (rough approximation)
-            const estimatedPage = estimatePageFromSurah(lastSabqEntry.surahNumber);
+            const estimatedPage = estimatePageFromSurah(surahNum);
             if (estimatedPage) {
               setMushafPage(estimatedPage);
             }
@@ -225,7 +228,11 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
             // Clean the text: remove any trailing ayah numbers or extra whitespace
             ayahText = data.text.trim();
             // Remove any Arabic or English numerals at the end (ayah numbers)
-            ayahText = ayahText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
+            if (ayahText) {
+              ayahText = ayahText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
+            } else {
+              ayahText = '';
+            }
           }
         }
       } catch (error) {
@@ -274,7 +281,11 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
                 return wordText;
               }).filter(Boolean).join('');
               // Clean the final text: remove any trailing ayah numbers
-              ayahText = ayahText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
+              if (ayahText) {
+                ayahText = ayahText.replace(/[\s]*[٠-٩0-9]+[\s]*$/, '').trim();
+              } else {
+                ayahText = '';
+              }
             }
           }
         } catch (error) {
@@ -459,8 +470,8 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
     });
     setSelectedStartAyah(null);
     setSelectedEndAyah(null);
-    setMistakeCount('');
-    setAtkees('');
+    setMistakeCount(undefined);
+    setAtkees(undefined);
     setTajweedIssues([]);
     setCurrentAdminComment('');
   };
@@ -479,8 +490,8 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
     });
     setSelectedStartAyah(null);
     setSelectedEndAyah(null);
-    setMistakeCount('');
-    setAtkees('');
+    setMistakeCount(undefined);
+    setAtkees(undefined);
     setTajweedIssues([]);
     setCurrentAdminComment('');
     setShowSidebar(true);
@@ -500,8 +511,8 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
       surah: entry.recitationRange.surahNumber,
       ayah: entry.recitationRange.endAyahNumber
     } : null);
-    setMistakeCount(entry.mistakeCount || '');
-    setAtkees(entry.atkees || '');
+    setMistakeCount(entry.mistakeCount || undefined);
+    setAtkees(entry.atkees || undefined);
     setTajweedIssues([...entry.tajweedIssues]);
     setCurrentAdminComment(entry.adminComment || '');
     setShowSidebar(true);
@@ -562,7 +573,11 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
     'clarity_compromised',
     'lack_of_confidence',
     'incorrect_stops',
-    'other_tajweed'
+    'ghunnah_error',
+    'qalqalah_error',
+    'idgham_error',
+    'madd_error',
+    'tajweed_rule_violation'
   ];
 
   const toggleTajweedIssue = (type: TajweedIssueType) => {
@@ -584,7 +599,11 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
       clarity_compromised: 'Clarity Compromised',
       lack_of_confidence: 'Lack of Confidence',
       incorrect_stops: 'Incorrect Stops',
-      other_tajweed: 'Other Tajweed Issue'
+      ghunnah_error: 'Ghunnah Error',
+      qalqalah_error: 'Qalqalah Error',
+      idgham_error: 'Idgham Error',
+      madd_error: 'Madd Error',
+      tajweed_rule_violation: 'Tajweed Rule Violation'
     };
     return labels[type] || type;
   };
@@ -824,7 +843,7 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
                     <label className="text-xs font-semibold text-gray-700 mb-1 block">Mistake Count</label>
                     <select
                       value={mistakeCount}
-                      onChange={(e) => setMistakeCount(e.target.value === 'weak' ? 'weak' : (e.target.value ? parseInt(e.target.value) : ''))}
+                      onChange={(e) => setMistakeCount(e.target.value === 'weak' ? 'weak' : (e.target.value ? parseInt(e.target.value) : undefined))}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                     >
                       <option value="">Select count</option>
@@ -838,7 +857,7 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
                     <label className="text-xs font-semibold text-gray-700 mb-1 block">Atkees</label>
                     <select
                       value={atkees}
-                      onChange={(e) => setAtkees(e.target.value ? parseInt(e.target.value) : '')}
+                      onChange={(e) => setAtkees(e.target.value ? parseInt(e.target.value) : undefined)}
                       className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                     >
                       <option value="">Select</option>

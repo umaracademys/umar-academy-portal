@@ -565,11 +565,15 @@ app.use(cors({
 // Create uploads directories if they don't exist (must be before route that uses it)
 const uploadsDir = path.join(__dirname, 'uploads', 'mistakes');
 const recordingsDir = path.join(__dirname, 'uploads', 'recordings');
+const sabqAudioDir = path.join(__dirname, 'uploads', 'sabq-audio');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 if (!fs.existsSync(recordingsDir)) {
   fs.mkdirSync(recordingsDir, { recursive: true });
+}
+if (!fs.existsSync(sabqAudioDir)) {
+  fs.mkdirSync(sabqAudioDir, { recursive: true });
 }
 
 // Audio upload route - must be before json middleware to handle binary data
@@ -6249,6 +6253,30 @@ ticketSchema.index({ assignedTeacherId: 1, createdAt: -1 }); // Compound index f
 
 const Ticket = mongoose.model('Ticket', ticketSchema);
 
+// SabqAudioClip Schema - stores audio clips for Sabq recitation mistakes
+const sabqAudioClipSchema = new mongoose.Schema({
+  studentId: { type: String, required: true, index: true },
+  ticketId: { type: String, required: true, index: true },
+  sabqEntryId: { type: String, required: true }, // ID of the specific sabqEntry within the ticket
+  mistakeId: { type: String }, // Optional: ID of the specific mistake if audio is for a mistake
+  surahNumber: { type: Number, required: true, index: true },
+  ayahNumber: { type: Number, required: true, index: true },
+  wordText: { type: String, required: true }, // Arabic word text
+  audioUrl: { type: String, required: true }, // URL path to the audio file
+  duration: { type: Number }, // Duration in seconds (optional)
+  format: { type: String, enum: ['mp3', 'wav'], default: 'mp3' }, // Audio format
+  uploadedBy: { type: String, required: true }, // User ID (admin/teacher)
+  uploadedByName: { type: String }, // User name (optional)
+  createdAt: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+// Compound index for efficient queries
+sabqAudioClipSchema.index({ studentId: 1, surahNumber: 1, ayahNumber: 1 });
+sabqAudioClipSchema.index({ ticketId: 1, sabqEntryId: 1 });
+sabqAudioClipSchema.index({ ticketId: 1 });
+
+const SabqAudioClip = mongoose.model('SabqAudioClip', sabqAudioClipSchema);
+
 // Student Personal Mushaf Schema - tracks all mistakes across all recitations
 const studentPersonalMushafSchema = new mongoose.Schema({
   studentId: { type: String, required: true, index: true },
@@ -8206,11 +8234,36 @@ const syncAssignmentFromTickets = async (assignment) => {
                   wordIndex: m.wordIndex,
                   position: m.position,
                   note: m.note,
-                  audioUrl: m.audioUrl,
+                  audioUrl: m.audioUrl || undefined, // PART 4: Preserve audioUrl if it exists
                   timestamp: m.timestamp || new Date(),
-                  wordText: m.wordText
+                  wordText: m.wordText || undefined // Preserve Arabic wordText
                 }));
                 wasModified = true;
+              }
+              
+              // PART 4: Preserve existing audioUrl in mistakes if entry.mistakes already exists
+              // This ensures audio survives re-sync operations
+              if (entry.mistakes && Array.isArray(entry.mistakes) && entry.mistakes.length > 0 && matchingSabqEntry.mistakes) {
+                // Create a map of mistake IDs to audioUrls from ticket
+                const ticketMistakeAudioMap = new Map();
+                matchingSabqEntry.mistakes.forEach(tm => {
+                  if (tm.id && tm.audioUrl) {
+                    ticketMistakeAudioMap.set(tm.id, tm.audioUrl);
+                  }
+                });
+                
+                // Update entry mistakes with audioUrl from ticket if missing (never overwrite existing)
+                let audioUpdated = false;
+                entry.mistakes.forEach(em => {
+                  if (em.id && ticketMistakeAudioMap.has(em.id) && !em.audioUrl) {
+                    em.audioUrl = ticketMistakeAudioMap.get(em.id);
+                    audioUpdated = true;
+                  }
+                });
+                
+                if (audioUpdated) {
+                  wasModified = true;
+                }
               }
               if (entry.mistakeCount === undefined && matchingSabqEntry.mistakeCount !== undefined) {
                 entry.mistakeCount = matchingSabqEntry.mistakeCount;
@@ -8407,11 +8460,12 @@ app.post('/api/tickets/:id/submit-sabq', async (req, res) => {
         wordIndex: m.wordIndex,
         position: m.position,
         note: m.note,
-        audioUrl: m.audioUrl,
+        audioUrl: m.audioUrl || undefined, // PART 4: Preserve audioUrl if it exists
         workflowStep: 'sabq',
         markedBy: ticket.createdBy,
         markedByName: ticket.createdByName,
-        timestamp: m.timestamp || new Date()
+        timestamp: m.timestamp || new Date(),
+        wordText: m.wordText || undefined // Preserve Arabic wordText
       }));
       assignment.mushafMistakes = [...(assignment.mushafMistakes || []), ...assignmentMistakes];
     }
@@ -8446,6 +8500,337 @@ app.post('/api/tickets/:id/submit-sabq', async (req, res) => {
     res.json(ticketResponse);
   } catch (error) {
     console.error('❌ Error submitting Sabq ticket:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// PART 2 & 3: Sabq Audio Upload & Retrieval Endpoints
+// ============================================
+
+// POST /api/audio/sabq/upload
+// Upload audio clip for Sabq recitation mistake
+// Accepts: multipart/form-data with audio file (mp3/wav, max 10MB)
+// Required fields: studentId, ticketId, sabqEntryId, surahNumber, ayahNumber, wordText
+// Auth: admin or teacher only
+app.post('/api/audio/sabq/upload', authenticateToken, async (req, res) => {
+  try {
+    // Check permissions - only admin or teacher can upload
+    if (req.user.role !== 'admin' && req.user.role !== 'teacher') {
+      return res.status(403).json({ error: 'Only admins and teachers can upload audio' });
+    }
+
+    // Use multer for proper multipart/form-data handling
+    const multer = require('multer');
+    const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, sabqAudioDir);
+      },
+      filename: (req, file, cb) => {
+        const { studentId, ticketId, sabqEntryId } = req.body;
+        const timestamp = Date.now();
+        const ext = file.originalname.split('.').pop() || 'mp3';
+        const uniqueFilename = `sabq-${studentId}-${ticketId}-${sabqEntryId}-${timestamp}-${Math.random().toString(36).substring(7)}.${ext}`;
+        cb(null, uniqueFilename);
+      }
+    });
+
+    const upload = multer({
+      storage: storage,
+      limits: {
+        fileSize: 10 * 1024 * 1024 // 10MB max
+      },
+      fileFilter: (req, file, cb) => {
+        // Only allow mp3 and wav
+        const allowedMimes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav'];
+        const allowedExts = ['mp3', 'wav'];
+        const ext = file.originalname.split('.').pop()?.toLowerCase();
+        
+        if (allowedMimes.includes(file.mimetype) || (ext && allowedExts.includes(ext))) {
+          cb(null, true);
+        } else {
+          cb(new Error('Invalid file type. Only MP3 and WAV are allowed.'));
+        }
+      }
+    }).single('audio');
+
+    upload(req, res, async (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ error: 'File too large. Maximum size: 10MB' });
+          }
+        }
+        return res.status(400).json({ error: err.message });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: 'No audio file provided' });
+      }
+
+      try {
+        // Validate required fields
+        const { studentId, ticketId, sabqEntryId, surahNumber, ayahNumber, wordText, mistakeId } = req.body;
+        
+        if (!studentId || !ticketId || !sabqEntryId || !surahNumber || !ayahNumber || !wordText) {
+          // Delete uploaded file if validation fails
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+          return res.status(400).json({ 
+            error: 'Missing required fields: studentId, ticketId, sabqEntryId, surahNumber, ayahNumber, wordText' 
+          });
+        }
+
+        // Validate ticket exists and is Sabq type
+        const ticket = await findTicketById(ticketId);
+        if (!ticket) {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+          return res.status(404).json({ error: 'Ticket not found' });
+        }
+        if (ticket.type !== 'sabq') {
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+          return res.status(400).json({ error: 'Ticket is not a Sabq ticket' });
+        }
+
+        // Determine format from file extension
+        const format = req.file.originalname.toLowerCase().endsWith('.wav') ? 'wav' : 'mp3';
+        
+        // Create audio URL
+        const audioUrl = `/uploads/sabq-audio/${req.file.filename}`;
+        
+        // Calculate duration (simplified - in production, use audio metadata library)
+        // For now, we'll leave it null
+        const duration = null; // TODO: Use audio metadata library to get actual duration
+        
+        // Save SabqAudioClip document
+        const audioClip = new SabqAudioClip({
+          studentId: String(studentId),
+          ticketId: String(ticketId),
+          sabqEntryId: String(sabqEntryId),
+          mistakeId: mistakeId ? String(mistakeId) : undefined,
+          surahNumber: parseInt(surahNumber),
+          ayahNumber: parseInt(ayahNumber),
+          wordText: String(wordText), // Arabic text - MUST be preserved
+          audioUrl: audioUrl,
+          duration: duration,
+          format: format,
+          uploadedBy: req.user.userId || req.user.id,
+          uploadedByName: req.user.name || req.user.email || 'Unknown'
+        });
+        
+        await audioClip.save();
+        
+        // Update the mistake in the ticket if mistakeId is provided
+        if (mistakeId && ticket.sabqEntries) {
+          const sabqEntry = ticket.sabqEntries.find(se => se.id === sabqEntryId);
+          if (sabqEntry && sabqEntry.mistakes) {
+            const mistake = sabqEntry.mistakes.find(m => m.id === mistakeId);
+            if (mistake) {
+              mistake.audioUrl = audioUrl; // Update mistake with audioUrl
+              await ticket.save();
+            }
+          }
+        }
+        
+        if (!isProduction) {
+          console.log(`✅ [Sabq Audio] Uploaded: ${audioUrl} for student ${studentId}, ticket ${ticketId}, word: ${wordText}`);
+        }
+        
+        res.json({
+          audioUrl,
+          duration,
+          format,
+          id: audioClip._id.toString()
+        });
+      } catch (error) {
+        // Delete uploaded file if save fails
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        console.error('❌ Error saving Sabq audio clip:', error);
+        res.status(500).json({ error: error.message });
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in Sabq audio upload endpoint:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/audio/sabq/by-ticket/:ticketId
+// Retrieve all audio clips for a specific ticket
+// Returns: Grouped by surah → ayah → wordText
+app.get('/api/audio/sabq/by-ticket/:ticketId', authenticateToken, async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+    const { page = 1, limit = 100 } = req.query;
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = Math.min(parseInt(limit), 100); // Max 100 per page
+    
+    // Find all audio clips for this ticket
+    const audioClips = await SabqAudioClip.find({ ticketId: String(ticketId) })
+      .sort({ surahNumber: 1, ayahNumber: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    
+    // Group by surah → ayah → wordText
+    const grouped = {};
+    audioClips.forEach(clip => {
+      const surahKey = `surah_${clip.surahNumber}`;
+      const ayahKey = `ayah_${clip.ayahNumber}`;
+      
+      if (!grouped[surahKey]) {
+        grouped[surahKey] = {
+          surahNumber: clip.surahNumber,
+          ayahs: {}
+        };
+      }
+      
+      if (!grouped[surahKey].ayahs[ayahKey]) {
+        grouped[surahKey].ayahs[ayahKey] = {
+          ayahNumber: clip.ayahNumber,
+          words: []
+        };
+      }
+      
+      // Add word with audio
+      grouped[surahKey].ayahs[ayahKey].words.push({
+        wordText: clip.wordText, // Arabic text preserved
+        audioUrl: clip.audioUrl,
+        duration: clip.duration,
+        format: clip.format,
+        mistakeId: clip.mistakeId,
+        sabqEntryId: clip.sabqEntryId,
+        uploadedBy: clip.uploadedBy,
+        uploadedByName: clip.uploadedByName,
+        createdAt: clip.createdAt
+      });
+    });
+    
+    // Convert to array format for easier consumption
+    const result = Object.values(grouped).map(surah => ({
+      surahNumber: surah.surahNumber,
+      ayahs: Object.values(surah.ayahs).map(ayah => ({
+        ayahNumber: ayah.ayahNumber,
+        words: ayah.words
+      }))
+    }));
+    
+    res.json({
+      ticketId: String(ticketId),
+      audioClips: result,
+      total: audioClips.length,
+      page: parseInt(page),
+      limit: limitNum
+    });
+  } catch (error) {
+    console.error('❌ Error fetching Sabq audio by ticket:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/audio/sabq/by-assignment/:assignmentId
+// Retrieve all audio clips for a specific assignment
+// Returns: Grouped by surah → ayah → wordText
+app.get('/api/audio/sabq/by-assignment/:assignmentId', authenticateToken, async (req, res) => {
+  try {
+    const { assignmentId } = req.params;
+    const { page = 1, limit = 100 } = req.query;
+    
+    // Find the assignment
+    const assignment = await Assignment.findById(assignmentId);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+    
+    // Get all ticket IDs from assignment's classwork.sabq entries
+    const ticketIds = [];
+    if (assignment.classwork && assignment.classwork.sabq) {
+      assignment.classwork.sabq.forEach(entry => {
+        if (entry.fromTicketId) {
+          ticketIds.push(String(entry.fromTicketId));
+        }
+      });
+    }
+    
+    if (ticketIds.length === 0) {
+      return res.json({
+        assignmentId: String(assignmentId),
+        audioClips: [],
+        total: 0,
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+    }
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = Math.min(parseInt(limit), 100);
+    
+    // Find all audio clips for these tickets
+    const audioClips = await SabqAudioClip.find({ ticketId: { $in: ticketIds } })
+      .sort({ surahNumber: 1, ayahNumber: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+    
+    // Group by surah → ayah → wordText (same as ticket endpoint)
+    const grouped = {};
+    audioClips.forEach(clip => {
+      const surahKey = `surah_${clip.surahNumber}`;
+      const ayahKey = `ayah_${clip.ayahNumber}`;
+      
+      if (!grouped[surahKey]) {
+        grouped[surahKey] = {
+          surahNumber: clip.surahNumber,
+          ayahs: {}
+        };
+      }
+      
+      if (!grouped[surahKey].ayahs[ayahKey]) {
+        grouped[surahKey].ayahs[ayahKey] = {
+          ayahNumber: clip.ayahNumber,
+          words: []
+        };
+      }
+      
+      grouped[surahKey].ayahs[ayahKey].words.push({
+        wordText: clip.wordText, // Arabic text preserved
+        audioUrl: clip.audioUrl,
+        duration: clip.duration,
+        format: clip.format,
+        mistakeId: clip.mistakeId,
+        sabqEntryId: clip.sabqEntryId,
+        ticketId: clip.ticketId,
+        uploadedBy: clip.uploadedBy,
+        uploadedByName: clip.uploadedByName,
+        createdAt: clip.createdAt
+      });
+    });
+    
+    const result = Object.values(grouped).map(surah => ({
+      surahNumber: surah.surahNumber,
+      ayahs: Object.values(surah.ayahs).map(ayah => ({
+        ayahNumber: ayah.ayahNumber,
+        words: ayah.words
+      }))
+    }));
+    
+    res.json({
+      assignmentId: String(assignmentId),
+      audioClips: result,
+      total: audioClips.length,
+      page: parseInt(page),
+      limit: limitNum
+    });
+  } catch (error) {
+    console.error('❌ Error fetching Sabq audio by assignment:', error);
     res.status(500).json({ error: error.message });
   }
 });

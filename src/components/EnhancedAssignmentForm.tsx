@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Assignment, ClassworkPhase, AssignmentMushafMistake } from '../types/assignment';
-import { Ticket } from '../types/ticket';
+import { Ticket, RecitationRange } from '../types/ticket';
 import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { getQuranChapters, Chapter } from '@umar-academy/mushaf';
@@ -364,7 +364,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     const teacherName = logEntry.teacherName;
     
     // Get recitation range data
-    const recitationRange = ticket.recitationRange || {};
+    const recitationRange = (ticket.recitationRange || {}) as Partial<RecitationRange>;
     const surahNumber = recitationRange.surahNumber;
     const surahName = recitationRange.surahName;
     const juzNumber = recitationRange.juzNumber;
@@ -394,10 +394,8 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     if (ticket.mistakeCount !== undefined && ticket.mistakeCount !== null) {
       mistakesSummary += `Count: ${ticket.mistakeCount === 'weak' ? 'Weak' : ticket.mistakeCount}`;
     }
-    if (ticket.mistakeSeverity !== undefined && ticket.mistakeSeverity !== null) {
-      if (mistakesSummary) mistakesSummary += ' | ';
-      mistakesSummary += `Severity: ${ticket.mistakeSeverity === 'weak' ? 'Weak' : ticket.mistakeSeverity}`;
-    }
+    // Note: mistakeSeverity has been replaced with atkees
+    // If ticket has atkees, it will be included in the summary automatically
     if (ticket.mistakes && ticket.mistakes.length > 0) {
       if (mistakesSummary) mistakesSummary += ' | ';
       mistakesSummary += `Total Mistakes: ${ticket.mistakes.length}`;
@@ -959,7 +957,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                           ) : null}
                           
                           {/* Debug: Show debug info only in development */}
-                          {process.env.NODE_ENV === 'development' && (
+                          {import.meta.env.MODE === 'development' && (
                             <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
                               <p className="font-semibold mb-2">Debug: Sabq Entry Data</p>
                               <div className="space-y-1 text-xs font-mono">
@@ -1269,7 +1267,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                     ? sabqTickets[0].ticket.adminComment 
                     : null;
                   
-                  if (latestHomeworkRange && (latestHomeworkRange.startAyahNumber > 0 || latestHomeworkRange.endAyahNumber > 0)) {
+                  if (latestHomeworkRange && latestHomeworkRange.startAyahNumber && latestHomeworkRange.endAyahNumber && (latestHomeworkRange.startAyahNumber > 0 || latestHomeworkRange.endAyahNumber > 0)) {
                     return (
                       <>
                         {/* Homework Range - Like the image */}
@@ -1279,7 +1277,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                             {/* Start Ayah */}
                             <div>
                               <div className="text-xs font-semibold text-gray-700 mb-1">Start Ayah</div>
-                              {latestHomeworkRange.startAyahNumber > 0 ? (
+                              {latestHomeworkRange.startAyahNumber && latestHomeworkRange.startAyahNumber > 0 ? (
                                 <div>
                                   <div className="text-sm text-blue-700 font-bold">
                                     Surah {latestHomeworkRange.surahNumber || latestHomeworkRange.surahName}:{latestHomeworkRange.startAyahNumber}
@@ -1302,7 +1300,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                             {/* End Ayah */}
                             <div>
                               <div className="text-xs font-semibold text-gray-700 mb-1">End Ayah</div>
-                              {latestHomeworkRange.endAyahNumber > 0 ? (
+                              {latestHomeworkRange.endAyahNumber && latestHomeworkRange.endAyahNumber > 0 ? (
                                 <div>
                                   <div className="text-sm text-blue-700 font-bold">
                                     Surah {latestHomeworkRange.surahNumber || latestHomeworkRange.surahName}:{latestHomeworkRange.endAyahNumber}
