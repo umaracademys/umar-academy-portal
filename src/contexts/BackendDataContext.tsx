@@ -382,19 +382,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         console.log(`✅ Response received for ${url}:`, response.status);
       }
       
-      // Phase 5: Check for PERMISSIONS_OUTDATED error code
-      if (!response.ok && response.status === 401) {
+      // Phase 5: Check for authentication errors (401/403) and auto-logout
+      if (!response.ok && (response.status === 401 || response.status === 403)) {
         try {
           const errorData = await response.clone().json();
-          if (errorData.code === 'PERMISSIONS_OUTDATED') {
-            console.log('🔄 Permissions updated - logging out user');
+          // Auto-logout on authentication failures
+          if (errorData.code === 'PERMISSIONS_OUTDATED' || 
+              errorData.error?.includes('token') || 
+              errorData.error?.includes('Access token required') ||
+              errorData.error?.includes('Invalid or expired token')) {
+            console.log('🔄 Authentication failed - logging out user:', errorData.error);
             // Auto logout user
             logout();
             // Return error response so caller can handle it
             return response;
           }
         } catch (e) {
-          // Not JSON or parse error - continue normally
+          // Not JSON or parse error - might still be auth error, try logout anyway
+          if (response.status === 401) {
+            console.log('🔄 401 Unauthorized - logging out user');
+            logout();
+          }
         }
       }
       
@@ -518,8 +526,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         } else {
           // Load users and teachers in parallel
           const [usersResponse, teachersResponse] = await Promise.allSettled([
-            fetchWithTimeout(`${API_BASE}/users`, {}, 3000, false),
-            fetchWithTimeout(`${API_BASE}/teachers`, {}, 3000, false)
+            fetchWithTimeout(`${API_BASE}/users`, {}, 3000, true), // ✅ Require auth
+            fetchWithTimeout(`${API_BASE}/teachers`, {}, 3000, true) // ✅ Require auth
           ]);
           
           if (usersResponse.status === 'fulfilled' && usersResponse.value.ok) {
