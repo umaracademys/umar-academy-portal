@@ -12,8 +12,8 @@ const { getQuranWords, getExpectedText } = require('../services/quranDataService
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-// Get JWT_SECRET from environment
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+// Use secure JWT configuration
+const { JWT_SECRET } = require('../config/jwt');
 
 // Authentication middleware (matches server.js implementation)
 const authenticateToken = (req, res, next) => {

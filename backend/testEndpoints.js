@@ -12,7 +12,8 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/umar-academy-portal';
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+// Use secure JWT configuration (will fail if JWT_SECRET is invalid)
+const { JWT_SECRET } = require('./config/jwt');
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001/api';
 
 // Test user (you can modify this to use a real user from your database)

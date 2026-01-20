@@ -4,6 +4,7 @@
  */
 
 const jwt = require('jsonwebtoken');
+const { JWT_SECRET } = require('../config/jwt');
 
 const authenticateBinaryUpload = (req, res, next) => {
   // Get token from Authorization header or query parameter
@@ -18,7 +19,6 @@ const authenticateBinaryUpload = (req, res, next) => {
   }
 
   const tokenToVerify = token || queryToken;
-  const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 
   jwt.verify(tokenToVerify, JWT_SECRET, (err, decoded) => {
     if (err) {

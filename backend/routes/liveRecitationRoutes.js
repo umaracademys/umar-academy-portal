@@ -10,7 +10,8 @@ const liveRecitationProcessor = require('../services/liveRecitationProcessor');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+// Use secure JWT configuration
+const { JWT_SECRET } = require('../config/jwt');
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
