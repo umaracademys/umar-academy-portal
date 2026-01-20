@@ -1031,7 +1031,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Process tickets - skip if not needed for this route
       if (ticketsResponse.status === 'fulfilled' && ticketsResponse.value.ok && !ticketsResponse.value.skipped) {
         try {
-          const ticketsData = await ticketsResponse.value.json();
+          const rawTicketsData = await ticketsResponse.value.json();
+          // Handle paginated response: { tickets: [...], pagination: {...} } or direct array
+          const ticketsData = Array.isArray(rawTicketsData) ? rawTicketsData : (rawTicketsData.tickets || []);
           if (import.meta.env.DEV) {
             console.log('🎫 Tickets loaded:', ticketsData.length);
           }
@@ -2482,7 +2484,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       if (ticketsRes?.ok) {
-        const ticketsData = await ticketsRes.json();
+        const rawTicketsData = await ticketsRes.json();
+        // Handle paginated response: { tickets: [...], pagination: {...} } or direct array
+        const ticketsData = Array.isArray(rawTicketsData) ? rawTicketsData : (rawTicketsData.tickets || []);
         const mappedTickets = ticketsData.map((ticket: any) => ({
           ...ticket,
           id: ticket.id || ticket._id || ticket.id, // Prefer id if backend provides it
@@ -4808,7 +4812,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         try {
           const ticketsResponse = await fetch(`${API_BASE}/tickets`);
           if (ticketsResponse.ok) {
-            const ticketsData = await ticketsResponse.json();
+            const rawTicketsData = await ticketsResponse.json();
+            // Handle paginated response: { tickets: [...], pagination: {...} } or direct array
+            const ticketsData = Array.isArray(rawTicketsData) ? rawTicketsData : (rawTicketsData.tickets || []);
             const mappedTickets = ticketsData
               .filter((t: any) => ['sabq', 'sabqi', 'manzil'].includes(t.type))
               .map((t: any) => ({

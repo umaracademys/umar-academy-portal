@@ -386,7 +386,9 @@ const TeacherDashboard: React.FC = () => {
         let allEvaluations: any[] = [];
         
         if (response.ok) {
-          allEvaluations = await response.json();
+          const rawEvaluationsData = await response.json();
+          // Handle paginated response: { evaluations: [...], pagination: {...} } or direct array
+          allEvaluations = Array.isArray(rawEvaluationsData) ? rawEvaluationsData : (rawEvaluationsData.evaluations || []);
           if (import.meta.env.DEV) {
             console.log('✅ Weekly evaluations loaded:', allEvaluations.length);
           }
