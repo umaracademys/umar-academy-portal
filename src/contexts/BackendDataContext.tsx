@@ -3453,8 +3453,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const deleteTeacher = async (id: string) => {
     try {
+      // Use /api/teachers/:id endpoint which deletes both Teacher and User documents
       const response = await fetchWithTimeout(
-        `${API_BASE}/users/${id}`,
+        `${API_BASE}/teachers/${id}`,
         {
           method: 'DELETE',
           headers: getAuthHeaders(),
@@ -3469,7 +3470,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       setTeachers(prev => {
-        const updated = prev.filter(t => t.id !== id);
+        // Remove teacher by matching id, _id, or teacherDocumentId
+        const updated = prev.filter(t => {
+          const tId = t.id || (t as any)._id || (t as any).teacherDocumentId;
+          return tId !== id && String(tId) !== String(id);
+        });
         // ✅ FIX: Invalidate and update cache
         dataCache.delete('teachers');
         dataCache.set('teachers', updated);
@@ -3478,7 +3483,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         return updated;
       });
       if (import.meta.env.DEV) {
-        console.log('✅ Teacher deleted successfully from MongoDB');
+        console.log('✅ Teacher deleted successfully from MongoDB (both Teacher and User documents)');
       }
 
     } catch (err) {

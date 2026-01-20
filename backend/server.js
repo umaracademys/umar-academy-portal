@@ -5227,6 +5227,77 @@ app.put('/api/teachers/:id', authenticateToken, requirePermission('canManageTeac
   }
 });
 
+// Delete teacher
+// Phase 7: CRITICAL - Protect user management
+app.delete('/api/teachers/:id', authenticateToken, requirePermission('canManageTeachers'), async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+    console.log(`🗑️ DELETE /api/teachers/${teacherId}`);
+    
+    // Try to find the teacher first
+    let teacher = null;
+    
+    // Check if it's a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(teacherId)) {
+      teacher = await Teacher.findById(teacherId);
+    }
+    
+    // If not found by _id, try finding by userId or teacherId
+    if (!teacher) {
+      teacher = await Teacher.findOne({
+        $or: [
+          { userId: teacherId },
+          { teacherId: teacherId },
+          { _id: teacherId }
+        ]
+      });
+    }
+    
+    if (!teacher) {
+      console.error(`❌ Teacher not found with ID: ${teacherId}`);
+      return res.status(404).json({ error: `Teacher not found with ID: ${teacherId}` });
+    }
+    
+    // Delete the teacher record
+    await Teacher.findByIdAndDelete(teacher._id);
+    console.log(`✅ Teacher document deleted: ${teacher._id}`);
+    
+    // If teacher has a userId, also delete the associated user
+    if (teacher.userId) {
+      try {
+        await User.findByIdAndDelete(teacher.userId);
+        console.log(`✅ Also deleted associated user: ${teacher.userId}`);
+      } catch (userError) {
+        console.warn(`⚠️ Could not delete associated user: ${userError.message}`);
+        // Continue even if user deletion fails
+      }
+    }
+    
+    // OPTIMIZED: Invalidate teachers cache after successful deletion
+    try {
+      const { clearCache } = require('./utils/cache');
+      clearCache('teachers:all');
+      console.log(`✅ Teachers cache invalidated`);
+    } catch (cacheError) {
+      console.warn(`⚠️ Failed to clear cache (non-fatal):`, cacheError);
+    }
+    
+    // Emit WebSocket event for teacher deletion
+    try {
+      io.emit('teacher:deleted', { id: teacher._id.toString() });
+      console.log(`🔌 Emitted teacher:deleted event`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting teacher:deleted event:', socketError);
+    }
+    
+    console.log(`✅ Teacher deleted successfully: ${teacher._id}`);
+    res.json({ message: 'Teacher deleted successfully', deletedId: teacher._id.toString() });
+  } catch (error) {
+    console.error('❌ Error deleting teacher:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================
 // TEACHER ATTENDANCE ENDPOINTS
 // ============================================
