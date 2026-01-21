@@ -443,55 +443,27 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const isHomework = phase.assignmentRange?.includes('Homework:');
                                           
                                           return (
-                                            <div key={idx} className="border-l-4 border-purple-400 pl-3 py-1.5">
-                                              <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                  <p className="text-xs font-medium text-gray-900">{phase.assignmentRange || phase.details || 'Sabq'}</p>
-                                                  {/* Show additional details if available */}
-                                                  {phase.surahName && (
-                                                    <p 
-                                                      className="text-xs font-bold text-primary mt-0.5"
-                                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                      dir="rtl"
-                                                    >
-                                                      {phase.surahName}
-                                                    </p>
-                                                  )}
-                                                  {phase.startAyahText && phase.endAyahText && (
-                                                    <div className="mt-0.5 space-y-0.5">
-                                                      <p 
-                                                        className="text-xs text-gray-900 leading-relaxed"
-                                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                        dir="rtl"
-                                                      >
-                                                        {phase.startAyahText}
-                                                      </p>
-                                                      {phase.endAyahText !== phase.startAyahText && (
-                                                        <p 
-                                                          className="text-xs text-gray-900 leading-relaxed"
-                                                          style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                          dir="rtl"
-                                                        >
-                                                          {phase.endAyahText}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  )}
-                                                  {phase.teacherReviewComment && (
-                                                    <p className="text-[10px] text-gray-500 italic mt-0.5">
-                                                      {phase.teacherReviewComment}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                {phaseMistakes.length > 0 && (
+                                            <div key={idx} className="space-y-2">
+                                              {/* ✅ FIX: Use standardized ClassworkEntryCard */}
+                                              <ClassworkEntryCard
+                                                phase={phase}
+                                                type="sabq"
+                                                index={idx}
+                                                showDate={true}
+                                                className="mb-2"
+                                              />
+                                              
+                                              {/* Mushaf View Button */}
+                                              {phaseMistakes.length > 0 && (
+                                                <div className="flex justify-end">
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'sabq', idx, phase)}
-                                                    className="px-2 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-300 rounded hover:bg-purple-100 transition-colors ml-2"
+                                                    className="px-2 py-1 text-xs font-medium text-purple-600 bg-purple-50 border border-purple-300 rounded hover:bg-purple-100 transition-colors"
                                                   >
-                                                    {isMushafOpen ? 'Hide' : 'View'} ({phaseMistakes.length})
+                                                    {isMushafOpen ? 'Hide Mushaf' : 'View Mushaf'} ({phaseMistakes.length})
                                                   </button>
-                                                )}
-                                              </div>
+                                                </div>
+                                              )}
                                               
                                               {isMushafOpen && (
                                                 <div className="mt-2 pt-2 border-t border-gray-200 space-y-2">
@@ -547,60 +519,27 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
-                                            <div key={idx} className="border-l-4 border-blue-400 pl-3 py-1.5">
-                                              <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                  <p className="text-xs font-medium text-gray-900">{phase.assignmentRange || phase.details || 'Sabqi'}</p>
-                                                  {/* Show additional details if available */}
-                                                  {phase.surahName && (
-                                                    <p 
-                                                      className="text-xs font-bold text-primary mt-0.5"
-                                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                      dir="rtl"
-                                                    >
-                                                      {phase.surahName}
-                                                    </p>
-                                                  )}
-                                                  {phase.startAyahText && phase.endAyahText && (
-                                                    <div className="mt-0.5 space-y-0.5">
-                                                      <p 
-                                                        className="text-xs text-gray-900 leading-relaxed"
-                                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                        dir="rtl"
-                                                      >
-                                                        {phase.startAyahText}
-                                                      </p>
-                                                      {phase.endAyahText !== phase.startAyahText && (
-                                                        <p 
-                                                          className="text-xs text-gray-900 leading-relaxed"
-                                                          style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                          dir="rtl"
-                                                        >
-                                                          {phase.endAyahText}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  )}
-                                                  {phase.teacherReviewComment && (
-                                                    <p className="text-[10px] text-gray-500 italic mt-0.5">
-                                                      {phase.teacherReviewComment}
-                                                    </p>
-                                                  )}
-                                                  {phase.mistakesSummary && (
-                                                    <p className="text-[10px] text-orange-600 mt-0.5">
-                                                      Mistakes: {phase.mistakesSummary}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                {phaseMistakes.length > 0 && (
+                                            <div key={idx} className="space-y-2">
+                                              {/* ✅ FIX: Use standardized ClassworkEntryCard */}
+                                              <ClassworkEntryCard
+                                                phase={phase}
+                                                type="sabqi"
+                                                index={idx}
+                                                showDate={true}
+                                                className="mb-2"
+                                              />
+                                              
+                                              {/* Mushaf View Button */}
+                                              {phaseMistakes.length > 0 && (
+                                                <div className="flex justify-end">
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'sabqi', idx, phase)}
-                                                    className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded hover:bg-blue-100 transition-colors ml-2"
+                                                    className="px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded hover:bg-blue-100 transition-colors"
                                                   >
-                                                    {isMushafOpen ? 'Hide' : 'View'} ({phaseMistakes.length})
+                                                    {isMushafOpen ? 'Hide Mushaf' : 'View Mushaf'} ({phaseMistakes.length})
                                                   </button>
-                                                )}
-                                              </div>
+                                                </div>
+                                              )}
                                               
                                               {isMushafOpen && (
                                                 <div className="mt-2 pt-2 border-t border-gray-200 space-y-2">
@@ -656,55 +595,27 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                           const mushafPage = mushafPages[mushafKey] || defaultPage;
                                           
                                           return (
-                                            <div key={idx} className="border-l-4 border-green-400 pl-3 py-1.5">
-                                              <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                  <p className="text-xs font-medium text-gray-900">{phase.assignmentRange || phase.details || 'Manzil'}</p>
-                                                  {/* Show additional details if available */}
-                                                  {phase.surahName && (
-                                                    <p 
-                                                      className="text-xs font-bold text-primary mt-0.5"
-                                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                      dir="rtl"
-                                                    >
-                                                      {phase.surahName}
-                                                    </p>
-                                                  )}
-                                                  {phase.startAyahText && phase.endAyahText && (
-                                                    <div className="mt-0.5 space-y-0.5">
-                                                      <p 
-                                                        className="text-xs text-gray-900 leading-relaxed"
-                                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                        dir="rtl"
-                                                      >
-                                                        {phase.startAyahText}
-                                                      </p>
-                                                      {phase.endAyahText !== phase.startAyahText && (
-                                                        <p 
-                                                          className="text-xs text-gray-900 leading-relaxed"
-                                                          style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                                          dir="rtl"
-                                                        >
-                                                          {phase.endAyahText}
-                                                        </p>
-                                                      )}
-                                                    </div>
-                                                  )}
-                                                  {phase.teacherReviewComment && (
-                                                    <p className="text-[10px] text-gray-500 italic mt-0.5">
-                                                      {phase.teacherReviewComment}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                {phaseMistakes.length > 0 && (
+                                            <div key={idx} className="space-y-2">
+                                              {/* ✅ FIX: Use standardized ClassworkEntryCard */}
+                                              <ClassworkEntryCard
+                                                phase={phase}
+                                                type="manzil"
+                                                index={idx}
+                                                showDate={true}
+                                                className="mb-2"
+                                              />
+                                              
+                                              {/* Mushaf View Button */}
+                                              {phaseMistakes.length > 0 && (
+                                                <div className="flex justify-end">
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'manzil', idx, phase)}
-                                                    className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-300 rounded hover:bg-green-100 transition-colors ml-2"
+                                                    className="px-2 py-1 text-xs font-medium text-green-600 bg-green-50 border border-green-300 rounded hover:bg-green-100 transition-colors"
                                                   >
-                                                    {isMushafOpen ? 'Hide' : 'View'} ({phaseMistakes.length})
+                                                    {isMushafOpen ? 'Hide Mushaf' : 'View Mushaf'} ({phaseMistakes.length})
                                                   </button>
-                                                )}
-                                              </div>
+                                                </div>
+                                              )}
                                               
                                               {isMushafOpen && (
                                                 <div className="mt-2 pt-2 border-t border-gray-200 space-y-2">
