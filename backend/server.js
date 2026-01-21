@@ -8856,6 +8856,22 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
   // Teacher review comment
   const teacherReviewComment = ticket.teacherComment || ticket.reviewNotes || '';
   
+  // Get mistakes array with wordText (for sabqi/manzil tickets)
+  const mistakesWithWordText = (ticket.mistakes || []).map(m => ({
+    id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+    type: m.type,
+    page: m.page,
+    surah: m.surah,
+    ayah: m.ayah,
+    wordIndex: m.wordIndex,
+    position: m.position,
+    note: m.note,
+    audioUrl: m.audioUrl,
+    workflowStep: ticket.type,
+    timestamp: m.timestamp || new Date(),
+    wordText: m.wordText || undefined // Include wordText from ticket
+  }));
+  
   // ✅ FIX: Create classwork entry with all review data including end surah info
   const classworkEntry = {
     type: ticket.type,
@@ -8873,8 +8889,10 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
     mistakesSummary: mistakesSummary,
     mistakeCount: ticket.mistakeCount !== undefined && ticket.mistakeCount !== null ? ticket.mistakeCount : undefined,
     atkees: ticket.atkees !== undefined && ticket.atkees !== null ? ticket.atkees : undefined,
-    tajweedIssues: tajweedIssues,
+    mistakes: mistakesWithWordText.length > 0 ? mistakesWithWordText : undefined, // ✅ FIX: Include mistakes array
+    tajweedIssues: tajweedIssues.length > 0 ? tajweedIssues : undefined,
     teacherReviewComment: teacherReviewComment,
+    adminComment: ticket.adminComment || undefined, // ✅ FIX: Include admin comment if available
     fromTicketId: ticketIdStr,
     createdAt: currentDate
   };
