@@ -8362,25 +8362,79 @@ app.get('/api/tickets/:id/verify-assignment', authenticateToken, async (req, res
 
 // Fix tickets that are missing sentToAssignmentId - MUST come before /:id route
 // Bulk delete tickets - MUST be before /api/tickets/:id route (to avoid route conflict)
-app.post('/api/tickets/bulk-delete', authenticateToken, requirePermission('canManageTicketWorkflow'), async (req, res) => {
+// ✅ FIX: Allow teachers to bulk delete tickets they have access to (assigned to them or for their students)
+app.post('/api/tickets/bulk-delete', authenticateToken, async (req, res) => {
   try {
     const { ticketIds } = req.body;
+    const user = req.user;
     
     if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
       return res.status(400).json({ error: 'ticketIds must be a non-empty array' });
     }
 
-    // Delete all tickets
+    // ✅ FIX: Validate ownership for each ticket (teachers can only delete tickets they have access to)
+    const tickets = await Ticket.find({ _id: { $in: ticketIds } });
+    
+    if (tickets.length === 0) {
+      return res.status(404).json({ error: 'No tickets found' });
+    }
+
+    // For teachers, filter to only tickets they can access
+    let ticketsToDelete = tickets;
+    if (user.role === 'teacher') {
+      const teacher = await getTeacherByUserId(user.userId);
+      if (!teacher) {
+        return res.status(403).json({ error: 'Teacher profile not found' });
+      }
+      
+      const teacherIdStr = teacher._id.toString();
+      const allowedTicketIds = [];
+      
+      for (const ticket of tickets) {
+        const isAssignedTeacher = ticket.assignedTeacherId && ticket.assignedTeacherId.toString() === teacherIdStr;
+        const isAssignedToStudent = await isTeacherAssignedToStudent(teacher._id, ticket.studentId);
+        
+        if (isAssignedTeacher || isAssignedToStudent) {
+          allowedTicketIds.push(ticket._id);
+        }
+      }
+      
+      if (allowedTicketIds.length === 0) {
+        return res.status(403).json({ error: 'You do not have permission to delete any of these tickets' });
+      }
+      
+      ticketsToDelete = tickets.filter(t => allowedTicketIds.includes(t._id));
+    }
+    // Admins can delete all tickets (no filtering needed)
+
+    // Delete only the tickets the user has permission to delete
+    const ticketIdsToDelete = ticketsToDelete.map(t => t._id);
     const result = await Ticket.deleteMany({
-      _id: { $in: ticketIds }
+      _id: { $in: ticketIdsToDelete }
     });
 
-    console.log(`✅ Deleted ${result.deletedCount} tickets`);
+    console.log(`✅ Deleted ${result.deletedCount} tickets (requested ${ticketIds.length}, allowed ${ticketIdsToDelete.length})`);
 
     // ✅ PHASE 2 OPTIMIZATION: Single bulk delete event (80% less network traffic)
     try {
-      io.to('admins').emit('tickets:bulk-deleted', { ids: ticketIds });
-      console.log(`🔌 Emitted tickets:bulk-deleted event for ${ticketIds.length} tickets`);
+      // Emit to relevant users (students and teachers affected by deleted tickets)
+      const affectedStudentIds = new Set();
+      const affectedTeacherIds = new Set();
+      
+      ticketsToDelete.forEach(ticket => {
+        if (ticket.studentId) affectedStudentIds.add(ticket.studentId);
+        if (ticket.assignedTeacherId) affectedTeacherIds.add(ticket.assignedTeacherId);
+      });
+      
+      affectedStudentIds.forEach(studentId => {
+        io.to(`student:${studentId}`).emit('tickets:bulk-deleted', { ids: ticketIdsToDelete.map(id => id.toString()) });
+      });
+      affectedTeacherIds.forEach(teacherId => {
+        io.to(`teacher:${teacherId}`).emit('tickets:bulk-deleted', { ids: ticketIdsToDelete.map(id => id.toString()) });
+      });
+      io.to('admins').emit('tickets:bulk-deleted', { ids: ticketIdsToDelete.map(id => id.toString()) });
+      
+      console.log(`🔌 Emitted tickets:bulk-deleted event for ${ticketIdsToDelete.length} tickets`);
     } catch (socketError) {
       console.error('⚠️ Error emitting tickets:bulk-deleted event:', socketError);
     }
@@ -8388,7 +8442,8 @@ app.post('/api/tickets/bulk-delete', authenticateToken, requirePermission('canMa
     res.json({ 
       success: true, 
       deletedCount: result.deletedCount,
-      message: `Successfully deleted ${result.deletedCount} ticket(s)`
+      requestedCount: ticketIds.length,
+      message: `Successfully deleted ${result.deletedCount} ticket(s)${result.deletedCount < ticketIds.length ? ` (${ticketIds.length - result.deletedCount} were not accessible)` : ''}`
     });
   } catch (error) {
     console.error('❌ Error bulk deleting tickets:', error);
