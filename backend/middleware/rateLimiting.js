@@ -92,7 +92,7 @@ const createRateLimiter = (options) => {
  */
 const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 10 : 20, // 10 attempts in production (increased from 5), 20 in development
+  max: isProduction ? 15 : 20, // 15 attempts in production (increased from 5), 20 in development
   message: 'Too many authentication attempts. Please try again after 15 minutes.',
   skipSuccessfulRequests: true, // Successful logins don't count toward limit
   name: 'auth-limiter'
@@ -221,7 +221,7 @@ const createCombinedLimiter = (options) => {
  */
 const combinedAuthLimiter = createCombinedLimiter({
   windowMs: 15 * 60 * 1000,
-  max: isProduction ? 10 : 20, // Increased from 5 to 10 in production
+  max: isProduction ? 15 : 20, // Increased to 15 in production (was 5, then 10)
   message: 'Too many authentication attempts',
   skipSuccessfulRequests: true, // Successful logins don't count toward limit
   name: 'combined-auth'
