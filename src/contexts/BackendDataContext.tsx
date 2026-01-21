@@ -2467,7 +2467,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       ]);
 
       if (assignmentsRes?.ok) {
-        const assignmentsData = await assignmentsRes.json();
+        const rawAssignmentsData = await assignmentsRes.json();
+        // ✅ FIX: Handle both array response and paginated object response
+        const assignmentsData = Array.isArray(rawAssignmentsData) 
+          ? rawAssignmentsData 
+          : (rawAssignmentsData.assignments || rawAssignmentsData.data || []);
+        
+        if (!Array.isArray(assignmentsData)) {
+          console.error('❌ Light refresh error: assignmentsData is not an array:', typeof assignmentsData, assignmentsData);
+          return;
+        }
+        
         const mappedAssignments = assignmentsData.map((assignment: any) => ({
           ...assignment,
           id: assignment._id || assignment.id,
@@ -2475,15 +2485,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           createdAt: assignment.createdAt ? new Date(assignment.createdAt) : new Date(),
           updatedAt: assignment.updatedAt ? new Date(assignment.updatedAt) : new Date(),
         }));
-        console.log('🔄 Refreshed assignments:', {
-          count: mappedAssignments.length,
-          sample: mappedAssignments[0] ? {
-            id: mappedAssignments[0].id,
-            studentId: mappedAssignments[0].studentId,
-            homeworkEnabled: mappedAssignments[0].homework?.enabled,
-            homeworkItemsCount: mappedAssignments[0].homework?.items?.length || 0
-          } : null
-        });
+        
+        if (import.meta.env.DEV) {
+          console.log('🔄 Refreshed assignments:', {
+            count: mappedAssignments.length,
+            sample: mappedAssignments[0] ? {
+              id: mappedAssignments[0].id,
+              studentId: mappedAssignments[0].studentId,
+              homeworkEnabled: mappedAssignments[0].homework?.enabled,
+              homeworkItemsCount: mappedAssignments[0].homework?.items?.length || 0
+            } : null
+          });
+        }
         setAssignments(mappedAssignments);
       }
 
