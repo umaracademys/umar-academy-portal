@@ -218,31 +218,33 @@ const AssignmentManagement: React.FC = () => {
       .filter(id => id && id !== '[object Object]' && id.length > 0)
       .slice(0, 10);
     
-    console.log('🔍 Assignment-Student ID Matching Analysis:', {
-      totalAssignments: assignments.length,
-      assignedStudentsCount: assignedStudents.length,
-      allStudentsCount: allStudents.length,
-      allPossibleStudentIdsCount: allPossibleStudentIds.size,
-      assignmentStudentIdsCount: assignmentStudentIds.size,
-      unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
-      unmatchedCount: unmatchedAssignmentIds.length,
-      sampleAssignedStudentIds: validSampleAssignedStudentIds,
-      sampleAssignmentStudentIds: validSampleAssignmentStudentIds,
-      // Check if there are any students that match the unmatched assignment IDs
-      unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
-        const foundStudent = allStudents.find(s => {
-          const studentId = normalizeId(s.id || (s as any)._id);
-          const studentRecordId = normalizeId((s as any).studentRecordId);
-          return studentId === id || studentRecordId === id;
-        });
-        return { 
-          assignmentId: id, 
-          studentFound: !!foundStudent, 
-          studentId: foundStudent?.id,
-          studentRecordId: foundStudent ? normalizeId((foundStudent as any).studentRecordId) : null
-        };
-      })
-    });
+    if (import.meta.env.DEV) {
+      console.log('🔍 Assignment-Student ID Matching Analysis:', {
+        totalAssignments: assignments.length,
+        assignedStudentsCount: assignedStudents.length,
+        allStudentsCount: allStudents.length,
+        allPossibleStudentIdsCount: allPossibleStudentIds.size,
+        assignmentStudentIdsCount: assignmentStudentIds.size,
+        unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
+        unmatchedCount: unmatchedAssignmentIds.length,
+        sampleAssignedStudentIds: validSampleAssignedStudentIds,
+        sampleAssignmentStudentIds: validSampleAssignmentStudentIds,
+        // Check if there are any students that match the unmatched assignment IDs
+        unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
+          const foundStudent = allStudents.find(s => {
+            const studentId = normalizeId(s.id || (s as any)._id);
+            const studentRecordId = normalizeId((s as any).studentRecordId);
+            return studentId === id || studentRecordId === id;
+          });
+          return { 
+            assignmentId: id, 
+            studentFound: !!foundStudent, 
+            studentId: foundStudent?.id,
+            studentRecordId: foundStudent ? normalizeId((foundStudent as any).studentRecordId) : null
+          };
+        })
+      });
+    }
     
     const relevantAssignments = assignments.filter(a => {
       const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
@@ -276,12 +278,14 @@ const AssignmentManagement: React.FC = () => {
     });
     const totalAssignments = relevantAssignments.length;
     
-    console.log('📊 AssignmentManagement Stats Result:', {
-      totalAssignments,
-      relevantAssignmentsCount: relevantAssignments.length,
-      unmatchedAssignments: assignments.length - relevantAssignments.length,
-      studentsWithAssignments: new Set(relevantAssignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId))).size
-    });
+    if (import.meta.env.DEV) {
+      console.log('📊 AssignmentManagement Stats Result:', {
+        totalAssignments,
+        relevantAssignmentsCount: relevantAssignments.length,
+        unmatchedAssignments: assignments.length - relevantAssignments.length,
+        studentsWithAssignments: new Set(relevantAssignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId))).size
+      });
+    }
     const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
     const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
     const completedAssignments = relevantAssignments.filter((a: any) => {

@@ -4096,7 +4096,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }));
     
     // Only log if there are assignments found (reduce console noise)
-    if (filtered.length > 0) {
+    if (filtered.length > 0 && import.meta.env.DEV) {
       console.log('🔍 getStudentAssignments:', {
         studentId: normalizedStudentId,
         totalAssignments: assignments.length,
