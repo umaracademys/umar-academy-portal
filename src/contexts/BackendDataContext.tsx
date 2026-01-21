@@ -1284,11 +1284,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
                 }))
               });
             } else {
-              console.log('✅ Teacher record matched:', {
-                userEmail: user.email,
-                teacherDocId: teacherRecord._id?.toString() || teacherRecord._id,
-                teacherUserId: teacherRecord.userId?._id?.toString() || teacherRecord.userId
-              });
+              if (import.meta.env.DEV) {
+                console.log('✅ Teacher record matched:', {
+                  userEmail: user.email,
+                  teacherDocId: teacherRecord._id?.toString() || teacherRecord._id,
+                  teacherUserId: teacherRecord.userId?._id?.toString() || teacherRecord.userId
+                });
+              }
             }
             
             const teacherProfile = user.teacherProfile || teacherRecord || {};
