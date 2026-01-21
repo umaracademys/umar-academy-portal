@@ -1,24 +1,37 @@
 #!/bin/bash
 set -e
 
-# Find backend directory (handle different working directories)
+# Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR" && pwd)"
+# Get the project root (where the script is located, which should be repo root)
+PROJECT_ROOT="$SCRIPT_DIR"
+
+echo "Script directory: $SCRIPT_DIR"
+echo "Project root: $PROJECT_ROOT"
+echo "Current working directory: $(pwd)"
 
 # Try to find backend directory
+# First, try from project root (where script is located)
 if [ -d "$PROJECT_ROOT/backend" ]; then
     BACKEND_DIR="$PROJECT_ROOT/backend"
+# Then try from current working directory
+elif [ -d "$(pwd)/backend" ]; then
+    BACKEND_DIR="$(pwd)/backend"
+# Check if we're already in backend directory
+elif [ -f "$(pwd)/package.json" ] && [ -f "$(pwd)/server.js" ]; then
+    BACKEND_DIR="$(pwd)"
+# Last resort: try to find it
 elif [ -d "backend" ]; then
     BACKEND_DIR="$(pwd)/backend"
-elif [ -f "package.json" ] && [ -f "server.js" ]; then
-    # We're already in the backend directory
-    BACKEND_DIR="$(pwd)"
 else
     echo "Error: Could not find backend directory"
     echo "Current directory: $(pwd)"
     echo "Script directory: $SCRIPT_DIR"
     echo "Project root: $PROJECT_ROOT"
-    ls -la
+    echo "Listing project root:"
+    ls -la "$PROJECT_ROOT" | head -20
+    echo "Listing current directory:"
+    ls -la | head -20
     exit 1
 fi
 
