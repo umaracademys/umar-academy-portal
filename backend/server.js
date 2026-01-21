@@ -2999,7 +2999,7 @@ app.get('/api/users', combinedListEndpointLimiter, authenticateToken, async (req
     // Add password status information
     const usersWithPasswordStatus = users.map(user => ({
       ...user,
-      passwordChangeRequired: targetUser.passwordChangeRequired || false,
+      passwordChangeRequired: user.passwordChangeRequired || false,
       hasPassword: !!user.password
     }));
     
