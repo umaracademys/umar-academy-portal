@@ -10,6 +10,7 @@ import { MushafMistake } from '@umar-academy/mushaf';
 import { HomeworkSubmission } from '../../../types/assignment';
 import { uploadMistakeAudio } from '../../../services/audioService';
 import HomeworkDisplay from '../../../components/HomeworkDisplay';
+import ClassworkEntryCard from '../../../components/ClassworkEntryCard';
 
 const StudentAssignments: React.FC = () => {
   const navigate = useNavigate();
@@ -616,109 +617,131 @@ const StudentAssignments: React.FC = () => {
                                         </span>
                                       </button>
                                       {expandedSections[assignment.id]?.classwork && (
-                                      <div className="space-y-1.5">
-                                        {/* Sabq - Compact */}
+                                      <div className="space-y-3">
+                                        {/* ✅ FIX: Use standardized ClassworkEntryCard for all classwork types */}
+                                        {/* Sabq */}
                                         {classwork.sabq.length > 0 && (
                                           <div>
-                                            <span className="text-[10px] font-semibold text-gray-600">Sabq:</span>
-                                            <ul className="ml-2 mt-0.5 space-y-0.5">
+                                            <span className="text-[10px] font-semibold text-gray-600 mb-2 block">Sabq:</span>
+                                            <div className="space-y-2">
                                               {classwork.sabq.map((phase: any, idx: number) => {
                                                 const phaseMistakes = getMistakesForPhase(assignment, 'sabq', idx);
-                                                const hasMistakes = phaseMistakes.length > 0;
                                                 return (
-                                                  <li key={idx} className="text-[10px] text-gray-700 flex items-center justify-between gap-1.5">
-                                                    <span>• {phase.assignmentRange || phase.details || 'Sabq'}</span>
-                                                    {hasMistakes && (
-                                                      <button
-                                                        onClick={() => {
-                                                          setViewingMistakesFor({ assignmentId: assignment.id, type: 'sabq', index: idx });
-                                                          if (phaseMistakes.length > 0) {
-                                                            setMushafPage(phaseMistakes[0].page);
-                                                          }
-                                                        }}
-                                                        className={`px-1 py-0.5 text-[9px] rounded transition-colors ${
-                                                          currentViewingMistakes?.type === 'sabq' && currentViewingMistakes?.index === idx
-                                                            ? 'bg-primary text-white'
-                                                            : 'bg-primary/20 text-primary hover:bg-primary/30'
-                                                        }`}
-                                                      >
-                                                        View ({phaseMistakes.length})
-                                                      </button>
+                                                  <div key={idx} className="space-y-1">
+                                                    <ClassworkEntryCard
+                                                      phase={phase}
+                                                      type="sabq"
+                                                      index={idx}
+                                                      showDate={true}
+                                                      className="text-sm"
+                                                    />
+                                                    {phaseMistakes.length > 0 && (
+                                                      <div className="flex justify-end">
+                                                        <button
+                                                          onClick={() => {
+                                                            setViewingMistakesFor({ assignmentId: assignment.id, type: 'sabq', index: idx });
+                                                            if (phaseMistakes.length > 0) {
+                                                              setMushafPage(phaseMistakes[0].page);
+                                                            }
+                                                          }}
+                                                          className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                            currentViewingMistakes?.type === 'sabq' && currentViewingMistakes?.index === idx
+                                                              ? 'bg-primary text-white'
+                                                              : 'bg-primary/20 text-primary hover:bg-primary/30'
+                                                          }`}
+                                                        >
+                                                          View Mushaf ({phaseMistakes.length})
+                                                        </button>
+                                                      </div>
                                                     )}
-                                                  </li>
+                                                  </div>
                                                 );
                                               })}
-                                            </ul>
+                                            </div>
                                           </div>
                                         )}
                                         
-                                        {/* Sabqi - Compact */}
+                                        {/* Sabqi */}
                                         {classwork.sabqi.length > 0 && (
                                           <div>
-                                            <span className="text-[10px] font-semibold text-gray-600">Sabqi:</span>
-                                            <ul className="ml-2 mt-0.5 space-y-0.5">
+                                            <span className="text-[10px] font-semibold text-gray-600 mb-2 block">Sabqi:</span>
+                                            <div className="space-y-2">
                                               {classwork.sabqi.map((phase: any, idx: number) => {
                                                 const phaseMistakes = getMistakesForPhase(assignment, 'sabqi', idx);
-                                                const hasMistakes = phaseMistakes.length > 0;
                                                 return (
-                                                  <li key={idx} className="text-[10px] text-gray-700 flex items-center justify-between gap-1.5">
-                                                    <span>• {phase.assignmentRange || phase.details || 'Sabqi'}</span>
-                                                    {hasMistakes && (
-                                                      <button
-                                                        onClick={() => {
-                                                          setViewingMistakesFor({ assignmentId: assignment.id, type: 'sabqi', index: idx });
-                                                          if (phaseMistakes.length > 0) {
-                                                            setMushafPage(phaseMistakes[0].page);
-                                                          }
-                                                        }}
-                                                        className={`px-1 py-0.5 text-[9px] rounded transition-colors ${
-                                                          currentViewingMistakes?.type === 'sabqi' && currentViewingMistakes?.index === idx
-                                                            ? 'bg-primary text-white'
-                                                            : 'bg-primary/20 text-primary hover:bg-primary/30'
-                                                        }`}
-                                                      >
-                                                        View ({phaseMistakes.length})
-                                                      </button>
+                                                  <div key={idx} className="space-y-1">
+                                                    <ClassworkEntryCard
+                                                      phase={phase}
+                                                      type="sabqi"
+                                                      index={idx}
+                                                      showDate={true}
+                                                      className="text-sm"
+                                                    />
+                                                    {phaseMistakes.length > 0 && (
+                                                      <div className="flex justify-end">
+                                                        <button
+                                                          onClick={() => {
+                                                            setViewingMistakesFor({ assignmentId: assignment.id, type: 'sabqi', index: idx });
+                                                            if (phaseMistakes.length > 0) {
+                                                              setMushafPage(phaseMistakes[0].page);
+                                                            }
+                                                          }}
+                                                          className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                            currentViewingMistakes?.type === 'sabqi' && currentViewingMistakes?.index === idx
+                                                              ? 'bg-primary text-white'
+                                                              : 'bg-primary/20 text-primary hover:bg-primary/30'
+                                                          }`}
+                                                        >
+                                                          View Mushaf ({phaseMistakes.length})
+                                                        </button>
+                                                      </div>
                                                     )}
-                                                  </li>
+                                                  </div>
                                                 );
                                               })}
-                                            </ul>
+                                            </div>
                                           </div>
                                         )}
                                         
-                                        {/* Manzil - Compact */}
+                                        {/* Manzil */}
                                         {classwork.manzil.length > 0 && (
                                           <div>
-                                            <span className="text-[10px] font-semibold text-gray-600">Manzil:</span>
-                                            <ul className="ml-2 mt-0.5 space-y-0.5">
+                                            <span className="text-[10px] font-semibold text-gray-600 mb-2 block">Manzil:</span>
+                                            <div className="space-y-2">
                                               {classwork.manzil.map((phase: any, idx: number) => {
                                                 const phaseMistakes = getMistakesForPhase(assignment, 'manzil', idx);
-                                                const hasMistakes = phaseMistakes.length > 0;
                                                 return (
-                                                  <li key={idx} className="text-[10px] text-gray-700 flex items-center justify-between gap-1.5">
-                                                    <span>• {phase.assignmentRange || phase.details || 'Manzil'}</span>
-                                                    {hasMistakes && (
-                                                      <button
-                                                        onClick={() => {
-                                                          setViewingMistakesFor({ assignmentId: assignment.id, type: 'manzil', index: idx });
-                                                          if (phaseMistakes.length > 0) {
-                                                            setMushafPage(phaseMistakes[0].page);
-                                                          }
-                                                        }}
-                                                        className={`px-1 py-0.5 text-[9px] rounded transition-colors ${
-                                                          currentViewingMistakes?.type === 'manzil' && currentViewingMistakes?.index === idx
-                                                            ? 'bg-primary text-white'
-                                                            : 'bg-primary/20 text-primary hover:bg-primary/30'
-                                                        }`}
-                                                      >
-                                                        View ({phaseMistakes.length})
-                                                      </button>
+                                                  <div key={idx} className="space-y-1">
+                                                    <ClassworkEntryCard
+                                                      phase={phase}
+                                                      type="manzil"
+                                                      index={idx}
+                                                      showDate={true}
+                                                      className="text-sm"
+                                                    />
+                                                    {phaseMistakes.length > 0 && (
+                                                      <div className="flex justify-end">
+                                                        <button
+                                                          onClick={() => {
+                                                            setViewingMistakesFor({ assignmentId: assignment.id, type: 'manzil', index: idx });
+                                                            if (phaseMistakes.length > 0) {
+                                                              setMushafPage(phaseMistakes[0].page);
+                                                            }
+                                                          }}
+                                                          className={`px-2 py-1 text-xs rounded transition-colors ${
+                                                            currentViewingMistakes?.type === 'manzil' && currentViewingMistakes?.index === idx
+                                                              ? 'bg-primary text-white'
+                                                              : 'bg-primary/20 text-primary hover:bg-primary/30'
+                                                          }`}
+                                                        >
+                                                          View Mushaf ({phaseMistakes.length})
+                                                        </button>
+                                                      </div>
                                                     )}
-                                                  </li>
+                                                  </div>
                                                 );
                                               })}
-                                            </ul>
+                                            </div>
                                           </div>
                                         )}
                                       </div>

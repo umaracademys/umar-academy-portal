@@ -7,6 +7,7 @@ import { InteractiveMushaf } from '@umar-academy/mushaf';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { getQuranChapters, Chapter } from '@umar-academy/mushaf';
 import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
+import ClassworkEntryCard from './ClassworkEntryCard';
 
 interface EnhancedAssignmentFormProps {
   studentId: string;
@@ -1078,103 +1079,17 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                             </p>
                           )}
                       
-                          {/* Modern Detailed Display - Complete Report - Always show if fromTicketId exists */}
+                          {/* ✅ FIX: Use standardized ClassworkEntryCard for read-only display when fromTicketId exists */}
                           {(phase.fromTicketId || phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.mistakes?.length || phase.tajweedIssues?.length || phase.adminComment || phase.teacherReviewComment || phase.details) ? (
-                            <div className="mt-4 pt-4 border-t border-purple-200 space-y-4">
-                              {/* Modern Recitation Range Section */}
-                              {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText) && (
-                                <div className="bg-purple-50 rounded-lg p-4 space-y-3">
-                                  {/* Arabic Surah Name - Prominent */}
-                                  {phase.surahName && (
-                                    <div 
-                                      className="text-base font-bold text-purple-700"
-                                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                      dir="rtl"
-                                    >
-                                      {phase.surahName}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Ayah Range Badge */}
-                                  {(phase.fromAyah || phase.toAyah) && (
-                                    <div className="flex items-center gap-2">
-                                      <span className="px-3 py-1 bg-purple-600 text-white text-sm font-semibold rounded-lg">
-                                        Ayah {phase.fromAyah || '?'}-{phase.toAyah || '?'}
-                                      </span>
-                                      {phase.juzNumber && (
-                                        <span className="px-2 py-1 bg-purple-200 text-purple-800 text-xs font-medium rounded">
-                                          Juz {phase.juzNumber}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Start Ayah Text - Modern Card */}
-                                  {phase.startAyahText && (
-                                    <div className="bg-white rounded-lg p-3 border border-purple-200">
-                                      <div className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">Start Ayah</div>
-                                      <p 
-                                        className="text-base text-gray-900 leading-relaxed"
-                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                        dir="rtl"
-                                      >
-                                        {phase.startAyahText}
-                                      </p>
-                                    </div>
-                                  )}
-                                  
-                                  {/* End Ayah Text - Only if different */}
-                                  {phase.endAyahText && phase.endAyahText !== phase.startAyahText && (
-                                    <div className="bg-white rounded-lg p-3 border border-purple-200">
-                                      <div className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">End Ayah</div>
-                                      <p 
-                                        className="text-base text-gray-900 leading-relaxed"
-                                        style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                        dir="rtl"
-                                      >
-                                        {phase.endAyahText}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            
-                              {/* Modern Statistics Badges */}
-                              {(phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.tajweedIssues?.length || phase.mistakes?.length) && (
-                                <div className="flex gap-2 flex-wrap">
-                                  {phase.mistakeCount !== undefined && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
-                                      <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                      </svg>
-                                      <span className="text-sm font-semibold text-red-700">
-                                        Mistakes: {phase.mistakeCount === 'weak' ? 'Weak' : phase.mistakeCount}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {phase.atkees !== undefined && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                      <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                      </svg>
-                                      <span className="text-sm font-semibold text-yellow-700">
-                                        Atkees: {phase.atkees}
-                                      </span>
-                                    </div>
-                                  )}
-                                  {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
-                                    <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                                      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                      </svg>
-                                      <span className="text-sm font-semibold text-blue-700">
-                                        Tajweed: {phase.tajweedIssues.length}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            
+                            <div className="mt-4 pt-4 border-t border-purple-200">
+                              <ClassworkEntryCard
+                                phase={phase}
+                                type="sabq"
+                                index={index}
+                                showDate={true}
+                                className="mb-4"
+                              />
+                              
                               {/* Marked Mistakes Section - Always show if available */}
                               {(() => {
                                 // Priority 1: Use mistakes array directly from phase (if available from SabqEntry)
@@ -1243,37 +1158,6 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                   </div>
                                 ) : null;
                               })()}
-                              
-                              {/* Tajweed Issues - Always show if available */}
-                              {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-gray-300">
-                                  <div className="text-sm font-semibold text-gray-700 mb-2">Tajweed Issues</div>
-                                  <div className="space-y-1">
-                                    {phase.tajweedIssues.map((issue, idx) => (
-                                      <div key={idx} className="text-xs text-gray-600 flex items-start gap-2">
-                                        <span className="text-purple-600 mt-0.5">•</span>
-                                        <span>{issue.type}{issue.note ? `: ${issue.note}` : ''}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {/* Admin Comment - Always show if available */}
-                              {phase.adminComment && (
-                                <div className="mt-3 pt-3 border-t border-gray-300">
-                                  <div className="text-sm font-semibold text-gray-700 mb-1">Admin Comment</div>
-                                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{phase.adminComment}</p>
-                                </div>
-                              )}
-                              
-                              {/* Teacher Comment - Always show if available */}
-                              {(phase.teacherReviewComment || phase.details) && (
-                                <div className="mt-3 pt-3 border-t border-gray-300">
-                                  <div className="text-sm font-semibold text-gray-700 mb-1">Teacher Comment</div>
-                                  <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{phase.teacherReviewComment || phase.details}</p>
-                                </div>
-                              )}
                             </div>
                           ) : null}
                           
@@ -1360,67 +1244,16 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                           Locked (from ticket)
                         </p>
                       )}
-                      {/* Display all ticket details if they exist */}
-                      {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakesSummary || phase.tajweedIssues?.length || phase.teacherReviewComment) && (
-                        <div className="mt-2 space-y-1 text-[10px] text-gray-600 border-t border-gray-200 pt-1">
-                          {/* Surah Name/Number */}
-                          {(phase.surahName || phase.surahNumber) && (
-                            <div>
-                              <span className="font-semibold">Surah:</span>{' '}
-                              <span 
-                                className="font-bold text-primary"
-                                style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                dir="rtl"
-                              >
-                                {phase.surahName || `Surah ${phase.surahNumber}`}
-                              </span>
-                              {phase.juzNumber && <span className="ml-1">(Juz {phase.juzNumber})</span>}
-                            </div>
-                          )}
-                          {/* Ayah Range with Arabic Text */}
-                          {(phase.fromAyah || phase.toAyah) && (
-                            <div>
-                              <span className="font-semibold">Ayah Range:</span> {phase.fromAyah || '?'}-{phase.toAyah || '?'}
-                              {phase.startAyahText && (
-                                <div 
-                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
-                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                  dir="rtl"
-                                >
-                                  <span className="text-[9px] text-gray-500 mr-1">Start:</span>
-                                  {phase.startAyahText}
-                                </div>
-                              )}
-                              {phase.endAyahText && phase.endAyahText !== phase.startAyahText && (
-                                <div 
-                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
-                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                  dir="rtl"
-                                >
-                                  <span className="text-[9px] text-gray-500 mr-1">End:</span>
-                                  {phase.endAyahText}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {/* Mistakes Summary */}
-                          {phase.mistakesSummary && (
-                            <div>
-                              <span className="font-semibold">Mistakes:</span> {phase.mistakesSummary}
-                            </div>
-                          )}
-                          {/* Tajweed Issues */}
-                          {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
-                            <div>
-                              <span className="font-semibold">Tajweed Issues:</span> {phase.tajweedIssues.map((t: any) => t.type).join(', ')}
-                            </div>
-                          )}
-                          {/* Teacher Review Comment */}
-                          {phase.teacherReviewComment && (
-                            <div>
-                              <span className="font-semibold">Teacher Comment:</span> {phase.teacherReviewComment}
-                            </div>
-                          )}
+                      {/* ✅ FIX: Use standardized ClassworkEntryCard for read-only display when fromTicketId exists */}
+                      {(phase.fromTicketId || phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.mistakes?.length || phase.tajweedIssues?.length || phase.teacherReviewComment || phase.details) && (
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                          <ClassworkEntryCard
+                            phase={phase}
+                            type="sabqi"
+                            index={index}
+                            showDate={true}
+                            className="mb-2"
+                          />
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-1">
@@ -1480,67 +1313,16 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                           Locked (from ticket)
                         </p>
                       )}
-                      {/* Display all ticket details if they exist */}
-                      {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakesSummary || phase.tajweedIssues?.length || phase.teacherReviewComment) && (
-                        <div className="mt-2 space-y-1 text-[10px] text-gray-600 border-t border-gray-200 pt-1">
-                          {/* Surah Name/Number */}
-                          {(phase.surahName || phase.surahNumber) && (
-                            <div>
-                              <span className="font-semibold">Surah:</span>{' '}
-                              <span 
-                                className="font-bold text-primary"
-                                style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                dir="rtl"
-                              >
-                                {phase.surahName || `Surah ${phase.surahNumber}`}
-                              </span>
-                              {phase.juzNumber && <span className="ml-1">(Juz {phase.juzNumber})</span>}
-                            </div>
-                          )}
-                          {/* Ayah Range with Arabic Text */}
-                          {(phase.fromAyah || phase.toAyah) && (
-                            <div>
-                              <span className="font-semibold">Ayah Range:</span> {phase.fromAyah || '?'}-{phase.toAyah || '?'}
-                              {phase.startAyahText && (
-                                <div 
-                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
-                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                  dir="rtl"
-                                >
-                                  <span className="text-[9px] text-gray-500 mr-1">Start:</span>
-                                  {phase.startAyahText}
-                                </div>
-                              )}
-                              {phase.endAyahText && phase.endAyahText !== phase.startAyahText && (
-                                <div 
-                                  className="text-xs text-gray-900 mt-0.5 leading-relaxed"
-                                  style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                                  dir="rtl"
-                                >
-                                  <span className="text-[9px] text-gray-500 mr-1">End:</span>
-                                  {phase.endAyahText}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                          {/* Mistakes Summary */}
-                          {phase.mistakesSummary && (
-                            <div>
-                              <span className="font-semibold">Mistakes:</span> {phase.mistakesSummary}
-                            </div>
-                          )}
-                          {/* Tajweed Issues */}
-                          {phase.tajweedIssues && phase.tajweedIssues.length > 0 && (
-                            <div>
-                              <span className="font-semibold">Tajweed Issues:</span> {phase.tajweedIssues.map((t: any) => t.type).join(', ')}
-                            </div>
-                          )}
-                          {/* Teacher Review Comment */}
-                          {phase.teacherReviewComment && (
-                            <div>
-                              <span className="font-semibold">Teacher Comment:</span> {phase.teacherReviewComment}
-                            </div>
-                          )}
+                      {/* ✅ FIX: Use standardized ClassworkEntryCard for read-only display when fromTicketId exists */}
+                      {(phase.fromTicketId || phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.mistakes?.length || phase.tajweedIssues?.length || phase.teacherReviewComment || phase.details) && (
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                          <ClassworkEntryCard
+                            phase={phase}
+                            type="manzil"
+                            index={index}
+                            showDate={true}
+                            className="mb-2"
+                          />
                         </div>
                       )}
                       <div className="flex items-center justify-between mt-1">
