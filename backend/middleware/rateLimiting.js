@@ -9,19 +9,22 @@
  */
 
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 /**
  * Get client identifier (user ID if authenticated, otherwise IP)
+ * Uses ipKeyGenerator helper for IPv6 compatibility
  */
 const getClientIdentifier = (req) => {
   // If user is authenticated, use user ID
   if (req.user && req.user.userId) {
     return `user:${req.user.userId}`;
   }
-  // Otherwise use IP address
-  return `ip:${req.ip || req.connection?.remoteAddress || 'unknown'}`;
+  // Otherwise use IP address with ipKeyGenerator for IPv6 support
+  const ipKey = ipKeyGenerator(req);
+  return `ip:${ipKey || 'unknown'}`;
 };
 
 /**
@@ -156,7 +159,10 @@ const createCombinedLimiter = (options) => {
     windowMs,
     max,
     message: `${message} (per-IP limit)`,
-    keyGenerator: (req) => `ip:${req.ip || req.connection?.remoteAddress || 'unknown'}`,
+    keyGenerator: (req) => {
+      const ipKey = ipKeyGenerator(req);
+      return `ip:${ipKey || 'unknown'}`;
+    },
     name: `${name}-ip`
   });
 
