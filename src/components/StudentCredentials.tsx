@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from './Card';
 import LoginHistory from './LoginHistory';
+import { useToast } from '../hooks/useToast';
 
 interface StudentCredentialsProps {
   student: any;
@@ -44,6 +45,7 @@ const getAuthHeaders = () => {
 };
 
 const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClose }) => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -455,9 +457,35 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                           setError(null);
                           const userEmail = getUserEmail();
                           if (!userEmail) {
-                            alert('Student email is required to create User account');
+                            showToast('Student email is required to create User account', 'error');
                             return;
                           }
+                          
+                          // Generate a secure password that meets requirements
+                          const generateSecurePassword = () => {
+                            const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                            const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+                            const numbers = '0123456789';
+                            const special = '!@#$%^&*';
+                            const allChars = uppercase + lowercase + numbers + special;
+                            
+                            let password = '';
+                            // Ensure at least one of each required character type
+                            password += uppercase[Math.floor(Math.random() * uppercase.length)];
+                            password += lowercase[Math.floor(Math.random() * lowercase.length)];
+                            password += numbers[Math.floor(Math.random() * numbers.length)];
+                            password += special[Math.floor(Math.random() * special.length)];
+                            
+                            // Fill the rest randomly (total 12 characters)
+                            for (let i = password.length; i < 12; i++) {
+                              password += allChars[Math.floor(Math.random() * allChars.length)];
+                            }
+                            
+                            // Shuffle the password to avoid predictable patterns
+                            return password.split('').sort(() => Math.random() - 0.5).join('');
+                          };
+                          
+                          const securePassword = generateSecurePassword();
                           
                           const createUserResponse = await fetch(`${API_BASE}/users`, {
                             method: 'POST',
@@ -466,14 +494,14 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                               name: student.fullName || student.name || 'Student',
                               email: userEmail,
                               role: 'student',
-                              password: 'password123', // Default password
+                              password: securePassword, // Secure generated password
                             })
                           });
                           
                           if (createUserResponse.ok) {
                             const newUser = await createUserResponse.json();
                             const userId = newUser._id || newUser.id;
-                            alert('✅ User account created successfully! Default password: password123');
+                            showToast(`✅ User account created successfully! Default password: ${securePassword}`, 'success');
                             
                             // Update student with userId if possible
                             if (student.id || student._id) {
@@ -507,12 +535,15 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                             }
                           } else {
                             const errorData = await createUserResponse.json().catch(() => ({ error: 'Unknown error' }));
-                            throw new Error(errorData.error || 'Failed to create User account');
+                            const errorMessage = errorData.error || 'Failed to create User account';
+                            const errorDetails = errorData.details ? ` Details: ${Array.isArray(errorData.details) ? errorData.details.join(', ') : errorData.details}` : '';
+                            throw new Error(errorMessage + errorDetails);
                           }
                         } catch (err) {
                           console.error('Error creating User account:', err);
-                          setError(err instanceof Error ? err.message : 'Failed to create User account');
-                          alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to create User account'}`);
+                          const errorMessage = err instanceof Error ? err.message : 'Failed to create User account';
+                          setError(errorMessage);
+                          showToast(`❌ Error: ${errorMessage}`, 'error');
                         } finally {
                           setLoading(false);
                         }
