@@ -2534,7 +2534,17 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       if (notificationsRes?.ok) {
-        const notificationsData = await notificationsRes.json();
+        const rawNotificationsData = await notificationsRes.json();
+        // ✅ FIX: Handle both array response and object response
+        const notificationsData = Array.isArray(rawNotificationsData) 
+          ? rawNotificationsData 
+          : (rawNotificationsData.notifications || rawNotificationsData.data || []);
+        
+        if (!Array.isArray(notificationsData)) {
+          console.error('❌ Light refresh error: notificationsData is not an array:', typeof notificationsData, notificationsData);
+          return;
+        }
+        
         setAdminNotifications(notificationsData);
       }
 
