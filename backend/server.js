@@ -6534,6 +6534,8 @@ const ticketSchema = new mongoose.Schema({
   recitationRange: {
     surahNumber: { type: Number },
     surahName: { type: String },
+    endSurahNumber: { type: Number }, // ✅ FIX: Add end surah number
+    endSurahName: { type: String }, // ✅ FIX: Add end surah name
     juzNumber: { type: Number },
     startAyahNumber: { type: Number },
     startAyahText: { type: String },
@@ -6558,6 +6560,8 @@ const ticketSchema = new mongoose.Schema({
     recitationRange: {
       surahNumber: { type: Number },
       surahName: { type: String },
+      endSurahNumber: { type: Number }, // ✅ FIX: Add end surah number
+      endSurahName: { type: String }, // ✅ FIX: Add end surah name
       juzNumber: { type: Number },
       startAyahNumber: { type: Number },
       startAyahText: { type: String },
@@ -6578,6 +6582,8 @@ const ticketSchema = new mongoose.Schema({
   homeworkRange: {
     surahNumber: { type: Number },
     surahName: { type: String },
+    endSurahNumber: { type: Number }, // ✅ FIX: Add end surah number
+    endSurahName: { type: String }, // ✅ FIX: Add end surah name
     juzNumber: { type: Number },
     startAyahNumber: { type: Number },
     startAyahText: { type: String },
@@ -8620,21 +8626,31 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
       const recitationRange = sabqEntry.recitationRange || {};
       const surahNumber = recitationRange.surahNumber;
       const surahName = recitationRange.surahName;
+      const endSurahNumber = recitationRange.endSurahNumber; // ✅ FIX: Include end surah number
+      const endSurahName = recitationRange.endSurahName; // ✅ FIX: Include end surah name
       const juzNumber = recitationRange.juzNumber;
       const startAyahNumber = recitationRange.startAyahNumber;
       const startAyahText = recitationRange.startAyahText;
       const endAyahNumber = recitationRange.endAyahNumber;
       const endAyahText = recitationRange.endAyahText;
       
-      // Build assignment range string
+      // ✅ FIX: Build assignment range string with end surah name if different
       let assignmentRangeStr = '';
       if (surahName && startAyahNumber && endAyahNumber) {
-        assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        if (endSurahName && endSurahName !== surahName) {
+          assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber} → ${endSurahName}, Ayah ${endAyahNumber}`;
+        } else {
+          assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        }
         if (juzNumber) {
           assignmentRangeStr += ` (Juz ${juzNumber})`;
         }
       } else if (surahNumber && startAyahNumber && endAyahNumber) {
-        assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        if (endSurahNumber && endSurahNumber !== surahNumber) {
+          assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber} → Surah ${endSurahNumber}, Ayah ${endAyahNumber}`;
+        } else {
+          assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        }
         if (juzNumber) {
           assignmentRangeStr += ` (Juz ${juzNumber})`;
         }
@@ -8678,13 +8694,15 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
         wordText: m.wordText || undefined // Include wordText from Sabq entry
       }));
       
-      // Create classwork entry with ALL SabqEntry fields
+      // ✅ FIX: Create classwork entry with ALL SabqEntry fields including end surah info
       const classworkEntry = {
         type: 'sabq',
         assignmentRange: assignmentRangeStr,
         details: adminComment,
         surahNumber: surahNumber,
         surahName: surahName,
+        endSurahNumber: endSurahNumber, // ✅ FIX: Include end surah number
+        endSurahName: endSurahName, // ✅ FIX: Include end surah name
         juzNumber: juzNumber,
         fromAyah: startAyahNumber,
         toAyah: endAyahNumber,
@@ -8714,11 +8732,13 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
     
     console.log(`✅ [updateAssignmentFromTicket] Total Sabq entries in assignment: ${assignment.classwork.sabq.length}`);
     
-    // Handle homework range if provided
+    // ✅ FIX: Handle homework range if provided (with end surah support)
     if (ticket.homeworkRange) {
       const homeworkRange = ticket.homeworkRange;
       const homeworkSurahNumber = homeworkRange.surahNumber;
       const homeworkSurahName = homeworkRange.surahName;
+      const homeworkEndSurahNumber = homeworkRange.endSurahNumber; // ✅ FIX: Include end surah number
+      const homeworkEndSurahName = homeworkRange.endSurahName; // ✅ FIX: Include end surah name
       const homeworkJuzNumber = homeworkRange.juzNumber;
       const homeworkStartAyah = homeworkRange.startAyahNumber;
       const homeworkEndAyah = homeworkRange.endAyahNumber;
@@ -8726,24 +8746,34 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
       if (homeworkStartAyah && homeworkEndAyah) {
         let homeworkRangeStr = '';
         if (homeworkSurahName && homeworkStartAyah && homeworkEndAyah) {
-          homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          if (homeworkEndSurahName && homeworkEndSurahName !== homeworkSurahName) {
+            homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah} → ${homeworkEndSurahName}, Ayah ${homeworkEndAyah}`;
+          } else {
+            homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          }
           if (homeworkJuzNumber) {
             homeworkRangeStr += ` (Juz ${homeworkJuzNumber})`;
           }
         } else if (homeworkSurahNumber && homeworkStartAyah && homeworkEndAyah) {
-          homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          if (homeworkEndSurahNumber && homeworkEndSurahNumber !== homeworkSurahNumber) {
+            homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah} → Surah ${homeworkEndSurahNumber}, Ayah ${homeworkEndAyah}`;
+          } else {
+            homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          }
           if (homeworkJuzNumber) {
             homeworkRangeStr += ` (Juz ${homeworkJuzNumber})`;
           }
         }
         
-        // Add homework as a separate Sabq entry (marked as homework)
+        // ✅ FIX: Add homework as a separate Sabq entry (marked as homework) with end surah info
         const homeworkEntry = {
           type: 'sabq',
           assignmentRange: `Homework: ${homeworkRangeStr}`,
           details: 'Homework for next day',
           surahNumber: homeworkSurahNumber,
           surahName: homeworkSurahName,
+          endSurahNumber: homeworkEndSurahNumber, // ✅ FIX: Include end surah number
+          endSurahName: homeworkEndSurahName, // ✅ FIX: Include end surah name
           juzNumber: homeworkJuzNumber,
           fromAyah: homeworkStartAyah,
           toAyah: homeworkEndAyah,
@@ -8769,26 +8799,36 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
     return assignment;
   }
   
-  // Handle regular tickets (sabqi/manzil) or single Sabq entry
+  // ✅ FIX: Handle regular tickets (sabqi/manzil) or single Sabq entry (with end surah support)
   // Get recitation range data
   const recitationRange = ticket.recitationRange || {};
   const surahNumber = recitationRange.surahNumber || (ticket.mistakes && ticket.mistakes.length > 0 ? ticket.mistakes[0].surah : undefined);
   const surahName = recitationRange.surahName;
+  const endSurahNumber = recitationRange.endSurahNumber; // ✅ FIX: Include end surah number
+  const endSurahName = recitationRange.endSurahName; // ✅ FIX: Include end surah name
   const juzNumber = recitationRange.juzNumber;
   const startAyahNumber = recitationRange.startAyahNumber;
   const startAyahText = recitationRange.startAyahText;
   const endAyahNumber = recitationRange.endAyahNumber;
   const endAyahText = recitationRange.endAyahText;
   
-  // Build assignment range string
+  // ✅ FIX: Build assignment range string with end surah name if different
   let assignmentRangeStr = '';
   if (surahName && startAyahNumber && endAyahNumber) {
-    assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    if (endSurahName && endSurahName !== surahName) {
+      assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber} → ${endSurahName}, Ayah ${endAyahNumber}`;
+    } else {
+      assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    }
     if (juzNumber) {
       assignmentRangeStr += ` (Juz ${juzNumber})`;
     }
   } else if (surahNumber && startAyahNumber && endAyahNumber) {
-    assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    if (endSurahNumber && endSurahNumber !== surahNumber) {
+      assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber} → Surah ${endSurahNumber}, Ayah ${endAyahNumber}`;
+    } else {
+      assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    }
     if (juzNumber) {
       assignmentRangeStr += ` (Juz ${juzNumber})`;
     }
@@ -8816,19 +8856,23 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
   // Teacher review comment
   const teacherReviewComment = ticket.teacherComment || ticket.reviewNotes || '';
   
-  // Create classwork entry with all review data
+  // ✅ FIX: Create classwork entry with all review data including end surah info
   const classworkEntry = {
     type: ticket.type,
     assignmentRange: assignmentRangeStr,
     details: teacherReviewComment, // Store teacher comment in details
     surahNumber: surahNumber,
     surahName: surahName,
+    endSurahNumber: endSurahNumber, // ✅ FIX: Include end surah number
+    endSurahName: endSurahName, // ✅ FIX: Include end surah name
     juzNumber: juzNumber,
     fromAyah: startAyahNumber,
     toAyah: endAyahNumber,
     startAyahText: startAyahText,
     endAyahText: endAyahText,
     mistakesSummary: mistakesSummary,
+    mistakeCount: ticket.mistakeCount !== undefined && ticket.mistakeCount !== null ? ticket.mistakeCount : undefined,
+    atkees: ticket.atkees !== undefined && ticket.atkees !== null ? ticket.atkees : undefined,
     tajweedIssues: tajweedIssues,
     teacherReviewComment: teacherReviewComment,
     fromTicketId: ticketIdStr,
@@ -9293,7 +9337,18 @@ app.post('/api/tickets/:id/submit-sabq', authenticateToken, validateTicketOwners
       }
     }
     
-    const ticket = await findTicketById(ticketId);
+    // ✅ FIX: Use findByIdAndUpdate instead of findTicketById + save() (findTicketById uses .lean())
+    let ticket;
+    if (mongoose.Types.ObjectId.isValid(ticketId)) {
+      ticket = await Ticket.findById(ticketId);
+    } else {
+      const foundTicket = await Ticket.findOne({ id: ticketId });
+      if (!foundTicket) {
+        return res.status(404).json({ error: 'Ticket not found' });
+      }
+      ticket = await Ticket.findById(foundTicket._id);
+    }
+    
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
@@ -9302,13 +9357,26 @@ app.post('/api/tickets/:id/submit-sabq', authenticateToken, validateTicketOwners
       return res.status(400).json({ error: 'This endpoint is only for Sabq tickets' });
     }
     
-    // Update ticket
-    ticket.sabqEntries = sabqEntries;
-    ticket.homeworkRange = homeworkRange;
-    ticket.adminComment = adminComment.trim();
-    ticket.status = 'sent_to_assignment';
-    ticket.sentAt = new Date();
-    await ticket.save();
+    // ✅ FIX: Use findByIdAndUpdate to update ticket atomically
+    const updateData = {
+      sabqEntries: sabqEntries,
+      homeworkRange: homeworkRange,
+      adminComment: adminComment.trim(),
+      status: 'sent_to_assignment',
+      sentAt: new Date()
+    };
+    
+    const updatedTicket = await Ticket.findByIdAndUpdate(
+      ticket._id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedTicket) {
+      return res.status(500).json({ error: 'Failed to update ticket' });
+    }
+    
+    ticket = updatedTicket; // Use updated ticket for rest of function
     
     // Find or create assignment
     let assignment;
@@ -9400,9 +9468,12 @@ app.post('/api/tickets/:id/submit-sabq', authenticateToken, validateTicketOwners
     assignment.updatedAt = new Date();
     await assignment.save();
     
-    // Update ticket with assignment ID
-    ticket.sentToAssignmentId = assignment._id.toString();
-    await ticket.save();
+    // ✅ FIX: Update ticket with assignment ID using findByIdAndUpdate
+    await Ticket.findByIdAndUpdate(
+      ticket._id,
+      { $set: { sentToAssignmentId: assignment._id.toString() } },
+      { new: true }
+    );
     
     // ✅ PHASE 2 OPTIMIZATION: Emit minimal WebSocket payload for sabq submission
     try {
