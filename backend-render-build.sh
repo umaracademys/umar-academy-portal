@@ -1,14 +1,24 @@
 #!/bin/bash
 set -e
 
-# Get the directory where this script is located
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Debug: Show where we are
+echo "=== Build Script Debug Info ==="
+echo "Current working directory: $(pwd)"
+echo "Script path (BASH_SOURCE[0]): ${BASH_SOURCE[0]}"
+echo "Listing current directory:"
+ls -la | head -10
+echo "================================"
+
+# Get the directory where this script is located (if called directly)
+if [ -f "${BASH_SOURCE[0]}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+    # If script is in PATH or current dir, use current directory
+    SCRIPT_DIR="$(pwd)"
+fi
+
 # Get the project root (where the script is located, which should be repo root)
 PROJECT_ROOT="$SCRIPT_DIR"
-
-echo "Script directory: $SCRIPT_DIR"
-echo "Project root: $PROJECT_ROOT"
-echo "Current working directory: $(pwd)"
 
 # Try to find backend directory
 # First, try from project root (where script is located)
