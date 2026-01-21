@@ -332,10 +332,14 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
       // ✅ FIX: Removed validation - allow any end ayah regardless of surah or order
       setSelectedEndAyah({ surah, ayah });
       const ayahText = await loadAyahText(surah, ayah);
+      const endSurahName = getSurahName(surah);
       setCurrentRecitationRange(prev => ({
         ...prev,
-        surahNumber: surah,
-        surahName: surahName,
+        // Only update surahNumber/surahName if end ayah is in different surah
+        surahNumber: prev.surahNumber || surah,
+        surahName: prev.surahName || surahName,
+        endSurahNumber: surah !== prev.surahNumber ? surah : prev.endSurahNumber,
+        endSurahName: surah !== prev.surahNumber ? endSurahName : prev.endSurahName,
         endAyahNumber: ayah,
         endAyahText: ayahText
       }));
@@ -764,13 +768,13 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
                       <div className="text-[10px] font-semibold text-gray-700 mb-0.5">End Ayah</div>
                       {currentRecitationRange.endAyahNumber > 0 && currentRecitationRange.endAyahText ? (
                         <div className="space-y-1">
-                          {currentRecitationRange.surahName && (
+                          {(currentRecitationRange.endSurahName || currentRecitationRange.surahName) && (
                             <div 
                               className="text-sm font-bold text-primary"
                               style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
                               dir="rtl"
                             >
-                              {currentRecitationRange.surahName}
+                              {currentRecitationRange.endSurahName || currentRecitationRange.surahName}
                             </div>
                           )}
                           <div 

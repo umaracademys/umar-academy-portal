@@ -1479,7 +1479,15 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                               {latestHomeworkRange.endAyahNumber && latestHomeworkRange.endAyahNumber > 0 ? (
                                 <div>
                                   <div className="text-sm text-blue-700 font-bold">
-                                    Surah {latestHomeworkRange.surahNumber || latestHomeworkRange.surahName}:{latestHomeworkRange.endAyahNumber}
+                                    {(latestHomeworkRange.endSurahName || latestHomeworkRange.surahName) && (
+                                      <span dir="rtl" style={{ fontFamily: 'Amiri, "Scheherazade New", serif' }}>
+                                        {latestHomeworkRange.endSurahName || latestHomeworkRange.surahName}
+                                      </span>
+                                    )}
+                                    {!latestHomeworkRange.endSurahName && !latestHomeworkRange.surahName && (
+                                      <span>Surah {latestHomeworkRange.endSurahNumber || latestHomeworkRange.surahNumber}</span>
+                                    )}
+                                    :{latestHomeworkRange.endAyahNumber}
                                   </div>
                                   {latestHomeworkRange.endAyahText && (
                                     <div 

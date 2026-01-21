@@ -467,10 +467,15 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
       const ayahData = await loadAyahText(surah, ayah);
       
       // Set the range even if ayah text couldn't be loaded
+      // ✅ FIX: Store end surah separately if different from start surah
       setRecitationRange(prev => ({
         ...prev,
-        surahNumber: surah,
-        surahName: prev.surahName || ayahData?.surahName || surahName,
+        // Preserve start surah info
+        surahNumber: prev.surahNumber || surah,
+        surahName: prev.surahName || prev.surahName,
+        // Store end surah separately if different
+        endSurahNumber: surah !== prev.surahNumber ? surah : prev.endSurahNumber,
+        endSurahName: surah !== prev.surahNumber ? (ayahData?.surahName || surahName) : prev.endSurahName,
         endAyahNumber: ayah,
         endAyahText: ayahData?.text || `[Ayah ${ayah}]`
       }));
@@ -959,13 +964,13 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
                             <div className="text-[10px] font-semibold text-gray-700 mb-0.5">End Ayah</div>
                             {recitationRange.endAyahText ? (
                               <div className="space-y-1">
-                                {recitationRange.surahName && (
+                                {(recitationRange.endSurahName || recitationRange.surahName) && (
                                   <div 
                                     className="text-sm font-bold text-primary"
                                     style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
                                     dir="rtl"
                                   >
-                                    {recitationRange.surahName}
+                                    {recitationRange.endSurahName || recitationRange.surahName}
                                   </div>
                                 )}
                                 <div 

@@ -80,8 +80,10 @@ export type MistakeCount = number | 'weak';
 export type Atkees = number; // 1-20 only
 
 export interface RecitationRange {
-  surahNumber: number;
-  surahName?: string; // Arabic surah name (required for display)
+  surahNumber: number; // Start surah number
+  surahName?: string; // Start surah Arabic name (required for display)
+  endSurahNumber?: number; // End surah number (if different from start)
+  endSurahName?: string; // End surah Arabic name (if different from start)
   juzNumber?: number;
   startAyahNumber: number; // Internal use only, not displayed
   startAyahText?: string; // Arabic text (required for display)
