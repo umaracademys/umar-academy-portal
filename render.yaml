@@ -6,7 +6,7 @@ services:
     plan: free
     buildCommand: corepack prepare pnpm@9.0.0 --activate && if [ -f "server.js" ] && [ -f "package.json" ]; then pnpm install --frozen-lockfile --prefer-offline; elif [ -d "backend" ]; then cd backend && pnpm install --frozen-lockfile --prefer-offline; else echo "Error: Backend directory not found. Current dir: $(pwd)" && ls -la && exit 1; fi
     # Note: Backend doesn't need a build step, just install dependencies
-    startCommand: cd backend && node server.js
+    startCommand: if [ -f "server.js" ]; then node server.js; else cd backend && node server.js; fi
     envVars:
       - key: NODE_ENV
         value: production
