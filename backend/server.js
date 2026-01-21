@@ -8919,10 +8919,16 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
   
   if (existingIndex >= 0) {
     // Update existing entry (replace with latest data - ensures most recent review is shown)
+    // Preserve original createdAt if it exists, otherwise use current date
+    const existingEntry = classworkArray[existingIndex];
+    classworkEntry.createdAt = existingEntry.createdAt || currentDate;
     classworkArray[existingIndex] = classworkEntry;
     console.log(`🔄 Updated existing classwork entry for ticket ${ticketIdStr}`);
   } else {
-    // Add new entry
+    // Add new entry - ensure createdAt is set
+    if (!classworkEntry.createdAt) {
+      classworkEntry.createdAt = currentDate;
+    }
     classworkArray.push(classworkEntry);
     console.log(`✅ Added new classwork entry for ticket ${ticketIdStr}`);
   }
