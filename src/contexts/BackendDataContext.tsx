@@ -2801,6 +2801,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           try {
             const errorPayload = await userResponse.json();
             message = errorPayload?.error || message;
+            // Include validation error details if available
+            if (errorPayload?.errors && Array.isArray(errorPayload.errors) && errorPayload.errors.length > 0) {
+              const validationErrors = errorPayload.errors.map((err: any) => 
+                `${err.field}: ${err.message}`
+              ).join(', ');
+              message = `${message}. ${validationErrors}`;
+            }
           } catch {
             // ignore JSON parse errors
           }
@@ -2862,6 +2869,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         try {
           const errorPayload = await studentResponse.json();
           message = errorPayload?.error || message;
+          // Include validation error details if available
+          if (errorPayload?.errors && Array.isArray(errorPayload.errors) && errorPayload.errors.length > 0) {
+            const validationErrors = errorPayload.errors.map((err: any) => 
+              `${err.field}: ${err.message}`
+            ).join(', ');
+            message = `${message}. ${validationErrors}`;
+          }
         } catch {
           // ignore JSON parse errors
         }
