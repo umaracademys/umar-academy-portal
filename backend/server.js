@@ -7963,10 +7963,11 @@ app.put('/api/assignments/:id',
     commonRules.optionalString('status', 50),
     commonRules.optionalEnum('status', ['pending', 'in_progress', 'completed', 'graded']),
     commonRules.date('dueDate', false)
-  ], ['type', 'status', 'classwork', 'homework', 'dueDate', 'grade', 'feedback']),
+  ], ['id', 'type', 'status', 'classwork', 'homework', 'dueDate', 'grade', 'feedback', 'comment', 'mushafMistakes']),
   async (req, res) => {
   try {
-    const updateData = { ...req.body };
+    // Filter out fields that shouldn't be updated (set at creation only)
+    const { id, studentId, studentName, assignedBy, assignedByName, assignedByRole, ...updateData } = req.body;
     
     // Validate homework items if provided
     if (updateData.homework?.items && Array.isArray(updateData.homework.items)) {
