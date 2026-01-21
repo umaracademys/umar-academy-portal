@@ -6356,7 +6356,9 @@ const classworkPhaseSchema = new mongoose.Schema({
     wordText: String // Arabic word text from SabqEntry
   }],
   tajweedIssues: [{
-    type: { type: String, enum: ['heavy_letters', 'fatha_not_vertical', 'kasrah_not_horizontal', 'clarity_compromised', 'lack_of_confidence', 'incorrect_stops', 'other'] },
+    type: { type: String, enum: ['heavy_letters', 'fatha_not_vertical', 'kasrah_not_horizontal', 'clarity_compromised', 'lack_of_confidence', 'incorrect_stops', 'ghunnah_error', 'qalqalah_error', 'idgham_error', 'madd_error', 'tajweed_rule_violation', 'other'] },
+    surahName: { type: String }, // Arabic surah name (for consistency with ticket schema)
+    wordText: { type: String }, // Arabic word text where error occurred (for consistency with ticket schema)
     note: String
   }],
   teacherReviewComment: String, // Teacher's review comment
