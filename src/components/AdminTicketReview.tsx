@@ -94,8 +94,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const selectedTicket = useMemo(() => {
     if (!selectedTicketId) return null;
     const ticket = recitationTickets.find(t => t.id === selectedTicketId);
-    console.log('🔍 Looking for ticket:', selectedTicketId);
-    console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
+    if (import.meta.env.DEV) {
+      console.log('🔍 Looking for ticket:', selectedTicketId);
+      console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
+    }
     return ticket || null;
   }, [selectedTicketId, recitationTickets]);
 
