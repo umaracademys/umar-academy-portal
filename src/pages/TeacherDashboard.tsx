@@ -128,7 +128,9 @@ const TeacherDashboard: React.FC = () => {
   
   const assignedStudents = useMemo(() => {
     if (!currentTeacher) {
-      console.log('⚠️ No current teacher found, returning empty assigned students');
+      if (import.meta.env.DEV) {
+        console.log('⚠️ No current teacher found, returning empty assigned students');
+      }
       return [];
     }
     // Use Teacher Document ID (_id or teacherDocumentId) instead of User ID (id)
