@@ -10011,13 +10011,7 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
     
     // Add new recitation review fields if provided
     if (recitationRange) {
-      // Validate recitation range: end ayah must come after or equal to start ayah
-      // Note: Frontend enforces same surah constraint, backend validates ayah order
-      if (recitationRange.startAyahNumber && recitationRange.endAyahNumber) {
-        if (recitationRange.endAyahNumber < recitationRange.startAyahNumber) {
-          return res.status(400).json({ error: 'End ayah must come after or equal to the start ayah' });
-        }
-      }
+      // ✅ FIX: Removed validation - allow any start and end ayah combination
       updateData.recitationRange = recitationRange;
     }
     if (mistakeCount !== undefined && mistakeCount !== null && mistakeCount !== '') {
