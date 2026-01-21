@@ -14,7 +14,7 @@ Render is trying to execute `render.yaml` as a command, which means the build co
 5. **Clear** the current value (which is probably set to `render.yaml`)
 6. **Set it to:**
    ```bash
-   npm install -g pnpm@9.0.0 && pnpm install --frozen-lockfile --no-optional --prefer-offline && pnpm --filter @umar-academy/mushaf build && pnpm run build:fast
+   npx -y pnpm@9.0.0 install --frozen-lockfile --no-optional --prefer-offline && npx -y pnpm@9.0.0 --filter @umar-academy/mushaf build && npx -y pnpm@9.0.0 run build:fast
    ```
 7. Click **Save Changes**
 8. Trigger a new deploy
