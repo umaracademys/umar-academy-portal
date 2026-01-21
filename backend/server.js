@@ -10316,23 +10316,48 @@ app.post('/api/tickets/:id/approve-send', authenticateToken, requirePermission('
     // OPTIMIZED: Save assignment without unnecessary verification
     await assignment.save();
     
-    // Update ticket
-    // Update ticket status
-    ticket.status = 'sent_to_assignment';
-    ticket.approvedAt = new Date();
-    ticket.sentToAssignmentId = assignment._id.toString();
-    ticket.sentAt = new Date();
+    // ✅ FIX: Use findByIdAndUpdate instead of findTicketById + save()
+    // findTicketById uses .lean() which returns plain object (no .save() method)
+    const ticketUpdateData = {
+      status: 'sent_to_assignment',
+      approvedAt: new Date(),
+      sentToAssignmentId: assignment._id.toString(),
+      sentAt: new Date()
+    };
     
     // Save recording data if provided (from admin review)
     if (recordingUrl) {
-      ticket.recordingUrl = recordingUrl;
-      ticket.recordingFormat = recordingFormat || 'webm';
-      ticket.recordingDuration = recordingDuration || null;
-      ticket.recordingStartedAt = recordingStartedAt ? new Date(recordingStartedAt) : null;
-      ticket.recordingStoppedAt = recordingStoppedAt ? new Date(recordingStoppedAt) : null;
+      ticketUpdateData.recordingUrl = recordingUrl;
+      ticketUpdateData.recordingFormat = recordingFormat || 'webm';
+      ticketUpdateData.recordingDuration = recordingDuration || null;
+      ticketUpdateData.recordingStartedAt = recordingStartedAt ? new Date(recordingStartedAt) : null;
+      ticketUpdateData.recordingStoppedAt = recordingStoppedAt ? new Date(recordingStoppedAt) : null;
     }
     
-    await ticket.save();
+    // Update ticket using findByIdAndUpdate
+    let updatedTicket;
+    if (mongoose.Types.ObjectId.isValid(ticketId)) {
+      updatedTicket = await Ticket.findByIdAndUpdate(
+        ticketId,
+        { $set: ticketUpdateData },
+        { new: true, runValidators: true }
+      );
+    } else {
+      // If not valid ObjectId, use the ticket we already found
+      updatedTicket = await Ticket.findByIdAndUpdate(
+        ticket._id,
+        { $set: ticketUpdateData },
+        { new: true, runValidators: true }
+      );
+    }
+    
+    if (!updatedTicket) {
+      console.error(`❌ [Approve] Failed to update ticket with ID: ${ticketId}`);
+      return res.status(500).json({ error: 'Failed to update ticket' });
+    }
+    
+    // Use updatedTicket for WebSocket events
+    const ticket = updatedTicket;
     
     // ✅ PHASE 2 OPTIMIZATION: Emit minimal WebSocket payload for ticket approval
     try {
