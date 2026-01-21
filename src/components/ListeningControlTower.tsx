@@ -464,37 +464,37 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
   );
 
   const performCancelTicket = async (session: ListeningSession) => {
-    setActionError(null);
-    setCancelingTicketId(session.ticketId);
+      setActionError(null);
+      setCancelingTicketId(session.ticketId);
 
-    const targetId = session.id || session.ticketId;
-    let endErrorMessage: string | null = null;
+      const targetId = session.id || session.ticketId;
+      let endErrorMessage: string | null = null;
 
-    if (targetId) {
-      try {
-        await endListeningSession(targetId, {
-          status: 'abandoned',
-          endedAt: new Date().toISOString()
-        });
-      } catch (error) {
-        endErrorMessage =
-          error instanceof Error
-            ? error.message
-            : 'Unable to end the listening session before cancelling.';
-        console.error('Failed to end listening session prior to cancellation:', error);
-      }
-    }
-
-    try {
-      await deleteTicket(session.ticketId);
       if (targetId) {
-        setSessions((prev) => ({
-          active: removeSession(prev.active, targetId),
-          recent: removeSession(prev.recent, targetId)
-        }));
+        try {
+          await endListeningSession(targetId, {
+            status: 'abandoned',
+            endedAt: new Date().toISOString()
+          });
+        } catch (error) {
+          endErrorMessage =
+            error instanceof Error
+              ? error.message
+              : 'Unable to end the listening session before cancelling.';
+          console.error('Failed to end listening session prior to cancellation:', error);
+        }
       }
 
-      if (endErrorMessage) {
+      try {
+        await deleteTicket(session.ticketId);
+        if (targetId) {
+          setSessions((prev) => ({
+            active: removeSession(prev.active, targetId),
+            recent: removeSession(prev.recent, targetId)
+          }));
+        }
+
+        if (endErrorMessage) {
         showToast(
           `${endErrorMessage} The ticket was removed, but the session may take a moment to disappear.`,
           'warning',
@@ -502,17 +502,17 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         );
       } else {
         showToast('Ticket cancelled successfully', 'success');
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to cancel ticket. Please try again.';
-      setActionError(message);
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to cancel ticket. Please try again.';
+        setActionError(message);
       showToast(message, 'error');
-      console.error('Failed to cancel ticket from control tower:', error);
-      return;
-    } finally {
-      setCancelingTicketId(null);
-    }
+        console.error('Failed to cancel ticket from control tower:', error);
+        return;
+      } finally {
+        setCancelingTicketId(null);
+      }
   };
 
   const handleDeleteSession = useCallback(
@@ -532,44 +532,44 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
   );
 
   const performDeleteSession = async (sessionId: string) => {
-    setActionError(null);
-    setDeletingSessionId(sessionId);
+      setActionError(null);
+      setDeletingSessionId(sessionId);
 
-    try {
-      const response = await fetch(`${API_BASE}/listening-sessions/${sessionId}`, {
-        method: 'DELETE'
-      });
+      try {
+        const response = await fetch(`${API_BASE}/listening-sessions/${sessionId}`, {
+          method: 'DELETE'
+        });
 
-      if (!response.ok) {
-        throw new Error(`Failed to delete session (${response.status})`);
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to delete session (${response.status})`);
+        }
 
-      setSessions((prev) => ({
-        active: removeSession(prev.active, sessionId),
-        recent: removeSession(prev.recent, sessionId)
-      }));
+        setSessions((prev) => ({
+          active: removeSession(prev.active, sessionId),
+          recent: removeSession(prev.recent, sessionId)
+        }));
 
-      // Reload history
-      const historyResponse = await fetch(`${API_BASE}/listening-sessions/history?days=30`);
-      if (historyResponse.ok) {
-        const grouped = await historyResponse.json() as GroupedSessions;
-        setHistoryByDate(grouped);
-      }
+        // Reload history
+        const historyResponse = await fetch(`${API_BASE}/listening-sessions/history?days=30`);
+        if (historyResponse.ok) {
+          const grouped = await historyResponse.json() as GroupedSessions;
+          setHistoryByDate(grouped);
+        }
       showToast('Session deleted successfully', 'success');
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to delete session. Please try again.';
-      setActionError(message);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to delete session. Please try again.';
+        setActionError(message);
       showToast(message, 'error');
-      console.error('Failed to delete session:', error);
-    } finally {
-      setDeletingSessionId(null);
-    }
+        console.error('Failed to delete session:', error);
+      } finally {
+        setDeletingSessionId(null);
+      }
   };
 
   const handleDeleteDate = useCallback(
     async (date: string) => {
-      const sessionCount = filteredHistoryByDate[date]?.length || 0;
+        const sessionCount = filteredHistoryByDate[date]?.length || 0;
       setConfirmModal({
         isOpen: true,
         title: 'Delete Sessions',
@@ -585,34 +585,34 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
   );
 
   const performDeleteDate = async (date: string) => {
-    setActionError(null);
-    setDeletingDate(date);
+      setActionError(null);
+      setDeletingDate(date);
 
-    try {
-      const response = await fetch(`${API_BASE}/listening-sessions/date/${date}`, {
-        method: 'DELETE'
-      });
+      try {
+        const response = await fetch(`${API_BASE}/listening-sessions/date/${date}`, {
+          method: 'DELETE'
+        });
 
-      if (!response.ok) {
-        throw new Error(`Failed to delete sessions for date (${response.status})`);
-      }
+        if (!response.ok) {
+          throw new Error(`Failed to delete sessions for date (${response.status})`);
+        }
 
-      // Reload history
-      const historyResponse = await fetch(`${API_BASE}/listening-sessions/history?days=30`);
-      if (historyResponse.ok) {
-        const grouped = await historyResponse.json() as GroupedSessions;
-        setHistoryByDate(grouped);
-      }
+        // Reload history
+        const historyResponse = await fetch(`${API_BASE}/listening-sessions/history?days=30`);
+        if (historyResponse.ok) {
+          const grouped = await historyResponse.json() as GroupedSessions;
+          setHistoryByDate(grouped);
+        }
       showToast('Sessions deleted successfully', 'success');
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to delete sessions. Please try again.';
-      setActionError(message);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Failed to delete sessions. Please try again.';
+        setActionError(message);
       showToast(message, 'error');
-      console.error('Failed to delete sessions by date:', error);
-    } finally {
-      setDeletingDate(null);
-    }
+        console.error('Failed to delete sessions by date:', error);
+      } finally {
+        setDeletingDate(null);
+      }
   };
 
   return (
@@ -632,9 +632,9 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
-        <div className="relative flex h-full max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-          <header className="flex items-start justify-between border-b border-gray-200 bg-gradient-to-r from-green-600 via-green-700 to-green-800 px-6 py-4 text-white">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div className="relative flex h-full max-h-[90vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <header className="flex items-start justify-between border-b border-gray-200 bg-gradient-to-r from-green-600 via-green-700 to-green-800 px-6 py-4 text-white">
           <div>
             <h2 className="text-2xl font-bold">Listening Control Tower</h2>
             <p className="mt-1 text-sm text-green-50">
@@ -653,9 +653,9 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
           >
             Close
           </button>
-          </header>
+        </header>
 
-          <main className="flex-1 overflow-y-auto bg-gray-50 px-6 py-6">
+        <main className="flex-1 overflow-y-auto bg-gray-50 px-6 py-6">
           <section className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto_auto]">
             <div className="flex items-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -918,8 +918,8 @@ const ListeningControlTower: React.FC<ListeningControlTowerProps> = ({ onClose }
             )}
           </section>
         </main>
-        </div>
       </div>
+    </div>
     </>
   );
 };

@@ -219,31 +219,31 @@ const AssignmentManagement: React.FC = () => {
       .slice(0, 10);
     
     if (import.meta.env.DEV) {
-      console.log('🔍 Assignment-Student ID Matching Analysis:', {
-        totalAssignments: assignments.length,
-        assignedStudentsCount: assignedStudents.length,
-        allStudentsCount: allStudents.length,
-        allPossibleStudentIdsCount: allPossibleStudentIds.size,
-        assignmentStudentIdsCount: assignmentStudentIds.size,
-        unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
-        unmatchedCount: unmatchedAssignmentIds.length,
-        sampleAssignedStudentIds: validSampleAssignedStudentIds,
-        sampleAssignmentStudentIds: validSampleAssignmentStudentIds,
-        // Check if there are any students that match the unmatched assignment IDs
-        unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
-          const foundStudent = allStudents.find(s => {
-            const studentId = normalizeId(s.id || (s as any)._id);
-            const studentRecordId = normalizeId((s as any).studentRecordId);
-            return studentId === id || studentRecordId === id;
-          });
-          return { 
-            assignmentId: id, 
-            studentFound: !!foundStudent, 
-            studentId: foundStudent?.id,
-            studentRecordId: foundStudent ? normalizeId((foundStudent as any).studentRecordId) : null
-          };
-        })
-      });
+    console.log('🔍 Assignment-Student ID Matching Analysis:', {
+      totalAssignments: assignments.length,
+      assignedStudentsCount: assignedStudents.length,
+      allStudentsCount: allStudents.length,
+      allPossibleStudentIdsCount: allPossibleStudentIds.size,
+      assignmentStudentIdsCount: assignmentStudentIds.size,
+      unmatchedAssignmentIds: unmatchedAssignmentIds.slice(0, 10),
+      unmatchedCount: unmatchedAssignmentIds.length,
+      sampleAssignedStudentIds: validSampleAssignedStudentIds,
+      sampleAssignmentStudentIds: validSampleAssignmentStudentIds,
+      // Check if there are any students that match the unmatched assignment IDs
+      unmatchedButStudentExists: unmatchedAssignmentIds.slice(0, 5).map((id: string) => {
+        const foundStudent = allStudents.find(s => {
+          const studentId = normalizeId(s.id || (s as any)._id);
+          const studentRecordId = normalizeId((s as any).studentRecordId);
+          return studentId === id || studentRecordId === id;
+        });
+        return { 
+          assignmentId: id, 
+          studentFound: !!foundStudent, 
+          studentId: foundStudent?.id,
+          studentRecordId: foundStudent ? normalizeId((foundStudent as any).studentRecordId) : null
+        };
+      })
+    });
     }
     
     const relevantAssignments = assignments.filter(a => {
@@ -279,12 +279,12 @@ const AssignmentManagement: React.FC = () => {
     const totalAssignments = relevantAssignments.length;
     
     if (import.meta.env.DEV) {
-      console.log('📊 AssignmentManagement Stats Result:', {
-        totalAssignments,
-        relevantAssignmentsCount: relevantAssignments.length,
-        unmatchedAssignments: assignments.length - relevantAssignments.length,
-        studentsWithAssignments: new Set(relevantAssignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId))).size
-      });
+    console.log('📊 AssignmentManagement Stats Result:', {
+      totalAssignments,
+      relevantAssignmentsCount: relevantAssignments.length,
+      unmatchedAssignments: assignments.length - relevantAssignments.length,
+      studentsWithAssignments: new Set(relevantAssignments.map(a => normalizeId(a.studentId || (a as any)._id?.studentId))).size
+    });
     }
     const studentsWithAssignments = new Set(relevantAssignments.map(a => a.studentId)).size;
     const activeAssignments = relevantAssignments.filter(a => a.status === 'active').length;
@@ -1176,11 +1176,11 @@ const AssignmentManagement: React.FC = () => {
             // Refreshing here would overwrite the newly added assignment if backend hasn't committed yet
             // Instead, refresh in the background after a delay to ensure consistency
             setTimeout(async () => {
-              if (refreshDataLight) {
-                await refreshDataLight();
-              } else {
-                await refreshData();
-              }
+            if (refreshDataLight) {
+              await refreshDataLight();
+            } else {
+            await refreshData();
+            }
             }, 1000); // Wait 1 second for backend to commit, then refresh in background
           }}
         />

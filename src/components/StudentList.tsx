@@ -391,7 +391,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false });
         await performPasswordReset();
-      }
+    }
     });
   };
 
@@ -858,45 +858,45 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           {/* Table Header - using grid to match row layout */}
           <div className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 bg-gray-50 border-b-2 border-gray-200">
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort('name')}
-            >
-              <div className="flex items-center space-x-1">
-                <span>Student</span>
-                {sortBy === 'name' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </div>
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('name')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Student</span>
+                    {sortBy === 'name' && (
+                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
             </div>
             <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</div>
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort('email')}
-            >
-              <div className="flex items-center space-x-1">
-                <span>Contact</span>
-                {sortBy === 'email' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </div>
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('email')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Contact</span>
+                    {sortBy === 'email' && (
+                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
             </div>
             <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Program</div>
             <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Teacher</div>
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort('tuitionFee')}
-            >
-              <div className="flex items-center space-x-1">
-                <span>Tuition</span>
-                {sortBy === 'tuitionFee' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                )}
-              </div>
-            </div>
+                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSort('tuitionFee')}
+                >
+                  <div className="flex items-center space-x-1">
+                    <span>Tuition</span>
+                    {sortBy === 'tuitionFee' && (
+                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </div>
+                        </div>
             <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</div>
             <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Password</div>
             <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</div>
-          </div>
+                      </div>
 
           {/* Virtualized Body */}
           {paginatedStudents.length > 0 ? (
@@ -921,25 +921,25 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
             >
               {StudentRow}
             </FixedSizeList>
-          ) : (
+              ) : (
             <div className="px-4 py-8 text-center text-gray-500">
-              <div className="flex flex-col items-center">
-                <p className="text-lg font-semibold mb-2">No students found</p>
-                <p className="text-sm">No students match the selected filters.</p>
-                <button
-                  onClick={() => {
-                    setSearchTerm('');
-                    setSelectedTeacher('all');
-                    setSelectedStatus('all');
-                    setSelectedPaymentStatus('all');
-                  }}
-                  className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-medium"
-                >
-                  Clear All Filters
-                </button>
-              </div>
+                    <div className="flex flex-col items-center">
+                      <p className="text-lg font-semibold mb-2">No students found</p>
+                      <p className="text-sm">No students match the selected filters.</p>
+                      <button
+                        onClick={() => {
+                          setSearchTerm('');
+                          setSelectedTeacher('all');
+                          setSelectedStatus('all');
+                          setSelectedPaymentStatus('all');
+                        }}
+                        className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-medium"
+                      >
+                        Clear All Filters
+                      </button>
+                    </div>
             </div>
-          )}
+              )}
         </div>
 
         {/* Pagination */}

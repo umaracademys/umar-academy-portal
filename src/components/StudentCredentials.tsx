@@ -48,6 +48,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [hasNoUserAccount, setHasNoUserAccount] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
@@ -144,96 +145,23 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
   // Fetch user details on mount
   useEffect(() => {
     const fetchUserDetails = async () => {
-      let userId = getUserId();
+      // Use getUserIdWithFallback which already handles all the lookup logic
+      // This avoids making duplicate API calls
+      const userId = await getUserIdWithFallback();
       const userEmail = getUserEmail();
 
-      // If no userId, try to find User by email
-      if (!userId && userEmail) {
-        try {
-          const usersResponse = await fetch(`${API_BASE}/users`, {
-            headers: getAuthHeaders()
-          });
-          if (usersResponse.ok) {
-            const users = await usersResponse.json();
-            const user = users.find((u: any) => u.email === userEmail);
-            if (user) {
-              userId = user._id || user.id;
-              if (import.meta.env.DEV) {
-                console.log(`✅ Found User by email: ${userEmail}, userId: ${userId}`);
-              }
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to fetch users for email lookup:', err);
-        }
-      }
-
       if (!userId) {
-        // Try to create User account if it doesn't exist
-        if (userEmail) {
-          try {
-            console.log('⚠️ User account not found. Attempting to create User account for student...');
-            const createUserResponse = await fetch(`${API_BASE}/users`, {
-              method: 'POST',
-              headers: getAuthHeaders(),
-              body: JSON.stringify({
-                name: student.fullName || student.name || 'Student',
-                email: userEmail,
-                role: 'student',
-                password: 'password123', // Default password - should be changed
-              })
-            });
-            
-            if (createUserResponse.ok) {
-              const newUser = await createUserResponse.json();
-              userId = newUser._id || newUser.id;
-              console.log('✅ Created User account for student:', userId);
-              
-              // Update student with userId if possible
-              if (student.id || student._id) {
-                try {
-                  await fetch(`${API_BASE}/students/${student.id || student._id}`, {
-                    method: 'PUT',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ userId: userId })
-                  });
-                } catch (err) {
-                  console.warn('Could not update student with userId:', err);
-                }
-              }
-            } else {
-              const errorData = await createUserResponse.json().catch(() => ({ error: 'Unknown error' }));
-              if (errorData.error && !errorData.error.includes('already exists')) {
-                throw new Error(errorData.error || 'Failed to create User account');
-              }
-              // If user already exists, try to find it
-              const usersResponse = await fetch(`${API_BASE}/users`, {
-                headers: getAuthHeaders()
-              });
-              if (usersResponse.ok) {
-                const users = await usersResponse.json();
-                const existingUser = users.find((u: any) => u.email === userEmail);
-                if (existingUser) {
-                  userId = existingUser._id || existingUser.id;
-                }
-              }
-            }
-          } catch (err) {
-            console.error('Error creating/finding User account:', err);
-            setError('User account not found and could not be created. Please contact an administrator.');
-            setLoading(false);
-            return;
-          }
-        } else {
-          setError('Student email not found. Cannot create User account.');
-          setLoading(false);
-          return;
-        }
+        // Student doesn't have a User account - this is valid, show informational message
+        setHasNoUserAccount(true);
+        setError(null); // Don't show as error, show as info
+        setLoading(false);
+        return;
       }
 
       try {
         setLoading(true);
         setError(null);
+        setHasNoUserAccount(false);
         const response = await fetch(`${API_BASE}/users/${userId}/details`, {
           headers: getAuthHeaders()
         });
@@ -243,7 +171,11 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
           if (response.status === 403) {
             throw new Error('Access denied. Admin privileges required to view user details.');
           } else if (response.status === 404) {
-            throw new Error('User not found. The student may not have a linked User account.');
+            // User account doesn't exist - this is valid, show informational message
+            setHasNoUserAccount(true);
+            setError(null);
+            setLoading(false);
+            return;
           }
           throw new Error(errorData.error || 'Failed to fetch user details');
         }
@@ -507,7 +439,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
 
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              {!userDetails && error && error.includes('not found') ? (
+              {hasNoUserAccount ? (
                 <Card>
                   <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
                     <p className="text-sm text-yellow-800 font-semibold mb-2">
@@ -557,6 +489,7 @@ const StudentCredentials: React.FC<StudentCredentialsProps> = ({ student, onClos
                             }
                             
                             // Refresh user details
+                            setHasNoUserAccount(false);
                             const detailsResponse = await fetch(`${API_BASE}/users/${userId}/details`, {
                               headers: getAuthHeaders()
                             });

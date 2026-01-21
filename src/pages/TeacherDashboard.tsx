@@ -121,7 +121,7 @@ const TeacherDashboard: React.FC = () => {
     }
     
     if (import.meta.env.DEV) {
-      console.log('✅ Teacher found:', teacher.fullName, '- Email:', teacher.email, '- ID:', teacher.id);
+    console.log('✅ Teacher found:', teacher.fullName, '- Email:', teacher.email, '- ID:', teacher.id);
     }
     return teacher;
   }, [user, teachers]);
@@ -129,7 +129,7 @@ const TeacherDashboard: React.FC = () => {
   const assignedStudents = useMemo(() => {
     if (!currentTeacher) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ No current teacher found, returning empty assigned students');
+      console.log('⚠️ No current teacher found, returning empty assigned students');
       }
       return [];
     }
@@ -139,32 +139,32 @@ const TeacherDashboard: React.FC = () => {
     
     // Debug: Log all available IDs to understand the structure
     if (import.meta.env.DEV) {
-      console.log('🔍 Teacher ID Debug:', {
-        teacherName: currentTeacher.fullName,
-        teacherId: currentTeacher.id,
-        teacherDocId: teacherDocId,
-        _id: (currentTeacher as any)._id,
-        teacherDocumentId: (currentTeacher as any).teacherDocumentId,
-        userId: (currentTeacher as any).userId?._id || (currentTeacher as any).userId,
-        allKeys: Object.keys(currentTeacher)
-      });
+    console.log('🔍 Teacher ID Debug:', {
+      teacherName: currentTeacher.fullName,
+      teacherId: currentTeacher.id,
+      teacherDocId: teacherDocId,
+      _id: (currentTeacher as any)._id,
+      teacherDocumentId: (currentTeacher as any).teacherDocumentId,
+      userId: (currentTeacher as any).userId?._id || (currentTeacher as any).userId,
+      allKeys: Object.keys(currentTeacher)
+    });
     }
     
     const students = getStudentsByTeacher(teacherDocId);
     if (import.meta.env.DEV) {
-      console.log('✅ Assigned students for teacher:', currentTeacher.fullName, '- Count:', students.length, '- Teacher Doc ID:', teacherDocId);
+    console.log('✅ Assigned students for teacher:', currentTeacher.fullName, '- Count:', students.length, '- Teacher Doc ID:', teacherDocId);
     }
     
     // If no students found, try with User ID as fallback (for debugging)
     if (students.length === 0 && teacherDocId !== currentTeacher.id) {
       if (import.meta.env.DEV) {
-        console.log('⚠️ No students found with Teacher Doc ID, trying User ID as fallback...');
+      console.log('⚠️ No students found with Teacher Doc ID, trying User ID as fallback...');
       }
       const studentsByUserId = getStudentsByTeacher(currentTeacher.id);
       if (import.meta.env.DEV) {
-        console.log('🔍 Students found with User ID:', studentsByUserId.length);
-        if (studentsByUserId.length > 0) {
-          console.log('⚠️ WARNING: Students are assigned using User ID instead of Teacher Document ID!');
+      console.log('🔍 Students found with User ID:', studentsByUserId.length);
+      if (studentsByUserId.length > 0) {
+        console.log('⚠️ WARNING: Students are assigned using User ID instead of Teacher Document ID!');
         }
       }
       if (studentsByUserId.length > 0) {

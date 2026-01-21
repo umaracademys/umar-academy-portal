@@ -168,17 +168,17 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
   };
 
   const performPairDeletionWithStudents = async (id: string, pairStudentsData: any[]) => {
-    // Delete all students first
-    try {
+      // Delete all students first
+      try {
       for (const pairStudent of pairStudentsData) {
-        await deletePairStudent(pairStudent._id);
+          await deletePairStudent(pairStudent._id);
       }
       await performPairDeletion(id);
     } catch (error) {
       showToast('Failed to remove students. Please remove them manually first.', 'error');
     }
   };
-
+    
   const performPairDeletion = async (id: string) => {
     try {
       await deleteTeacherPair(id);
@@ -726,14 +726,14 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
                                         danger: false,
                                         onConfirm: async () => {
                                           setConfirmModal({ ...confirmModal, isOpen: false });
-                                          try {
-                                            await deletePairStudent(ps._id);
-                                            await loadPairStudents(selectedPair!);
+                                      try {
+                                        await deletePairStudent(ps._id);
+                                        await loadPairStudents(selectedPair!);
                                             showToast('Student removed from pair successfully', 'success');
-                                          } catch (error) {
+                                      } catch (error) {
                                             showToast(error instanceof Error ? error.message : 'Failed to remove student', 'error');
                                           }
-                                        }
+                                      }
                                       });
                                     }}
                                     disabled={loading}

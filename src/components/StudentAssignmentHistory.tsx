@@ -455,7 +455,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               />
                                               
                                               {/* Mushaf View Button */}
-                                              {phaseMistakes.length > 0 && (
+                                                {phaseMistakes.length > 0 && (
                                                 <div className="flex justify-end">
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'sabq', idx, phase)}
@@ -463,7 +463,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                   >
                                                     {isMushafOpen ? 'Hide Mushaf' : 'View Mushaf'} ({phaseMistakes.length})
                                                   </button>
-                                                </div>
+                                              </div>
                                               )}
                                               
                                               {isMushafOpen && (
@@ -531,7 +531,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               />
                                               
                                               {/* Mushaf View Button */}
-                                              {phaseMistakes.length > 0 && (
+                                                {phaseMistakes.length > 0 && (
                                                 <div className="flex justify-end">
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'sabqi', idx, phase)}
@@ -539,7 +539,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                   >
                                                     {isMushafOpen ? 'Hide Mushaf' : 'View Mushaf'} ({phaseMistakes.length})
                                                   </button>
-                                                </div>
+                                              </div>
                                               )}
                                               
                                               {isMushafOpen && (
@@ -607,7 +607,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                               />
                                               
                                               {/* Mushaf View Button */}
-                                              {phaseMistakes.length > 0 && (
+                                                {phaseMistakes.length > 0 && (
                                                 <div className="flex justify-end">
                                                   <button
                                                     onClick={() => toggleMushaf(assignment.id, 'manzil', idx, phase)}
@@ -615,7 +615,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                   >
                                                     {isMushafOpen ? 'Hide Mushaf' : 'View Mushaf'} ({phaseMistakes.length})
                                                   </button>
-                                                </div>
+                                              </div>
                                               )}
                                               
                                               {isMushafOpen && (

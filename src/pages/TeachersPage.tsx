@@ -85,7 +85,7 @@ const TeachersPage: React.FC = () => {
       }
     }
     
-    if (duplicates.length > 0) {
+    if (duplicates.length > 0 && import.meta.env.DEV) {
       console.warn(`⚠️ Removed ${duplicates.length} duplicate teacher/admin(s) from combined list`);
     }
     

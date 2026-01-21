@@ -1089,7 +1089,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                 showDate={true}
                                 className="mb-4"
                               />
-                              
+                            
                               {/* Marked Mistakes Section - Always show if available */}
                               {(() => {
                                 // Priority 1: Use mistakes array directly from phase (if available from SabqEntry)

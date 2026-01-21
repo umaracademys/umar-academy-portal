@@ -447,38 +447,38 @@ const TeacherTicketReview: React.FC<TeacherTicketReviewProps> = ({ ticket, onClo
     else if (!hasEndAyah) {
       // ✅ FIX: Removed validation - allow any end ayah regardless of surah or order
       console.log('✅ Setting end ayah:', { surah, ayah });
-      setSelectedEndAyah({ surah, ayah });
-      
-      // Get surah name in Arabic if not already set (always use Arabic, never English)
-      const { getQuranChapters } = await import('../services/quranApi');
-      const chapters = await getQuranChapters();
-      const surahInfo = chapters.find((c: any) => c.id === surah);
-      
-      // Try fallback chapters if API doesn't have Arabic name
-      let surahName = surahInfo?.name_arabic?.trim();
-      if (!surahName) {
-        const fallbackSurah = FALLBACK_CHAPTERS.find((c: any) => c.id === surah);
-        surahName = fallbackSurah?.name_arabic?.trim();
-      }
-      // Always use Arabic name - if not available, use Arabic fallback (never English)
-      surahName = surahName || `سورة ${surah}`;
-      
-      // Try to load ayah text (but don't fail if it doesn't work)
-      const ayahData = await loadAyahText(surah, ayah);
-      
-      // Set the range even if ayah text couldn't be loaded
+        setSelectedEndAyah({ surah, ayah });
+        
+        // Get surah name in Arabic if not already set (always use Arabic, never English)
+        const { getQuranChapters } = await import('../services/quranApi');
+        const chapters = await getQuranChapters();
+        const surahInfo = chapters.find((c: any) => c.id === surah);
+        
+        // Try fallback chapters if API doesn't have Arabic name
+        let surahName = surahInfo?.name_arabic?.trim();
+        if (!surahName) {
+          const fallbackSurah = FALLBACK_CHAPTERS.find((c: any) => c.id === surah);
+          surahName = fallbackSurah?.name_arabic?.trim();
+        }
+        // Always use Arabic name - if not available, use Arabic fallback (never English)
+        surahName = surahName || `سورة ${surah}`;
+        
+        // Try to load ayah text (but don't fail if it doesn't work)
+        const ayahData = await loadAyahText(surah, ayah);
+        
+        // Set the range even if ayah text couldn't be loaded
       // ✅ FIX: Store end surah separately if different from start surah
-      setRecitationRange(prev => ({
-        ...prev,
+        setRecitationRange(prev => ({
+          ...prev,
         // Preserve start surah info
         surahNumber: prev.surahNumber || surah,
         surahName: prev.surahName || prev.surahName,
         // Store end surah separately if different
         endSurahNumber: surah !== prev.surahNumber ? surah : prev.endSurahNumber,
         endSurahName: surah !== prev.surahNumber ? (ayahData?.surahName || surahName) : prev.endSurahName,
-        endAyahNumber: ayah,
-        endAyahText: ayahData?.text || `[Ayah ${ayah}]`
-      }));
+          endAyahNumber: ayah,
+          endAyahText: ayahData?.text || `[Ayah ${ayah}]`
+        }));
     } 
     // Both are set, allow reset
     else {

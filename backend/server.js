@@ -565,7 +565,7 @@ if (!fs.existsSync(sabqAudioDir)) {
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
+  
   if (!token) {
     return res.status(401).json({ error: 'Access token required' });
   }
@@ -594,7 +594,7 @@ app.post('/api/mistakes/audio', authenticateToken, (req, res) => {
   // Authentication handled by authenticateToken middleware
   // req.user is now available
 
-  const chunks = [];
+    const chunks = [];
     let totalSize = 0;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     
@@ -641,7 +641,7 @@ app.post('/api/mistakes/audio', authenticateToken, (req, res) => {
     req.on('error', (error) => {
       console.error('Error reading request:', error);
       res.status(500).json({ error: error.message });
-    });
+  });
 });
 
 // File upload route for pair teacher messages - must be before json middleware
@@ -650,7 +650,7 @@ app.post('/api/pair-teacher-messages/upload', authenticateToken, (req, res) => {
   // Authentication handled by authenticateToken middleware
   // req.user is now available
 
-  const chunks = [];
+    const chunks = [];
     let totalSize = 0;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     
@@ -754,7 +754,7 @@ app.post('/api/pair-teacher-messages/upload', authenticateToken, (req, res) => {
     req.on('error', (error) => {
       console.error('Error reading request:', error);
       res.status(500).json({ error: error.message });
-    });
+  });
 });
 
 // Recording upload route for ticket recordings - must be before json middleware
@@ -763,7 +763,7 @@ app.post('/api/recordings/upload', authenticateToken, (req, res) => {
   // Authentication handled by authenticateToken middleware
   // req.user is now available
 
-  const chunks = [];
+    const chunks = [];
     let totalSize = 0;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     
@@ -824,7 +824,7 @@ app.post('/api/recordings/upload', authenticateToken, (req, res) => {
     req.on('error', (error) => {
       console.error('Error reading request:', error);
       res.status(500).json({ error: error.message });
-    });
+  });
 });
 
 // JSON and URL-encoded middleware with size limits (after file upload routes)
@@ -2999,7 +2999,7 @@ app.get('/api/users', combinedListEndpointLimiter, authenticateToken, async (req
     // Add password status information
     const usersWithPasswordStatus = users.map(user => ({
       ...user,
-      passwordChangeRequired: user.passwordChangeRequired || false,
+      passwordChangeRequired: targetUser.passwordChangeRequired || false,
       hasPassword: !!user.password
     }));
     
@@ -6167,48 +6167,58 @@ app.post('/api/users/:id/unlock', authenticateToken, requirePermission('canManag
 
 // Get user details including settings
 // Phase 7: CRITICAL - Protect PII access
-app.get('/api/users/:id/details', authenticateToken, requirePermission('canViewStudentPersonalInfo'), async (req, res) => {
+// Allow admins/superadmins to access without specific permission
+app.get('/api/users/:id/details', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    const user = req.user;
+    // Check permission unless user is admin/superadmin
+    if (user.role !== 'admin' && user.role !== 'superadmin') {
+      // For non-admins, require the specific permission
+      if (!user.permissions?.canViewStudentPersonalInfo) {
+        return res.status(403).json({ error: 'Access denied. Admin privileges required to view user details.' });
+      }
+    }
+    
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found. The student may not have a linked User account.' });
     }
 
     // Get last login from activity logs
     const lastLoginLog = await ActivityLog.findOne({
-      userId: user._id.toString(),
+      userId: targetUser._id.toString(),
       eventType: 'login_success'
     }).sort({ timestamp: -1 });
 
     // Get password change date from activity logs
     const lastPasswordReset = await ActivityLog.findOne({
-      userId: user._id.toString(),
+      userId: targetUser._id.toString(),
       eventType: 'password_reset_success'
     }).sort({ timestamp: -1 });
 
     // Return user details
-    const userResponse = user.toObject();
+    const userResponse = targetUser.toObject();
     delete userResponse.password;
 
     // Check if account is locked
-    const isLocked = user.accountLockedUntil && new Date() < user.accountLockedUntil;
-    const minutesLeft = isLocked ? Math.ceil((user.accountLockedUntil - new Date()) / 60000) : null;
+    const isLocked = targetUser.accountLockedUntil && new Date() < targetUser.accountLockedUntil;
+    const minutesLeft = isLocked ? Math.ceil((targetUser.accountLockedUntil - new Date()) / 60000) : null;
 
     res.json({
       ...userResponse,
       lastLogin: lastLoginLog?.timestamp || null,
       passwordChanged: lastPasswordReset?.timestamp || null,
-      passwordChangeRequired: user.passwordChangeRequired || false,
-      accountStatus: user.loginEnabled !== false ? (isLocked ? 'locked' : 'active') : 'inactive',
-      loginEnabled: user.loginEnabled !== false,
-      twoFactorEnabled: user.twoFactorEnabled || false,
-      emailNotifications: user.emailNotifications !== false,
+      passwordChangeRequired: targetUser.passwordChangeRequired || false,
+      accountStatus: targetUser.loginEnabled !== false ? (isLocked ? 'locked' : 'active') : 'inactive',
+      loginEnabled: targetUser.loginEnabled !== false,
+      twoFactorEnabled: targetUser.twoFactorEnabled || false,
+      emailNotifications: targetUser.emailNotifications !== false,
       smsNotifications: user.smsNotifications || false,
-      emailVerified: !!user.email,
-      phoneVerified: !!user.contact || !!user.phoneNumber,
+      emailVerified: !!targetUser.email,
+      phoneVerified: !!targetUser.contact || !!targetUser.phoneNumber,
       isLocked,
-      accountLockedUntil: user.accountLockedUntil || null,
-      failedLoginAttempts: user.failedLoginAttempts || 0,
+      accountLockedUntil: targetUser.accountLockedUntil || null,
+      failedLoginAttempts: targetUser.failedLoginAttempts || 0,
       minutesUntilUnlock: minutesLeft
     });
   } catch (error) {
@@ -8640,7 +8650,7 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
         if (endSurahName && endSurahName !== surahName) {
           assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber} → ${endSurahName}, Ayah ${endAyahNumber}`;
         } else {
-          assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
         }
         if (juzNumber) {
           assignmentRangeStr += ` (Juz ${juzNumber})`;
@@ -8649,7 +8659,7 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
         if (endSurahNumber && endSurahNumber !== surahNumber) {
           assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber} → Surah ${endSurahNumber}, Ayah ${endAyahNumber}`;
         } else {
-          assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+        assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
         }
         if (juzNumber) {
           assignmentRangeStr += ` (Juz ${juzNumber})`;
@@ -8749,7 +8759,7 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
           if (homeworkEndSurahName && homeworkEndSurahName !== homeworkSurahName) {
             homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah} → ${homeworkEndSurahName}, Ayah ${homeworkEndAyah}`;
           } else {
-            homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          homeworkRangeStr = `Surah ${homeworkSurahName}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
           }
           if (homeworkJuzNumber) {
             homeworkRangeStr += ` (Juz ${homeworkJuzNumber})`;
@@ -8758,7 +8768,7 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
           if (homeworkEndSurahNumber && homeworkEndSurahNumber !== homeworkSurahNumber) {
             homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah} → Surah ${homeworkEndSurahNumber}, Ayah ${homeworkEndAyah}`;
           } else {
-            homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
+          homeworkRangeStr = `Surah ${homeworkSurahNumber}, Ayah ${homeworkStartAyah}-${homeworkEndAyah}`;
           }
           if (homeworkJuzNumber) {
             homeworkRangeStr += ` (Juz ${homeworkJuzNumber})`;
@@ -8818,7 +8828,7 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
     if (endSurahName && endSurahName !== surahName) {
       assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber} → ${endSurahName}, Ayah ${endAyahNumber}`;
     } else {
-      assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
     }
     if (juzNumber) {
       assignmentRangeStr += ` (Juz ${juzNumber})`;
@@ -8827,7 +8837,7 @@ const updateAssignmentFromTicket = (assignment, ticket) => {
     if (endSurahNumber && endSurahNumber !== surahNumber) {
       assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber} → Surah ${endSurahNumber}, Ayah ${endAyahNumber}`;
     } else {
-      assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+    assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
     }
     if (juzNumber) {
       assignmentRangeStr += ` (Juz ${juzNumber})`;

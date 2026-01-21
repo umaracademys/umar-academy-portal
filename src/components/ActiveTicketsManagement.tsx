@@ -159,125 +159,125 @@ const ActiveTicketsManagement: React.FC<ActiveTicketsManagementProps> = ({ onClo
                   <div style={style} className="px-2">
                     <div className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow h-full">
                       {isEditing ? (
-                        <div className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
-                              <input
-                                type="text"
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
+                          <input
+                            type="text"
                                 value={data.editForm.studentName || ''}
                                 onChange={(e) => data.setEditForm({ ...data.editForm, studentName: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                              <select
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                          <select
                                 value={data.editForm.type || ''}
                                 onChange={(e) => data.setEditForm({ ...data.editForm, type: e.target.value as any })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                              >
-                                <option value="sabq">Sabq</option>
-                                <option value="sabqi">Sabqi</option>
-                                <option value="manzil">Manzil</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                              <select
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="sabq">Sabq</option>
+                            <option value="sabqi">Sabqi</option>
+                            <option value="manzil">Manzil</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                          <select
                                 value={data.editForm.status || ''}
                                 onChange={(e) => data.setEditForm({ ...data.editForm, status: e.target.value as any })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="in_progress">In Progress</option>
-                                <option value="submitted">Submitted</option>
-                                <option value="reassigned">Reassigned</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Teacher</label>
-                              <input
-                                type="text"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="reassigned">Reassigned</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Teacher</label>
+                          <input
+                            type="text"
                                 value={data.editForm.assignedTeacherName || ''}
                                 onChange={(e) => data.setEditForm({ ...data.editForm, assignedTeacherName: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Teacher Notes</label>
-                            <textarea
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Teacher Notes</label>
+                        <textarea
                               value={data.editForm.teacherNotes || ''}
                               onChange={(e) => data.setEditForm({ ...data.editForm, teacherNotes: e.target.value })}
-                              rows={3}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <button
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
                               onClick={data.onSaveEdit}
-                              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                            >
-                              Save Changes
-                            </button>
-                            <button
+                          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                          Save Changes
+                        </button>
+                        <button
                               onClick={data.onCancelEdit}
-                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                ticket.type === 'sabqi' ? 'bg-primary/20 text-primary' :
-                                ticket.type === 'manzil' ? 'bg-accent/20 text-accent' :
-                                'bg-primary/20 text-primary'
-                              }`}>
-                                {ticket.type?.toUpperCase()}
-                              </span>
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                                ticket.status === 'submitted' ? 'bg-green-100 text-green-800' :
-                                'bg-orange-100 text-orange-800'
-                              }`}>
-                                {ticket.status?.replace('_', ' ').toUpperCase()}
-                              </span>
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-1">{ticket.studentName}</h3>
-                            {ticket.assignedTeacherName && (
-                              <p className="text-sm text-gray-600 mb-2">Assigned to: {ticket.assignedTeacherName}</p>
-                            )}
-                            {ticket.teacherNotes && (
-                              <p className="text-sm text-gray-700 mb-2">{ticket.teacherNotes}</p>
-                            )}
-                            <p className="text-xs text-gray-500">
-                              Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : 'N/A'}
-                            </p>
-                          </div>
-                          <div className="flex gap-2 ml-4">
-                            <button
-                              onClick={() => data.onEdit(ticket)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              ✏️ Edit
-                            </button>
-                            <button
-                              onClick={() => data.onDelete(ticket)}
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                              🗑️ Delete
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            ticket.type === 'sabqi' ? 'bg-primary/20 text-primary' :
+                            ticket.type === 'manzil' ? 'bg-accent/20 text-accent' :
+                            'bg-primary/20 text-primary'
+                          }`}>
+                            {ticket.type?.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            ticket.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                            ticket.status === 'submitted' ? 'bg-green-100 text-green-800' :
+                            'bg-orange-100 text-orange-800'
+                          }`}>
+                            {ticket.status?.replace('_', ' ').toUpperCase()}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 mb-1">{ticket.studentName}</h3>
+                        {ticket.assignedTeacherName && (
+                          <p className="text-sm text-gray-600 mb-2">Assigned to: {ticket.assignedTeacherName}</p>
+                        )}
+                        {ticket.teacherNotes && (
+                          <p className="text-sm text-gray-700 mb-2">{ticket.teacherNotes}</p>
+                        )}
+                        <p className="text-xs text-gray-500">
+                          Created: {ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : 'N/A'}
+                        </p>
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <button
+                              onClick={() => data.onEdit(ticket)}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                              onClick={() => data.onDelete(ticket)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+            </div>
                 );
               }}
             </FixedSizeList>

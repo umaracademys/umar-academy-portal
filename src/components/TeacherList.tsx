@@ -36,8 +36,12 @@ const TeacherList: React.FC<TeacherListProps> = ({
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const getAssignedStudentsCount = (teacher: any) => {
-    if (!teacher || !teacher.id) return 0;
-    const assignedStudents = getStudentsByTeacher(teacher.id);
+    if (!teacher) return 0;
+    // Use Teacher Document ID (_id or teacherDocumentId) instead of User ID (id)
+    // Students are assigned using Teacher Document IDs in assignedTeacherIds array
+    const teacherDocId = teacher._id || teacher.teacherDocumentId || teacher.id;
+    if (!teacherDocId) return 0;
+    const assignedStudents = getStudentsByTeacher(teacherDocId);
     return assignedStudents.length;
   };
 
@@ -69,8 +73,9 @@ const TeacherList: React.FC<TeacherListProps> = ({
           bValue = b.email;
           break;
         case 'students':
-          aValue = a.assignedStudents?.length || 0;
-          bValue = b.assignedStudents?.length || 0;
+          // Use getAssignedStudentsCount for accurate sorting
+          aValue = getAssignedStudentsCount(a);
+          bValue = getAssignedStudentsCount(b);
           break;
         case 'salary':
           aValue = a.payroll?.monthlySalary || 0;
@@ -149,7 +154,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
       >
         <div className="px-2 py-2">
           <div className="flex items-center">
-            <div className="relative mr-2">
+            <div className="relative mr-2 flex-shrink-0">
               <img 
                 src={teacher.avatar || '/default-avatar.png'} 
                 alt={teacher.fullName || 'Teacher'} 
@@ -161,69 +166,84 @@ const TeacherList: React.FC<TeacherListProps> = ({
                 </div>
               )}
             </div>
-            <div>
-              <p className="font-medium text-gray-900 text-xs">{teacher.fullName || 'Unknown'}</p>
-              <p className="text-[10px] text-gray-500">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 text-xs truncate">{teacher.fullName || 'Unknown'}</p>
+              <p className="text-[10px] text-gray-500 truncate">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+              {teacher.isAdmin && (
+                <span className="inline-block mt-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-700 border border-purple-200 rounded whitespace-nowrap">
+                  ADMIN
+                </span>
+              )}
             </div>
           </div>
         </div>
-        <div className="px-2 py-2 text-[10px] font-mono text-gray-600">{teacher.id}</div>
-        <div className="px-2 py-2 text-xs">
-          <div>
-            <p className="text-gray-900">{teacher.email || 'No email'}</p>
-            <p className="text-[10px] text-gray-500">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
-          </div>
-        </div>
-        <div className="px-2 py-2 text-xs">{teacher.department || 'General'}</div>
-        <div className="px-2 py-2 text-xs">
-          <div className="flex items-center gap-1">
-            <span>{data.getLocationFlag(teacher.location || 'Unknown')}</span>
-            <span>{teacher.location || 'Unknown'}</span>
-          </div>
-        </div>
-        <div className="px-2 py-2 text-xs font-semibold text-blue-600">{data.getAssignedStudentsCount(teacher)}</div>
-        <div className="px-2 py-2 text-xs">
-          <div className="flex items-center gap-1">
-            <span className="text-amber-500">⭐</span>
-            <span className="font-semibold text-gray-900">{data.getPerformanceRating(teacher)}</span>
-          </div>
-        </div>
-        <div className="px-2 py-2">{data.getStatusBadge(teacher.status || 'active')}</div>
-        <div className="px-2 py-2 text-xs font-semibold">
-          {teacher.isAdmin ? (
-            <span className="text-gray-400">N/A</span>
-          ) : (
-            <>
-              {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
-            </>
-          )}
+        <div className="px-2 py-2">
+          <p className="text-[10px] font-mono text-gray-600 truncate" title={teacher.id}>{teacher.id}</p>
         </div>
         <div className="px-2 py-2">
-          <div className="flex space-x-1">
+          <div className="min-w-0">
+            <p className="text-xs text-gray-900 truncate">{teacher.email || 'No email'}</p>
+            <p className="text-[10px] text-gray-500 truncate">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
+          </div>
+        </div>
+        <div className="px-2 py-2">
+          <p className="text-xs text-gray-700 truncate">{teacher.department || 'General'}</p>
+        </div>
+        <div className="px-2 py-2">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="flex-shrink-0">{data.getLocationFlag(teacher.location || 'Unknown')}</span>
+            <span className="text-xs text-gray-700 truncate">{teacher.location || 'Unknown'}</span>
+          </div>
+        </div>
+        <div className="px-2 py-2">
+          <p className="text-xs font-semibold text-blue-600">{data.getAssignedStudentsCount(teacher)}</p>
+        </div>
+        <div className="px-2 py-2">
+          <div className="flex items-center gap-1">
+            <span className="text-amber-500 flex-shrink-0">⭐</span>
+            <span className="text-xs font-semibold text-gray-900">{data.getPerformanceRating(teacher)}</span>
+          </div>
+        </div>
+        <div className="px-2 py-2">
+          {data.getStatusBadge(teacher.status || 'active')}
+        </div>
+        <div className="px-2 py-2">
+          <p className="text-xs font-semibold text-gray-900 truncate">
+            {teacher.isAdmin ? (
+              <span className="text-gray-400">N/A</span>
+            ) : (
+              <>
+                {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
+              </>
+            )}
+          </p>
+        </div>
+        <div className="px-2 py-2">
+          <div className="flex items-center gap-1 flex-wrap">
             <button
               onClick={() => data.onTeacherSelect(teacher)}
-              className="text-primary-600 hover:text-primary-800 text-xs font-medium"
+              className="text-primary-600 hover:text-primary-800 text-xs font-medium whitespace-nowrap"
             >
               View
             </button>
             {!teacher.isAdmin && (
               <button
                 onClick={() => data.onEditTeacher(teacher)}
-                className="text-gold-600 hover:text-gold-800 text-xs font-medium"
+                className="text-gold-600 hover:text-gold-800 text-xs font-medium whitespace-nowrap"
               >
                 Edit
               </button>
             )}
             <button
               onClick={() => data.onDeleteTeacher(teacher.id)}
-              className="text-red-600 hover:text-red-800 text-xs font-medium"
+              className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap"
             >
               Del
             </button>
             {data.onCredentials && (
               <button
                 onClick={() => data.onCredentials(teacher)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                className="text-blue-600 hover:text-blue-800 text-xs font-medium whitespace-nowrap"
               >
                 Credentials
               </button>
@@ -231,7 +251,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
             {data.onAnalytics && (
               <button
                 onClick={() => data.onAnalytics(teacher)}
-                className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                className="text-purple-600 hover:text-purple-800 text-xs font-medium whitespace-nowrap"
               >
                 Analytics
               </button>
@@ -245,7 +265,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Modern Header */}
+      {/* Header */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
@@ -287,7 +307,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
         </div>
       </div>
 
-      {/* Modern Filter Section */}
+      {/* Filter Section */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Search & Filters</h2>
@@ -393,9 +413,9 @@ const TeacherList: React.FC<TeacherListProps> = ({
             </Button>
           </div>
         </div>
-        </div>
+      </div>
 
-      {/* Modern Table */}
+      {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">

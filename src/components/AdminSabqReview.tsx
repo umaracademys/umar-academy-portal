@@ -330,19 +330,19 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
       }));
     } else if (!hasEndAyah) {
       // ✅ FIX: Removed validation - allow any end ayah regardless of surah or order
-      setSelectedEndAyah({ surah, ayah });
-      const ayahText = await loadAyahText(surah, ayah);
+        setSelectedEndAyah({ surah, ayah });
+        const ayahText = await loadAyahText(surah, ayah);
       const endSurahName = getSurahName(surah);
-      setCurrentRecitationRange(prev => ({
-        ...prev,
+        setCurrentRecitationRange(prev => ({
+          ...prev,
         // Only update surahNumber/surahName if end ayah is in different surah
         surahNumber: prev.surahNumber || surah,
         surahName: prev.surahName || surahName,
         endSurahNumber: surah !== prev.surahNumber ? surah : prev.endSurahNumber,
         endSurahName: surah !== prev.surahNumber ? endSurahName : prev.endSurahName,
-        endAyahNumber: ayah,
-        endAyahText: ayahText
-      }));
+          endAyahNumber: ayah,
+          endAyahText: ayahText
+        }));
     } else {
       // Reset
       setSelectedStartAyah({ surah, ayah });
@@ -392,15 +392,15 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
       }));
     } else if (!hasEndAyah) {
       // ✅ FIX: Removed validation - allow any end ayah regardless of surah or order
-      setHomeworkEndAyah({ surah, ayah });
-      const ayahText = await loadAyahText(surah, ayah);
-      setHomeworkRange(prev => ({
-        ...prev!,
-        surahNumber: surah,
-        surahName: surahName,
-        endAyahNumber: ayah,
-        endAyahText: ayahText
-      }));
+        setHomeworkEndAyah({ surah, ayah });
+        const ayahText = await loadAyahText(surah, ayah);
+        setHomeworkRange(prev => ({
+          ...prev!,
+          surahNumber: surah,
+          surahName: surahName,
+          endAyahNumber: ayah,
+          endAyahText: ayahText
+        }));
     } else {
       // Reset
       setHomeworkStartAyah({ surah, ayah });

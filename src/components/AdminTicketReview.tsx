@@ -27,12 +27,12 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     // Only refresh if we don't have tickets yet
     if (recitationTickets.length === 0) {
       if (import.meta.env.DEV) {
-        console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
+      console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
       }
       refreshDataLight();
     } else {
       if (import.meta.env.DEV) {
-        console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
+      console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,9 +68,9 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const pendingTickets = useMemo(() => {
     const filtered = recitationTickets.filter(t => t.status === 'submitted');
     if (import.meta.env.DEV) {
-      console.log('📋 AdminTicketReview: Total tickets:', recitationTickets.length);
-      console.log('📋 AdminTicketReview: Pending tickets (submitted):', filtered.length);
-      console.log('📋 AdminTicketReview: All ticket statuses:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
+    console.log('📋 AdminTicketReview: Total tickets:', recitationTickets.length);
+    console.log('📋 AdminTicketReview: Pending tickets (submitted):', filtered.length);
+    console.log('📋 AdminTicketReview: All ticket statuses:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
     }
     return filtered;
   }, [recitationTickets]);
@@ -100,8 +100,8 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     }
     const ticket = recitationTickets.find(t => t.id === selectedTicketId);
     if (import.meta.env.DEV) {
-      console.log('🔍 Looking for ticket:', selectedTicketId);
-      console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
+    console.log('🔍 Looking for ticket:', selectedTicketId);
+    console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
     }
     return ticket || null;
   }, [selectedTicketId, recitationTickets, fullTicketData]);
@@ -153,13 +153,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       
       // Store full ticket data
       setFullTicketData(mappedFullTicket);
-      
-      // If it's a Sabq ticket with pending status, open AdminSabqReview
+    
+    // If it's a Sabq ticket with pending status, open AdminSabqReview
       if (mappedFullTicket.type === 'sabq' && mappedFullTicket.status === 'pending') {
-        setShowSabqReview(true);
-        setSelectedTicketId(ticketId);
-      } else {
-        setSelectedTicketId(ticketId);
+      setShowSabqReview(true);
+      setSelectedTicketId(ticketId);
+    } else {
+      setSelectedTicketId(ticketId);
       }
     } catch (error) {
       console.error('❌ Error fetching full ticket data:', error);
@@ -318,7 +318,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false });
         await performTicketDeletion(ticketId);
-      }
+    }
     });
   };
 
@@ -609,9 +609,9 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                   {ticket.studentName || 'Unknown Student'}
                                 </h4>
                                 <div className="space-y-0.5">
-                                  <p className="text-xs text-primary/70 font-medium">
+                                <p className="text-xs text-primary/70 font-medium">
                                     👨‍🏫 Teacher: {ticket.assignedTeacherName || ticket.assignedTeacherId || 'Unassigned'}
-                                  </p>
+                                </p>
                                   {ticket.createdByName && (
                                     <p className="text-xs text-primary/60">
                                       📝 Created by: {ticket.createdByName}
@@ -652,12 +652,12 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                   </div>
                                 )}
                                 {ticket.submittedAt ? (
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs">🕐</span>
-                                    <span className="text-[10px] text-primary/60">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs">🕐</span>
+                                  <span className="text-[10px] text-primary/60">
                                       Submitted: {new Date(ticket.submittedAt).toLocaleDateString()}
-                                    </span>
-                                  </div>
+                                  </span>
+                                </div>
                                 ) : ticket.createdAt ? (
                                   <div className="flex items-center gap-1">
                                     <span className="text-xs">📅</span>
