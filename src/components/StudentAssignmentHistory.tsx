@@ -6,6 +6,7 @@ import { MushafMistake } from '@umar-academy/mushaf';
 import { Assignment } from '../types/assignment';
 import HomeworkDisplay from './HomeworkDisplay';
 import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
+import ClassworkEntryCard from './ClassworkEntryCard';
 
 interface StudentAssignmentHistoryProps {
   studentId: string;
