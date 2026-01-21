@@ -10356,21 +10356,19 @@ app.post('/api/tickets/:id/approve-send', authenticateToken, requirePermission('
       return res.status(500).json({ error: 'Failed to update ticket' });
     }
     
-    // Use updatedTicket for WebSocket events
-    const ticket = updatedTicket;
-    
+    // ✅ FIX: Use updatedTicket directly (ticket already declared above)
     // ✅ PHASE 2 OPTIMIZATION: Emit minimal WebSocket payload for ticket approval
     try {
-      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
-      ticketData.id = ticket._id.toString();
-      const minimalPayload = createMinimalTicketPayload(ticketData, { status: ticket.status, sentToAssignmentId: ticket.sentToAssignmentId });
+      const ticketData = updatedTicket.toObject ? updatedTicket.toObject() : updatedTicket;
+      ticketData.id = updatedTicket._id.toString();
+      const minimalPayload = createMinimalTicketPayload(ticketData, { status: updatedTicket.status, sentToAssignmentId: updatedTicket.sentToAssignmentId });
       
       // Emit ticket update
-      if (ticket.studentId) {
-        io.to(`student:${ticket.studentId}`).emit('ticket:updated', minimalPayload);
+      if (updatedTicket.studentId) {
+        io.to(`student:${updatedTicket.studentId}`).emit('ticket:updated', minimalPayload);
       }
-      if (ticket.assignedTeacherId) {
-        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', minimalPayload);
+      if (updatedTicket.assignedTeacherId) {
+        io.to(`teacher:${updatedTicket.assignedTeacherId}`).emit('ticket:updated', minimalPayload);
       }
       io.to('admins').emit('ticket:updated', minimalPayload);
       
@@ -10388,17 +10386,19 @@ app.post('/api/tickets/:id/approve-send', authenticateToken, requirePermission('
     const savePromises = [];
     
     // Sync mistakes to Student Personal Mushaf (non-blocking - don't wait for it)
-    if (ticket.mistakes && ticket.mistakes.length > 0) {
+    if (updatedTicket.mistakes && updatedTicket.mistakes.length > 0) {
       savePromises.push(
         (async () => {
           try {
-            let personalMushaf = await StudentPersonalMushaf.findOne({ studentId: ticket.studentId }).lean();
+            // ✅ FIX: Use updatedTicket instead of ticket (updatedTicket has all the same data)
+            const ticketData = updatedTicket.toObject ? updatedTicket.toObject() : updatedTicket;
+            let personalMushaf = await StudentPersonalMushaf.findOne({ studentId: ticketData.studentId }).lean();
             
             if (!personalMushaf) {
               // Create new personal Mushaf if it doesn't exist
               const newMushaf = new StudentPersonalMushaf({
-                studentId: ticket.studentId,
-                studentName: ticket.studentName,
+                studentId: ticketData.studentId,
+                studentName: ticketData.studentName,
                 mistakes: []
               });
               await newMushaf.save();
@@ -10411,7 +10411,7 @@ app.post('/api/tickets/:id/approve-send', authenticateToken, requirePermission('
             // Add mistakes from ticket to personal Mushaf (avoid duplicates)
             const existingMistakeIds = new Set(personalMushaf.mistakes.map(m => m.id));
             
-            ticket.mistakes.forEach(mistake => {
+            ticketData.mistakes.forEach(mistake => {
               const isDuplicate = existingMistakeIds.has(mistake.id) || 
                 personalMushaf.mistakes.some(existing => 
                   existing.page === mistake.page &&
@@ -10432,10 +10432,10 @@ app.post('/api/tickets/:id/approve-send', authenticateToken, requirePermission('
                   position: mistake.position,
                   note: mistake.note,
                   audioUrl: mistake.audioUrl,
-                  ticketId: ticket._id.toString(),
-                  workflowStep: ticket.type,
-                  markedBy: ticket.assignedTeacherId,
-                  markedByName: ticket.assignedTeacherName,
+                  ticketId: ticketData._id?.toString() || ticketData.id,
+                  workflowStep: ticketData.type,
+                  markedBy: ticketData.assignedTeacherId,
+                  markedByName: ticketData.assignedTeacherName,
                   timestamp: mistake.timestamp || new Date(),
                   createdAt: new Date()
                 });
@@ -10452,36 +10452,12 @@ app.post('/api/tickets/:id/approve-send', authenticateToken, requirePermission('
       );
     }
     
-    // Wait for ticket save (required), Personal Mushaf sync happens in background
+    // ✅ FIX: Ticket is already saved via findByIdAndUpdate, Personal Mushaf sync happens in background
     await Promise.all(savePromises);
 
-    // ✅ PHASE 2 OPTIMIZATION: Emit minimal WebSocket payload for ticket reassignment
-    try {
-      const ticketData = ticket.toObject ? ticket.toObject() : ticket;
-      ticketData.id = ticket._id.toString();
-      const minimalPayload = createMinimalTicketPayload(ticketData, { status: ticket.status, assignedTeacherId: ticket.assignedTeacherId, assignedTeacherName: ticket.assignedTeacherName });
-      
-      // Emit ticket update
-      if (ticket.studentId) {
-        io.to(`student:${ticket.studentId}`).emit('ticket:updated', minimalPayload);
-      }
-      if (ticket.assignedTeacherId) {
-        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', minimalPayload);
-      }
-      io.to('admins').emit('ticket:updated', minimalPayload);
-      
-      // Emit assignment update (since assignment was created/updated)
-      if (assignment.studentId) {
-        emitAssignmentEvent('assignment:updated', assignment, [assignment.studentId?.toString()]);
-      }
-      
-      console.log(`🔌 Emitted ticket:updated and assignment:updated events`);
-    } catch (socketError) {
-      console.error('⚠️ Error emitting socket events:', socketError);
-    }
-
+    // ✅ FIX: Use updatedTicket for response (ticket already declared above, can't redeclare)
     // OPTIMIZED: Convert to plain objects and send response immediately
-    const ticketObj = ticket.toObject ? ticket.toObject() : ticket;
+    const ticketObj = updatedTicket.toObject ? updatedTicket.toObject() : updatedTicket;
     ticketObj.id = ticket._id.toString(); // Add id field for frontend consistency
     const assignmentObj = assignment.toObject ? assignment.toObject() : assignment;
     
