@@ -4550,7 +4550,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Notification Functions
   const refreshNotifications = async () => {
     try {
-      const response = await fetch(`${API_BASE}/admin-notifications`);
+      const response = await fetchWithTimeout(`${API_BASE}/admin-notifications`, {}, 10000, true);
       if (response.ok) {
         const notifications = await response.json();
         // Normalize notifications to have both id and _id
@@ -4573,9 +4573,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     try {
-      const response = await fetch(`${API_BASE}/admin-notifications/${notificationId}/read`, {
+      const response = await fetchWithTimeout(`${API_BASE}/admin-notifications/${notificationId}/read`, {
         method: 'PUT'
-      });
+      }, 10000, true);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -4604,9 +4604,9 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const markAllNotificationsAsRead = async () => {
     try {
-      const response = await fetch(`${API_BASE}/admin-notifications/read-all`, {
+      const response = await fetchWithTimeout(`${API_BASE}/admin-notifications/read-all`, {
         method: 'PUT'
-      });
+      }, 10000, true);
       
       if (!response.ok) {
         throw new Error('Failed to mark all notifications as read');
