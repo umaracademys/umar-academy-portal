@@ -2095,73 +2095,8 @@ const apiLimiter = rateLimit({
 });
 
 // ✅ FIX: authenticateToken is now defined earlier (line ~563) for early routes
-// This is the full version with logging and permission version checking
-// Note: The early version (line ~563) is sufficient for basic auth, but this
-// version adds activity logging and permission version validation
-const authenticateTokenFull = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-  if (!token) {
-    logActivity('unauthorized_access', {
-      req,
-      status: 'blocked',
-      errorMessage: 'No token provided',
-      details: { endpoint: req.path, method: req.method }
-    });
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-    if (err) {
-      await logActivity('unauthorized_access', {
-        req,
-        status: 'blocked',
-        errorMessage: 'Invalid or expired token',
-        details: { endpoint: req.path, method: req.method }
-      });
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    
-    // Phase 4: Check permission version if user is teacher/admin
-    if ((decoded.role === 'teacher' || decoded.role === 'admin') && decoded.permissionsVersion) {
-      try {
-        const user = await User.findById(decoded.userId).select('permissionsVersion');
-        if (user && user.permissionsVersion && user.permissionsVersion !== decoded.permissionsVersion) {
-          // Permissions were updated - token is outdated
-          await logActivity('permission_version_mismatch', {
-            req,
-            userId: decoded.userId,
-            tokenVersion: decoded.permissionsVersion,
-            dbVersion: user.permissionsVersion,
-            details: { endpoint: req.path, method: req.method }
-          });
-          
-          return res.status(401).json({
-            error: 'Your permissions have been updated. Please log in again.',
-            code: 'PERMISSIONS_OUTDATED'
-          });
-        }
-      } catch (dbError) {
-        // Don't block request if DB check fails, but log it
-        console.error('❌ Error checking permission version:', dbError);
-      }
-    }
-    
-    // Phase 3: Attach permissions from token to req.user
-    // Phase 4: Also attach permissionsVersion for version checking
-    // Backward compatibility: if token has no permissions, set to null (will fallback to DB)
-    req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role,
-      permissions: decoded.permissions || null, // null for old tokens (backward compatibility)
-      permissionsVersion: decoded.permissionsVersion || null // null for old tokens (backward compatibility)
-    };
-    
-    next();
-  });
-};
+// The early version handles basic authentication. For routes that need activity logging,
+// we can enhance the middleware later if needed, but the basic version works for all routes.
 
 // ============================================
 // OWNERSHIP VALIDATION HELPERS
