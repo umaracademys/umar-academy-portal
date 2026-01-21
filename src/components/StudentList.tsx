@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, memo } from 'react';
-import { FixedSizeList } from 'react-window';
 import { useData } from '../contexts/DataContext';
 import Card from './Card';
 import { ConfirmationModal } from './ui/ConfirmationModal';
 import { useToast } from '../hooks/useToast';
 import { ToastContainer } from './ui/ToastContainer';
+import Button from './Button';
 
 interface StudentListProps {
   onStudentSelect: (student: any) => void;
@@ -17,7 +17,16 @@ interface StudentListProps {
   onPersonalMushaf?: (student: any) => void;
 }
 
-const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStudent, onDeleteStudent, onAddStudent, onCredentials, onAnalytics, onBulkOperations, onPersonalMushaf }) => {
+const StudentList: React.FC<StudentListProps> = ({ 
+  onStudentSelect, 
+  onEditStudent, 
+  onDeleteStudent, 
+  onAddStudent, 
+  onCredentials, 
+  onAnalytics, 
+  onBulkOperations, 
+  onPersonalMushaf 
+}) => {
   const { students, teachers, addStudent } = useData();
   const { showToast, toasts, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +63,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const getTeacherName = (teacherId: string | undefined | null): string => {
     if (!teacherId) return 'Unassigned';
     
-    // Try to find teacher by various ID fields
     const teacher = teachers.find(t => 
       t.id === teacherId || 
       (t as any)._id === teacherId ||
@@ -62,7 +70,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       (t as any).userId === teacherId
     );
     
-    return teacher?.fullName || teacherId; // Return ID if teacher not found
+    return teacher?.fullName || teacherId;
   };
 
   // Get unique values for filters
@@ -81,14 +89,13 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
   const uniqueStatuses = Array.from(new Set(students.map(s => s.status).filter(Boolean)));
   
-  // Normalize program names to canonical ProgramType values to prevent duplicates
+  // Normalize program names
   const normalizeProgramName = (program: string | undefined): string | null => {
     if (!program) return null;
     const trimmed = program.trim();
     if (!trimmed) return null;
     const normalized = trimmed.toLowerCase();
     
-    // Map variations to canonical ProgramType values
     if (normalized.includes('full') && normalized.includes('time')) {
       return 'Full-Time HQ';
     }
@@ -99,17 +106,13 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       return 'After School';
     }
     
-    // If it matches exactly, return as-is
     if (trimmed === 'Full-Time HQ' || trimmed === 'Part-Time HQ' || trimmed === 'After School') {
       return trimmed;
     }
     
-    // Return the original program name if it doesn't match known patterns
-    // This ensures we don't lose any programs
     return trimmed;
   };
   
-  // Get unique programs - use normalized names for filtering but show all unique values
   const uniquePrograms = useMemo(() => {
     const programSet = new Set<string>();
     students.forEach(student => {
@@ -120,10 +123,10 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         }
       }
     });
-    return Array.from(programSet).sort(); // Sort alphabetically for better UX
+    return Array.from(programSet).sort();
   }, [students]);
 
-  // Fetch user password status for all students
+  // Fetch user password status
   useEffect(() => {
     const fetchUserPasswordStatus = async () => {
       try {
@@ -177,7 +180,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       return matchesSearch && matchesTeacher && matchesProgram && matchesStatus;
     });
 
-    // Sort students based on sortBy and sortOrder
     filtered.sort((a, b) => {
       let comparison = 0;
       
@@ -214,120 +216,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
-  // Virtualized row component for StudentList
-  // Using div-based layout to work with react-window while maintaining table appearance
-  const StudentRow = memo(({ index, style, data }: { index: number; style: React.CSSProperties; data: any }) => {
-    const student = data.students[index];
-    if (!student) return null;
-
-    return (
-      <div 
-        style={style} 
-        className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 border-b border-gray-200 hover:bg-gray-50 items-center"
-      >
-        <div className="px-2 py-2">
-          <div className="flex items-center">
-            <img 
-              src={student.avatar || '/default-avatar.png'} 
-              alt={student.fullName || 'Student'} 
-              className="h-7 w-7 rounded-full mr-2" 
-            />
-            <div>
-              <p className="font-medium text-gray-900 text-xs">{student.fullName || 'Unknown'}</p>
-              <p className="text-[10px] text-gray-500">{student.program || 'No program'}</p>
-            </div>
-          </div>
-        </div>
-        <div className="px-2 py-2 text-[10px] font-mono text-gray-600">{student.id}</div>
-        <div className="px-2 py-2 text-xs">
-          <div>
-            <p className="text-gray-900">{student.email || 'No email'}</p>
-            <p className="text-[10px] text-gray-500">{student.contact || 'No contact'}</p>
-          </div>
-        </div>
-        <div className="px-2 py-2 text-xs">{student.program || 'N/A'}</div>
-        <div className="px-2 py-2 text-xs">{data.getTeacherName(student.assignedTeacher)}</div>
-        <div className="px-2 py-2 text-xs font-semibold">
-          ${student.tuitionFee?.toLocaleString() || '0'}
-        </div>
-        <div className="px-2 py-2">{data.getStatusBadge(student.status || 'active')}</div>
-        <div className="px-2 py-2">
-          {(() => {
-            const email = student.email?.toLowerCase();
-            const status = email ? data.userPasswordStatus[email] : null;
-            if (!status || !status.hasPassword) {
-              return (
-                <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
-                  No Password
-                </span>
-              );
-            }
-            if (status.passwordChangeRequired) {
-              return (
-                <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300" title="Student needs to change password">
-                  Change Required
-                </span>
-              );
-            }
-            return (
-              <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300" title="Password has been changed">
-                Changed
-              </span>
-            );
-          })()}
-        </div>
-        <div className="px-2 py-2">
-          <div className="flex space-x-1">
-            <button
-              onClick={() => data.onStudentSelect(student)}
-              className="text-primary-600 hover:text-primary-800 text-xs font-medium"
-            >
-              View
-            </button>
-            <button
-              onClick={() => data.onEditStudent(student)}
-              className="text-gold-600 hover:text-gold-800 text-xs font-medium"
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => data.onDeleteStudent(student.id)}
-              className="text-red-600 hover:text-red-800 text-xs font-medium"
-            >
-              Del
-            </button>
-            {data.onCredentials && (
-              <button
-                onClick={() => data.onCredentials(student)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-              >
-                Credentials
-              </button>
-            )}
-            {data.onAnalytics && (
-              <button
-                onClick={() => data.onAnalytics(student)}
-                className="text-purple-600 hover:text-purple-800 text-sm font-medium"
-              >
-                Analytics
-              </button>
-            )}
-            {data.onPersonalMushaf && (
-              <button
-                onClick={() => data.onPersonalMushaf(student)}
-                className="text-green-600 hover:text-green-800 text-xs font-medium"
-                title="View Personal Mushaf with Mistakes"
-              >
-                Mushaf
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  });
-  StudentRow.displayName = 'StudentRow';
-
   const handleSort = (field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -339,18 +227,290 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      active: 'bg-primary text-white border-primary', // Keep white text on dark green for contrast
-      inactive: 'bg-soft-primary text-primary border-primary/30',
-      pending: 'bg-accent/30 text-primary border-accent/50',
-      suspended: 'bg-soft-primary text-primary border-primary/20'
+      active: 'bg-green-100 text-green-700',
+      inactive: 'bg-gray-100 text-gray-700',
+      pending: 'bg-amber-100 text-amber-700',
+      suspended: 'bg-red-100 text-red-700'
     };
     
     return (
-      <span className={`px-2 sm:px-3 py-1 text-xs font-extrabold rounded-full border-2 ${statusColors[status as keyof typeof statusColors] || statusColors.inactive}`}>
+      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusColors[status as keyof typeof statusColors] || statusColors.inactive}`}>
         {status}
       </span>
     );
   };
+
+  const getPasswordStatusBadge = (student: any) => {
+    const email = student.email?.toLowerCase();
+    const status = email ? userPasswordStatus[email] : null;
+    
+    if (!status || !status.hasPassword) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-700">
+          No Password
+        </span>
+      );
+    }
+    if (status.passwordChangeRequired) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700" title="Student needs to change password">
+          Change Required
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700" title="Password has been changed">
+        Changed
+      </span>
+    );
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return '?';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  // Mobile Card Component
+  const StudentCard = memo(({ student }: { student: any }) => {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+        {/* Header: Avatar, Name */}
+        <div className="flex items-start gap-3 mb-4">
+          <div className="relative flex-shrink-0">
+            {student.avatar ? (
+              <img 
+                src={student.avatar} 
+                alt={student.fullName || 'Student'} 
+                className="h-12 w-12 rounded-full object-cover border-2 border-gray-200" 
+              />
+            ) : (
+              <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center border-2 border-gray-200">
+                <span className="text-primary-700 font-semibold text-sm">
+                  {getInitials(student.fullName || 'Unknown')}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-900 truncate mb-1">{student.fullName || 'Unknown'}</h3>
+            <p className="text-sm text-gray-600 truncate">{student.program || 'No program'}</p>
+            <p className="text-xs text-gray-500 font-mono truncate max-w-[200px]" title={student.id}>
+              ID: {student.id}
+            </p>
+          </div>
+        </div>
+
+        {/* Contact Info */}
+        <div className="space-y-2 mb-4 pb-4 border-b border-gray-100">
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Email</p>
+            <p className="text-sm text-gray-900 truncate">{student.email || 'No email'}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Phone</p>
+            <p className="text-sm text-gray-900">{student.contact || 'No contact'}</p>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Teacher</p>
+            <p className="text-sm text-gray-900 truncate">{getTeacherName(student.assignedTeacher)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Tuition</p>
+            <p className="text-sm font-semibold text-gray-900">
+              ${student.tuitionFee?.toLocaleString() || '0'}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Status</p>
+            {getStatusBadge(student.status || 'active')}
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-0.5">Password</p>
+            {getPasswordStatusBadge(student)}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-2 pt-2">
+          <button
+            onClick={() => onStudentSelect(student)}
+            className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+          >
+            View
+          </button>
+          <button
+            onClick={() => onEditStudent(student)}
+            className="px-3 py-1.5 text-xs font-medium text-amber-600 bg-amber-50 rounded-md hover:bg-amber-100 transition-colors"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => onDeleteStudent(student.id)}
+            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+          >
+            Delete
+          </button>
+          {onCredentials && (
+            <button
+              onClick={() => onCredentials(student)}
+              className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+            >
+              Credentials
+            </button>
+          )}
+          {onAnalytics && (
+            <button
+              onClick={() => onAnalytics(student)}
+              className="px-3 py-1.5 text-xs font-medium text-purple-600 bg-purple-50 rounded-md hover:bg-purple-100 transition-colors"
+            >
+              Analytics
+            </button>
+          )}
+          {onPersonalMushaf && (
+            <button
+              onClick={() => onPersonalMushaf(student)}
+              className="px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100 transition-colors"
+            >
+              Mushaf
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  });
+  StudentCard.displayName = 'StudentCard';
+
+  // Desktop Table Row Component
+  const StudentRow = memo(({ student }: { student: any }) => {
+    return (
+      <tr className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+        {/* Student Name & Avatar */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative flex-shrink-0">
+              {student.avatar ? (
+                <img 
+                  src={student.avatar} 
+                  alt={student.fullName || 'Student'} 
+                  className="h-10 w-10 rounded-full object-cover border border-gray-200" 
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center border border-gray-200">
+                  <span className="text-primary-700 font-semibold text-xs">
+                    {getInitials(student.fullName || 'Unknown')}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 truncate">{student.fullName || 'Unknown'}</p>
+              <p className="text-xs text-gray-500 truncate">{student.program || 'No program'}</p>
+            </div>
+          </div>
+        </td>
+
+        {/* ID */}
+        <td className="px-4 py-3">
+          <p className="text-xs font-mono text-gray-600 truncate max-w-[100px]" title={student.id}>
+            {student.id}
+          </p>
+        </td>
+
+        {/* Contact */}
+        <td className="px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-sm text-gray-900 truncate">{student.email || 'No email'}</p>
+            <p className="text-xs text-gray-500 truncate">{student.contact || 'No contact'}</p>
+          </div>
+        </td>
+
+        {/* Program */}
+        <td className="px-4 py-3">
+          <p className="text-sm text-gray-700 truncate">{student.program || 'N/A'}</p>
+        </td>
+
+        {/* Teacher */}
+        <td className="px-4 py-3">
+          <p className="text-sm text-gray-700 truncate">{getTeacherName(student.assignedTeacher)}</p>
+        </td>
+
+        {/* Tuition */}
+        <td className="px-4 py-3">
+          <p className="text-sm font-semibold text-gray-900">
+            ${student.tuitionFee?.toLocaleString() || '0'}
+          </p>
+        </td>
+
+        {/* Status */}
+        <td className="px-4 py-3">
+          {getStatusBadge(student.status || 'active')}
+        </td>
+
+        {/* Password Status */}
+        <td className="px-4 py-3">
+          {getPasswordStatusBadge(student)}
+        </td>
+
+        {/* Actions */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onStudentSelect(student)}
+              className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+            >
+              View
+            </button>
+            <button
+              onClick={() => onEditStudent(student)}
+              className="px-2 py-1 text-xs font-medium text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded transition-colors"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => onDeleteStudent(student.id)}
+              className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+            >
+              Del
+            </button>
+            {onCredentials && (
+              <button
+                onClick={() => onCredentials(student)}
+                className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+              >
+                Credentials
+              </button>
+            )}
+            {onAnalytics && (
+              <button
+                onClick={() => onAnalytics(student)}
+                className="px-2 py-1 text-xs font-medium text-purple-600 hover:text-purple-800 hover:bg-purple-50 rounded transition-colors"
+              >
+                Analytics
+              </button>
+            )}
+            {onPersonalMushaf && (
+              <button
+                onClick={() => onPersonalMushaf(student)}
+                className="px-2 py-1 text-xs font-medium text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                title="View Personal Mushaf with Mistakes"
+              >
+                Mushaf
+              </button>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  });
+  StudentRow.displayName = 'StudentRow';
 
   // Generate secure password
   const generateSecurePassword = () => {
@@ -361,22 +521,19 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const allChars = uppercase + lowercase + numbers + special;
     
     let password = '';
-    // Ensure at least one of each required character type
     password += uppercase[Math.floor(Math.random() * uppercase.length)];
     password += lowercase[Math.floor(Math.random() * lowercase.length)];
     password += numbers[Math.floor(Math.random() * numbers.length)];
     password += special[Math.floor(Math.random() * special.length)];
     
-    // Fill the rest randomly
     for (let i = password.length; i < 12; i++) {
       password += allChars[Math.floor(Math.random() * allChars.length)];
     }
     
-    // Shuffle the password
     return password.split('').sort(() => Math.random() - 0.5).join('');
   };
 
-  // Reset passwords for all filtered students
+  // Reset passwords
   const handleResetPasswords = async () => {
     if (filteredStudents.length === 0) {
       showToast('No students to reset passwords for', 'warning');
@@ -391,12 +548,11 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false });
         await performPasswordReset();
-    }
+      }
     });
   };
 
   const performPasswordReset = async () => {
-
     setResettingPasswords(true);
     const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
     const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
@@ -407,7 +563,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     const failures: Array<{ email: string; reason: string }> = [];
 
     try {
-      // First, check database connection
       const healthResponse = await fetch(`${API_BASE}/health`);
       if (healthResponse.ok) {
         const health = await healthResponse.json();
@@ -422,7 +577,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         }
       }
 
-      // Get all users to find userIds for students
       const usersResponse = await fetch(`${API_BASE}/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -441,35 +595,27 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
       const users = await usersResponse.json();
 
-      // Process each filtered student
       for (const student of filteredStudents) {
         try {
-          // Find user by email
           const user = users.find((u: any) => 
             u.email?.toLowerCase() === student.email?.toLowerCase()
           );
 
           if (!user) {
-            const reason = `No User account found for email ${student.email}`;
-            console.warn(reason);
-            failures.push({ email: student.email || 'Unknown', reason });
+            failures.push({ email: student.email || 'Unknown', reason: `No User account found for email ${student.email}` });
             failCount++;
             continue;
           }
 
-          // Generate new password
           const newPassword = generateSecurePassword();
           const userId = user._id || user.id;
 
           if (!userId) {
-            const reason = `No user ID found for ${student.email}`;
-            console.error(reason);
-            failures.push({ email: student.email || 'Unknown', reason });
+            failures.push({ email: student.email || 'Unknown', reason: `No user ID found for ${student.email}` });
             failCount++;
             continue;
           }
 
-          // Reset password via API (admin reset - no current password needed)
           const response = await fetch(`${API_BASE}/users/${userId}/password`, {
             method: 'PUT',
             headers: {
@@ -480,22 +626,16 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           });
 
           if (response.ok) {
-            const result = await response.json();
             newPasswords[student.id || student.email] = newPassword;
             successCount++;
-            console.log(`✅ Password reset for ${student.email} - Saved to MongoDB`);
-            console.log(`   Password: ${newPassword} (will be hashed in database)`);
-            console.log(`   User ID: ${userId}`);
           } else {
             const errorData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
             const reason = errorData.error || errorData.details || `HTTP ${response.status}`;
-            console.error(`❌ Failed to reset password for ${student.email}:`, errorData);
             failures.push({ email: student.email || 'Unknown', reason });
             failCount++;
           }
         } catch (error) {
           const reason = error instanceof Error ? error.message : 'Unknown error';
-          console.error(`❌ Error resetting password for ${student.email}:`, error);
           failures.push({ email: student.email || 'Unknown', reason });
           failCount++;
         }
@@ -514,7 +654,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
           const moreCount = failures.length > 5 ? ` and ${failures.length - 5} more` : '';
           showToast(`Failures: ${failureDetails}${moreCount}. Check console for details.`, 'error', 8000);
         }
-        // Enable password in export fields
         setExportFields({ ...exportFields, password: true });
         setShowPasswordModal(false);
       } else {
@@ -545,19 +684,16 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       return;
     }
 
-    // Check if password is selected but not generated
     if (exportFields.password && Object.keys(generatedPasswords).length === 0) {
       showToast('Please generate/reset passwords first before exporting with password field', 'warning');
       return;
     }
 
-    // Prepare headers
     const headers: string[] = [];
     if (exportFields.fullName) headers.push('Full Name');
     if (exportFields.email) headers.push('Email');
     if (exportFields.password) headers.push('Password');
 
-    // Prepare data rows
     const rows = filteredStudents.map(student => {
       const row: string[] = [];
       if (exportFields.fullName) row.push(`"${(student.fullName || '').replace(/"/g, '""')}"`);
@@ -569,13 +705,11 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       return row.join(',');
     });
 
-    // Create CSV content
     const csvContent = [
       headers.join(','),
       ...rows
     ].join('\n');
 
-    // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
@@ -590,22 +724,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    // Close modal
     setShowExportModal(false);
-  };
-
-  const getPaymentStatus = (student: any) => {
-    // Mock payment status - in real app, this would come from payment data
-    const isOverdue = Math.random() > 0.8;
-    const isPending = Math.random() > 0.9;
-    
-    if (isOverdue) {
-      return <span className="text-primary text-xs font-extrabold">Overdue</span>;
-    } else if (isPending) {
-      return <span className="text-primary text-xs font-extrabold">Pending</span>;
-    } else {
-      return <span className="text-primary text-xs font-extrabold">Current</span>;
-    }
   };
 
   const addSampleStudents = () => {
@@ -664,7 +783,6 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
     });
   };
 
-
   return (
     <>
       {/* Toast Container */}
@@ -682,121 +800,152 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
 
-    <div className="space-y-6">
-      {/* Prominent Header */}
-      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-2xl p-3 sm:p-4 border-b-4 border-accent shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white mb-1 drop-shadow-lg">
-              Student Directory
-            </h2>
-            <p className="text-white/90 text-xs sm:text-sm font-semibold">
-              Manage all registered students • {filteredStudents.length} {filteredStudents.length === 1 ? 'student' : 'students'} found
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {onAddStudent && (
-              <button 
-                onClick={onAddStudent}
-                className="px-4 sm:px-5 py-1.5 sm:py-2 bg-accent text-primary rounded-full font-bold hover:scale-105 transition-all shadow-lg text-xs sm:text-sm"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-primary)' }}
+      <div className="space-y-6 bg-gray-50 min-h-screen py-6">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Student Directory</h1>
+              <p className="text-gray-600">
+                Manage and view all registered students
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {onAddStudent && (
+                <Button
+                  onClick={onAddStudent}
+                  variant="primary"
+                  size="md"
+                >
+                  <span className="mr-2">+</span>
+                  Add Student
+                </Button>
+              )}
+              {students.length === 0 && (
+                <Button
+                  onClick={addSampleStudents}
+                  variant="outline"
+                  size="md"
+                >
+                  Add Sample
+                </Button>
+              )}
+              <Button
+                onClick={() => setShowPasswordModal(true)}
+                variant="outline"
+                size="md"
               >
-                Add Student
-              </button>
-            )}
-            {students.length === 0 && (
-            <button 
-              onClick={addSampleStudents}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs"
-            >
-              Add Sample
-            </button>
-            )}
-            <button 
-              onClick={() => setShowPasswordModal(true)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-full font-bold hover:bg-green-700 transition-all shadow-md hover:scale-105 text-xs"
-            >
-              {Object.keys(generatedPasswords).length > 0 ? '🔑 Passwords Generated' : '🔑 Generate Passwords'}
-            </button>
-            <button 
-              onClick={() => setShowExportModal(true)}
-              className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs"
-            >
-              Export
-            </button>
-            <button className="px-3 sm:px-4 py-1.5 sm:py-2 bg-accent/30 text-primary rounded-full font-bold hover:bg-accent/40 transition-all shadow-md hover:scale-105 text-xs">
-              Import
-            </button>
+                {Object.keys(generatedPasswords).length > 0 ? '🔑 Passwords Generated' : '🔑 Generate Passwords'}
+              </Button>
+              <Button
+                onClick={() => setShowExportModal(true)}
+                variant="outline"
+                size="md"
+              >
+                Export
+              </Button>
+              <Button variant="outline" size="md">
+                Import
+              </Button>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">{filteredStudents.length}</span>
+              <span>{filteredStudents.length === 1 ? 'student' : 'students'} found</span>
+              {filteredStudents.length !== students.length && (
+                <>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-500">Filtered from {students.length} total</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Enhanced Filters and Search */}
-      <Card>
-        <div className="bg-gradient-to-br from-soft-primary to-soft-primary rounded-xl p-3 sm:p-4 border-2 border-primary/20">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 mb-3">
-            {/* Search */}
-            <div className="sm:col-span-2 lg:col-span-2">
-              <label className="block text-xs font-bold text-primary mb-1.5">Search Students</label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, email, or ID..."
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm placeholder:text-primary/50"
-              />
-            </div>
-
-            {/* Program Filter */}
-            <div>
-              <label className="block text-xs font-bold text-primary mb-1.5">Program</label>
-              <select
-                value={selectedProgram}
-                onChange={(e) => setSelectedProgram(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
-              >
-                <option value="all">All Programs</option>
-                {uniquePrograms.map(program => (
-                  <option key={program} value={program}>{program}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Teacher Filter */}
-            <div>
-              <label className="block text-xs font-bold text-primary mb-1.5">Teacher</label>
-              <select
-                value={selectedTeacher}
-                onChange={(e) => setSelectedTeacher(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
-              >
-                <option value="all">All Teachers</option>
-                {uniqueTeachers.map(teacher => (
-                  <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Status Filter */}
-            <div>
-              <label className="block text-xs font-bold text-primary mb-1.5">Status</label>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
-              >
-                <option value="all">All Status</option>
-                {uniqueStatuses.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-            </div>
+        {/* Filter Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Search & Filters</h2>
+            <p className="text-sm text-gray-500">Refine your search to find specific students</p>
           </div>
+          
+          <div className="space-y-4">
+            {/* Search Bar */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Search Students
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name, email, or ID..."
+                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm"
+                />
+              </div>
+            </div>
 
-          {/* Filter Actions */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mt-3 pt-3 border-t-2 border-primary/20">
-            <div className="flex flex-wrap gap-1.5">
-              <button
+            {/* Filter Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Program
+                </label>
+                <select
+                  value={selectedProgram}
+                  onChange={(e) => setSelectedProgram(e.target.value)}
+                  className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
+                >
+                  <option value="all">All Programs</option>
+                  {uniquePrograms.map(program => (
+                    <option key={program} value={program}>{program}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Teacher
+                </label>
+                <select
+                  value={selectedTeacher}
+                  onChange={(e) => setSelectedTeacher(e.target.value)}
+                  className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
+                >
+                  <option value="all">All Teachers</option>
+                  {uniqueTeachers.map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
+                >
+                  <option value="all">All Status</option>
+                  {uniqueStatuses.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Button
                 onClick={() => {
                   setSearchTerm('');
                   setSelectedTeacher('all');
@@ -804,342 +953,381 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
                   setSelectedStatus('all');
                   setSelectedPaymentStatus('all');
                 }}
-                className="px-3 sm:px-4 py-1.5 bg-primary text-white rounded-full font-bold hover:scale-105 transition-all shadow-md hover:shadow-lg text-xs"
+                variant="secondary"
+                size="sm"
               >
                 Clear Filters
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   setSortBy('name');
                   setSortOrder('asc');
                 }}
-                className="px-3 sm:px-4 py-1.5 bg-accent text-primary rounded-full font-bold hover:scale-105 transition-all shadow-md hover:shadow-lg text-xs"
+                variant="secondary"
+                size="sm"
               >
                 Reset Sort
-              </button>
-            </div>
-            <div className="text-[10px] sm:text-xs font-bold text-primary">
-              Showing <span className="text-accent">{filteredStudents.length}</span> of <span className="text-accent">{students.length}</span> students
+              </Button>
             </div>
           </div>
+        </div>
 
-          {/* Active Filters Display */}
-          {(searchTerm || selectedTeacher !== 'all' || selectedStatus !== 'all' || selectedPaymentStatus !== 'all') && (
-            <div className="flex flex-wrap items-center gap-1.5 p-2 bg-accent/20 border-2 border-accent/40 rounded-lg mt-3">
-              <span className="text-[10px] font-bold text-primary">Active Filters:</span>
-              {searchTerm && (
-                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full shadow-sm">
-                  Search: "{searchTerm}"
-                </span>
-              )}
-              {selectedTeacher !== 'all' && (
-                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full shadow-sm">
-                  Teacher: {selectedTeacher}
-                </span>
-              )}
-              {selectedStatus !== 'all' && (
-                <span className="px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full shadow-sm">
-                  Status: {selectedStatus}
-                </span>
-              )}
-              {selectedPaymentStatus !== 'all' && (
-                <span className="px-2 sm:px-3 py-1 sm:py-1.5 bg-primary text-white text-xs font-extrabold rounded-full shadow-md">
-                  Payment: {selectedPaymentStatus}
-                </span>
-              )}
+        {/* Mobile View: Cards */}
+        <div className="md:hidden space-y-4">
+          {paginatedStudents.length > 0 ? (
+            paginatedStudents.map((student, index) => (
+              <StudentCard key={student.id || student._id || index} student={student} />
+            ))
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <h3 className="mt-4 text-sm font-medium text-gray-900">No students found</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Try adjusting your search or filter criteria
+              </p>
             </div>
           )}
         </div>
-      </Card>
 
-      {/* Students Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          {/* Table Header - using grid to match row layout */}
-          <div className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 bg-gray-50 border-b-2 border-gray-200">
-            <div 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Student</span>
-                    {sortBy === 'name' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
+        {/* Desktop View: Table */}
+        <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="p-6 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Students</h2>
+              <div className="text-sm text-gray-600">
+                Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
+                <span className="font-semibold text-gray-900">{Math.min(startIndex + itemsPerPage, filteredStudents.length)}</span> of{' '}
+                <span className="font-semibold text-gray-900">{filteredStudents.length}</span>
+              </div>
             </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</div>
-            <div 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('email')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Contact</span>
-                    {sortBy === 'email' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-            </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Program</div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Teacher</div>
-            <div 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('tuitionFee')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Tuition</span>
-                    {sortBy === 'tuitionFee' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                        </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Password</div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</div>
-                      </div>
+          </div>
 
-          {/* Virtualized Body */}
-          {paginatedStudents.length > 0 ? (
-            <FixedSizeList
-              height={Math.min(600, paginatedStudents.length * 60)}
-              itemCount={paginatedStudents.length}
-              itemSize={60}
-              width="100%"
-              itemData={{
-                students: paginatedStudents,
-                getTeacherName,
-                getStatusBadge,
-                userPasswordStatus,
-                onStudentSelect,
-                onEditStudent,
-                onDeleteStudent,
-                onCredentials,
-                onAnalytics,
-                onPersonalMushaf
-              }}
-              className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-            >
-              {StudentRow}
-            </FixedSizeList>
-              ) : (
-            <div className="px-4 py-8 text-center text-gray-500">
-                    <div className="flex flex-col items-center">
-                      <p className="text-lg font-semibold mb-2">No students found</p>
-                      <p className="text-sm">No students match the selected filters.</p>
-                      <button
-                        onClick={() => {
-                          setSearchTerm('');
-                          setSelectedTeacher('all');
-                          setSelectedStatus('all');
-                          setSelectedPaymentStatus('all');
-                        }}
-                        className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-medium"
-                      >
-                        Clear All Filters
-                      </button>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b-2 border-gray-300">
+                <tr>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Student</span>
+                      {sortBy === 'name' && (
+                        <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
                     </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('email')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Contact</span>
+                      {sortBy === 'email' && (
+                        <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Program</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => handleSort('tuitionFee')}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span>Tuition</span>
+                      {sortBy === 'tuitionFee' && (
+                        <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Password</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedStudents.length > 0 ? (
+                  paginatedStudents.map((student, index) => (
+                    <StudentRow key={student.id || student._id || index} student={student} />
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="px-6 py-16 text-center">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                      <h3 className="mt-4 text-sm font-medium text-gray-900">No students found</h3>
+                      <p className="mt-2 text-sm text-gray-500">
+                        Try adjusting your search or filter criteria
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-700">Show</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm bg-white"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-700">per page</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center gap-1 px-4">
+                    <span className="text-sm text-gray-700">
+                      Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
+                      <span className="font-semibold text-gray-900">{totalPages}</span>
+                    </span>
+                  </div>
+                  
+                  <Button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </div>
-              )}
+          )}
         </div>
 
-        {/* Pagination */}
+        {/* Mobile Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-700">Show</span>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="px-2 py-1 border border-gray-300 rounded text-sm"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-              <span className="text-sm text-gray-700">per page</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
+          <div className="md:hidden bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-sm text-gray-700">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm bg-white"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-gray-700">per page</span>
+              </div>
               
-              <span className="text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1 px-4">
+                  <span className="text-sm text-gray-700">
+                    Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
+                    <span className="font-semibold text-gray-900">{totalPages}</span>
+                  </span>
+                </div>
+                
+                <Button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         )}
-      </Card>
 
-      {/* Generate/Reset Password Modal */}
-      {showPasswordModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">Generate/Reset Passwords</h3>
-                <button
-                  onClick={() => setShowPasswordModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+        {/* Generate/Reset Password Modal */}
+        {showPasswordModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900">Generate/Reset Passwords</h3>
+                  <button
+                    onClick={() => setShowPasswordModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>⚠️ Warning:</strong> This will reset passwords for <strong>{filteredStudents.length}</strong> student(s). 
-                  Generated passwords will be available for export. Make sure to export and save them securely.
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Password Requirements:</strong>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Minimum 8 characters</li>
-                    <li>Uppercase, lowercase, number, and special character</li>
-                    <li>Passwords will be generated automatically</li>
-                  </ul>
-                </p>
-              </div>
-
-              {Object.keys(generatedPasswords).length > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm text-green-800">
-                    <strong>✅ Success:</strong> {Object.keys(generatedPasswords).length} password(s) have been generated. 
-                    You can now export them with student data.
+              <div className="p-6 space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800">
+                    <strong>⚠️ Warning:</strong> This will reset passwords for <strong>{filteredStudents.length}</strong> student(s). 
+                    Generated passwords will be available for export. Make sure to export and save them securely.
                   </p>
                 </div>
-              )}
 
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={handleResetPasswords}
-                  disabled={resettingPasswords}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {resettingPasswords ? 'Generating...' : 'Generate Passwords for All'}
-                </button>
-                <button
-                  onClick={() => setShowPasswordModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
-                >
-                  {Object.keys(generatedPasswords).length > 0 ? 'Done' : 'Cancel'}
-                </button>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Password Requirements:</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Minimum 8 characters</li>
+                      <li>Uppercase, lowercase, number, and special character</li>
+                      <li>Passwords will be generated automatically</li>
+                    </ul>
+                  </p>
+                </div>
+
+                {Object.keys(generatedPasswords).length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-800">
+                      <strong>✅ Success:</strong> {Object.keys(generatedPasswords).length} password(s) have been generated. 
+                      You can now export them with student data.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={handleResetPasswords}
+                    disabled={resettingPasswords}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {resettingPasswords ? 'Generating...' : 'Generate Passwords for All'}
+                  </button>
+                  <button
+                    onClick={() => setShowPasswordModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                  >
+                    {Object.keys(generatedPasswords).length > 0 ? 'Done' : 'Cancel'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Export Modal */}
-      {showExportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900">Export Students</h3>
-                <button
-                  onClick={() => setShowExportModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Fields to Export</label>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={exportFields.fullName}
-                      onChange={(e) => setExportFields({ ...exportFields, fullName: e.target.checked })}
-                      className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
-                    />
-                    <span className="text-sm font-medium text-gray-900">Full Name</span>
-                  </label>
-                  <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
-                    <input
-                      type="checkbox"
-                      checked={exportFields.email}
-                      onChange={(e) => setExportFields({ ...exportFields, email: e.target.checked })}
-                      className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
-                    />
-                    <span className="text-sm font-medium text-gray-900">Email</span>
-                  </label>
-                  <label className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200 ${Object.keys(generatedPasswords).length === 0 ? 'opacity-50' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={exportFields.password}
-                      onChange={(e) => setExportFields({ ...exportFields, password: e.target.checked })}
-                      disabled={Object.keys(generatedPasswords).length === 0}
-                      className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary disabled:opacity-50"
-                    />
-                    <span className="text-sm font-medium text-gray-900">
-                      Password {Object.keys(generatedPasswords).length > 0 && `(${Object.keys(generatedPasswords).length} generated)`}
-                    </span>
-                  </label>
+        {/* Export Modal */}
+        {showExportModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900">Export Students</h3>
+                  <button
+                    onClick={() => setShowExportModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">Select Fields to Export</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={exportFields.fullName}
+                        onChange={(e) => setExportFields({ ...exportFields, fullName: e.target.checked })}
+                        className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium text-gray-900">Full Name</span>
+                    </label>
+                    <label className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200">
+                      <input
+                        type="checkbox"
+                        checked={exportFields.email}
+                        onChange={(e) => setExportFields({ ...exportFields, email: e.target.checked })}
+                        className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary"
+                      />
+                      <span className="text-sm font-medium text-gray-900">Email</span>
+                    </label>
+                    <label className={`flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-gray-50 border border-gray-200 ${Object.keys(generatedPasswords).length === 0 ? 'opacity-50' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={exportFields.password}
+                        onChange={(e) => setExportFields({ ...exportFields, password: e.target.checked })}
+                        disabled={Object.keys(generatedPasswords).length === 0}
+                        className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary disabled:opacity-50"
+                      />
+                      <span className="text-sm font-medium text-gray-900">
+                        Password {Object.keys(generatedPasswords).length > 0 && `(${Object.keys(generatedPasswords).length} generated)`}
+                      </span>
+                    </label>
+                  </div>
+                </div>
 
-              {Object.keys(generatedPasswords).length > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-sm text-green-800">
-                    <strong>✅ Passwords Generated:</strong> {Object.keys(generatedPasswords).length} password(s) have been generated and can be included in the export.
+                {Object.keys(generatedPasswords).length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-sm text-green-800">
+                      <strong>✅ Passwords Generated:</strong> {Object.keys(generatedPasswords).length} password(s) have been generated and can be included in the export.
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    <strong>Note:</strong> The export will include all {filteredStudents.length} filtered students.
                   </p>
                 </div>
-              )}
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Note:</strong> The export will include all {filteredStudents.length} filtered students.
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={handleExport}
-                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all shadow-md"
-                >
-                  Generate for All & Export
-                </button>
-                <button
-                  onClick={() => setShowExportModal(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
-                >
-                  Cancel
-                </button>
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={handleExport}
+                    className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-semibold hover:bg-primary/90 transition-all shadow-md"
+                  >
+                    Export
+                  </button>
+                  <button
+                    onClick={() => setShowExportModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </>
   );
 };
