@@ -26,10 +26,14 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   useEffect(() => {
     // Only refresh if we don't have tickets yet
     if (recitationTickets.length === 0) {
-      console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
+      if (import.meta.env.DEV) {
+        console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
+      }
       refreshDataLight();
     } else {
-      console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
+      if (import.meta.env.DEV) {
+        console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
@@ -62,9 +66,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
     const filtered = recitationTickets.filter(t => t.status === 'submitted');
-    console.log('📋 AdminTicketReview: Total tickets:', recitationTickets.length);
-    console.log('📋 AdminTicketReview: Pending tickets (submitted):', filtered.length);
-    console.log('📋 AdminTicketReview: All ticket statuses:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
+    if (import.meta.env.DEV) {
+      console.log('📋 AdminTicketReview: Total tickets:', recitationTickets.length);
+      console.log('📋 AdminTicketReview: Pending tickets (submitted):', filtered.length);
+      console.log('📋 AdminTicketReview: All ticket statuses:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
+    }
     return filtered;
   }, [recitationTickets]);
 

@@ -1402,12 +1402,14 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               }))
             });
           } else {
-            // Log successful match (production-safe)
-            console.log('✅ Teacher Document ID found:', {
-              userEmail: user.email,
-              teacherDocId: teacherDocId,
-              userId: user._id
-            });
+            // Log successful match (dev only)
+            if (import.meta.env.DEV) {
+              console.log('✅ Teacher Document ID found:', {
+                userEmail: user.email,
+                teacherDocId: teacherDocId,
+                userId: user._id
+              });
+            }
           }
           
           return {
