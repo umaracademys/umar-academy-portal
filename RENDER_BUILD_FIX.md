@@ -14,7 +14,12 @@ Render is trying to execute `render.yaml` as a command, which means the build co
 5. **Clear** the current value (which is probably set to `render.yaml`)
 6. **Set it to:**
    ```bash
-   npx -y pnpm@9.0.0 install --frozen-lockfile --no-optional --prefer-offline && npx -y pnpm@9.0.0 --filter @umar-academy/mushaf build && npx -y pnpm@9.0.0 run build:fast
+   bash render-build.sh
+   ```
+   
+   **OR** if you prefer the inline command:
+   ```bash
+   corepack prepare pnpm@9.0.0 --activate && pnpm install --frozen-lockfile --no-optional --prefer-offline && pnpm --filter @umar-academy/mushaf build && pnpm run build:fast
    ```
 7. Click **Save Changes**
 8. Trigger a new deploy
@@ -32,20 +37,31 @@ If you want to use `render.yaml` exclusively:
 ## Current Build Command (from render.yaml)
 
 ```yaml
-buildCommand: npx -y pnpm@9.0.0 install --frozen-lockfile --no-optional --prefer-offline && npx -y pnpm@9.0.0 --filter @umar-academy/mushaf build && npx -y pnpm@9.0.0 run build:fast
+buildCommand: bash render-build.sh
 ```
 
-This command:
-1. Uses `npx` to run pnpm@9.0.0 without global installation (avoids broken npm)
-2. Installs dependencies with frozen lockfile
-3. Builds the Mushaf package
-4. Builds the frontend
+The `render-build.sh` script:
+1. Uses `corepack prepare` (built into Node.js, doesn't require npm)
+2. Activates pnpm@9.0.0
+3. Installs dependencies with frozen lockfile
+4. Builds the Mushaf package
+5. Builds the frontend
 
 ## Why This Works
 
-- `npx -y pnpm@9.0.0` downloads and runs pnpm without needing global installation
-- Works even when npm is broken in Render's environment
-- `-y` flag automatically answers yes to prompts
+- `corepack prepare` is built into Node.js and doesn't require npm to be functional
+- `corepack prepare` doesn't require `enable` (which modifies system files)
+- Works even when npm is completely broken
 - Matches the `packageManager: "pnpm@9.0.0"` in package.json
-- Avoids `corepack enable` which requires write access to system directories
-- Avoids `npm install -g` which may fail due to broken npm installation
+- Uses a shell script for better error handling and readability
+
+## ⚠️ IMPORTANT: Dashboard Override
+
+**If you see `npm install && npm run build` in the build logs, Render is using the default build command from the dashboard, NOT from `render.yaml`.**
+
+**You MUST update the Build Command in the Render dashboard to:**
+```bash
+bash render-build.sh
+```
+
+Or clear the Build Command field entirely to use `render.yaml`.
