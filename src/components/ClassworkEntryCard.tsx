@@ -127,17 +127,38 @@ const ClassworkEntryCard: React.FC<ClassworkEntryCardProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Left Section - Metadata */}
         <div className="space-y-2">
-          {/* Surah Name */}
+          {/* Surah Name(s) */}
           {phase.surahName && (
             <div>
               <span className="text-xs font-semibold text-gray-600">Surah:</span>
-              <p 
-                className="text-sm font-bold text-primary mt-0.5"
-                style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
-                dir="rtl"
-              >
-                {phase.surahName}
-              </p>
+              <div className="mt-0.5 space-y-1">
+                {/* Start Surah */}
+                <div className="flex items-center gap-2">
+                  {phase.endSurahName && phase.endSurahName !== phase.surahName && (
+                    <span className="text-[10px] text-gray-500 font-medium">Start:</span>
+                  )}
+                  <p 
+                    className="text-sm font-bold text-primary flex-1"
+                    style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                    dir="rtl"
+                  >
+                    {phase.surahName}
+                  </p>
+                </div>
+                {/* End Surah (if different) */}
+                {phase.endSurahName && phase.endSurahName !== phase.surahName && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 font-medium">End:</span>
+                    <p 
+                      className="text-sm font-bold text-primary flex-1"
+                      style={{ fontFamily: 'Amiri, "Scheherazade New", "Arabic Typesetting", "Traditional Arabic", serif', direction: 'rtl' }}
+                      dir="rtl"
+                    >
+                      {phase.endSurahName}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -145,7 +166,15 @@ const ClassworkEntryCard: React.FC<ClassworkEntryCardProps> = ({
           {ayahRange && (
             <div>
               <span className="text-xs font-semibold text-gray-600">Ayah Range:</span>
-              <p className="text-sm text-gray-900 mt-0.5">{ayahRange}</p>
+              <p className="text-sm text-gray-900 mt-0.5">
+                {phase.endSurahName && phase.endSurahName !== phase.surahName ? (
+                  <>
+                    {phase.surahName} {phase.fromAyah} → {phase.endSurahName} {phase.toAyah}
+                  </>
+                ) : (
+                  ayahRange
+                )}
+              </p>
             </div>
           )}
 
