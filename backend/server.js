@@ -10048,19 +10048,36 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
       }
     }
     
-    // Use helper function to find ticket (handles both _id and id field)
-    const ticket = await findTicketById(ticketId);
+    // ✅ FIX: Use findByIdAndUpdate instead of findTicketById + save()
+    // findTicketById uses .lean() which returns plain object (no .save() method)
+    // findByIdAndUpdate returns Mongoose document and updates in one operation
+    let ticket;
+    if (mongoose.Types.ObjectId.isValid(ticketId)) {
+      ticket = await Ticket.findByIdAndUpdate(
+        ticketId,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+    } else {
+      // If not valid ObjectId, try finding by id field first, then update
+      const foundTicket = await Ticket.findOne({ id: ticketId });
+      if (!foundTicket) {
+        console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
+        return res.status(404).json({ error: 'Ticket not found' });
+      }
+      ticket = await Ticket.findByIdAndUpdate(
+        foundTicket._id,
+        { $set: updateData },
+        { new: true, runValidators: true }
+      );
+    }
     
     if (!ticket) {
       console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
       return res.status(404).json({ error: 'Ticket not found' });
     }
     
-    console.log(`✅ [Submit] Ticket found: _id=${ticket._id}, id=${ticket.id}, status=${ticket.status}`);
-    
-    // Update the ticket
-    Object.assign(ticket, updateData);
-    await ticket.save();
+    console.log(`✅ [Submit] Ticket found and updated: _id=${ticket._id}, id=${ticket.id}, status=${ticket.status}`);
     
     console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
     
