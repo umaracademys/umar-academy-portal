@@ -40,6 +40,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   
   // Simple state management
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [fullTicketData, setFullTicketData] = useState<Ticket | null>(null); // Store full ticket data fetched from API
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [reassignReason, setReassignReason] = useState('');
@@ -90,16 +91,20 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     });
   }, [recitationTickets, user?.id]);
 
-  // Get selected ticket - search in all tickets, not just pending
+  // Get selected ticket - prefer full ticket data if available, otherwise fallback to list data
   const selectedTicket = useMemo(() => {
     if (!selectedTicketId) return null;
+    // ✅ FIX: Use full ticket data if available (has all fields), otherwise fallback to list data
+    if (fullTicketData && fullTicketData.id === selectedTicketId) {
+      return fullTicketData;
+    }
     const ticket = recitationTickets.find(t => t.id === selectedTicketId);
     if (import.meta.env.DEV) {
       console.log('🔍 Looking for ticket:', selectedTicketId);
       console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
     }
     return ticket || null;
-  }, [selectedTicketId, recitationTickets]);
+  }, [selectedTicketId, recitationTickets, fullTicketData]);
 
   // Initialize mushaf page ONLY when a different ticket is selected (not on data refresh)
   useEffect(() => {
@@ -120,32 +125,56 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTicketId]);
 
-  const handleTicketClick = (ticketId: string) => {
-    console.log('🎫 Clicking ticket:', ticketId);
-    console.log('🎫 Available tickets:', recitationTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
-    console.log('🎫 Pending tickets:', pendingTickets.map(t => ({ id: t.id, status: t.status, student: t.studentName })));
-    
-    // Find ticket in all tickets, not just pending
-    const ticket = recitationTickets.find(t => t.id === ticketId);
-    if (!ticket) {
-      console.error('❌ Ticket not found:', ticketId);
-      showToast('Ticket not found. Please refresh and try again.', 'error');
-      return;
-    }
-    
-    console.log('✅ Found ticket:', ticket);
-    
-    // If it's a Sabq ticket with pending status, open AdminSabqReview
-    if (ticket.type === 'sabq' && ticket.status === 'pending') {
-      setShowSabqReview(true);
-      setSelectedTicketId(ticketId);
-    } else {
-      setSelectedTicketId(ticketId);
+  const handleTicketClick = async (ticketId: string) => {
+    try {
+      // ✅ FIX: Always fetch full ticket data before opening (ticket list has limited fields)
+      const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+      const token = localStorage.getItem('umar_academy_token');
+      const fullTicketResponse = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!fullTicketResponse.ok) {
+        throw new Error('Failed to fetch ticket data');
+      }
+      
+      const fullTicket = await fullTicketResponse.json();
+      const mappedFullTicket = {
+        ...fullTicket,
+        id: fullTicket._id || fullTicket.id
+      };
+      
+      if (import.meta.env.DEV) {
+        console.log('✅ AdminTicketReview: Fetched full ticket data:', mappedFullTicket);
+      }
+      
+      // Store full ticket data
+      setFullTicketData(mappedFullTicket);
+      
+      // If it's a Sabq ticket with pending status, open AdminSabqReview
+      if (mappedFullTicket.type === 'sabq' && mappedFullTicket.status === 'pending') {
+        setShowSabqReview(true);
+        setSelectedTicketId(ticketId);
+      } else {
+        setSelectedTicketId(ticketId);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching full ticket data:', error);
+      showToast('Failed to load ticket details. Please try again.', 'error');
+      // Fallback to using ticket from list
+      const ticket = recitationTickets.find(t => t.id === ticketId);
+      if (ticket) {
+        setSelectedTicketId(ticketId);
+      }
     }
   };
 
   const handleBackToList = () => {
     setSelectedTicketId(null);
+    setFullTicketData(null); // Clear full ticket data when going back
     setShowReassignModal(false);
   };
 
