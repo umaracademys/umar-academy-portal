@@ -4,7 +4,7 @@ services:
     name: umar-academy-backend
     env: node
     plan: free
-    buildCommand: bash backend-render-build.sh
+    buildCommand: bash ./backend-render-build.sh || (pwd && ls -la && bash backend-render-build.sh)
     # Note: Backend doesn't need a build step, just install dependencies
     startCommand: cd backend && node server.js
     envVars:
