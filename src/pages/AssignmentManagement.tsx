@@ -1162,18 +1162,22 @@ const AssignmentManagement: React.FC = () => {
             }
           }}
           onSave={async () => {
-            // Refresh assignments only (faster than full refreshData)
-            // refreshData() loads ALL data (users, teachers, students, assignments, tickets, notifications, reviews)
-            // For assignments page, we only need assignments to refresh
-            // Use refreshDataLight which only refreshes assignments, tickets, notifications (much faster)
-            if (refreshDataLight) {
-              await refreshDataLight();
-            } else {
-            await refreshData();
-            }
+            // Close form first for better UX
             setShowAssignmentForm(false);
             setEditingAssignment(null);
             setPrefillTicket(null);
+            
+            // ✅ FIX: Don't refresh immediately after creating assignment
+            // addAssignment() already updates the state immediately via setAssignments()
+            // Refreshing here would overwrite the newly added assignment if backend hasn't committed yet
+            // Instead, refresh in the background after a delay to ensure consistency
+            setTimeout(async () => {
+              if (refreshDataLight) {
+                await refreshDataLight();
+              } else {
+                await refreshData();
+              }
+            }, 1000); // Wait 1 second for backend to commit, then refresh in background
           }}
         />
       )}
