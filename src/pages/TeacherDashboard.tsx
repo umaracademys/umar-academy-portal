@@ -33,7 +33,7 @@ import HomeworkAssignmentForm from '../components/HomeworkAssignmentForm';
 
 const TeacherDashboard: React.FC = () => {
   const { teachers, getStudentsByTeacher, updateStudent, refreshData, students: allStudents } = useData();
-  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment, deleteTicket, deleteTickets } = useBackendData();
+  const { recitationReviews, recitationTickets, getTeacherTickets, startTicket, submitTicket, getTeacherPairs, getPairStudents, refreshTeacherNotifications, assignments, updateAssignment, deleteTicket, deleteTickets, getStudentAssignments } = useBackendData();
   const { user } = useAuth();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
@@ -71,7 +71,7 @@ const TeacherDashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'tickets' | 'actions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tickets' | 'actions' | 'students'>('overview');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     pendingTickets: true,
     approvedTickets: true,
@@ -722,6 +722,21 @@ const TeacherDashboard: React.FC = () => {
             </button>
           )}
           <button
+            onClick={() => setActiveTab('students')}
+            className={`px-2 py-1 text-[11px] font-medium transition-all relative rounded-t whitespace-nowrap ${
+              activeTab === 'students'
+                ? 'text-primary border-b-2 border-primary bg-primary/5'
+                : 'text-gray-600 hover:text-primary hover:bg-gray-50'
+            }`}
+          >
+            Students
+            {allPairStudents.length > 0 && (
+              <span className="ml-1 px-1 py-0.5 text-[9px] font-bold bg-primary text-white rounded-full">
+                {allPairStudents.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('actions')}
             className={`px-2.5 py-1.5 text-xs font-medium transition-colors relative rounded-t whitespace-nowrap ${
               activeTab === 'actions'
@@ -1299,6 +1314,215 @@ const TeacherDashboard: React.FC = () => {
                 </div>
               </Card>
             )}
+          </div>
+        )}
+
+        {activeTab === 'students' && (
+          <div className="space-y-2">
+            {/* Filter Controls */}
+            <Card>
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Filter by Program</label>
+                  <select
+                    value={selectedProgram}
+                    onChange={(e) => setSelectedProgram(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="all">All Programs</option>
+                    {availablePrograms.map(program => (
+                      <option key={program} value={program}>{program}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Sort Order</label>
+                  <select
+                    value={sortOrder}
+                    onChange={(e) => setSortOrder(e.target.value as 'a-z' | 'z-a')}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="a-z">A to Z</option>
+                    <option value="z-a">Z to A</option>
+                  </select>
+                </div>
+              </div>
+            </Card>
+
+            {/* Students List */}
+            <Card title={`My Students (${filteredAndSortedStudents.length})`}>
+              {filteredAndSortedStudents.length > 0 ? (
+                <div className="space-y-3">
+                  {filteredAndSortedStudents.map((student) => {
+                    const studentAssignments = getStudentAssignments(student.id || (student as any)._id);
+                    return (
+                      <div
+                        key={student.id || (student as any)._id}
+                        className="p-4 rounded-lg border border-gray-200 bg-white hover:border-primary/50 hover:shadow-md transition-all"
+                      >
+                        {/* Student Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            {student.avatar ? (
+                              <img
+                                src={student.avatar}
+                                alt={student.fullName || 'Student'}
+                                className="h-12 w-12 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center border-2 border-gray-200 flex-shrink-0">
+                                <span className="text-primary-700 font-semibold text-sm">
+                                  {(student.fullName || '?').substring(0, 2).toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <h3 className="text-base font-semibold text-gray-900 truncate">
+                                {student.fullName || 'Unknown Student'}
+                              </h3>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-gray-600">{student.program || 'No program'}</span>
+                                <span className="text-xs text-gray-400">•</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  student.status === 'active' 
+                                    ? 'bg-green-100 text-green-700' 
+                                    : student.status === 'inactive'
+                                    ? 'bg-gray-100 text-gray-700'
+                                    : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {student.status || 'active'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <RequirePermission permission="canCreateTickets">
+                            <button
+                              onClick={() => {
+                                setSelectedStudentForTicket(student.id || (student as any)._id);
+                                setShowCreateTicket(true);
+                              }}
+                              className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-2 flex-shrink-0"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              Create Ticket
+                            </button>
+                          </RequirePermission>
+                        </div>
+
+                        {/* Contact Info */}
+                        <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-gray-100">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                            <p className="text-sm text-gray-900 truncate">{student.email || 'No email'}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Contact</p>
+                            <p className="text-sm text-gray-900">{student.contact || 'No contact'}</p>
+                          </div>
+                        </div>
+
+                        {/* Assignments Section */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-gray-900">
+                              Assignments ({studentAssignments.length})
+                            </h4>
+                            {studentAssignments.length > 0 && (
+                              <Link
+                                to={`/assignments?studentId=${student.id || (student as any)._id}`}
+                                className="text-xs text-primary hover:text-primary/80 font-medium"
+                              >
+                                View All →
+                              </Link>
+                            )}
+                          </div>
+                          {studentAssignments.length > 0 ? (
+                            <div className="space-y-2">
+                              {studentAssignments.slice(0, 3).map((assignment) => (
+                                <div
+                                  key={assignment.id || (assignment as any)._id}
+                                  className="p-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-medium text-gray-900 truncate">
+                                        Assignment {assignment.id || (assignment as any)._id}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mt-0.5">
+                                        {assignment.createdAt 
+                                          ? new Date(assignment.createdAt).toLocaleDateString('en-US', { 
+                                              month: 'short', 
+                                              day: 'numeric',
+                                              year: 'numeric'
+                                            })
+                                          : 'No date'}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {assignment.classwork?.sabq?.length > 0 && (
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-primary-100 text-primary-700 rounded">
+                                          {assignment.classwork.sabq.length} Sabq
+                                        </span>
+                                      )}
+                                      {assignment.classwork?.sabqi?.length > 0 && (
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
+                                          {assignment.classwork.sabqi.length} Sabqi
+                                        </span>
+                                      )}
+                                      {assignment.classwork?.manzil?.length > 0 && (
+                                        <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                                          {assignment.classwork.manzil.length} Manzil
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {assignment.homework?.enabled && (
+                                    <div className="mt-2 pt-2 border-t border-gray-200">
+                                      <p className="text-xs text-gray-600">
+                                        <span className="font-medium">Homework:</span> {
+                                          assignment.homework.items?.length > 0
+                                            ? `${assignment.homework.items.length} item(s)`
+                                            : assignment.homework.content
+                                            ? 'Content assigned'
+                                            : 'No homework'
+                                        }
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                              {studentAssignments.length > 3 && (
+                                <p className="text-xs text-gray-500 text-center pt-1">
+                                  +{studentAssignments.length - 3} more assignment(s)
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg">
+                              No assignments yet
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                  <h3 className="mt-4 text-sm font-medium text-gray-900">No students found</h3>
+                  <p className="mt-2 text-sm text-gray-500">
+                    {selectedProgram !== 'all' 
+                      ? `No students found in ${selectedProgram} program.`
+                      : 'You don\'t have any assigned students yet.'}
+                  </p>
+                </div>
+              )}
+            </Card>
           </div>
         )}
 
