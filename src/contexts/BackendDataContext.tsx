@@ -1273,16 +1273,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             
             // Production-safe logging for debugging
             if (!teacherRecord) {
-              console.warn('⚠️ No teacher record matched for user:', {
-                userEmail: user.email,
-                userId: user._id,
-                teacherRecordsCount: teacherRecords.length,
-                sampleTeacherRecords: teacherRecords.slice(0, 3).map((tr: any) => ({
-                  _id: tr._id?.toString() || tr._id,
-                  userId: tr.userId?._id?.toString() || tr.userId?.toString() || tr.userId,
-                  email: tr.email
-                }))
-              });
+              if (import.meta.env.DEV) {
+                console.warn('⚠️ No teacher record matched for user:', {
+                  userEmail: user.email,
+                  userId: user._id,
+                  teacherRecordsCount: teacherRecords.length,
+                  sampleTeacherRecords: teacherRecords.slice(0, 3).map((tr: any) => ({
+                    _id: tr._id?.toString() || tr._id,
+                    userId: tr.userId?._id?.toString() || tr.userId?.toString() || tr.userId,
+                    email: tr.email
+                  }))
+                });
+              }
             } else {
               if (import.meta.env.DEV) {
                 console.log('✅ Teacher record matched:', {
@@ -1391,26 +1393,28 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           // Production-safe logging for debugging
           if (!teacherDocId) {
-            console.warn('⚠️ Teacher record not found or missing _id for user:', {
-              userEmail: user.email,
-              userId: user._id,
-              teacherRecordsCount: teacherRecords.length,
-              teacherRecordFound: !!teacherRecord,
-              teacherRecordId: teacherRecord?._id,
+            if (import.meta.env.DEV) {
+              console.warn('⚠️ Teacher record not found or missing _id for user:', {
+                userEmail: user.email,
+                userId: user._id,
+                teacherRecordsCount: teacherRecords.length,
+                teacherRecordFound: !!teacherRecord,
+                teacherRecordId: teacherRecord?._id,
               availableTeacherIds: teacherRecords.slice(0, 5).map((tr: any) => ({
                 _id: tr._id?.toString() || tr._id,
                 userId: tr.userId?._id?.toString() || tr.userId?.toString() || tr.userId,
                 email: tr.email
               }))
-            });
+              });
+            }
           } else {
             // Log successful match (dev only)
             if (import.meta.env.DEV) {
-              console.log('✅ Teacher Document ID found:', {
-                userEmail: user.email,
-                teacherDocId: teacherDocId,
-                userId: user._id
-              });
+            console.log('✅ Teacher Document ID found:', {
+              userEmail: user.email,
+              teacherDocId: teacherDocId,
+              userId: user._id
+            });
             }
           }
           
@@ -2487,15 +2491,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         }));
         
         if (import.meta.env.DEV) {
-          console.log('🔄 Refreshed assignments:', {
-            count: mappedAssignments.length,
-            sample: mappedAssignments[0] ? {
-              id: mappedAssignments[0].id,
-              studentId: mappedAssignments[0].studentId,
-              homeworkEnabled: mappedAssignments[0].homework?.enabled,
-              homeworkItemsCount: mappedAssignments[0].homework?.items?.length || 0
-            } : null
-          });
+        console.log('🔄 Refreshed assignments:', {
+          count: mappedAssignments.length,
+          sample: mappedAssignments[0] ? {
+            id: mappedAssignments[0].id,
+            studentId: mappedAssignments[0].studentId,
+            homeworkEnabled: mappedAssignments[0].homework?.enabled,
+            homeworkItemsCount: mappedAssignments[0].homework?.items?.length || 0
+          } : null
+        });
         }
         setAssignments(mappedAssignments);
       }
