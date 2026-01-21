@@ -387,20 +387,16 @@ const AdminSabqReview: React.FC<AdminSabqReviewProps> = ({ ticket, onClose, onSu
         endAyahText: prev?.endAyahText
       }));
     } else if (!hasEndAyah) {
-      const startAyah = homeworkRange.startAyahNumber;
-      if (surah === homeworkRange.surahNumber && ayah >= startAyah) {
-        setHomeworkEndAyah({ surah, ayah });
-        const ayahText = await loadAyahText(surah, ayah);
-        setHomeworkRange(prev => ({
-          ...prev!,
-          surahNumber: surah,
-          surahName: surahName,
-          endAyahNumber: ayah,
-          endAyahText: ayahText
-        }));
-      } else {
-        alert('End ayah must be in the same surah and come after the start ayah');
-      }
+      // ✅ FIX: Removed validation - allow any end ayah regardless of surah or order
+      setHomeworkEndAyah({ surah, ayah });
+      const ayahText = await loadAyahText(surah, ayah);
+      setHomeworkRange(prev => ({
+        ...prev!,
+        surahNumber: surah,
+        surahName: surahName,
+        endAyahNumber: ayah,
+        endAyahText: ayahText
+      }));
     } else {
       // Reset
       setHomeworkStartAyah({ surah, ayah });
