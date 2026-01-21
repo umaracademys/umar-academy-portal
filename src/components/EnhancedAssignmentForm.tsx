@@ -614,6 +614,22 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         timestamp: m.timestamp || new Date()
       }));
 
+      // Ensure all classwork entries have createdAt timestamp
+      const classworkWithTimestamps = {
+        sabq: filteredClasswork.sabq.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || new Date()
+        })),
+        sabqi: filteredClasswork.sabqi.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || new Date()
+        })),
+        manzil: filteredClasswork.manzil.map(entry => ({
+          ...entry,
+          createdAt: entry.createdAt || new Date()
+        }))
+      };
+
       // Simplified homework - just content and link
       const assignmentData: Assignment = {
         id: assignmentId || '',
@@ -622,7 +638,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         assignedBy: user.id || '',
         assignedByName: user.name || user.email || 'Unknown',
         assignedByRole: (user.role === 'superadmin' ? 'super_admin' : user.role) as 'admin' | 'super_admin' | 'teacher',
-        classwork: filteredClasswork,
+        classwork: classworkWithTimestamps,
         // ✅ FIX: Removed invalid fields sabqiContent and manzilContent (not in MongoDB schema)
         homework: {
           enabled: homework.enabled,
@@ -634,12 +650,22 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         status: 'active'
       };
 
-      console.log('📤 Assignment data being saved:', {
-        assignmentId,
-        homeworkEnabled: homework.enabled,
-        homeworkContent: homework.content,
-        homeworkLink: homework.link
-      });
+      if (import.meta.env.DEV) {
+        console.log('📤 Assignment data being saved:', {
+          assignmentId,
+          studentId: student.id,
+          studentName: student.fullName,
+          classwork: {
+            sabq: classworkWithTimestamps.sabq.length,
+            sabqi: classworkWithTimestamps.sabqi.length,
+            manzil: classworkWithTimestamps.manzil.length
+          },
+          homeworkEnabled: homework.enabled,
+          homeworkContent: homework.content,
+          homeworkLink: homework.link,
+          status: assignmentData.status
+        });
+      }
 
       if (assignmentId && existingAssignment) {
         if (import.meta.env.DEV) {
@@ -648,11 +674,27 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
           homework: assignmentData.homework
         });
         }
+        // Ensure all classwork entries have createdAt timestamp
+        const classworkWithTimestamps = {
+          sabq: filteredClasswork.sabq.map(entry => ({
+            ...entry,
+            createdAt: entry.createdAt || new Date()
+          })),
+          sabqi: filteredClasswork.sabqi.map(entry => ({
+            ...entry,
+            createdAt: entry.createdAt || new Date()
+          })),
+          manzil: filteredClasswork.manzil.map(entry => ({
+            ...entry,
+            createdAt: entry.createdAt || new Date()
+          }))
+        };
+
         // For updates, only send fields that are allowed to be updated
         // Backend filters out: studentId, studentName, assignedBy, assignedByName, assignedByRole
         // Status must be one of: pending, in_progress, completed, graded (not 'active')
         const updateData: Partial<Assignment> = {
-          classwork: filteredClasswork,
+          classwork: classworkWithTimestamps,
           // ✅ FIX: Removed invalid fields sabqiContent and manzilContent (not in MongoDB schema)
           homework: {
             enabled: homework.enabled,
@@ -679,9 +721,15 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         await addAssignment(assignmentDataWithTicket);
       }
 
-      // Dispatch custom event to notify other components
+      // Dispatch custom event to notify other components (including assignment history)
       window.dispatchEvent(new CustomEvent('assignmentUpdated', { 
         detail: { assignmentId, studentId } 
+      }));
+      
+      // Also dispatch storage event for cross-tab communication
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'assignmentUpdated',
+        newValue: JSON.stringify({ assignmentId, studentId, timestamp: Date.now() })
       }));
       
       // Small delay to ensure state updates propagate before closing
