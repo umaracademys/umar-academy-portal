@@ -132,7 +132,8 @@ const TeacherList: React.FC<TeacherListProps> = ({
   };
 
   const getPerformanceRating = (teacher: any) => {
-    const studentCount = teacher.assignedStudents?.length || 0;
+    // Use the actual assigned students count from getAssignedStudentsCount
+    const studentCount = getAssignedStudentsCount(teacher);
     const baseRating = Math.min(5, Math.max(1, 3 + (studentCount / 10)));
     return baseRating.toFixed(1);
   };

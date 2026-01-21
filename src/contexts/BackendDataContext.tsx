@@ -3723,10 +3723,34 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Helper functions
   const getStudentsByTeacher = useCallback((teacherId: string) => {
-    // Teachers can now see all students (no restriction)
-    // Return all students regardless of assignment
-    // Note: Removed debug logging to reduce console spam
-    return students;
+    if (!teacherId || !students || students.length === 0) {
+      return [];
+    }
+    
+    // Normalize the teacher ID for comparison
+    const normalizedTeacherId = normalizeId(teacherId);
+    
+    // Filter students assigned to this teacher
+    // Check both new array fields (assignedTeacherIds, assignedTeachers) and legacy fields (assignedTeacherId, assignedTeacher)
+    const assignedStudents = students.filter(student => {
+      // Check new array fields (preferred)
+      const assignedTeacherIds = (student as any).assignedTeacherIds || [];
+      const assignedTeachers = (student as any).assignedTeachers || [];
+      
+      // Check if teacherId matches any in the arrays
+      const matchesArray = assignedTeacherIds.some((id: string) => normalizeId(id) === normalizedTeacherId) ||
+                          assignedTeachers.some((id: string) => normalizeId(id) === normalizedTeacherId);
+      
+      // Check legacy single teacher fields (for backward compatibility)
+      const legacyAssignedTeacherId = normalizeId((student as any).assignedTeacherId);
+      const legacyAssignedTeacher = normalizeId((student as any).assignedTeacher);
+      const matchesLegacy = legacyAssignedTeacherId === normalizedTeacherId ||
+                           legacyAssignedTeacher === normalizedTeacherId;
+      
+      return matchesArray || matchesLegacy;
+    });
+    
+    return assignedStudents;
   }, [students]);
 
   const getTeacherById = (id: string) => {
