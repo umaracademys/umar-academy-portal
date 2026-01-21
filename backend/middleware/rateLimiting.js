@@ -88,11 +88,13 @@ const createRateLimiter = (options) => {
 /**
  * Rate limiter for authentication routes
  * Stricter limits to prevent brute force attacks
+ * Note: Successful logins don't count toward the limit (skipSuccessfulRequests)
  */
 const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 5 : 20, // 5 attempts in production, 20 in development
+  max: isProduction ? 10 : 20, // 10 attempts in production (increased from 5), 20 in development
   message: 'Too many authentication attempts. Please try again after 15 minutes.',
+  skipSuccessfulRequests: true, // Successful logins don't count toward limit
   name: 'auth-limiter'
 });
 
@@ -138,6 +140,7 @@ const createCombinedLimiter = (options) => {
     windowMs = 15 * 60 * 1000,
     max = 100,
     message = 'Too many requests, please try again later.',
+    skipSuccessfulRequests = false, // Pass through skipSuccessfulRequests option
     name = 'combined-limiter'
   } = options;
 
@@ -146,6 +149,7 @@ const createCombinedLimiter = (options) => {
     windowMs,
     max,
     message: `${message} (per-user limit)`,
+    skipSuccessfulRequests,
     keyGenerator: (req) => {
       if (req.user && req.user.userId) {
         return `user:${req.user.userId}`;
@@ -159,6 +163,7 @@ const createCombinedLimiter = (options) => {
     windowMs,
     max,
     message: `${message} (per-IP limit)`,
+    skipSuccessfulRequests,
     keyGenerator: (req) => {
       const ipKey = ipKeyGenerator(req);
       return `ip:${ipKey || 'unknown'}`;
@@ -216,8 +221,9 @@ const createCombinedLimiter = (options) => {
  */
 const combinedAuthLimiter = createCombinedLimiter({
   windowMs: 15 * 60 * 1000,
-  max: isProduction ? 5 : 20,
+  max: isProduction ? 10 : 20, // Increased from 5 to 10 in production
   message: 'Too many authentication attempts',
+  skipSuccessfulRequests: true, // Successful logins don't count toward limit
   name: 'combined-auth'
 });
 
