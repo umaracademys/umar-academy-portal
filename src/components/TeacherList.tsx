@@ -145,12 +145,12 @@ const TeacherList: React.FC<TeacherListProps> = ({
     return (
       <div 
         style={style} 
-        className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 border-b border-gray-200 hover:bg-gray-50 items-center"
+        className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 border-b border-gray-200 hover:bg-gray-50 items-center min-w-0"
       >
         {/* Teacher Name & Info */}
-        <div className="px-2 py-2">
-          <div className="flex items-center">
-            <div className="relative mr-2">
+        <div className="px-2 py-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="relative flex-shrink-0">
               <img 
                 src={teacher.avatar || '/default-avatar.png'} 
                 alt={teacher.fullName || 'Teacher'} 
@@ -162,87 +162,97 @@ const TeacherList: React.FC<TeacherListProps> = ({
                 </div>
               )}
             </div>
-            <div>
-              <p className="font-medium text-gray-900 text-xs">{teacher.fullName || 'Unknown'}</p>
-              <p className="text-[10px] text-gray-500">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-gray-900 text-xs truncate">{teacher.fullName || 'Unknown'}</p>
+              <p className="text-[10px] text-gray-500 truncate">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
             </div>
           </div>
         </div>
         
         {/* ID */}
-        <div className="px-2 py-2 text-[10px] font-mono text-gray-600 truncate" title={teacher.id}>{teacher.id}</div>
+        <div className="px-2 py-2 min-w-0">
+          <p className="text-[10px] font-mono text-gray-600 truncate" title={teacher.id}>{teacher.id}</p>
+        </div>
         
         {/* Contact Info */}
-        <div className="px-2 py-2 text-xs">
-          <div>
-            <p className="text-gray-900">{teacher.email || 'No email'}</p>
-            <p className="text-[10px] text-gray-500">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
+        <div className="px-2 py-2 min-w-0">
+          <div className="min-w-0">
+            <p className="text-xs text-gray-900 truncate">{teacher.email || 'No email'}</p>
+            <p className="text-[10px] text-gray-500 truncate">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
           </div>
         </div>
         
         {/* Specialization */}
-        <div className="px-2 py-2 text-xs">{teacher.department || 'General'}</div>
+        <div className="px-2 py-2 min-w-0">
+          <p className="text-xs text-gray-700 truncate">{teacher.department || 'General'}</p>
+        </div>
         
         {/* Location */}
-        <div className="px-2 py-2 text-xs">
-          <div className="flex items-center gap-1">
-            <span>{data.getLocationFlag(teacher.location || 'Unknown')}</span>
-            <span>{teacher.location || 'Unknown'}</span>
+        <div className="px-2 py-2 min-w-0">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="flex-shrink-0">{data.getLocationFlag(teacher.location || 'Unknown')}</span>
+            <span className="text-xs text-gray-700 truncate">{teacher.location || 'Unknown'}</span>
           </div>
         </div>
         
         {/* Students Count */}
-        <div className="px-2 py-2 text-xs font-semibold text-blue-600">{data.getAssignedStudentsCount(teacher)}</div>
+        <div className="px-2 py-2 min-w-0">
+          <p className="text-xs font-semibold text-blue-600 truncate">{data.getAssignedStudentsCount(teacher)}</p>
+        </div>
         
         {/* Performance Rating */}
-        <div className="px-2 py-2 text-xs">
-          <div className="flex items-center gap-1">
-            <span className="text-amber-500">⭐</span>
-            <span className="font-semibold text-gray-900">{data.getPerformanceRating(teacher)}</span>
+        <div className="px-2 py-2 min-w-0">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-amber-500 flex-shrink-0">⭐</span>
+            <span className="text-xs font-semibold text-gray-900 truncate">{data.getPerformanceRating(teacher)}</span>
           </div>
         </div>
         
         {/* Status */}
-        <div className="px-2 py-2">{data.getStatusBadge(teacher.status || 'active')}</div>
+        <div className="px-2 py-2 min-w-0 flex items-center">
+          {data.getStatusBadge(teacher.status || 'active')}
+        </div>
         
         {/* Salary */}
-        <div className="px-2 py-2 text-xs font-semibold">
-          {teacher.isAdmin ? (
-            <span className="text-gray-400">N/A</span>
-          ) : (
-            <>
-              {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
-            </>
-          )}
+        <div className="px-2 py-2 min-w-0">
+          <p className="text-xs font-semibold text-gray-900 truncate">
+            {teacher.isAdmin ? (
+              <span className="text-gray-400">N/A</span>
+            ) : (
+              <>
+                {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
+              </>
+            )}
+          </p>
         </div>
         
         {/* Actions - All in one column like StudentList */}
-        <div className="px-2 py-2">
-          <div className="flex space-x-1">
+        <div className="px-2 py-2 min-w-0">
+          <div className="flex items-center gap-1 flex-wrap">
             <button
               onClick={() => data.onTeacherSelect(teacher)}
-              className="text-primary-600 hover:text-primary-800 text-xs font-medium"
+              className="text-primary-600 hover:text-primary-800 text-xs font-medium whitespace-nowrap"
             >
               View
             </button>
             {!teacher.isAdmin && (
               <button
                 onClick={() => data.onEditTeacher(teacher)}
-                className="text-gold-600 hover:text-gold-800 text-xs font-medium"
+                className="text-gold-600 hover:text-gold-800 text-xs font-medium whitespace-nowrap"
               >
                 Edit
               </button>
             )}
             <button
               onClick={() => data.onDeleteTeacher(teacher.id)}
-              className="text-red-600 hover:text-red-800 text-xs font-medium"
+              className="text-red-600 hover:text-red-800 text-xs font-medium whitespace-nowrap"
             >
               Del
             </button>
             {data.onCredentials && (
               <button
                 onClick={() => data.onCredentials(teacher)}
-                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                className="text-blue-600 hover:text-blue-800 text-xs font-medium whitespace-nowrap"
               >
                 Credentials
               </button>
@@ -250,7 +260,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
             {data.onAnalytics && (
               <button
                 onClick={() => data.onAnalytics(teacher)}
-                className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+                className="text-purple-600 hover:text-purple-800 text-xs font-medium whitespace-nowrap"
               >
                 Analytics
               </button>
@@ -429,57 +439,69 @@ const TeacherList: React.FC<TeacherListProps> = ({
 
         <div className="overflow-x-auto">
           {/* Table Header */}
-          <div className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 bg-gray-50 border-b-2 border-gray-300">
+          <div className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 bg-gray-50 border-b-2 border-gray-300 min-w-full">
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 min-w-0"
               onClick={() => handleSort('name')}
             >
-              <div className="flex items-center space-x-1">
-                <span>Teacher</span>
+              <div className="flex items-center space-x-1 min-w-0">
+                <span className="truncate">Teacher</span>
                 {sortBy === 'name' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  <span className="text-primary-600 flex-shrink-0">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                 )}
               </div>
             </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-0">
+              <span className="truncate">ID</span>
+            </div>
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 min-w-0"
               onClick={() => handleSort('email')}
             >
-              <div className="flex items-center space-x-1">
-                <span>Contact</span>
+              <div className="flex items-center space-x-1 min-w-0">
+                <span className="truncate">Contact</span>
                 {sortBy === 'email' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  <span className="text-primary-600 flex-shrink-0">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                 )}
               </div>
             </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Specialization</div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Location</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-0">
+              <span className="truncate">Specialization</span>
+            </div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-0">
+              <span className="truncate">Location</span>
+            </div>
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 min-w-0"
               onClick={() => handleSort('students')}
             >
-              <div className="flex items-center space-x-1">
-                <span>Students</span>
+              <div className="flex items-center space-x-1 min-w-0">
+                <span className="truncate">Students</span>
                 {sortBy === 'students' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  <span className="text-primary-600 flex-shrink-0">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                 )}
               </div>
             </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Performance</div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-0">
+              <span className="truncate">Performance</span>
+            </div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-0">
+              <span className="truncate">Status</span>
+            </div>
             <div 
-              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100 min-w-0"
               onClick={() => handleSort('salary')}
             >
-              <div className="flex items-center space-x-1">
-                <span>Salary</span>
+              <div className="flex items-center space-x-1 min-w-0">
+                <span className="truncate">Salary</span>
                 {sortBy === 'salary' && (
-                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  <span className="text-primary-600 flex-shrink-0">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                 )}
               </div>
             </div>
-            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase min-w-0">
+              <span className="truncate">Actions</span>
+            </div>
           </div>
 
           {/* Virtualized Body */}
