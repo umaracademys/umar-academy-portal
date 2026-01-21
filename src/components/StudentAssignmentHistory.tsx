@@ -760,8 +760,8 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                 assignment.homework?.content || 
                                 assignment.homework?.link || 
                                 // ✅ LEGACY: sabqiContent/manzilContent may exist in old data but are not sent in new requests
-                                assignment.homework?.sabqiContent || 
-                                assignment.homework?.manzilContent ||
+                                (assignment.homework as any)?.sabqiContent || 
+                                (assignment.homework as any)?.manzilContent ||
                                 (assignment.homework?.items && assignment.homework.items.length > 0) ||
                                 assignment.homework?.submission ||
                                 assignment.homework?.notes) && (
@@ -776,8 +776,8 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                       const manzilItems = assignment.homework?.items?.filter((item: any) => item.type === 'manzil') || [];
                                       
                                       // ✅ LEGACY: Check for legacy content (may exist in old data, but not sent in new requests)
-                                      const hasSabqiContent = assignment.homework?.sabqiContent;
-                                      const hasManzilContent = assignment.homework?.manzilContent;
+                                      const hasSabqiContent = (assignment.homework as any)?.sabqiContent;
+                                      const hasManzilContent = (assignment.homework as any)?.manzilContent;
                                       const hasGeneralContent = assignment.homework?.content || assignment.homework?.link;
                                       
                                       return (
@@ -834,7 +834,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                 ))}
                                                 {hasSabqiContent && (
                                                   <div className="border-l-4 border-blue-400 pl-3 py-1.5">
-                                                    <p className="text-xs text-gray-700">{assignment.homework.sabqiContent}</p>
+                                                    <p className="text-xs text-gray-700">{(assignment.homework as any).sabqiContent}</p>
                                                   </div>
                                                 )}
                                               </div>
@@ -866,7 +866,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                                 ))}
                                                 {hasManzilContent && (
                                                   <div className="border-l-4 border-green-400 pl-3 py-1.5">
-                                                    <p className="text-xs text-gray-700">{assignment.homework.manzilContent}</p>
+                                                    <p className="text-xs text-gray-700">{(assignment.homework as any).manzilContent}</p>
                                                   </div>
                                                 )}
                                               </div>

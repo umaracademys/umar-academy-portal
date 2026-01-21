@@ -53,6 +53,23 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
     status: 'active' as 'active' | 'on-hold' | 'completed'
   });
 
+  // ✅ FIX: Add missing confirmModal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    danger?: boolean;
+    onConfirm: () => void | Promise<void>;
+    onCancel?: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    danger: false,
+    onConfirm: () => {},
+    onCancel: () => {}
+  });
+
   useEffect(() => {
     loadPairs();
   }, []);
@@ -739,6 +756,26 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
           )}
         </div>
       </div>
+
+      {/* ✅ FIX: Add ConfirmationModal component */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        danger={confirmModal.danger}
+        onConfirm={() => {
+          confirmModal.onConfirm();
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
+        onCancel={() => {
+          if (confirmModal.onCancel) {
+            confirmModal.onCancel();
+          }
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }}
+      />
+
+      <ToastContainer toasts={toasts} />
     </div>
   );
 };

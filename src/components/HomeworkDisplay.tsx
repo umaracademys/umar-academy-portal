@@ -41,7 +41,8 @@ const HomeworkDisplay: React.FC<HomeworkDisplayProps> = ({
   // Show homework if enabled OR if items exist
   const hasStructuredItems = homework?.items && homework.items.length > 0;
   // ✅ LEGACY: sabqiContent/manzilContent may exist in old data but are not sent in new requests
-  const hasLegacyContent = homework?.content || homework?.link || homework?.sabqiContent || homework?.manzilContent;
+  const homeworkAny = homework as any;
+  const hasLegacyContent = homework?.content || homework?.link || homeworkAny?.sabqiContent || homeworkAny?.manzilContent;
   const shouldShow = homework?.enabled || hasStructuredItems || hasLegacyContent;
   
   if (!shouldShow) {
@@ -132,23 +133,23 @@ const HomeworkDisplay: React.FC<HomeworkDisplayProps> = ({
       )}
 
       {/* ✅ LEGACY: Sabqi & Manzil Homework Content (may exist in old data, but not sent in new requests) */}
-      {(homework?.sabqiContent || homework?.manzilContent) && (
+      {(homeworkAny?.sabqiContent || homeworkAny?.manzilContent) && (
         <div className="mb-3 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
           <h5 className="text-xs font-semibold text-gray-900 mb-2">Sabqi & Manzil Homework</h5>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {homework.sabqiContent && (
+            {homeworkAny.sabqiContent && (
               <div>
                 <span className="text-xs font-semibold text-indigo-700">Sabqi:</span>
                 <p className="text-sm text-indigo-800 mt-1 whitespace-pre-wrap">
-                  {homework.sabqiContent}
+                  {homeworkAny.sabqiContent}
                 </p>
               </div>
             )}
-            {homework.manzilContent && (
+            {homeworkAny.manzilContent && (
               <div>
                 <span className="text-xs font-semibold text-purple-700">Manzil:</span>
                 <p className="text-sm text-purple-800 mt-1 whitespace-pre-wrap">
-                  {homework.manzilContent}
+                  {homeworkAny.manzilContent}
                 </p>
               </div>
             )}
