@@ -10078,11 +10078,21 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
     };
     
     // ✅ FIX: Preserve assignedTeacherId and assignedTeacherName if they exist
+    // If not set and user is a teacher, set it from the submitting teacher
     if (existingTicket.assignedTeacherId) {
       updateData.assignedTeacherId = existingTicket.assignedTeacherId;
     }
     if (existingTicket.assignedTeacherName) {
       updateData.assignedTeacherName = existingTicket.assignedTeacherName;
+    }
+    
+    // ✅ FIX: If ticket doesn't have assigned teacher and user is a teacher, assign them
+    if (!existingTicket.assignedTeacherId && req.user.role === 'teacher') {
+      const teacher = await getTeacherByUserId(req.user.userId);
+      if (teacher) {
+        updateData.assignedTeacherId = teacher._id.toString();
+        updateData.assignedTeacherName = teacher.fullName || teacher.email || req.user.name || 'Teacher';
+      }
     }
     
     // Add new recitation review fields if provided
