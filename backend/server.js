@@ -10451,13 +10451,35 @@ app.post('/api/tickets/:id/reassign', authenticateToken, requirePermission('canM
 // validateTicketOwnership already ensures proper access control
 app.delete('/api/tickets/:id', authenticateToken, validateTicketOwnership, async (req, res) => {
   try {
-    const ticket = await findTicketById(req.params.id);
+    // ✅ FIX: Use ticket from validateTicketOwnership middleware (already validated)
+    // This is a Mongoose document, not a plain object from findTicketById
+    const ticket = req.ticket;
     if (!ticket) {
       return res.status(404).json({ error: 'Ticket not found' });
     }
-    await ticket.deleteOne();
+    
+    // Delete the ticket (ticket is a Mongoose document from validateTicketOwnership)
+    await Ticket.findByIdAndDelete(ticket._id);
+    
+    console.log(`✅ Ticket ${ticket._id} deleted successfully`);
+    
+    // Emit WebSocket event for ticket deletion
+    try {
+      if (ticket.studentId) {
+        io.to(`student:${ticket.studentId}`).emit('ticket:deleted', { id: ticket._id.toString() });
+      }
+      if (ticket.assignedTeacherId) {
+        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:deleted', { id: ticket._id.toString() });
+      }
+      io.to('admins').emit('ticket:deleted', { id: ticket._id.toString() });
+      console.log(`🔌 Emitted ticket:deleted event`);
+    } catch (socketError) {
+      console.error('⚠️ Error emitting ticket:deleted event:', socketError);
+    }
+    
     res.json({ message: 'Ticket deleted successfully' });
   } catch (error) {
+    console.error('❌ Error deleting ticket:', error);
     res.status(500).json({ error: error.message });
   }
 });
