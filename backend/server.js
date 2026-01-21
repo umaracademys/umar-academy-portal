@@ -559,6 +559,35 @@ if (!fs.existsSync(sabqAudioDir)) {
   fs.mkdirSync(sabqAudioDir, { recursive: true });
 }
 
+// Middleware to verify JWT token (moved here to be available for early routes like audio upload)
+// Note: Full version with logging is defined later (line ~2105), but this early version
+// is sufficient for basic authentication needs before models are loaded
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    
+    // Basic user info from token (permission version check happens in full version later)
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      permissions: decoded.permissions || null,
+      permissionsVersion: decoded.permissionsVersion || null
+    };
+    
+    next();
+  });
+};
+
 // Audio upload route - must be before json middleware to handle binary data
 // SECURITY FIX: Add authentication and file validation
 app.post('/api/mistakes/audio', authenticateToken, (req, res) => {
@@ -2065,8 +2094,11 @@ const apiLimiter = rateLimit({
   }
 });
 
-// Middleware to verify JWT token
-const authenticateToken = (req, res, next) => {
+// ✅ FIX: authenticateToken is now defined earlier (line ~563) for early routes
+// This is the full version with logging and permission version checking
+// Note: The early version (line ~563) is sufficient for basic auth, but this
+// version adds activity logging and permission version validation
+const authenticateTokenFull = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
