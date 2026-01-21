@@ -736,7 +736,7 @@ export const WordByWordPage: React.FC<{
 
   useEffect(() => {
     let cancelled = false;
-    const pageNumber = currentPage; // Use currentPage prop
+    // ✅ FIX: Use pageNumber prop (this is WordByWordPage component, not InteractiveMushaf)
     
     // Batch state updates to prevent flickering
     React.startTransition(() => {
@@ -1007,7 +1007,7 @@ export const WordByWordPage: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [currentPage, defaultFontStack]);
+  }, [pageNumber, defaultFontStack]); // ✅ FIX: Use pageNumber prop, not currentPage
 
   // Collect mistakes with their word text for the parent component
   // Use ref to track last processed mistakes to prevent infinite loops

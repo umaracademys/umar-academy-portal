@@ -62,12 +62,14 @@ const MistakeExplanationView: React.FC<MistakeExplanationViewProps> = ({
                 // Try word position match
                 foundWord = ayahWords.find((w) => {
                   const wordPos = (w as any).word;
-                  return wordPos === mistake.wordIndex || wordPos === mistake.wordIndex + 1;
+                  const wordIndex = mistake.wordIndex ?? 0;
+                  return wordPos === wordIndex || wordPos === wordIndex + 1;
                 });
                 
                 // If still not found, try array index within ayah words
-                if (!foundWord && mistake.wordIndex >= 0 && mistake.wordIndex < ayahWords.length) {
-                  foundWord = ayahWords[mistake.wordIndex];
+                const wordIndex = mistake.wordIndex ?? 0;
+                if (!foundWord && wordIndex >= 0 && wordIndex < ayahWords.length) {
+                  foundWord = ayahWords[wordIndex];
                 }
               }
               
@@ -110,8 +112,9 @@ const MistakeExplanationView: React.FC<MistakeExplanationViewProps> = ({
                   const ayahWords = wordsArray.filter((w) => w.surah === mistake.surah && w.ayah === mistake.ayah);
                   
                   // Try array index within ayah words
-                  if (mistake.wordIndex >= 0 && mistake.wordIndex < ayahWords.length) {
-                    foundWord = ayahWords[mistake.wordIndex];
+                  const wordIndex = mistake.wordIndex ?? 0;
+                  if (wordIndex >= 0 && wordIndex < ayahWords.length) {
+                    foundWord = ayahWords[wordIndex];
                   }
                 }
                 
