@@ -8124,8 +8124,9 @@ app.get('/api/tickets', combinedListEndpointLimiter, authenticateToken, async (r
     
     // OPTIMIZED: Use .lean() for 50-60% faster queries and lower memory usage
     // OPTIMIZED: Use .select() to return only commonly used fields
+    // ✅ FIX: Include all fields needed for ticket list display
     const tickets = await Ticket.find(query)
-      .select('studentId studentName type status assignedTeacherId createdAt updatedAt id')
+      .select('studentId studentName type status assignedTeacherId assignedTeacherName teacherComment mistakes submittedAt createdAt updatedAt id createdBy createdByName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
@@ -8211,8 +8212,9 @@ app.get('/api/tickets/pending-review', authenticateToken, async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
     
     // ✅ OPTIMIZED: Use .lean() + .select() + pagination for 60-70% faster queries
+    // ✅ FIX: Include all fields needed for ticket list display (teacherComment, mistakes count, etc.)
     const tickets = await Ticket.find({ status: 'submitted' })
-      .select('studentId studentName type status assignedTeacherId assignedTeacherName submittedAt createdAt id') // ✅ Only needed fields
+      .select('studentId studentName type status assignedTeacherId assignedTeacherName teacherComment mistakes submittedAt createdAt id createdBy createdByName') // ✅ All fields needed for list display
       .sort({ submittedAt: -1 })
       .skip(skip)
       .limit(limitNum)
