@@ -8124,9 +8124,14 @@ app.get('/api/tickets', combinedListEndpointLimiter, authenticateToken, async (r
     
     // OPTIMIZED: Use .lean() for 50-60% faster queries and lower memory usage
     // OPTIMIZED: Use .select() to return only commonly used fields
-    // ✅ FIX: Include all fields needed for ticket list display
+    // ✅ FIX: Include ALL fields needed for ticket list display AND ticket history in assignment form
+    // When status=sent_to_assignment, we need full ticket data for "use this ticket" functionality
+    const selectFields = status === 'sent_to_assignment' 
+      ? 'studentId studentName type status assignedTeacherId assignedTeacherName teacherComment mistakes recitationRange sabqEntries mistakeCount atkees tajweedIssues adminComment teacherNotes reviewNotes homeworkRange submittedAt createdAt updatedAt id createdBy createdByName sentAt'
+      : 'studentId studentName type status assignedTeacherId assignedTeacherName teacherComment mistakes submittedAt createdAt updatedAt id createdBy createdByName';
+    
     const tickets = await Ticket.find(query)
-      .select('studentId studentName type status assignedTeacherId assignedTeacherName teacherComment mistakes submittedAt createdAt updatedAt id createdBy createdByName')
+      .select(selectFields)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)

@@ -87,32 +87,41 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
         const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
         
+        // ✅ FIX: Fetch tickets with all fields needed for display and "use this ticket"
         const response = await fetch(`${API_BASE}/tickets?studentId=${studentId}&status=sent_to_assignment`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         
         if (response.ok) {
           const data = await response.json();
-          // ✅ OPTIMIZED: Backend already returns minimal fields (field selection applied)
           // Ensure tickets is an array - handle both array response and object with tickets property
           const tickets: Ticket[] = Array.isArray(data) ? data : (Array.isArray(data?.tickets) ? data.tickets : []);
           
-          // ✅ OPTIMIZED: Memoize ticket logs processing - only use essential fields
+          // ✅ FIX: Include ALL ticket fields needed for display and "use this ticket" functionality
           const logs: TicketLogEntry[] = tickets
             .filter(t => t && t.status === 'sent_to_assignment')
             .map(ticket => ({
               ticket: {
                 id: ticket.id,
+                _id: ticket._id,
                 type: ticket.type,
                 recitationRange: ticket.recitationRange,
+                sabqEntries: ticket.sabqEntries, // ✅ Include sabqEntries for Sabq tickets
                 mistakeCount: ticket.mistakeCount,
                 atkees: ticket.atkees,
-                mistakes: ticket.mistakes?.slice(0, 5), // ✅ Limit to 5 for preview
+                mistakes: ticket.mistakes || [], // ✅ Include all mistakes (not limited)
+                tajweedIssues: ticket.tajweedIssues || [], // ✅ Include tajweed issues
                 adminComment: ticket.adminComment,
                 teacherComment: ticket.teacherComment,
+                teacherNotes: ticket.teacherNotes,
+                reviewNotes: ticket.reviewNotes,
                 assignedTeacherName: ticket.assignedTeacherName,
+                assignedTeacherId: ticket.assignedTeacherId,
+                createdByName: ticket.createdByName,
+                homeworkRange: ticket.homeworkRange, // ✅ Include homework range for Sabq tickets
                 sentAt: ticket.sentAt,
-                createdAt: ticket.createdAt
+                createdAt: ticket.createdAt,
+                updatedAt: ticket.updatedAt
               } as Ticket,
               date: ticket.sentAt ? new Date(ticket.sentAt) : (ticket.createdAt ? new Date(ticket.createdAt) : new Date()),
               teacherName: ticket.assignedTeacherName || ticket.createdByName || 'N/A',
@@ -262,18 +271,18 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         const convertedMistakes: MushafMistake[] = prefillTicket.mistakes
           .slice(0, 20) // ✅ Limit to 20 mistakes for performance
           .map((m: any) => ({
-            id: m.id,
-            type: m.type,
-            page: m.page,
-            surah: m.surah,
-            ayah: m.ayah,
-            wordIndex: m.wordIndex,
-            position: m.position,
-            note: m.note,
-            audioUrl: m.audioUrl,
-            timestamp: m.timestamp || new Date(),
-            workflowStep: prefillTicket.type
-          }));
+          id: m.id,
+          type: m.type,
+          page: m.page,
+          surah: m.surah,
+          ayah: m.ayah,
+          wordIndex: m.wordIndex,
+          position: m.position,
+          note: m.note,
+          audioUrl: m.audioUrl,
+          timestamp: m.timestamp || new Date(),
+          workflowStep: prefillTicket.type
+        }));
         setCurrentMistakes(convertedMistakes);
       }
     }
@@ -329,13 +338,107 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     }));
   };
 
-  // Use suggestion from ticket log - populate all new fields
+  // ✅ FIX: Use suggestion from ticket log - populate ALL fields including sabqEntries, mistakes, tajweedIssues, atkees
   const useTicketSuggestion = (logEntry: TicketLogEntry) => {
     const currentDate = new Date();
     const ticket = logEntry.ticket;
     const teacherName = logEntry.teacherName;
     
-    // Get recitation range data
+    // ✅ FIX: Handle Sabq tickets with sabqEntries (multiple entries)
+    if (logEntry.type === 'sabq' && ticket.sabqEntries && ticket.sabqEntries.length > 0) {
+      // For Sabq tickets, create a classwork phase for each sabqEntry
+      ticket.sabqEntries.forEach((entry) => {
+        const recitationRange = entry.recitationRange || {};
+        const surahNumber = recitationRange.surahNumber;
+        const surahName = recitationRange.surahName;
+        const juzNumber = recitationRange.juzNumber;
+        const startAyahNumber = recitationRange.startAyahNumber;
+        const startAyahText = recitationRange.startAyahText;
+        const endAyahNumber = recitationRange.endAyahNumber;
+        const endAyahText = recitationRange.endAyahText;
+        const endSurahNumber = recitationRange.endSurahNumber;
+        const endSurahName = recitationRange.endSurahName;
+        
+        // Build assignment range string
+        let assignmentRangeStr = '';
+        if (surahName && startAyahNumber && endAyahNumber) {
+          assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+          if (endSurahName && endSurahName !== surahName) {
+            assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber} → ${endSurahName}, Ayah ${endAyahNumber}`;
+          }
+          if (juzNumber) {
+            assignmentRangeStr += ` (Juz ${juzNumber})`;
+          }
+        } else if (surahNumber && startAyahNumber && endAyahNumber) {
+          assignmentRangeStr = `Surah ${surahNumber}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+          if (juzNumber) {
+            assignmentRangeStr += ` (Juz ${juzNumber})`;
+          }
+        } else {
+          assignmentRangeStr = entry.adminComment || `${logEntry.type} recitation review`;
+        }
+        
+        // Build mistakes summary from entry
+        let mistakesSummary = '';
+        if (entry.mistakeCount !== undefined && entry.mistakeCount !== null) {
+          mistakesSummary += `Count: ${entry.mistakeCount === 'weak' ? 'Weak' : entry.mistakeCount}`;
+        }
+        if (entry.atkees) {
+          if (mistakesSummary) mistakesSummary += ' | ';
+          mistakesSummary += `Atkees: ${entry.atkees}`;
+        }
+        if (entry.mistakes && entry.mistakes.length > 0) {
+          if (mistakesSummary) mistakesSummary += ' | ';
+          mistakesSummary += `Total Mistakes: ${entry.mistakes.length}`;
+        }
+        
+        // Get tajweed issues from entry
+        const tajweedIssues = entry.tajweedIssues || [];
+        
+        // Admin comment from entry
+        const adminComment = entry.adminComment || '';
+        
+        // Add classwork phase with all fields
+        addClassworkPhase('sabq');
+        const lastIndex = classwork.sabq.length;
+        updateClassworkPhase('sabq', lastIndex, 'assignmentRange', assignmentRangeStr);
+        updateClassworkPhase('sabq', lastIndex, 'details', adminComment);
+        updateClassworkPhase('sabq', lastIndex, 'surahNumber', surahNumber);
+        updateClassworkPhase('sabq', lastIndex, 'surahName', surahName);
+        updateClassworkPhase('sabq', lastIndex, 'juzNumber', juzNumber);
+        updateClassworkPhase('sabq', lastIndex, 'fromAyah', startAyahNumber);
+        updateClassworkPhase('sabq', lastIndex, 'toAyah', endAyahNumber);
+        updateClassworkPhase('sabq', lastIndex, 'startAyahText', startAyahText);
+        updateClassworkPhase('sabq', lastIndex, 'endAyahText', endAyahText);
+        updateClassworkPhase('sabq', lastIndex, 'mistakesSummary', mistakesSummary);
+        updateClassworkPhase('sabq', lastIndex, 'tajweedIssues', tajweedIssues);
+        updateClassworkPhase('sabq', lastIndex, 'teacherReviewComment', '');
+        updateClassworkPhase('sabq', lastIndex, 'fromTicketId', ticket.id || ticket._id?.toString());
+        
+        // ✅ Add mistakes from entry to currentMistakes
+        if (entry.mistakes && entry.mistakes.length > 0) {
+          const convertedMistakes = entry.mistakes.map(m => ({
+            ...m,
+            id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+          }));
+          setCurrentMistakes(prev => [...prev, ...convertedMistakes]);
+        }
+      });
+      
+      // ✅ Set homework range if available
+      if (ticket.homeworkRange) {
+        setHomework(prev => ({
+          ...prev,
+          enabled: true,
+          // Note: homework range is displayed in the homework section, not stored in homework.items
+        }));
+      }
+      
+      return; // Exit early for Sabq tickets
+    }
+    
+    // ✅ FIX: Handle Sabqi/Manzil tickets with single recitationRange
     const recitationRange = (ticket.recitationRange || {}) as Partial<RecitationRange>;
     const surahNumber = recitationRange.surahNumber;
     const surahName = recitationRange.surahName;
@@ -344,11 +447,16 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     const startAyahText = recitationRange.startAyahText;
     const endAyahNumber = recitationRange.endAyahNumber;
     const endAyahText = recitationRange.endAyahText;
+    const endSurahNumber = recitationRange.endSurahNumber;
+    const endSurahName = recitationRange.endSurahName;
     
     // Build assignment range string with surah and ayah info
     let assignmentRangeStr = '';
     if (surahName && startAyahNumber && endAyahNumber) {
       assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber}-${endAyahNumber}`;
+      if (endSurahName && endSurahName !== surahName) {
+        assignmentRangeStr = `Surah ${surahName}, Ayah ${startAyahNumber} → ${endSurahName}, Ayah ${endAyahNumber}`;
+      }
       if (juzNumber) {
         assignmentRangeStr += ` (Juz ${juzNumber})`;
       }
@@ -366,8 +474,10 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     if (ticket.mistakeCount !== undefined && ticket.mistakeCount !== null) {
       mistakesSummary += `Count: ${ticket.mistakeCount === 'weak' ? 'Weak' : ticket.mistakeCount}`;
     }
-    // Note: mistakeSeverity has been replaced with atkees
-    // If ticket has atkees, it will be included in the summary automatically
+    if (ticket.atkees) {
+      if (mistakesSummary) mistakesSummary += ' | ';
+      mistakesSummary += `Atkees: ${ticket.atkees}`;
+    }
     if (ticket.mistakes && ticket.mistakes.length > 0) {
       if (mistakesSummary) mistakesSummary += ' | ';
       mistakesSummary += `Total Mistakes: ${ticket.mistakes.length}`;
@@ -397,6 +507,16 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       updateClassworkPhase(type, lastIndex, 'teacherReviewComment', teacherReviewComment);
       updateClassworkPhase(type, lastIndex, 'fromTicketId', ticket.id || ticket._id?.toString());
     };
+    
+    // ✅ Add mistakes to currentMistakes
+    if (ticket.mistakes && ticket.mistakes.length > 0) {
+      const convertedMistakes = ticket.mistakes.map(m => ({
+        ...m,
+        id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+        timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
+      }));
+      setCurrentMistakes(prev => [...prev, ...convertedMistakes]);
+    }
     
     if (logEntry.type === 'sabq') {
       updatePhase('sabq');
@@ -459,7 +579,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     // Prevent double submission
     if (isSaving) {
       if (import.meta.env.DEV) {
-        console.log('⏸️ Already saving, ignoring duplicate submission');
+      console.log('⏸️ Already saving, ignoring duplicate submission');
       }
       return;
     }
@@ -522,10 +642,10 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
 
       if (assignmentId && existingAssignment) {
         if (import.meta.env.DEV) {
-          console.log('💾 Saving assignment update:', {
-            assignmentId,
-            homework: assignmentData.homework
-          });
+        console.log('💾 Saving assignment update:', {
+          assignmentId,
+          homework: assignmentData.homework
+        });
         }
         // For updates, only send fields that are allowed to be updated
         // Backend filters out: studentId, studentName, assignedBy, assignedByName, assignedByRole
@@ -551,9 +671,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
           ? { ...assignmentDataWithoutId, ticketId: prefillTicket.id }
           : assignmentDataWithoutId;
         if (import.meta.env.DEV) {
-          console.log('💾 Creating new assignment:', {
+        console.log('💾 Creating new assignment:', {
             homework: assignmentDataWithTicket.homework
-          });
+        });
         }
         await addAssignment(assignmentDataWithTicket);
       }
@@ -569,7 +689,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       onSave();
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error('Error saving assignment:', error);
+      console.error('Error saving assignment:', error);
       }
       const errorMessage = error instanceof Error ? error.message : 'Failed to save assignment. Please try again.';
       alert(errorMessage);
@@ -805,14 +925,40 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="text-sm text-gray-700">
-                                    {recitationRange ? (
+                                    {/* ✅ FIX: Show recitation range or sabqEntries for Sabq tickets */}
+                                    {log.type === 'sabq' && log.ticket.sabqEntries && log.ticket.sabqEntries.length > 0 ? (
+                                      <div className="space-y-1">
+                                        <div className="font-semibold text-xs">Sabq Entries: {log.ticket.sabqEntries.length}</div>
+                                        {log.ticket.sabqEntries.slice(0, 2).map((entry, idx) => (
+                                          <div key={idx} className="text-xs text-gray-600">
+                                            {entry.recitationRange?.surahName || `Surah ${entry.recitationRange?.surahNumber}`}: 
+                                            Ayah {entry.recitationRange?.startAyahNumber}-{entry.recitationRange?.endAyahNumber}
+                                            {entry.mistakes && entry.mistakes.length > 0 && (
+                                              <span className="text-red-600 ml-1">({entry.mistakes.length} mistakes)</span>
+                                            )}
+                                          </div>
+                                        ))}
+                                        {log.ticket.sabqEntries.length > 2 && (
+                                          <div className="text-xs text-gray-400">+{log.ticket.sabqEntries.length - 2} more</div>
+                                        )}
+                                      </div>
+                                    ) : recitationRange ? (
                                       <div>
                                         <div className="font-semibold">
                                           {recitationRange.surahName || `Surah ${recitationRange.surahNumber}`}
+                                          {recitationRange.endSurahName && recitationRange.endSurahName !== recitationRange.surahName && (
+                                            <span> → {recitationRange.endSurahName}</span>
+                                          )}
                                         </div>
                                         <div className="text-xs text-gray-500">
                                           Ayah {recitationRange.startAyahNumber}-{recitationRange.endAyahNumber}
+                                          {recitationRange.juzNumber && ` (Juz ${recitationRange.juzNumber})`}
                                         </div>
+                                        {recitationRange.startAyahText && (
+                                          <div className="text-xs text-gray-400 mt-1 line-clamp-1" dir="rtl">
+                                            {recitationRange.startAyahText}
+                                          </div>
+                                        )}
                                       </div>
                                     ) : (
                                       <span className="text-gray-400">No range</span>
@@ -820,7 +966,28 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-700 font-medium">{mistakeCount} mistakes</span>
+                                  <div className="space-y-1">
+                                    <div className="text-sm text-gray-700 font-medium">
+                                      {log.type === 'sabq' && log.ticket.sabqEntries 
+                                        ? log.ticket.sabqEntries.reduce((sum, e) => sum + (e.mistakes?.length || 0), 0)
+                                        : mistakeCount} mistakes
+                                    </div>
+                                    {log.ticket.tajweedIssues && log.ticket.tajweedIssues.length > 0 && (
+                                      <div className="text-xs text-gray-600">
+                                        {log.ticket.tajweedIssues.length} tajweed issue{log.ticket.tajweedIssues.length !== 1 ? 's' : ''}
+                                      </div>
+                                    )}
+                                    {log.ticket.atkees && (
+                                      <div className="text-xs text-gray-600">
+                                        Atkees: {log.ticket.atkees}
+                                      </div>
+                                    )}
+                                    {log.ticket.mistakeCount && (
+                                      <div className="text-xs text-gray-600">
+                                        Count: {log.ticket.mistakeCount === 'weak' ? 'Weak' : log.ticket.mistakeCount}
+                                      </div>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-4 py-3">
                                   <button
