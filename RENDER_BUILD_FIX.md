@@ -32,17 +32,20 @@ If you want to use `render.yaml` exclusively:
 ## Current Build Command (from render.yaml)
 
 ```yaml
-buildCommand: npm install -g pnpm@9.0.0 && pnpm install --frozen-lockfile --no-optional --prefer-offline && pnpm --filter @umar-academy/mushaf build && pnpm run build:fast
+buildCommand: npx -y pnpm@9.0.0 install --frozen-lockfile --no-optional --prefer-offline && npx -y pnpm@9.0.0 --filter @umar-academy/mushaf build && npx -y pnpm@9.0.0 run build:fast
 ```
 
 This command:
-1. Installs pnpm@9.0.0 globally using npm
+1. Uses `npx` to run pnpm@9.0.0 without global installation (avoids broken npm)
 2. Installs dependencies with frozen lockfile
 3. Builds the Mushaf package
 4. Builds the frontend
 
 ## Why This Works
 
-- `npm install -g pnpm` works in Render's read-only filesystem (installs to npm's global directory)
+- `npx -y pnpm@9.0.0` downloads and runs pnpm without needing global installation
+- Works even when npm is broken in Render's environment
+- `-y` flag automatically answers yes to prompts
 - Matches the `packageManager: "pnpm@9.0.0"` in package.json
 - Avoids `corepack enable` which requires write access to system directories
+- Avoids `npm install -g` which may fail due to broken npm installation
