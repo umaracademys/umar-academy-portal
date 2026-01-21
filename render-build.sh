@@ -6,7 +6,8 @@ set -e
 corepack prepare pnpm@9.0.0 --activate
 
 # Use pnpm from corepack
-pnpm install --frozen-lockfile --no-optional --prefer-offline
+# Note: --no-optional removed because esbuild and rollup need their platform-specific optional dependencies
+pnpm install --frozen-lockfile --prefer-offline
 
 # Build Mushaf package
 pnpm --filter @umar-academy/mushaf build
