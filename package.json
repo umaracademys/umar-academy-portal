@@ -13,7 +13,7 @@
     "build:fast": "vite build",
     "build:mushaf": "pnpm --filter @umar-academy/mushaf build",
     "build:all": "pnpm -r build",
-    "build:render": "npx -y pnpm@9.0.0 install --frozen-lockfile --no-optional --prefer-offline && npx -y pnpm@9.0.0 --filter @umar-academy/mushaf build && npx -y pnpm@9.0.0 run build:fast",
+    "build:render": "bash render-build.sh",
     "preview": "vite preview",
     "start": "node frontend-server.js",
     "seed": "tsx src/scripts/seedData.ts",

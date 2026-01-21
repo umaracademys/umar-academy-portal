@@ -22,7 +22,7 @@ services:
     name: umar-academy-frontend
     env: node
     plan: free
-    buildCommand: npx -y pnpm@9.0.0 install --frozen-lockfile --no-optional --prefer-offline && npx -y pnpm@9.0.0 --filter @umar-academy/mushaf build && npx -y pnpm@9.0.0 run build:fast
+    buildCommand: bash render-build.sh
     startCommand: npm start
     envVars:
       - key: VITE_API_BASE_URL
