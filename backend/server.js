@@ -10057,12 +10057,33 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
       reviewNotes
     } = req.body;
     
+    // ✅ FIX: Get ticket first to preserve assignedTeacherId and assignedTeacherName
+    let existingTicket;
+    if (mongoose.Types.ObjectId.isValid(ticketId)) {
+      existingTicket = await Ticket.findById(ticketId);
+    } else {
+      existingTicket = await Ticket.findOne({ id: ticketId });
+    }
+    
+    if (!existingTicket) {
+      console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+    
     const updateData = {
       status: 'submitted',
       teacherComment: teacherComment || '',
       mistakes: mistakes || [],
       submittedAt: new Date()
     };
+    
+    // ✅ FIX: Preserve assignedTeacherId and assignedTeacherName if they exist
+    if (existingTicket.assignedTeacherId) {
+      updateData.assignedTeacherId = existingTicket.assignedTeacherId;
+    }
+    if (existingTicket.assignedTeacherName) {
+      updateData.assignedTeacherName = existingTicket.assignedTeacherName;
+    }
     
     // Add new recitation review fields if provided
     if (recitationRange) {
