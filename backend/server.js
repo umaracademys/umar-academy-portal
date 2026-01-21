@@ -10447,7 +10447,9 @@ app.post('/api/tickets/:id/reassign', authenticateToken, requirePermission('canM
   }
 });
 
-app.delete('/api/tickets/:id', authenticateToken, requirePermission('canManageTicketWorkflow'), validateTicketOwnership, async (req, res) => {
+// ✅ FIX: Allow teachers to delete tickets assigned to them or for their students
+// validateTicketOwnership already ensures proper access control
+app.delete('/api/tickets/:id', authenticateToken, validateTicketOwnership, async (req, res) => {
   try {
     const ticket = await findTicketById(req.params.id);
     if (!ticket) {
