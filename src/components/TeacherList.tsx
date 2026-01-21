@@ -145,70 +145,106 @@ const TeacherList: React.FC<TeacherListProps> = ({
     return (
       <div 
         style={style} 
-        className="grid grid-cols-[2fr,1fr,2fr,1.5fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 border-b border-gray-100 hover:bg-blue-50/30 transition-colors items-center"
+        className="grid grid-cols-[2.5fr,1.2fr,2fr,1.5fr,1.5fr,1fr,1fr,1.5fr,2.5fr] gap-0 border-b border-gray-100 hover:bg-blue-50/30 transition-colors items-center"
       >
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <img 
-                src={teacher.avatar || '/default-avatar.png'} 
-                alt={teacher.fullName || 'Teacher'} 
-                className="h-10 w-10 rounded-full object-cover ring-2 ring-gray-200" 
-              />
+        {/* Teacher Name & Info */}
+        <div className="px-6 py-4 flex items-center gap-3 min-w-0">
+          <div className="relative flex-shrink-0">
+            <img 
+              src={teacher.avatar || '/default-avatar.png'} 
+              alt={teacher.fullName || 'Teacher'} 
+              className="h-10 w-10 rounded-full object-cover ring-2 ring-gray-200" 
+            />
+            {teacher.isAdmin && (
+              <div className="absolute -top-1 -right-1 h-4 w-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
+                <span className="text-[8px] text-white font-bold">A</span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col gap-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm truncate">{teacher.fullName || 'Unknown'}</p>
               {teacher.isAdmin && (
-                <div className="absolute -top-1 -right-1 h-4 w-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
-                  <span className="text-[8px] text-white font-bold">A</span>
-                </div>
+                <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 rounded-full whitespace-nowrap flex-shrink-0">
+                  ADMIN
+                </span>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-gray-900 text-sm truncate">{teacher.fullName || 'Unknown'}</p>
-                {teacher.isAdmin && (
-                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 rounded-full whitespace-nowrap">
-                    ADMIN
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+            <p className="text-xs text-gray-500 truncate">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+            {/* Action Links - Moved here with proper spacing */}
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                onClick={() => data.onTeacherSelect(teacher)}
+                className="text-[10px] font-medium text-blue-600 hover:text-blue-700 hover:underline transition-colors"
+              >
+                View
+              </button>
+              {!teacher.isAdmin && (
+                <>
+                  <span className="text-gray-300">|</span>
+                  <button
+                    onClick={() => data.onEditTeacher(teacher)}
+                    className="text-[10px] font-medium text-amber-600 hover:text-amber-700 hover:underline transition-colors"
+                  >
+                    Edit
+                  </button>
+                </>
+              )}
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={() => data.onDeleteTeacher(teacher.id)}
+                className="text-[10px] font-medium text-red-600 hover:text-red-700 hover:underline transition-colors"
+              >
+                Del
+              </button>
             </div>
           </div>
         </div>
-        <div className="px-4 py-3">
-          <p className="text-xs font-mono text-gray-600 truncate" title={teacher.id}>{teacher.id}</p>
+        
+        {/* ID - Truncated with max-width */}
+        <div className="px-6 py-4 flex items-center">
+          <p className="text-xs font-mono text-gray-600 truncate max-w-xs" title={teacher.id}>{teacher.id}</p>
         </div>
-        <div className="px-4 py-3">
-          <div className="space-y-0.5">
+        
+        {/* Contact Info */}
+        <div className="px-6 py-4 flex items-center">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <p className="text-sm text-gray-900 truncate">{teacher.email || 'No email'}</p>
             <p className="text-xs text-gray-500 truncate">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
           </div>
         </div>
-        <div className="px-4 py-3">
-          <span className="text-sm text-gray-700">{teacher.department || 'General'}</span>
+        
+        {/* Specialization */}
+        <div className="px-6 py-4 flex items-center">
+          <span className="text-sm text-gray-700 truncate">{teacher.department || 'General'}</span>
         </div>
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">{data.getLocationFlag(teacher.location || 'Unknown')}</span>
-            <span className="text-sm text-gray-700">{teacher.location || 'Unknown'}</span>
-          </div>
+        
+        {/* Location */}
+        <div className="px-6 py-4 flex items-center gap-2">
+          <span className="text-lg flex-shrink-0">{data.getLocationFlag(teacher.location || 'Unknown')}</span>
+          <span className="text-sm text-gray-700 truncate">{teacher.location || 'Unknown'}</span>
         </div>
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-blue-600 text-sm">{data.getAssignedStudentsCount(teacher)}</span>
-            <span className="text-xs text-gray-500">students</span>
-          </div>
+        
+        {/* Students Count */}
+        <div className="px-6 py-4 flex items-center gap-1.5">
+          <span className="font-semibold text-blue-600 text-sm">{data.getAssignedStudentsCount(teacher)}</span>
+          <span className="text-xs text-gray-500">students</span>
         </div>
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-amber-500">⭐</span>
-            <span className="font-semibold text-gray-900 text-sm">{data.getPerformanceRating(teacher)}</span>
-          </div>
+        
+        {/* Performance Rating */}
+        <div className="px-6 py-4 flex items-center gap-1.5">
+          <span className="text-amber-500 flex-shrink-0">⭐</span>
+          <span className="font-semibold text-gray-900 text-sm">{data.getPerformanceRating(teacher)}</span>
         </div>
-        <div className="px-4 py-3">
+        
+        {/* Status */}
+        <div className="px-6 py-4 flex items-center">
           {data.getStatusBadge(teacher.status || 'active')}
         </div>
-        <div className="px-4 py-3">
-          <span className="text-sm font-semibold text-gray-900">
+        
+        {/* Salary */}
+        <div className="px-6 py-4 flex items-center">
+          <span className="text-sm font-semibold text-gray-900 truncate">
             {teacher.isAdmin ? (
               <span className="text-gray-400">N/A</span>
             ) : (
@@ -218,45 +254,25 @@ const TeacherList: React.FC<TeacherListProps> = ({
             )}
           </span>
         </div>
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-2">
+        
+        {/* Actions - Credentials & Analytics */}
+        <div className="px-6 py-4 flex items-center gap-2">
+          {data.onCredentials && (
             <button
-              onClick={() => data.onTeacherSelect(teacher)}
-              className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+              onClick={() => data.onCredentials(teacher)}
+              className="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors whitespace-nowrap"
             >
-              View
+              Credentials
             </button>
-            {!teacher.isAdmin && (
-              <button
-                onClick={() => data.onEditTeacher(teacher)}
-                className="px-2.5 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-md transition-colors"
-              >
-                Edit
-              </button>
-            )}
+          )}
+          {data.onAnalytics && (
             <button
-              onClick={() => data.onDeleteTeacher(teacher.id)}
-              className="px-2.5 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+              onClick={() => data.onAnalytics(teacher)}
+              className="px-2.5 py-1 text-xs font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-md transition-colors whitespace-nowrap"
             >
-              Del
+              Analytics
             </button>
-            {data.onCredentials && (
-              <button
-                onClick={() => data.onCredentials(teacher)}
-                className="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
-              >
-                Credentials
-              </button>
-            )}
-            {data.onAnalytics && (
-              <button
-                onClick={() => data.onAnalytics(teacher)}
-                className="px-2.5 py-1 text-xs font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-md transition-colors"
-              >
-                Analytics
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     );
