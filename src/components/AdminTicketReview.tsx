@@ -606,11 +606,23 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                   </span>
                                 </div>
                                 <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
-                                  {ticket.studentName}
+                                  {ticket.studentName || 'Unknown Student'}
                                 </h4>
-                                <p className="text-xs text-primary/70 font-medium">
-                                  👨‍🏫 {ticket.assignedTeacherName || 'Unassigned'}
-                                </p>
+                                <div className="space-y-0.5">
+                                  <p className="text-xs text-primary/70 font-medium">
+                                    👨‍🏫 Teacher: {ticket.assignedTeacherName || ticket.assignedTeacherId || 'Unassigned'}
+                                  </p>
+                                  {ticket.createdByName && (
+                                    <p className="text-xs text-primary/60">
+                                      📝 Created by: {ticket.createdByName}
+                                    </p>
+                                  )}
+                                  {ticket.createdAt && (
+                                    <p className="text-xs text-primary/60">
+                                      📅 Created: {new Date(ticket.createdAt).toLocaleDateString()}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -626,21 +638,34 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
                             {/* Stats Row */}
                             <div className="flex items-center justify-between mb-2 pt-2 border-t border-gray-200">
-                              <div className="flex items-center gap-2">
-                                {ticket.mistakes && ticket.mistakes.length > 0 && (
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {ticket.mistakes && Array.isArray(ticket.mistakes) && ticket.mistakes.length > 0 ? (
                                   <div className="flex items-center gap-1">
                                     <span className="text-sm">🔴</span>
                                     <span className="text-xs font-bold text-primary">
                                       {ticket.mistakes.length} mistake{ticket.mistakes.length !== 1 ? 's' : ''}
                                     </span>
                                   </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs text-primary/50">No mistakes recorded</span>
+                                  </div>
                                 )}
-                                <div className="flex items-center gap-1">
-                                  <span className="text-xs">🕐</span>
-                                  <span className="text-[10px] text-primary/60">
-                                    {ticket.submittedAt ? new Date(ticket.submittedAt).toLocaleDateString() : 'N/A'}
-                                  </span>
-                                </div>
+                                {ticket.submittedAt ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs">🕐</span>
+                                    <span className="text-[10px] text-primary/60">
+                                      Submitted: {new Date(ticket.submittedAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                ) : ticket.createdAt ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs">📅</span>
+                                    <span className="text-[10px] text-primary/60">
+                                      Created: {new Date(ticket.createdAt).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                ) : null}
                               </div>
                             </div>
 
