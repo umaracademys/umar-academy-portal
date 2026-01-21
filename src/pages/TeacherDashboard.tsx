@@ -958,6 +958,26 @@ const TeacherDashboard: React.FC = () => {
                   {(showAllPendingTickets ? filteredAndSortedTickets : filteredAndSortedTickets.slice(0, 5)).map((ticket) => {
                     const handleTicketClick = async () => {
                       try {
+                        // ✅ FIX: Always fetch full ticket data before opening (ticket list has limited fields)
+                        const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
+                        const token = localStorage.getItem('umar_academy_token');
+                        const fullTicketResponse = await fetch(`${API_BASE}/tickets/${ticket.id}`, {
+                          headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        
+                        if (!fullTicketResponse.ok) {
+                          throw new Error('Failed to fetch ticket data');
+                        }
+                        
+                        const fullTicket = await fullTicketResponse.json();
+                        const mappedFullTicket = {
+                          ...fullTicket,
+                          id: fullTicket._id || fullTicket.id
+                        };
+                        
                         if (ticket.status === 'pending' || ticket.status === 'reassigned') {
                           // Show alert before starting review
                           const reminderMessage = `Before starting the review, please ensure:\n\n` +
@@ -973,11 +993,13 @@ const TeacherDashboard: React.FC = () => {
                           }
                           
                           const updatedTicket = await startTicket(ticket.id);
-                          setSelectedTicket(updatedTicket);
+                          // Merge full ticket data with updated ticket
+                          setSelectedTicket({ ...mappedFullTicket, ...updatedTicket });
                           setShowTicketReview(true);
                           setRefreshKey(prev => prev + 1);
                         } else if (ticket.status === 'in_progress') {
-                          setSelectedTicket(ticket);
+                          // Use full ticket data instead of limited list ticket
+                          setSelectedTicket(mappedFullTicket);
                           setShowTicketReview(true);
                         }
                       } catch (error) {
