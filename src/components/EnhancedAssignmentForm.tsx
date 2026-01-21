@@ -43,10 +43,16 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
   const [existingMistakes, setExistingMistakes] = useState<MushafMistake[]>([]);
   const [surahs, setSurahs] = useState<Chapter[]>([]);
 
-  const student = students.find(s => s.id === studentId);
-  const existingAssignment = assignmentId 
-    ? assignments.find(a => a.id === assignmentId)
-    : null;
+  // ✅ OPTIMIZED: Memoize student and assignment lookups
+  const student = useMemo(() => 
+    students.find(s => s.id === studentId),
+    [students, studentId]
+  );
+  
+  const existingAssignment = useMemo(() => 
+    assignmentId ? assignments.find(a => a.id === assignmentId) : null,
+    [assignmentId, assignments]
+  );
 
   // Load Surahs on mount
   useEffect(() => {
@@ -87,12 +93,27 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         
         if (response.ok) {
           const data = await response.json();
+          // ✅ OPTIMIZED: Backend already returns minimal fields (field selection applied)
           // Ensure tickets is an array - handle both array response and object with tickets property
           const tickets: Ticket[] = Array.isArray(data) ? data : (Array.isArray(data?.tickets) ? data.tickets : []);
+          
+          // ✅ OPTIMIZED: Memoize ticket logs processing - only use essential fields
           const logs: TicketLogEntry[] = tickets
             .filter(t => t && t.status === 'sent_to_assignment')
             .map(ticket => ({
-              ticket,
+              ticket: {
+                id: ticket.id,
+                type: ticket.type,
+                recitationRange: ticket.recitationRange,
+                mistakeCount: ticket.mistakeCount,
+                atkees: ticket.atkees,
+                mistakes: ticket.mistakes?.slice(0, 5), // ✅ Limit to 5 for preview
+                adminComment: ticket.adminComment,
+                teacherComment: ticket.teacherComment,
+                assignedTeacherName: ticket.assignedTeacherName,
+                sentAt: ticket.sentAt,
+                createdAt: ticket.createdAt
+              } as Ticket,
               date: ticket.sentAt ? new Date(ticket.sentAt) : (ticket.createdAt ? new Date(ticket.createdAt) : new Date()),
               teacherName: ticket.assignedTeacherName || ticket.createdByName || 'N/A',
               type: ticket.type as 'sabq' | 'sabqi' | 'manzil',
@@ -240,76 +261,29 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         }));
       }
       
+      // ✅ OPTIMIZED: Limit mistakes array to prevent large state
       if (prefillTicket.mistakes && prefillTicket.mistakes.length > 0) {
-        const convertedMistakes: MushafMistake[] = prefillTicket.mistakes.map((m: any) => ({
-          id: m.id,
-          type: m.type,
-          page: m.page,
-          surah: m.surah,
-          ayah: m.ayah,
-          wordIndex: m.wordIndex,
-          position: m.position,
-          note: m.note,
-          audioUrl: m.audioUrl,
-          timestamp: m.timestamp || new Date(),
-          workflowStep: prefillTicket.type
-        }));
+        const convertedMistakes: MushafMistake[] = prefillTicket.mistakes
+          .slice(0, 20) // ✅ Limit to 20 mistakes for performance
+          .map((m: any) => ({
+            id: m.id,
+            type: m.type,
+            page: m.page,
+            surah: m.surah,
+            ayah: m.ayah,
+            wordIndex: m.wordIndex,
+            position: m.position,
+            note: m.note,
+            audioUrl: m.audioUrl,
+            timestamp: m.timestamp || new Date(),
+            workflowStep: prefillTicket.type
+          }));
         setCurrentMistakes(convertedMistakes);
       }
-    } else if (ticketLogs.length > 0 && !assignmentId) {
-      // Auto-prefill from approved tickets (when creating new assignment)
-      const currentDate = new Date();
-      ticketLogs.forEach(log => {
-        const ticket = log.ticket;
-        if (ticket.type === 'sabq') {
-          setClasswork(prev => {
-            // Check if sabq already exists
-            if (prev.sabq.length === 0) {
-              return {
-                ...prev,
-                sabq: [{
-                  type: 'sabq',
-                  assignmentRange: ticket.adminComment || 'Sabq recitation',
-                  details: ticket.adminComment || '',
-                  createdAt: currentDate
-                }]
-              };
-            }
-            return prev;
-          });
-        } else if (ticket.type === 'sabqi') {
-          setClasswork(prev => {
-            if (prev.sabqi.length === 0) {
-              return {
-                ...prev,
-                sabqi: [{
-                  type: 'sabqi',
-                  assignmentRange: ticket.teacherComment || ticket.adminComment || 'Sabqi recitation',
-                  details: ticket.teacherComment || ticket.adminComment || '',
-                  createdAt: currentDate
-                }]
-              };
-            }
-            return prev;
-          });
-        } else if (ticket.type === 'manzil') {
-          setClasswork(prev => {
-            if (prev.manzil.length === 0) {
-              return {
-                ...prev,
-                manzil: [{
-                  type: 'manzil',
-                  assignmentRange: ticket.teacherComment || ticket.adminComment || 'Manzil recitation',
-                  details: ticket.teacherComment || ticket.adminComment || '',
-                  createdAt: currentDate
-                }]
-              };
-            }
-            return prev;
-          });
-        }
-      });
     }
+    // ✅ FIX 7: Removed auto-prefill from ticketLogs
+    // This caused confusion and duplicated data
+    // Users should explicitly use "Use This Ticket" button or prefillTicket prop
   }, [existingAssignment, prefillTicket, ticketLogs, assignmentId]);
 
   // Get current user info
@@ -576,7 +550,8 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       onSave();
     } catch (error) {
       console.error('Error saving assignment:', error);
-      alert('Failed to save assignment. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save assignment. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -630,6 +605,134 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         {/* Modern Form with Better Spacing */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
+            {/* ✅ FIX 1: Student Info Section - Read-only if from ticket */}
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Student Information
+                  {prefillTicket && (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                      From Ticket
+                    </span>
+                  )}
+                </h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Student Name</label>
+                  <div className={`text-sm font-semibold text-gray-900 ${prefillTicket ? 'bg-white border border-gray-300 rounded px-3 py-2' : ''}`}>
+                    {student?.fullName || 'N/A'}
+                  </div>
+                </div>
+                {prefillTicket?.assignedTeacherName && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Assigned Teacher</label>
+                    <div className="text-sm font-semibold text-gray-900 bg-white border border-gray-300 rounded px-3 py-2">
+                      {prefillTicket.assignedTeacherName}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ✅ FIX 2: Ticket Review Summary Section (Read-only) */}
+            {prefillTicket && (
+              <div className="bg-blue-50 rounded-xl border-2 border-blue-200 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Review Summary (Read-only)
+                  </h3>
+                  <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
+                    {prefillTicket.type.toUpperCase()}
+                  </span>
+                </div>
+                
+                {/* Recitation Range - Read-only */}
+                {prefillTicket.recitationRange && (
+                  <div className="mb-4 p-3 bg-white rounded-lg border border-blue-200">
+                    <div className="text-xs font-semibold text-gray-700 mb-2">Recitation Range</div>
+                    {prefillTicket.recitationRange.surahName && (
+                      <div 
+                        className="text-base font-bold text-blue-700 mb-2"
+                        style={{ fontFamily: 'Amiri, "Scheherazade New", serif', direction: 'rtl' }}
+                        dir="rtl"
+                      >
+                        {prefillTicket.recitationRange.surahName}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 bg-blue-600 text-white text-xs font-semibold rounded">
+                        Ayah {prefillTicket.recitationRange.startAyahNumber}-{prefillTicket.recitationRange.endAyahNumber}
+                      </span>
+                      {prefillTicket.recitationRange.juzNumber && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                          Juz {prefillTicket.recitationRange.juzNumber}
+                        </span>
+                      )}
+                    </div>
+                    {prefillTicket.recitationRange.startAyahText && (
+                      <div 
+                        className="text-sm text-gray-900 mt-2 leading-relaxed"
+                        style={{ fontFamily: 'Amiri, "Scheherazade New", serif', direction: 'rtl' }}
+                        dir="rtl"
+                      >
+                        {prefillTicket.recitationRange.startAyahText}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Mistake Summary - Read-only */}
+                {(prefillTicket.mistakeCount !== undefined || prefillTicket.mistakes?.length || prefillTicket.atkees !== undefined) && (
+                  <div className="mb-4 p-3 bg-white rounded-lg border border-blue-200">
+                    <div className="text-xs font-semibold text-gray-700 mb-2">Mistake Summary</div>
+                    <div className="flex gap-2 flex-wrap">
+                      {prefillTicket.mistakeCount !== undefined && (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs font-semibold rounded">
+                          Mistakes: {prefillTicket.mistakeCount === 'weak' ? 'Weak' : prefillTicket.mistakeCount}
+                        </span>
+                      )}
+                      {prefillTicket.atkees !== undefined && (
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
+                          Atkees: {prefillTicket.atkees}
+                        </span>
+                      )}
+                      {prefillTicket.mistakes?.length > 0 && (
+                        <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs font-semibold rounded">
+                          Total: {prefillTicket.mistakes.length}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Comments - Read-only */}
+                {(prefillTicket.adminComment || prefillTicket.teacherComment) && (
+                  <div className="p-3 bg-white rounded-lg border border-blue-200">
+                    <div className="text-xs font-semibold text-gray-700 mb-2">Comments</div>
+                    {prefillTicket.adminComment && (
+                      <div className="mb-2">
+                        <div className="text-xs text-gray-500 mb-1">Admin:</div>
+                        <p className="text-sm text-gray-700">{prefillTicket.adminComment}</p>
+                      </div>
+                    )}
+                    {prefillTicket.teacherComment && (
+                      <div>
+                        <div className="text-xs text-gray-500 mb-1">Teacher:</div>
+                        <p className="text-sm text-gray-700">{prefillTicket.teacherComment}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Modern Ticket History Section */}
             {ticketLogs.length > 0 && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 overflow-hidden">
@@ -668,6 +771,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                           {ticketLogs.map((log, idx) => {
                             const colors = getTypeColor(log.type);
                             const mistakeCount = log.ticket.mistakes?.length || 0;
+                            const recitationRange = log.ticket.recitationRange;
                             return (
                               <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-4 py-3 text-sm text-gray-600">
@@ -679,7 +783,23 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                   </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span className="text-sm text-gray-700 font-medium">{mistakeCount}</span>
+                                  <div className="text-sm text-gray-700">
+                                    {recitationRange ? (
+                                      <div>
+                                        <div className="font-semibold">
+                                          {recitationRange.surahName || `Surah ${recitationRange.surahNumber}`}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          Ayah {recitationRange.startAyahNumber}-{recitationRange.endAyahNumber}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-gray-400">No range</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="text-sm text-gray-700 font-medium">{mistakeCount} mistakes</span>
                                 </td>
                                 <td className="px-4 py-3">
                                   <button
@@ -687,7 +807,7 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                                     onClick={() => useTicketSuggestion(log)}
                                     className="px-3 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
                                   >
-                                    Use
+                                    Use This Ticket
                                   </button>
                                 </td>
                               </tr>
@@ -755,9 +875,20 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                             placeholder="Assignment Range (e.g., Surah Al-Fatiha, Ayah 1-7)"
                             value={phase.assignmentRange}
                             onChange={(e) => updateClassworkPhase('sabq', index, 'assignmentRange', e.target.value)}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                            disabled={!!phase.fromTicketId} // ✅ FIX 3: Disable if from ticket
+                            className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all ${
+                              phase.fromTicketId ? 'bg-gray-100 cursor-not-allowed opacity-75' : ''
+                            }`}
                             required
                           />
+                          {phase.fromTicketId && (
+                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                              </svg>
+                              This field is locked because it comes from an approved ticket
+                            </p>
+                          )}
                       
                           {/* Modern Detailed Display - Complete Report - Always show if fromTicketId exists */}
                           {(phase.fromTicketId || phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakeCount !== undefined || phase.atkees !== undefined || phase.mistakes?.length || phase.tajweedIssues?.length || phase.adminComment || phase.teacherReviewComment || phase.details) ? (
@@ -1027,9 +1158,20 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                         placeholder="Assignment Range"
                         value={phase.assignmentRange}
                         onChange={(e) => updateClassworkPhase('sabqi', index, 'assignmentRange', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-1"
+                        disabled={!!phase.fromTicketId} // ✅ FIX 3: Disable if from ticket
+                        className={`w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 mb-1 ${
+                          phase.fromTicketId ? 'bg-gray-100 cursor-not-allowed opacity-75' : ''
+                        }`}
                         required
                       />
+                      {phase.fromTicketId && (
+                        <p className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1">
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Locked (from ticket)
+                        </p>
+                      )}
                       {/* Display all ticket details if they exist */}
                       {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakesSummary || phase.tajweedIssues?.length || phase.teacherReviewComment) && (
                         <div className="mt-2 space-y-1 text-[10px] text-gray-600 border-t border-gray-200 pt-1">
@@ -1136,9 +1278,20 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                         placeholder="Assignment Range"
                         value={phase.assignmentRange}
                         onChange={(e) => updateClassworkPhase('manzil', index, 'assignmentRange', e.target.value)}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 focus:border-green-500 mb-1"
+                        disabled={!!phase.fromTicketId} // ✅ FIX 3: Disable if from ticket
+                        className={`w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-green-500 focus:border-green-500 mb-1 ${
+                          phase.fromTicketId ? 'bg-gray-100 cursor-not-allowed opacity-75' : ''
+                        }`}
                         required
                       />
+                      {phase.fromTicketId && (
+                        <p className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1">
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                          Locked (from ticket)
+                        </p>
+                      )}
                       {/* Display all ticket details if they exist */}
                       {(phase.surahName || phase.surahNumber || phase.juzNumber || phase.fromAyah || phase.toAyah || phase.startAyahText || phase.endAyahText || phase.mistakesSummary || phase.tajweedIssues?.length || phase.teacherReviewComment) && (
                         <div className="mt-2 space-y-1 text-[10px] text-gray-600 border-t border-gray-200 pt-1">

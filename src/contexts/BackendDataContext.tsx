@@ -3773,7 +3773,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         let errorMessage = 'Failed to create assignment';
         try {
           const errorData = JSON.parse(errorText);
-          errorMessage = errorData.error || errorMessage;
+          // Include detailed validation errors if available
+          if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+            const errorDetails = errorData.errors.map((err: any) => 
+              `${err.field}: ${err.message}`
+            ).join(', ');
+            errorMessage = `${errorData.error || errorMessage}. ${errorDetails}`;
+          } else {
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          }
         } catch {
           errorMessage = errorText || errorMessage;
         }
