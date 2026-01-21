@@ -5,6 +5,7 @@ services:
     env: node
     plan: free
     buildCommand: bash backend-render-build.sh
+    # Note: Backend doesn't need a build step, just install dependencies
     startCommand: cd backend && node server.js
     envVars:
       - key: NODE_ENV

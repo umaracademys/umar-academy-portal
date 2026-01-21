@@ -29,4 +29,7 @@ cd "$BACKEND_DIR" || { echo "Error: Failed to change to backend directory"; exit
 corepack prepare pnpm@9.0.0 --activate
 
 # Use pnpm to install dependencies (pnpm can read package-lock.json)
+# Backend doesn't need a build step - it's a Node.js server that runs directly
 pnpm install --frozen-lockfile --prefer-offline
+
+echo "✅ Backend dependencies installed successfully"
