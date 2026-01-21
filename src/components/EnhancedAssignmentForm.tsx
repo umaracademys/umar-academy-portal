@@ -530,11 +530,13 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         });
         await updateAssignment(assignmentId, assignmentData);
       } else {
+        // Remove 'id' field for new assignments (backend will generate it)
+        const { id, ...assignmentDataWithoutId } = assignmentData;
         const assignmentDataWithTicket = prefillTicket && prefillTicket.type === 'sabq' && prefillTicket.id
-          ? { ...assignmentData, ticketId: prefillTicket.id }
-          : assignmentData;
+          ? { ...assignmentDataWithoutId, ticketId: prefillTicket.id }
+          : assignmentDataWithoutId;
         console.log('💾 Creating new assignment:', {
-          homework: assignmentData.homework
+          homework: assignmentDataWithTicket.homework
         });
         await addAssignment(assignmentDataWithTicket);
       }

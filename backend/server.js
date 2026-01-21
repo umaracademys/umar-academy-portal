@@ -7744,7 +7744,7 @@ app.post('/api/assignments',
     commonRules.optionalString('ticketId', 100),
     commonRules.optionalString('type', 50),
     commonRules.optionalString('status', 50)
-  ], ['studentId', 'studentName', 'ticketId', 'type', 'status', 'classwork', 'homework', 'dueDate', 'createdAt', 'assignedBy', 'assignedByName', 'assignedByRole', 'comment', 'mushafMistakes', 'weeklyEvaluationId', 'fromTicketId', 'fromRecitationReviewId']),
+  ], ['id', 'studentId', 'studentName', 'ticketId', 'type', 'status', 'classwork', 'homework', 'dueDate', 'createdAt', 'assignedBy', 'assignedByName', 'assignedByRole', 'comment', 'mushafMistakes', 'weeklyEvaluationId', 'fromTicketId', 'fromRecitationReviewId']),
   async (req, res) => {
   try {
     const { ticketId, id, ...assignmentData } = req.body; // Remove 'id' field for POST (only used for updates)
