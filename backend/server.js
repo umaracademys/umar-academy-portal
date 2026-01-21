@@ -3722,7 +3722,7 @@ app.post('/api/students',
     commonRules.arrayOfStrings('assignedTeachers', 255),
     commonRules.number('tuitionFee', 0, 999999),
     commonRules.number('registrationAmount', 0, 999999)
-  ], ['fullName', 'email', 'contact', 'parentName', 'program', 'assignedTeacherIds', 'assignedTeachers', 'tuitionFee', 'registrationAmount', 'recitationProfile']),
+  ], ['fullName', 'email', 'contact', 'parentName', 'program', 'assignedTeacherIds', 'assignedTeachers', 'assignedTeacher', 'assignedTeacherId', 'tuitionFee', 'registrationAmount', 'recitationProfile', 'studentId', 'userId', 'level', 'paymentStatus', 'enrollmentDate', 'schedule', 'siblings', 'status', 'avatar', 'assessments', 'evaluations']),
   async (req, res) => {
   try {
     // Convert userId to ObjectId if it's a string
