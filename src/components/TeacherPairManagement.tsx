@@ -253,12 +253,12 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
       danger: false,
       onConfirm: async () => {
         setConfirmModal({ ...confirmModal, isOpen: false });
-        await performRemoveStudent(studentId);
+        await performRemoveStudent(id);
       }
     });
   };
 
-  const performRemoveStudent = async (studentId: string) => {
+  const performRemoveStudent = async (id: string) => {
     if (!selectedPair) return;
     
     setLoading(true);
@@ -775,7 +775,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
         }}
       />
 
-      <ToastContainer toasts={toasts} />
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 };
