@@ -1,6 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, memo } from 'react';
+import { FixedSizeList } from 'react-window';
 import { useData } from '../contexts/DataContext';
 import Card from './Card';
+import { ConfirmationModal } from './ui/ConfirmationModal';
+import { useToast } from '../hooks/useToast';
+import { ToastContainer } from './ui/ToastContainer';
 
 interface StudentListProps {
   onStudentSelect: (student: any) => void;
@@ -15,6 +19,7 @@ interface StudentListProps {
 
 const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStudent, onDeleteStudent, onAddStudent, onCredentials, onAnalytics, onBulkOperations, onPersonalMushaf }) => {
   const { students, teachers, addStudent } = useData();
+  const { showToast, toasts, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('all');
   const [selectedProgram, setSelectedProgram] = useState('all');
@@ -30,6 +35,20 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const [generatedPasswords, setGeneratedPasswords] = useState<Record<string, string>>({});
   const [resettingPasswords, setResettingPasswords] = useState(false);
   const [userPasswordStatus, setUserPasswordStatus] = useState<Record<string, { passwordChangeRequired: boolean; hasPassword: boolean }>>({});
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    danger?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
 
   // Helper function to get teacher name from ID
   const getTeacherName = (teacherId: string | undefined | null): string => {
@@ -195,6 +214,120 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
+  // Virtualized row component for StudentList
+  // Using div-based layout to work with react-window while maintaining table appearance
+  const StudentRow = memo(({ index, style, data }: { index: number; style: React.CSSProperties; data: any }) => {
+    const student = data.students[index];
+    if (!student) return null;
+
+    return (
+      <div 
+        style={style} 
+        className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 border-b border-gray-200 hover:bg-gray-50 items-center"
+      >
+        <div className="px-2 py-2">
+          <div className="flex items-center">
+            <img 
+              src={student.avatar || '/default-avatar.png'} 
+              alt={student.fullName || 'Student'} 
+              className="h-7 w-7 rounded-full mr-2" 
+            />
+            <div>
+              <p className="font-medium text-gray-900 text-xs">{student.fullName || 'Unknown'}</p>
+              <p className="text-[10px] text-gray-500">{student.program || 'No program'}</p>
+            </div>
+          </div>
+        </div>
+        <div className="px-2 py-2 text-[10px] font-mono text-gray-600">{student.id}</div>
+        <div className="px-2 py-2 text-xs">
+          <div>
+            <p className="text-gray-900">{student.email || 'No email'}</p>
+            <p className="text-[10px] text-gray-500">{student.contact || 'No contact'}</p>
+          </div>
+        </div>
+        <div className="px-2 py-2 text-xs">{student.program || 'N/A'}</div>
+        <div className="px-2 py-2 text-xs">{data.getTeacherName(student.assignedTeacher)}</div>
+        <div className="px-2 py-2 text-xs font-semibold">
+          ${student.tuitionFee?.toLocaleString() || '0'}
+        </div>
+        <div className="px-2 py-2">{data.getStatusBadge(student.status || 'active')}</div>
+        <div className="px-2 py-2">
+          {(() => {
+            const email = student.email?.toLowerCase();
+            const status = email ? data.userPasswordStatus[email] : null;
+            if (!status || !status.hasPassword) {
+              return (
+                <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
+                  No Password
+                </span>
+              );
+            }
+            if (status.passwordChangeRequired) {
+              return (
+                <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300" title="Student needs to change password">
+                  Change Required
+                </span>
+              );
+            }
+            return (
+              <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300" title="Password has been changed">
+                Changed
+              </span>
+            );
+          })()}
+        </div>
+        <div className="px-2 py-2">
+          <div className="flex space-x-1">
+            <button
+              onClick={() => data.onStudentSelect(student)}
+              className="text-primary-600 hover:text-primary-800 text-xs font-medium"
+            >
+              View
+            </button>
+            <button
+              onClick={() => data.onEditStudent(student)}
+              className="text-gold-600 hover:text-gold-800 text-xs font-medium"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => data.onDeleteStudent(student.id)}
+              className="text-red-600 hover:text-red-800 text-xs font-medium"
+            >
+              Del
+            </button>
+            {data.onCredentials && (
+              <button
+                onClick={() => data.onCredentials(student)}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                Credentials
+              </button>
+            )}
+            {data.onAnalytics && (
+              <button
+                onClick={() => data.onAnalytics(student)}
+                className="text-purple-600 hover:text-purple-800 text-sm font-medium"
+              >
+                Analytics
+              </button>
+            )}
+            {data.onPersonalMushaf && (
+              <button
+                onClick={() => data.onPersonalMushaf(student)}
+                className="text-green-600 hover:text-green-800 text-xs font-medium"
+                title="View Personal Mushaf with Mistakes"
+              >
+                Mushaf
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  });
+  StudentRow.displayName = 'StudentRow';
+
   const handleSort = (field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -246,13 +379,23 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   // Reset passwords for all filtered students
   const handleResetPasswords = async () => {
     if (filteredStudents.length === 0) {
-      alert('No students to reset passwords for');
+      showToast('No students to reset passwords for', 'warning');
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to generate new passwords for ${filteredStudents.length} student(s)? This will reset their current passwords.`)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reset Passwords',
+      description: `Are you sure you want to generate new passwords for ${filteredStudents.length} student(s)? This will reset their current passwords.`,
+      danger: false,
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        await performPasswordReset();
+      }
+    });
+  };
+
+  const performPasswordReset = async () => {
 
     setResettingPasswords(true);
     const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
@@ -269,7 +412,11 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       if (healthResponse.ok) {
         const health = await healthResponse.json();
         if (health.database?.status !== 'connected' || !health.database?.ping) {
-          alert(`⚠️ Database Connection Issue:\n\nStatus: ${health.database?.status || 'unknown'}\nPing: ${health.database?.ping ? 'OK' : 'Failed'}\n\nPlease ensure MongoDB is connected and try again.`);
+          showToast(
+            `Database Connection Issue: Status: ${health.database?.status || 'unknown'}, Ping: ${health.database?.ping ? 'OK' : 'Failed'}. Please ensure MongoDB is connected and try again.`,
+            'error',
+            6000
+          );
           setResettingPasswords(false);
           return;
         }
@@ -357,35 +504,35 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       setGeneratedPasswords(newPasswords);
       
       if (successCount > 0) {
-        let message = `✅ Successfully reset passwords for ${successCount} student(s).\n\n`;
+        showToast(
+          `Successfully reset passwords for ${successCount} student(s)${failCount > 0 ? `. ${failCount} failed.` : ''}`,
+          failCount > 0 ? 'warning' : 'success',
+          5000
+        );
         if (failCount > 0) {
-          message += `❌ ${failCount} failed:\n`;
-          failures.slice(0, 5).forEach(f => {
-            message += `• ${f.email}: ${f.reason}\n`;
-          });
-          if (failures.length > 5) {
-            message += `... and ${failures.length - 5} more\n`;
-          }
-          message += `\nCheck browser console for full details.`;
+          const failureDetails = failures.slice(0, 5).map(f => `${f.email}: ${f.reason}`).join(', ');
+          const moreCount = failures.length > 5 ? ` and ${failures.length - 5} more` : '';
+          showToast(`Failures: ${failureDetails}${moreCount}. Check console for details.`, 'error', 8000);
         }
-        alert(message);
         // Enable password in export fields
         setExportFields({ ...exportFields, password: true });
         setShowPasswordModal(false);
       } else {
-        let message = `❌ Failed to reset passwords for all students:\n\n`;
-        failures.slice(0, 10).forEach(f => {
-          message += `• ${f.email}: ${f.reason}\n`;
-        });
-        if (failures.length > 10) {
-          message += `... and ${failures.length - 10} more\n`;
-        }
-        message += `\nCheck browser console for full details.`;
-        alert(message);
+        const failureDetails = failures.slice(0, 5).map(f => `${f.email}: ${f.reason}`).join(', ');
+        const moreCount = failures.length > 5 ? ` and ${failures.length - 5} more` : '';
+        showToast(
+          `Failed to reset passwords for all students. ${failureDetails}${moreCount}. Check console for details.`,
+          'error',
+          8000
+        );
       }
     } catch (error) {
       console.error('❌ Error resetting passwords:', error);
-      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to reset passwords'}\n\nCheck browser console for details.`);
+      showToast(
+        `Error: ${error instanceof Error ? error.message : 'Failed to reset passwords'}. Check browser console for details.`,
+        'error',
+        6000
+      );
     } finally {
       setResettingPasswords(false);
     }
@@ -394,13 +541,13 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
   // Export function
   const handleExport = () => {
     if (!exportFields.fullName && !exportFields.email && !exportFields.password) {
-      alert('Please select at least one field to export');
+      showToast('Please select at least one field to export', 'warning');
       return;
     }
 
     // Check if password is selected but not generated
     if (exportFields.password && Object.keys(generatedPasswords).length === 0) {
-      alert('Please generate/reset passwords first before exporting with password field');
+      showToast('Please generate/reset passwords first before exporting with password field', 'warning');
       return;
     }
 
@@ -519,6 +666,22 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
 
 
   return (
+    <>
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        danger={confirmModal.danger}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
     <div className="space-y-6">
       {/* Prominent Header */}
       <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-2xl p-3 sm:p-4 border-b-4 border-accent shadow-xl">
@@ -692,177 +855,91 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
       {/* Students Table */}
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
+          {/* Table Header - using grid to match row layout */}
+          <div className="grid grid-cols-[2fr,1fr,2fr,1fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 bg-gray-50 border-b-2 border-gray-200">
+            <div 
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              onClick={() => handleSort('name')}
+            >
+              <div className="flex items-center space-x-1">
+                <span>Student</span>
+                {sortBy === 'name' && (
+                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</div>
+            <div 
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              onClick={() => handleSort('email')}
+            >
+              <div className="flex items-center space-x-1">
+                <span>Contact</span>
+                {sortBy === 'email' && (
+                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Program</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Teacher</div>
+            <div 
+              className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
+              onClick={() => handleSort('tuitionFee')}
+            >
+              <div className="flex items-center space-x-1">
+                <span>Tuition</span>
+                {sortBy === 'tuitionFee' && (
+                  <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Password</div>
+            <div className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</div>
+          </div>
+
+          {/* Virtualized Body */}
+          {paginatedStudents.length > 0 ? (
+            <FixedSizeList
+              height={Math.min(600, paginatedStudents.length * 60)}
+              itemCount={paginatedStudents.length}
+              itemSize={60}
+              width="100%"
+              itemData={{
+                students: paginatedStudents,
+                getTeacherName,
+                getStatusBadge,
+                userPasswordStatus,
+                onStudentSelect,
+                onEditStudent,
+                onDeleteStudent,
+                onCredentials,
+                onAnalytics,
+                onPersonalMushaf
+              }}
+              className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+            >
+              {StudentRow}
+            </FixedSizeList>
+          ) : (
+            <div className="px-4 py-8 text-center text-gray-500">
+              <div className="flex flex-col items-center">
+                <p className="text-lg font-semibold mb-2">No students found</p>
+                <p className="text-sm">No students match the selected filters.</p>
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedTeacher('all');
+                    setSelectedStatus('all');
+                    setSelectedPaymentStatus('all');
+                  }}
+                  className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-medium"
                 >
-                  <div className="flex items-center space-x-1">
-                    <span>Student</span>
-                    {sortBy === 'name' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</th>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('email')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Contact</span>
-                    {sortBy === 'email' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Program</th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Teacher</th>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('tuitionFee')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Tuition</span>
-                    {sortBy === 'tuitionFee' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Password</th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {paginatedStudents.length > 0 ? (
-                paginatedStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-2 py-2">
-                      <div className="flex items-center">
-                        <img 
-                          src={student.avatar || '/default-avatar.png'} 
-                          alt={student.fullName || 'Student'} 
-                          className="h-7 w-7 rounded-full mr-2" 
-                        />
-                        <div>
-                          <p className="font-medium text-gray-900 text-xs">{student.fullName || 'Unknown'}</p>
-                          <p className="text-[10px] text-gray-500">{student.program || 'No program'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-[10px] font-mono text-gray-600">{student.id}</td>
-                    <td className="px-2 py-2 text-xs">
-                      <div>
-                        <p className="text-gray-900">{student.email || 'No email'}</p>
-                        <p className="text-[10px] text-gray-500">{student.contact || 'No contact'}</p>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-xs">{student.program || 'N/A'}</td>
-                    <td className="px-2 py-2 text-xs">{getTeacherName(student.assignedTeacher)}</td>
-                    <td className="px-2 py-2 text-xs font-semibold">
-                      ${student.tuitionFee?.toLocaleString() || '0'}
-                    </td>
-                    <td className="px-2 py-2">{getStatusBadge(student.status || 'active')}</td>
-                    <td className="px-2 py-2">
-                      {(() => {
-                        const email = student.email?.toLowerCase();
-                        const status = email ? userPasswordStatus[email] : null;
-                        if (!status || !status.hasPassword) {
-                          return (
-                            <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-red-100 text-red-800 border border-red-300">
-                              No Password
-                            </span>
-                          );
-                        }
-                        if (status.passwordChangeRequired) {
-                          return (
-                            <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-yellow-100 text-yellow-800 border border-yellow-300" title="Student needs to change password">
-                              Change Required
-                            </span>
-                          );
-                        }
-                        return (
-                          <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 border border-green-300" title="Password has been changed">
-                              Changed
-                            </span>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex space-x-1">
-                        <button
-                          onClick={() => onStudentSelect(student)}
-                          className="text-primary-600 hover:text-primary-800 text-xs font-medium"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => onEditStudent(student)}
-                          className="text-gold-600 hover:text-gold-800 text-xs font-medium"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => onDeleteStudent(student.id)}
-                          className="text-red-600 hover:text-red-800 text-xs font-medium"
-                        >
-                          Del
-                        </button>
-                        {onCredentials && (
-                          <button
-                            onClick={() => onCredentials(student)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            Credentials
-                          </button>
-                        )}
-                        {onAnalytics && (
-                          <button
-                            onClick={() => onAnalytics(student)}
-                            className="text-purple-600 hover:text-purple-800 text-sm font-medium"
-                          >
-                            Analytics
-                          </button>
-                        )}
-                        {onPersonalMushaf && (
-                          <button
-                            onClick={() => onPersonalMushaf(student)}
-                            className="text-green-600 hover:text-green-800 text-xs font-medium"
-                            title="View Personal Mushaf with Mistakes"
-                          >
-                            Mushaf
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
-                    <div className="flex flex-col items-center">
-                      <p className="text-lg font-semibold mb-2">No students found</p>
-                      <p className="text-sm">No students match the selected filters.</p>
-                      <button
-                        onClick={() => {
-                          setSearchTerm('');
-                          setSelectedTeacher('all');
-                          setSelectedStatus('all');
-                          setSelectedPaymentStatus('all');
-                        }}
-                        className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition text-sm font-medium"
-                      >
-                        Clear All Filters
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  Clear All Filters
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pagination */}
@@ -1063,6 +1140,7 @@ const StudentList: React.FC<StudentListProps> = ({ onStudentSelect, onEditStuden
         </div>
       )}
     </div>
+    </>
   );
 };
 

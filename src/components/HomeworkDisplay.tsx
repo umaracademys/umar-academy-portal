@@ -40,6 +40,7 @@ const HomeworkDisplay: React.FC<HomeworkDisplayProps> = ({
 }) => {
   // Show homework if enabled OR if items exist
   const hasStructuredItems = homework?.items && homework.items.length > 0;
+  // ✅ LEGACY: sabqiContent/manzilContent may exist in old data but are not sent in new requests
   const hasLegacyContent = homework?.content || homework?.link || homework?.sabqiContent || homework?.manzilContent;
   const shouldShow = homework?.enabled || hasStructuredItems || hasLegacyContent;
   
@@ -130,7 +131,7 @@ const HomeworkDisplay: React.FC<HomeworkDisplayProps> = ({
         </div>
       )}
 
-      {/* Sabqi & Manzil Homework Content */}
+      {/* ✅ LEGACY: Sabqi & Manzil Homework Content (may exist in old data, but not sent in new requests) */}
       {(homework?.sabqiContent || homework?.manzilContent) && (
         <div className="mb-3 p-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-lg">
           <h5 className="text-xs font-semibold text-gray-900 mb-2">Sabqi & Manzil Homework</h5>

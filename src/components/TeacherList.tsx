@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
+import { FixedSizeList } from 'react-window';
 import { useData } from '../contexts/DataContext';
-import Card from './Card';
+import Button from './Button';
 
 interface TeacherListProps {
-  teachers?: any[]; // Optional prop to override default teachers from context
+  teachers?: any[];
   onTeacherSelect: (teacher: any) => void;
   onEditTeacher: (teacher: any) => void;
   onDeleteTeacher: (teacherId: string) => void | Promise<void>;
@@ -13,9 +14,17 @@ interface TeacherListProps {
   onBulkOperations?: () => void;
 }
 
-const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTeacherSelect, onEditTeacher, onDeleteTeacher, onAddTeacher, onCredentials, onAnalytics, onBulkOperations }) => {
+const TeacherList: React.FC<TeacherListProps> = ({ 
+  teachers: teachersProp, 
+  onTeacherSelect, 
+  onEditTeacher, 
+  onDeleteTeacher, 
+  onAddTeacher, 
+  onCredentials, 
+  onAnalytics, 
+  onBulkOperations 
+}) => {
   const { teachers: teachersFromContext, students, getStudentsByTeacher } = useData();
-  // Use prop if provided, otherwise use context
   const teachers = teachersProp || teachersFromContext;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
@@ -26,19 +35,16 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Helper function to get assigned students count for a teacher
   const getAssignedStudentsCount = (teacher: any) => {
     if (!teacher || !teacher.id) return 0;
     const assignedStudents = getStudentsByTeacher(teacher.id);
     return assignedStudents.length;
   };
 
-  // Get unique values for filters
   const uniqueSpecializations = Array.from(new Set(teachers.map(t => t.department))) as string[];
   const uniqueStatuses = Array.from(new Set(teachers.map(t => t.status || 'active'))) as string[];
   const uniqueLocations = Array.from(new Set(teachers.map(t => t.location))) as string[];
 
-  // Filter and sort teachers
   const filteredTeachers = useMemo(() => {
     let filtered = teachers.filter(teacher => {
       const matchesSearch = (teacher.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -51,7 +57,6 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
       return matchesSearch && matchesSpecialization && matchesStatus && matchesLocation;
     });
 
-    // Sort teachers
     filtered.sort((a, b) => {
       let aValue, bValue;
       switch (sortBy) {
@@ -86,7 +91,6 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
     return filtered;
   }, [teachers, searchTerm, selectedSpecialization, selectedStatus, selectedLocation, sortBy, sortOrder]);
 
-  // Pagination
   const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedTeachers = filteredTeachers.slice(startIndex, startIndex + itemsPerPage);
@@ -102,94 +106,245 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      active: 'bg-green-100 text-green-800 border-green-300',
-      inactive: 'bg-gray-100 text-gray-800 border-gray-300',
-      'on-leave': 'bg-yellow-100 text-yellow-800 border-yellow-300',
-      probation: 'bg-blue-100 text-blue-800 border-blue-300',
-      suspended: 'bg-red-100 text-red-800 border-red-300'
+      active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      inactive: 'bg-gray-50 text-gray-700 border-gray-200',
+      'on-leave': 'bg-amber-50 text-amber-700 border-amber-200',
+      probation: 'bg-blue-50 text-blue-700 border-blue-200',
+      suspended: 'bg-red-50 text-red-700 border-red-200'
     };
     
     return (
-      <span className={`px-2 py-1 text-xs font-semibold rounded-full border ${statusColors[status as keyof typeof statusColors] || statusColors.inactive}`}>
+      <span className={`px-2.5 py-1 text-xs font-medium rounded-md border ${statusColors[status as keyof typeof statusColors] || statusColors.inactive}`}>
         {status.replace('-', ' ')}
       </span>
     );
   };
 
   const getLocationFlag = (location: string) => {
-    const flags = {
+    const flags: Record<string, string> = {
       'Local': '🇺🇸',
       'Overseas Pakistan': '🇵🇰',
       'UK': '🇬🇧',
       'Canada': '🇨🇦',
       'Australia': '🇦🇺'
     };
-    return flags[location as keyof typeof flags] || '🌍';
+    return flags[location] || '🌍';
   };
 
   const getPerformanceRating = (teacher: any) => {
-    // Mock performance rating based on assigned students and other factors
     const studentCount = teacher.assignedStudents?.length || 0;
     const baseRating = Math.min(5, Math.max(1, 3 + (studentCount / 10)));
     return baseRating.toFixed(1);
   };
 
-  return (
-    <div className="space-y-3">
-      {/* Prominent Header */}
-      <div className="bg-gradient-to-r from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.9)] rounded-3xl p-3 sm:p-4 border-b-4 border-accent shadow-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white mb-1 drop-shadow-lg">
-              Teacher Directory
-            </h2>
-            <p className="text-white/90 text-xs sm:text-sm font-semibold">
-              Manage all registered teachers and admins • {filteredTeachers.length} {filteredTeachers.length === 1 ? 'person' : 'people'} found
-            </p>
+  const TeacherRow = memo(({ index, style, data }: { index: number; style: React.CSSProperties; data: any }) => {
+    const teacher = data.teachers[index];
+    if (!teacher) return null;
+
+    return (
+      <div 
+        style={style} 
+        className="grid grid-cols-[2fr,1fr,2fr,1.5fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 border-b border-gray-100 hover:bg-blue-50/30 transition-colors items-center"
+      >
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <img 
+                src={teacher.avatar || '/default-avatar.png'} 
+                alt={teacher.fullName || 'Teacher'} 
+                className="h-10 w-10 rounded-full object-cover ring-2 ring-gray-200" 
+              />
+              {teacher.isAdmin && (
+                <div className="absolute -top-1 -right-1 h-4 w-4 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <span className="text-[8px] text-white font-bold">A</span>
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-gray-900 text-sm truncate">{teacher.fullName || 'Unknown'}</p>
+                {teacher.isAdmin && (
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 rounded-full whitespace-nowrap">
+                    ADMIN
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            {onAddTeacher && (
-              <button 
-                onClick={onAddTeacher}
-                className="px-4 sm:px-5 py-2 bg-accent text-primary rounded-full font-extrabold hover:scale-110 transition-all shadow-xl hover:shadow-2xl text-xs sm:text-sm"
-                style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-primary)' }}
+        </div>
+        <div className="px-4 py-3">
+          <p className="text-xs font-mono text-gray-600 truncate" title={teacher.id}>{teacher.id}</p>
+        </div>
+        <div className="px-4 py-3">
+          <div className="space-y-0.5">
+            <p className="text-sm text-gray-900 truncate">{teacher.email || 'No email'}</p>
+            <p className="text-xs text-gray-500 truncate">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          <span className="text-sm text-gray-700">{teacher.department || 'General'}</span>
+        </div>
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{data.getLocationFlag(teacher.location || 'Unknown')}</span>
+            <span className="text-sm text-gray-700">{teacher.location || 'Unknown'}</span>
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-blue-600 text-sm">{data.getAssignedStudentsCount(teacher)}</span>
+            <span className="text-xs text-gray-500">students</span>
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-amber-500">⭐</span>
+            <span className="font-semibold text-gray-900 text-sm">{data.getPerformanceRating(teacher)}</span>
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          {data.getStatusBadge(teacher.status || 'active')}
+        </div>
+        <div className="px-4 py-3">
+          <span className="text-sm font-semibold text-gray-900">
+            {teacher.isAdmin ? (
+              <span className="text-gray-400">N/A</span>
+            ) : (
+              <>
+                {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
+              </>
+            )}
+          </span>
+        </div>
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => data.onTeacherSelect(teacher)}
+              className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+            >
+              View
+            </button>
+            {!teacher.isAdmin && (
+              <button
+                onClick={() => data.onEditTeacher(teacher)}
+                className="px-2.5 py-1 text-xs font-medium text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-md transition-colors"
               >
-                + Add Teacher
+                Edit
               </button>
             )}
-            <button className="px-3 sm:px-4 py-1.5 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-[10px] sm:text-xs">
+            <button
+              onClick={() => data.onDeleteTeacher(teacher.id)}
+              className="px-2.5 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+            >
+              Del
+            </button>
+            {data.onCredentials && (
+              <button
+                onClick={() => data.onCredentials(teacher)}
+                className="px-2.5 py-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-md transition-colors"
+              >
+                Credentials
+              </button>
+            )}
+            {data.onAnalytics && (
+              <button
+                onClick={() => data.onAnalytics(teacher)}
+                className="px-2.5 py-1 text-xs font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-md transition-colors"
+              >
+                Analytics
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  });
+  TeacherRow.displayName = 'TeacherRow';
+
+  return (
+    <div className="space-y-6">
+      {/* Modern Header */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Teacher Directory</h1>
+            <p className="text-gray-600">
+              Manage and view all registered teachers and administrators
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {onAddTeacher && (
+              <Button
+                onClick={onAddTeacher}
+                variant="primary"
+                size="md"
+              >
+                <span className="mr-2">+</span>
+                Add Teacher
+              </Button>
+            )}
+            <Button variant="outline" size="md">
               Export
-            </button>
-            <button className="px-3 sm:px-4 py-1.5 bg-accent/30 text-primary rounded-full font-extrabold hover:bg-accent/40 transition-all shadow-lg hover:scale-105 text-[10px] sm:text-xs">
+            </Button>
+            <Button variant="outline" size="md">
               Import
-            </button>
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-semibold text-gray-900">{filteredTeachers.length}</span>
+            <span>{filteredTeachers.length === 1 ? 'teacher' : 'teachers'} found</span>
+            {filteredTeachers.length !== teachers.length && (
+              <>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-500">Filtered from {teachers.length} total</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Enhanced Filters and Search */}
-      <Card>
-        <div className="bg-white rounded-xl p-3 sm:p-4 border-2 border-gray-200">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3">
-            {/* Search */}
-            <div className="sm:col-span-2 lg:col-span-2">
-              <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Search Teachers</label>
+      {/* Modern Filter Section */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Search & Filters</h2>
+          <p className="text-sm text-gray-500">Refine your search to find specific teachers</p>
+        </div>
+        
+        <div className="space-y-4">
+          {/* Search Bar */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search Teachers
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name, email, or ID..."
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm placeholder:text-primary/50"
+                className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm"
               />
             </div>
+          </div>
 
-            {/* Specialization Filter */}
+          {/* Filter Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Specialization</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Specialization
+              </label>
               <select
                 value={selectedSpecialization}
                 onChange={(e) => setSelectedSpecialization(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
+                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
               >
                 <option value="all">All Specializations</option>
                 {uniqueSpecializations.map(spec => (
@@ -198,13 +353,14 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
               </select>
             </div>
 
-            {/* Status Filter */}
             <div>
-              <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Status</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
+                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
               >
                 <option value="all">All Status</option>
                 {uniqueStatuses.map(status => (
@@ -212,269 +368,208 @@ const TeacherList: React.FC<TeacherListProps> = ({ teachers: teachersProp, onTea
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* Location Filter - Full Width */}
-          <div className="mb-3">
-            <label className="block text-[10px] sm:text-xs font-extrabold text-primary mb-1">Location</label>
-            <select
-              value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
-              className="w-full px-3 sm:px-4 py-2 border-2 border-primary rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition bg-white text-primary font-bold shadow-md text-xs sm:text-sm"
-            >
-              <option value="all">All Locations</option>
-              {uniqueLocations.map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location
+              </label>
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-colors text-sm bg-white"
+              >
+                <option value="all">All Locations</option>
+                {uniqueLocations.map(location => (
+                  <option key={location} value={location}>{location}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
-            <button
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button
               onClick={() => {
                 setSearchTerm('');
                 setSelectedSpecialization('all');
                 setSelectedStatus('all');
                 setSelectedLocation('all');
               }}
-              className="px-3 sm:px-4 py-1.5 bg-primary text-white rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs"
+              variant="secondary"
+              size="sm"
             >
               Clear Filters
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => {
                 setSortBy('name');
                 setSortOrder('asc');
               }}
-              className="px-3 sm:px-4 py-1.5 bg-accent text-primary rounded-full font-extrabold hover:scale-105 transition-all shadow-lg hover:shadow-xl text-xs"
+              variant="secondary"
+              size="sm"
             >
               Reset Sort
-            </button>
-          </div>
-
-          {/* Result Count */}
-          <div className="mt-3 text-right">
-            <p className="text-[10px] sm:text-xs font-semibold text-gray-600">
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTeachers.length)} of {filteredTeachers.length} teachers
-            </p>
+            </Button>
           </div>
         </div>
-      </Card>
+        </div>
 
-      {/* Teachers Table */}
-      <Card>
+      {/* Modern Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Teachers</h2>
+            <div className="text-sm text-gray-600">
+              Showing <span className="font-semibold text-gray-900">{startIndex + 1}</span> to{' '}
+              <span className="font-semibold text-gray-900">{Math.min(startIndex + itemsPerPage, filteredTeachers.length)}</span> of{' '}
+              <span className="font-semibold text-gray-900">{filteredTeachers.length}</span>
+            </div>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Teacher</span>
-                    {sortBy === 'name' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">ID</th>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('email')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Contact</span>
-                    {sortBy === 'email' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Specialization</th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Location</th>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('students')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Students</span>
-                    {sortBy === 'students' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Performance</th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Status</th>
-                <th 
-                  className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('salary')}
-                >
-                  <div className="flex items-center space-x-1">
-                    <span>Salary</span>
-                    {sortBy === 'salary' && (
-                      <span className="text-primary-600">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </div>
-                </th>
-                <th className="px-2 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {paginatedTeachers.length > 0 ? (
-                paginatedTeachers.map((teacher, index) => (
-                  <tr key={`${teacher._id || teacher.id || index}-${teacher.email || ''}`} className="hover:bg-gray-50">
-                    <td className="px-2 py-2">
-                      <div className="flex items-center">
-                        <img 
-                          src={teacher.avatar || '/default-avatar.png'} 
-                          alt={teacher.fullName || 'Teacher'} 
-                          className="h-7 w-7 rounded-full mr-2" 
-                        />
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-gray-900 text-xs">{teacher.fullName || 'Unknown'}</p>
-                            {teacher.isAdmin && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-300 rounded-full">
-                                ADMIN
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-gray-500">{teacher.department || (teacher.isAdmin ? 'Administration' : 'General')}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-[10px] font-mono text-gray-600">{teacher.id}</td>
-                    <td className="px-2 py-2 text-[10px]">
-                      <div>
-                        <p className="text-gray-900">{teacher.email || 'No email'}</p>
-                        <p className="text-gray-500">{teacher.phoneNumber || teacher.contact || 'No contact'}</p>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-[10px]">{teacher.department || 'General'}</td>
-                    <td className="px-2 py-2 text-[10px]">
-                      <div className="flex items-center space-x-1">
-                        <span>{getLocationFlag(teacher.location || 'Unknown')}</span>
-                        <span>{teacher.location || 'Unknown'}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-[10px]">
-                      <div className="flex items-center space-x-1.5">
-                        <span className="font-semibold text-primary-600">{getAssignedStudentsCount(teacher)}</span>
-                        <span className="text-gray-500">students</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2 text-[10px]">
-                      <div className="flex items-center space-x-1">
-                        <span className="text-gold-600">⭐</span>
-                        <span className="font-semibold">{getPerformanceRating(teacher)}</span>
-                      </div>
-                    </td>
-                    <td className="px-2 py-2">{getStatusBadge(teacher.status || 'active')}</td>
-                    <td className="px-2 py-2 text-[10px] font-semibold">
-                      {teacher.isAdmin ? (
-                        <span className="text-gray-400">N/A</span>
-                      ) : (
-                        <>
-                          {teacher.payroll?.currency === 'USD' ? '$' : 'Rs'}{teacher.payroll?.monthlySalary?.toLocaleString() || '0'}
-                        </>
-                      )}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex space-x-1.5">
-                        <button
-                          onClick={() => onTeacherSelect(teacher)}
-                          className="text-primary-600 hover:text-primary-800 text-[10px] font-medium"
-                        >
-                          View
-                        </button>
-                        {!teacher.isAdmin && (
-                          <button
-                            onClick={() => onEditTeacher(teacher)}
-                            className="text-accent-600 hover:text-accent-800 text-[10px] font-medium"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onDeleteTeacher(teacher.id)}
-                          className="text-red-600 hover:text-red-800 text-[10px] font-medium"
-                        >
-                          Del
-                        </button>
-                        {onCredentials && (
-                          <button
-                            onClick={() => onCredentials(teacher)}
-                            className="text-blue-600 hover:text-blue-800 text-[10px] font-medium"
-                          >
-                            Credentials
-                          </button>
-                        )}
-                        {onAnalytics && (
-                          <button
-                            onClick={() => onAnalytics(teacher)}
-                            className="text-purple-600 hover:text-purple-800 text-[10px] font-medium"
-                          >
-                            Analytics
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
-                    No teachers found matching the selected filters.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {/* Table Header */}
+          <div className="grid grid-cols-[2fr,1fr,2fr,1.5fr,1.5fr,1fr,1fr,1.5fr,2fr] gap-0 bg-gray-50 border-b border-gray-200">
+            <div 
+              className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => handleSort('name')}
+            >
+              <div className="flex items-center gap-2">
+                <span>Teacher</span>
+                {sortBy === 'name' && (
+                  <span className="text-primary">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">ID</div>
+            <div 
+              className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => handleSort('email')}
+            >
+              <div className="flex items-center gap-2">
+                <span>Contact</span>
+                {sortBy === 'email' && (
+                  <span className="text-primary">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Specialization</div>
+            <div className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Location</div>
+            <div 
+              className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => handleSort('students')}
+            >
+              <div className="flex items-center gap-2">
+                <span>Students</span>
+                {sortBy === 'students' && (
+                  <span className="text-primary">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Performance</div>
+            <div className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</div>
+            <div 
+              className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => handleSort('salary')}
+            >
+              <div className="flex items-center gap-2">
+                <span>Salary</span>
+                {sortBy === 'salary' && (
+                  <span className="text-primary">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</div>
+          </div>
+
+          {/* Virtualized Body */}
+          {paginatedTeachers.length > 0 ? (
+            <FixedSizeList
+              height={Math.min(600, paginatedTeachers.length * 72)}
+              itemCount={paginatedTeachers.length}
+              itemSize={72}
+              width="100%"
+              itemData={{
+                teachers: paginatedTeachers,
+                getLocationFlag,
+                getAssignedStudentsCount,
+                getPerformanceRating,
+                getStatusBadge,
+                onTeacherSelect,
+                onEditTeacher,
+                onDeleteTeacher,
+                onCredentials,
+                onAnalytics
+              }}
+              className="scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
+            >
+              {TeacherRow}
+            </FixedSizeList>
+          ) : (
+            <div className="px-6 py-16 text-center">
+              <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <h3 className="mt-4 text-sm font-medium text-gray-900">No teachers found</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                Try adjusting your search or filter criteria
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-700">Show</span>
-              <select
-                value={itemsPerPage}
-                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                className="px-2 py-1 border border-gray-300 rounded text-sm"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-              <span className="text-sm text-gray-700">per page</span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-700">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-sm bg-white"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-gray-700">per page</span>
+              </div>
               
-              <span className="text-sm text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              
-              <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  variant="outline"
+                  size="sm"
+                >
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1 px-4">
+                  <span className="text-sm text-gray-700">
+                    Page <span className="font-semibold text-gray-900">{currentPage}</span> of{' '}
+                    <span className="font-semibold text-gray-900">{totalPages}</span>
+                  </span>
+                </div>
+                
+                <Button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  variant="outline"
+                  size="sm"
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   );
 };

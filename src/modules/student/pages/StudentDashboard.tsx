@@ -347,10 +347,15 @@ const StudentDashboard: React.FC = () => {
         throw new Error('Assignment ID is missing. Please refresh the page and try again.');
       }
       
+      // ✅ FIX: Added Authorization header (required by backend authenticateToken middleware)
+      const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
       const response = await fetch(`${API_BASE}/assignments/${assignmentId}/submit-homework`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // ✅ FIX: Added auth header
+        },
         body: JSON.stringify({
           content: submission.content,
           link: submission.link || '',

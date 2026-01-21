@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
+import Button from '../components/Button';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
@@ -199,28 +200,34 @@ const AdminDashboard: React.FC = () => {
             </Link>
           )}
           {permissions.canManageStudents && (
-            <button
+            <Button
               onClick={() => setActiveSection('students')}
-              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
+              variant="outline"
+              size="sm"
+              className="text-xs"
             >
               Students
-            </button>
+            </Button>
           )}
           {permissions.canManageTeachers && (
-            <button
+            <Button
               onClick={() => setActiveSection('teachers')}
-              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
+              variant="outline"
+              size="sm"
+              className="text-xs"
             >
               Teachers
-            </button>
+            </Button>
           )}
           <RequirePermission permission="canViewNotifications" hideIfDenied>
-            <button
+            <Button
               onClick={() => setShowNotificationCenter(true)}
-              className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-xs font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
+              variant="outline"
+              size="sm"
+              className="text-xs"
             >
               Notifications
-            </button>
+            </Button>
           </RequirePermission>
         </div>
       </div>
@@ -626,9 +633,9 @@ const AdminDashboard: React.FC = () => {
           <Card key={index}>
             <h3 className="font-semibold text-primary mb-1 text-xs">{course}</h3>
             <p className="text-[10px] text-gray-600 mb-1.5">Active: {Math.floor(Math.random() * 50) + 10}</p>
-            <button className="w-full px-2 py-1 bg-primary text-white rounded text-xs font-semibold hover:bg-primary/90 transition-colors">
+            <Button variant="primary" size="sm" fullWidth className="text-xs">
               View
-            </button>
+            </Button>
           </Card>
         ))}
       </div>

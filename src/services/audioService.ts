@@ -15,10 +15,14 @@ export async function uploadMistakeAudio(
     // Convert blob to array buffer for upload
     const arrayBuffer = await audioBlob.arrayBuffer();
     
+    // ✅ FIX: Added Authorization header (required by backend authenticateToken middleware)
+    const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+    
     const response = await fetch(`${API_BASE}/api/mistakes/audio`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/octet-stream',
+        'Authorization': `Bearer ${token}` // ✅ FIX: Added auth header
       },
       body: arrayBuffer,
     });

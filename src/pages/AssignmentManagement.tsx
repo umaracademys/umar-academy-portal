@@ -12,6 +12,7 @@ import AdminSabqReview from '../components/AdminSabqReview';
 import { Ticket } from '../types/ticket';
 import { HomeworkItem } from '../types/assignment';
 import Header from '../components/Header';
+import Button from '../components/Button';
 
 // Helper function to normalize IDs (same as in BackendDataContext)
 const normalizeId = (id: any): string => {
@@ -430,8 +431,25 @@ const AssignmentManagement: React.FC = () => {
       // Open AdminSabqReview for new Sabq tickets
       setSabqReviewTicket(ticket);
     } else if (ticket.type === 'sabq') {
-      // Legacy flow: open assignment form (for edited tickets)
-      setPrefillTicket(ticket);
+      // ✅ OPTIMIZED: Pass only essential fields to reduce state size
+      setPrefillTicket({
+        id: ticket.id,
+        type: ticket.type,
+        studentId: ticket.studentId,
+        studentName: ticket.studentName,
+        assignedTeacherId: ticket.assignedTeacherId,
+        assignedTeacherName: ticket.assignedTeacherName,
+        recitationRange: ticket.recitationRange,
+        mistakeCount: ticket.mistakeCount,
+        atkees: ticket.atkees,
+        mistakes: ticket.mistakes?.slice(0, 10), // ✅ Limit array size
+        tajweedIssues: ticket.tajweedIssues,
+        adminComment: ticket.adminComment,
+        teacherComment: ticket.teacherComment,
+        status: ticket.status,
+        sentAt: ticket.sentAt,
+        createdAt: ticket.createdAt
+      } as Ticket);
       setShowAssignmentForm(true);
     }
     // Refresh data to get the new ticket
@@ -478,7 +496,8 @@ const AssignmentManagement: React.FC = () => {
 
       const assignment = await assignmentResponse.json();
 
-      // Update assignment with homework items
+      // ✅ FIX: Optimized payload - send only homework fields, not entire assignment object
+      // Backend correctly filters out immutable fields, but this is more efficient
       const updateResponse = await fetch(`${API_BASE}/assignments/${homeworkAssignmentId}`, {
         method: 'PUT',
         headers: {
@@ -486,9 +505,7 @@ const AssignmentManagement: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ...assignment,
           homework: {
-            ...assignment.homework,
             enabled: homeworkItems.length > 0,
             items: homeworkItems,
             notes: notes

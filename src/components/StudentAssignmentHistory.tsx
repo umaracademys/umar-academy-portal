@@ -759,6 +759,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                               {(assignment.homework?.enabled || 
                                 assignment.homework?.content || 
                                 assignment.homework?.link || 
+                                // ✅ LEGACY: sabqiContent/manzilContent may exist in old data but are not sent in new requests
                                 assignment.homework?.sabqiContent || 
                                 assignment.homework?.manzilContent ||
                                 (assignment.homework?.items && assignment.homework.items.length > 0) ||
@@ -774,7 +775,7 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
                                       const sabqiItems = assignment.homework?.items?.filter((item: any) => item.type === 'sabqi') || [];
                                       const manzilItems = assignment.homework?.items?.filter((item: any) => item.type === 'manzil') || [];
                                       
-                                      // Check for legacy content
+                                      // ✅ LEGACY: Check for legacy content (may exist in old data, but not sent in new requests)
                                       const hasSabqiContent = assignment.homework?.sabqiContent;
                                       const hasManzilContent = assignment.homework?.manzilContent;
                                       const hasGeneralContent = assignment.homework?.content || assignment.homework?.link;

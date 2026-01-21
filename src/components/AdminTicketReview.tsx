@@ -9,6 +9,9 @@ import { TicketQuickStats } from './workflow/TicketQuickStats';
 import { TicketInsightBanner } from './workflow/TicketInsightBanner';
 import { MistakeBadgeHighlight } from './workflow/MistakeBadgeHighlight';
 import AdminSabqReview from './AdminSabqReview';
+import { ConfirmationModal } from './ui/ConfirmationModal';
+import { useToast } from '../hooks/useToast';
+import { ToastContainer } from './ui/ToastContainer';
 
 interface AdminTicketReviewProps {
   onClose: () => void;
@@ -17,6 +20,7 @@ interface AdminTicketReviewProps {
 const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshDataLight, updateRecitationTicket, loading } = useBackendData();
   const { user } = useAuth();
+  const { showToast, toasts, removeToast } = useToast();
   
   // Refresh data when component mounts to ensure tickets are loaded
   useEffect(() => {
@@ -40,6 +44,20 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [showSabqReview, setShowSabqReview] = useState(false);
   const previousTicketIdRef = useRef<string | null>(null); // Track previous ticket ID to prevent unnecessary mushaf page resets
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    danger?: boolean;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
 
   // Get pending tickets (submitted by teachers)
   const pendingTickets = useMemo(() => {
@@ -103,7 +121,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     const ticket = recitationTickets.find(t => t.id === ticketId);
     if (!ticket) {
       console.error('❌ Ticket not found:', ticketId);
-      alert('Ticket not found. Please refresh and try again.');
+      showToast('Ticket not found. Please refresh and try again.', 'error');
       return;
     }
     
@@ -125,7 +143,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   const handleApproveAndSend = async () => {
     if (!selectedTicket || !user?.id) {
-      alert('You must be logged in to approve tickets');
+      showToast('You must be logged in to approve tickets', 'error');
       return;
     }
 
@@ -152,13 +170,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         `- Sabqi: ${Array.isArray(assignment?.classwork?.sabqi) ? assignment.classwork.sabqi.length : 0}\n` +
         `- Manzil: ${Array.isArray(assignment?.classwork?.manzil) ? assignment.classwork.manzil.length : 0}`;
       
-      alert(message);
+        showToast(message, 'success');
       
       await refreshDataLight(); // Use lightweight refresh for faster update
       setSelectedTicketId(null);
     } catch (error) {
       console.error('Error approving ticket:', error);
-      alert('Failed to approve ticket: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showToast('Failed to approve ticket: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -166,13 +184,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   const handleReassign = async () => {
     if (!selectedTicket || !selectedTeacherId) {
-      alert('Please select a teacher to reassign to');
+      showToast('Please select a teacher to reassign to', 'warning');
       return;
     }
 
     const teacher = teachers.find(t => t.id === selectedTeacherId);
     if (!teacher) {
-      alert('Selected teacher not found');
+      showToast('Selected teacher not found', 'error');
       return;
     }
 
@@ -180,14 +198,14 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     try {
       const teacherName = teacher.fullName || teacher.email || 'Unknown Teacher';
       await reassignTicket(selectedTicket.id, selectedTeacherId, teacherName, reassignReason);
-      alert('Ticket reassigned successfully!');
+      showToast('Ticket reassigned successfully!', 'success');
       setShowReassignModal(false);
       setSelectedTeacherId('');
       setReassignReason('');
       await refreshDataLight(); // Use lightweight refresh for faster update
     } catch (error) {
       console.error('Error reassigning ticket:', error);
-      alert('Failed to reassign ticket');
+      showToast('Failed to reassign ticket', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -236,7 +254,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     const ticket = recitationTickets.find(t => t.id === ticketId);
     if (!ticket) {
       console.error('❌ Ticket not found for deletion:', ticketId);
-      alert('Ticket not found. Please refresh and try again.');
+      showToast('Ticket not found. Please refresh and try again.', 'error');
       return;
     }
 
@@ -249,16 +267,25 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     );
     const hasDuplicates = duplicates.length > 0;
 
-    let confirmMessage = `Are you sure you want to delete this ${ticket.type.toUpperCase()} ticket for ${ticket.studentName}?`;
+    let description = `Are you sure you want to delete this ${ticket.type.toUpperCase()} ticket for ${ticket.studentName}?`;
     if (hasDuplicates) {
-      confirmMessage += `\n\n⚠️ Warning: There ${duplicates.length === 1 ? 'is' : 'are'} ${duplicates.length} duplicate ticket(s) for this student.`;
+      description += `\n\n⚠️ Warning: There ${duplicates.length === 1 ? 'is' : 'are'} ${duplicates.length} duplicate ticket(s) for this student.`;
     }
-    confirmMessage += '\n\nThis action cannot be undone.';
+    description += '\n\nThis action cannot be undone.';
 
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Ticket',
+      description,
+      danger: true,
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        await performTicketDeletion(ticketId);
+      }
+    });
+  };
 
+  const performTicketDeletion = async (ticketId: string) => {
     try {
       // Delete via API
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
@@ -271,7 +298,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         throw new Error(`Failed to delete ticket: ${response.status} ${errorText}`);
       }
 
-      alert('Ticket deleted successfully!');
+      showToast('Ticket deleted successfully!', 'success');
       await refreshDataLight(); // Use lightweight refresh for faster update
       
       // If this was the selected ticket, go back to list
@@ -280,7 +307,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
     } catch (error) {
       console.error('Error deleting ticket:', error);
-      alert('Failed to delete ticket: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      showToast('Failed to delete ticket: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     }
   };
 
@@ -347,12 +374,12 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                 }
                 
                 const result = await response.json();
-                alert('Sabq submitted successfully and assignment updated!');
+                showToast('Sabq submitted successfully and assignment updated!', 'success');
                 await refreshDataLight();
                 setShowSabqReview(false);
                 setSelectedTicketId(null);
               } catch (error: any) {
-                alert('Failed to submit Sabq: ' + (error.message || 'Unknown error'));
+                showToast('Failed to submit Sabq: ' + (error.message || 'Unknown error'), 'error');
                 throw error;
               }
             }}

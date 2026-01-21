@@ -4,7 +4,7 @@ interface ButtonProps {
   children: ReactNode;
   onClick?: () => void;
   type?: 'button' | 'submit' | 'reset';
-  variant?: 'primary' | 'accent' | 'secondary' | 'outline' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
   className?: string;
@@ -27,10 +27,10 @@ const Button: React.FC<ButtonProps> = ({
   
   const variantClasses = {
     primary: 'bg-primary text-white hover:bg-primary/90 hover:shadow-md focus:ring-primary border border-primary',
-    accent: 'bg-accent text-primary hover:bg-accent/90 hover:shadow-md focus:ring-accent border border-accent',
     secondary: 'bg-soft-primary text-primary hover:bg-primary/10 focus:ring-primary border border-primary/30',
     outline: 'bg-transparent text-primary hover:bg-soft-primary focus:ring-primary border border-primary',
     danger: 'bg-error text-white hover:bg-error/90 hover:shadow-md focus:ring-error border border-error',
+    ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 focus:ring-gray-300 border border-transparent hover:border-gray-300',
   };
   
   const sizeClasses = {

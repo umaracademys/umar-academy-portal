@@ -561,28 +561,11 @@ if (!fs.existsSync(sabqAudioDir)) {
 
 // Audio upload route - must be before json middleware to handle binary data
 // SECURITY FIX: Add authentication and file validation
-app.post('/api/mistakes/audio', (req, res) => {
-  // Authenticate first
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
+app.post('/api/mistakes/audio', authenticateToken, (req, res) => {
+  // Authentication handled by authenticateToken middleware
+  // req.user is now available
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    
-    // Attach user to request
-    req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role
-    };
-
-    const chunks = [];
+  const chunks = [];
     let totalSize = 0;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     
@@ -630,32 +613,15 @@ app.post('/api/mistakes/audio', (req, res) => {
       console.error('Error reading request:', error);
       res.status(500).json({ error: error.message });
     });
-  });
 });
 
 // File upload route for pair teacher messages - must be before json middleware
-// SECURITY FIX: Add authentication and file validation
-app.post('/api/pair-teacher-messages/upload', (req, res) => {
-  // Authenticate first
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
+// SECURITY FIX: Uses authenticateToken middleware for consistent authentication
+app.post('/api/pair-teacher-messages/upload', authenticateToken, (req, res) => {
+  // Authentication handled by authenticateToken middleware
+  // req.user is now available
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    
-    req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role
-    };
-
-    const chunks = [];
+  const chunks = [];
     let totalSize = 0;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     
@@ -760,32 +726,15 @@ app.post('/api/pair-teacher-messages/upload', (req, res) => {
       console.error('Error reading request:', error);
       res.status(500).json({ error: error.message });
     });
-  });
 });
 
 // Recording upload route for ticket recordings - must be before json middleware
-// SECURITY FIX: Add authentication and file validation
-app.post('/api/recordings/upload', (req, res) => {
-  // Authenticate first
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
+// SECURITY FIX: Uses authenticateToken middleware for consistent authentication
+app.post('/api/recordings/upload', authenticateToken, (req, res) => {
+  // Authentication handled by authenticateToken middleware
+  // req.user is now available
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
-    }
-    
-    req.user = {
-      userId: decoded.userId,
-      email: decoded.email,
-      role: decoded.role
-    };
-
-    const chunks = [];
+  const chunks = [];
     let totalSize = 0;
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
     
@@ -847,7 +796,6 @@ app.post('/api/recordings/upload', (req, res) => {
       console.error('Error reading request:', error);
       res.status(500).json({ error: error.message });
     });
-  });
 });
 
 // JSON and URL-encoded middleware with size limits (after file upload routes)
@@ -7961,7 +7909,8 @@ app.put('/api/assignments/:id',
     commonRules.mongoId('id'),
     commonRules.optionalString('type', 50),
     commonRules.optionalString('status', 50),
-    commonRules.optionalEnum('status', ['pending', 'in_progress', 'completed', 'graded']),
+    // ✅ FIX: Updated status enum to match MongoDB schema: ['active', 'completed', 'archived']
+    commonRules.optionalEnum('status', ['active', 'completed', 'archived']),
     commonRules.date('dueDate', false)
   ], ['id', 'type', 'status', 'classwork', 'homework', 'dueDate', 'grade', 'feedback', 'comment', 'mushafMistakes']),
   async (req, res) => {

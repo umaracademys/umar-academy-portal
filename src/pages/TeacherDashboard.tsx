@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
 import Card from '../components/Card';
+import Button from '../components/Button';
 // DebugPanel only in development
 const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development';
 const DebugPanel = isDevelopment ? lazy(() => import('../components/DebugPanel')) : null;
@@ -611,12 +612,14 @@ const TeacherDashboard: React.FC = () => {
           <div className="mb-3 bg-red-50 border border-red-200 rounded px-3 py-2">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-red-800">{saveError}</p>
-              <button
+              <Button
                 onClick={() => setSaveError(null)}
-                className="text-xs text-red-600 hover:text-red-800"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-red-600 hover:text-red-800 min-h-auto p-1"
               >
                 ×
-              </button>
+              </Button>
             </div>
           </div>
         )}

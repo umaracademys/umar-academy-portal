@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
 import Card from './Card';
+import { ConfirmationModal } from './ui/ConfirmationModal';
+import { useToast } from '../hooks/useToast';
+import { ToastContainer } from './ui/ToastContainer';
 
 interface TeacherPairManagementProps {
   onClose: () => void;
@@ -20,6 +23,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
     teachers,
     students
   } = useBackendData();
+  const { showToast, toasts, removeToast } = useToast();
 
   const [pairs, setPairs] = useState<any[]>([]);
   const [pairStudents, setPairStudents] = useState<any[]>([]);
@@ -112,7 +116,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
         notes: ''
       });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to save pair');
+      showToast(error instanceof Error ? error.message : 'Failed to save pair', 'error');
     } finally {
       setLoading(false);
     }
@@ -120,29 +124,45 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
 
   const handleDelete = async (id: string) => {
     // Check if pair has students
-    const pairStudents = await getPairStudents({ pair: id });
-    if (pairStudents.length > 0) {
-      const confirmDelete = confirm(
-        `This pair has ${pairStudents.length} student(s) assigned. ` +
-        `You need to remove all students before deleting the pair. ` +
-        `Would you like to remove all students and delete the pair?`
-      );
-      
-      if (!confirmDelete) return;
-      
-      // Delete all students first
-      try {
-        for (const pairStudent of pairStudents) {
-          await deletePairStudent(pairStudent._id);
+    const pairStudentsData = await getPairStudents({ pair: id });
+    if (pairStudentsData.length > 0) {
+      setConfirmModal({
+        isOpen: true,
+        title: 'Delete Teacher Pair',
+        description: `This pair has ${pairStudentsData.length} student(s) assigned. You need to remove all students before deleting the pair. Would you like to remove all students and delete the pair?`,
+        danger: true,
+        onConfirm: async () => {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          await performPairDeletionWithStudents(id, pairStudentsData);
         }
-      } catch (error) {
-        alert('Failed to remove students. Please remove them manually first.');
-        return;
-      }
+      });
     } else {
-      if (!confirm('Are you sure you want to delete this teacher pair?')) return;
+      setConfirmModal({
+        isOpen: true,
+        title: 'Delete Teacher Pair',
+        description: 'Are you sure you want to delete this teacher pair?',
+        danger: true,
+        onConfirm: async () => {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          await performPairDeletion(id);
+        }
+      });
     }
-    
+  };
+
+  const performPairDeletionWithStudents = async (id: string, pairStudentsData: any[]) => {
+    // Delete all students first
+    try {
+      for (const pairStudent of pairStudentsData) {
+        await deletePairStudent(pairStudent._id);
+      }
+      await performPairDeletion(id);
+    } catch (error) {
+      showToast('Failed to remove students. Please remove them manually first.', 'error');
+    }
+  };
+
+  const performPairDeletion = async (id: string) => {
     try {
       await deleteTeacherPair(id);
       await loadPairs();
@@ -150,8 +170,9 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
         setSelectedPair(null);
         setPairStudents([]);
       }
+      showToast('Teacher pair deleted successfully', 'success');
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to delete pair');
+      showToast(error instanceof Error ? error.message : 'Failed to delete pair', 'error');
     }
   };
 
@@ -187,7 +208,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
         status: 'active'
       });
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to save student to pair');
+      showToast(error instanceof Error ? error.message : 'Failed to save student to pair', 'error');
     } finally {
       setLoading(false);
     }
@@ -208,7 +229,19 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
   };
 
   const handleDeletePairStudent = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this student from the pair?')) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Student from Pair',
+      description: 'Are you sure you want to remove this student from the pair?',
+      danger: false,
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+        await performRemoveStudent(studentId);
+      }
+    });
+  };
+
+  const performRemoveStudent = async (studentId: string) => {
     if (!selectedPair) return;
     
     setLoading(true);
@@ -216,7 +249,7 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
       await deletePairStudent(id);
       await loadPairStudents(selectedPair);
     } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to remove student from pair');
+      showToast(error instanceof Error ? error.message : 'Failed to remove student from pair', 'error');
     } finally {
       setLoading(false);
     }
@@ -668,14 +701,23 @@ const TeacherPairManagement: React.FC<TeacherPairManagementProps> = ({ onClose, 
                                 </div>
                                 <div className="flex gap-2 ml-3">
                                   <button
-                                    onClick={async () => {
-                                      if (!confirm(`Remove ${ps.student?.fullName || 'this student'} from this pair?`)) return;
-                                      try {
-                                        await deletePairStudent(ps._id);
-                                        await loadPairStudents(selectedPair!);
-                                      } catch (error) {
-                                        alert(error instanceof Error ? error.message : 'Failed to remove student');
-                                      }
+                                    onClick={() => {
+                                      setConfirmModal({
+                                        isOpen: true,
+                                        title: 'Remove Student from Pair',
+                                        description: `Remove ${ps.student?.fullName || 'this student'} from this pair?`,
+                                        danger: false,
+                                        onConfirm: async () => {
+                                          setConfirmModal({ ...confirmModal, isOpen: false });
+                                          try {
+                                            await deletePairStudent(ps._id);
+                                            await loadPairStudents(selectedPair!);
+                                            showToast('Student removed from pair successfully', 'success');
+                                          } catch (error) {
+                                            showToast(error instanceof Error ? error.message : 'Failed to remove student', 'error');
+                                          }
+                                        }
+                                      });
                                     }}
                                     disabled={loading}
                                     className="px-2 py-1 bg-red-500 text-white rounded text-xs font-bold hover:bg-red-600 disabled:opacity-50 transition"

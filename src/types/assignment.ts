@@ -91,8 +91,8 @@ export interface AssignmentHomework {
   enabled: boolean;
   content: string; // Text content (legacy - kept for backward compatibility)
   link?: string; // Optional link (legacy)
-  sabqiContent?: string; // Sabqi homework content
-  manzilContent?: string; // Manzil homework content
+  // ✅ FIX: Removed sabqiContent and manzilContent - these fields are not in MongoDB schema
+  // Use content for general homework or items[] for structured homework
   items?: HomeworkItem[]; // NEW: Structured homework items
   notes?: string; // General notes for all homework items
   submission?: HomeworkSubmission;

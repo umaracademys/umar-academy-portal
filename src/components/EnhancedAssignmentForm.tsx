@@ -175,18 +175,15 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     manzil: []
   });
 
+  // ✅ FIX: Removed invalid fields sabqiContent and manzilContent (not in MongoDB schema)
   const [homework, setHomework] = useState<{
     enabled: boolean;
     content: string;
     link: string;
-    sabqiContent: string;
-    manzilContent: string;
   }>({
     enabled: false,
     content: '',
-    link: '',
-    sabqiContent: '',
-    manzilContent: ''
+    link: ''
   });
 
   const [comment, setComment] = useState('');
@@ -197,14 +194,13 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       const classworkData = existingAssignment.classwork || { sabq: [], sabqi: [], manzil: [] };
       setClasswork(classworkData);
       
-      const hw = existingAssignment.homework || { enabled: false, content: '', link: '', sabqiContent: '', manzilContent: '' };
+      // ✅ FIX: Removed invalid fields sabqiContent and manzilContent
+      const hw = existingAssignment.homework || { enabled: false, content: '', link: '' };
       
       setHomework({
-        enabled: hw.enabled || !!(hw.content?.trim() || hw.link?.trim() || hw.sabqiContent?.trim() || hw.manzilContent?.trim()),
+        enabled: hw.enabled || !!(hw.content?.trim() || hw.link?.trim()),
         content: hw.content || '',
-        link: hw.link || '',
-        sabqiContent: hw.sabqiContent || '',
-        manzilContent: hw.manzilContent || ''
+        link: hw.link || ''
       });
       
       setComment(existingAssignment.comment || '');
@@ -450,8 +446,8 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     const hasHomework = homework.enabled && (
       homework.content.trim() || 
       homework.link.trim() || 
-      homework.sabqiContent.trim() || 
-      homework.manzilContent.trim()
+      // ✅ FIX: Removed invalid fields sabqiContent and manzilContent
+      false // Removed check for invalid fields
     );
     return hasClasswork || hasHomework;
   }, [filteredClasswork, homework]);
@@ -462,7 +458,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     
     // Prevent double submission
     if (isSaving) {
-      console.log('⏸️ Already saving, ignoring duplicate submission');
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Already saving, ignoring duplicate submission');
+      }
       return;
     }
     
@@ -504,12 +502,11 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         assignedByName: user.name || user.email || 'Unknown',
         assignedByRole: (user.role === 'superadmin' ? 'super_admin' : user.role) as 'admin' | 'super_admin' | 'teacher',
         classwork: filteredClasswork,
+        // ✅ FIX: Removed invalid fields sabqiContent and manzilContent (not in MongoDB schema)
         homework: {
           enabled: homework.enabled,
           content: homework.content || '',
-          link: homework.link || '',
-          sabqiContent: homework.sabqiContent || '',
-          manzilContent: homework.manzilContent || ''
+          link: homework.link || ''
         },
         comment: comment.trim(),
         mushafMistakes: mushafMistakes.length > 0 ? mushafMistakes : undefined,
@@ -524,20 +521,40 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       });
 
       if (assignmentId && existingAssignment) {
-        console.log('💾 Saving assignment update:', {
-          assignmentId,
-          homework: assignmentData.homework
-        });
-        await updateAssignment(assignmentId, assignmentData);
+        if (import.meta.env.DEV) {
+          console.log('💾 Saving assignment update:', {
+            assignmentId,
+            homework: assignmentData.homework
+          });
+        }
+        // For updates, only send fields that are allowed to be updated
+        // Backend filters out: studentId, studentName, assignedBy, assignedByName, assignedByRole
+        // Status must be one of: pending, in_progress, completed, graded (not 'active')
+        const updateData: Partial<Assignment> = {
+          classwork: filteredClasswork,
+          // ✅ FIX: Removed invalid fields sabqiContent and manzilContent (not in MongoDB schema)
+          homework: {
+            enabled: homework.enabled,
+            content: homework.content || '',
+            link: homework.link || ''
+          },
+          comment: comment.trim(),
+          mushafMistakes: mushafMistakes.length > 0 ? mushafMistakes : undefined
+          // Note: status, studentId, studentName, assignedBy, assignedByName, assignedByRole are NOT included
+          // as they are set at creation and cannot be changed via update
+        };
+        await updateAssignment(assignmentId, updateData);
       } else {
         // Remove 'id' field for new assignments (backend will generate it)
         const { id, ...assignmentDataWithoutId } = assignmentData;
         const assignmentDataWithTicket = prefillTicket && prefillTicket.type === 'sabq' && prefillTicket.id
           ? { ...assignmentDataWithoutId, ticketId: prefillTicket.id }
           : assignmentDataWithoutId;
-        console.log('💾 Creating new assignment:', {
-          homework: assignmentDataWithTicket.homework
-        });
+        if (import.meta.env.DEV) {
+          console.log('💾 Creating new assignment:', {
+            homework: assignmentDataWithTicket.homework
+          });
+        }
         await addAssignment(assignmentDataWithTicket);
       }
 
@@ -551,7 +568,9 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       
       onSave();
     } catch (error) {
-      console.error('Error saving assignment:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error saving assignment:', error);
+      }
       const errorMessage = error instanceof Error ? error.message : 'Failed to save assignment. Please try again.';
       alert(errorMessage);
     } finally {
@@ -1498,33 +1517,8 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
                     Sabqi & Manzil Homework
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Sabqi Field */}
-                    <div>
-                      <label className="block text-xs font-medium text-indigo-700 mb-1">
-                        Sabqi Homework
-                      </label>
-                      <textarea
-                        value={homework.sabqiContent}
-                        onChange={(e) => setHomework(prev => ({ ...prev, sabqiContent: e.target.value }))}
-                        rows={4}
-                        className="w-full px-3 py-2 border border-indigo-300 rounded text-sm focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 resize-none bg-white"
-                        placeholder="Enter Sabqi homework instructions..."
-                      />
-                    </div>
-
-                    {/* Manzil Field */}
-                    <div>
-                      <label className="block text-xs font-medium text-purple-700 mb-1">
-                        Manzil Homework
-                      </label>
-                      <textarea
-                        value={homework.manzilContent}
-                        onChange={(e) => setHomework(prev => ({ ...prev, manzilContent: e.target.value }))}
-                        rows={4}
-                        className="w-full px-3 py-2 border border-purple-300 rounded text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500 resize-none bg-white"
-                        placeholder="Enter Manzil homework instructions..."
-                      />
-                    </div>
+                    {/* ✅ FIX: Removed Sabqi and Manzil fields - these fields are not in MongoDB schema */}
+                    {/* Use homework.content for general homework instructions or homework.items[] for structured homework */}
                   </div>
                 </div>
 

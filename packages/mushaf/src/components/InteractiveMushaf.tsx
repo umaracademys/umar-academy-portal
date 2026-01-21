@@ -5,6 +5,12 @@ import { fetchPageLines, getQuranChapters, Chapter } from "../services/quranApi"
 import { uploadMistakeAudio } from "../services/audioService";
 import { FALLBACK_CHAPTERS } from "../data/fallbackChapters";
 import { ensureQpcV1Font, getAllQpcV1Words, getQpcV1Layout } from "../services/qpcV1Assets";
+import {
+  getCachedPageLines,
+  setCachedPageLines,
+  getCachedPageLayout,
+  setCachedPageLayout
+} from '../../../../src/utils/mushafCache';
 import { useMushafViewMode } from '../hooks/useMushafViewMode';
 import { useMobileGestures } from '../hooks/useMobileGestures';
 import { useMistakeCounts } from '../hooks/useMistakeCounts';
@@ -730,6 +736,8 @@ export const WordByWordPage: React.FC<{
 
   useEffect(() => {
     let cancelled = false;
+    const pageNumber = currentPage; // Use currentPage prop
+    
     // Batch state updates to prevent flickering
     React.startTransition(() => {
       setLayout(null);
@@ -739,7 +747,57 @@ export const WordByWordPage: React.FC<{
     });
 
     const loadLayout = async () => {
-      console.log(`🔄 [PAGE ${pageNumber}] Starting layout load from local data files...`);
+      console.log(`🔄 [PAGE ${pageNumber}] Starting layout load...`);
+      
+      // ✅ PHASE 2: Cache-first loading - Check IndexedDB cache first
+      try {
+        const cachedLines = await getCachedPageLines(pageNumber);
+        const cachedLayout = await getCachedPageLayout(pageNumber);
+        
+        if (!cancelled && cachedLines && cachedLayout) {
+          console.log(`✅ [PAGE ${pageNumber}] Using cached data from IndexedDB`);
+          
+          // Extract words from cached lines
+          const apiWords: Word[] = [];
+          cachedLines.lines.forEach((line: any) => {
+            if (line.words && Array.isArray(line.words)) {
+              line.words.forEach((wordData: any) => {
+                apiWords.push({
+                  word_index: wordData.id || wordData.word_index || wordData.word_id || 0,
+                  surah: parseInt(wordData.surah) || 0,
+                  ayah: parseInt(wordData.ayah) || 0,
+                  text: wordData.text || ''
+                });
+              });
+            }
+          });
+          
+          if (!cancelled && apiWords.length > 0) {
+            setWordsFromApi(apiWords);
+            setWordsLoading(false);
+          }
+          
+          if (!cancelled) {
+            setLayout(cachedLayout.layout);
+            try {
+              const family = await ensureQpcV1Font(pageNumber);
+              if (!cancelled && family) {
+                setFontFamily(`${family}, ${defaultFontStack}`);
+              } else {
+                setFontFamily(defaultFontStack);
+              }
+            } catch (fontError) {
+              setFontFamily(defaultFontStack);
+            }
+            
+            // Prefetch next/previous pages in background
+            prefetchAdjacentPages(pageNumber, cancelled);
+            return;
+          }
+        }
+      } catch (cacheError) {
+        console.warn(`⚠️ Cache check failed for page ${pageNumber}, falling back to network:`, cacheError);
+      }
       
       // PRIMARY: Try SQLite database with local font (user's preference)
       try {
@@ -758,6 +816,9 @@ export const WordByWordPage: React.FC<{
             console.warn(`⚠️ Unable to load QPC V1 font for page ${pageNumber}:`, fontError);
             setFontFamily(defaultFontStack);
           }
+          
+          // Prefetch next/previous pages in background
+          prefetchAdjacentPages(pageNumber, cancelled);
           return;
         }
       } catch (sqliteError) {
@@ -834,6 +895,17 @@ export const WordByWordPage: React.FC<{
             if (import.meta.env?.DEV) {
               console.log(`✅ Loaded layout for page ${pageNumber} from MongoDB`);
             }
+            
+            // ✅ PHASE 2: Cache the fetched data for next time
+            try {
+              await setCachedPageLines(pageNumber, { lines: pageData.lines, version: 'v4' });
+              await setCachedPageLayout(pageNumber, { layout: layoutJson });
+            } catch (cacheError) {
+              console.warn(`⚠️ Failed to cache page ${pageNumber}:`, cacheError);
+            }
+            
+            // Prefetch next/previous pages in background
+            prefetchAdjacentPages(pageNumber, cancelled);
             return;
           }
         }
@@ -874,12 +946,68 @@ export const WordByWordPage: React.FC<{
       }
     };
 
+    // Helper function to prefetch adjacent pages
+    const prefetchAdjacentPages = async (page: number, isCancelled: boolean) => {
+      if (isCancelled) return;
+      
+      const prefetchPages = [page + 1, page - 1].filter(p => p >= 1 && p <= 604);
+      
+      for (const prefetchPage of prefetchPages) {
+        if (isCancelled) break;
+        
+        try {
+          // Check if already cached
+          const cached = await getCachedPageLines(prefetchPage);
+          if (cached) {
+            continue; // Skip if already cached
+          }
+          
+          // Prefetch in background (non-blocking)
+          fetchPageLines(prefetchPage, 'v4')
+            .then(async (pageData) => {
+              if (isCancelled || !pageData) return;
+              
+              // Cache the prefetched data
+              try {
+                await setCachedPageLines(prefetchPage, { lines: pageData.lines, version: 'v4' });
+                
+                // Convert to layout format and cache
+                const layoutJson: LayoutPage = {
+                  page_number: pageData.pageNumber || prefetchPage,
+                  lines: pageData.lines.map((line: any) => ({
+                    page_number: pageData.pageNumber || prefetchPage,
+                    line_number: line.line_number,
+                    first_word_id: (line.first_word_id && line.first_word_id !== '') ? parseInt(line.first_word_id) : null,
+                    last_word_id: (line.last_word_id && line.last_word_id !== '') ? parseInt(line.last_word_id) : null,
+                    is_centered: line.is_centered === true || line.is_centered === 1,
+                    line_type: line.line_type || 'ayah',
+                    surah_number: line.surah_number || pageData.surahId
+                  }))
+                };
+                await setCachedPageLayout(prefetchPage, { layout: layoutJson });
+                
+                if (import.meta.env?.DEV) {
+                  console.log(`✅ Prefetched and cached page ${prefetchPage}`);
+                }
+              } catch (cacheError) {
+                // Silent fail for prefetch caching
+              }
+            })
+            .catch(() => {
+              // Silent fail for prefetch
+            });
+        } catch (error) {
+          // Silent fail for prefetch
+        }
+      }
+    };
+
     loadLayout();
 
     return () => {
       cancelled = true;
     };
-  }, [pageNumber, defaultFontStack]);
+  }, [currentPage, defaultFontStack]);
 
   // Collect mistakes with their word text for the parent component
   // Use ref to track last processed mistakes to prevent infinite loops
