@@ -39,7 +39,7 @@ const TeachersPage: React.FC = () => {
   const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
 
   // Combine teachers and admins, marking admins with a flag
-  // ✅ FIX: Deduplicate by email and ID to prevent duplicate display
+  // ✅ FIX: Improved deduplication - prioritize admins over teachers when same email exists
   const combinedTeachers = React.useMemo(() => {
     const teachersList = teachers.map(t => ({ ...t, isAdmin: false }));
     const adminsList = admins.map(a => ({
@@ -51,21 +51,51 @@ const TeachersPage: React.FC = () => {
       employmentType: 'Full Time' as const,
     }));
     
-    const combined = [...teachersList, ...adminsList];
+    // Create maps for efficient lookup
+    const teachersByEmail = new Map<string, any>();
+    const teachersById = new Map<string, any>();
+    const adminsByEmail = new Map<string, any>();
+    const adminsById = new Map<string, any>();
     
-    // Deduplicate by email (normalized) and by ID
+    // Index teachers by email and ID
+    teachersList.forEach(teacher => {
+      const email = teacher.email?.toLowerCase().trim();
+      const id = (teacher as any)._id?.toString() || teacher.id?.toString() || '';
+      if (email) teachersByEmail.set(email, teacher);
+      if (id) teachersById.set(id, teacher);
+    });
+    
+    // Index admins by email and ID
+    adminsList.forEach(admin => {
+      const email = admin.email?.toLowerCase().trim();
+      const id = (admin as any)._id?.toString() || admin.id?.toString() || '';
+      if (email) adminsByEmail.set(email, admin);
+      if (id) adminsById.set(id, admin);
+    });
+    
+    // Build deduplicated list - prioritize admins over teachers
+    const deduplicated: any[] = [];
     const seenEmails = new Set<string>();
     const seenIds = new Set<string>();
-    const deduplicated: any[] = [];
     const duplicates: any[] = [];
     
-    for (const teacher of combined) {
-      const normalizedEmail = teacher.email?.toLowerCase().trim();
-      const teacherId = teacher._id?.toString() || teacher.id?.toString() || '';
+    // First, add all admins (they take priority)
+    for (const admin of adminsList) {
+      const email = admin.email?.toLowerCase().trim();
+      const id = (admin as any)._id?.toString() || admin.id?.toString() || '';
       
-      // Check for duplicates
-      const isDuplicateByEmail = normalizedEmail && seenEmails.has(normalizedEmail);
-      const isDuplicateById = teacherId && seenIds.has(teacherId);
+      if (email) seenEmails.add(email);
+      if (id) seenIds.add(id);
+      deduplicated.push(admin);
+    }
+    
+    // Then, add teachers only if they don't conflict with admins
+    for (const teacher of teachersList) {
+      const email = teacher.email?.toLowerCase().trim();
+      const id = (teacher as any)._id?.toString() || teacher.id?.toString() || '';
+      
+      const isDuplicateByEmail = email && seenEmails.has(email);
+      const isDuplicateById = id && seenIds.has(id);
       
       if (isDuplicateByEmail || isDuplicateById) {
         duplicates.push(teacher);
@@ -73,20 +103,21 @@ const TeachersPage: React.FC = () => {
           console.warn('⚠️ Duplicate teacher/admin in combined list:', {
             fullName: teacher.fullName,
             email: teacher.email,
-            id: teacherId,
-            isAdmin: teacher.isAdmin,
-            duplicateBy: isDuplicateByEmail ? 'email' : 'id'
+            id: id,
+            isAdmin: false,
+            duplicateBy: isDuplicateByEmail ? 'email' : 'id',
+            reason: 'Teacher record exists but admin record with same email/ID already added'
           });
         }
       } else {
-        if (normalizedEmail) seenEmails.add(normalizedEmail);
-        if (teacherId) seenIds.add(teacherId);
+        if (email) seenEmails.add(email);
+        if (id) seenIds.add(id);
         deduplicated.push(teacher);
       }
     }
     
     if (duplicates.length > 0 && import.meta.env.DEV) {
-      console.warn(`⚠️ Removed ${duplicates.length} duplicate teacher/admin(s) from combined list`);
+      console.warn(`⚠️ Removed ${duplicates.length} duplicate teacher/admin(s) from combined list (prioritized admins over teachers)`);
     }
     
     return deduplicated;
