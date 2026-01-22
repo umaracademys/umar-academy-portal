@@ -129,9 +129,18 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   const handleTicketClick = async (ticketId: string) => {
     try {
+      if (import.meta.env.DEV) {
+        console.log('🔍 AdminTicketReview: Clicking ticket with ID:', ticketId);
+      }
+      
       // ✅ FIX: Always fetch full ticket data before opening (ticket list has limited fields)
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
       const token = localStorage.getItem('umar_academy_token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
       const fullTicketResponse = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -140,7 +149,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       });
       
       if (!fullTicketResponse.ok) {
-        throw new Error('Failed to fetch ticket data');
+        const errorData = await fullTicketResponse.json().catch(() => ({ error: `HTTP ${fullTicketResponse.status}` }));
+        console.error('❌ Failed to fetch ticket:', {
+          status: fullTicketResponse.status,
+          statusText: fullTicketResponse.statusText,
+          error: errorData.error || errorData.message
+        });
+        throw new Error(errorData.error || errorData.message || `Failed to fetch ticket: ${fullTicketResponse.status}`);
       }
       
       const fullTicket = await fullTicketResponse.json();
@@ -165,11 +180,19 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
     } catch (error) {
       console.error('❌ Error fetching full ticket data:', error);
-      showToast('Failed to load ticket details. Please try again.', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load ticket details. Please try again.';
+      showToast(errorMessage, 'error');
       // Fallback to using ticket from list
-      const ticket = recitationTickets.find(t => t.id === ticketId);
+      const ticket = recitationTickets.find(t => 
+        t.id === ticketId || 
+        (t as any)._id?.toString() === ticketId ||
+        t.id?.toString() === ticketId
+      );
       if (ticket) {
-        setSelectedTicketId(ticketId);
+        console.log('⚠️ Using ticket from list as fallback:', ticket.id);
+        setSelectedTicketId(ticket.id || ticketId);
+      } else {
+        console.error('❌ Ticket not found in list either. Available ticket IDs:', recitationTickets.map(t => t.id || (t as any)._id));
       }
     }
   };

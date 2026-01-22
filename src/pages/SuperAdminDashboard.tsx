@@ -150,6 +150,7 @@ const SuperAdminDashboard: React.FC = () => {
   const [showTicketReview, setShowTicketReview] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState<{ enabled: boolean; message?: string }>({ enabled: false });
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     systemManagement: false,
   });

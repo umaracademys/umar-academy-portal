@@ -1961,26 +1961,34 @@ const teacherAttendanceSchema = new mongoose.Schema({
   
   // Full Time shifts (morning and evening)
   morningShift: {
-    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'absent' },
+    status: { type: String, enum: ['present', 'absent', 'late', 'not_applicable'], default: 'absent' },
     checkIn: String, // HH:mm format
     checkOut: String, // HH:mm format
+    lateMinutes: { type: Number, default: 0 }, // Minutes late (only if status is 'late')
     notes: String
   },
   eveningShift: {
-    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'absent' },
+    status: { type: String, enum: ['present', 'absent', 'late', 'not_applicable'], default: 'absent' },
     checkIn: String, // HH:mm format
     checkOut: String, // HH:mm format
+    lateMinutes: { type: Number, default: 0 }, // Minutes late (only if status is 'late')
     notes: String
   },
   
   // Part Time shift
   shift: {
     name: String, // Shift name from teacher.shifts
-    status: { type: String, enum: ['present', 'absent', 'late', 'half-day'], default: 'absent' },
+    status: { type: String, enum: ['present', 'absent', 'late', 'not_applicable'], default: 'absent' },
     checkIn: String, // HH:mm format
     checkOut: String, // HH:mm format
+    lateMinutes: { type: Number, default: 0 }, // Minutes late (only if status is 'late')
     notes: String
   },
+  
+  // Sharing settings
+  sharedWithTeacher: { type: Boolean, default: false }, // Admin can share attendance with teacher
+  sharedAt: Date, // When it was shared
+  sharedBy: String, // Admin ID who shared it
   
   // Paid days tracking
   paidDays: { type: Number, default: 0 },
@@ -2388,18 +2396,30 @@ const validateTicketOwnership = async (req, res, next) => {
       return res.status(400).json({ error: 'Ticket ID is required' });
     }
 
+    // ✅ FIX: Use findTicketById helper to handle both _id and id formats
     // Get ticket to check studentId and assignedTeacherId
-    const ticket = await Ticket.findById(ticketId);
+    const ticket = await findTicketById(ticketId);
     if (!ticket) {
+      console.error(`❌ [validateTicketOwnership] Ticket not found with ID: ${ticketId}`);
       return res.status(404).json({ error: 'Ticket not found' });
     }
+    
+    // Convert to Mongoose document if needed (findTicketById returns lean object)
+    let ticketDoc = ticket;
+    if (!ticketDoc.save) {
+      // If it's a lean object, fetch as document for middleware use
+      ticketDoc = await Ticket.findById(ticket._id);
+      if (!ticketDoc) {
+        return res.status(404).json({ error: 'Ticket not found' });
+      }
+    }
 
-    const targetStudentId = ticket.studentId;
-    const assignedTeacherId = ticket.assignedTeacherId;
+    const targetStudentId = ticketDoc.studentId;
+    const assignedTeacherId = ticketDoc.assignedTeacherId;
 
     // Admins have access to everything
     if (isAdminOrSuperadmin(requestingRole)) {
-      req.ticket = ticket; // Attach for use in route handler
+      req.ticket = ticketDoc; // Attach for use in route handler
       return next();
     }
 
@@ -2413,7 +2433,7 @@ const validateTicketOwnership = async (req, res, next) => {
       if (studentIdStr !== targetStudentId.toString()) {
         return res.status(403).json({ error: 'Access denied. You can only access your own tickets.' });
       }
-      req.ticket = ticket;
+      req.ticket = ticketDoc;
       return next();
     }
 
@@ -2434,7 +2454,7 @@ const validateTicketOwnership = async (req, res, next) => {
       if (!isAssignedTeacher && !isAssignedToStudent) {
         return res.status(403).json({ error: 'Access denied. You can only access tickets for your assigned students or tickets assigned to you.' });
       }
-      req.ticket = ticket;
+      req.ticket = ticketDoc;
       return next();
     }
 
@@ -5543,12 +5563,14 @@ app.post('/api/teacher-attendance', authenticateToken, requirePermission('canMan
         status: 'absent',
         checkIn: '',
         checkOut: '',
+        lateMinutes: 0,
         notes: ''
       };
       attendanceRecord.eveningShift = attendanceData.eveningShift || {
         status: 'absent',
         checkIn: '',
         checkOut: '',
+        lateMinutes: 0,
         notes: ''
       };
     } else {
@@ -5557,6 +5579,7 @@ app.post('/api/teacher-attendance', authenticateToken, requirePermission('canMan
         status: 'absent',
         checkIn: '',
         checkOut: '',
+        lateMinutes: 0,
         notes: ''
       };
     }
@@ -5624,12 +5647,14 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, requirePermission('c
             status: 'absent',
             checkIn: '',
             checkOut: '',
+            lateMinutes: 0,
             notes: ''
           };
           attendanceRecord.eveningShift = attendanceData.eveningShift || {
             status: 'absent',
             checkIn: '',
             checkOut: '',
+            lateMinutes: 0,
             notes: ''
           };
         } else {
@@ -5638,6 +5663,7 @@ app.post('/api/teacher-attendance/bulk', authenticateToken, requirePermission('c
             status: 'absent',
             checkIn: '',
             checkOut: '',
+            lateMinutes: 0,
             notes: ''
           };
         }
@@ -5669,7 +5695,7 @@ app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
 
     let query = {};
 
-    // Teachers can only see their own attendance
+    // Teachers can only see their own attendance that has been shared
     if (user.role === 'teacher') {
       const teacher = await Teacher.findOne({
         $or: [
@@ -5682,6 +5708,7 @@ app.get('/api/teacher-attendance', authenticateToken, async (req, res) => {
         return res.status(404).json({ error: 'Teacher profile not found' });
       }
       query.teacherId = teacher._id.toString() || teacher.teacherId;
+      query.sharedWithTeacher = true; // Only show shared attendance
     } else if (teacherId) {
       // Admin/SuperAdmin can filter by teacher
       query.teacherId = teacherId;
@@ -5800,18 +5827,14 @@ app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (re
         if (att.morningShift?.status === 'present') totalPresent++;
         else if (att.morningShift?.status === 'absent') totalAbsent++;
         else if (att.morningShift?.status === 'late') totalLate++;
-        else if (att.morningShift?.status === 'half-day') totalHalfDay++;
-
         // Count evening shift
         if (att.eveningShift?.status === 'present') totalPresent++;
         else if (att.eveningShift?.status === 'absent') totalAbsent++;
         else if (att.eveningShift?.status === 'late') totalLate++;
-        else if (att.eveningShift?.status === 'half-day') totalHalfDay++;
       } else {
         if (att.shift?.status === 'present') totalPresent++;
         else if (att.shift?.status === 'absent') totalAbsent++;
         else if (att.shift?.status === 'late') totalLate++;
-        else if (att.shift?.status === 'half-day') totalHalfDay++;
       }
 
       totalPaidDays += att.paidDays || 0;
@@ -5836,6 +5859,75 @@ app.get('/api/teacher-attendance/stats/:teacherId', authenticateToken, async (re
     });
   } catch (error) {
     console.error('❌ Error fetching teacher attendance statistics:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Share attendance with teacher (admin only)
+app.post('/api/teacher-attendance/:id/share', authenticateToken, requirePermission('canManageAttendance'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { share } = req.body; // true to share, false to unshare
+    
+    const attendance = await TeacherAttendance.findById(id);
+    if (!attendance) {
+      return res.status(404).json({ error: 'Attendance record not found' });
+    }
+    
+    attendance.sharedWithTeacher = share === true || share === 'true';
+    if (attendance.sharedWithTeacher) {
+      attendance.sharedAt = new Date();
+      attendance.sharedBy = req.user.userId || req.user.id;
+    } else {
+      attendance.sharedAt = null;
+      attendance.sharedBy = null;
+    }
+    
+    await attendance.save();
+    
+    res.json({ 
+      success: true, 
+      shared: attendance.sharedWithTeacher,
+      message: attendance.sharedWithTeacher ? 'Attendance shared with teacher' : 'Attendance unshared'
+    });
+  } catch (error) {
+    console.error('❌ Error sharing attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Bulk share attendance with teachers (admin only)
+app.post('/api/teacher-attendance/bulk-share', authenticateToken, requirePermission('canManageAttendance'), async (req, res) => {
+  try {
+    const { attendanceIds, share } = req.body; // Array of attendance IDs, share boolean
+    
+    if (!Array.isArray(attendanceIds)) {
+      return res.status(400).json({ error: 'attendanceIds must be an array' });
+    }
+    
+    const updateData = {
+      sharedWithTeacher: share === true || share === 'true',
+      ...(share === true || share === 'true' ? {
+        sharedAt: new Date(),
+        sharedBy: req.user.userId || req.user.id
+      } : {
+        $unset: { sharedAt: '', sharedBy: '' }
+      })
+    };
+    
+    const result = await TeacherAttendance.updateMany(
+      { _id: { $in: attendanceIds } },
+      updateData
+    );
+    
+    res.json({ 
+      success: true, 
+      shared: share === true || share === 'true',
+      updated: result.modifiedCount,
+      message: `${result.modifiedCount} attendance records ${share === true || share === 'true' ? 'shared' : 'unshared'}`
+    });
+  } catch (error) {
+    console.error('❌ Error bulk sharing attendance:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -8682,25 +8774,6 @@ app.post('/api/tickets/fix-missing-assignment-ids', authenticateToken, requirePe
   }
 });
 
-// Helper function to find ticket by ID (handles both _id and id field)
-const findTicketById = async (ticketId) => {
-  // ✅ PHASE 1 OPTIMIZATION: Use optimized $or query with .lean() for better performance
-  // Try all possible ID formats in a single query instead of multiple queries
-  const queries = [
-    { _id: ticketId },
-    { id: ticketId }
-  ];
-  
-  // If it looks like an ObjectId, also try as ObjectId
-  if (mongoose.Types.ObjectId.isValid(ticketId)) {
-    queries.push({ _id: new mongoose.Types.ObjectId(ticketId) });
-  }
-  
-  // ✅ Single query with $or - much faster than multiple queries
-  const ticket = await Ticket.findOne({ $or: queries }).lean();
-  
-  return ticket;
-};
 
 // ✅ PHASE 2 OPTIMIZATION: Create minimal WebSocket payload (only changed fields + ID)
 // Reduces WebSocket payload size by 50-70% by sending only essential fields
