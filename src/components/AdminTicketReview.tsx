@@ -19,10 +19,12 @@ interface AdminTicketReviewProps {
 }
 
 const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
+  console.log('🚀 AdminTicketReview: Component RENDERED/LOADED');
   const navigate = useNavigate();
   const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshDataLight, updateRecitationTicket, loading } = useBackendData();
   const { user } = useAuth();
   const { showToast, toasts, removeToast } = useToast();
+  console.log('🚀 AdminTicketReview: Hooks initialized, recitationTickets count:', recitationTickets.length);
   
   // Refresh data when component mounts to ensure tickets are loaded
   useEffect(() => {

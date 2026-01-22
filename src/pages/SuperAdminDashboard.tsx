@@ -370,7 +370,10 @@ const SuperAdminDashboard: React.FC = () => {
       badge: '🎫',
       title: 'Review Tickets',
       description: 'Review and approve submitted tickets from teachers.',
-      action: () => setShowTicketReview(true),
+      action: () => {
+        console.log('🖱️ SuperAdminDashboard: Review Tickets button clicked, opening modal');
+        setShowTicketReview(true);
+      },
       footer: `${pendingTicketCount} pending`,
     },
   ], [totalStudents, totalTeachers, totalAdmins, pendingTicketCount, navigate, setSelectedStudent, setShowStudentForm, setSelectedTeacher, setShowTeacherForm, setShowAdminForm, setShowPermissionManager, setShowDataManager, setShowLockedAccounts, setShowTicketReview]);
@@ -1163,8 +1166,12 @@ const SuperAdminDashboard: React.FC = () => {
       {/* Ticket Review Modal */}
       {showTicketReview && (
         <Suspense fallback={<ModalLoadingFallback />}>
+          {console.log('🔄 SuperAdminDashboard: Rendering AdminTicketReview modal')}
           <AdminTicketReview
-            onClose={() => setShowTicketReview(false)}
+            onClose={() => {
+              console.log('🔄 SuperAdminDashboard: Closing ticket review modal');
+              setShowTicketReview(false);
+            }}
           />
         </Suspense>
       )}
