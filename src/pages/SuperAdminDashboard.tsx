@@ -1169,18 +1169,25 @@ const SuperAdminDashboard: React.FC = () => {
       )}
 
       {/* Ticket Review Modal */}
-      {showTicketReview ? (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <AdminTicketReview
-            onClose={() => {
-              console.log('🔄 SuperAdminDashboard: Closing ticket review modal');
-              setShowTicketReview(false);
-            }}
-          />
-        </Suspense>
-      ) : (
-        console.log('❌ SuperAdminDashboard: showTicketReview is FALSE, modal not rendering')
-      )}
+      {(() => {
+        console.log('🔍 SuperAdminDashboard: Checking showTicketReview:', showTicketReview);
+        if (showTicketReview) {
+          console.log('✅ SuperAdminDashboard: Rendering AdminTicketReview modal');
+          return (
+            <Suspense fallback={<ModalLoadingFallback />}>
+              <AdminTicketReview
+                onClose={() => {
+                  console.log('🔄 SuperAdminDashboard: Closing ticket review modal');
+                  setShowTicketReview(false);
+                }}
+              />
+            </Suspense>
+          );
+        } else {
+          console.log('❌ SuperAdminDashboard: showTicketReview is FALSE, modal not rendering');
+          return null;
+        }
+      })()}
 
       {/* Debug Panel */}
       {isDevelopment && DebugPanel && (

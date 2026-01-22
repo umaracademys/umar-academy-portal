@@ -427,6 +427,13 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     }
   };
 
+  console.log('🎨 AdminTicketReview: About to render JSX', {
+    selectedTicketId,
+    hasSelectedTicket: !!selectedTicket,
+    pendingTicketsCount: pendingTickets.length,
+    recitationTicketsCount: recitationTickets.length
+  });
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
