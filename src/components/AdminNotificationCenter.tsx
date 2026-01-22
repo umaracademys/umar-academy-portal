@@ -170,6 +170,11 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
         );
       
       if (isTicketNotification && onOpenTicketReview) {
+        console.log('🔔 AdminNotificationCenter: Opening ticket review from notification', {
+          notificationId: notification.id,
+          recitationReviewId: notification.recitationReviewId,
+          isTicketNotification
+        });
         onOpenTicketReview();
         onClose();
         return;
