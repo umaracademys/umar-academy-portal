@@ -26,16 +26,20 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   
   // Refresh data when component mounts to ensure tickets are loaded
   useEffect(() => {
+    console.log('🔄 AdminTicketReview: Component mounted');
+    console.log('🔄 Current tickets count:', recitationTickets.length);
     // Only refresh if we don't have tickets yet
     if (recitationTickets.length === 0) {
-      if (import.meta.env.DEV) {
       console.log('🔄 AdminTicketReview: No tickets found, refreshing data...');
-      }
       refreshDataLight();
     } else {
-      if (import.meta.env.DEV) {
       console.log('✅ AdminTicketReview: Tickets already loaded, skipping refresh');
-      }
+      console.log('✅ Sample ticket IDs:', recitationTickets.slice(0, 3).map(t => ({
+        id: t.id,
+        _id: (t as any)._id?.toString(),
+        studentName: t.studentName,
+        status: t.status
+      })));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
@@ -164,9 +168,12 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
 
   const handleTicketClick = async (ticketId: string) => {
     try {
-      if (import.meta.env.DEV) {
-        console.log('🔍 AdminTicketReview: Clicking ticket with ID:', ticketId);
-      }
+      console.log('🔍 handleTicketClick CALLED with ticketId:', ticketId);
+      console.log('🔍 Current state:', {
+        selectedTicketId,
+        hasFullTicketData: !!fullTicketData,
+        recitationTicketsCount: recitationTickets.length
+      });
       
       // ✅ FIX: Always fetch full ticket data before opening (ticket list has limited fields)
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
@@ -743,20 +750,22 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                             <div className="flex items-center gap-1.5 pt-2 border-t border-gray-200">
                               <button
                                 onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  const ticketIdToUse = ticket.id || (ticket as any)._id?.toString();
-                                  if (import.meta.env.DEV) {
-                                    console.log('🖱️ Review Ticket button clicked:', {
-                                      ticketId: ticketIdToUse,
-                                      ticket: { id: ticket.id, _id: (ticket as any)._id }
-                                    });
-                                  }
-                                  if (ticketIdToUse) {
+                                  try {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('🖱️ BUTTON CLICKED - Review Ticket button pressed');
+                                    const ticketIdToUse = ticket.id || (ticket as any)._id?.toString();
+                                    console.log('🖱️ Ticket ID extracted:', ticketIdToUse, 'from ticket:', ticket);
+                                    if (!ticketIdToUse) {
+                                      console.error('❌ No ticket ID found:', ticket);
+                                      showToast('Error: Ticket ID not found', 'error');
+                                      return;
+                                    }
+                                    console.log('🖱️ Calling handleTicketClick with ID:', ticketIdToUse);
                                     handleTicketClick(ticketIdToUse);
-                                  } else {
-                                    console.error('❌ No ticket ID found:', ticket);
-                                    showToast('Error: Ticket ID not found', 'error');
+                                  } catch (error) {
+                                    console.error('❌ Error in button click handler:', error);
+                                    showToast('Error clicking ticket: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
                                   }
                                 }}
                                 className="flex-1 px-3 py-1.5 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg text-xs font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
