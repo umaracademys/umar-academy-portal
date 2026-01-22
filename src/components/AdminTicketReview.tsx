@@ -96,17 +96,52 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   // Get selected ticket - prefer full ticket data if available, otherwise fallback to list data
   const selectedTicket = useMemo(() => {
     if (!selectedTicketId) return null;
+    
     // ✅ FIX: Use full ticket data if available (has all fields), otherwise fallback to list data
-    if (fullTicketData && fullTicketData.id === selectedTicketId) {
-      return fullTicketData;
+    // Check if fullTicketData matches by comparing IDs (handle both string and ObjectId formats)
+    if (fullTicketData) {
+      const fullTicketId = fullTicketData.id?.toString() || (fullTicketData as any)._id?.toString();
+      const selectedId = selectedTicketId.toString();
+      if (fullTicketId === selectedId) {
+        if (import.meta.env.DEV) {
+          console.log('✅ Using full ticket data for selectedTicket');
+        }
+        return fullTicketData;
+      }
     }
-    const ticket = recitationTickets.find(t => t.id === selectedTicketId);
+    
+    // Fallback to list data - try multiple ID formats
+    const ticket = recitationTickets.find(t => {
+      const tId = t.id?.toString() || (t as any)._id?.toString();
+      const sId = selectedTicketId.toString();
+      return tId === sId;
+    });
+    
     if (import.meta.env.DEV) {
-    console.log('🔍 Looking for ticket:', selectedTicketId);
-    console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
+      console.log('🔍 Looking for ticket:', selectedTicketId);
+      console.log('🔍 Available ticket IDs:', recitationTickets.map(t => ({
+        id: t.id?.toString(),
+        _id: (t as any)._id?.toString()
+      })));
+      console.log('🔍 Found ticket:', ticket ? { id: ticket.id, status: ticket.status, student: ticket.studentName } : 'NOT FOUND');
     }
-    return ticket || null;
+    
+    return ticket || fullTicketData || null; // Return fullTicketData as last resort if list doesn't have it
   }, [selectedTicketId, recitationTickets, fullTicketData]);
+
+  // Debug: Log when selectedTicketId or selectedTicket changes
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('🔍 State update:', {
+        selectedTicketId,
+        hasFullTicketData: !!fullTicketData,
+        fullTicketDataId: fullTicketData?.id || (fullTicketData as any)?._id?.toString(),
+        hasSelectedTicket: !!selectedTicket,
+        selectedTicketId: selectedTicket?.id || (selectedTicket as any)?._id?.toString(),
+        recitationTicketsCount: recitationTickets.length
+      });
+    }
+  }, [selectedTicketId, fullTicketData, selectedTicket, recitationTickets.length]);
 
   // Initialize mushaf page ONLY when a different ticket is selected (not on data refresh)
   useEffect(() => {
@@ -161,11 +196,17 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       const fullTicket = await fullTicketResponse.json();
       const mappedFullTicket = {
         ...fullTicket,
-        id: fullTicket._id || fullTicket.id
+        id: fullTicket._id?.toString() || fullTicket.id?.toString() || ticketId
       };
       
       if (import.meta.env.DEV) {
         console.log('✅ AdminTicketReview: Fetched full ticket data:', mappedFullTicket);
+        console.log('🔍 Ticket ID mapping:', { 
+          originalTicketId: ticketId, 
+          fetchedId: mappedFullTicket.id,
+          _id: fullTicket._id?.toString(),
+          id: fullTicket.id?.toString()
+        });
       }
       
       // Store full ticket data
@@ -173,10 +214,14 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     
       // Navigate to full-page Mushaf review instead of modal
       if (mappedFullTicket.type === 'sabq' && mappedFullTicket.status === 'pending') {
-        navigate(`/mushaf/review/${ticketId}?mode=admin-sabq`);
+        navigate(`/mushaf/review/${mappedFullTicket.id}?mode=admin-sabq`);
         return; // Exit early after navigation
       } else {
-        setSelectedTicketId(ticketId);
+        // Use the mapped ID to ensure consistency
+        setSelectedTicketId(mappedFullTicket.id);
+        if (import.meta.env.DEV) {
+          console.log('✅ Setting selectedTicketId to:', mappedFullTicket.id);
+        }
       }
     } catch (error) {
       console.error('❌ Error fetching full ticket data:', error);
@@ -697,7 +742,23 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                             {/* Action Buttons */}
                             <div className="flex items-center gap-1.5 pt-2 border-t border-gray-200">
                               <button
-                                onClick={() => handleTicketClick(ticket.id)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  const ticketIdToUse = ticket.id || (ticket as any)._id?.toString();
+                                  if (import.meta.env.DEV) {
+                                    console.log('🖱️ Review Ticket button clicked:', {
+                                      ticketId: ticketIdToUse,
+                                      ticket: { id: ticket.id, _id: (ticket as any)._id }
+                                    });
+                                  }
+                                  if (ticketIdToUse) {
+                                    handleTicketClick(ticketIdToUse);
+                                  } else {
+                                    console.error('❌ No ticket ID found:', ticket);
+                                    showToast('Error: Ticket ID not found', 'error');
+                                  }
+                                }}
                                 className="flex-1 px-3 py-1.5 bg-gradient-to-r from-primary to-primary/90 text-white rounded-lg text-xs font-extrabold hover:from-primary/90 hover:to-primary/80 transition-all shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
                               >
                                 Review Ticket
