@@ -148,6 +148,11 @@ const SuperAdminDashboard: React.FC = () => {
   const [showLockedAccounts, setShowLockedAccounts] = useState(false);
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showTicketReview, setShowTicketReview] = useState(false);
+  
+  // Debug: Log when showTicketReview changes
+  useEffect(() => {
+    console.log('🔍 SuperAdminDashboard: showTicketReview changed to:', showTicketReview);
+  }, [showTicketReview]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState<{ enabled: boolean; message?: string }>({ enabled: false });
@@ -1164,9 +1169,8 @@ const SuperAdminDashboard: React.FC = () => {
       )}
 
       {/* Ticket Review Modal */}
-      {showTicketReview && (
+      {showTicketReview ? (
         <Suspense fallback={<ModalLoadingFallback />}>
-          {console.log('🔄 SuperAdminDashboard: Rendering AdminTicketReview modal')}
           <AdminTicketReview
             onClose={() => {
               console.log('🔄 SuperAdminDashboard: Closing ticket review modal');
@@ -1174,6 +1178,8 @@ const SuperAdminDashboard: React.FC = () => {
             }}
           />
         </Suspense>
+      ) : (
+        console.log('❌ SuperAdminDashboard: showTicketReview is FALSE, modal not rendering')
       )}
 
       {/* Debug Panel */}
