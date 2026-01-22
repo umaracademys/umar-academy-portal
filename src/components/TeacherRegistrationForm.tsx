@@ -585,7 +585,7 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
       return;
     }
     
-    // Only allow submission on the last tab (Permissions tab)
+    // Only allow submission on the last tab (Payroll tab)
     if (currentTab !== tabs.length - 1) {
       // If not on last tab, just navigate to next tab instead
       setCurrentTab(currentTab + 1);
@@ -786,7 +786,6 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
     { name: 'Personal Info', icon: '' },
     { name: 'Employment & Schedule', icon: '' },
     { name: 'Payroll', icon: '' },
-    { name: 'Permissions', icon: '' },
   ];
 
   return (
@@ -1377,78 +1376,6 @@ const TeacherRegistrationForm: React.FC<TeacherRegistrationFormProps> = ({ onClo
               </div>
             )}
 
-            {/* Tab 4: Permissions */}
-            {currentTab === 3 && (
-              <div className="space-y-6">
-                <div className="mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Access Permissions</h3>
-                  <p className="text-sm text-gray-600">Configure what this teacher can access and manage</p>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {Object.entries(permissions).map(([key, value]) => {
-                      const permissionKey = key as keyof TeacherPermissions;
-                      const permissionLabels: Record<string, string> = {
-                        canViewAssessments: 'View Assessments',
-                        canEditAssessments: 'Edit Assessments',
-                        canViewEvaluations: 'View Evaluations',
-                        canEditEvaluations: 'Edit Evaluations',
-                        canViewFinancials: 'View Financials',
-                        canManageSchedule: 'Manage Schedule',
-                        canContactParents: 'Contact Parents',
-                        canViewStudentEmail: 'View Student Email',
-                        canViewStudentContact: 'View Student Contact',
-                        canViewStudentPersonalInfo: 'View Student Personal Info',
-                      };
-                      const permissionDescriptions: Record<string, string> = {
-                        canViewAssessments: 'View student assessments and test scores',
-                        canEditAssessments: 'Add and modify student assessments',
-                        canViewEvaluations: 'View student behavior evaluations',
-                        canEditEvaluations: 'Create and edit student evaluations',
-                        canViewFinancials: 'Access student financial information',
-                        canManageSchedule: 'Modify student schedules',
-                        canContactParents: 'Send messages to parents',
-                        canViewStudentEmail: 'View student email addresses',
-                        canViewStudentContact: 'View student contact information',
-                        canViewStudentPersonalInfo: 'View student personal information',
-                      };
-                      return (
-                        <label 
-                          key={key} 
-                          className={`flex items-start justify-between p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                            value === true
-                              ? 'bg-soft-primary border-primary/30 hover:bg-soft-primary'
-                              : 'bg-white border-gray-200 hover:bg-gray-50'
-                          }`}
-                        >
-                          <div className="flex-1 pr-4">
-                            <p className="font-bold text-gray-900 mb-1">
-                              {permissionLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim()}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {permissionDescriptions[key] || 'Permission description'}
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <input
-                              type="checkbox"
-                              checked={value === true}
-                              onChange={(e) => {
-                                const newPermissions = { ...permissions, [permissionKey]: e.target.checked };
-                                console.log(`🔐 Updating permission ${key}:`, e.target.checked);
-                                setPermissions(newPermissions);
-                              }}
-                              className="w-6 h-6 text-primary focus:ring-primary rounded cursor-pointer border-2 border-gray-300"
-                            />
-                          </div>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Navigation and Submit */}

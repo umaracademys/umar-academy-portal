@@ -313,31 +313,6 @@ const TeacherProfile: React.FC = () => {
           </Card>
         </div>
 
-        {/* Permissions */}
-        <div className="mt-6">
-          <Card title="🔐 My Permissions & Access">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {Object.entries(currentTeacher.permissions || {}).map(([key, value]) => (
-                <div 
-                  key={key} 
-                  className={`p-3 rounded-lg border ${
-                    value ? 'bg-primary-50 border-primary-200' : 'bg-red-50 border-red-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-gray-900">
-                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                    </p>
-                    <span className={`text-lg ${value ? 'text-primary-600' : 'text-red-600'}`}>
-                      {value ? '✓' : '✗'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-
         {/* ID Document */}
         {currentTeacher.idDocument && (
           <div className="mt-6">

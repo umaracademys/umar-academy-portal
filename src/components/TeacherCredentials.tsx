@@ -61,18 +61,6 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
     emailNotifications: true,
     smsNotifications: false
   });
-  const [permissions, setPermissions] = useState(teacher?.permissions || {
-    canViewAssessments: true,
-    canEditAssessments: true,
-    canViewEvaluations: true,
-    canEditEvaluations: true,
-    canViewFinancials: false,
-    canManageSchedule: true,
-    canContactParents: true,
-    canViewStudentEmail: true,
-    canViewStudentContact: true,
-    canViewStudentPersonalInfo: true,
-  });
 
   // Get user ID from teacher (could be userId or id or _id, or userId._id if populated)
   const getUserId = () => {
@@ -238,13 +226,6 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
     fetchUserId();
   }, [teacher]);
 
-  // Load permissions from teacher
-  useEffect(() => {
-    if (teacher?.permissions) {
-      setPermissions(teacher.permissions);
-    }
-  }, [teacher]);
-
   const generatePassword = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
@@ -350,26 +331,6 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
     }
   };
 
-  const updatePermissions = async () => {
-    if (!teacher?.id) {
-      setError('Teacher ID not found');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      await updateTeacher(teacher.id, { permissions });
-      alert('✅ Permissions updated successfully!');
-    } catch (err) {
-      console.error('Error updating permissions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to update permissions');
-      alert(`❌ Error: ${err instanceof Error ? err.message : 'Failed to update permissions'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -404,7 +365,6 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
             {[
               { id: 'overview', label: 'Overview', icon: '📊' },
               { id: 'security', label: 'Security', icon: '🔐' },
-              { id: 'permissions', label: 'Permissions', icon: '🛡️' },
               { id: 'activity', label: 'Activity', icon: '📈' }
             ].map((tab) => (
               <button
@@ -580,124 +540,6 @@ const TeacherCredentials: React.FC<TeacherCredentialsProps> = ({ teacher, onClos
                     </div>
                     <button className="px-3 py-1.5 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition text-xs font-semibold">
                       Lock Account
-                    </button>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {activeTab === 'permissions' && (
-            <div className="space-y-6">
-              <Card title="Teacher Permissions">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900">Academic Permissions</h4>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canViewAssessments || false}
-                          onChange={(e) => setPermissions({...permissions, canViewAssessments: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>View Assessments</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canEditAssessments || false}
-                          onChange={(e) => setPermissions({...permissions, canEditAssessments: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>Edit Assessments</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canViewEvaluations || false}
-                          onChange={(e) => setPermissions({...permissions, canViewEvaluations: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>View Evaluations</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canEditEvaluations || false}
-                          onChange={(e) => setPermissions({...permissions, canEditEvaluations: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>Edit Evaluations</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canViewFinancials || false}
-                          onChange={(e) => setPermissions({...permissions, canViewFinancials: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>View Financials</span>
-                      </label>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-gray-900">Communication & Access Permissions</h4>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canManageSchedule || false}
-                          onChange={(e) => setPermissions({...permissions, canManageSchedule: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>Manage Schedule</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canContactParents || false}
-                          onChange={(e) => setPermissions({...permissions, canContactParents: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>Contact Parents</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canViewStudentEmail || false}
-                          onChange={(e) => setPermissions({...permissions, canViewStudentEmail: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>View Student Email</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canViewStudentContact || false}
-                          onChange={(e) => setPermissions({...permissions, canViewStudentContact: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>View Student Contact</span>
-                      </label>
-                      <label className="flex items-center">
-                        <input 
-                          type="checkbox" 
-                          checked={permissions.canViewStudentPersonalInfo || false}
-                          onChange={(e) => setPermissions({...permissions, canViewStudentPersonalInfo: e.target.checked})}
-                          className="mr-3" 
-                        />
-                        <span>View Student Personal Info</span>
-                      </label>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t">
-                    <button 
-                      onClick={updatePermissions}
-                      disabled={loading}
-                      className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-[rgba(var(--color-primary-rgb),0.9)] transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Updating...' : 'Update Permissions'}
                     </button>
                   </div>
                 </div>

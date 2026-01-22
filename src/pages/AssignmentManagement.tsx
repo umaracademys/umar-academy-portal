@@ -51,7 +51,7 @@ const normalizeId = (id: any): string => {
 };
 
 const AssignmentManagement: React.FC = () => {
-  const { students: allStudents, assignments, getStudentAssignments, refreshData, refreshDataLight, recitationTickets } = useBackendData();
+  const { students: allStudents, assignments, getStudentAssignments, refreshData, refreshDataLight, recitationTickets, loading, error: backendError } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
   const { user } = useAuth();
   const [selectedProgram, setSelectedProgram] = useState<ProgramType | 'all'>('all');
@@ -66,15 +66,61 @@ const AssignmentManagement: React.FC = () => {
   const [homeworkAssignmentId, setHomeworkAssignmentId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'with-assignments' | 'without-assignments'>('all');
   const [sabqReviewTicket, setSabqReviewTicket] = useState<Ticket | null>(null);
+  
+  // Error and loading states
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [operationError, setOperationError] = useState<string | null>(null);
+
+  // Clear errors when component mounts or data changes
+  useEffect(() => {
+    if (backendError) {
+      setError(backendError);
+    } else {
+      setError(null);
+    }
+  }, [backendError]);
+
+  // Validate critical dependencies
+  useEffect(() => {
+    if (!allStudents || !Array.isArray(allStudents)) {
+      console.warn('⚠️ allStudents is not a valid array:', allStudents);
+      setError('Student data is not available. Please refresh the page.');
+    }
+    if (!assignments || !Array.isArray(assignments)) {
+      console.warn('⚠️ assignments is not a valid array:', assignments);
+      setError('Assignment data is not available. Please refresh the page.');
+    }
+    if (!getStudentAssignments || typeof getStudentAssignments !== 'function') {
+      console.warn('⚠️ getStudentAssignments is not a function:', getStudentAssignments);
+      setError('Assignment lookup function is not available. Please refresh the page.');
+    }
+  }, [allStudents, assignments, getStudentAssignments]);
 
   const currentTeacher = useMemo(() => {
-    if (!user || !teachers) return null;
-    return teachers.find(t => t.email === user.email) || null;
+    try {
+      if (!user || !teachers || !Array.isArray(teachers)) return null;
+      return teachers.find(t => t && t.email === user.email) || null;
+    } catch (err) {
+      console.error('❌ Error finding current teacher:', err);
+      return null;
+    }
   }, [user, teachers]);
 
   const assignedStudents = useMemo(() => {
-    if (!currentTeacher?.id) return allStudents;
-    return getStudentsByTeacher(currentTeacher.id);
+    try {
+      if (!allStudents || !Array.isArray(allStudents)) return [];
+      if (!currentTeacher?.id) return allStudents;
+      if (!getStudentsByTeacher || typeof getStudentsByTeacher !== 'function') {
+        console.warn('⚠️ getStudentsByTeacher is not available');
+        return allStudents;
+      }
+      const result = getStudentsByTeacher(currentTeacher.id);
+      return Array.isArray(result) ? result : allStudents;
+    } catch (err) {
+      console.error('❌ Error getting assigned students:', err);
+      return allStudents || [];
+    }
   }, [currentTeacher, allStudents, getStudentsByTeacher]);
 
   // Normalize program names to canonical ProgramType values
@@ -170,23 +216,60 @@ const AssignmentManagement: React.FC = () => {
   }, [assignedStudents, selectedProgram, searchQuery, filterStatus, getStudentAssignments]);
 
   const stats = useMemo(() => {
-    // Build a set of all possible student IDs for each assigned student
-    // This includes: id, studentRecordId, _id, userId
-    const assignedStudentIdSets = assignedStudents.map(s => {
-      const ids = new Set<string>();
-      const addValidId = (idValue: any) => {
-        const normalized = normalizeId(idValue);
-        // Only add if it's a valid non-empty string and not "[object Object]"
-        if (normalized && normalized !== '[object Object]' && normalized.length > 0) {
-          ids.add(normalized);
+    try {
+      // Fail fast - validate inputs
+      if (!assignedStudents || !Array.isArray(assignedStudents)) {
+        console.warn('⚠️ assignedStudents is not a valid array');
+        return {
+          totalAssignments: 0,
+          studentsWithAssignments: 0,
+          activeAssignments: 0,
+          completedAssignments: 0,
+          pendingHomework: 0,
+          completionRate: 0,
+          totalStudents: 0
+        };
+      }
+
+      if (!assignments || !Array.isArray(assignments)) {
+        console.warn('⚠️ assignments is not a valid array');
+        return {
+          totalAssignments: 0,
+          studentsWithAssignments: 0,
+          activeAssignments: 0,
+          completedAssignments: 0,
+          pendingHomework: 0,
+          completionRate: 0,
+          totalStudents: assignedStudents.length || 0
+        };
+      }
+
+      // Build a set of all possible student IDs for each assigned student
+      // This includes: id, studentRecordId, _id, userId
+      const assignedStudentIdSets = assignedStudents.map(s => {
+        try {
+          const ids = new Set<string>();
+          const addValidId = (idValue: any) => {
+            try {
+              const normalized = normalizeId(idValue);
+              // Only add if it's a valid non-empty string and not "[object Object]"
+              if (normalized && normalized !== '[object Object]' && normalized.length > 0) {
+                ids.add(normalized);
+              }
+            } catch (err) {
+              console.warn('⚠️ Error normalizing ID:', idValue, err);
+            }
+          };
+          if (s && s.id) addValidId(s.id);
+          if (s && (s as any).studentRecordId) addValidId((s as any).studentRecordId);
+          if (s && (s as any)._id) addValidId((s as any)._id);
+          if (s && (s as any).userId) addValidId((s as any).userId);
+          return ids;
+        } catch (err) {
+          console.warn('⚠️ Error processing student ID set:', err);
+          return new Set<string>();
         }
-      };
-      if (s.id) addValidId(s.id);
-      if ((s as any).studentRecordId) addValidId((s as any).studentRecordId);
-      if ((s as any)._id) addValidId((s as any)._id);
-      if ((s as any).userId) addValidId((s as any).userId);
-      return ids;
-    });
+      });
     
     // Flatten all possible student IDs into a single set for quick lookup
     const allPossibleStudentIds = new Set<string>();
@@ -312,46 +395,99 @@ const AssignmentManagement: React.FC = () => {
       ? Math.round((completedAssignments / totalAssignments) * 100) 
       : 0;
     
-    return {
-      totalAssignments,
-      studentsWithAssignments,
-      activeAssignments,
-      completedAssignments,
-      pendingHomework,
-      completionRate,
-      totalStudents: assignedStudents.length
-    };
+      return {
+        totalAssignments,
+        studentsWithAssignments,
+        activeAssignments,
+        completedAssignments,
+        pendingHomework,
+        completionRate,
+        totalStudents: assignedStudents.length
+      };
+    } catch (err) {
+      console.error('❌ Error calculating stats:', err);
+      return {
+        totalAssignments: 0,
+        studentsWithAssignments: 0,
+        activeAssignments: 0,
+        completedAssignments: 0,
+        pendingHomework: 0,
+        completionRate: 0,
+        totalStudents: assignedStudents?.length || 0
+      };
+    }
   }, [assignments, assignedStudents]);
 
   // Get completed assignments for display
   const completedAssignmentsList = useMemo(() => {
-    // Normalize student IDs to handle ObjectId vs string mismatches
-    const assignedStudentIds = new Set(assignedStudents.map(s => normalizeId(s.id || (s as any)._id)));
-    return assignments
-      .filter((a: any) => {
-        const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
-        return assignedStudentIds.has(assignmentStudentId);
-      })
-      .filter((assignment: any) => {
-        // Explicitly completed
-        if (assignment.status === 'completed') return true;
-        // Archived assignments
-        if (assignment.status === 'archived') return true;
-        // Homework that has been graded
-        if (assignment.homework?.enabled && 
-            assignment.homework?.submission?.submitted && 
-            assignment.homework?.submission?.status === 'graded') return true;
-        // Homework that has feedback (even if status isn't 'graded')
-        if (assignment.homework?.enabled && 
-            assignment.homework?.submission?.submitted && 
-            assignment.homework?.submission?.feedback) return true;
-        return false;
-      })
-      .sort((a: any, b: any) => {
-        const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
-        const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
-      });
+    try {
+      if (!assignedStudents || !Array.isArray(assignedStudents) || !assignments || !Array.isArray(assignments)) {
+        return [];
+      }
+
+      // Normalize student IDs to handle ObjectId vs string mismatches
+      const assignedStudentIds = new Set(
+        assignedStudents
+          .filter(s => s != null)
+          .map(s => {
+            try {
+              return normalizeId(s.id || (s as any)._id);
+            } catch (err) {
+              console.warn('⚠️ Error normalizing student ID:', err);
+              return '';
+            }
+          })
+          .filter(id => id && id.length > 0)
+      );
+
+      return assignments
+        .filter((a: any) => {
+          try {
+            if (!a) return false;
+            const assignmentStudentId = normalizeId(a.studentId || (a as any)._id?.studentId);
+            return assignmentStudentId && assignedStudentIds.has(assignmentStudentId);
+          } catch (err) {
+            console.warn('⚠️ Error filtering assignment:', err);
+            return false;
+          }
+        })
+        .filter((assignment: any) => {
+          try {
+            if (!assignment) return false;
+            // Explicitly completed
+            if (assignment.status === 'completed') return true;
+            // Archived assignments
+            if (assignment.status === 'archived') return true;
+            // Homework that has been graded
+            if (assignment.homework?.enabled && 
+                assignment.homework?.submission?.submitted && 
+                assignment.homework?.submission?.status === 'graded') return true;
+            // Homework that has feedback (even if status isn't 'graded')
+            if (assignment.homework?.enabled && 
+                assignment.homework?.submission?.submitted && 
+                assignment.homework?.submission?.feedback) return true;
+            return false;
+          } catch (err) {
+            console.warn('⚠️ Error checking assignment completion status:', err);
+            return false;
+          }
+        })
+        .sort((a: any, b: any) => {
+          try {
+            const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
+            const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
+            const timeA = dateA ? new Date(dateA).getTime() : 0;
+            const timeB = dateB ? new Date(dateB).getTime() : 0;
+            return timeB - timeA;
+          } catch (err) {
+            console.warn('⚠️ Error sorting assignments:', err);
+            return 0;
+          }
+        });
+    } catch (err) {
+      console.error('❌ Error getting completed assignments list:', err);
+      return [];
+    }
   }, [assignments, assignedStudents]);
 
   const getInitials = (name: string) => {
@@ -364,174 +500,471 @@ const AssignmentManagement: React.FC = () => {
 
   // Check if student has tickets in progress
   const getStudentTicketStatus = (studentId: string) => {
-    const studentTickets = recitationTickets.filter(t => {
-      const ticketStudentId = String(t.studentId || '');
-      const studentIdStr = String(studentId);
-      return ticketStudentId === studentIdStr;
-    });
+    try {
+      if (!studentId || typeof studentId !== 'string') {
+        return { inProgress: false, inProgressCount: 0, needsHomework: false, needsHomeworkCount: 0, done: false };
+      }
 
-    // Check for tickets that are in progress (not yet sent to assignment)
-    const inProgressTickets = studentTickets.filter(t => 
-      t.status === 'pending' || 
-      t.status === 'in_progress' || 
-      t.status === 'submitted'
-    );
+      if (!recitationTickets || !Array.isArray(recitationTickets)) {
+        return { inProgress: false, inProgressCount: 0, needsHomework: false, needsHomeworkCount: 0, done: false };
+      }
 
-    // Check for tickets that are approved but assignment doesn't have homework yet
-    const approvedTicketsWithoutHomework = studentTickets.filter(t => {
-      if (t.status !== 'sent_to_assignment' || !t.sentToAssignmentId) return false;
-      const assignment = assignments.find(a => {
-        const aId = (a as any)._id || a.id;
-        return String(aId) === String(t.sentToAssignmentId);
+      const normalizedStudentId = normalizeId(studentId);
+      const studentTickets = recitationTickets.filter(t => {
+        try {
+          if (!t) return false;
+          const ticketStudentId = normalizeId(t.studentId || '');
+          return ticketStudentId === normalizedStudentId;
+        } catch (err) {
+          console.warn('⚠️ Error filtering ticket:', err);
+          return false;
+        }
       });
-      // Ticket is approved but assignment doesn't have homework
-      return assignment && (!assignment.homework?.enabled || 
-        (!assignment.homework?.content?.trim() && 
-         (!assignment.homework?.items || assignment.homework.items.length === 0)));
-    });
 
-    return {
-      inProgress: inProgressTickets.length > 0,
-      inProgressCount: inProgressTickets.length,
-      needsHomework: approvedTicketsWithoutHomework.length > 0,
-      needsHomeworkCount: approvedTicketsWithoutHomework.length,
-      done: studentTickets.some(t => {
-        if (t.status !== 'sent_to_assignment' || !t.sentToAssignmentId) return false;
-        const assignment = assignments.find(a => {
-          const aId = (a as any)._id || a.id;
-          return String(aId) === String(t.sentToAssignmentId);
-        });
-        // Ticket is approved AND assignment has homework
-        return assignment && assignment.homework?.enabled && 
-          (assignment.homework?.content?.trim() || 
-           (assignment.homework?.items && assignment.homework.items.length > 0));
-      })
-    };
+      // Check for tickets that are in progress (not yet sent to assignment)
+      const inProgressTickets = studentTickets.filter(t => {
+        try {
+          if (!t || !t.status) return false;
+          return t.status === 'pending' || 
+                 t.status === 'in_progress' || 
+                 t.status === 'submitted';
+        } catch (err) {
+          console.warn('⚠️ Error checking ticket progress:', err);
+          return false;
+        }
+      });
+
+      // Check for tickets that are approved but assignment doesn't have homework yet
+      const approvedTicketsWithoutHomework = studentTickets.filter(t => {
+        try {
+          if (!t || t.status !== 'sent_to_assignment' || !t.sentToAssignmentId) return false;
+          if (!assignments || !Array.isArray(assignments)) return false;
+          
+          const assignment = assignments.find(a => {
+            try {
+              if (!a) return false;
+              const aId = normalizeId((a as any)._id || a.id);
+              const ticketAssignmentId = normalizeId(t.sentToAssignmentId);
+              return aId === ticketAssignmentId;
+            } catch (err) {
+              console.warn('⚠️ Error matching assignment:', err);
+              return false;
+            }
+          });
+          
+          // Ticket is approved but assignment doesn't have homework
+          return assignment && (!assignment.homework?.enabled || 
+            (!assignment.homework?.content?.trim() && 
+             (!assignment.homework?.items || assignment.homework.items.length === 0)));
+        } catch (err) {
+          console.warn('⚠️ Error checking ticket homework status:', err);
+          return false;
+        }
+      });
+
+      const done = studentTickets.some(t => {
+        try {
+          if (!t || t.status !== 'sent_to_assignment' || !t.sentToAssignmentId) return false;
+          if (!assignments || !Array.isArray(assignments)) return false;
+          
+          const assignment = assignments.find(a => {
+            try {
+              if (!a) return false;
+              const aId = normalizeId((a as any)._id || a.id);
+              const ticketAssignmentId = normalizeId(t.sentToAssignmentId);
+              return aId === ticketAssignmentId;
+            } catch (err) {
+              console.warn('⚠️ Error matching assignment for done check:', err);
+              return false;
+            }
+          });
+          
+          // Ticket is approved AND assignment has homework
+          return assignment && assignment.homework?.enabled && 
+            (assignment.homework?.content?.trim() || 
+             (assignment.homework?.items && assignment.homework.items.length > 0));
+        } catch (err) {
+          console.warn('⚠️ Error checking if ticket is done:', err);
+          return false;
+        }
+      });
+
+      return {
+        inProgress: inProgressTickets.length > 0,
+        inProgressCount: inProgressTickets.length,
+        needsHomework: approvedTicketsWithoutHomework.length > 0,
+        needsHomeworkCount: approvedTicketsWithoutHomework.length,
+        done
+      };
+    } catch (err) {
+      console.error('❌ Error getting student ticket status:', err);
+      return { inProgress: false, inProgressCount: 0, needsHomework: false, needsHomeworkCount: 0, done: false };
+    }
   };
 
   const handleStudentClick = (studentId: string) => {
-    setSelectedStudent(studentId);
+    try {
+      if (!studentId || typeof studentId !== 'string') {
+        setOperationError('Invalid student ID. Please try again.');
+        return;
+      }
+      setSelectedStudent(studentId);
+      setOperationError(null);
+    } catch (err) {
+      console.error('❌ Error handling student click:', err);
+      setOperationError('Failed to open student view. Please try again.');
+    }
   };
 
   // Check if After School is selected
   const isAfterSchoolSelected = selectedProgram === 'After School';
 
   const handleCreateAssignment = (studentId: string) => {
-    setSelectedStudent(studentId);
-    setEditingAssignment(null);
-    setPrefillTicket(null);
-    setShowAssignmentForm(true);
+    try {
+      if (!studentId || typeof studentId !== 'string') {
+        setOperationError('Invalid student ID. Cannot create assignment.');
+        return;
+      }
+      
+      // Validate student exists
+      const student = allStudents?.find(s => {
+        const sId = normalizeId(s.id || (s as any)._id);
+        const sRecordId = normalizeId((s as any).studentRecordId);
+        const normalizedStudentId = normalizeId(studentId);
+        return sId === normalizedStudentId || sRecordId === normalizedStudentId;
+      });
+      
+      if (!student) {
+        setOperationError('Student not found. Please refresh the page.');
+        return;
+      }
+      
+      setSelectedStudent(studentId);
+      setEditingAssignment(null);
+      setPrefillTicket(null);
+      setShowAssignmentForm(true);
+      setOperationError(null);
+    } catch (err) {
+      console.error('❌ Error creating assignment:', err);
+      setOperationError('Failed to open assignment form. Please try again.');
+    }
   };
 
   const handleCreateTicket = (studentId: string) => {
-    setSelectedStudent(studentId);
-    setShowTicketForm(true);
+    try {
+      if (!studentId || typeof studentId !== 'string') {
+        setOperationError('Invalid student ID. Cannot create ticket.');
+        return;
+      }
+      
+      // Validate student exists
+      const student = allStudents?.find(s => {
+        const sId = normalizeId(s.id || (s as any)._id);
+        const sRecordId = normalizeId((s as any).studentRecordId);
+        const normalizedStudentId = normalizeId(studentId);
+        return sId === normalizedStudentId || sRecordId === normalizedStudentId;
+      });
+      
+      if (!student) {
+        setOperationError('Student not found. Please refresh the page.');
+        return;
+      }
+      
+      setSelectedStudent(studentId);
+      setShowTicketForm(true);
+      setOperationError(null);
+    } catch (err) {
+      console.error('❌ Error creating ticket:', err);
+      setOperationError('Failed to open ticket form. Please try again.');
+    }
   };
 
   const handleTicketSuccess = async (ticket: Ticket, openSabqReview?: boolean) => {
-    setShowTicketForm(false);
-    
-    if (ticket.type === 'sabq' && openSabqReview) {
-      // Open AdminSabqReview for new Sabq tickets
-      setSabqReviewTicket(ticket);
-    } else if (ticket.type === 'sabq') {
-      // ✅ OPTIMIZED: Pass only essential fields to reduce state size
-      setPrefillTicket({
-        id: ticket.id,
-        type: ticket.type,
-        studentId: ticket.studentId,
-        studentName: ticket.studentName,
-        assignedTeacherId: ticket.assignedTeacherId,
-        assignedTeacherName: ticket.assignedTeacherName,
-        recitationRange: ticket.recitationRange,
-        mistakeCount: ticket.mistakeCount,
-        atkees: ticket.atkees,
-        mistakes: ticket.mistakes?.slice(0, 10), // ✅ Limit array size
-        tajweedIssues: ticket.tajweedIssues,
-        adminComment: ticket.adminComment,
-        teacherComment: ticket.teacherComment,
-        status: ticket.status,
-        sentAt: ticket.sentAt,
-        createdAt: ticket.createdAt
-      } as Ticket);
-      setShowAssignmentForm(true);
-    }
-    // Refresh data to get the new ticket
-    if (refreshDataLight) {
-      await refreshDataLight();
+    try {
+      if (!ticket || !ticket.id) {
+        setOperationError('Invalid ticket data. Please try creating the ticket again.');
+        return;
+      }
+      
+      setShowTicketForm(false);
+      setOperationError(null);
+      
+      if (ticket.type === 'sabq' && openSabqReview) {
+        // Open AdminSabqReview for new Sabq tickets
+        setSabqReviewTicket(ticket);
+      } else if (ticket.type === 'sabq') {
+        // ✅ OPTIMIZED: Pass only essential fields to reduce state size
+        setPrefillTicket({
+          id: ticket.id,
+          type: ticket.type,
+          studentId: ticket.studentId,
+          studentName: ticket.studentName,
+          assignedTeacherId: ticket.assignedTeacherId,
+          assignedTeacherName: ticket.assignedTeacherName,
+          recitationRange: ticket.recitationRange,
+          mistakeCount: ticket.mistakeCount,
+          atkees: ticket.atkees,
+          mistakes: ticket.mistakes?.slice(0, 10), // ✅ Limit array size
+          tajweedIssues: ticket.tajweedIssues,
+          adminComment: ticket.adminComment,
+          teacherComment: ticket.teacherComment,
+          status: ticket.status,
+          sentAt: ticket.sentAt,
+          createdAt: ticket.createdAt
+        } as Ticket);
+        setShowAssignmentForm(true);
+      }
+      
+      // Refresh data to get the new ticket
+      if (refreshDataLight && typeof refreshDataLight === 'function') {
+        setIsLoading(true);
+        try {
+          await refreshDataLight();
+        } catch (refreshErr) {
+          console.error('❌ Error refreshing data after ticket creation:', refreshErr);
+          setOperationError('Ticket created successfully, but failed to refresh data. Please refresh the page.');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    } catch (err) {
+      console.error('❌ Error handling ticket success:', err);
+      setOperationError('Failed to process ticket. Please try again.');
+      setShowTicketForm(false);
     }
   };
 
   const handleEditAssignment = (assignmentId: string) => {
-    setEditingAssignment(assignmentId);
-    setShowAssignmentForm(true);
+    try {
+      if (!assignmentId || typeof assignmentId !== 'string') {
+        setOperationError('Invalid assignment ID. Cannot edit assignment.');
+        return;
+      }
+      
+      // Validate assignment exists
+      const assignment = assignments?.find(a => {
+        const aId = normalizeId(a.id || (a as any)._id);
+        const normalizedAssignmentId = normalizeId(assignmentId);
+        return aId === normalizedAssignmentId;
+      });
+      
+      if (!assignment) {
+        setOperationError('Assignment not found. Please refresh the page.');
+        return;
+      }
+      
+      setEditingAssignment(assignmentId);
+      setShowAssignmentForm(true);
+      setOperationError(null);
+    } catch (err) {
+      console.error('❌ Error editing assignment:', err);
+      setOperationError('Failed to open assignment editor. Please try again.');
+    }
   };
 
   const handleCloseModal = () => {
-    setSelectedStudent(null);
-    setShowAssignmentForm(false);
-    setEditingAssignment(null);
+    try {
+      setSelectedStudent(null);
+      setShowAssignmentForm(false);
+      setEditingAssignment(null);
+      setOperationError(null);
+    } catch (err) {
+      console.error('❌ Error closing modal:', err);
+    }
   };
 
   const handleAssignHomework = (assignmentId: string, studentId: string) => {
-    setHomeworkAssignmentId(assignmentId);
-    setSelectedStudent(studentId);
-    setShowHomeworkForm(true);
+    try {
+      if (!assignmentId || typeof assignmentId !== 'string') {
+        setOperationError('Invalid assignment ID. Cannot assign homework.');
+        return;
+      }
+      
+      if (!studentId || typeof studentId !== 'string') {
+        setOperationError('Invalid student ID. Cannot assign homework.');
+        return;
+      }
+      
+      // Validate assignment exists
+      const assignment = assignments?.find(a => {
+        const aId = normalizeId(a.id || (a as any)._id);
+        const normalizedAssignmentId = normalizeId(assignmentId);
+        return aId === normalizedAssignmentId;
+      });
+      
+      if (!assignment) {
+        setOperationError('Assignment not found. Please refresh the page.');
+        return;
+      }
+      
+      // Validate student exists
+      const student = allStudents?.find(s => {
+        const sId = normalizeId(s.id || (s as any)._id);
+        const sRecordId = normalizeId((s as any).studentRecordId);
+        const normalizedStudentId = normalizeId(studentId);
+        return sId === normalizedStudentId || sRecordId === normalizedStudentId;
+      });
+      
+      if (!student) {
+        setOperationError('Student not found. Please refresh the page.');
+        return;
+      }
+      
+      setHomeworkAssignmentId(assignmentId);
+      setSelectedStudent(studentId);
+      setShowHomeworkForm(true);
+      setOperationError(null);
+    } catch (err) {
+      console.error('❌ Error assigning homework:', err);
+      setOperationError('Failed to open homework form. Please try again.');
+    }
   };
 
   const handleSaveHomework = async (homeworkItems: HomeworkItem[], notes: string) => {
-    if (!homeworkAssignmentId) return;
+    // Fail fast - validate inputs immediately
+    if (!homeworkAssignmentId || typeof homeworkAssignmentId !== 'string') {
+      const errorMsg = 'Invalid assignment ID. Cannot save homework.';
+      setOperationError(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    if (!Array.isArray(homeworkItems)) {
+      const errorMsg = 'Invalid homework items. Please provide a valid array.';
+      setOperationError(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    setIsLoading(true);
+    setOperationError(null);
 
     try {
       const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      if (!API_BASE) {
+        throw new Error('API base URL is not configured. Please check your environment variables.');
+      }
+
       const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
-      
-      // Get current assignment
-      const assignmentResponse = await fetch(`${API_BASE}/assignments/${homeworkAssignmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+
+      // Validate assignment ID format (MongoDB ObjectId)
+      const assignmentIdNormalized = normalizeId(homeworkAssignmentId);
+      if (!assignmentIdNormalized || assignmentIdNormalized.length !== 24) {
+        throw new Error('Invalid assignment ID format. Please refresh and try again.');
+      }
+
+      // Get current assignment with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      let assignmentResponse: Response;
+      try {
+        assignmentResponse = await fetch(`${API_BASE}/assignments/${assignmentIdNormalized}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
+        });
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr.name === 'AbortError') {
+          throw new Error('Request timed out. Please check your connection and try again.');
         }
-      });
+        throw new Error(`Network error: ${fetchErr.message || 'Failed to connect to server'}`);
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!assignmentResponse.ok) {
-        throw new Error('Failed to fetch assignment');
+        let errorMessage = 'Failed to fetch assignment';
+        try {
+          const errorData = await assignmentResponse.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server returned ${assignmentResponse.status} ${assignmentResponse.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const assignment = await assignmentResponse.json();
+      if (!assignment || !assignment.id) {
+        throw new Error('Invalid assignment data received from server.');
+      }
 
-      // ✅ FIX: Optimized payload - send only homework fields, not entire assignment object
-      // Backend correctly filters out immutable fields, but this is more efficient
-      const updateResponse = await fetch(`${API_BASE}/assignments/${homeworkAssignmentId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          homework: {
-            enabled: homeworkItems.length > 0,
-            items: homeworkItems,
-            notes: notes
-          }
-        })
+      // Validate homework items structure
+      const validHomeworkItems = homeworkItems.filter(item => {
+        if (!item || typeof item !== 'object') return false;
+        return true; // Add more validation if needed
       });
 
+      // Update assignment with timeout
+      const updateController = new AbortController();
+      const updateTimeoutId = setTimeout(() => updateController.abort(), 10000);
+
+      let updateResponse: Response;
+      try {
+        updateResponse = await fetch(`${API_BASE}/assignments/${assignmentIdNormalized}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            homework: {
+              enabled: validHomeworkItems.length > 0,
+              items: validHomeworkItems,
+              notes: notes || ''
+            }
+          }),
+          signal: updateController.signal
+        });
+      } catch (updateErr: any) {
+        clearTimeout(updateTimeoutId);
+        if (updateErr.name === 'AbortError') {
+          throw new Error('Request timed out. Please check your connection and try again.');
+        }
+        throw new Error(`Network error: ${updateErr.message || 'Failed to save homework'}`);
+      } finally {
+        clearTimeout(updateTimeoutId);
+      }
+
       if (!updateResponse.ok) {
-        const error = await updateResponse.json();
-        throw new Error(error.error || 'Failed to save homework');
+        let errorMessage = 'Failed to save homework';
+        try {
+          const errorData = await updateResponse.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server returned ${updateResponse.status} ${updateResponse.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       // Refresh assignments only (faster than full refreshData)
-      // Use refreshDataLight which only refreshes assignments, tickets, notifications
-      if (refreshDataLight) {
-        await refreshDataLight();
-      } else {
-      await refreshData();
+      if (refreshDataLight && typeof refreshDataLight === 'function') {
+        try {
+          await refreshDataLight();
+        } catch (refreshErr) {
+          console.error('❌ Error refreshing data after homework save:', refreshErr);
+          // Don't throw - homework was saved successfully
+          setOperationError('Homework saved successfully, but failed to refresh data. Please refresh the page.');
+        }
+      } else if (refreshData && typeof refreshData === 'function') {
+        try {
+          await refreshData();
+        } catch (refreshErr) {
+          console.error('❌ Error refreshing data after homework save:', refreshErr);
+          setOperationError('Homework saved successfully, but failed to refresh data. Please refresh the page.');
+        }
       }
-    } catch (error) {
-      console.error('Error saving homework:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('❌ Error saving homework:', error);
+      const errorMessage = error.message || 'Failed to save homework. Please try again.';
+      setOperationError(errorMessage);
+      throw error; // Re-throw so the form can handle it
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -546,6 +979,56 @@ const AssignmentManagement: React.FC = () => {
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        {/* Error Messages */}
+        {(error || operationError) && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-red-800">
+                  {error ? 'System Error' : 'Operation Error'}
+                </h3>
+                <p className="mt-1 text-sm text-red-700">
+                  {error || operationError}
+                </p>
+                <div className="mt-2">
+                  <button
+                    onClick={() => {
+                      setError(null);
+                      setOperationError(null);
+                      if (refreshData && typeof refreshData === 'function') {
+                        refreshData().catch(err => console.error('Refresh error:', err));
+                      }
+                    }}
+                    className="text-sm font-medium text-red-800 hover:text-red-900 underline"
+                  >
+                    Dismiss and Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Indicator */}
+        {(isLoading || loading) && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center">
+              <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-sm text-blue-800">
+                {isLoading ? 'Processing...' : 'Loading data...'}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Page Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -858,22 +1341,38 @@ const AssignmentManagement: React.FC = () => {
                 {filteredStudents.map(student => {
                   // Use studentRecordId (Student document _id) which matches assignment.studentId
                   // Fallback to student.id if studentRecordId doesn't exist
-                  const studentIdToUse = (student as any).studentRecordId || student.id || (student as any)._id;
-                  const normalizedStudentId = normalizeId(studentIdToUse);
-                  const studentAssignments = getStudentAssignments(normalizedStudentId);
-                  const activeAssignments = studentAssignments.filter(a => a.status === 'active').length;
-                  const completedAssignments = studentAssignments.filter((a: any) => 
-                    a.status === 'completed' || a.status === 'archived' ||
-                    (a.homework?.submission?.submitted && a.homework?.submission?.status === 'graded')
-                  ).length;
-                  const initials = getInitials(student.fullName);
-                  const ticketStatus = getStudentTicketStatus(student.id);
+                  try {
+                    const studentIdToUse = (student as any).studentRecordId || student.id || (student as any)._id;
+                    const normalizedStudentId = normalizeId(studentIdToUse);
+                    
+                    // Defensive check for getStudentAssignments
+                    let studentAssignments: any[] = [];
+                    if (getStudentAssignments && typeof getStudentAssignments === 'function') {
+                      try {
+                        studentAssignments = getStudentAssignments(normalizedStudentId) || [];
+                      } catch (err) {
+                        console.warn('⚠️ Error getting student assignments:', err);
+                        studentAssignments = [];
+                      }
+                    }
+                    
+                    const activeAssignments = Array.isArray(studentAssignments) 
+                      ? studentAssignments.filter(a => a && a.status === 'active').length 
+                      : 0;
+                    const completedAssignments = Array.isArray(studentAssignments)
+                      ? studentAssignments.filter((a: any) => 
+                          a && (a.status === 'completed' || a.status === 'archived' ||
+                          (a.homework?.submission?.submitted && a.homework?.submission?.status === 'graded'))
+                        ).length
+                      : 0;
+                    const initials = student?.fullName ? getInitials(student.fullName) : '??';
+                    const ticketStatus = getStudentTicketStatus(student.id || '');
                   
-                  return (
-                    <div
-                      key={student.id}
-                      className="px-3 py-2 hover:bg-gray-50 transition-colors"
-                    >
+                    return (
+                      <div
+                        key={student.id || (student as any)._id || Math.random()}
+                        className="px-3 py-2 hover:bg-gray-50 transition-colors"
+                      >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           {/* Compact Avatar */}
@@ -955,7 +1454,15 @@ const AssignmentManagement: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                  );
+                    );
+                  } catch (err) {
+                    console.error('❌ Error rendering student:', err, student);
+                    return (
+                      <div key={student.id || Math.random()} className="px-3 py-2 bg-red-50 border border-red-200 rounded">
+                        <p className="text-sm text-red-700">Error displaying student: {student.fullName || 'Unknown'}</p>
+                      </div>
+                    );
+                  }
                 })}
               </div>
             )}
@@ -1120,33 +1627,104 @@ const AssignmentManagement: React.FC = () => {
             setSabqReviewTicket(null);
           }}
           onSubmit={async (ticketId, data) => {
+            // Fail fast - validate inputs
+            if (!ticketId || typeof ticketId !== 'string') {
+              const errorMsg = 'Invalid ticket ID. Cannot submit Sabq.';
+              setOperationError(errorMsg);
+              alert(errorMsg);
+              return;
+            }
+
+            if (!data || typeof data !== 'object') {
+              const errorMsg = 'Invalid data. Cannot submit Sabq.';
+              setOperationError(errorMsg);
+              alert(errorMsg);
+              return;
+            }
+
+            setIsLoading(true);
+            setOperationError(null);
+
             try {
               const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+              if (!API_BASE) {
+                throw new Error('API base URL is not configured. Please check your environment variables.');
+              }
+
               const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
-              
-              const response = await fetch(`${API_BASE}/tickets/${ticketId}/submit-sabq`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-              });
+              if (!token) {
+                throw new Error('Authentication token not found. Please log in again.');
+              }
+
+              // Validate ticket ID format
+              const normalizedTicketId = normalizeId(ticketId);
+              if (!normalizedTicketId) {
+                throw new Error('Invalid ticket ID format. Please refresh and try again.');
+              }
+
+              // Submit with timeout
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+              let response: Response;
+              try {
+                response = await fetch(`${API_BASE}/tickets/${normalizedTicketId}/submit-sabq`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(data),
+                  signal: controller.signal
+                });
+              } catch (fetchErr: any) {
+                clearTimeout(timeoutId);
+                if (fetchErr.name === 'AbortError') {
+                  throw new Error('Request timed out. Please check your connection and try again.');
+                }
+                throw new Error(`Network error: ${fetchErr.message || 'Failed to connect to server'}`);
+              } finally {
+                clearTimeout(timeoutId);
+              }
               
               if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to submit Sabq');
+                let errorMessage = 'Failed to submit Sabq';
+                try {
+                  const errorData = await response.json();
+                  errorMessage = errorData.error || errorMessage;
+                } catch {
+                  errorMessage = `Server returned ${response.status} ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
               }
               
               const result = await response.json();
-              alert('Sabq submitted successfully and assignment updated!');
-              if (refreshDataLight) {
-                await refreshDataLight();
+              if (!result) {
+                throw new Error('Invalid response from server.');
               }
+
+              alert('Sabq submitted successfully and assignment updated!');
+              
+              // Refresh data
+              if (refreshDataLight && typeof refreshDataLight === 'function') {
+                try {
+                  await refreshDataLight();
+                } catch (refreshErr) {
+                  console.error('❌ Error refreshing data after Sabq submit:', refreshErr);
+                  setOperationError('Sabq submitted successfully, but failed to refresh data. Please refresh the page.');
+                }
+              }
+              
               setSabqReviewTicket(null);
+              setOperationError(null);
             } catch (error: any) {
-              alert('Failed to submit Sabq: ' + (error.message || 'Unknown error'));
+              console.error('❌ Error submitting Sabq:', error);
+              const errorMessage = error.message || 'Failed to submit Sabq. Please try again.';
+              setOperationError(errorMessage);
+              alert('Failed to submit Sabq: ' + errorMessage);
               throw error;
+            } finally {
+              setIsLoading(false);
             }
           }}
         />
@@ -1166,22 +1744,35 @@ const AssignmentManagement: React.FC = () => {
             }
           }}
           onSave={async () => {
-            // Close form first for better UX
-            setShowAssignmentForm(false);
-            setEditingAssignment(null);
-            setPrefillTicket(null);
-            
-            // ✅ FIX: Don't refresh immediately after creating assignment
-            // addAssignment() already updates the state immediately via setAssignments()
-            // Refreshing here would overwrite the newly added assignment if backend hasn't committed yet
-            // Instead, refresh in the background after a delay to ensure consistency
-            setTimeout(async () => {
-            if (refreshDataLight) {
-              await refreshDataLight();
-            } else {
-            await refreshData();
+            try {
+              // Close form first for better UX
+              setShowAssignmentForm(false);
+              setEditingAssignment(null);
+              setPrefillTicket(null);
+              setOperationError(null);
+              
+              // ✅ FIX: Don't refresh immediately after creating assignment
+              // addAssignment() already updates the state immediately via setAssignments()
+              // Refreshing here would overwrite the newly added assignment if backend hasn't committed yet
+              // Instead, refresh in the background after a delay to ensure consistency
+              setTimeout(async () => {
+                try {
+                  if (refreshDataLight && typeof refreshDataLight === 'function') {
+                    await refreshDataLight();
+                  } else if (refreshData && typeof refreshData === 'function') {
+                    await refreshData();
+                  } else {
+                    console.warn('⚠️ No refresh function available');
+                  }
+                } catch (refreshErr) {
+                  console.error('❌ Error refreshing data after assignment save:', refreshErr);
+                  setOperationError('Assignment saved successfully, but failed to refresh data. Please refresh the page.');
+                }
+              }, 1000); // Wait 1 second for backend to commit, then refresh in background
+            } catch (err) {
+              console.error('❌ Error in assignment save handler:', err);
+              setOperationError('Failed to process assignment save. Please refresh the page.');
             }
-            }, 1000); // Wait 1 second for backend to commit, then refresh in background
           }}
         />
       )}

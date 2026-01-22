@@ -11,7 +11,7 @@ interface TeacherStudentAssignmentManagerProps {
 const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerProps> = ({ onClose }) => {
   const navigate = useNavigate();
   const { teachers, students, updateStudent, refreshData, refreshStudentsAndTeachers, getStudentsByTeacher } = useBackendData();
-  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [selectedTeachers, setSelectedTeachers] = useState<Set<string>>(new Set()); // Multiple teachers
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,53 +22,55 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   const [justSaved, setJustSaved] = useState(false); // Track if we just saved to prevent auto-reset
   const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null); // For shift-click range selection
 
-  // Get assigned students for selected teacher
-  // Filter to show only students actually assigned to this teacher
+  // Get assigned students for selected teachers (multiple teachers support)
   const assignedStudents = useMemo(() => {
-    if (!selectedTeacher) return [];
+    if (selectedTeachers.size === 0) return [];
     
-    // CRITICAL: Use Teacher Document ID, not User ID
-    let teacherDocId: string;
+    // Get all teacher document IDs from selected teachers
+    const selectedTeacherDocIds = new Set<string>();
+    teachers.forEach(teacher => {
+      const teacherId = teacher.id || (teacher as any)._id;
+      if (selectedTeachers.has(teacherId)) {
+        let teacherDocId: string;
+        if ((teacher as any).teacherDocumentId) {
+          teacherDocId = (teacher as any).teacherDocumentId.toString();
+        } else if ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) {
+          teacherDocId = (teacher as any)._id.toString();
+        } else {
+          teacherDocId = teacher.id;
+        }
+        selectedTeacherDocIds.add(teacherDocId);
+        selectedTeacherDocIds.add(teacher.id); // Also add the id as fallback
+      }
+    });
     
-    if ((selectedTeacher as any).teacherDocumentId) {
-      teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
-    } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
-      teacherDocId = (selectedTeacher as any)._id.toString();
-    } else {
-      teacherDocId = selectedTeacher.id;
-    }
-    
-    // Filter students to only show those assigned to this teacher
+    // Filter students assigned to ANY of the selected teachers
     return students.filter(student => {
       const assignedTeacherIds = (student as any).assignedTeacherIds || [];
       const assignedTeachers = (student as any).assignedTeachers || [];
-      const studentRecordId = (student as any).studentRecordId || student.id || (student as any)._id;
+      const allAssignedIds = [...assignedTeacherIds, ...assignedTeachers];
       
-      // Check if this student is assigned to the selected teacher
-      return assignedTeacherIds.includes(teacherDocId) || 
-             assignedTeachers.includes(teacherDocId) ||
-             assignedTeacherIds.includes(selectedTeacher.id) ||
-             assignedTeachers.includes(selectedTeacher.id);
+      return Array.from(selectedTeacherDocIds).some(teacherDocId => 
+        allAssignedIds.includes(teacherDocId)
+      );
     });
-  }, [selectedTeacher, students]);
+  }, [selectedTeachers, students, teachers]);
 
-  // Initialize selected student IDs when teacher is selected
-  // BUT: Don't auto-reset if we just saved (to prevent reverting user's deselections)
+  // Initialize selected student IDs when teachers are selected
   useEffect(() => {
-    // Skip auto-reset if we just saved - we'll update manually after refresh
     if (justSaved) {
       return;
     }
     
-    if (selectedTeacher && assignedStudents.length > 0) {
+    if (selectedTeachers.size > 0 && assignedStudents.length > 0) {
       const assignedIds = new Set(
         assignedStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean)
       );
       setSelectedStudentIds(assignedIds);
-    } else if (!selectedTeacher) {
+    } else if (selectedTeachers.size === 0) {
       setSelectedStudentIds(new Set());
     }
-  }, [selectedTeacher, assignedStudents, justSaved]);
+  }, [selectedTeachers, assignedStudents, justSaved]);
 
   // Filter teachers by search term
   const filteredTeachers = useMemo(() => {
@@ -144,14 +146,25 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       );
     }
 
-    // Filter by assignment status
-    if (filterStatus !== 'all' && selectedTeacher) {
-      const teacherDocId = (selectedTeacher as any)._id || (selectedTeacher as any).teacherDocumentId || selectedTeacher.id;
+    // Filter by assignment status (check if assigned to ANY selected teacher)
+    if (filterStatus !== 'all' && selectedTeachers.size > 0) {
+      const selectedTeacherDocIds = new Set<string>();
+      teachers.forEach(teacher => {
+        const teacherId = teacher.id || (teacher as any)._id;
+        if (selectedTeachers.has(teacherId)) {
+          selectedTeacherDocIds.add(getTeacherDocId(teacher));
+          selectedTeacherDocIds.add(teacher.id || '');
+        }
+      });
+      
       filtered = filtered.filter(student => {
         const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
         const currentAssignedTeachers = (student as any).assignedTeachers || [];
-        const isAssigned = currentAssignedTeacherIds.includes(teacherDocId) || 
-                          currentAssignedTeachers.includes(teacherDocId);
+        const allAssignedIds = [...currentAssignedTeacherIds, ...currentAssignedTeachers];
+        
+        const isAssigned = Array.from(selectedTeacherDocIds).some(teacherDocId => 
+          allAssignedIds.includes(teacherDocId)
+        );
         
         if (filterStatus === 'assigned') return isAssigned;
         if (filterStatus === 'unassigned') return !isAssigned;
@@ -168,7 +181,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     }
 
     return filtered;
-  }, [students, searchTerm, filterStatus, filterProgram, selectedTeacher]);
+  }, [students, searchTerm, filterStatus, filterProgram, selectedTeachers, teachers]);
 
   // Get teachers assigned to a student
   const getStudentTeachers = (student: Student) => {
@@ -182,12 +195,51 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
     });
   };
 
-  const handleTeacherSelect = (teacher: Teacher) => {
-    setSelectedTeacher(teacher);
-    setSearchTerm('');
-    setFilterStatus('all');
-    setFilterProgram('all');
-    setLastSelectedIndex(null); // Reset range selection
+  // Get teacher document ID helper
+  const getTeacherDocId = (teacher: Teacher): string => {
+    if ((teacher as any).teacherDocumentId) {
+      return (teacher as any).teacherDocumentId.toString();
+    } else if ((teacher as any)._id && (teacher as any)._id.toString() !== teacher.id?.toString()) {
+      return (teacher as any)._id.toString();
+    } else {
+      return teacher.id || '';
+    }
+  };
+
+  const handleTeacherToggle = (teacher: Teacher, event?: React.MouseEvent) => {
+    const teacherId = teacher.id || (teacher as any)._id;
+    const isCtrlClick = event?.ctrlKey || event?.metaKey;
+    const isShiftClick = event?.shiftKey;
+    
+    setSelectedTeachers(prev => {
+      const newSet = new Set(prev);
+      
+      if (isCtrlClick || isShiftClick) {
+        // Multi-select: toggle this teacher without clearing others
+        if (newSet.has(teacherId)) {
+          newSet.delete(teacherId);
+        } else {
+          newSet.add(teacherId);
+        }
+      } else {
+        // Single click: toggle this teacher (can still have multiple)
+        if (newSet.has(teacherId)) {
+          newSet.delete(teacherId);
+        } else {
+          newSet.add(teacherId);
+        }
+      }
+      
+      return newSet;
+    });
+    
+    // Reset filters when teachers change
+    if (!isCtrlClick && !isShiftClick) {
+      setSearchTerm('');
+      setFilterStatus('all');
+      setFilterProgram('all');
+    }
+    setLastSelectedIndex(null);
   };
 
   const handleSelectAll = () => {
@@ -353,42 +405,35 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
   };
 
   const handleSave = async () => {
-    if (!selectedTeacher) return;
+    if (selectedTeachers.size === 0) {
+      alert('Please select at least one teacher');
+      return;
+    }
+    
+    if (selectedStudentIds.size === 0) {
+      alert('Please select at least one student');
+      return;
+    }
 
     setIsSaving(true);
     try {
-      // CRITICAL: Use Teacher Document ID, not User ID
-      // Try multiple strategies to find Teacher document ID
-      // The backend can handle both Teacher._id and User._id, so we'll try to find the best one
-      let teacherDocId: string | null = null;
+      // Get all selected teacher document IDs
+      const selectedTeacherDocIds: string[] = [];
+      const selectedTeacherNames: string[] = [];
       
-      // Strategy 1: Check teacherDocumentId field (explicit Teacher document ID)
-      if ((selectedTeacher as any).teacherDocumentId) {
-        teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
-      } 
-      // Strategy 2: Check _id field (Teacher document _id) - use it if it exists
-      else if ((selectedTeacher as any)._id) {
-        teacherDocId = (selectedTeacher as any)._id.toString();
-      }
-      // Strategy 3: Use id as fallback (backend can handle User ID lookup)
-      else if (selectedTeacher.id) {
-        teacherDocId = selectedTeacher.id.toString();
-        console.warn('⚠️ Using id as Teacher document ID (backend will handle User ID lookup):', {
-          teacherName: selectedTeacher.fullName,
-          teacherId: selectedTeacher.id,
-        });
-      }
-      
-      // Final fallback: If still no ID, this shouldn't happen but handle gracefully
-      if (!teacherDocId) {
-        console.error('❌ Cannot find any ID for teacher!', {
-          teacherName: selectedTeacher.fullName,
-          teacherId: selectedTeacher.id,
-          _id: (selectedTeacher as any)._id,
-          teacherDocumentId: (selectedTeacher as any).teacherDocumentId,
-          allKeys: Object.keys(selectedTeacher),
-        });
-        alert(`❌ Error: Cannot find Teacher document ID for ${selectedTeacher.fullName}. Please refresh the page and try again.`);
+      teachers.forEach(teacher => {
+        const teacherId = teacher.id || (teacher as any)._id;
+        if (selectedTeachers.has(teacherId)) {
+          const teacherDocId = getTeacherDocId(teacher);
+          if (teacherDocId) {
+            selectedTeacherDocIds.push(teacherDocId);
+            selectedTeacherNames.push(teacher.fullName || teacher.email || 'Unknown');
+          }
+        }
+      });
+
+      if (selectedTeacherDocIds.length === 0) {
+        alert('❌ Error: Cannot find Teacher document IDs. Please refresh the page and try again.');
         setIsSaving(false);
         return;
       }
@@ -396,13 +441,13 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
       const selectedIdsArray = Array.from(selectedStudentIds);
 
       console.log('💾 Saving teacher-student assignments:', {
-        teacherDocId: teacherDocId,
-        teacherName: selectedTeacher.fullName,
+        teacherDocIds: selectedTeacherDocIds,
+        teacherNames: selectedTeacherNames,
         selectedStudentIds: selectedIdsArray.length,
         totalStudents: students.length,
       });
 
-      // Filter: Only students that need updates
+      // Filter: Only students that need updates (check all selected teachers)
       const studentsToUpdate = students.filter((student) => {
         const studentId = (student as any).studentRecordId;
         if (!studentId) {
@@ -410,13 +455,23 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
           return false;
         }
 
-        const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
-        const currentAssignedTeachers = (student as any).assignedTeachers || [];
-        const isCurrentlyAssigned = currentAssignedTeacherIds.includes(teacherDocId) || 
-                                     currentAssignedTeachers.includes(teacherDocId);
-        const shouldBeAssigned = selectedStudentIds.has(studentId);
-        
-        return isCurrentlyAssigned !== shouldBeAssigned;
+        if (!selectedStudentIds.has(studentId)) {
+          // Student not selected - check if they need to be unassigned from any selected teacher
+          const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
+          const currentAssignedTeachers = (student as any).assignedTeachers || [];
+          const allAssignedIds = [...currentAssignedTeacherIds, ...currentAssignedTeachers];
+          
+          // Check if student is assigned to any selected teacher (needs removal)
+          return selectedTeacherDocIds.some(teacherDocId => allAssignedIds.includes(teacherDocId));
+        } else {
+          // Student is selected - check if they need to be assigned to any selected teacher
+          const currentAssignedTeacherIds = (student as any).assignedTeacherIds || [];
+          const currentAssignedTeachers = (student as any).assignedTeachers || [];
+          const allAssignedIds = [...currentAssignedTeacherIds, ...currentAssignedTeachers];
+          
+          // Check if student is missing any selected teacher (needs addition)
+          return selectedTeacherDocIds.some(teacherDocId => !allAssignedIds.includes(teacherDocId));
+        }
       });
 
       console.log(`📊 Updating ${studentsToUpdate.length} of ${students.length} students`);
@@ -434,8 +489,19 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         
         if (shouldBeAssigned) {
           const currentTeachers = getStudentTeachers(student);
-          if (currentTeachers.length >= 9) {
-            alert(`⚠️ Cannot assign ${student.fullName} to ${selectedTeacher.fullName}. Student already has ${currentTeachers.length} teachers (maximum is 9).`);
+          const currentTeacherIds = new Set(
+            currentTeachers.map(t => getTeacherDocId(t))
+          );
+          
+          // Count how many NEW teachers would be added
+          const newTeachersToAdd = selectedTeacherDocIds.filter(teacherDocId => 
+            !currentTeacherIds.has(teacherDocId)
+          );
+          
+          const totalAfterAssignment = currentTeachers.length + newTeachersToAdd.length;
+          
+          if (totalAfterAssignment > 9) {
+            alert(`⚠️ Cannot assign ${student.fullName} to selected teachers. Student already has ${currentTeachers.length} teachers, and adding ${newTeachersToAdd.length} more would exceed the maximum of 9.`);
             setIsSaving(false);
             return;
           }
@@ -460,8 +526,9 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
         let updatedTeacherIds: string[];
 
         if (shouldBeAssigned) {
-          updatedTeachers = [...new Set([...currentAssignedTeachers, teacherDocId])];
-          updatedTeacherIds = [...new Set([...currentAssignedTeacherIds, teacherDocId])];
+          // Add all selected teachers to this student
+          updatedTeachers = [...new Set([...currentAssignedTeachers, ...selectedTeacherDocIds])];
+          updatedTeacherIds = [...new Set([...currentAssignedTeacherIds, ...selectedTeacherDocIds])];
           
           // Enforce 9 teacher limit
           if (updatedTeachers.length > 9) {
@@ -469,8 +536,13 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
             updatedTeacherIds = updatedTeacherIds.slice(0, 9);
           }
         } else {
-          updatedTeachers = currentAssignedTeachers.filter((id: string) => id !== teacherDocId);
-          updatedTeacherIds = currentAssignedTeacherIds.filter((id: string) => id !== teacherDocId);
+          // Remove all selected teachers from this student
+          updatedTeachers = currentAssignedTeachers.filter((id: string) => 
+            !selectedTeacherDocIds.includes(id)
+          );
+          updatedTeacherIds = currentAssignedTeacherIds.filter((id: string) => 
+            !selectedTeacherDocIds.includes(id)
+          );
         }
 
         try {
@@ -576,22 +648,19 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
           // Wait a bit to ensure data is updated and re-rendered
           await new Promise(resolve => setTimeout(resolve, 300));
           
-          if (selectedTeacher) {
-            // Get the teacher document ID (same logic as in assignedStudents useMemo)
-            let teacherDocId: string;
-            if ((selectedTeacher as any).teacherDocumentId) {
-              teacherDocId = (selectedTeacher as any).teacherDocumentId.toString();
-            } else if ((selectedTeacher as any)._id && (selectedTeacher as any)._id.toString() !== selectedTeacher.id?.toString()) {
-              teacherDocId = (selectedTeacher as any)._id.toString();
-            } else {
-              teacherDocId = selectedTeacher.id;
-            }
+          if (selectedTeachers.size > 0) {
+            // Get all students assigned to any of the selected teachers
+            const updatedAssignedIds = new Set<string>();
             
-            // Get the updated assigned students from the refreshed data
-            const updatedAssignedStudents = getStudentsByTeacher(teacherDocId);
-            const updatedAssignedIds = new Set(
-              updatedAssignedStudents.map(s => (s as any).studentRecordId || s.id || (s as any)._id || '').filter(Boolean)
-            );
+            selectedTeacherDocIds.forEach(teacherDocId => {
+              const assignedStudents = getStudentsByTeacher(teacherDocId);
+              assignedStudents.forEach(student => {
+                const studentId = (student as any).studentRecordId || student.id || (student as any)._id || '';
+                if (studentId) {
+                  updatedAssignedIds.add(studentId);
+                }
+              });
+            });
             
             // Update selectedStudentIds to match what was actually saved
             setSelectedStudentIds(updatedAssignedIds);
@@ -622,7 +691,11 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
       // Note: Backend sync is now handled before refresh (above)
 
-      alert(`✅ Successfully updated ${successful.length} student assignment(s) for ${selectedTeacher.fullName}`);
+      const teacherNamesStr = selectedTeacherNames.length <= 3 
+        ? selectedTeacherNames.join(', ')
+        : `${selectedTeacherNames.slice(0, 2).join(', ')} and ${selectedTeacherNames.length - 2} more`;
+      
+      alert(`✅ Successfully updated ${successful.length} student assignment(s) for ${selectedTeachers.size} teacher(s): ${teacherNamesStr}`);
       
       // Don't update selectedStudentIds here - let the refresh handler do it
       // to ensure it matches the actual database state
@@ -643,7 +716,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Teacher-Student Assignment</h1>
               <p className="text-sm text-gray-600 mt-1">
-                Assign students to teachers (up to 9 teachers per student)
+                Select multiple teachers and students to assign (up to 9 teachers per student)
               </p>
             </div>
             <button
@@ -690,7 +763,7 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Teachers List */}
             <div className="lg:col-span-1">
-              <Card title="Select Teacher" className="h-full">
+              <Card title={`Select Teachers (${selectedTeachers.size} selected)`} className="h-full">
                 <div className="mb-3">
                   <input
                     type="text"
@@ -700,6 +773,17 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
                   />
                 </div>
+                
+                {selectedTeachers.size > 0 && (
+                  <div className="mb-3">
+                    <button
+                      onClick={() => setSelectedTeachers(new Set())}
+                      className="text-xs text-gray-600 hover:text-gray-900 underline"
+                    >
+                      Clear all ({selectedTeachers.size})
+                    </button>
+                  </div>
+                )}
 
                 <div className="space-y-2 max-h-[600px] overflow-y-auto">
                   {filteredTeachers.length === 0 ? (
@@ -716,13 +800,13 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                                assignedTeacherIds.includes(teacher.id) ||
                                assignedTeachers.includes(teacher.id);
                       }).length;
-                      const isSelected = selectedTeacher?.id === teacher.id || 
-                                       (selectedTeacher as any)?._id === (teacher as any)._id;
+                      const teacherId = teacher.id || (teacher as any)._id;
+                      const isSelected = selectedTeachers.has(teacherId);
 
                       return (
                         <button
                           key={teacher.id || (teacher as any)._id}
-                          onClick={() => handleTeacherSelect(teacher)}
+                          onClick={(e) => handleTeacherToggle(teacher, e)}
                           className={`w-full text-left px-3 py-3 rounded-lg border-2 transition-all ${
                             isSelected
                               ? 'border-primary bg-primary/10 shadow-md'
@@ -731,7 +815,12 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-sm text-gray-900 truncate">{teacher.fullName}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-sm text-gray-900 truncate">{teacher.fullName}</p>
+                                {isSelected && (
+                                  <span className="text-primary text-xs">✓</span>
+                                )}
+                              </div>
                               <p className="text-xs text-gray-600 truncate mt-0.5">{teacher.email}</p>
                             </div>
                             <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/20 text-primary flex-shrink-0">
@@ -748,8 +837,8 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
 
             {/* Students List */}
             <div className="lg:col-span-2">
-              {selectedTeacher ? (
-                <Card title={`Students - ${selectedTeacher.fullName}`} className="h-full">
+              {selectedTeachers.size > 0 ? (
+                <Card title={`Students (${selectedStudentIds.size} selected)`} className="h-full">
                   {/* Filters */}
                   <div className="mb-4 space-y-2">
                     <input
@@ -885,10 +974,13 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                       )}
                       <button
                         onClick={handleSave}
-                        disabled={isSaving}
+                        disabled={isSaving || selectedTeachers.size === 0 || selectedStudentIds.size === 0}
                         className="flex-1 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                       >
-                        {isSaving ? 'Saving...' : `Save Changes (${selectedStudentIds.size})`}
+                        {isSaving 
+                          ? 'Saving...' 
+                          : `Save: ${selectedTeachers.size} teacher(s) → ${selectedStudentIds.size} student(s)`
+                        }
                       </button>
                     </div>
                     <div className="text-xs text-gray-500 flex items-center gap-4">
@@ -1032,9 +1124,10 @@ const TeacherStudentAssignmentManager: React.FC<TeacherStudentAssignmentManagerP
                   </div>
                 </Card>
               ) : (
-                <Card title="Select a Teacher" className="h-full">
+                <Card title="Select Teachers" className="h-full">
                   <div className="text-center py-12 px-4">
-                    <p className="text-gray-500">Please select a teacher from the list to manage their student assignments</p>
+                    <p className="text-gray-500 mb-2">Please select one or more teachers from the list</p>
+                    <p className="text-sm text-gray-400">You can select multiple teachers and assign multiple students to them</p>
                   </div>
                 </Card>
               )}

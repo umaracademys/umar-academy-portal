@@ -1032,14 +1032,18 @@ console.log(`📁 Quran directory: ${path.join(publicDir, 'quran')}`);
 console.log(`📁 Mistakes directory: ${uploadsDir}`);
 console.log(`📁 Recordings directory: ${recordingsDir}`);
 
-// Connect to MongoDB with connection options
+// Connect to MongoDB with connection options - optimized for concurrent users
 const mongooseOptions = {
   serverSelectionTimeoutMS: 10000, // 10 seconds
   socketTimeoutMS: 45000,
   connectTimeoutMS: 10000,
-  maxPoolSize: 10,
+  maxPoolSize: 50, // ✅ INCREASED: Support more concurrent connections
+  minPoolSize: 5, // ✅ ADDED: Maintain minimum connections for faster response
+  maxIdleTimeMS: 30000, // ✅ ADDED: Close idle connections after 30s
   retryWrites: true,
-  w: 'majority'
+  w: 'majority',
+  readPreference: 'primaryPreferred', // ✅ ADDED: Prefer primary, fallback to secondary if available
+  heartbeatFrequencyMS: 10000 // ✅ ADDED: Faster connection health checks
 };
 
 // Connection event handlers
@@ -1211,6 +1215,13 @@ const userSchema = new mongoose.Schema({
   // Phase 4: Permission versioning for token invalidation
   permissionsVersion: { type: Number, default: 1 }
 }, { timestamps: true });
+
+// ✅ ADDED: Critical indexes for concurrent user performance
+userSchema.index({ email: 1 }, { unique: true }); // Already unique, but explicit index for faster lookups
+userSchema.index({ role: 1, loginEnabled: 1 }); // For filtering by role and login status
+userSchema.index({ accountLockedUntil: 1 }); // For finding locked accounts
+userSchema.index({ createdAt: -1 }); // For sorting by creation date
+userSchema.index({ email: 1, role: 1 }); // Compound index for common queries
 
 const User = mongoose.model('User', userSchema);
 
@@ -1923,6 +1934,7 @@ const Teacher = mongoose.model('Teacher', teacherSchema);
 // Initialize permission middleware with models (after Admin is defined)
 const { initializeModels, requireTeacherPermission, requireAdminPermission, checkTeacherPermission, checkAdminPermission } = require('./middleware/permissions');
 const { requirePermission, initializePermissionModels } = require('./middleware/requirePermission');
+const { requestDeduplication } = require('./middleware/requestDeduplication');
 const { checkPermissionVersion, initializeVersionModels } = require('./middleware/checkPermissionVersion');
 const { errorLogger } = require('./middleware/errorLogger');
 const { validateRequest, commonRules } = require('./middleware/validateRequest');
@@ -2137,16 +2149,68 @@ const getTeacherByUserId = async (userId) => {
 
 /**
  * Check if teacher is assigned to a student
+ * Checks both:
+ * 1. Teacher's assignedStudents array
+ * 2. Student's assignedTeacherIds array (for cases where teacher record hasn't been synced)
  */
 const isTeacherAssignedToStudent = async (teacherId, studentId) => {
   try {
+    const studentIdStr = studentId.toString();
+    const teacherIdStr = teacherId.toString();
+    
+    // Method 1: Check teacher's assignedStudents array
     const teacher = await Teacher.findById(teacherId);
-    if (!teacher || !teacher.assignedStudents) {
+    if (teacher && teacher.assignedStudents && Array.isArray(teacher.assignedStudents)) {
+      const isInTeacherList = teacher.assignedStudents.some(id => id.toString() === studentIdStr);
+      if (isInTeacherList) {
+        return true;
+      }
+    }
+    
+    // Method 2: Check student's assignedTeacherIds array (more reliable)
+    const student = await Student.findById(studentId);
+    if (!student) {
+      // Try finding by id field as fallback
+      const studentByField = await Student.findOne({ id: studentId });
+      if (studentByField) {
+        const assignedIds = [
+          ...(studentByField.assignedTeacherIds || []),
+          ...(studentByField.assignedTeachers || []),
+          studentByField.assignedTeacherId,
+          studentByField.assignedTeacher
+        ].filter(Boolean).map(id => id.toString());
+        
+        // Check if teacherId matches any assigned teacher ID
+        const teacherDocId = teacher?._id?.toString() || '';
+        const teacherUserId = teacher?.userId?.toString() || '';
+        
+        return assignedIds.some(id => 
+          id === teacherIdStr || 
+          id === teacherDocId || 
+          id === teacherUserId
+        );
+      }
       return false;
     }
-    // Check if studentId is in assignedStudents array
-    const studentIdStr = studentId.toString();
-    return teacher.assignedStudents.some(id => id.toString() === studentIdStr);
+    
+    // Get all assigned teacher IDs from student record
+    const assignedIds = [
+      ...(student.assignedTeacherIds || []),
+      ...(student.assignedTeachers || []),
+      student.assignedTeacherId,
+      student.assignedTeacher
+    ].filter(Boolean).map(id => id.toString());
+    
+    // Check if teacherId matches any assigned teacher ID
+    // Also check teacher's _id and userId for compatibility
+    const teacherDocId = teacher?._id?.toString() || '';
+    const teacherUserId = teacher?.userId?.toString() || '';
+    
+    return assignedIds.some(id => 
+      id === teacherIdStr || 
+      id === teacherDocId || 
+      id === teacherUserId
+    );
   } catch (error) {
     console.error('Error checking teacher-student assignment:', error);
     return false;
@@ -2192,10 +2256,41 @@ const validateStudentOwnership = async (req, res, next) => {
     if (requestingRole === 'teacher') {
       const teacher = await getTeacherByUserId(requestingUserId);
       if (!teacher) {
+        console.error('❌ Teacher profile not found for userId:', requestingUserId);
         return res.status(403).json({ error: 'Teacher profile not found' });
       }
-      const isAssigned = await isTeacherAssignedToStudent(teacher._id, targetStudentId);
+      
+      // Try multiple ID formats for student lookup
+      let student = await Student.findById(targetStudentId);
+      if (!student) {
+        student = await Student.findOne({ id: targetStudentId });
+      }
+      if (!student) {
+        student = await Student.findOne({ studentId: targetStudentId });
+      }
+      if (!student && mongoose.Types.ObjectId.isValid(targetStudentId)) {
+        // Try finding by userId if targetStudentId is a User ID
+        student = await Student.findOne({ userId: new mongoose.Types.ObjectId(targetStudentId) });
+      }
+      
+      if (!student) {
+        console.error('❌ Student not found for studentId:', targetStudentId);
+        return res.status(404).json({ error: 'Student not found' });
+      }
+      
+      // Use student's _id for assignment check
+      const studentMongoId = student._id.toString();
+      const isAssigned = await isTeacherAssignedToStudent(teacher._id, studentMongoId);
+      
       if (!isAssigned) {
+        console.warn('⚠️ Teacher not assigned to student:', {
+          teacherId: teacher._id.toString(),
+          teacherName: teacher.fullName,
+          studentId: studentMongoId,
+          studentName: student.fullName,
+          studentAssignedTeacherIds: student.assignedTeacherIds || [],
+          teacherAssignedStudents: teacher.assignedStudents?.slice(0, 5) || [] // First 5 for logging
+        });
         return res.status(403).json({ error: 'Access denied. You can only access data for your assigned students.' });
       }
       return next();
@@ -2404,21 +2499,21 @@ const validateTeacherOwnership = async (req, res, next) => {
 app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
   try {
     const { email, password, role } = req.body;
+    
+    // Debug: Log what we received (only in development)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔐 Login request received:', { email, hasRole: !!role, roleType: typeof role, roleValue: role });
+    }
 
-    // Log login attempt
-    await logActivity('login_attempt', {
-      req,
-      email,
-      role,
-      details: { timestamp: new Date() }
-    });
+    // Log login attempt (use userRole after it's determined)
+    // We'll log it after we find the user
 
     // Validate input
     if (!email || !password) {
       await logActivity('login_failure', {
         req,
         email,
-        role,
+        role: role || 'unknown',
         status: 'failure',
         errorMessage: 'Email and password are required'
       });
@@ -2431,15 +2526,38 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
       await logActivity('login_failure', {
         req,
         email,
-        role,
+        role: role || 'unknown',
         status: 'failure',
         errorMessage: 'Email not found'
       });
-      return res.status(401).json({ error: 'Invalid email, password, or role' });
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Check if role matches
-    if (userByEmail.role !== role) {
+    // Auto-detect role from user account if not provided
+    // Only validate role if it was explicitly provided (not undefined, null, empty string, or the string "undefined")
+    // Check if role exists and is a valid non-empty string
+    const hasExplicitRole = role !== undefined && 
+                            role !== null && 
+                            role !== '' && 
+                            typeof role === 'string' && 
+                            role.trim() !== '' &&
+                            role.trim().toLowerCase() !== 'undefined' &&
+                            role.trim().toLowerCase() !== 'null';
+    const userRole = hasExplicitRole ? role.trim() : userByEmail.role;
+    
+    // Debug log in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🔐 Role detection:', { 
+        roleFromRequest: role, 
+        roleType: typeof role, 
+        hasExplicitRole, 
+        userRoleFromDB: userByEmail.role,
+        finalUserRole: userRole 
+      });
+    }
+    
+    // Check if provided role matches user's actual role (only if role was explicitly provided)
+    if (hasExplicitRole && userByEmail.role !== role.trim()) {
       await logActivity('login_failure', {
         req,
         email,
@@ -2452,13 +2570,21 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
     }
 
     const user = userByEmail;
+    
+    // Log login attempt with detected role
+    await logActivity('login_attempt', {
+      req,
+      email,
+      role: userRole,
+      details: { timestamp: new Date() }
+    });
 
     // Check if login is enabled for this user
     if (user.loginEnabled === false) {
       await logActivity('login_failure', {
         req,
         email,
-        role,
+        role: userRole,
         userId: user._id.toString(),
         status: 'failure',
         errorMessage: 'Login disabled for this account'
@@ -2473,7 +2599,7 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
       await logActivity('login_failure', {
         req,
         email,
-        role,
+        role: userRole,
         userId: user._id.toString(),
         status: 'failure',
         errorMessage: `Account locked. Try again in ${minutesLeft} minute(s)`
@@ -2499,7 +2625,7 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
       await logActivity('login_failure', {
         req,
         email,
-        role,
+        role: userRole,
         status: 'failure',
         errorMessage: 'Invalid email format'
       });
@@ -2549,7 +2675,7 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
         await logActivity('login_failure', {
           req,
           email,
-          role,
+          role: userRole,
           userId: user._id.toString(),
           status: 'failure',
           errorMessage: 'Invalid password - Account locked',
@@ -2571,7 +2697,7 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
       await logActivity('login_failure', {
         req,
         email,
-        role,
+        role: userRole,
         userId: user._id.toString(),
         status: 'failure',
         errorMessage: 'Invalid password',
@@ -2580,7 +2706,7 @@ app.post('/api/auth/login', combinedAuthLimiter, async (req, res) => {
       
       const remainingAttempts = lockoutConfig.maxAttempts - user.failedLoginAttempts;
       return res.status(401).json({ 
-        error: `Invalid email, password, or role. ${remainingAttempts} attempt(s) remaining before account lockout.` 
+        error: `Invalid email or password. ${remainingAttempts} attempt(s) remaining before account lockout.` 
       });
     }
 
@@ -3565,7 +3691,8 @@ app.get('/api/teachers/sync-status', authenticateToken, async (req, res) => {
 // Create a new user (protected route - requires authentication)
 // Phase 7: CRITICAL - Protect user management
 app.post('/api/users', 
-  apiLimiter, 
+  apiLimiter,
+  requestDeduplication({ windowMs: 2000, skipGet: false }), // ✅ ADDED: Prevent duplicate user creation
   authenticateToken, 
   requirePermission('canManageTeachers'),
   validateRequest([

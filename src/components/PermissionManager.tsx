@@ -27,102 +27,34 @@ type PermissionManagerDefinition<K extends string> = {
   order?: number;
 };
 
+// SIMPLIFIED: Only show core permission groups
 const TEACHER_PERMISSION_GROUP_METADATA: Record<
   string,
   { icon: string; description: string }
 > = {
-  'Assessments & Grading': {
-    icon: '📊',
-    description:
-      'Control visibility and editing rights for academic assessments.',
-  },
-  'Progress & Evaluations': {
-    icon: '📝',
-    description:
-      'Decide who can review and log qualitative progress updates.',
-  },
-  'Scheduling & Logistics': {
-    icon: '🗓️',
-    description:
-      'Grant authority to adjust daily schedules and operational logistics.',
-  },
-  'Finance & Billing': {
-    icon: '💳',
-    description:
-      'Sensitive access to tuition, invoices, and other financial records.',
-  },
-  'Family Communication': {
-    icon: '💬',
-    description:
-      'Control direct messaging channels with parents and guardians.',
-  },
-  'Student Information': {
-    icon: '👤',
-    description:
-      'Control what personal information teachers can view about students.',
-  },
-  'Messages Module': {
-    icon: '💌',
-    description:
-      'Manage access to messaging system for teacher-student and teacher-parent communication.',
-  },
-  'PDF Module': {
-    icon: '📄',
-    description:
-      'Control PDF document access, upload, annotation, and viewing capabilities.',
-  },
   'Homework Module': {
     icon: '📚',
     description:
       'Manage homework creation, grading, and submission review permissions.',
-  },
-  'Evaluation Module': {
-    icon: '✅',
-    description:
-      'Control access to evaluation creation, review, and approval workflows.',
-  },
-  'Tickets Module': {
-    icon: '🎫',
-    description:
-      'Manage ticket-based recitation workflow access and review permissions.',
-  },
-  'Attendance Module': {
-    icon: '📅',
-    description:
-      'Control attendance recording and report viewing capabilities.',
-  },
-  'Recordings Module': {
-    icon: '🎙️',
-    description:
-      'Manage audio recording upload, access, and deletion permissions.',
-  },
-  'Mushaf Module': {
-    icon: '📖',
-    description:
-      'Control access to Interactive Mushaf for mistake marking and history viewing.',
-  },
-  'Qaidah Module': {
-    icon: '🔤',
-    description:
-      'Manage Qaidah learning system access and progress tracking permissions.',
   },
   'Assignments Module': {
     icon: '📋',
     description:
       'Control assignment creation, editing, and deletion capabilities.',
   },
-  'Notifications Module': {
-    icon: '🔔',
+  'Tickets Module': {
+    icon: '🎫',
     description:
-      'Manage notification creation, viewing, and sending capabilities.',
+      'Manage ticket-based recitation workflow access and review permissions.',
   },
-  'Reports & Analytics': {
-    icon: '📈',
+  'Messages Module': {
+    icon: '💌',
     description:
-      'Manage access to reports, analytics, and data export features.',
+      'Manage access to messaging system for teacher-student and teacher-parent communication.',
   },
 };
 
+// SIMPLIFIED: Only show core permission groups for admins
 const ADMIN_PERMISSION_GROUP_METADATA: Record<
   string,
   { icon: string; description: string }
@@ -130,82 +62,27 @@ const ADMIN_PERMISSION_GROUP_METADATA: Record<
   'People Operations': {
     icon: '👥',
     description:
-      'Create, update, and retire staff and student profiles across the platform.',
-  },
-  'Finance & Billing': {
-    icon: '💰',
-    description:
-      'Access school-wide financial reports, payouts, and tuition management.',
-  },
-  Insights: {
-    icon: '📈',
-    description:
-      'Unlock system-wide analytics, dashboards, and performance insights.',
-  },
-  'Security & Governance': {
-    icon: '🛡️',
-    description:
-      'Delegate who can elevate roles or alter other administrators\' access.',
-  },
-  'Messages Module': {
-    icon: '💌',
-    description:
-      'Manage messaging system access, moderation, and oversight capabilities.',
-  },
-  'PDF Module': {
-    icon: '📄',
-    description:
-      'Control PDF library management and annotation viewing across all users.',
+      'Manage students and teachers - create, update, and manage accounts.',
   },
   'Homework Module': {
     icon: '📚',
     description:
       'Manage homework system access and view all homework submissions.',
   },
-  'Evaluation Module': {
-    icon: '✅',
+  'Assignments Module': {
+    icon: '📋',
     description:
-      'Control evaluation management and approval workflows across the system.',
+      'Control assignment management and system-wide assignment capabilities.',
   },
   'Tickets Module': {
     icon: '🎫',
     description:
       'Manage ticket workflow, creation, review, and finalization permissions.',
   },
-  'Attendance Module': {
-    icon: '📅',
+  'Messages Module': {
+    icon: '💌',
     description:
-      'Control attendance management and report generation capabilities.',
-  },
-  'Recordings Module': {
-    icon: '🎙️',
-    description:
-      'Manage recording access and oversight across all users.',
-  },
-  'Mushaf Module': {
-    icon: '📖',
-    description:
-      'Control Mushaf access and mistake management across the system.',
-  },
-  'Qaidah Module': {
-    icon: '🔤',
-    description:
-      'Manage Qaidah system access and report generation.',
-  },
-  'Assignments Module': {
-    icon: '📋',
-    description:
-      'Control assignment management and bulk creation capabilities.',
-  },
-  'Notifications Module': {
-    icon: '🔔',
-    description:
-      'Manage notification system access, creation, and distribution.',
-  },
-  'Reports & Analytics': {
-    icon: '📊',
-    description:
-      'Manage analytics access, report export, and system statistics viewing.',
+      'Manage messaging system access, moderation, and oversight capabilities.',
   },
 };
 
@@ -240,19 +117,73 @@ function mapModuleToGroup(module: string): string {
 }
 
 /**
- * Phase 4: Generate permission definitions from shared permissions
- * This ensures we use the single source of truth
+ * SIMPLIFIED: Only show core permissions
+ * Student, Teacher, Homework, Assignment, Ticket, Message
  */
-const TEACHER_PERMISSION_DEFINITIONS = ALL_TEACHER_PERMISSIONS.map((perm, index) => ({
-  key: perm.key as TeacherPermissionKey,
-  label: perm.label,
-  description: perm.description || '',
-  group: mapModuleToGroup(perm.module),
-  icon: '🔑', // Default icon - can be customized per permission if needed
-  defaultView: perm.defaultTeacher,
-  risk: perm.risk,
-  order: index + 1,
-}));
+const CORE_TEACHER_PERMISSION_KEYS = [
+  // Homework
+  'canAccessHomework',
+  'canCreateHomework',
+  'canGradeHomework',
+  'canViewHomeworkSubmissions',
+  // Assignment
+  'canAccessAssignments',
+  'canCreateAssignments',
+  'canEditAssignments',
+  'canDeleteAssignments',
+  // Ticket
+  'canAccessTickets',
+  'canCreateTickets',
+  'canReviewTickets',
+  'canApproveTickets',
+  // Message
+  'canAccessMessages',
+  'canSendMessages',
+  'canViewAllMessages',
+];
+
+const CORE_ADMIN_PERMISSION_KEYS = [
+  // Student & Teacher Management
+  'canManageStudents',
+  'canManageTeachers',
+  // Homework
+  'canAccessHomework',
+  'canCreateHomework',
+  'canGradeHomework',
+  'canViewHomeworkSubmissions',
+  'canManageHomework',
+  'canViewAllHomework',
+  // Assignment
+  'canAccessAssignments',
+  'canCreateAssignments',
+  'canEditAssignments',
+  'canDeleteAssignments',
+  'canManageAssignments',
+  // Ticket
+  'canAccessTickets',
+  'canCreateTickets',
+  'canReviewTickets',
+  'canApproveTickets',
+  // Message
+  'canAccessMessages',
+  'canSendMessages',
+  'canViewAllMessages',
+  'canModerateMessages',
+];
+
+// Filter to only show core permissions for teachers
+const TEACHER_PERMISSION_DEFINITIONS = ALL_TEACHER_PERMISSIONS
+  .filter(perm => CORE_TEACHER_PERMISSION_KEYS.includes(perm.key))
+  .map((perm, index) => ({
+    key: perm.key as TeacherPermissionKey,
+    label: perm.label,
+    description: perm.description || '',
+    group: mapModuleToGroup(perm.module),
+    icon: '🔑',
+    defaultView: perm.defaultTeacher,
+    risk: perm.risk,
+    order: index + 1,
+  }));
 
 // Legacy TEACHER_PERMISSION_DEFINITIONS (replaced above) - keeping for reference:
 const _LEGACY_TEACHER_PERMISSION_DEFINITIONS = [
@@ -747,16 +678,19 @@ const _LEGACY_TEACHER_PERMISSION_DEFINITIONS = [
 /**
  * Phase 4: Generate admin permission definitions from shared permissions
  */
-const ADMIN_PERMISSION_DEFINITIONS = ALL_ADMIN_PERMISSIONS.map((perm, index) => ({
-  key: perm.key as AdminPermissionKey,
-  label: perm.label,
-  description: perm.description || '',
-  group: mapModuleToGroup(perm.module),
-  icon: '🔑', // Default icon - can be customized per permission if needed
-  defaultView: perm.defaultAdmin,
-  risk: perm.risk,
-  order: index + 1,
-}));
+// Filter to only show core permissions for admins
+const ADMIN_PERMISSION_DEFINITIONS = ALL_ADMIN_PERMISSIONS
+  .filter(perm => CORE_ADMIN_PERMISSION_KEYS.includes(perm.key))
+  .map((perm, index) => ({
+    key: perm.key as AdminPermissionKey,
+    label: perm.label,
+    description: perm.description || '',
+    group: mapModuleToGroup(perm.module),
+    icon: '🔑',
+    defaultView: perm.defaultAdmin,
+    risk: perm.risk,
+    order: index + 1,
+  }));
 
 // Legacy ADMIN_PERMISSION_DEFINITIONS (replaced above) - keeping for reference:
 const _LEGACY_ADMIN_PERMISSION_DEFINITIONS = [
@@ -1229,10 +1163,12 @@ const ADMIN_DEFINITION_MAP = ADMIN_PERMISSION_DEFINITIONS.reduce(
 type FeedbackTone = 'success' | 'error' | 'info';
 
 interface PermissionManagerProps {
-  onClose: () => void;
+  onClose?: () => void;
+  onUpdate?: () => void;
+  isFullPage?: boolean;
 }
 
-const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
+const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose, onUpdate, isFullPage = false }) => {
   const { teachers, admins, updateTeacher, updateAdmin, refreshData } = useData();
   const [selectedType, setSelectedType] = useState<'teacher' | 'admin'>(
     'teacher',
@@ -1345,6 +1281,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         message: `${message} • ${teacher.fullName}`,
       });
       
+      // Call onUpdate callback if provided
+      if (onUpdate) {
+        onUpdate();
+      }
+      
       // Refresh the teacher data to show updated permissions
       // Force re-render by updating selected user
       const currentSelected = selectedUser;
@@ -1385,6 +1326,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         message: `${message} • ${admin.fullName}`,
       });
       
+      // Call onUpdate callback if provided
+      if (onUpdate) {
+        onUpdate();
+      }
+      
       // Refresh the admin data to show updated permissions
       // Force re-render by updating selected user
       const currentSelected = selectedUser;
@@ -1405,42 +1351,84 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     permission: TeacherPermissionKey,
     value: boolean,
   ) => {
+    console.log('🔐 handleTeacherPermissionChange called:', { permission, value, selectedTeacher: !!selectedTeacher, isSaving });
+    
     if (!selectedTeacher || isSaving) {
+      console.warn('⚠️ Cannot change permission:', { hasTeacher: !!selectedTeacher, isSaving });
       return;
     }
 
-    const definition = TEACHER_DEFINITION_MAP[permission];
-    const nextPermissions: TeacherPermissions = {
-      ...teacherPermissions,
-      [permission]: value,
-    };
+    try {
+      const definition = TEACHER_DEFINITION_MAP[permission];
+      if (!definition) {
+        console.error('❌ Permission definition not found:', permission);
+        setFeedback({
+          tone: 'error',
+          message: `Permission definition not found: ${permission}`,
+        });
+        return;
+      }
 
-    await applyTeacherPermissions(
-      selectedTeacher,
-      nextPermissions,
-      `${definition.label} ${value ? 'enabled' : 'disabled'}`,
-    );
+      const nextPermissions: TeacherPermissions = {
+        ...teacherPermissions,
+        [permission]: value,
+      };
+
+      console.log('🔐 Applying teacher permissions:', { permission, value, nextPermissions });
+      await applyTeacherPermissions(
+        selectedTeacher,
+        nextPermissions,
+        `${definition.label} ${value ? 'enabled' : 'disabled'}`,
+      );
+    } catch (error) {
+      console.error('❌ Error in handleTeacherPermissionChange:', error);
+      setFeedback({
+        tone: 'error',
+        message: `Failed to update permission: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+    }
   };
 
   const handleAdminPermissionChange = async (
     permission: AdminPermissionKey,
     value: boolean,
   ) => {
+    console.log('🔐 handleAdminPermissionChange called:', { permission, value, selectedAdmin: !!selectedAdmin, isSaving });
+    
     if (!selectedAdmin || isSaving) {
+      console.warn('⚠️ Cannot change permission:', { hasAdmin: !!selectedAdmin, isSaving });
       return;
     }
 
-    const definition = ADMIN_DEFINITION_MAP[permission];
-    const nextPermissions: AdminPermissions = {
-      ...adminPermissions,
-      [permission]: value,
-    };
+    try {
+      const definition = ADMIN_DEFINITION_MAP[permission];
+      if (!definition) {
+        console.error('❌ Permission definition not found:', permission);
+        setFeedback({
+          tone: 'error',
+          message: `Permission definition not found: ${permission}`,
+        });
+        return;
+      }
 
-    await applyAdminPermissions(
-      selectedAdmin,
-      nextPermissions,
-      `${definition.label} ${value ? 'enabled' : 'disabled'}`,
-    );
+      const nextPermissions: AdminPermissions = {
+        ...adminPermissions,
+        [permission]: value,
+      };
+
+      console.log('🔐 Applying admin permissions:', { permission, value, nextPermissions });
+      await applyAdminPermissions(
+        selectedAdmin,
+        nextPermissions,
+        `${definition.label} ${value ? 'enabled' : 'disabled'}`,
+      );
+    } catch (error) {
+      console.error('❌ Error in handleAdminPermissionChange:', error);
+      setFeedback({
+        tone: 'error',
+        message: `Failed to update permission: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+    }
   };
 
   const handleTeacherPreset = async (
@@ -1616,6 +1604,11 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
         });
         setSelectedUsers(new Set());
         setBulkPermission(null);
+        
+        // Call onUpdate callback if provided
+        if (onUpdate) {
+          onUpdate();
+        }
       } else {
         setFeedback({
           tone: 'error',
@@ -1908,18 +1901,20 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                             <button
                               type="button"
                               onClick={(e) => {
+                                e.preventDefault();
                                 e.stopPropagation();
+                                console.log('🔘 Teacher permission button clicked:', { key: definition.key, currentValue: value, newValue: !value });
                                 handleTeacherPermissionChange(
                                   definition.key,
                                   !value,
                                 );
                               }}
-                              disabled={isSaving}
+                              disabled={isSaving || !selectedTeacher}
                               role="switch"
                               aria-checked={value}
                               className={`relative inline-flex h-4 w-7 items-center rounded-full transition flex-shrink-0 ${
                                 value ? 'bg-purple-600' : 'bg-gray-300'
-                              } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                              } ${isSaving || !selectedTeacher ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:opacity-80'}`}
                             >
                               <span
                                 className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
@@ -2153,15 +2148,17 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                           <button
                             type="button"
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
+                              console.log('🔘 Admin permission button clicked:', { key: definition.key, currentValue: value, newValue: !value });
                               handleAdminPermissionChange(definition.key, !value);
                             }}
-                            disabled={isSaving}
+                            disabled={isSaving || !selectedAdmin}
                             role="switch"
                             aria-checked={value}
                             className={`relative inline-flex h-4 w-7 items-center rounded-full transition flex-shrink-0 ${
                               value ? 'bg-amber-600' : 'bg-amber-200'
-                            } ${isSaving ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                            } ${isSaving || !selectedAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:opacity-80'}`}
                           >
                             <span
                               className={`inline-block h-3 w-3 transform rounded-full bg-white transition ${
@@ -2181,79 +2178,91 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
     );
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-1">
-      <div className="flex h-full w-full max-h-[98vh] max-w-[100vw] flex-col overflow-hidden rounded-lg bg-white shadow-2xl sm:max-w-[95vw]">
-        <div className="flex-shrink-0 bg-gradient-to-r from-red-600 to-red-800 px-2 py-2 text-white">
-          <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
+  const content = (
+    <div className={`flex h-full w-full ${isFullPage ? '' : 'max-h-[98vh] max-w-[100vw]'} flex-col overflow-hidden ${isFullPage ? '' : 'rounded-lg'} bg-white ${isFullPage ? '' : 'shadow-2xl'} ${isFullPage ? '' : 'sm:max-w-[95vw]'}`}>
+        <div className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-indigo-700 px-4 py-4 text-white shadow-lg">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] uppercase tracking-widest text-red-200">
-                Control Center
-              </span>
-                <button
-                  onClick={onClose}
-                  className="text-white hover:text-red-200 transition text-xs"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-widest text-blue-200 font-semibold">
+                    🔐 Permission Control
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                    bulkMode 
+                      ? 'bg-yellow-500 text-yellow-900' 
+                      : 'bg-blue-500/30 text-blue-100'
+                  }`}>
+                    {bulkMode ? '📦 Bulk Mode' : '👤 Single Mode'}
+                  </span>
+                </div>
+                {onClose && (
+                  <button
+                    onClick={onClose}
+                    className="text-white hover:text-blue-200 transition text-sm p-1 rounded hover:bg-white/10"
+                    aria-label="Close"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
-              <h2 className="text-sm font-bold mt-0.5">
-                🔐 Permission Management Center
+              <h2 className="text-lg font-bold mb-1">
+                Permission Management Center
               </h2>
-              <p className="mt-0.5 text-[10px] text-red-100">
-                Micro-manage user access, reduce risk, and keep teams aligned.
+              <p className="text-sm text-blue-100">
+                {bulkMode 
+                  ? 'Select multiple users and apply permissions in bulk for faster management.'
+                  : 'Manage individual user permissions with precision and control.'}
               </p>
             </div>
-            <div className="grid grid-cols-4 gap-1 text-[9px] text-red-50">
-              <div className="bg-red-700/30 rounded p-1">
-                <p className="font-semibold text-white text-[9px]">Teachers</p>
-                <p className="text-red-100 text-xs font-bold">{teachers.length}</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                <p className="font-semibold text-white text-xs mb-1">👨‍🏫 Teachers</p>
+                <p className="text-white text-xl font-bold">{teachers.length}</p>
               </div>
-              <div className="bg-red-700/30 rounded p-1">
-                <p className="font-semibold text-white text-[9px]">Admins</p>
-                <p className="text-red-100 text-xs font-bold">{admins.length}</p>
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                <p className="font-semibold text-white text-xs mb-1">🛡️ Admins</p>
+                <p className="text-white text-xl font-bold">{admins.length}</p>
               </div>
-              <div className="bg-red-700/30 rounded p-1">
-                <p className="font-semibold text-white text-[9px]">Active</p>
-                <p className="text-red-100 text-xs font-bold truncate">
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                <p className="font-semibold text-white text-xs mb-1">📊 Active Mode</p>
+                <p className="text-white text-lg font-bold truncate">
                   {selectedType === 'teacher' ? 'Teachers' : 'Admins'}
                 </p>
               </div>
-              <div className="bg-red-700/30 rounded p-1">
-                <p className="font-semibold text-white text-[9px]">Status</p>
-                <p className="text-red-100 text-xs font-bold truncate">
-                  {feedback?.message ? '✓' : '—'}
+              <div className="bg-white/20 backdrop-blur-sm rounded-lg p-3 border border-white/30">
+                <p className="font-semibold text-white text-xs mb-1">✓ Status</p>
+                <p className="text-white text-lg font-bold truncate">
+                  {feedback?.message ? '✓ Updated' : 'Ready'}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-1.5 overflow-hidden bg-gray-50 px-1.5 py-1.5 lg:grid-cols-[200px_minmax(0,1fr)]">
-          <aside className="flex flex-col space-y-1.5 overflow-y-auto">
-            <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
-              <div className="flex items-center justify-between mb-1">
-              <p className="text-[10px] font-semibold text-gray-900">Role type</p>
+        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="flex flex-col space-y-3 overflow-y-auto">
+            <section className="flex-shrink-0 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-md">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-bold text-gray-900">User Type</p>
                 <button
                   type="button"
                   onClick={toggleBulkMode}
-                  className={`text-[9px] px-1.5 py-0.5 rounded font-semibold transition ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all shadow-sm ${
                     bulkMode
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 shadow-yellow-200'
+                      : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300'
                   }`}
                 >
-                  {bulkMode ? '📦 Bulk' : '👤 Single'}
+                  {bulkMode ? '📦 Bulk Mode' : '👤 Single Mode'}
                 </button>
               </div>
-              <p className="text-[9px] text-gray-500 mb-1.5">
+              <p className="text-xs text-gray-600 mb-3">
                 {bulkMode
-                  ? 'Select multiple users to apply permissions in bulk.'
-                  : 'Switch between teacher and admin directories.'}
+                  ? 'Select multiple users to apply permissions in bulk for faster management.'
+                  : 'Select a single user to manage their permissions individually.'}
               </p>
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -2264,13 +2273,14 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       setSelectedUsers(new Set());
                     }
                   }}
-                  className={`rounded px-1.5 py-1 text-[10px] font-semibold transition ${
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all shadow-sm ${
                     selectedType === 'teacher'
-                      ? 'bg-purple-600 text-white'
-                      : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-purple-200'
+                      : 'border-2 border-gray-200 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
                   }`}
                 >
                   👨‍🏫 Teachers
+                  <span className="ml-1 text-xs opacity-75">({sortedTeachers.length})</span>
                 </button>
                 <button
                   type="button"
@@ -2282,72 +2292,88 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       setSelectedUsers(new Set());
                     }
                   }}
-                  className={`rounded px-1.5 py-1 text-[10px] font-semibold transition ${
+                  className={`rounded-lg px-3 py-2 text-sm font-semibold transition-all shadow-sm ${
                     selectedType === 'admin'
-                      ? 'bg-amber-500 text-white'
-                      : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-amber-200'
+                      : 'border-2 border-gray-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50'
                   }`}
                 >
                   🛡️ Admins
+                  <span className="ml-1 text-xs opacity-75">({sortedAdmins.length})</span>
                 </button>
               </div>
             </section>
 
             {bulkMode ? (
               <>
-                <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-semibold text-gray-900">
-                      Select {selectedType === 'teacher' ? 'teachers' : 'admins'} ({selectedUsers.size})
+                <section className="flex-shrink-0 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3 shadow-md">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-bold text-gray-900">
+                      Select {selectedType === 'teacher' ? 'Teachers' : 'Admins'}
+                      <span className="ml-2 px-2 py-0.5 bg-blue-500 text-white rounded-full text-xs">
+                        {selectedUsers.size} selected
+                      </span>
                     </label>
-                    <div className="flex gap-0.5">
+                    <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={selectAllUsers}
-                        className="text-[9px] px-1 py-0.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        className="px-3 py-1.5 rounded-lg border-2 border-blue-300 bg-white text-blue-700 hover:bg-blue-50 text-xs font-semibold transition shadow-sm"
                       >
-                        All
+                        ✓ Select All
                       </button>
                       <button
                         type="button"
                         onClick={clearSelection}
-                        className="text-[9px] px-1 py-0.5 rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                        className="px-3 py-1.5 rounded-lg border-2 border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold transition shadow-sm"
                       >
-                        Clear
+                        ✕ Clear
                       </button>
                     </div>
                   </div>
-                  <div className="max-h-40 overflow-y-auto space-y-1 border border-gray-200 rounded p-1">
+                  <div className="max-h-64 overflow-y-auto space-y-2 border-2 border-blue-200 rounded-lg p-2 bg-white">
                     {(selectedType === 'teacher' ? sortedTeachers : sortedAdmins).map((user) => (
                       <label
                         key={user.id}
-                        className="flex items-center gap-1 p-1 rounded hover:bg-gray-50 cursor-pointer"
+                        className={`flex items-center gap-3 p-2 rounded-lg border-2 transition cursor-pointer ${
+                          selectedUsers.has(user.id)
+                            ? 'border-blue-500 bg-blue-50 shadow-sm'
+                            : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50'
+                        }`}
                       >
                         <input
                           type="checkbox"
                           checked={selectedUsers.has(user.id)}
                           onChange={() => toggleUserSelection(user.id)}
-                          className="w-3 h-3 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 focus:ring-2"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-medium text-gray-900 truncate">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
                             {user.fullName}
                           </p>
-                          <p className="text-[9px] text-gray-500 truncate">
+                          <p className="text-xs text-gray-600 truncate">
                             {user.email}
                           </p>
                         </div>
+                        {selectedUsers.has(user.id) && (
+                          <span className="text-blue-600 text-lg">✓</span>
+                        )}
                       </label>
                     ))}
                   </div>
                 </section>
 
                 {selectedUsers.size > 0 && (
-                  <section className="flex-shrink-0 rounded border border-blue-200 bg-blue-50 p-1.5 shadow-sm">
-                    <label className="text-[10px] font-semibold text-gray-900 mb-1 block">
-                      Apply to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
-                    </label>
-                    <div className="space-y-1">
+                  <section className="flex-shrink-0 rounded-lg border-2 border-green-300 bg-gradient-to-br from-green-50 to-emerald-50 p-4 shadow-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-sm font-bold text-gray-900">
+                        Apply Permission to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
+                      </label>
+                      <span className="px-2 py-1 bg-green-500 text-white rounded-full text-xs font-semibold">
+                        Ready
+                      </span>
+                    </div>
+                    <div className="space-y-3">
                       <select
                         value={bulkPermission?.key || ''}
                         onChange={(e) => {
@@ -2362,9 +2388,9 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                             setBulkPermission(null);
                           }
                         }}
-                        className="w-full rounded border border-gray-300 px-1.5 py-1 text-[10px] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
+                        className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white font-medium"
                       >
-                        <option value="">— Select permission —</option>
+                        <option value="">— Select a permission —</option>
                         {(selectedType === 'teacher' ? TEACHER_PERMISSION_DEFINITIONS : ADMIN_PERMISSION_DEFINITIONS).map((def) => (
                           <option key={def.key} value={def.key}>
                             {def.icon} {def.label}
@@ -2372,54 +2398,64 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                         ))}
                       </select>
                       {bulkPermission && (
-                        <div className="flex gap-1">
+                        <>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setBulkPermission({ ...bulkPermission, value: true })}
+                              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all shadow-sm ${
+                                bulkPermission.value
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-green-200'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
+                              }`}
+                            >
+                              ✓ Enable
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBulkPermission({ ...bulkPermission, value: false })}
+                              className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all shadow-sm ${
+                                !bulkPermission.value
+                                  ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-red-200'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-2 border-gray-300'
+                              }`}
+                            >
+                              ✕ Disable
+                            </button>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => setBulkPermission({ ...bulkPermission, value: true })}
-                            className={`flex-1 rounded px-1.5 py-1 text-[10px] font-semibold transition ${
-                              bulkPermission.value
-                                ? 'bg-green-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            onClick={applyBulkPermission}
+                            disabled={isSaving}
+                            className="w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white transition-all hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg flex items-center justify-center gap-2"
                           >
-                            Enable
+                            {isSaving ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Applying...
+                              </>
+                            ) : (
+                              <>
+                                <span>🚀</span>
+                                Apply to {selectedUsers.size} {selectedType}{selectedUsers.size !== 1 ? 's' : ''}
+                              </>
+                            )}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setBulkPermission({ ...bulkPermission, value: false })}
-                            className={`flex-1 rounded px-1.5 py-1 text-[10px] font-semibold transition ${
-                              !bulkPermission.value
-                                ? 'bg-red-600 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                          >
-                            Disable
-                          </button>
-                        </div>
-                      )}
-                      {bulkPermission && (
-                        <button
-                          type="button"
-                          onClick={applyBulkPermission}
-                          disabled={isSaving}
-                          className="w-full rounded bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-                        >
-                          {isSaving ? 'Applying...' : `Apply to ${selectedUsers.size} ${selectedType}${selectedUsers.size !== 1 ? 's' : ''}`}
-                        </button>
+                        </>
                       )}
                     </div>
                   </section>
                 )}
               </>
             ) : (
-            <section className="flex-shrink-0 rounded border border-gray-200 bg-white p-1.5 shadow-sm">
-              <label className="text-[10px] font-semibold text-gray-900">
-                Select {selectedType === 'teacher' ? 'teacher' : 'admin'}
+            <section className="flex-shrink-0 rounded-lg border-2 border-gray-200 bg-white p-3 shadow-md">
+              <label className="text-sm font-bold text-gray-900 mb-2 block">
+                Select {selectedType === 'teacher' ? 'Teacher' : 'Admin'}
               </label>
               <select
                 value={selectedUser}
                 onChange={(event) => setSelectedUser(event.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 px-1.5 py-1 text-[10px] focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-200"
+                className="w-full rounded-lg border-2 border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white font-medium"
               >
                 <option value="">— Choose a user —</option>
                 {selectedType === 'teacher'
@@ -2434,10 +2470,10 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                       </option>
                     ))}
               </select>
-              <p className="mt-1 text-[9px] text-gray-500">
-                {selectedType === 'teacher'
-                  ? 'Tip: Assign only needed permissions.'
-                  : 'Tip: Reserve elevated permissions for trusted admins.'}
+              <p className="mt-2 text-xs text-gray-600 bg-blue-50 p-2 rounded-lg border border-blue-200">
+                💡 <strong>Tip:</strong> {selectedType === 'teacher'
+                  ? 'Assign only the permissions needed for each teacher\'s role.'
+                  : 'Reserve elevated permissions for trusted administrators only.'}
               </p>
             </section>
             )}
@@ -2511,16 +2547,27 @@ const PermissionManager: React.FC<PermissionManagerProps> = ({ onClose }) => {
                 Exit Bulk
               </button>
             )}
-            <button
-            type="button"
-              onClick={onClose}
-              className="flex-1 sm:flex-none rounded bg-gray-900 px-3 py-1 text-[10px] font-semibold text-white transition hover:bg-gray-700"
-            >
-              Done
-            </button>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 sm:flex-none rounded bg-gray-900 px-3 py-1 text-[10px] font-semibold text-white transition hover:bg-gray-700"
+              >
+                Done
+              </button>
+            )}
           </div>
         </div>
       </div>
+  );
+
+  if (isFullPage) {
+    return content;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-1">
+      {content}
     </div>
   );
 };

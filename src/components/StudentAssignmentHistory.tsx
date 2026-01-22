@@ -79,11 +79,36 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
     };
   }, [refreshDataLight]);
 
-  const student = students.find(s => s.id === studentId);
+  const student = React.useMemo(() => {
+    try {
+      if (!students || !Array.isArray(students) || !studentId) {
+        return undefined;
+      }
+      return students.find(s => s && s.id === studentId);
+    } catch (err) {
+      console.error('❌ Error finding student:', err);
+      return undefined;
+    }
+  }, [students, studentId]);
   
   // Memoize assignments to prevent unnecessary re-renders
   const assignments = React.useMemo(() => {
-    return getStudentAssignments(studentId);
+    try {
+      if (!studentId || typeof studentId !== 'string') {
+        return [];
+      }
+
+      if (!getStudentAssignments || typeof getStudentAssignments !== 'function') {
+        console.warn('⚠️ getStudentAssignments is not a function');
+        return [];
+      }
+
+      const result = getStudentAssignments(studentId);
+      return Array.isArray(result) ? result : [];
+    } catch (err) {
+      console.error('❌ Error getting student assignments:', err);
+      return [];
+    }
   }, [studentId, getStudentAssignments, allAssignments.length]); // Only recalculate when studentId or total assignments count changes
   
   // Auto-expand all assignments by default for read-only view
@@ -120,86 +145,205 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   }, [assignments, expandedAssignments.size]);
 
   const toggleAssignment = (assignmentId: string) => {
-    setExpandedAssignments(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(assignmentId)) {
-        newSet.delete(assignmentId);
-      } else {
-        newSet.add(assignmentId);
+    try {
+      if (!assignmentId || typeof assignmentId !== 'string') {
+        console.warn('⚠️ Invalid assignmentId in toggleAssignment:', assignmentId);
+        return;
       }
-      return newSet;
-    });
+
+      setExpandedAssignments(prev => {
+        try {
+          const newSet = new Set(prev);
+          if (newSet.has(assignmentId)) {
+            newSet.delete(assignmentId);
+          } else {
+            newSet.add(assignmentId);
+          }
+          return newSet;
+        } catch (err) {
+          console.error('❌ Error toggling assignment:', err);
+          return prev;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error in toggleAssignment:', err);
+    }
   };
 
   const toggleMushaf = (assignmentId: string, type: 'sabq' | 'sabqi' | 'manzil', index: number, phase?: any) => {
-    const key = `${assignmentId}-${type}-${index}`;
-    const current = expandedMushafFor[assignmentId];
-    const isCurrentlyOpen = current?.type === type && current?.index === index;
-    
-    setExpandedMushafFor(prev => ({
-      ...prev,
-      [assignmentId]: isCurrentlyOpen ? null : { type, index }
-    }));
-
-    if (!isCurrentlyOpen) {
-      let defaultPage = 1;
-      if (phase?.fromPage) {
-        defaultPage = phase.fromPage;
-      } else {
-        const assignment = assignments.find(a => a.id === assignmentId);
-        if (assignment?.mushafMistakes) {
-          const phaseMistakes = assignment.mushafMistakes.filter(m => m.workflowStep === type);
-          if (phaseMistakes.length > 0 && phaseMistakes[0].page) {
-            defaultPage = phaseMistakes[0].page;
-          }
-        }
+    try {
+      // Fail fast - validate inputs
+      if (!assignmentId || typeof assignmentId !== 'string') {
+        console.warn('⚠️ Invalid assignmentId in toggleMushaf:', assignmentId);
+        return;
       }
-      setMushafPages(prev => ({
-        ...prev,
-        [key]: defaultPage
-      }));
+
+      if (!['sabq', 'sabqi', 'manzil'].includes(type)) {
+        console.warn('⚠️ Invalid type in toggleMushaf:', type);
+        return;
+      }
+
+      if (typeof index !== 'number' || index < 0) {
+        console.warn('⚠️ Invalid index in toggleMushaf:', index);
+        return;
+      }
+
+      const key = `${assignmentId}-${type}-${index}`;
+      const current = expandedMushafFor[assignmentId];
+      const isCurrentlyOpen = current?.type === type && current?.index === index;
+      
+      setExpandedMushafFor(prev => {
+        try {
+          return {
+            ...prev,
+            [assignmentId]: isCurrentlyOpen ? null : { type, index }
+          };
+        } catch (err) {
+          console.error('❌ Error updating expandedMushafFor:', err);
+          return prev;
+        }
+      });
+
+      if (!isCurrentlyOpen) {
+        let defaultPage = 1;
+        try {
+          if (phase && typeof phase === 'object' && phase.fromPage) {
+            const page = parseInt(String(phase.fromPage), 10);
+            if (!isNaN(page) && page > 0 && page <= 604) {
+              defaultPage = page;
+            }
+          } else {
+            const assignment = assignments.find(a => a && a.id === assignmentId);
+            if (assignment && assignment.mushafMistakes && Array.isArray(assignment.mushafMistakes)) {
+              const phaseMistakes = assignment.mushafMistakes.filter(m => 
+                m && m.workflowStep === type
+              );
+              if (phaseMistakes.length > 0 && phaseMistakes[0] && phaseMistakes[0].page) {
+                const page = parseInt(String(phaseMistakes[0].page), 10);
+                if (!isNaN(page) && page > 0 && page <= 604) {
+                  defaultPage = page;
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('⚠️ Error determining default page:', err);
+          defaultPage = 1;
+        }
+
+        setMushafPages(prev => {
+          try {
+            return {
+              ...prev,
+              [key]: defaultPage
+            };
+          } catch (err) {
+            console.error('❌ Error updating mushafPages:', err);
+            return prev;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('❌ Error in toggleMushaf:', err);
     }
   };
 
   const handleDeleteAssignment = async (assignmentId: string) => {
+    // Fail fast - validate input
+    if (!assignmentId || typeof assignmentId !== 'string' || assignmentId.trim() === '') {
+      alert('Invalid assignment ID. Cannot delete.');
+      return;
+    }
+
     if (!window.confirm('Are you sure you want to delete this assignment? This action cannot be undone.')) {
       return;
     }
 
     try {
+      // Validate deleteAssignment function exists
+      if (!deleteAssignment || typeof deleteAssignment !== 'function') {
+        throw new Error('Delete function is not available. Please refresh the page.');
+      }
+
       await deleteAssignment(assignmentId);
       alert('Assignment deleted successfully!');
-      await refreshDataLight(); // Use lightweight refresh for faster update
+      
+      // Refresh data
+      if (refreshDataLight && typeof refreshDataLight === 'function') {
+        try {
+          await refreshDataLight();
+        } catch (refreshErr) {
+          console.error('Error refreshing after delete:', refreshErr);
+          // Don't show error - deletion was successful
+        }
+      }
+      
+      // Update UI state
       setExpandedAssignments(prev => {
         const newSet = new Set(prev);
         newSet.delete(assignmentId);
         return newSet;
       });
     } catch (error) {
-      console.error('Error deleting assignment:', error);
-      alert('Failed to delete assignment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error('❌ Error deleting assignment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to delete assignment: ${errorMessage}`);
     }
   };
 
   const getMistakesForPhase = (assignment: Assignment, type: 'sabq' | 'sabqi' | 'manzil', index: number) => {
-    if (!assignment.mushafMistakes) return [];
-    return assignment.mushafMistakes
-      .filter(m => m.workflowStep === type)
-      .map(m => ({
-        id: m.id,
-        type: m.type || 'other',
-        page: m.page,
-        surah: m.surah,
-        ayah: m.ayah,
-        wordIndex: m.wordIndex,
-        position: m.position,
-        note: m.note,
-        audioUrl: m.audioUrl,
-        workflowStep: m.workflowStep,
-        markedBy: m.markedBy,
-        markedByName: m.markedByName,
-        timestamp: m.timestamp
-      })) as MushafMistake[];
+    try {
+      if (!assignment || typeof assignment !== 'object') {
+        console.warn('⚠️ Invalid assignment in getMistakesForPhase');
+        return [];
+      }
+
+      if (!assignment.mushafMistakes || !Array.isArray(assignment.mushafMistakes)) {
+        return [];
+      }
+
+      if (typeof index !== 'number' || index < 0) {
+        console.warn('⚠️ Invalid index in getMistakesForPhase:', index);
+        return [];
+      }
+
+      return assignment.mushafMistakes
+        .filter(m => {
+          try {
+            if (!m || typeof m !== 'object') return false;
+            return m.workflowStep === type;
+          } catch (err) {
+            console.warn('⚠️ Error filtering mistake:', err);
+            return false;
+          }
+        })
+        .map(m => {
+          try {
+            return {
+              id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+              type: m.type || 'other',
+              page: m.page || 1,
+              surah: m.surah || 0,
+              ayah: m.ayah || 0,
+              wordIndex: m.wordIndex || 0,
+              position: m.position || { x: 0, y: 0 },
+              note: m.note || '',
+              audioUrl: m.audioUrl || '',
+              workflowStep: m.workflowStep || type,
+              markedBy: m.markedBy || '',
+              markedByName: m.markedByName || 'Unknown',
+              timestamp: m.timestamp || new Date()
+            };
+          } catch (err) {
+            console.warn('⚠️ Error mapping mistake:', err);
+            return null;
+          }
+        })
+        .filter((m): m is MushafMistake => m !== null);
+    } catch (err) {
+      console.error('❌ Error in getMistakesForPhase:', err);
+      return [];
+    }
   };
 
   const filteredAssignments = useMemo(() => {
@@ -238,44 +382,117 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
   };
 
   const handleGradeHomework = async (assignmentId: string) => {
-    if (!user) {
-      alert('User information not found');
+    // Fail fast - validate inputs
+    if (!assignmentId || typeof assignmentId !== 'string' || assignmentId.trim() === '') {
+      alert('Invalid assignment ID. Cannot grade homework.');
       return;
     }
 
-    if (!gradeData.feedback.trim() && !gradeData.grade.trim()) {
+    if (!user || !user.id) {
+      alert('User information not found. Please log in again.');
+      return;
+    }
+
+    // Validate grade data
+    const feedback = (gradeData.feedback || '').trim();
+    const gradeStr = (gradeData.grade || '').trim();
+    
+    if (!feedback && !gradeStr) {
       alert('Please provide feedback or grade');
       return;
+    }
+
+    // Validate grade is a number if provided
+    let grade: number | undefined;
+    if (gradeStr) {
+      const parsedGrade = parseFloat(gradeStr);
+      if (isNaN(parsedGrade) || parsedGrade < 0 || parsedGrade > 100) {
+        alert('Grade must be a number between 0 and 100');
+        return;
+      }
+      grade = parsedGrade;
     }
 
     setIsGrading(true);
     try {
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
-      const response = await fetch(`${API_BASE}/assignments/${assignmentId}/grade-homework`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          feedback: gradeData.feedback,
-          grade: gradeData.grade ? parseFloat(gradeData.grade) : undefined,
-          gradedBy: user.id,
-          gradedByName: user.name || user.email || 'Admin'
-        })
-      });
+      if (!API_BASE) {
+        throw new Error('API base URL is not configured. Please check your environment variables.');
+      }
+
+      const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+
+      // Validate assignment ID format
+      if (assignmentId.length !== 24 && !assignmentId.match(/^[0-9a-fA-F]{24}$/)) {
+        throw new Error('Invalid assignment ID format. Please refresh and try again.');
+      }
+
+      // Submit with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+      let response: Response;
+      try {
+        response = await fetch(`${API_BASE}/assignments/${assignmentId}/grade-homework`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            feedback: feedback,
+            grade: grade,
+            gradedBy: user.id,
+            gradedByName: user.name || user.email || 'Admin'
+          }),
+          signal: controller.signal
+        });
+      } catch (fetchErr: any) {
+        clearTimeout(timeoutId);
+        if (fetchErr.name === 'AbortError') {
+          throw new Error('Request timed out. Please check your connection and try again.');
+        }
+        throw new Error(`Network error: ${fetchErr.message || 'Failed to connect to server'}`);
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to grade homework');
+        let errorMessage = 'Failed to grade homework';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server returned ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      if (!result) {
+        throw new Error('Invalid response from server.');
       }
 
       alert('Homework graded successfully!');
       setGradingAssignment(null);
       setGradeData({ feedback: '', grade: '' });
-      await refreshDataLight(); // Use lightweight refresh for faster update
+      
+      // Refresh data
+      if (refreshDataLight && typeof refreshDataLight === 'function') {
+        try {
+          await refreshDataLight();
+        } catch (refreshErr) {
+          console.error('❌ Error refreshing after grading:', refreshErr);
+          // Don't show error - grading was successful
+        }
+      }
     } catch (error) {
-      console.error('Error grading homework:', error);
-      alert(`Failed to grade homework: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Error grading homework:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to grade homework: ${errorMessage}`);
     } finally {
       setIsGrading(false);
     }
@@ -298,7 +515,16 @@ const StudentAssignmentHistory: React.FC<StudentAssignmentHistoryProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={async () => {
-                  await refreshDataLight();
+                  try {
+                    if (refreshDataLight && typeof refreshDataLight === 'function') {
+                      await refreshDataLight();
+                    } else {
+                      console.warn('⚠️ refreshDataLight is not available');
+                    }
+                  } catch (err) {
+                    console.error('❌ Error refreshing data:', err);
+                    alert('Failed to refresh data. Please try again.');
+                  }
                 }}
                 className="px-2 py-1 text-xs text-gray-600 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
                 title="Refresh"

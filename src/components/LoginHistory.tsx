@@ -37,7 +37,7 @@ const LoginHistory: React.FC<LoginHistoryProps> = ({ userId, userEmail, userName
   const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('umar_academy_token') || localStorage.getItem('token');
     return {
       'Content-Type': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -57,10 +57,23 @@ const LoginHistory: React.FC<LoginHistoryProps> = ({ userId, userEmail, userName
         });
 
         if (!response.ok) {
-          if (response.status === 403) {
-            throw new Error('You do not have permission to view this login history');
+          let errorMessage = 'Failed to fetch login history';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            // If response is not JSON, use status-based message
+            if (response.status === 403) {
+              errorMessage = 'You do not have permission to view this login history';
+            } else if (response.status === 401) {
+              errorMessage = 'Authentication required. Please log in again.';
+            } else if (response.status === 404) {
+              errorMessage = 'User not found or no login history available';
+            } else if (response.status === 500) {
+              errorMessage = 'Server error. Please try again later.';
+            }
           }
-          throw new Error('Failed to fetch login history');
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();

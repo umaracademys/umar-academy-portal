@@ -138,59 +138,20 @@ const SuperAdminDashboard: React.FC = () => {
   // Student Management State
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showStudentProfile, setShowStudentProfile] = useState(false);
-  const [showStudentEnrollment, setShowStudentEnrollment] = useState(false);
-  const [showStudentPayments, setShowStudentPayments] = useState(false);
-  const [showStudentProgress, setShowStudentProgress] = useState(false);
-  const [showStudentCommunication, setShowStudentCommunication] = useState(false);
   const [showStudentCredentials, setShowStudentCredentials] = useState(false);
-  const [showStudentAnalytics, setShowStudentAnalytics] = useState(false);
-  const [showStudentBulkOperations, setShowStudentBulkOperations] = useState(false);
 
   // Teacher Management State
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [showTeacherProfile, setShowTeacherProfile] = useState(false);
-  const [showTeacherPayroll, setShowTeacherPayroll] = useState(false);
-  const [showTeacherPerformance, setShowTeacherPerformance] = useState(false);
-  const [showTeacherAttendance, setShowTeacherAttendance] = useState(false);
-  const [showTeacherCommunication, setShowTeacherCommunication] = useState(false);
   const [showTeacherCredentials, setShowTeacherCredentials] = useState(false);
-  const [showTeacherAnalytics, setShowTeacherAnalytics] = useState(false);
-  const [showTeacherBulkOperations, setShowTeacherBulkOperations] = useState(false);
-  const [showRecitationReview, setShowRecitationReview] = useState(false);
   const [showTeacherStudentAssignment, setShowTeacherStudentAssignment] = useState(false);
-  const [showStudentReports, setShowStudentReports] = useState(false);
-  const [showTicketReview, setShowTicketReview] = useState(false);
-  const [showActiveTicketsManagement, setShowActiveTicketsManagement] = useState(false);
-  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
-  const [showActivityLog, setShowActivityLog] = useState(false);
-  const [showEmailModule, setShowEmailModule] = useState(false);
-  const [showTestingModule, setShowTestingModule] = useState(false);
-  const [showTestResults, setShowTestResults] = useState(false);
-  const [showEvaluationManagement, setShowEvaluationManagement] = useState(false);
-  const [showEvaluationResults, setShowEvaluationResults] = useState(false);
-  const [showTeacherAttendanceForm, setShowTeacherAttendanceForm] = useState(false);
-  const [showTeacherAttendanceReport, setShowTeacherAttendanceReport] = useState(false);
-  const [showPairMessagesAdmin, setShowPairMessagesAdmin] = useState(false);
-  const [showTeacherStudentMessagesAdmin, setShowTeacherStudentMessagesAdmin] = useState(false);
-  const [showTeacherStudentMessage, setShowTeacherStudentMessage] = useState(false);
-  const [selectedTeacherForMessage, setSelectedTeacherForMessage] = useState<any>(null);
-  const [selectedStudentForMessage, setSelectedStudentForMessage] = useState<any>(null);
-  const [showStudentPersonalMushaf, setShowStudentPersonalMushaf] = useState(false);
-  const [selectedStudentForMushaf, setSelectedStudentForMushaf] = useState<any>(null);
-  const [showWeeklyEvaluations, setShowWeeklyEvaluations] = useState(false);
-  const [showApprovedEvaluations, setShowApprovedEvaluations] = useState(false);
   const [showLockedAccounts, setShowLockedAccounts] = useState(false);
-  const [showApprovedTickets, setShowApprovedTickets] = useState(false);
-  const [showSuperAdminProfile, setShowSuperAdminProfile] = useState(false);
-  const [showHelpAndSupport, setShowHelpAndSupport] = useState(false);
+  const [showNotificationCenter, setShowNotificationCenter] = useState(false);
+  const [showTicketReview, setShowTicketReview] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [maintenanceMode, setMaintenanceMode] = useState<{ enabled: boolean; message: string }>({ enabled: false, message: '' });
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     systemManagement: false,
-    recentActivity: false,
-    completedAssignments: false,
-    systemStatus: false
   });
 
   // Fetch maintenance mode status
@@ -297,32 +258,6 @@ const SuperAdminDashboard: React.FC = () => {
   }, [assignments]);
 
   // Get completed assignments/homework count
-  const completedAssignmentsCount = useMemo(() => {
-    return assignments.filter((assignment: any) => 
-      assignment.status === 'completed' || 
-      (assignment.homework?.enabled && 
-       assignment.homework?.submission?.submitted && 
-       assignment.homework?.submission?.status === 'graded')
-    ).length;
-  }, [assignments]);
-
-  // Get completed assignments for display
-  const completedAssignments = useMemo(() => {
-    return assignments
-      .filter((assignment: any) => 
-        assignment.status === 'completed' || 
-        (assignment.homework?.enabled && 
-         assignment.homework?.submission?.submitted && 
-         assignment.homework?.submission?.status === 'graded')
-      )
-      .sort((a: any, b: any) => {
-        const dateA = a.completedAt || a.homework?.submission?.gradedAt || a.updatedAt || a.createdAt;
-        const dateB = b.completedAt || b.homework?.submission?.gradedAt || b.updatedAt || b.createdAt;
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
-      })
-      .slice(0, 10); // Show last 10 completed
-  }, [assignments]);
-
   // Get pending weekly evaluations count
   const [pendingWeeklyEvaluationsCount, setPendingWeeklyEvaluationsCount] = useState(0);
   
@@ -357,137 +292,6 @@ const SuperAdminDashboard: React.FC = () => {
   const activeTeacherCount = teachers.filter((teacher) => teacher.status === 'active').length;
   const totalAdmins = admins.length;
 
-  // Simplified: Show only priority actions, rest in "More" menu
-  const priorityActions = useMemo(() => [
-    {
-      id: 'my-profile',
-      label: 'My Profile & Credentials',
-      description: 'Update profile information and manage credentials.',
-      onClick: () => setShowSuperAdminProfile(true),
-      emphasis: 'primary' as const,
-    },
-    {
-      id: 'review-recitations',
-      label: 'Review Recitations',
-      description: 'Approve sabq, sabqi, and manzil submissions.',
-      onClick: () => setShowRecitationReview(true),
-      badge: pendingReviewsCount,
-      emphasis: 'accent-solid' as const,
-    },
-    {
-      id: 'review-tickets',
-      label: 'Review Tickets',
-      description: 'Review and approve submitted tickets from teachers.',
-      onClick: () => setShowTicketReview(true),
-      badge: pendingTicketCount,
-      emphasis: 'primary' as const,
-    },
-    {
-      id: 'weekly-evaluations',
-      label: 'Weekly Evaluations',
-      description: 'Review and provide feedback on teacher-submitted evaluations.',
-      onClick: () => setShowWeeklyEvaluations(true),
-      badge: pendingWeeklyEvaluationsCount,
-      emphasis: 'primary' as const,
-    },
-    {
-      id: 'approved-evaluations',
-      label: 'Approved Evaluations',
-      description: 'View recently approved evaluations and assign homework.',
-      onClick: () => setShowApprovedEvaluations(true),
-      emphasis: 'accent' as const,
-    },
-    {
-      id: 'approved-tickets',
-      label: 'Approved Tickets',
-      description: 'View recently approved tickets and assign homework.',
-      onClick: () => setShowApprovedTickets(true),
-      emphasis: 'accent' as const,
-    },
-    {
-      id: 'active-tickets-management',
-      label: 'Active Tickets Management',
-      description: 'View, edit, and delete all active tickets.',
-      onClick: () => setShowActiveTicketsManagement(true),
-      emphasis: 'primary' as const,
-    },
-    {
-      id: 'manage-assignments',
-      label: 'Manage Assignments',
-      description: 'Create and manage assignments with multi-phase classwork.',
-      onClick: () => navigate('/assignments'),
-      badge: pendingHomeworkCount,
-      emphasis: 'primary' as const,
-    },
-  ], [navigate, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, setShowRecitationReview, setShowTicketReview, setShowWeeklyEvaluations, setShowApprovedEvaluations, setShowApprovedTickets, setShowActiveTicketsManagement, setShowSuperAdminProfile]);
-
-  const [showMoreActions, setShowMoreActions] = useState(false);
-  
-  const moreActions = useMemo(() => [
-    {
-      id: 'student-reports',
-      label: 'Student Reports',
-      onClick: () => setShowStudentReports(true),
-    },
-    {
-      id: 'teacher-attendance',
-      label: 'Take Teacher Attendance',
-      onClick: () => setShowTeacherAttendanceForm(true),
-    },
-    {
-      id: 'teacher-attendance-report',
-      label: 'Teacher Attendance Report',
-      onClick: () => setShowTeacherAttendanceReport(true),
-    },
-    {
-      id: 'activity-log',
-      label: 'Activity Log',
-      onClick: () => setShowActivityLog(true),
-    },
-    {
-      id: 'fix-assignment-ids',
-      label: 'Fix Missing Assignment IDs',
-      onClick: handleFixMissingIds,
-      badge: ticketsWithMissingIds > 0 ? ticketsWithMissingIds : null,
-      disabled: ticketsWithMissingIds === 0 || isFixingIds,
-    },
-    {
-      id: 'student-testing',
-      label: 'Student Testing',
-      onClick: () => setShowTestingModule(true),
-    },
-    {
-      id: 'test-results',
-      label: 'Test Results',
-      onClick: () => setShowTestResults(true),
-    },
-    {
-      id: 'teacher-evaluations',
-      label: 'Teacher Evaluations',
-      onClick: () => setShowEvaluationManagement(true),
-    },
-    {
-      id: 'evaluation-results',
-      label: 'Evaluation Results',
-      onClick: () => setShowEvaluationResults(true),
-    },
-    {
-      id: 'pair-messages',
-      label: 'Pair Teacher Messages',
-      onClick: () => setShowPairMessagesAdmin(true),
-    },
-    {
-      id: 'teacher-student-messages',
-      label: 'Teacher-Student Messages',
-      onClick: () => setShowTeacherStudentMessagesAdmin(true),
-    },
-    {
-      id: 'weekly-evaluations',
-      label: 'Weekly Evaluations',
-      onClick: () => setShowWeeklyEvaluations(true),
-      badge: pendingWeeklyEvaluationsCount > 0 ? pendingWeeklyEvaluationsCount : null,
-    },
-  ], [navigate, ticketsWithMissingIds, isFixingIds, handleFixMissingIds, setShowStudentReports, setShowTeacherAttendanceForm, setShowTeacherAttendanceReport, setShowActivityLog, setShowTestingModule, setShowTestResults, setShowEvaluationManagement, setShowEvaluationResults, setShowPairMessagesAdmin, setShowTeacherStudentMessagesAdmin, setShowWeeklyEvaluations, setShowApprovedEvaluations, pendingWeeklyEvaluationsCount]);
 
   const managementActions = useMemo(() => [
     {
@@ -514,7 +318,7 @@ const SuperAdminDashboard: React.FC = () => {
       badge: 'TC',
       title: 'Manage Teachers',
       description: 'Assign classes, review metrics, and update profiles.',
-      action: () => setActiveSection('teachers'),
+      action: () => navigate('/teachers'),
       footer: `${totalTeachers} teachers`,
     },
     {
@@ -535,14 +339,6 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'Provision a new admin with the right permissions.',
       action: () => setShowAdminForm(true),
       footer: `${totalAdmins} admins`,
-    },
-    {
-      id: 'ai-library',
-      badge: 'AI',
-      title: 'AI Phrase Library',
-      description: 'Manage AI phrase suggestions across the application.',
-      action: () => navigate('/super-admin/ai-library'),
-      footer: 'Manage phrases',
     },
     {
       id: 'permissions',
@@ -569,79 +365,19 @@ const SuperAdminDashboard: React.FC = () => {
       footer: 'Manage data',
     },
     {
-      id: 'refresh-notifications',
-      badge: '🔄',
-      title: 'Refresh Alerts',
-      description: 'Sync admin notifications and ticket updates.',
-      action: () => refreshNotifications(),
-      footer: 'Fetch latest',
-    },
-    {
-      id: 'review-recitations',
-      badge: 'RR',
-      title: 'Review Recitations',
-      description: 'Open the sabq / sabqi / manzil review queue.',
-      action: () => setShowRecitationReview(true),
-      footer: `${pendingReviewsCount} pending`,
-    },
-    {
-      id: 'weekly-evaluations',
-      badge: 'WE',
-      title: 'Weekly Evaluations',
-      description: 'Review and provide feedback on teacher-submitted evaluations.',
-      action: () => setShowWeeklyEvaluations(true),
-      footer: `${pendingWeeklyEvaluationsCount} pending`,
-    },
-    {
-      id: 'approved-evaluations',
-      badge: '✓',
-      title: 'Approved Evaluations',
-      description: 'View recently approved evaluations and assign homework.',
-      action: () => setShowApprovedEvaluations(true),
-      footer: 'Assign homework',
-    },
-    {
-      id: 'approved-tickets',
+      id: 'review-tickets',
       badge: '🎫',
-      title: 'Approved Tickets',
-      description: 'View recently approved tickets and assign homework.',
-      action: () => setShowApprovedTickets(true),
-      footer: 'Assign homework',
+      title: 'Review Tickets',
+      description: 'Review and approve submitted tickets from teachers.',
+      action: () => setShowTicketReview(true),
+      footer: `${pendingTicketCount} pending`,
     },
-    {
-      id: 'maintenance-mode',
-      badge: maintenanceMode.enabled ? '🟢' : '🔴',
-      title: maintenanceMode.enabled ? 'Turn Off Maintenance' : 'Turn On Maintenance',
-      description: maintenanceMode.enabled ? 'Disable maintenance mode for all users' : 'Enable maintenance mode to show message to all users',
-      action: handleToggleMaintenance,
-      footer: isTogglingMaintenance ? 'Updating...' : (maintenanceMode.enabled ? 'Currently ON' : 'Currently OFF'),
-    },
-  ], [maintenanceMode, isTogglingMaintenance, handleToggleMaintenance, totalStudents, totalTeachers, totalAdmins, pendingReviewsCount, pendingTicketCount, pendingHomeworkCount, pendingWeeklyEvaluationsCount, navigate, setSelectedStudent, setShowStudentForm, setActiveSection, setSelectedTeacher, setShowTeacherForm, setShowAdminForm, setShowPermissionManager, setShowDataManager, refreshNotifications, setShowRecitationReview, setShowWeeklyEvaluations, setShowApprovedEvaluations, setShowApprovedTickets, setShowLockedAccounts]);
+  ], [totalStudents, totalTeachers, totalAdmins, pendingTicketCount, navigate, setSelectedStudent, setShowStudentForm, setSelectedTeacher, setShowTeacherForm, setShowAdminForm, setShowPermissionManager, setShowDataManager, setShowLockedAccounts, setShowTicketReview]);
 
   // Calculate additional metrics
   const inactiveStudentCount = totalStudents - activeStudentCount;
   const inactiveTeacherCount = totalTeachers - activeTeacherCount;
   const totalPendingItems = pendingReviewsCount + pendingTicketCount + pendingHomeworkCount;
-  const recentActivityCount = useMemo(() => {
-    // Count recent activities (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    let count = 0;
-    // Count recent recitation reviews
-    count += recitationReviews.filter((r: any) => {
-      const reviewDate = r.createdAt ? new Date(r.createdAt) : new Date(r.submittedAt || Date.now());
-      return reviewDate >= sevenDaysAgo;
-    }).length;
-    
-    // Count recent tickets
-    count += recitationTickets.filter((t: any) => {
-      const ticketDate = t.createdAt ? new Date(t.createdAt) : new Date(t.submittedAt || Date.now());
-      return ticketDate >= sevenDaysAgo;
-    }).length;
-    
-    return count;
-  }, [recitationReviews, recitationTickets]);
 
   const OverviewSection = () => (
     <div className="space-y-2">
@@ -678,31 +414,6 @@ const SuperAdminDashboard: React.FC = () => {
                   {pendingWeeklyEvaluationsCount} evaluations
                 </span>
               )}
-            </div>
-            <div className="flex flex-wrap items-center gap-1 mt-1.5">
-              <button
-                onClick={() => setShowWeeklyEvaluations(true)}
-                className="inline-flex items-center justify-center rounded border border-primary/30 px-2 py-1 text-[9px] font-semibold text-primary transition hover:bg-soft-primary hover:border-primary"
-              >
-                Evaluations
-                {pendingWeeklyEvaluationsCount > 0 && (
-                  <span className="ml-1 rounded bg-red-500 text-white px-1 py-0.5 text-[9px] font-bold">
-                    {pendingWeeklyEvaluationsCount}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => setShowApprovedEvaluations(true)}
-                className="inline-flex items-center justify-center rounded border border-green-500/30 px-2 py-1 text-[9px] font-semibold text-green-600 transition hover:bg-green-50 hover:border-green-500"
-              >
-                Approved
-              </button>
-              <button
-                onClick={() => setShowApprovedTickets(true)}
-                className="inline-flex items-center justify-center rounded border border-purple-500/30 px-2 py-1 text-[9px] font-semibold text-purple-600 transition hover:bg-purple-50 hover:border-purple-500"
-              >
-                Tickets
-              </button>
             </div>
           </div>
         </div>
@@ -756,18 +467,6 @@ const SuperAdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded border border-blue-200 p-2 hover:border-blue-300 transition-all">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-500">Activity</p>
-            <div className="h-6 w-6 rounded bg-blue-50 flex items-center justify-center">
-              <span className="text-xs">⚡</span>
-            </div>
-          </div>
-          <p className="text-xl font-bold text-blue-600 mb-0.5">{recentActivityCount}</p>
-          <div className="flex items-center gap-1 text-[9px]">
-            <span className="text-blue-600 font-semibold">7 days</span>
-          </div>
-        </div>
       </section>
 
 
@@ -802,258 +501,6 @@ const SuperAdminDashboard: React.FC = () => {
         </div>
         )}
       </section>
-
-      {/* Recent Activity Feed - Wrapped */}
-      <section className="rounded border border-gray-200 bg-white px-2 py-2">
-        <div className="flex items-center justify-between mb-1.5">
-          <button
-            onClick={() => setExpandedSections(prev => ({ ...prev, recentActivity: !prev.recentActivity }))}
-            className="flex items-center gap-1.5"
-          >
-            <h3 className="text-sm font-bold text-primary">Recent Activity</h3>
-            <span className="text-[9px] text-gray-600">
-              {expandedSections.recentActivity ? '▼' : '▶'}
-            </span>
-          </button>
-          <button
-            onClick={() => setShowActivityLog(true)}
-            className="text-[10px] font-semibold text-primary hover:text-accent transition-colors"
-          >
-            View All →
-          </button>
-        </div>
-        {expandedSections.recentActivity && (
-        <div className="space-y-1 max-h-48 overflow-y-auto">
-          {useMemo(() => {
-            const activities: Array<{
-              id: string;
-              type: string;
-              title: string;
-              description: string;
-              time: string;
-              icon: string;
-              color: string;
-              onClick?: () => void;
-            }> = [];
-
-            // Add recent recitation reviews
-            recitationReviews
-              .filter((r: any) => r.status === 'pending_review')
-              .slice(0, 5)
-              .forEach((review: any) => {
-                const date = review.submittedAt ? new Date(review.submittedAt) : new Date();
-                const timeAgo = formatTimeAgo(date);
-                activities.push({
-                  id: `review-${review.id}`,
-                  type: 'recitation',
-                  title: `${review.type || 'Recitation'} Review Pending`,
-                  description: `Student: ${review.studentName || 'Unknown'}`,
-                  time: timeAgo,
-                  icon: '📖',
-                  color: 'border-orange-400 bg-orange-50',
-                  onClick: () => setShowRecitationReview(true),
-                });
-              });
-
-            // Add recent tickets
-            recitationTickets
-              .filter((t: any) => t.status === 'pending_review')
-              .slice(0, 5)
-              .forEach((ticket: any) => {
-                const date = ticket.submittedAt ? new Date(ticket.submittedAt) : new Date();
-                const timeAgo = formatTimeAgo(date);
-                activities.push({
-                  id: `ticket-${ticket.id}`,
-                  type: 'ticket',
-                  title: `${ticket.type || 'Ticket'} Pending Review`,
-                  description: `Student: ${ticket.studentName || 'Unknown'}`,
-                  time: timeAgo,
-                  icon: '🎫',
-                  color: 'border-blue-400 bg-blue-50',
-                  onClick: () => setShowTicketReview(true),
-                });
-              });
-
-            // Add recent notifications
-            adminNotifications
-              .filter((n: any) => !n.read)
-              .slice(0, 3)
-              .forEach((notification: any) => {
-                const date = notification.createdAt ? new Date(notification.createdAt) : new Date();
-                const timeAgo = formatTimeAgo(date);
-                activities.push({
-                  id: `notif-${notification.id}`,
-                  type: 'notification',
-                  title: notification.title || 'New Notification',
-                  description: notification.message || '',
-                  time: timeAgo,
-                  icon: '🔔',
-                  color: 'border-purple-400 bg-purple-50',
-                  onClick: () => setShowNotificationCenter(true),
-                });
-              });
-
-            // Sort by time (most recent first)
-            activities.sort((a, b) => {
-              const timeA = a.time.includes('minute') ? 0 : a.time.includes('hour') ? 1 : 2;
-              const timeB = b.time.includes('minute') ? 0 : b.time.includes('hour') ? 1 : 2;
-              return timeA - timeB;
-            });
-
-            return activities.length > 0 ? activities.slice(0, 8) : [{
-              id: 'no-activity',
-              type: 'empty',
-              title: 'No recent activity',
-              description: 'All caught up! No pending items.',
-              time: 'Just now',
-              icon: '✅',
-              color: 'border-gray-300 bg-gray-50',
-            }];
-          }, [recitationReviews, recitationTickets, adminNotifications]).map((activity) => (
-            <div
-              key={activity.id}
-              onClick={activity.onClick}
-              className={`flex items-start gap-1.5 rounded border-l-2 ${activity.color} bg-white px-1.5 py-1 transition-all hover:shadow-sm cursor-pointer`}
-            >
-              <div className="text-sm">{activity.icon}</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-primary mb-0.5">{activity.title}</p>
-                <p className="text-[9px] text-gray-600 truncate">{activity.description}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">{activity.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        )}
-      </section>
-
-      {/* Completed Assignments/Homework - Wrapped */}
-      {completedAssignmentsCount > 0 && (
-        <section className="rounded border border-gray-200 bg-white px-2 py-2">
-          <button
-            onClick={() => setExpandedSections(prev => ({ ...prev, completedAssignments: !prev.completedAssignments }))}
-            className="w-full flex items-center justify-between mb-1.5"
-          >
-            <h3 className="text-sm font-bold text-primary">Completed Assignments</h3>
-            <div className="flex items-center gap-1.5">
-              <span className="rounded bg-green-100 text-green-800 px-1.5 py-0.5 text-[9px] font-bold">
-                {completedAssignmentsCount}
-              </span>
-              <span className="text-[9px] text-gray-600">
-                {expandedSections.completedAssignments ? '▼' : '▶'}
-              </span>
-            </div>
-          </button>
-          {expandedSections.completedAssignments && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Student</th>
-                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Type</th>
-                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Status</th>
-                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Date</th>
-                  <th className="px-1.5 py-1 text-left text-[9px] font-semibold text-gray-600 uppercase">Grade</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {completedAssignments.map((assignment: any) => {
-                  const isCompleted = assignment.status === 'completed';
-                  const isGraded = assignment.homework?.submission?.status === 'graded';
-                  const completedDate = assignment.completedAt || 
-                                       assignment.homework?.submission?.gradedAt || 
-                                       assignment.updatedAt || 
-                                       assignment.createdAt;
-                  const grade = assignment.homework?.submission?.grade;
-                  
-                  return (
-                    <tr key={assignment.id || assignment._id} className="hover:bg-gray-50">
-                      <td className="px-1.5 py-1">
-                        <div className="font-medium text-gray-900 text-[10px]">
-                          {assignment.studentName || 'Unknown'}
-                        </div>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-gray-600">
-                          {isGraded ? 'Homework' : 'Assignment'}
-                        </span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        {isCompleted ? (
-                          <span className="px-1 py-0.5 text-[9px] font-semibold rounded bg-green-100 text-green-800">
-                            Done
-                          </span>
-                        ) : isGraded ? (
-                          <span className="px-1 py-0.5 text-[9px] font-semibold rounded bg-blue-100 text-blue-800">
-                            Graded
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-1.5 py-1 text-[10px] text-gray-600">
-                        {completedDate ? new Date(completedDate).toLocaleDateString() : 'N/A'}
-                      </td>
-                      <td className="px-1.5 py-1">
-                        {grade !== null && grade !== undefined ? (
-                          <span className="px-1 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
-                            {grade}/100
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-gray-400">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            {completedAssignmentsCount > 10 && (
-              <div className="mt-1.5 text-center">
-                <button
-                  onClick={() => navigate('/assignments')}
-                  className="text-[10px] font-semibold text-primary hover:text-accent transition-colors"
-                >
-                  View All ({completedAssignmentsCount}) →
-                </button>
-              </div>
-            )}
-          </div>
-          )}
-        </section>
-      )}
-
-      {/* System Status - Wrapped */}
-      <section className="rounded border border-gray-200 bg-white px-2 py-2">
-        <button
-          onClick={() => setExpandedSections(prev => ({ ...prev, systemStatus: !prev.systemStatus }))}
-          className="w-full flex items-center justify-between mb-1.5"
-        >
-          <h3 className="text-sm font-bold text-primary">System Status</h3>
-          <span className="text-[9px] text-gray-600">
-            {expandedSections.systemStatus ? '▼' : '▶'}
-          </span>
-        </button>
-        {expandedSections.systemStatus && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-green-500"></div>
-              <span className="font-semibold text-primary text-xs">System Operational</span>
-            </div>
-            <span className="text-[9px] font-semibold text-green-600">Normal</span>
-          </div>
-          <div className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-              <span className="font-semibold text-primary text-xs">Notifications</span>
-            </div>
-            <span className="rounded bg-blue-500 text-white px-1.5 py-0.5 text-[9px] font-bold">
-              {unreadNotificationsCount}
-            </span>
-          </div>
-        </div>
-        )}
-      </section>
-
     </div>
   );
 
@@ -1297,11 +744,6 @@ const SuperAdminDashboard: React.FC = () => {
               setSelectedStudent(student);
               setShowStudentCredentials(true);
             }}
-            onAnalytics={(student) => {
-              setSelectedStudent(student);
-              setShowStudentAnalytics(true);
-            }}
-            onBulkOperations={() => setShowStudentBulkOperations(true)}
           />
           </Suspense>
         </div>
@@ -1417,11 +859,6 @@ const SuperAdminDashboard: React.FC = () => {
             setSelectedTeacher(teacher);
             setShowTeacherCredentials(true);
           }}
-          onAnalytics={(teacher) => {
-            setSelectedTeacher(teacher);
-            setShowTeacherAnalytics(true);
-          }}
-          onBulkOperations={() => setShowTeacherBulkOperations(true)}
         />
         </Suspense>
       </div>
@@ -1664,73 +1101,9 @@ const SuperAdminDashboard: React.FC = () => {
             setSelectedTeacher(teacher);
             setShowTeacherForm(true);
           }}
-          onPayroll={() => {
-            setShowTeacherProfile(false);
-            setShowTeacherPayroll(true);
-          }}
-          onPerformance={() => {
-            setShowTeacherProfile(false);
-            setShowTeacherPerformance(true);
-          }}
-          onAttendance={() => {
-            setShowTeacherProfile(false);
-            setShowTeacherAttendance(true);
-          }}
-          onCommunication={() => {
-            setShowTeacherProfile(false);
-            setShowTeacherCommunication(true);
-          }}
         />
       )}
 
-
-      {showTeacherPayroll && selectedTeacher && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherPayroll
-            teacher={selectedTeacher}
-            onClose={() => {
-              setShowTeacherPayroll(false);
-              setSelectedTeacher(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showTeacherPerformance && selectedTeacher && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherPerformance
-            teacher={selectedTeacher}
-            onClose={() => {
-              setShowTeacherPerformance(false);
-              setSelectedTeacher(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showTeacherAttendance && selectedTeacher && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherAttendance
-            teacher={selectedTeacher}
-            onClose={() => {
-              setShowTeacherAttendance(false);
-              setSelectedTeacher(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showTeacherCommunication && selectedTeacher && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherCommunication
-            teacher={selectedTeacher}
-            onClose={() => {
-              setShowTeacherCommunication(false);
-              setSelectedTeacher(null);
-            }}
-          />
-        </Suspense>
-      )}
 
       {/* Student Management Modals - Lazy loaded */}
       {showStudentProfile && selectedStudent && (
@@ -1752,58 +1125,10 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {showStudentEnrollment && selectedStudent && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentEnrollment
-            student={selectedStudent}
-            onClose={() => {
-              setShowStudentEnrollment(false);
-              setSelectedStudent(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showStudentPayments && selectedStudent && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentPayments
-            student={selectedStudent}
-            onClose={() => {
-              setShowStudentPayments(false);
-              setSelectedStudent(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showStudentProgress && selectedStudent && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentProgress
-            student={selectedStudent}
-            onClose={() => {
-              setShowStudentProgress(false);
-              setSelectedStudent(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showStudentCommunication && selectedStudent && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentCommunication
-            student={selectedStudent}
-            onClose={() => {
-              setShowStudentCommunication(false);
-              setSelectedStudent(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showStudentCredentials && (
+      {showStudentCredentials && selectedStudent && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <StudentCredentials
-            student={selectedStudent || { id: 'general', name: 'System Access Management' }}
+            student={selectedStudent}
             onClose={() => {
               setShowStudentCredentials(false);
               setSelectedStudent(null);
@@ -1812,37 +1137,11 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {showStudentAnalytics && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentAnalytics
-            student={selectedStudent || { id: 'general', name: 'System Analytics' }}
-            onClose={() => {
-              setShowStudentAnalytics(false);
-              setSelectedStudent(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showStudentBulkOperations && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentBulkOperations
-            onClose={() => setShowStudentBulkOperations(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Teacher Advanced Features Modals - Lazy loaded */}
-      {showTeacherCredentials && (
+      {/* Teacher Credentials Modal */}
+      {showTeacherCredentials && selectedTeacher && (
         <Suspense fallback={<ModalLoadingFallback />}>
           <TeacherCredentials
-            teacher={
-              selectedTeacher || {
-                id: 'general',
-                fullName: 'All Teachers',
-                email: 'access@umaracademy.org',
-              }
-            }
+            teacher={selectedTeacher}
             onClose={() => {
               setShowTeacherCredentials(false);
               setSelectedTeacher(null);
@@ -1851,41 +1150,11 @@ const SuperAdminDashboard: React.FC = () => {
         </Suspense>
       )}
 
-      {showTeacherAnalytics && (
+      {/* Notification Center Modal */}
+      {showNotificationCenter && (
         <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherAnalytics
-            teacher={
-              selectedTeacher || {
-                id: 'general',
-                fullName: 'All Teachers',
-                email: 'analytics@umaracademy.org',
-              }
-            }
-            onClose={() => {
-              setShowTeacherAnalytics(false);
-              setSelectedTeacher(null);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {showTeacherBulkOperations && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherBulkOperations
-            onClose={() => setShowTeacherBulkOperations(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Recitation Review Modal */}
-      {showRecitationReview && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <AdminRecitationReview
-            onClose={() => setShowRecitationReview(false)}
-            onSuccess={() => {
-              setShowRecitationReview(false);
-              refreshNotifications();
-            }}
+          <AdminNotificationCenter
+            onClose={() => setShowNotificationCenter(false)}
           />
         </Suspense>
       )}
@@ -1898,209 +1167,6 @@ const SuperAdminDashboard: React.FC = () => {
           />
         </Suspense>
       )}
-
-      {/* Student Reports Modal */}
-      {showStudentReports && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentReports
-            onClose={() => setShowStudentReports(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Notification Center Modal */}
-      {showNotificationCenter && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <AdminNotificationCenter
-            onClose={() => setShowNotificationCenter(false)}
-            onOpenTicketReview={() => {
-              setShowNotificationCenter(false);
-              setShowTicketReview(true);
-            }}
-            onOpenRecitationReview={() => {
-              setShowNotificationCenter(false);
-              setShowRecitationReview(true);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {/* Activity Log Modal */}
-      {showActivityLog && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ActivityLog
-            onClose={() => setShowActivityLog(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Email Module Modal */}
-      {showEmailModule && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <EmailModule
-            onClose={() => setShowEmailModule(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Student Testing Module Modal */}
-      {showTestingModule && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <StudentTestingModule
-            onClose={() => setShowTestingModule(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Test Results Page Modal */}
-      {showTestResults && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TestResultsPage
-            onClose={() => setShowTestResults(false)}
-          />
-        </Suspense>
-      )}
-
-      {showEvaluationManagement && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherEvaluationManagement
-            onClose={() => setShowEvaluationManagement(false)}
-          />
-        </Suspense>
-      )}
-
-      {showEvaluationResults && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <EvaluationResultsPage
-            onClose={() => setShowEvaluationResults(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Teacher Attendance Form Modal */}
-      {showTeacherAttendanceForm && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherAttendanceForm
-            onClose={() => setShowTeacherAttendanceForm(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Teacher Attendance Report Modal */}
-      {showTeacherAttendanceReport && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherAttendanceReport
-            onClose={() => setShowTeacherAttendanceReport(false)}
-          />
-        </Suspense>
-      )}
-
-
-      {/* Pair Teacher Messages Admin Modal */}
-      {showPairMessagesAdmin && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <PairTeacherMessagesAdmin
-            onClose={() => setShowPairMessagesAdmin(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Teacher-Student Messages Admin Modal */}
-      {showTeacherStudentMessagesAdmin && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherStudentMessagesAdmin
-            onClose={() => setShowTeacherStudentMessagesAdmin(false)}
-            onInitiateMessage={(teacher: any, student: any) => {
-              setShowTeacherStudentMessagesAdmin(false);
-              setSelectedTeacherForMessage(teacher);
-              setSelectedStudentForMessage(student);
-              setShowTeacherStudentMessage(true);
-            }}
-          />
-        </Suspense>
-      )}
-
-      {/* Teacher-Student Message Modal (Admin Initiated) */}
-      {showTeacherStudentMessage && selectedTeacherForMessage && selectedStudentForMessage && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <TeacherStudentMessage
-            teacher={selectedTeacherForMessage}
-            student={selectedStudentForMessage}
-            onClose={() => {
-              setShowTeacherStudentMessage(false);
-              setSelectedTeacherForMessage(null);
-              setSelectedStudentForMessage(null);
-              setShowTeacherStudentMessagesAdmin(true);
-            }}
-            adminView={true}
-            adminCanInitiate={true}
-          />
-        </Suspense>
-      )}
-
-      {/* Weekly Evaluations Admin Modal */}
-      {showWeeklyEvaluations && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <WeeklyEvaluationsAdmin
-            onClose={() => setShowWeeklyEvaluations(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Approved Evaluations Admin Modal */}
-      {showApprovedEvaluations && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ApprovedEvaluationsAdmin
-            onClose={() => setShowApprovedEvaluations(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Approved Tickets Admin Modal */}
-      {showApprovedTickets && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ApprovedTicketsAdmin
-            onClose={() => setShowApprovedTickets(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Super Admin Profile & Credentials Modal */}
-      {showSuperAdminProfile && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <SuperAdminProfile
-            onClose={() => setShowSuperAdminProfile(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Help & Support Modal */}
-      {showHelpAndSupport && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <HelpAndSupport
-            onClose={() => setShowHelpAndSupport(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Locked Accounts Manager Modal */}
-      {showLockedAccounts && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <LockedAccountsManager
-            onClose={() => setShowLockedAccounts(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Active Tickets Management Modal */}
-      {showActiveTicketsManagement && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ActiveTicketsManagement
-            onClose={() => setShowActiveTicketsManagement(false)}
-          />
-        </Suspense>
-      )}
-
 
       {/* Debug Panel */}
       {isDevelopment && DebugPanel && (

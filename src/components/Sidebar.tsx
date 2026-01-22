@@ -66,6 +66,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       items.push({ id: 'teacher-student-assignment', icon: '👥', label: 'Teacher-Student Assignment', badge: null, isLink: true, href: '/teacher-student-assignment' });
     }
     
+    // Add Permissions for super admin only
+    if (user?.role === 'superadmin') {
+      items.push({ id: 'permissions', icon: '🔐', label: 'Permissions', badge: null, isLink: true, href: '/permissions' });
+    }
+    
     // Add Assignments if admin has permission
     if (user?.role !== 'admin' || adminPermissions?.canAccessAssignments || adminPermissions?.canManageAssignments) {
       items.push({ id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' });

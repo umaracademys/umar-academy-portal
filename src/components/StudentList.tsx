@@ -27,7 +27,7 @@ const StudentList: React.FC<StudentListProps> = ({
   onBulkOperations, 
   onPersonalMushaf 
 }) => {
-  const { students, teachers, addStudent } = useData();
+  const { students, teachers, addStudent, refreshData } = useData();
   const { showToast, toasts, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('all');
@@ -819,6 +819,20 @@ const StudentList: React.FC<StudentListProps> = ({
                 >
                   <span className="mr-2">+</span>
                   Add Student
+                </Button>
+              )}
+              {refreshData && (
+                <Button
+                  onClick={async () => {
+                    if (refreshData) {
+                      await refreshData();
+                    }
+                  }}
+                  variant="outline"
+                  size="md"
+                  title="Refresh data from database"
+                >
+                  🔄 Refresh
                 </Button>
               )}
               {students.length === 0 && (

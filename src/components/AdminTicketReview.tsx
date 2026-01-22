@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Ticket } from '../types/ticket';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,6 +19,7 @@ interface AdminTicketReviewProps {
 }
 
 const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
+  const navigate = useNavigate();
   const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshDataLight, updateRecitationTicket, loading } = useBackendData();
   const { user } = useAuth();
   const { showToast, toasts, removeToast } = useToast();
@@ -154,12 +156,12 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       // Store full ticket data
       setFullTicketData(mappedFullTicket);
     
-    // If it's a Sabq ticket with pending status, open AdminSabqReview
+      // Navigate to full-page Mushaf review instead of modal
       if (mappedFullTicket.type === 'sabq' && mappedFullTicket.status === 'pending') {
-      setShowSabqReview(true);
-      setSelectedTicketId(ticketId);
-    } else {
-      setSelectedTicketId(ticketId);
+        navigate(`/mushaf/review/${ticketId}?mode=admin-sabq`);
+        return; // Exit early after navigation
+      } else {
+        setSelectedTicketId(ticketId);
       }
     } catch (error) {
       console.error('❌ Error fetching full ticket data:', error);

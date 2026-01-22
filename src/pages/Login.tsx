@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types';
 import DebugPanel from '../components/DebugPanel';
 
 const Login: React.FC = () => {
   const { login, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('student');
   const [loginError, setLoginError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -32,19 +30,14 @@ const Login: React.FC = () => {
       return;
     }
     
-    if (!role) {
-      setLoginError('Please select an account type');
-      return;
-    }
-    
     setIsLoading(true);
     setLoginError(''); // Clear previous errors
     try {
-      const success = await login(email, password, role);
+      const success = await login(email, password);
       
       if (!success) {
         // Error is already set in AuthContext, but we can enhance it here
-        const errorMsg = error || 'Invalid credentials. Please check your email, password, and account type.';
+        const errorMsg = error || 'Invalid credentials. Please check your email and password.';
         setLoginError(errorMsg);
         
         // Check if account is locked from window object (set by AuthContext)
@@ -178,30 +171,6 @@ const Login: React.FC = () => {
                   </p>
                 </div>
               )}
-              
-              {/* Role Selection */}
-              <div>
-                <label className="block text-sm font-semibold text-primary mb-3">
-                  Account Type
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {(['student', 'teacher', 'admin', 'superadmin'] as UserRole[]).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setRole(r)}
-                      className={`py-3 px-4 rounded-lg font-semibold capitalize transition-all text-sm border ${
-                        role === r
-                          ? 'border-transparent text-white shadow-md'
-                          : 'border-gray-300 text-gray-700 bg-white hover:border-gray-400 hover:bg-gray-50'
-                      }`}
-                      style={role === r ? { backgroundColor: r === 'superadmin' ? '#EF4444' : '#1F3224' } : {}}
-                    >
-                      {r === 'superadmin' ? 'Super Admin' : r}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Email Input */}
               <div>

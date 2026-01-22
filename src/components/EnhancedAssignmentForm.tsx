@@ -304,16 +304,52 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
 
   // Add classwork phase
   const addClassworkPhase = (type: 'sabq' | 'sabqi' | 'manzil') => {
-    const newPhase: ClassworkPhase = {
-      type,
-      assignmentRange: '',
-      details: '',
-      createdAt: new Date()
-    };
-    setClasswork(prev => ({
-      ...prev,
-      [type]: [...prev[type], newPhase]
-    }));
+    try {
+      // Fail fast - validate input
+      if (!['sabq', 'sabqi', 'manzil'].includes(type)) {
+        console.warn('⚠️ Invalid type in addClassworkPhase:', type);
+        return;
+      }
+
+      const newPhase: ClassworkPhase = {
+        type,
+        assignmentRange: '',
+        details: '',
+        createdAt: new Date()
+      };
+
+      setClasswork(prev => {
+        try {
+          if (!prev || typeof prev !== 'object') {
+            console.warn('⚠️ Invalid classwork state, initializing');
+            return {
+              sabq: type === 'sabq' ? [newPhase] : [],
+              sabqi: type === 'sabqi' ? [newPhase] : [],
+              manzil: type === 'manzil' ? [newPhase] : []
+            };
+          }
+
+          const currentTypeArray = prev[type];
+          if (!Array.isArray(currentTypeArray)) {
+            console.warn('⚠️ Invalid type array, initializing:', type);
+            return {
+              ...prev,
+              [type]: [newPhase]
+            };
+          }
+
+          return {
+            ...prev,
+            [type]: [...currentTypeArray, newPhase]
+          };
+        } catch (err) {
+          console.error('❌ Error adding classwork phase:', err);
+          return prev;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error in addClassworkPhase:', err);
+    }
   };
 
   // Update classwork phase
@@ -323,33 +359,140 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
     field: keyof ClassworkPhase,
     value: any
   ) => {
-    setClasswork(prev => ({
-      ...prev,
-      [type]: prev[type].map((phase, i) => 
-        i === index ? { ...phase, [field]: value } : phase
-      )
-    }));
+    try {
+      // Fail fast - validate inputs
+      if (!['sabq', 'sabqi', 'manzil'].includes(type)) {
+        console.warn('⚠️ Invalid type in updateClassworkPhase:', type);
+        return;
+      }
+
+      if (typeof index !== 'number' || index < 0) {
+        console.warn('⚠️ Invalid index in updateClassworkPhase:', index);
+        return;
+      }
+
+      if (!field || typeof field !== 'string') {
+        console.warn('⚠️ Invalid field in updateClassworkPhase:', field);
+        return;
+      }
+
+      setClasswork(prev => {
+        try {
+          if (!prev || typeof prev !== 'object') {
+            console.warn('⚠️ Invalid classwork state');
+            return prev;
+          }
+
+          const currentTypeArray = prev[type];
+          if (!Array.isArray(currentTypeArray)) {
+            console.warn('⚠️ Invalid type array:', type);
+            return prev;
+          }
+
+          if (index >= currentTypeArray.length) {
+            console.warn('⚠️ Index out of bounds:', index, 'length:', currentTypeArray.length);
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [type]: currentTypeArray.map((phase, i) => {
+              if (i === index) {
+                try {
+                  return { ...phase, [field]: value };
+                } catch (err) {
+                  console.warn('⚠️ Error updating phase field:', err);
+                  return phase;
+                }
+              }
+              return phase;
+            })
+          };
+        } catch (err) {
+          console.error('❌ Error updating classwork phase:', err);
+          return prev;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error in updateClassworkPhase:', err);
+    }
   };
 
   // Remove classwork phase
   const removeClassworkPhase = (type: 'sabq' | 'sabqi' | 'manzil', index: number) => {
-    setClasswork(prev => ({
-      ...prev,
-      [type]: prev[type].filter((_, i) => i !== index)
-    }));
+    try {
+      // Fail fast - validate inputs
+      if (!['sabq', 'sabqi', 'manzil'].includes(type)) {
+        console.warn('⚠️ Invalid type in removeClassworkPhase:', type);
+        return;
+      }
+
+      if (typeof index !== 'number' || index < 0) {
+        console.warn('⚠️ Invalid index in removeClassworkPhase:', index);
+        return;
+      }
+
+      setClasswork(prev => {
+        try {
+          if (!prev || typeof prev !== 'object') {
+            console.warn('⚠️ Invalid classwork state');
+            return prev;
+          }
+
+          const currentTypeArray = prev[type];
+          if (!Array.isArray(currentTypeArray)) {
+            console.warn('⚠️ Invalid type array:', type);
+            return prev;
+          }
+
+          if (index >= currentTypeArray.length) {
+            console.warn('⚠️ Index out of bounds:', index, 'length:', currentTypeArray.length);
+            return prev;
+          }
+
+          return {
+            ...prev,
+            [type]: currentTypeArray.filter((_, i) => i !== index)
+          };
+        } catch (err) {
+          console.error('❌ Error removing classwork phase:', err);
+          return prev;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error in removeClassworkPhase:', err);
+    }
   };
 
   // ✅ FIX: Use suggestion from ticket log - populate ALL fields including sabqEntries, mistakes, tajweedIssues, atkees
   const useTicketSuggestion = (logEntry: TicketLogEntry) => {
-    const currentDate = new Date();
-    const ticket = logEntry.ticket;
-    const teacherName = logEntry.teacherName;
+    try {
+      // Fail fast - validate input
+      if (!logEntry || typeof logEntry !== 'object') {
+        alert('Invalid ticket data. Cannot use this ticket.');
+        return;
+      }
+
+      if (!logEntry.ticket || typeof logEntry.ticket !== 'object') {
+        alert('Invalid ticket information. Cannot use this ticket.');
+        return;
+      }
+
+      const currentDate = new Date();
+      const ticket = logEntry.ticket;
+      const teacherName = logEntry.teacherName || 'Unknown';
     
     // ✅ FIX: Handle Sabq tickets with sabqEntries (multiple entries)
-    if (logEntry.type === 'sabq' && ticket.sabqEntries && ticket.sabqEntries.length > 0) {
+    if (logEntry.type === 'sabq' && ticket.sabqEntries && Array.isArray(ticket.sabqEntries) && ticket.sabqEntries.length > 0) {
       // For Sabq tickets, create a classwork phase for each sabqEntry
       ticket.sabqEntries.forEach((entry) => {
-        const recitationRange = entry.recitationRange || {};
+        try {
+          if (!entry || typeof entry !== 'object') {
+            console.warn('⚠️ Invalid sabq entry:', entry);
+            return;
+          }
+
+          const recitationRange = entry.recitationRange || {};
         const surahNumber = recitationRange.surahNumber;
         const surahName = recitationRange.surahName;
         const juzNumber = recitationRange.juzNumber;
@@ -416,14 +559,38 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
         updateClassworkPhase('sabq', lastIndex, 'teacherReviewComment', '');
         updateClassworkPhase('sabq', lastIndex, 'fromTicketId', ticket.id || ticket._id?.toString());
         
-        // ✅ Add mistakes from entry to currentMistakes
-        if (entry.mistakes && entry.mistakes.length > 0) {
-          const convertedMistakes = entry.mistakes.map(m => ({
-            ...m,
-            id: m.id || `mistake-${Date.now()}-${Math.random()}`,
-            timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
-          }));
-          setCurrentMistakes(prev => [...prev, ...convertedMistakes]);
+          // ✅ Add mistakes from entry to currentMistakes
+          if (entry.mistakes && Array.isArray(entry.mistakes) && entry.mistakes.length > 0) {
+            try {
+              const convertedMistakes = entry.mistakes
+                .filter(m => m && typeof m === 'object')
+                .map(m => ({
+                  ...m,
+                  id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+                  timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+                  type: m.type || 'other',
+                  page: m.page || 1,
+                  surah: m.surah || 0,
+                  ayah: m.ayah || 0
+                }));
+              
+              setCurrentMistakes(prev => {
+                try {
+                  if (!Array.isArray(prev)) {
+                    return convertedMistakes;
+                  }
+                  return [...prev, ...convertedMistakes];
+                } catch (err) {
+                  console.error('❌ Error adding mistakes:', err);
+                  return prev;
+                }
+              });
+            } catch (err) {
+              console.error('❌ Error converting mistakes:', err);
+            }
+          }
+        } catch (err) {
+          console.error('❌ Error processing sabq entry:', err);
         }
       });
       
@@ -509,39 +676,128 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       updateClassworkPhase(type, lastIndex, 'fromTicketId', ticket.id || ticket._id?.toString());
     };
     
-    // ✅ Add mistakes to currentMistakes
-    if (ticket.mistakes && ticket.mistakes.length > 0) {
-      const convertedMistakes = ticket.mistakes.map(m => ({
-        ...m,
-        id: m.id || `mistake-${Date.now()}-${Math.random()}`,
-        timestamp: m.timestamp ? new Date(m.timestamp) : new Date()
-      }));
-      setCurrentMistakes(prev => [...prev, ...convertedMistakes]);
-    }
-    
-    if (logEntry.type === 'sabq') {
-      updatePhase('sabq');
-    } else if (logEntry.type === 'sabqi') {
-      updatePhase('sabqi');
-    } else if (logEntry.type === 'manzil') {
-      updatePhase('manzil');
+      // ✅ Add mistakes to currentMistakes
+      if (ticket.mistakes && Array.isArray(ticket.mistakes) && ticket.mistakes.length > 0) {
+        try {
+          const convertedMistakes = ticket.mistakes
+            .filter(m => m && typeof m === 'object')
+            .map(m => ({
+              ...m,
+              id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+              type: m.type || 'other',
+              page: m.page || 1,
+              surah: m.surah || 0,
+              ayah: m.ayah || 0
+            }));
+          
+          setCurrentMistakes(prev => {
+            try {
+              if (!Array.isArray(prev)) {
+                return convertedMistakes;
+              }
+              return [...prev, ...convertedMistakes];
+            } catch (err) {
+              console.error('❌ Error adding mistakes:', err);
+              return prev;
+            }
+          });
+        } catch (err) {
+          console.error('❌ Error converting mistakes:', err);
+        }
+      }
+      
+      if (logEntry.type === 'sabq') {
+        updatePhase('sabq');
+      } else if (logEntry.type === 'sabqi') {
+        updatePhase('sabqi');
+      } else if (logEntry.type === 'manzil') {
+        updatePhase('manzil');
+      } else {
+        console.warn('⚠️ Unknown ticket type:', logEntry.type);
+      }
+    } catch (err) {
+      console.error('❌ Error in useTicketSuggestion:', err);
+      alert('Failed to use ticket data. Please try again or enter manually.');
     }
   };
 
 
   // Handle mistake mark
   const handleMistakeMark = (mistake: Omit<MushafMistake, 'id' | 'timestamp'>) => {
-    const newMistake: MushafMistake = {
-      ...mistake,
-      id: `mistake-${Date.now()}-${Math.random()}`,
-      timestamp: new Date()
-    };
-    setCurrentMistakes(prev => [...prev, newMistake]);
+    try {
+      // Fail fast - validate input
+      if (!mistake || typeof mistake !== 'object') {
+        console.warn('⚠️ Invalid mistake in handleMistakeMark:', mistake);
+        return;
+      }
+
+      // Validate required fields
+      if (typeof mistake.page !== 'number' || mistake.page < 1 || mistake.page > 604) {
+        console.warn('⚠️ Invalid page number:', mistake.page);
+        return;
+      }
+
+      const newMistake: MushafMistake = {
+        ...mistake,
+        id: `mistake-${Date.now()}-${Math.random()}`,
+        timestamp: new Date(),
+        type: mistake.type || 'other',
+        page: mistake.page || 1,
+        surah: mistake.surah || 0,
+        ayah: mistake.ayah || 0,
+        wordIndex: mistake.wordIndex || 0,
+        position: mistake.position || { x: 0, y: 0 },
+        note: mistake.note || '',
+        audioUrl: mistake.audioUrl || ''
+      };
+
+      setCurrentMistakes(prev => {
+        try {
+          if (!Array.isArray(prev)) {
+            return [newMistake];
+          }
+          return [...prev, newMistake];
+        } catch (err) {
+          console.error('❌ Error adding mistake:', err);
+          return prev;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error in handleMistakeMark:', err);
+    }
   };
 
   // Remove mistake
   const removeMistake = (mistakeId: string) => {
-    setCurrentMistakes(prev => prev.filter(m => m.id !== mistakeId));
+    try {
+      // Fail fast - validate input
+      if (!mistakeId || typeof mistakeId !== 'string' || mistakeId.trim() === '') {
+        console.warn('⚠️ Invalid mistakeId in removeMistake:', mistakeId);
+        return;
+      }
+
+      setCurrentMistakes(prev => {
+        try {
+          if (!Array.isArray(prev)) {
+            return [];
+          }
+          return prev.filter(m => {
+            try {
+              return m && m.id !== mistakeId;
+            } catch (err) {
+              console.warn('⚠️ Error filtering mistake:', err);
+              return true; // Keep it if we can't filter
+            }
+          });
+        } catch (err) {
+          console.error('❌ Error removing mistake:', err);
+          return prev;
+        }
+      });
+    } catch (err) {
+      console.error('❌ Error in removeMistake:', err);
+    }
   };
 
   // Get mistakes for current page
@@ -551,26 +807,47 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
 
   // Filter classwork to remove empty entries
   const filteredClasswork = useMemo(() => {
-    return {
-      sabq: classwork.sabq.filter(c => c.assignmentRange.trim()),
-      sabqi: classwork.sabqi.filter(c => c.assignmentRange.trim()),
-      manzil: classwork.manzil.filter(c => c.assignmentRange.trim())
-    };
+    try {
+      if (!classwork || typeof classwork !== 'object') {
+        console.warn('⚠️ Invalid classwork state');
+        return { sabq: [], sabqi: [], manzil: [] };
+      }
+
+      return {
+        sabq: (Array.isArray(classwork.sabq) ? classwork.sabq : [])
+          .filter(c => c && typeof c === 'object' && c.assignmentRange && String(c.assignmentRange).trim()),
+        sabqi: (Array.isArray(classwork.sabqi) ? classwork.sabqi : [])
+          .filter(c => c && typeof c === 'object' && c.assignmentRange && String(c.assignmentRange).trim()),
+        manzil: (Array.isArray(classwork.manzil) ? classwork.manzil : [])
+          .filter(c => c && typeof c === 'object' && c.assignmentRange && String(c.assignmentRange).trim())
+      };
+    } catch (err) {
+      console.error('❌ Error filtering classwork:', err);
+      return { sabq: [], sabqi: [], manzil: [] };
+    }
   }, [classwork]);
 
   // Validation
   const isValid = useMemo(() => {
-    const hasClasswork = 
-      filteredClasswork.sabq.length > 0 ||
-      filteredClasswork.sabqi.length > 0 ||
-      filteredClasswork.manzil.length > 0;
-    const hasHomework = homework.enabled && (
-      homework.content.trim() || 
-      homework.link.trim() || 
-      // ✅ FIX: Removed invalid fields sabqiContent and manzilContent
-      false // Removed check for invalid fields
-    );
-    return hasClasswork || hasHomework;
+    try {
+      if (!filteredClasswork || typeof filteredClasswork !== 'object') {
+        return false;
+      }
+
+      const hasClasswork = 
+        (Array.isArray(filteredClasswork.sabq) && filteredClasswork.sabq.length > 0) ||
+        (Array.isArray(filteredClasswork.sabqi) && filteredClasswork.sabqi.length > 0) ||
+        (Array.isArray(filteredClasswork.manzil) && filteredClasswork.manzil.length > 0);
+      
+      const hasHomework = homework && 
+        homework.enabled && 
+        (String(homework.content || '').trim() || String(homework.link || '').trim());
+      
+      return hasClasswork || hasHomework;
+    } catch (err) {
+      console.error('❌ Error validating form:', err);
+      return false;
+    }
   }, [filteredClasswork, homework]);
 
   // Submit handler
@@ -585,70 +862,163 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       return;
     }
     
-    if (!student || !user) {
-      alert('Student or user information is missing');
+    // Fail fast - validate critical dependencies
+    if (!student || typeof student !== 'object' || !student.id) {
+      alert('Student information is missing or invalid. Please refresh the page.');
+      return;
+    }
+
+    if (!user || typeof user !== 'object' || !user.id) {
+      alert('User information is missing. Please log in again.');
       return;
     }
 
     if (!isValid) {
-      alert('Please add at least one classwork entry or homework item');
+      alert('Please add at least one classwork entry (Sabq, Sabqi, or Manzil) or enable homework with content.');
+      return;
+    }
+
+    // Validate classwork entries have required fields
+    const hasValidClasswork = filteredClasswork.sabq.some(c => c.assignmentRange?.trim()) ||
+                             filteredClasswork.sabqi.some(c => c.assignmentRange?.trim()) ||
+                             filteredClasswork.manzil.some(c => c.assignmentRange?.trim());
+    
+    const hasValidHomework = homework.enabled && (homework.content?.trim() || homework.link?.trim());
+
+    if (!hasValidClasswork && !hasValidHomework) {
+      alert('Please add at least one classwork entry with an assignment range, or enable homework with content or link.');
       return;
     }
 
     setIsSaving(true);
     try {
-      // Convert mistakes to AssignmentMushafMistake format
-      const mushafMistakes: AssignmentMushafMistake[] = currentMistakes.map(m => ({
-        id: m.id,
-        type: m.type,
-        page: m.page,
-        surah: m.surah,
-        ayah: m.ayah,
-        wordIndex: m.wordIndex,
-        position: m.position,
-        note: m.note,
-        audioUrl: m.audioUrl,
-        workflowStep: (m as any).workflowStep,
-        markedBy: currentUserInfo.id,
-        markedByName: currentUserInfo.name,
-        timestamp: m.timestamp || new Date()
-      }));
+      // Validate functions exist
+      if (!addAssignment || typeof addAssignment !== 'function') {
+        throw new Error('Add assignment function is not available. Please refresh the page.');
+      }
 
-      // Ensure all classwork entries have createdAt timestamp
+      if (assignmentId && (!updateAssignment || typeof updateAssignment !== 'function')) {
+        throw new Error('Update assignment function is not available. Please refresh the page.');
+      }
+
+      // Convert mistakes to AssignmentMushafMistake format with validation
+      const mushafMistakes: AssignmentMushafMistake[] = (Array.isArray(currentMistakes) ? currentMistakes : [])
+        .filter(m => m && typeof m === 'object')
+        .map(m => {
+          try {
+            return {
+              id: m.id || `mistake-${Date.now()}-${Math.random()}`,
+              type: m.type || 'other',
+              page: m.page || 1,
+              surah: m.surah || 0,
+              ayah: m.ayah || 0,
+              wordIndex: m.wordIndex || 0,
+              position: m.position || { x: 0, y: 0 },
+              note: m.note || '',
+              audioUrl: m.audioUrl || '',
+              workflowStep: (m as any).workflowStep || 'sabq',
+              markedBy: currentUserInfo.id || '',
+              markedByName: currentUserInfo.name || 'Unknown',
+              timestamp: m.timestamp || new Date()
+            };
+          } catch (err) {
+            console.warn('⚠️ Error converting mistake:', err);
+            return null;
+          }
+        })
+        .filter((m): m is AssignmentMushafMistake => m !== null);
+
+      // Ensure all classwork entries have createdAt timestamp and validate structure
       const classworkWithTimestamps = {
-        sabq: filteredClasswork.sabq.map(entry => ({
-          ...entry,
-          createdAt: entry.createdAt || new Date()
-        })),
-        sabqi: filteredClasswork.sabqi.map(entry => ({
-          ...entry,
-          createdAt: entry.createdAt || new Date()
-        })),
-        manzil: filteredClasswork.manzil.map(entry => ({
-          ...entry,
-          createdAt: entry.createdAt || new Date()
-        }))
+        sabq: (Array.isArray(filteredClasswork.sabq) ? filteredClasswork.sabq : [])
+          .filter(entry => entry && typeof entry === 'object' && entry.assignmentRange?.trim())
+          .map(entry => {
+            try {
+              return {
+                ...entry,
+                type: 'sabq' as const,
+                assignmentRange: String(entry.assignmentRange || '').trim(),
+                details: String(entry.details || '').trim(),
+                createdAt: entry.createdAt instanceof Date ? entry.createdAt : new Date(entry.createdAt || Date.now())
+              };
+            } catch (err) {
+              console.warn('⚠️ Error processing sabq entry:', err);
+              return null;
+            }
+          })
+          .filter((e): e is ClassworkPhase => e !== null),
+        sabqi: (Array.isArray(filteredClasswork.sabqi) ? filteredClasswork.sabqi : [])
+          .filter(entry => entry && typeof entry === 'object' && entry.assignmentRange?.trim())
+          .map(entry => {
+            try {
+              return {
+                ...entry,
+                type: 'sabqi' as const,
+                assignmentRange: String(entry.assignmentRange || '').trim(),
+                details: String(entry.details || '').trim(),
+                createdAt: entry.createdAt instanceof Date ? entry.createdAt : new Date(entry.createdAt || Date.now())
+              };
+            } catch (err) {
+              console.warn('⚠️ Error processing sabqi entry:', err);
+              return null;
+            }
+          })
+          .filter((e): e is ClassworkPhase => e !== null),
+        manzil: (Array.isArray(filteredClasswork.manzil) ? filteredClasswork.manzil : [])
+          .filter(entry => entry && typeof entry === 'object' && entry.assignmentRange?.trim())
+          .map(entry => {
+            try {
+              return {
+                ...entry,
+                type: 'manzil' as const,
+                assignmentRange: String(entry.assignmentRange || '').trim(),
+                details: String(entry.details || '').trim(),
+                createdAt: entry.createdAt instanceof Date ? entry.createdAt : new Date(entry.createdAt || Date.now())
+              };
+            } catch (err) {
+              console.warn('⚠️ Error processing manzil entry:', err);
+              return null;
+            }
+          })
+          .filter((e): e is ClassworkPhase => e !== null)
       };
+
+      // Validate homework structure
+      const homeworkData = {
+        enabled: Boolean(homework.enabled),
+        content: String(homework.content || '').trim(),
+        link: String(homework.link || '').trim()
+      };
+
+      // Validate user role
+      const userRole = user.role === 'superadmin' ? 'super_admin' : 
+                      (user.role === 'admin' ? 'admin' : 
+                      (user.role === 'teacher' ? 'teacher' : 'admin'));
 
       // Simplified homework - just content and link
       const assignmentData: Assignment = {
         id: assignmentId || '',
-        studentId: student.id,
-        studentName: student.fullName,
-        assignedBy: user.id || '',
-        assignedByName: user.name || user.email || 'Unknown',
-        assignedByRole: (user.role === 'superadmin' ? 'super_admin' : user.role) as 'admin' | 'super_admin' | 'teacher',
+        studentId: String(student.id || '').trim(),
+        studentName: String(student.fullName || 'Unknown').trim(),
+        assignedBy: String(user.id || '').trim(),
+        assignedByName: String(user.name || user.email || 'Unknown').trim(),
+        assignedByRole: userRole as 'admin' | 'super_admin' | 'teacher',
         classwork: classworkWithTimestamps,
         // ✅ FIX: Removed invalid fields sabqiContent and manzilContent (not in MongoDB schema)
-        homework: {
-          enabled: homework.enabled,
-          content: homework.content || '',
-          link: homework.link || ''
-        },
-        comment: comment.trim(),
+        homework: homeworkData,
+        comment: String(comment || '').trim(),
         mushafMistakes: mushafMistakes.length > 0 ? mushafMistakes : undefined,
         status: 'active'
       };
+
+      // Final validation before save
+      if (!assignmentData.studentId || assignmentData.studentId.trim() === '') {
+        throw new Error('Student ID is missing. Please refresh the page.');
+      }
+
+      if (!assignmentData.assignedBy || assignmentData.assignedBy.trim() === '') {
+        throw new Error('User ID is missing. Please log in again.');
+      }
 
       if (import.meta.env.DEV) {
         console.log('📤 Assignment data being saved:', {
@@ -735,13 +1105,25 @@ const EnhancedAssignmentForm: React.FC<EnhancedAssignmentFormProps> = ({
       // Small delay to ensure state updates propagate before closing
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      onSave();
-    } catch (error) {
-      if (import.meta.env.DEV) {
-      console.error('Error saving assignment:', error);
+      // Small delay to ensure state updates propagate before closing
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (onSave && typeof onSave === 'function') {
+        onSave();
       }
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save assignment. Please try again.';
+    } catch (error) {
+      console.error('❌ Error saving assignment:', error);
+      let errorMessage = 'Failed to save assignment. Please try again.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
       alert(errorMessage);
+      
+      // Don't close the form on error - let user fix and retry
     } finally {
       setIsSaving(false);
     }

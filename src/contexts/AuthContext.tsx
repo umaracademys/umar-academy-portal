@@ -197,7 +197,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
   }, [user, isTokenExpired, logout]);
 
-  const login = async (email: string, password: string, role?: UserRole): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     setError(null);
     
     // Validate inputs before making request
@@ -210,15 +210,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
       const loginUrl = `${API_BASE}/auth/login`;
       
-      console.log('🔐 Attempting login:', { email, role, url: loginUrl });
+      console.log('🔐 Attempting login:', { email, url: loginUrl });
       
       // Use secure login endpoint with password verification
+      // Role is now optional - backend will auto-detect from user account
       const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, role }),
+        body: JSON.stringify({ email, password }),
       });
 
       // Log response status for debugging
@@ -226,10 +227,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (!response.ok) {
         let errorMessage = 'Invalid credentials. Please try again.';
+        let accountLocked = false;
+        let minutesRemaining = null;
+        let errorData: any = {};
         
         try {
-          const errorData = await response.json();
+          errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          accountLocked = errorData.accountLocked || false;
+          minutesRemaining = errorData.minutesRemaining || null;
           console.warn('⚠️ Login error response:', errorData);
         } catch (parseError) {
           // If response is not JSON, try to get text
@@ -244,17 +250,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
         
-        // Read error response once (can only read response body once)
-        let errorData: any = {};
-        try {
-          errorData = await response.json().catch(() => ({}));
-        } catch (e) {
-          // Ignore parse errors
-        }
-
-        // Check if account is locked
-        const accountLocked = errorData.accountLocked || false;
-        const minutesRemaining = errorData.minutesRemaining || null;
+        // Check if account is locked (using variables already set above)
         const canRequestUnlock = errorData.canRequestUnlock || false;
         
         if (accountLocked) {

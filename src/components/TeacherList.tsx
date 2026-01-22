@@ -24,7 +24,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
   onAnalytics, 
   onBulkOperations 
 }) => {
-  const { teachers: teachersFromContext, students, getStudentsByTeacher } = useData();
+  const { teachers: teachersFromContext, students, getStudentsByTeacher, refreshData } = useData();
   const teachers = teachersProp || teachersFromContext;
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
@@ -257,12 +257,14 @@ const TeacherList: React.FC<TeacherListProps> = ({
               Edit
             </button>
           )}
-          <button
-            onClick={() => onDeleteTeacher(teacher.id)}
-            className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
-          >
-            Delete
-          </button>
+          {!teacher.isAdmin && (
+            <button
+              onClick={() => onDeleteTeacher(teacher.id)}
+              className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+            >
+              Delete
+            </button>
+          )}
           {onCredentials && (
             <button
               onClick={() => onCredentials(teacher)}
@@ -406,12 +408,14 @@ const TeacherList: React.FC<TeacherListProps> = ({
                 Edit
               </button>
             )}
-            <button
-              onClick={() => data.onDeleteTeacher(teacher.id)}
-              className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
-            >
-              Del
-            </button>
+            {!teacher.isAdmin && (
+              <button
+                onClick={() => data.onDeleteTeacher(teacher.id)}
+                className="px-2 py-1 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors"
+              >
+                Del
+              </button>
+            )}
             {data.onCredentials && (
               <button
                 onClick={() => data.onCredentials(teacher)}
@@ -455,6 +459,20 @@ const TeacherList: React.FC<TeacherListProps> = ({
               >
                 <span className="mr-2">+</span>
                 Add Teacher
+              </Button>
+            )}
+            {refreshData && (
+              <Button
+                onClick={async () => {
+                  if (refreshData) {
+                    await refreshData();
+                  }
+                }}
+                variant="outline"
+                size="md"
+                title="Refresh data from database"
+              >
+                🔄 Refresh
               </Button>
             )}
             <Button variant="outline" size="md">

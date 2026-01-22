@@ -1893,7 +1893,42 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Apply data masking if current user is a developer account
       let finalStudentsData = studentsData;
       let finalTeachersData = teachersData;
-      let finalAdminsData = adminsData;
+      // ✅ FIX: Deduplicate admins by email (normalized) and by _id before using
+      const seenAdminEmails = new Set<string>();
+      const seenAdminIds = new Set<string>();
+      const deduplicatedAdmins: any[] = [];
+      const duplicateAdmins: any[] = [];
+      
+      for (const admin of adminsData) {
+        const normalizedEmail = admin.email?.toLowerCase().trim();
+        const adminId = admin._id?.toString() || admin.id?.toString() || '';
+        
+        // Check for duplicates by email or ID
+        const isDuplicateByEmail = normalizedEmail && seenAdminEmails.has(normalizedEmail);
+        const isDuplicateById = adminId && seenAdminIds.has(adminId);
+        
+        if (isDuplicateByEmail || isDuplicateById) {
+          duplicateAdmins.push(admin);
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ Duplicate admin detected:', {
+              fullName: admin.fullName,
+              email: admin.email,
+              id: adminId,
+              duplicateBy: isDuplicateByEmail ? 'email' : 'id'
+            });
+          }
+        } else {
+          if (normalizedEmail) seenAdminEmails.add(normalizedEmail);
+          if (adminId) seenAdminIds.add(adminId);
+          deduplicatedAdmins.push(admin);
+        }
+      }
+      
+      if (duplicateAdmins.length > 0) {
+        console.warn(`⚠️ Removed ${duplicateAdmins.length} duplicate admin(s) from display`);
+      }
+      
+      let finalAdminsData = deduplicatedAdmins;
       
       try {
         // Use currentUser from AuthContext, fallback to localStorage if needed
@@ -1983,15 +2018,31 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         const finalStudents = Array.from(studentMap.values());
         
-        // Final deduplication check - ensure no duplicate IDs
+        // Final deduplication check - ensure no duplicate IDs or emails
         const seenIds = new Set<string>();
+        const seenEmails = new Set<string>();
         const deduplicatedStudents = finalStudents.filter(s => {
-          if (!s.id) return false;
-          if (seenIds.has(s.id)) {
-            console.warn('⚠️ Removing duplicate student:', s.id, s.fullName);
+          if (!s.id) {
+            console.warn('⚠️ Removing student without ID:', s.fullName, s.email);
             return false;
           }
+          
+          const normalizedEmail = s.email?.toLowerCase().trim();
+          const isDuplicateById = seenIds.has(s.id);
+          const isDuplicateByEmail = normalizedEmail && seenEmails.has(normalizedEmail);
+          
+          if (isDuplicateById || isDuplicateByEmail) {
+            console.warn('⚠️ Removing duplicate student:', {
+              id: s.id,
+              fullName: s.fullName,
+              email: s.email,
+              duplicateBy: isDuplicateById ? 'id' : 'email'
+            });
+            return false;
+          }
+          
           seenIds.add(s.id);
+          if (normalizedEmail) seenEmails.add(normalizedEmail);
           return true;
         });
         
@@ -2088,12 +2139,76 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         
         return Array.from(teacherMap.values());
       });
-      // Only update admins if we have data (prevent clearing existing data)
-      if (finalAdminsData.length > 0 || admins.length === 0) {
-        setAdmins(finalAdminsData);
-      } else if (import.meta.env.DEV) {
-        console.warn('⚠️ Skipping admins update - new data is empty but existing data exists');
-      }
+      
+      // ✅ FIX: Deduplicate admins when merging with existing data
+      setAdmins(prev => {
+        if (finalAdminsData.length === 0 && prev.length > 0) {
+          if (import.meta.env.DEV) {
+            console.warn('⚠️ New admins data is empty, preserving existing admins');
+          }
+          return prev; // Preserve existing admins if new data is empty
+        }
+        
+        // Deduplicate by email and ID
+        const seenEmails = new Set<string>();
+        const seenIds = new Set<string>();
+        const deduplicatedAdmins: any[] = [];
+        const duplicates: any[] = [];
+        
+        // First, add existing admins to tracking sets
+        prev.forEach(admin => {
+          const email = admin.email?.toLowerCase().trim();
+          const id = (admin as any)._id?.toString() || admin.id?.toString() || '';
+          if (email) seenEmails.add(email);
+          if (id) seenIds.add(id);
+        });
+        
+        // Then, add new admins only if they don't conflict
+        for (const admin of finalAdminsData) {
+          const normalizedEmail = admin.email?.toLowerCase().trim();
+          const adminId = (admin as any)._id?.toString() || admin.id?.toString() || '';
+          
+          const isDuplicateByEmail = normalizedEmail && seenEmails.has(normalizedEmail);
+          const isDuplicateById = adminId && seenIds.has(adminId);
+          
+          if (isDuplicateByEmail || isDuplicateById) {
+            duplicates.push(admin);
+            if (import.meta.env.DEV) {
+              console.warn('⚠️ Duplicate admin detected during merge:', {
+                fullName: admin.fullName,
+                email: admin.email,
+                id: adminId,
+                duplicateBy: isDuplicateByEmail ? 'email' : 'id'
+              });
+            }
+          } else {
+            if (normalizedEmail) seenEmails.add(normalizedEmail);
+            if (adminId) seenIds.add(adminId);
+            deduplicatedAdmins.push(admin);
+          }
+        }
+        
+        if (duplicates.length > 0) {
+          console.warn(`⚠️ Removed ${duplicates.length} duplicate admin(s) during merge`);
+        }
+        
+        // Merge with existing: update existing admins, add new ones
+        const adminMap = new Map<string, any>(prev.map(a => [a.id || (a as any)._id || '', a]));
+        deduplicatedAdmins.forEach((newAdmin: any) => {
+          const key = newAdmin.id || (newAdmin as any)._id || '';
+          const existing = adminMap.get(key);
+          if (existing) {
+            adminMap.set(key, {
+              ...existing,
+              ...newAdmin
+            });
+          } else {
+            adminMap.set(key, newAdmin);
+          }
+        });
+        
+        return Array.from(adminMap.values());
+      });
       
       // PHASE 1 COMPLETE - Critical data loaded! Show UI immediately
       // Set loading to false NOW so dashboard can render
@@ -4406,30 +4521,55 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       mistakeSeverity?: number | 'weak';
       tajweedIssues?: any[];
       reviewNotes?: string;
+      atkees?: number;
     }
   ): Promise<Ticket> => {
     try {
+      console.log('📤 Submitting ticket:', { id, dataKeys: Object.keys(data), mistakesCount: data.mistakes?.length || 0 });
+      
       const response = await fetch(`${API_BASE}/tickets/${id}/submit`, {
         method: 'POST',
         headers: getAuthHeaders(), // Use getAuthHeaders() to include authentication token
         body: JSON.stringify(data)
       });
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to submit ticket' }));
-        throw new Error(errorData.error || 'Failed to submit ticket');
+        let errorMessage = 'Failed to submit ticket';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          console.error('❌ Ticket submission error:', errorData);
+        } catch (parseError) {
+          const textError = await response.text().catch(() => '');
+          errorMessage = textError || errorMessage;
+          console.error('❌ Ticket submission error (non-JSON):', textError);
+        }
+        throw new Error(errorMessage);
       }
+      
       const ticket = await response.json();
+      console.log('✅ Ticket submitted successfully:', { id: ticket.id || ticket._id, status: ticket.status });
+      
       const mappedTicket = {
         ...ticket,
         id: ticket._id || ticket.id,
         submittedAt: ticket.submittedAt ? new Date(ticket.submittedAt) : undefined
       };
+      
+      // Update tickets in state
       setRecitationTickets(prev => prev.map(t => t.id === id ? mappedTicket : t));
-      await refreshData();
+      
+      // Invalidate tickets cache to ensure fresh data
+      dataCache.delete('tickets');
+      
+      // Refresh data to get latest ticket status
+      await refreshDataLight();
+      
       return mappedTicket;
     } catch (error) {
-      console.error('Error submitting ticket:', error);
-      throw error;
+      console.error('❌ Error submitting ticket:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit ticket';
+      throw new Error(errorMessage);
     }
   };
 
@@ -5283,12 +5423,38 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       const response = await fetch(`${API_BASE}/students/${studentId}/personal-mushaf`, {
         headers: getAuthHeaders()
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch personal Mushaf');
+        let errorMessage = 'Failed to fetch personal Mushaf';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+          
+          // If it's a 403, provide more helpful message
+          if (response.status === 403) {
+            console.warn('⚠️ Access denied to student personal Mushaf:', {
+              studentId,
+              error: errorMessage,
+              hint: 'Teacher may not be assigned to this student'
+            });
+          }
+        } catch (parseError) {
+          // Ignore parse errors
+        }
+        
+        // For 403 errors, return empty data instead of throwing (graceful degradation)
+        if (response.status === 403) {
+          console.warn('⚠️ Returning empty personal Mushaf due to access restriction');
+          return { studentId, studentName: '', mistakes: [] };
+        }
+        
+        throw new Error(errorMessage);
       }
+      
       return await response.json();
     } catch (error) {
       console.error('Error fetching personal Mushaf:', error);
+      // Return empty data instead of throwing to prevent UI crashes
       return { studentId, studentName: '', mistakes: [] };
     }
   };
