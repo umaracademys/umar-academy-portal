@@ -152,6 +152,7 @@ const SuperAdminDashboard: React.FC = () => {
   // Debug: Log when showTicketReview changes
   useEffect(() => {
     console.log('🔍 SuperAdminDashboard: showTicketReview changed to:', showTicketReview);
+    console.log('🔍 SuperAdminDashboard: Stack trace:', new Error().stack);
   }, [showTicketReview]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
@@ -377,7 +378,9 @@ const SuperAdminDashboard: React.FC = () => {
       description: 'Review and approve submitted tickets from teachers.',
       action: () => {
         console.log('🖱️ SuperAdminDashboard: Review Tickets button clicked, opening modal');
+        console.log('🖱️ Current showTicketReview state:', showTicketReview);
         setShowTicketReview(true);
+        console.log('🖱️ Set showTicketReview to true');
       },
       footer: `${pendingTicketCount} pending`,
     },
@@ -1164,6 +1167,16 @@ const SuperAdminDashboard: React.FC = () => {
         <Suspense fallback={<ModalLoadingFallback />}>
           <AdminNotificationCenter
             onClose={() => setShowNotificationCenter(false)}
+            onOpenTicketReview={() => {
+              console.log('🔔 SuperAdminDashboard: Opening ticket review from notification');
+              setShowNotificationCenter(false);
+              setShowTicketReview(true);
+            }}
+            onOpenRecitationReview={() => {
+              console.log('🔔 SuperAdminDashboard: Opening recitation review from notification');
+              setShowNotificationCenter(false);
+              // TODO: Add recitation review modal if needed
+            }}
           />
         </Suspense>
       )}
