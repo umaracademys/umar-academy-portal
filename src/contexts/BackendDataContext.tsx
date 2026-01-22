@@ -368,6 +368,27 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Helper function to fetch with timeout and auth headers
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000, requireAuth = true) => {
+    // Check if token exists when auth is required
+    if (requireAuth) {
+      const token = getAuthToken();
+      if (!token) {
+        if (import.meta.env.DEV) {
+          console.warn(`⚠️ No auth token available for ${url}, but requireAuth=true`);
+        }
+        // Don't make the request if token is missing and auth is required
+        const errorResponse = new Response(
+          JSON.stringify({ error: 'Access token required' }),
+          { status: 401, statusText: 'Unauthorized' }
+        );
+        // Auto-logout if token is missing
+        if (currentUser) {
+          console.log('🔄 No auth token found - logging out user');
+          logout();
+        }
+        return errorResponse;
+      }
+    }
+    
     const controller = new AbortController();
     const id = setTimeout(() => {
       // Only log timeout warnings in development mode
@@ -384,6 +405,21 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       Object.entries(authHeaders).forEach(([key, value]) => {
         headers.set(key, value);
       });
+      // Double-check that Authorization header was set
+      if (!headers.has('Authorization')) {
+        if (import.meta.env.DEV) {
+          console.error(`❌ Authorization header missing for ${url}`);
+        }
+        const errorResponse = new Response(
+          JSON.stringify({ error: 'Access token required' }),
+          { status: 401, statusText: 'Unauthorized' }
+        );
+        if (currentUser) {
+          console.log('🔄 Authorization header missing - logging out user');
+          logout();
+        }
+        return errorResponse;
+      }
     } else {
       headers.set('Content-Type', 'application/json');
     }
@@ -449,6 +485,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (import.meta.env.DEV) {
         console.log('⏸️ loadData skipped - no user logged in');
       }
+      setLoading(false);
+      isLoadingRef.current = false;
+      return;
+    }
+    
+    // Check if token exists before making authenticated requests
+    const token = getAuthToken();
+    if (!token) {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ loadData skipped - no auth token available');
+      }
+      console.log('🔄 No auth token found during loadData - logging out user');
+      logout();
       setLoading(false);
       isLoadingRef.current = false;
       return;
@@ -2456,6 +2505,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (import.meta.env.DEV) {
         console.log('⏸️ Light refresh skipped - data load already in progress');
       }
+      return;
+    }
+
+    // Check if user and token exist before making authenticated requests
+    if (!currentUser) {
+      if (import.meta.env.DEV) {
+        console.log('⏸️ Light refresh skipped - no user logged in');
+      }
+      return;
+    }
+    
+    const token = getAuthToken();
+    if (!token) {
+      if (import.meta.env.DEV) {
+        console.warn('⚠️ Light refresh skipped - no auth token available');
+      }
+      console.log('🔄 No auth token found during light refresh - logging out user');
+      logout();
       return;
     }
 
