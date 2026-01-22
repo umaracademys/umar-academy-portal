@@ -368,7 +368,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   // Helper function to fetch with timeout and auth headers
   const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 10000, requireAuth = true) => {
-    // Check if token exists when auth is required
+    // Check if token exists when auth is required - do this FIRST before any async operations
     if (requireAuth) {
       const token = getAuthToken();
       if (!token) {
@@ -376,16 +376,22 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           console.warn(`⚠️ No auth token available for ${url}, but requireAuth=true`);
         }
         // Don't make the request if token is missing and auth is required
-        const errorResponse = new Response(
-          JSON.stringify({ error: 'Access token required' }),
-          { status: 401, statusText: 'Unauthorized' }
-        );
-        // Auto-logout if token is missing
+        // Return a rejected promise instead of a fake Response to prevent confusion
+        const error = new Error('Access token required');
+        (error as any).status = 401;
+        (error as any).response = {
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ error: 'Access token required' })
+        };
+        // Auto-logout if token is missing (but don't block on it)
         if (currentUser) {
           console.log('🔄 No auth token found - logging out user');
-          logout();
+          // Use setTimeout to avoid blocking and potential race conditions
+          setTimeout(() => logout(), 0);
         }
-        return errorResponse;
+        throw error;
       }
     }
     
@@ -401,6 +407,24 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Add auth headers if required
     const headers = new Headers(options.headers as HeadersInit);
     if (requireAuth) {
+      // Re-check token right before setting headers (in case it was cleared between checks)
+      const token = getAuthToken();
+      if (!token) {
+        const error = new Error('Access token required');
+        (error as any).status = 401;
+        (error as any).response = {
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ error: 'Access token required' })
+        };
+        if (currentUser) {
+          console.log('🔄 Token cleared before request - logging out user');
+          setTimeout(() => logout(), 0);
+        }
+        throw error;
+      }
+      
       const authHeaders = getAuthHeaders();
       Object.entries(authHeaders).forEach(([key, value]) => {
         headers.set(key, value);
@@ -410,15 +434,19 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         if (import.meta.env.DEV) {
           console.error(`❌ Authorization header missing for ${url}`);
         }
-        const errorResponse = new Response(
-          JSON.stringify({ error: 'Access token required' }),
-          { status: 401, statusText: 'Unauthorized' }
-        );
+        const error = new Error('Access token required');
+        (error as any).status = 401;
+        (error as any).response = {
+          ok: false,
+          status: 401,
+          statusText: 'Unauthorized',
+          json: async () => ({ error: 'Access token required' })
+        };
         if (currentUser) {
           console.log('🔄 Authorization header missing - logging out user');
-          logout();
+          setTimeout(() => logout(), 0);
         }
-        return errorResponse;
+        throw error;
       }
     } else {
       headers.set('Content-Type', 'application/json');
