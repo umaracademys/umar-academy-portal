@@ -2379,6 +2379,27 @@ const validateAssignmentOwnership = async (req, res, next) => {
   }
 };
 
+// Helper function to find ticket by ID (handles both _id and id field)
+// ✅ Moved here so it's available to validateTicketOwnership middleware
+const findTicketById = async (ticketId) => {
+  // ✅ PHASE 1 OPTIMIZATION: Use optimized $or query with .lean() for better performance
+  // Try all possible ID formats in a single query instead of multiple queries
+  const queries = [
+    { _id: ticketId },
+    { id: ticketId }
+  ];
+  
+  // If it looks like an ObjectId, also try as ObjectId
+  if (mongoose.Types.ObjectId.isValid(ticketId)) {
+    queries.push({ _id: new mongoose.Types.ObjectId(ticketId) });
+  }
+  
+  // ✅ Single query with $or - much faster than multiple queries
+  const ticket = await Ticket.findOne({ $or: queries }).lean();
+  
+  return ticket;
+};
+
 /**
  * Ownership validation for tickets
  * Rules:
