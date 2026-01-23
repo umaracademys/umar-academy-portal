@@ -2976,31 +2976,33 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (!userResponse.ok) {
         // Check if user already exists (409 Conflict)
         if (userResponse.status === 409) {
-          // User already exists - fetch the existing user by email
+          // User already exists - backend returns existingUserId in response
           // This is expected behavior, not an error
           try {
-            const usersResponse = await fetchWithTimeout(
-              `${API_BASE}/users`,
-              {
-                method: 'GET',
-              },
-              10000,
-              true // requireAuth = true
-            );
+            const errorData = await userResponse.json();
+            const existingUserId = errorData.existingUserId;
             
-            if (usersResponse.ok) {
-              const users = await usersResponse.json();
-              const existingUser = users.find((u: any) => u.email === student.email);
-              if (existingUser) {
-                newUser = existingUser;
+            if (existingUserId) {
+              // Fetch the existing user by ID (more efficient and reliable than fetching all users)
+              const existingUserResponse = await fetchWithTimeout(
+                `${API_BASE}/users/${existingUserId}`,
+                {
+                  method: 'GET',
+                },
+                10000,
+                true // requireAuth = true
+              );
+              
+              if (existingUserResponse.ok) {
+                newUser = await existingUserResponse.json();
                 if (import.meta.env.DEV) {
-                  console.log(`✅ Found existing user for email ${student.email}, using existing user ID`);
+                  console.log(`✅ Found existing user for email ${student.email}, using existing user ID: ${existingUserId}`);
                 }
               } else {
-                throw new Error('User with that email already exists, but could not find the user record.');
+                throw new Error('Failed to fetch existing user by ID');
               }
             } else {
-              throw new Error('Failed to fetch existing user');
+              throw new Error('User with that email already exists, but existingUserId was not provided in response');
             }
           } catch (error) {
             throw new Error(`User with email ${student.email} already exists, but could not retrieve the user record: ${error instanceof Error ? error.message : 'Unknown error'}`);
