@@ -354,7 +354,8 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   };
 
   // Human-readable status mapping
-  const getHumanReadableStatus = (status: string): string => {
+  const getHumanReadableStatus = (status: string | undefined): string => {
+    if (!status) return 'Unknown';
     const statusMap: Record<string, string> = {
       pending: 'Waiting for Teacher',
       in_progress: 'Being Reviewed',
@@ -394,7 +395,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
     );
     const hasDuplicates = duplicates.length > 0;
 
-    let description = `Are you sure you want to delete this ${ticket.type.toUpperCase()} ticket for ${ticket.studentName}?`;
+    let description = `Are you sure you want to delete this ${(ticket.type || 'TICKET').toUpperCase()} ticket for ${ticket.studentName}?`;
     if (hasDuplicates) {
       description += `\n\n⚠️ Warning: There ${duplicates.length === 1 ? 'is' : 'are'} ${duplicates.length} duplicate ticket(s) for this student.`;
     }
@@ -471,7 +472,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                   </h2>
                   <p className="text-white/90 text-[10px] sm:text-xs mt-0.5 font-medium">
                     {selectedTicket 
-                      ? `${selectedTicket.studentName} • ${selectedTicket.type.toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
+                      ? `${selectedTicket.studentName} • ${(selectedTicket.type || 'TICKET').toUpperCase()} • ${selectedTicket.mistakes?.length || 0} mistake(s)`
                       : `${pendingTickets.length} ticket${pendingTickets.length !== 1 ? 's' : ''} awaiting your review${sentTickets.length > 0 ? ` • ${sentTickets.length} sent ticket${sentTickets.length !== 1 ? 's' : ''}` : ''}`
                     }
                   </p>
@@ -575,7 +576,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                               <div className="flex-1">
                                 <div className="flex items-center gap-1.5 mb-2">
                                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
-                                    {ticket.type.toUpperCase()}
+                                    {(ticket.type || 'TICKET').toUpperCase()}
                                   </span>
                                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${
                                     ticket.status === 'sent_to_assignment' 
@@ -584,7 +585,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                                       ? 'bg-yellow-500 text-yellow-50'
                                       : 'bg-gray-500 text-gray-50'
                                   } shadow-md`}>
-                                    {getHumanReadableStatus(ticket.status).toUpperCase()}
+                                    {getHumanReadableStatus(ticket.status || undefined).toUpperCase()}
                                   </span>
                                 </div>
                                 <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
@@ -709,10 +710,10 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                               <div className="flex-1">
                                 <div className="flex items-center gap-1.5 mb-2">
                                   <span className={`px-2 py-0.5 rounded-lg text-[10px] font-extrabold ${colors.bg} ${colors.text} shadow-md`}>
-                                    {ticket.type.toUpperCase()}
+                                    {(ticket.type || 'TICKET').toUpperCase()}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-extrabold bg-yellow-500 text-yellow-50 shadow-md">
-                                    {getHumanReadableStatus(ticket.status).toUpperCase()}
+                                    {getHumanReadableStatus(ticket.status || undefined).toUpperCase()}
                                   </span>
                                 </div>
                                 <h4 className="text-sm font-extrabold text-primary mb-0.5 group-hover:text-primary/80 transition-colors">
@@ -859,7 +860,7 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
                       selectedTicket.type === 'sabqi' ? 'bg-blue-500' :
                       'bg-purple-500'
                     }`}>
-                      {selectedTicket.type.toUpperCase().charAt(0)}
+                      {((selectedTicket.type || 'TICKET').toUpperCase().charAt(0))}
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-primary">{selectedTicket.studentName}</h3>
