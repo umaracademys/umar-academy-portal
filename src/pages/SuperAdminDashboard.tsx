@@ -149,10 +149,13 @@ const SuperAdminDashboard: React.FC = () => {
   const [showNotificationCenter, setShowNotificationCenter] = useState(false);
   const [showTicketReview, setShowTicketReview] = useState(false);
   
-  // Debug: Log when showTicketReview changes
+  // Debug: Log when showTicketReview changes (only log actual changes, not every render)
+  const prevShowTicketReviewRef = useRef(showTicketReview);
   useEffect(() => {
-    console.log('🔍 SuperAdminDashboard: showTicketReview changed to:', showTicketReview);
-    console.log('🔍 SuperAdminDashboard: Stack trace:', new Error().stack);
+    if (prevShowTicketReviewRef.current !== showTicketReview) {
+      console.log('🔍 SuperAdminDashboard: showTicketReview changed from', prevShowTicketReviewRef.current, 'to', showTicketReview);
+      prevShowTicketReviewRef.current = showTicketReview;
+    }
   }, [showTicketReview]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
@@ -1182,25 +1185,16 @@ const SuperAdminDashboard: React.FC = () => {
       )}
 
       {/* Ticket Review Modal */}
-      {(() => {
-        console.log('🔍 SuperAdminDashboard: Checking showTicketReview:', showTicketReview);
-        if (showTicketReview) {
-          console.log('✅ SuperAdminDashboard: Rendering AdminTicketReview modal');
-          return (
-            <Suspense fallback={<ModalLoadingFallback />}>
-              <AdminTicketReview
-                onClose={() => {
-                  console.log('🔄 SuperAdminDashboard: Closing ticket review modal');
-                  setShowTicketReview(false);
-                }}
-              />
-            </Suspense>
-          );
-        } else {
-          console.log('❌ SuperAdminDashboard: showTicketReview is FALSE, modal not rendering');
-          return null;
-        }
-      })()}
+      {showTicketReview && (
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <AdminTicketReview
+            onClose={() => {
+              console.log('🔄 SuperAdminDashboard: Closing ticket review modal');
+              setShowTicketReview(false);
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Debug Panel */}
       {isDevelopment && DebugPanel && (
