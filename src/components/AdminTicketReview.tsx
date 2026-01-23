@@ -185,12 +185,15 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
         throw new Error('No authentication token found');
       }
       
+      console.log('🌐 Making API call to fetch full ticket:', `${API_BASE}/tickets/${ticketId}`);
       const fullTicketResponse = await fetch(`${API_BASE}/tickets/${ticketId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
+      
+      console.log('🌐 API Response status:', fullTicketResponse.status, fullTicketResponse.statusText);
       
       if (!fullTicketResponse.ok) {
         const errorData = await fullTicketResponse.json().catch(() => ({ error: `HTTP ${fullTicketResponse.status}` }));
@@ -203,20 +206,19 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
       }
       
       const fullTicket = await fullTicketResponse.json();
+      console.log('✅ API Response received, parsing ticket data');
       const mappedFullTicket = {
         ...fullTicket,
         id: fullTicket._id?.toString() || fullTicket.id?.toString() || ticketId
       };
       
-      if (import.meta.env.DEV) {
-        console.log('✅ AdminTicketReview: Fetched full ticket data:', mappedFullTicket);
-        console.log('🔍 Ticket ID mapping:', { 
-          originalTicketId: ticketId, 
-          fetchedId: mappedFullTicket.id,
-          _id: fullTicket._id?.toString(),
-          id: fullTicket.id?.toString()
-        });
-      }
+      console.log('✅ AdminTicketReview: Fetched full ticket data:', mappedFullTicket);
+      console.log('🔍 Ticket ID mapping:', { 
+        originalTicketId: ticketId, 
+        fetchedId: mappedFullTicket.id,
+        _id: fullTicket._id?.toString(),
+        id: fullTicket.id?.toString()
+      });
       
       // Store full ticket data
       setFullTicketData(mappedFullTicket);
