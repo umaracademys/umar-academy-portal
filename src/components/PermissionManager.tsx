@@ -84,6 +84,11 @@ const ADMIN_PERMISSION_GROUP_METADATA: Record<
     description:
       'Manage messaging system access, moderation, and oversight capabilities.',
   },
+  'Attendance Module': {
+    icon: '📅',
+    description:
+      'Manage teacher attendance recording, viewing, and reporting permissions.',
+  },
 };
 
 /**
@@ -118,9 +123,11 @@ function mapModuleToGroup(module: string): string {
 
 /**
  * SIMPLIFIED: Only show core permissions
- * Student, Teacher, Homework, Assignment, Ticket, Message
+ * Student, Teacher, Homework, Assignment, Ticket, Message, Attendance
  */
 const CORE_TEACHER_PERMISSION_KEYS = [
+  // Student Information
+  'canViewStudentPersonalInfo',
   // Homework
   'canAccessHomework',
   'canCreateHomework',
@@ -140,6 +147,10 @@ const CORE_TEACHER_PERMISSION_KEYS = [
   'canAccessMessages',
   'canSendMessages',
   'canViewAllMessages',
+  // Attendance
+  'canAccessAttendance',
+  'canRecordAttendance',
+  'canViewAttendanceReports',
 ];
 
 const CORE_ADMIN_PERMISSION_KEYS = [
@@ -148,16 +159,10 @@ const CORE_ADMIN_PERMISSION_KEYS = [
   'canManageTeachers',
   // Homework
   'canAccessHomework',
-  'canCreateHomework',
-  'canGradeHomework',
-  'canViewHomeworkSubmissions',
   'canManageHomework',
   'canViewAllHomework',
   // Assignment
   'canAccessAssignments',
-  'canCreateAssignments',
-  'canEditAssignments',
-  'canDeleteAssignments',
   'canManageAssignments',
   // Ticket
   'canAccessTickets',
@@ -166,9 +171,12 @@ const CORE_ADMIN_PERMISSION_KEYS = [
   'canApproveTickets',
   // Message
   'canAccessMessages',
-  'canSendMessages',
   'canViewAllMessages',
   'canModerateMessages',
+  // Attendance
+  'canAccessAttendance',
+  'canManageAttendance',
+  'canViewAttendanceReports',
 ];
 
 // Filter to only show core permissions for teachers

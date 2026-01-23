@@ -351,6 +351,14 @@ const SuperAdminDashboard: React.FC = () => {
       footer: `${totalAdmins} admins`,
     },
     {
+      id: 'teacher-attendance',
+      badge: '📅',
+      title: 'Teacher Attendance',
+      description: 'Manage and track teacher attendance records.',
+      action: () => navigate('/teacher-attendance'),
+      footer: 'View history',
+    },
+    {
       id: 'permissions',
       badge: 'PM',
       title: 'Permission Manager',

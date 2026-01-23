@@ -244,13 +244,15 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
         // Part Time teacher - update single shift
         if (field.startsWith('shift')) {
           const shiftField = field.replace('shift', '').toLowerCase();
+          // Handle camelCase to snake_case conversion
+          const normalizedField = shiftField === 'lateminutes' ? 'lateMinutes' : shiftField;
           return {
             ...prev,
             [teacherId]: {
               ...current,
               shift: {
                 ...(current.shift || { name: teacher?.shifts?.[0]?.name || 'Default', status: 'absent' as AttendanceStatus }),
-                [shiftField]: value
+                [normalizedField]: value
               }
             }
           };
@@ -371,6 +373,7 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                 status: 'absent' as AttendanceStatus,
                 checkIn: '',
                 checkOut: '',
+                lateMinutes: 0,
                 notes: ''
               }
             })
@@ -775,8 +778,21 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                               <option value="present">Present</option>
                               <option value="absent">Absent</option>
                               <option value="late">Late</option>
-                              <option value="half-day">Half Day</option>
+                              <option value="not_applicable">Not Applicable</option>
                             </select>
+                            {morningShift.status === 'late' && (
+                              <div>
+                                <label className="text-xs text-primary/70 mb-1 block">Minutes Late</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={morningShift.lateMinutes || 0}
+                                  onChange={(e) => updateAttendance(teacher.id, 'morningLateMinutes', parseInt(e.target.value) || 0)}
+                                  placeholder="Minutes"
+                                  className="w-full px-2 py-1 border border-primary rounded text-sm"
+                                />
+                              </div>
+                            )}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="text-xs text-primary/70 mb-1 block">Check In</label>
@@ -828,8 +844,21 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                               <option value="present">Present</option>
                               <option value="absent">Absent</option>
                               <option value="late">Late</option>
-                              <option value="half-day">Half Day</option>
+                              <option value="not_applicable">Not Applicable</option>
                             </select>
+                            {eveningShift.status === 'late' && (
+                              <div>
+                                <label className="text-xs text-primary/70 mb-1 block">Minutes Late</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={eveningShift.lateMinutes || 0}
+                                  onChange={(e) => updateAttendance(teacher.id, 'eveningLateMinutes', parseInt(e.target.value) || 0)}
+                                  placeholder="Minutes"
+                                  className="w-full px-2 py-1 border border-primary rounded text-sm"
+                                />
+                              </div>
+                            )}
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <label className="text-xs text-primary/70 mb-1 block">Check In</label>
@@ -881,8 +910,21 @@ const TeacherAttendanceForm: React.FC<TeacherAttendanceFormProps> = ({
                             <option value="present">Present</option>
                             <option value="absent">Absent</option>
                             <option value="late">Late</option>
-                            <option value="half-day">Half Day</option>
+                            <option value="not_applicable">Not Applicable</option>
                           </select>
+                          {shift.status === 'late' && (
+                            <div>
+                              <label className="text-xs text-primary/70 mb-1 block">Minutes Late</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={shift.lateMinutes || 0}
+                                onChange={(e) => updateAttendance(teacher.id, 'shiftLateMinutes', parseInt(e.target.value) || 0)}
+                                placeholder="Minutes"
+                                className="w-full px-2 py-1 border border-primary rounded text-sm"
+                              />
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <label className="text-xs text-primary/70 mb-1 block">Check In</label>

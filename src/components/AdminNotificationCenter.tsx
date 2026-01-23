@@ -57,7 +57,7 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
         id: `ticket-${ticket.id}`,
         type: 'recitation_review_pending' as any,
         title: 'Ticket Pending Review',
-        message: `${ticket.studentName} - ${ticket.type.toUpperCase()} ticket submitted by ${ticket.assignedTeacherName || 'Teacher'}. Click to review.`,
+        message: `${ticket.studentName} - ${(ticket.type || 'TICKET').toUpperCase()} ticket submitted by ${ticket.assignedTeacherName || 'Teacher'}. Click to review.`,
         recitationReviewId: ticket.id,
         studentId: ticket.studentId,
         read: false,
@@ -75,7 +75,7 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
         id: `recitation-${review.id}`,
         type: 'recitation_review_pending',
         title: 'Recitation Review Pending',
-        message: `${review.studentName} - ${review.recitationType.toUpperCase()} recitation submitted by ${review.teacherName}. Click to review.`,
+        message: `${review.studentName} - ${(review.recitationType || 'RECITATION').toUpperCase()} recitation submitted by ${review.teacherName}. Click to review.`,
         recitationReviewId: review.id,
         studentId: review.studentId,
         read: false,
@@ -388,7 +388,7 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
                           notification.priority === 'medium' ? 'bg-blue-100 text-blue-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {notification.priority.toUpperCase()}
+                          {(notification.priority || 'medium').toUpperCase()}
                         </span>
                         <span className="text-xs text-gray-500">
                           {formatDate(notification.createdAt)}

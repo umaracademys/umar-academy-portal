@@ -415,12 +415,13 @@ export interface Admin {
 }
 
 // Teacher Attendance Types
-export type AttendanceStatus = 'present' | 'absent' | 'late' | 'half-day';
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'not_applicable';
 
 export interface ShiftAttendance {
   status: AttendanceStatus;
   checkIn?: string; // HH:mm format
   checkOut?: string; // HH:mm format
+  lateMinutes?: number; // Minutes late (only if status is 'late')
   notes?: string;
 }
 
@@ -442,12 +443,18 @@ export interface TeacherAttendance {
     status: AttendanceStatus;
     checkIn?: string;
     checkOut?: string;
+    lateMinutes?: number; // Minutes late (only if status is 'late')
     notes?: string;
   };
   
   // Paid days tracking
   paidDays: number;
   isPaid: boolean;
+  
+  // Sharing settings
+  sharedWithTeacher?: boolean;
+  sharedAt?: string | Date;
+  sharedBy?: string;
   
   // Metadata
   recordedBy: string;

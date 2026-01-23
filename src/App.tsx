@@ -30,6 +30,8 @@ const StudentPdfHomework = lazy(() => import('./components/StudentPdfHomework'))
 const TeacherStudentAssignmentManager = lazy(() => import('./components/TeacherStudentAssignmentManager'));
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'));
 const MushafReviewPage = lazy(() => import('./pages/MushafReviewPage'));
+const TeacherAttendanceManagement = lazy(() => import('./pages/TeacherAttendanceManagement'));
+const TeacherAttendanceView = lazy(() => import('./pages/TeacherAttendanceView'));
 
 // Loading component for Suspense
 const LoadingFallback: React.FC = () => (
@@ -193,6 +195,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <MushafReviewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/teacher-attendance"
+          element={
+            <ProtectedRoute>
+              <TeacherAttendanceManagement />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-attendance"
+          element={
+            <ProtectedRoute>
+              <TeacherAttendanceView />
             </ProtectedRoute>
           }
         />

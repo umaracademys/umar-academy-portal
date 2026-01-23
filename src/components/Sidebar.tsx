@@ -71,6 +71,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, onSectionChange, isMob
       items.push({ id: 'permissions', icon: '🔐', label: 'Permissions', badge: null, isLink: true, href: '/permissions' });
     }
     
+    // Add Teacher Attendance Management for admins/superadmins
+    if (user?.role === 'superadmin' || (user?.role === 'admin' && adminPermissions?.canManageAttendance)) {
+      items.push({ id: 'teacher-attendance', icon: '📅', label: 'Teacher Attendance', badge: null, isLink: true, href: '/teacher-attendance' });
+    }
+    
+    // Add My Attendance for teachers
+    if (user?.role === 'teacher') {
+      items.push({ id: 'my-attendance', icon: '📅', label: 'My Attendance', badge: null, isLink: true, href: '/my-attendance' });
+    }
+    
     // Add Assignments if admin has permission
     if (user?.role !== 'admin' || adminPermissions?.canAccessAssignments || adminPermissions?.canManageAssignments) {
       items.push({ id: 'assignments', icon: 'AS', label: 'Assignments', badge: null, isLink: true, href: '/assignments' });
