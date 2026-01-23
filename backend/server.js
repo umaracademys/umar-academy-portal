@@ -2396,6 +2396,24 @@ const validateTicketOwnership = async (req, res, next) => {
       return res.status(400).json({ error: 'Ticket ID is required' });
     }
 
+    console.log(`🔍 [validateTicketOwnership] Checking access for ticket: ${ticketId}, user: ${requestingUserId}, role: ${requestingRole}`);
+
+    // Check if findTicketById is defined
+    if (typeof findTicketById !== 'function') {
+      console.error('❌ [validateTicketOwnership] findTicketById is not defined!');
+      // Fallback to direct Ticket.findById
+      const ticketDoc = await Ticket.findById(ticketId);
+      if (!ticketDoc) {
+        return res.status(404).json({ error: 'Ticket not found' });
+      }
+      // Admins have access to everything
+      if (isAdminOrSuperadmin(requestingRole)) {
+        req.ticket = ticketDoc;
+        return next();
+      }
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     // ✅ FIX: Use findTicketById helper to handle both _id and id formats
     // Get ticket to check studentId and assignedTeacherId
     const ticket = await findTicketById(ticketId);
@@ -2404,12 +2422,19 @@ const validateTicketOwnership = async (req, res, next) => {
       return res.status(404).json({ error: 'Ticket not found' });
     }
     
+    console.log(`✅ [validateTicketOwnership] Ticket found: _id=${ticket._id}, studentId=${ticket.studentId}`);
+    
     // Convert to Mongoose document if needed (findTicketById returns lean object)
     let ticketDoc = ticket;
     if (!ticketDoc.save) {
       // If it's a lean object, fetch as document for middleware use
+      if (!ticket._id) {
+        console.error(`❌ [validateTicketOwnership] Ticket has no _id:`, ticket);
+        return res.status(500).json({ error: 'Invalid ticket data' });
+      }
       ticketDoc = await Ticket.findById(ticket._id);
       if (!ticketDoc) {
+        console.error(`❌ [validateTicketOwnership] Could not fetch ticket document for _id: ${ticket._id}`);
         return res.status(404).json({ error: 'Ticket not found' });
       }
     }
