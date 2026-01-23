@@ -20,6 +20,15 @@ interface AdminTicketReviewProps {
 
 const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   console.log('🚀 AdminTicketReview: Component RENDERED/LOADED');
+  console.log('🚀 AdminTicketReview: onClose function:', typeof onClose, onClose);
+  
+  // Wrap onClose to log when it's called
+  const handleClose = () => {
+    console.log('🚪 AdminTicketReview: handleClose called - closing modal');
+    console.trace('🚪 Stack trace for close call');
+    onClose();
+  };
+  
   const navigate = useNavigate();
   const { recitationTickets, approveAndSendTicket, reassignTicket, teachers, refreshDataLight, updateRecitationTicket, loading } = useBackendData();
   const { user } = useAuth();
@@ -437,7 +446,16 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
   });
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4"
+      onClick={(e) => {
+        // Close on backdrop click
+        if (e.target === e.currentTarget) {
+          console.log('🚪 Backdrop clicked - closing modal');
+          handleClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col border-4 border-accent/30">
         {/* Modern Header with Gradient */}
         <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-br from-[#0f1a12] via-primary to-[rgba(var(--color-primary-rgb),0.95)] border-b-4 border-accent/50 shadow-lg">
@@ -461,7 +479,11 @@ const AdminTicketReview: React.FC<AdminTicketReviewProps> = ({ onClose }) => {
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={(e) => {
+                console.log('🚪 Close button clicked');
+                e.stopPropagation();
+                handleClose();
+              }}
               className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full transition-all hover:scale-110 text-base sm:text-lg font-bold shadow-lg border-2 border-white/30 touch-target"
               title="Close"
               aria-label="Close"
