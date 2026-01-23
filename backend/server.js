@@ -10396,11 +10396,14 @@ app.post('/api/tickets/:id/start', authenticateToken, validateTicketOwnership, a
 });
 
 // Teacher submits ticket (status: in_progress -> submitted)
-app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, async (req, res) => {
+// ✅ FIX: Removed validateTicketOwnership middleware to avoid restrictive filters
+// Ownership validation happens after ticket is fetched
+app.post('/api/tickets/:id/submit', authenticateToken, async (req, res) => {
   try {
     const ticketId = req.params.id;
     console.log(`🔵 [Submit] Submitting ticket with ID: ${ticketId}`);
     console.log(`🔵 [Submit] Ticket ID type: ${typeof ticketId}`);
+    console.log(`🔵 [Submit] User: ${req.user.userId}, Role: ${req.user.role}`);
     
     const { 
       teacherComment, 
@@ -10417,19 +10420,87 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
       reviewNotes
     } = req.body;
     
-    // ✅ FIX: Get ticket first to preserve assignedTeacherId and assignedTeacherName
-    let existingTicket;
+    // ✅ FIX: Fetch ticket ONLY by _id first - no status/expiration filters
+    // This ensures tickets are found even if status changed or expired
+    let ticket;
     if (mongoose.Types.ObjectId.isValid(ticketId)) {
-      existingTicket = await Ticket.findById(ticketId);
+      ticket = await Ticket.findById(ticketId);
+      console.log(`🔍 [Submit] Fetched ticket by _id: ${ticketId}, found: ${!!ticket}`);
     } else {
-      existingTicket = await Ticket.findOne({ id: ticketId });
+      // Fallback: try finding by id field, then get by _id
+      const foundTicket = await Ticket.findOne({ id: ticketId }).select('_id');
+      if (foundTicket) {
+        ticket = await Ticket.findById(foundTicket._id);
+        console.log(`🔍 [Submit] Fetched ticket by id field, then by _id: ${foundTicket._id}, found: ${!!ticket}`);
+      } else {
+        console.error(`❌ [Submit] Ticket not found with ID: ${ticketId} (not a valid ObjectId and no ticket with id field)`);
+        return res.status(404).json({ error: 'Ticket not found' });
+      }
     }
     
-    if (!existingTicket) {
-      console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
+    // ✅ FIX: Return 404 if ticket truly doesn't exist (before any business rule validation)
+    if (!ticket) {
+      console.error(`❌ [Submit] Ticket not found with ID: ${ticketId} after fetch attempt`);
       return res.status(404).json({ error: 'Ticket not found' });
     }
     
+    console.log(`✅ [Submit] Ticket found: _id=${ticket._id}, status=${ticket.status}, studentId=${ticket.studentId}, assignedTeacherId=${ticket.assignedTeacherId}`);
+    
+    // ✅ FIX: Validate ownership AFTER fetching (no restrictive filters in query)
+    const requestingUserId = req.user.userId;
+    const requestingRole = req.user.role;
+    const targetStudentId = ticket.studentId;
+    const assignedTeacherId = ticket.assignedTeacherId;
+    
+    // Admins have access to everything
+    if (!isAdminOrSuperadmin(requestingRole)) {
+      // Students can only access their own tickets
+      if (requestingRole === 'student') {
+        const student = await getStudentByUserId(requestingUserId);
+        if (!student) {
+          return res.status(403).json({ error: 'Student profile not found' });
+        }
+        const studentIdStr = student._id.toString();
+        if (studentIdStr !== targetStudentId.toString()) {
+          return res.status(403).json({ error: 'Access denied. You can only access your own tickets.' });
+        }
+      }
+      // Teachers can access tickets for assigned students OR tickets assigned to them
+      else if (requestingRole === 'teacher') {
+        const teacher = await getTeacherByUserId(requestingUserId);
+        if (!teacher) {
+          return res.status(403).json({ error: 'Teacher profile not found' });
+        }
+        const teacherIdStr = teacher._id.toString();
+        const isAssignedTeacher = assignedTeacherId && assignedTeacherId.toString() === teacherIdStr;
+        const isAssignedToStudent = await isTeacherAssignedToStudent(teacher._id, targetStudentId);
+        
+        if (!isAssignedTeacher && !isAssignedToStudent) {
+          return res.status(403).json({ error: 'Access denied. You can only access tickets for your assigned students or tickets assigned to you.' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Access denied. Invalid role.' });
+      }
+    }
+    
+    // ✅ FIX: Validate business rules AFTER fetching and ownership check
+    // Prevent double submission
+    if (ticket.status === 'submitted') {
+      console.warn(`⚠️ [Submit] Ticket ${ticketId} already submitted at ${ticket.submittedAt}`);
+      return res.status(400).json({ error: 'Ticket has already been submitted' });
+    }
+    
+    // Allow submission even if expired (grace period for long sessions)
+    // Only block if ticket was explicitly cancelled or deleted
+    if (ticket.status === 'cancelled' || ticket.status === 'deleted') {
+      console.warn(`⚠️ [Submit] Ticket ${ticketId} is ${ticket.status}, cannot submit`);
+      return res.status(400).json({ error: `Cannot submit ticket: ticket is ${ticket.status}` });
+    }
+    
+    // Log ticket state before submission
+    console.log(`📋 [Submit] Ticket state before submission: status=${ticket.status}, createdAt=${ticket.createdAt}, startedAt=${ticket.startedAt}`);
+    
+    // ✅ FIX: Build update data - preserve existing fields, update status explicitly
     const updateData = {
       status: 'submitted',
       teacherComment: teacherComment || '',
@@ -10437,17 +10508,16 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
       submittedAt: new Date()
     };
     
-    // ✅ FIX: Preserve assignedTeacherId and assignedTeacherName if they exist
-    // If not set and user is a teacher, set it from the submitting teacher
-    if (existingTicket.assignedTeacherId) {
-      updateData.assignedTeacherId = existingTicket.assignedTeacherId;
+    // Preserve assignedTeacherId and assignedTeacherName if they exist
+    if (ticket.assignedTeacherId) {
+      updateData.assignedTeacherId = ticket.assignedTeacherId;
     }
-    if (existingTicket.assignedTeacherName) {
-      updateData.assignedTeacherName = existingTicket.assignedTeacherName;
+    if (ticket.assignedTeacherName) {
+      updateData.assignedTeacherName = ticket.assignedTeacherName;
     }
     
-    // ✅ FIX: If ticket doesn't have assigned teacher and user is a teacher, assign them
-    if (!existingTicket.assignedTeacherId && req.user.role === 'teacher') {
+    // If ticket doesn't have assigned teacher and user is a teacher, assign them
+    if (!ticket.assignedTeacherId && req.user.role === 'teacher') {
       const teacher = await getTeacherByUserId(req.user.userId);
       if (teacher) {
         updateData.assignedTeacherId = teacher._id.toString();
@@ -10457,7 +10527,6 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
     
     // Add new recitation review fields if provided
     if (recitationRange) {
-      // ✅ FIX: Removed validation - allow any start and end ayah combination
       updateData.recitationRange = recitationRange;
     }
     if (mistakeCount !== undefined && mistakeCount !== null && mistakeCount !== '') {
@@ -10488,45 +10557,33 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
       }
     }
     
-    // ✅ FIX: Use findByIdAndUpdate instead of findTicketById + save()
-    // findTicketById uses .lean() which returns plain object (no .save() method)
-    // findByIdAndUpdate returns Mongoose document and updates in one operation
-    let ticket;
-    if (mongoose.Types.ObjectId.isValid(ticketId)) {
-      ticket = await Ticket.findByIdAndUpdate(
-        ticketId,
-        { $set: updateData },
-        { new: true, runValidators: true }
-      );
-    } else {
-      // If not valid ObjectId, try finding by id field first, then update
-      const foundTicket = await Ticket.findOne({ id: ticketId });
-      if (!foundTicket) {
-        console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
-        return res.status(404).json({ error: 'Ticket not found' });
-      }
-      ticket = await Ticket.findByIdAndUpdate(
-        foundTicket._id,
-        { $set: updateData },
-        { new: true, runValidators: true }
-      );
+    // ✅ FIX: Update ticket using the already-fetched ticket's _id
+    // Use findByIdAndUpdate to ensure atomic update and prevent race conditions
+    console.log(`🔄 [Submit] Updating ticket ${ticket._id} with status: submitted`);
+    const updatedTicket = await Ticket.findByIdAndUpdate(
+      ticket._id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedTicket) {
+      console.error(`❌ [Submit] Failed to update ticket ${ticket._id} - ticket may have been deleted`);
+      return res.status(404).json({ error: 'Ticket not found or could not be updated' });
     }
     
-    if (!ticket) {
-      console.error(`❌ [Submit] Ticket not found with ID: ${ticketId}`);
-      return res.status(404).json({ error: 'Ticket not found' });
-    }
+    console.log(`✅ [Submit] Ticket ${updatedTicket._id} successfully updated to status: ${updatedTicket.status}`);
     
-    console.log(`✅ [Submit] Ticket found and updated: _id=${ticket._id}, id=${ticket.id}, status=${ticket.status}`);
+    // Use updated ticket for response
+    const ticketResponse = updatedTicket;
     
-    console.log(`✅ Ticket ${req.params.id} submitted${recordingUrl ? ' with recording' : ''}`);
+    console.log(`✅ [Submit] Ticket ${ticketResponse._id} submitted${recordingUrl ? ' with recording' : ''}`);
     
     // If ticket is already linked to an assignment, update the assignment with latest review data
-    if (ticket.sentToAssignmentId) {
+    if (ticketResponse.sentToAssignmentId) {
       try {
-        const assignment = await Assignment.findById(ticket.sentToAssignmentId);
+        const assignment = await Assignment.findById(ticketResponse.sentToAssignmentId);
         if (assignment) {
-          updateAssignmentFromTicket(assignment, ticket);
+          updateAssignmentFromTicket(assignment, ticketResponse);
           await assignment.save();
           console.log(`✅ [Submit] Updated assignment ${assignment._id} with ticket review data`);
           
@@ -10542,17 +10599,17 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
     }
     
     // Ensure response includes both _id and id for frontend consistency
-    const ticketResponse = ticket.toObject ? ticket.toObject() : ticket;
-    ticketResponse.id = ticket._id.toString(); // Add id field for frontend
+    const responseData = ticketResponse.toObject ? ticketResponse.toObject() : ticketResponse;
+    responseData.id = ticketResponse._id.toString(); // Add id field for frontend
     
     // ✅ PHASE 2 OPTIMIZATION: Emit minimal WebSocket payload for ticket submission
     try {
-      const minimalPayload = createMinimalTicketPayload(ticketResponse, { status: ticket.status, submittedAt: ticket.submittedAt });
-      if (ticket.studentId) {
-        io.to(`student:${ticket.studentId}`).emit('ticket:updated', minimalPayload);
+      const minimalPayload = createMinimalTicketPayload(responseData, { status: ticketResponse.status, submittedAt: ticketResponse.submittedAt });
+      if (ticketResponse.studentId) {
+        io.to(`student:${ticketResponse.studentId}`).emit('ticket:updated', minimalPayload);
       }
-      if (ticket.assignedTeacherId) {
-        io.to(`teacher:${ticket.assignedTeacherId}`).emit('ticket:updated', minimalPayload);
+      if (ticketResponse.assignedTeacherId) {
+        io.to(`teacher:${ticketResponse.assignedTeacherId}`).emit('ticket:updated', minimalPayload);
       }
       io.to('admins').emit('ticket:updated', minimalPayload);
       console.log(`🔌 Emitted ticket:updated event for submission (minimal payload)`);
@@ -10560,7 +10617,7 @@ app.post('/api/tickets/:id/submit', authenticateToken, validateTicketOwnership, 
       console.error('⚠️ Error emitting ticket:updated event:', socketError);
     }
     
-    res.json(ticketResponse);
+    res.json(responseData);
   } catch (error) {
     console.error('❌ Error submitting ticket:', error);
     res.status(500).json({ error: error.message });
