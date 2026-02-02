@@ -41,4 +41,25 @@ A comment has been added in the schema to document this status. See `backend/ser
 
 ---
 
+## List Response Shapes (API Consistency)
+
+### Background
+
+Backend list endpoints historically return mixed shapes: some return `T[]`, others `{ items: T[] }` or `{ students: T[] }`, etc. This caused `forEach is not a function` crashes when the frontend expected an array.
+
+### Mitigation (2025-02-01)
+
+- **Frontend:** `src/utils/normalizeList.ts` normalizes all list data. All contexts and list components use it when parsing API responses or reading from cache.
+- **Dev guards:** `normalizeListWithGuard()` logs unexpected shapes in development.
+
+### Backend standardization (deferred)
+
+No backend changes in this phase. Future work may standardize on:
+
+```json
+{ "items": [], "total": 0, "page": 1 }
+```
+
+---
+
 *Add new decisions below as they are resolved.*

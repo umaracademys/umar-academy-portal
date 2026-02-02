@@ -1,6 +1,7 @@
 import React, { useState, useMemo, memo } from 'react';
 import { FixedSizeList } from 'react-window';
 import { useData } from '../contexts/DataContext';
+import { normalizeList } from '../utils/normalizeList';
 import Button from './ui/Button';
 
 interface TeacherListProps {
@@ -25,7 +26,7 @@ const TeacherList: React.FC<TeacherListProps> = ({
   onBulkOperations 
 }) => {
   const { teachers: teachersFromContext, students, getStudentsByTeacher, refreshData } = useData();
-  const teachers = teachersProp || teachersFromContext;
+  const teachers = normalizeList(teachersProp || teachersFromContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');

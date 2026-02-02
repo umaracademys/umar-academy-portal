@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useBackendData } from '../contexts/BackendDataContext';
 import { useData } from '../contexts/DataContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,7 +55,8 @@ const normalizeId = (id: any): string => {
 };
 
 const AssignmentManagement: React.FC = () => {
-  const { students: allStudents, assignments, getStudentAssignments, refreshData, refreshDataLight, recitationTickets, loading, error: backendError } = useBackendData();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { students: allStudents, assignments, getStudentAssignments, refreshData, refreshDataLight, recitationTickets, loading, error: backendError, fetchAssignmentById } = useBackendData();
   const { teachers, getStudentsByTeacher } = useData();
   const { user } = useAuth();
   const [selectedProgram, setSelectedProgram] = useState<ProgramType | 'all'>('all');
@@ -76,6 +78,9 @@ const AssignmentManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
 
+  const hasOpenedFromUrlRef = useRef(false);
+  const hasFetchedForUrlRef = useRef<string | null>(null);
+
   // Clear errors when component mounts or data changes
   useEffect(() => {
     if (backendError) {
@@ -84,6 +89,33 @@ const AssignmentManagement: React.FC = () => {
       setError(null);
     }
   }, [backendError]);
+
+  // Open assignment from URL (?assignmentId=xxx) when coming from notification click
+  useEffect(() => {
+    const assignmentIdFromUrl = searchParams.get('assignmentId');
+    if (!assignmentIdFromUrl || hasOpenedFromUrlRef.current) return;
+
+    const cachedAssignments = Array.isArray(assignments) ? assignments : [];
+    const assignment = cachedAssignments.find((a: any) => (a.id || a._id) === assignmentIdFromUrl);
+
+    if (assignment) {
+      hasOpenedFromUrlRef.current = true;
+      hasFetchedForUrlRef.current = null;
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('assignmentId');
+        return next;
+      }, { replace: true });
+      setEditingAssignment(assignmentIdFromUrl);
+      setShowAssignmentForm(true);
+      setOperationError(null);
+      return;
+    }
+
+    if (hasFetchedForUrlRef.current === assignmentIdFromUrl) return;
+    hasFetchedForUrlRef.current = assignmentIdFromUrl;
+    fetchAssignmentById(assignmentIdFromUrl);
+  }, [searchParams, assignments, fetchAssignmentById, setSearchParams]);
 
   // Validate critical dependencies
   useEffect(() => {

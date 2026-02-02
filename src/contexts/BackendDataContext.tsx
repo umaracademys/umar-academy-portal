@@ -22,6 +22,7 @@ import { Ticket } from '../types/ticket';
 import { MushafMistake } from '@umar-academy/mushaf';
 import { isDeveloperAccount, maskStudents, maskTeachers, maskUser } from '../utils/dataMasking';
 import { dataCache, ASSIGNMENTS_CACHE_DURATION } from '../utils/dataCache';
+import { normalizeList, normalizeListWithGuard } from '../utils/normalizeList';
 import { useAuth } from './AuthContext';
 import { useLocation } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
@@ -62,6 +63,8 @@ interface BackendDataContextType {
   updateAssignment: (id: string, assignment: Partial<Assignment>) => Promise<void>;
   deleteAssignment: (id: string) => Promise<void>;
   getStudentAssignments: (studentId: string) => Assignment[];
+  fetchAssignmentById: (id: string) => Promise<Assignment | null>;
+  fetchTicketById: (id: string) => Promise<Ticket | null>;
   // New Ticket System (sabq/sabqi/manzil workflow)
   recitationTickets: Ticket[];
   createTicket: (ticket: Partial<Ticket>) => Promise<Ticket>;
@@ -618,8 +621,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         const cachedTeachers = dataCache.get('teachers') as any[] | null;
         if (cachedUsers && cachedTeachers) {
           console.log('⚡ Using cached users and teachers');
-          users = cachedUsers;
-          teacherRecords = cachedTeachers;
+          users = normalizeList(cachedUsers);
+          teacherRecords = normalizeList(cachedTeachers);
         } else {
           // Load users and teachers in parallel
           const [usersResponse, teachersResponse] = await Promise.allSettled([
@@ -629,7 +632,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           if (usersResponse.status === 'fulfilled' && usersResponse.value.ok) {
             const usersPayload = await usersResponse.value.json();
-            users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
+            users = normalizeListWithGuard(usersPayload, 'users', 'users (phase 1)');
           if (import.meta.env.DEV) {
               console.log('👥 Users loaded from backend:', users.length);
           }
@@ -640,7 +643,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
             const teachersPayload = await teachersResponse.value.json();
-            teacherRecords = Array.isArray(teachersPayload) ? teachersPayload : (teachersPayload.teachers || []);
+            teacherRecords = normalizeListWithGuard(teachersPayload, 'teachers', 'teachers (phase 1)');
           if (import.meta.env.DEV) {
               console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
             }
@@ -661,7 +664,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           if (studentsResponse.ok) {
             try {
               const studentsPayload = await studentsResponse.json();
-              studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
+              studentRecords = normalizeListWithGuard(studentsPayload, 'students', 'students (admin/teacher)');
               if (import.meta.env.DEV) {
                 console.log('👨‍🎓 Students loaded for admin/teacher:', studentRecords.length);
                 // 🔍 DIAGNOSTIC: Log sample student data from API
@@ -695,13 +698,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           }
         } else {
           console.log('⚡ Using cached students for admin/teacher');
-          studentRecords = cachedStudents;
+          studentRecords = normalizeList(cachedStudents);
         }
       } else if (isTeacherStudentAssignmentPage) {
         // For teacher-student-assignment, we still need users to merge with teachers
         // But we can load them in parallel with teachers/students
         if (cachedUsers) {
-          users = cachedUsers;
+          users = normalizeList(cachedUsers);
         } else {
           // If no cached users, try to load them (but don't block on it)
           // This ensures teachers can be mapped properly
@@ -709,7 +712,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 3000, true);
             if (usersResponse.ok) {
               const usersPayload = await usersResponse.json();
-              users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
+              users = normalizeListWithGuard(usersPayload, 'users', 'users (teacher-student-assignment)');
               if (import.meta.env.DEV) {
                 console.log('👥 Users loaded for teacher-student-assignment:', users.length);
               }
@@ -730,8 +733,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           console.log('🔍 DIAGNOSTIC - Bypassing cache, forcing fresh API fetch');
         } else if (cachedTeachers && cachedStudents) {
           console.log('⚡ Using cached teachers and students');
-          teacherRecords = cachedTeachers;
-          studentRecords = cachedStudents;
+          teacherRecords = normalizeList(cachedTeachers);
+          studentRecords = normalizeList(cachedStudents);
           // 🔍 DIAGNOSTIC: Log sample student from CACHE
           if (studentRecords.length > 0 && import.meta.env.DEV) {
             const sampleCached = studentRecords[0];
@@ -766,7 +769,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Process teachers
           if (teachersResponse.status === 'fulfilled' && teachersResponse.value.ok) {
             try {
-              teacherRecords = await teachersResponse.value.json();
+              const teachersPayload = await teachersResponse.value.json();
+              teacherRecords = normalizeListWithGuard(teachersPayload, 'teachers', 'teachers (student portal)');
               // Production-safe logging
               console.log('👨‍🏫 Teacher records loaded:', teacherRecords.length);
               if (teacherRecords.length > 0) {
@@ -831,7 +835,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
             try {
               const studentsPayload = await studentsResponse.value.json();
-              studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
+              studentRecords = normalizeListWithGuard(studentsPayload, 'students', 'students (phase 2)');
               if (import.meta.env.DEV) {
                 console.log('👨‍🎓 Students loaded:', studentRecords.length);
               }
@@ -871,7 +875,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           if (studentsResponse.ok) {
             try {
               const studentsPayload = await studentsResponse.json();
-              studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
+              studentRecords = normalizeListWithGuard(studentsPayload, 'students', 'students (student user)');
               if (import.meta.env.DEV) {
                 console.log('🎓 Students loaded for student user:', studentRecords.length);
               }
@@ -879,15 +883,15 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
               dataCache.set('students', studentRecords);
             } catch (err) {
               console.error('❌ Error processing students for student user:', err);
-              studentRecords = cachedStudents || [];
+              studentRecords = normalizeList(cachedStudents);
             }
           } else {
             console.error('❌ Failed to fetch students for student user:', studentsResponse.status);
-            studentRecords = cachedStudents || [];
+            studentRecords = normalizeList(cachedStudents);
           }
         } else {
           console.log('⚡ Using cached students for student user');
-          studentRecords = cachedStudents;
+          studentRecords = normalizeList(cachedStudents);
         }
         
         // Students don't need users or teachers - set empty arrays
@@ -918,16 +922,18 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       
       // ✅ STALE-WHILE-REVALIDATE: Serve cache immediately, fetch fresh data in background
       // This ensures fast initial load while keeping data up-to-date
-      const cachedAssignments = useCache ? dataCache.get<any[]>('assignments') : null;
-      if (cachedAssignments && cachedAssignments.length > 0 && needsAssignments) {
+      const rawCachedAssignments = useCache ? dataCache.get<any>('assignments') : null;
+      const cachedAssignments = normalizeList(rawCachedAssignments);
+      if (cachedAssignments.length > 0 && needsAssignments) {
         console.log('⚡ Using cached assignments:', cachedAssignments.length, '- serving immediately, fetching fresh in background');
         
         // For students, filter cached assignments to only their own
         let filteredAssignments = cachedAssignments;
         if (isStudentUser && currentUser?.email) {
           // Find student ID from cached students
-          const cachedStudents = dataCache.get<any[]>('students') || [];
-          const currentStudent = cachedStudents.find((s: any) => s.email === currentUser.email);
+          const rawCachedStudents = dataCache.get<any>('students');
+          const cachedStudentsList = normalizeList(rawCachedStudents);
+          const currentStudent = cachedStudentsList.find((s: any) => s.email === currentUser.email);
           if (currentStudent?.id || currentStudent?._id) {
             const studentId = String(currentStudent.id || currentStudent._id);
             filteredAssignments = cachedAssignments.filter((a: any) => {
@@ -992,11 +998,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (assignmentsResponse.status === 'fulfilled' && assignmentsResponse.value.ok && !assignmentsResponse.value.skipped) {
         try {
           const assignmentsResponseData = await assignmentsResponse.value.json();
-          // ✅ Handle paginated response format: { assignments: [...], pagination: {...} }
-          // ✅ Also support backward-compatible array format
-          const assignmentsData = Array.isArray(assignmentsResponseData) 
-            ? assignmentsResponseData 
-            : (assignmentsResponseData.assignments || []);
+          const assignmentsData = normalizeListWithGuard(assignmentsResponseData, 'assignments', 'assignments');
           
           console.log(`📝 Assignments loaded from backend (${isStudentUser ? 'student' : 'admin/teacher'} endpoint):`, assignmentsData.length);
           if (assignmentsData.length === 0) {
@@ -1072,10 +1074,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (reviewsResponse.status === 'fulfilled' && reviewsResponse.value.ok && !reviewsResponse.value.skipped) {
         try {
           const reviewsData = await reviewsResponse.value.json();
+          const reviewsList = normalizeListWithGuard(reviewsData, undefined, 'reviews');
           if (import.meta.env.DEV) {
-            console.log('📖 Recitation reviews loaded:', reviewsData.length);
+            console.log('📖 Recitation reviews loaded:', reviewsList.length);
           }
-          const normalizedReviews = Array.isArray(reviewsData) ? reviewsData.map((review: any) => ({
+          const normalizedReviews = reviewsList.map((review: any) => ({
             ...review,
             id: review._id || review.id,
             studentId: review.studentId || review.student?._id || review.student?.id || '',
@@ -1085,7 +1088,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
             createdAt: review.createdAt ? new Date(review.createdAt) : new Date(),
             updatedAt: review.updatedAt ? new Date(review.updatedAt) : new Date(),
             reviewedAt: review.reviewedAt ? new Date(review.reviewedAt) : undefined,
-          })) : [];
+          }));
           setRecitationReviews(normalizedReviews);
         } catch (err) {
           console.error('❌ Error processing reviews:', err);
@@ -1099,10 +1102,11 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok && !notificationsResponse.value.skipped) {
         try {
           const notificationsData = await notificationsResponse.value.json();
+          const notificationsList = normalizeListWithGuard(notificationsData, 'notifications', 'admin-notifications');
           if (import.meta.env.DEV) {
-            console.log('🔔 Admin notifications loaded:', notificationsData.length);
+            console.log('🔔 Admin notifications loaded:', notificationsList.length);
           }
-          setAdminNotifications(notificationsData);
+          setAdminNotifications(notificationsList);
         } catch (err) {
           console.error('❌ Error processing notifications:', err);
           setAdminNotifications([]);
@@ -1115,8 +1119,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (ticketsResponse.status === 'fulfilled' && ticketsResponse.value.ok && !ticketsResponse.value.skipped) {
         try {
           const rawTicketsData = await ticketsResponse.value.json();
-          // Handle paginated response: { tickets: [...], pagination: {...} } or direct array
-          const ticketsData = Array.isArray(rawTicketsData) ? rawTicketsData : (rawTicketsData.tickets || []);
+          const ticketsData = normalizeListWithGuard(rawTicketsData, 'tickets', 'tickets');
           if (import.meta.env.DEV) {
             console.log('🎫 Tickets loaded:', ticketsData.length);
           }
@@ -1680,7 +1683,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           
           if (adminsResponse.ok) {
             const adminsPayload = await adminsResponse.json();
-            const adminRecords = Array.isArray(adminsPayload) ? adminsPayload : (adminsPayload.admins || []);
+            const adminRecords = normalizeListWithGuard(adminsPayload, 'admins', 'admins');
             if (import.meta.env.DEV) {
               console.log('👨‍💼 Admin records loaded:', adminRecords.length);
             }
@@ -2329,7 +2332,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         });
 
         // Update cache
-        const cachedAssignments = dataCache.get<any[]>('assignments') || [];
+        const cachedAssignments = normalizeList(dataCache.get<any>('assignments'));
         const updatedCache = cachedAssignments.some((a: any) => 
           (a._id || a.id) === normalizedAssignment.id
         )
@@ -2413,7 +2416,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         return [...prev, normalizedStudent as Student];
       });
       // Update cache
-      const cachedStudents = dataCache.get<Student[]>('students') || [];
+      const cachedStudents = normalizeList(dataCache.get<any>('students'));
       dataCache.set('students', [...cachedStudents, normalizedStudent as Student]);
     };
 
@@ -2443,7 +2446,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
         })
       );
       // Update cache
-      const cachedStudents = dataCache.get<Student[]>('students') || [];
+      const cachedStudents = normalizeList(dataCache.get<any>('students'));
       const updatedCache = cachedStudents.map((s: any) => {
         if ((s._id || s.id) === normalizedStudent.id) {
           return {
@@ -2466,7 +2469,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       console.log('🔌 Received student:deleted event', data);
       setStudents(prev => prev.filter(s => s.id !== data.id));
       // Update cache
-      const cachedStudents = dataCache.get<Student[]>('students') || [];
+      const cachedStudents = normalizeList(dataCache.get<any>('students'));
       dataCache.set('students', cachedStudents.filter((s: any) => (s._id || s.id) !== data.id));
     };
 
@@ -2553,30 +2556,34 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
   useEffect(() => {
     // Load cache and set state immediately for instant UI (critical for mobile)
     try {
-      const cachedStudents = dataCache.get<Student[]>('students');
-      const cachedTeachers = dataCache.get<Teacher[]>('teachers');
-      const cachedAdmins = dataCache.get<Admin[]>('admins');
-      const cachedAssignments = dataCache.get<Assignment[]>('assignments');
+      const rawCachedStudents = dataCache.get<any>('students');
+      const rawCachedTeachers = dataCache.get<any>('teachers');
+      const rawCachedAdmins = dataCache.get<any>('admins');
+      const rawCachedAssignments = dataCache.get<any>('assignments');
+      const cachedStudents = normalizeList(rawCachedStudents);
+      const cachedTeachers = normalizeList(rawCachedTeachers);
+      const cachedAdmins = normalizeList(rawCachedAdmins);
+      const cachedAssignments = normalizeList(rawCachedAssignments);
       
-      if (cachedStudents && cachedStudents.length > 0) {
+      if (cachedStudents.length > 0) {
         setStudents(cachedStudents);
         if (import.meta.env.DEV) {
           console.log('⚡ Loaded', cachedStudents.length, 'students from cache (instant)');
         }
       }
-      if (cachedTeachers && cachedTeachers.length > 0) {
+      if (cachedTeachers.length > 0) {
         setTeachers(cachedTeachers);
         if (import.meta.env.DEV) {
           console.log('⚡ Loaded', cachedTeachers.length, 'teachers from cache (instant)');
         }
       }
-      if (cachedAdmins && cachedAdmins.length > 0) {
+      if (cachedAdmins.length > 0) {
         setAdmins(cachedAdmins);
         if (import.meta.env.DEV) {
           console.log('⚡ Loaded', cachedAdmins.length, 'admins from cache (instant)');
         }
       }
-      if (cachedAssignments && cachedAssignments.length > 0) {
+      if (cachedAssignments.length > 0) {
         setAssignments(cachedAssignments);
         if (import.meta.env.DEV) {
           console.log('⚡ Loaded', cachedAssignments.length, 'assignments from cache (instant)');
@@ -2689,10 +2696,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       if (assignmentsRes?.ok) {
         const rawAssignmentsData = await assignmentsRes.json();
-        // ✅ FIX: Handle both array response and paginated object response
-        const assignmentsData = Array.isArray(rawAssignmentsData) 
-          ? rawAssignmentsData 
-          : (rawAssignmentsData.assignments || rawAssignmentsData.data || []);
+        const assignmentsData = normalizeListWithGuard(rawAssignmentsData, 'assignments', 'assignments (light refresh)');
         
         if (!Array.isArray(assignmentsData)) {
           console.error('❌ Light refresh error: assignmentsData is not an array:', typeof assignmentsData, assignmentsData);
@@ -2723,8 +2727,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       if (ticketsRes?.ok) {
         const rawTicketsData = await ticketsRes.json();
-        // Handle paginated response: { tickets: [...], pagination: {...} } or direct array
-        const ticketsData = Array.isArray(rawTicketsData) ? rawTicketsData : (rawTicketsData.tickets || []);
+        const ticketsData = normalizeListWithGuard(rawTicketsData, 'tickets', 'tickets (light refresh)');
         const mappedTickets = ticketsData.map((ticket: any) => ({
           ...ticket,
           id: ticket.id || ticket._id || ticket.id, // Prefer id if backend provides it
@@ -2756,10 +2759,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       if (notificationsRes?.ok) {
         const rawNotificationsData = await notificationsRes.json();
-        // ✅ FIX: Handle both array response and object response
-        const notificationsData = Array.isArray(rawNotificationsData) 
-          ? rawNotificationsData 
-          : (rawNotificationsData.notifications || rawNotificationsData.data || []);
+        const notificationsData = normalizeListWithGuard(rawNotificationsData, 'notifications', 'notifications (light refresh)');
         
         if (!Array.isArray(notificationsData)) {
           console.error('❌ Light refresh error: notificationsData is not an array:', typeof notificationsData, notificationsData);
@@ -2793,13 +2793,13 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       // Load users for mapping (needed for student/teacher data)
       const usersResponse = await fetchWithTimeout(`${API_BASE}/users`, {}, 5000, false).catch(() => null);
-      const usersPayload = usersResponse?.ok ? await usersResponse.json() : [];
-      const users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
+      const usersPayload = usersResponse?.ok ? await usersResponse.json() : null;
+      const users = normalizeListWithGuard(usersPayload, 'users', 'users (refreshStudentsAndTeachers)');
 
       // Process students
       if (studentsResponse?.ok) {
         const studentsPayload = await studentsResponse.json();
-        const studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
+        const studentRecords = normalizeListWithGuard(studentsPayload, 'students', 'students (refreshStudentsAndTeachers)');
         const studentsData = studentRecords.map((studentRecord: any) => {
           const userId = studentRecord.userId?._id || studentRecord.userId || studentRecord.userId?._id?.toString();
           const user = users.find((u: any) => 
@@ -2851,7 +2851,7 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Process teachers
       if (teachersResponse?.ok) {
         const teachersPayload = await teachersResponse.json();
-        const teacherRecords = Array.isArray(teachersPayload) ? teachersPayload : (teachersPayload.teachers || []);
+        const teacherRecords = normalizeListWithGuard(teachersPayload, 'teachers', 'teachers (refreshStudentsAndTeachers)');
         const teachersData = users
           .filter((user: any) => user.role === 'teacher')
           .map((user: any) => {
@@ -4405,6 +4405,74 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
     
     return filtered;
+  };
+
+  const fetchAssignmentById = async (id: string): Promise<Assignment | null> => {
+    if (!id) return null;
+    try {
+      const response = await fetchWithTimeout(
+        `${API_BASE}/assignments/${normalizeId(id)}`,
+        {},
+        10000,
+        true
+      );
+      if (!response.ok) return null;
+      const data = await response.json();
+      const mapped: Assignment = {
+        ...data,
+        id: data._id || data.id,
+        studentId: normalizeId(data.studentId),
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
+      };
+      setAssignments(prev => {
+        const arr = Array.isArray(prev) ? prev : [];
+        const seen = new Set(arr.map((a: any) => a.id || a._id));
+        if (seen.has(mapped.id)) {
+          return arr.map((a: any) => (a.id || a._id) === mapped.id ? mapped : a);
+        }
+        return [...arr, mapped];
+      });
+      return mapped;
+    } catch (err) {
+      console.error('Error fetching assignment by id:', err);
+      return null;
+    }
+  };
+
+  const fetchTicketById = async (id: string): Promise<Ticket | null> => {
+    if (!id) return null;
+    try {
+      const response = await fetchWithTimeout(
+        `${API_BASE}/tickets/${normalizeId(id)}`,
+        {},
+        10000,
+        true
+      );
+      if (!response.ok) return null;
+      const data = await response.json();
+      const mapped: Ticket = {
+        ...data,
+        id: data._id || data.id,
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
+        updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
+        startedAt: data.startedAt ? new Date(data.startedAt) : undefined,
+        submittedAt: data.submittedAt ? new Date(data.submittedAt) : undefined,
+        approvedAt: data.approvedAt ? new Date(data.approvedAt) : undefined,
+      };
+      setRecitationTickets(prev => {
+        const arr = normalizeList(prev);
+        const seen = new Set(arr.map((t: any) => t.id || t._id));
+        if (seen.has(mapped.id)) {
+          return arr.map((t: any) => (t.id || t._id) === mapped.id ? mapped : t);
+        }
+        return [...arr, mapped];
+      });
+      return mapped;
+    } catch (err) {
+      console.error('Error fetching ticket by id:', err);
+      return null;
+    }
   };
 
   // New Ticket System Functions (sabq/sabqi/manzil workflow)
@@ -6010,6 +6078,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
     updateAssignment,
     deleteAssignment,
     getStudentAssignments,
+    fetchAssignmentById,
+    fetchTicketById,
     recitationTickets,
     createTicket,
     updateRecitationTicket,

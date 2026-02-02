@@ -18,6 +18,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { useNotifications, Notification } from '../contexts/NotificationsContext';
+import { useBackendData } from '../contexts/BackendDataContext';
 import { useNavigate } from 'react-router-dom';
 
 interface NotificationsDropdownProps {
@@ -188,6 +189,7 @@ NotificationItem.displayName = 'NotificationItem';
  * Notifications Dropdown Component
  */
 const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, onClose }) => {
+  const { fetchTicketById } = useBackendData();
   const {
     notifications,
     unreadCount,
@@ -210,24 +212,27 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, o
   const LIST_HEIGHT = Math.min(VISIBLE_ITEMS * ITEM_HEIGHT, MAX_HEIGHT);
   
   /**
-   * Handle notification click
+   * Handle notification click - always fetch ticket by ID before navigating (do NOT rely on cache)
    */
-  const handleNotificationClick = useCallback((notification: Notification) => {
+  const handleNotificationClick = useCallback(async (notification: Notification) => {
     // Mark as read if unread
     if (!notification.read) {
       markAsRead(notification.id || notification._id);
     }
     
-    // Build navigation target: prefer ticket route when entityType is ticket
-    const ticketId = notification.metadata?.ticketId ?? notification.entityId;
-    const isTicketNotification = notification.entityType === 'ticket' || notification.type?.includes('ticket');
+    const entityId = notification.entityId || notification.metadata?.assignmentId || notification.metadata?.ticketId;
+    const isAssignmentNotification = notification.entityType === 'assignment' || notification.type?.includes('assignment');
+    const ticketId = notification.metadata?.ticketId ?? (notification.entityType === 'ticket' ? notification.entityId : null);
+    const isTicketNotification = notification.entityType === 'ticket' || (notification.type?.includes('ticket') && !isAssignmentNotification);
+
+    if (isAssignmentNotification && entityId) {
+      navigate(`/assignments?assignmentId=${entityId}`);
+      onClose();
+      return;
+    }
     
     if (isTicketNotification && ticketId) {
-      console.log('🔔 NotificationsDropdown: Navigating to ticket from notification', {
-        notificationId: notification.id || notification._id,
-        ticketId,
-        entityType: notification.entityType
-      });
+      await fetchTicketById(ticketId);
       navigate(`/tickets/${ticketId}`);
       onClose();
       return;
@@ -244,7 +249,7 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, o
       navigate(notification.actionUrl);
       onClose();
     }
-  }, [markAsRead, navigate, onClose]);
+  }, [markAsRead, navigate, onClose, fetchTicketById]);
   
   /**
    * Handle mark all as read

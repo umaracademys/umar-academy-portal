@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, memo } from 'react';
 import { useData } from '../contexts/DataContext';
+import { normalizeList } from '../utils/normalizeList';
 import Card from './Card';
 import { ConfirmationModal } from './ui/ConfirmationModal';
 import { useToast } from '../hooks/useToast';
@@ -27,9 +28,9 @@ const StudentList: React.FC<StudentListProps> = ({
   onBulkOperations, 
   onPersonalMushaf 
 }) => {
-  const { students: rawStudents, teachers, addStudent, refreshData } = useData();
-  // Defensive: ensure students is always an array
-  const students = Array.isArray(rawStudents) ? rawStudents : [];
+  const { students: rawStudents, teachers: rawTeachers, addStudent, refreshData } = useData();
+  const students = normalizeList(rawStudents);
+  const teachers = normalizeList(rawTeachers);
   const { showToast, toasts, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('all');
@@ -147,7 +148,7 @@ const StudentList: React.FC<StudentListProps> = ({
 
         if (response.ok) {
           const usersPayload = await response.json();
-          const users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
+          const users = normalizeList(usersPayload);
           const statusMap: Record<string, { passwordChangeRequired: boolean; hasPassword: boolean }> = {};
           
           users.forEach((user: any) => {

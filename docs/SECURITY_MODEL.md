@@ -59,3 +59,31 @@
 | sabqEntries (`tajweedIssues`) | Same list **without** `other` | Mismatch documented |
 
 **Recommendation:** Align enums in future schema update. Do not modify schema in this phase.
+
+---
+
+## List API Response Format
+
+### Current state
+
+Backend list endpoints may return either:
+
+- **Array format:** `T[]` (e.g. `[...]`)
+- **Paginated format:** `{ items: T[], total?: number, page?: number }` or resource-specific keys (`students`, `teachers`, `assignments`, `tickets`, etc.)
+
+### Frontend handling
+
+The frontend uses `src/utils/normalizeList.ts` to safely extract arrays from any shape. It supports:
+
+- Direct arrays
+- `{ items: T[] }`
+- `{ students: T[] }`, `{ teachers: T[] }`, `{ assignments: T[] }`, `{ tickets: T[] }`, `{ users: T[] }`, `{ admins: T[] }`, `{ notifications: T[] }`, `{ data: T[] }`
+
+### Recommendation
+
+For consistency and to avoid `forEach is not a function` crashes:
+
+1. **Option A:** Standardize backend list responses to `{ items: T[], total?: number, page?: number }`
+2. **Option B:** Always return arrays from list endpoints
+
+The frontend will continue to handle both formats via `normalizeList`.

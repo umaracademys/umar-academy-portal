@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useBackendData } from '../contexts/BackendDataContext';
+import { normalizeList } from '../utils/normalizeList';
 import { useAuth } from '../contexts/AuthContext';
 import { AdminNotification } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -12,11 +13,12 @@ interface AdminNotificationCenterProps {
 }
 
 const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClose, onOpenTicketReview, onOpenRecitationReview }) => {
-  const { adminNotifications, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications, assignments, recitationTickets, recitationReviews } = useBackendData();
+  const { adminNotifications, markNotificationAsRead, markAllNotificationsAsRead, refreshNotifications, assignments, recitationTickets, recitationReviews, students, fetchAssignmentById, fetchTicketById } = useBackendData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'unread' | 'high'>('all');
   const [selectedRegistrationNotification, setSelectedRegistrationNotification] = useState<AdminNotification | null>(null);
+  const [loadingAssignment, setLoadingAssignment] = useState(false);
 
   // Refresh notifications when component opens
   useEffect(() => {
@@ -25,10 +27,11 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
 
   // Generate dynamic notifications from current data
   const dynamicNotifications = useMemo(() => {
-    const notifications: Array<AdminNotification & { actionUrl?: string; actionLabel?: string }> = [];
+    const notifications: Array<AdminNotification & { actionUrl?: string; actionLabel?: string; ticketId?: string; entityType?: string }> = [];
+    const cachedAssignments = Array.isArray(assignments) ? assignments : [];
 
     // Pending homework submissions
-    const pendingHomework = assignments.filter((assignment: any) => 
+    const pendingHomework = cachedAssignments.filter((assignment: any) => 
       assignment.homework?.enabled && 
       assignment.homework?.submission?.submitted && 
       assignment.homework?.submission?.status === 'submitted'
@@ -51,7 +54,8 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
     });
 
     // Pending ticket reviews - ensure ticketId for navigation
-    const pendingTickets = recitationTickets.filter(t => t.status === 'submitted');
+    const cachedTickets = Array.isArray(recitationTickets) ? recitationTickets : [];
+    const pendingTickets = cachedTickets.filter((t: any) => t.status === 'submitted');
     pendingTickets.forEach(ticket => {
       const ticketId = ticket.id || ticket._id?.toString();
       notifications.push({
@@ -71,7 +75,8 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
     });
 
     // Pending recitation reviews
-    const pendingRecitations = recitationReviews.filter(r => r.status === 'pending_review');
+    const cachedReviews = Array.isArray(recitationReviews) ? recitationReviews : [];
+    const pendingRecitations = cachedReviews.filter((r: any) => r.status === 'pending_review');
     pendingRecitations.forEach(review => {
       notifications.push({
         id: `recitation-${review.id}`,
@@ -157,35 +162,22 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       }
     }
 
-    // Ticket notifications: navigate to /tickets/:ticketId
+    // Ticket notifications: always fetch ticket by ID, then navigate (do NOT rely on cache)
     const ticketId = notification.ticketId || notification.recitationReviewId;
     if (notification.type === 'recitation_review_pending') {
-      const isTicketNotification = notification.id?.startsWith('ticket-') || 
-        recitationTickets.some(t => 
-          t.id === ticketId || 
-          (t as any)._id?.toString() === ticketId ||
-          t.id?.toString() === ticketId?.toString()
-        );
-      
+      const isTicketNotification = notification.id?.startsWith('ticket-') || (notification as any).entityType === 'ticket';
       if (isTicketNotification && ticketId) {
-        console.log('🔔 AdminNotificationCenter: Navigating to ticket from notification', {
-          notificationId: notification.id,
-          ticketId,
-          actionUrl: `/tickets/${ticketId}`
-        });
+        await fetchTicketById(ticketId);
         navigate(`/tickets/${ticketId}`);
         onClose();
         return;
       }
-      if (ticketId === undefined || ticketId === null) {
-        console.warn('🔔 AdminNotificationCenter: Ticket notification has no ticketId', {
-          notificationId: notification.id,
-          notification
-        });
-      }
-      if (isTicketNotification && !ticketId && onOpenTicketReview) {
-        onOpenTicketReview();
-        onClose();
+      if (isTicketNotification && !ticketId) {
+        console.warn('🔔 AdminNotificationCenter: Ticket notification has no ticketId', { notificationId: notification.id });
+        if (onOpenTicketReview) {
+          onOpenTicketReview();
+          onClose();
+        }
         return;
       }
       if (!isTicketNotification && onOpenRecitationReview) {
@@ -195,11 +187,64 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       }
     }
     
-    // Handle other notification types
-    if (notification.type === 'assignment_submitted' && notification.assignmentId) {
-      navigate('/assignments');
+    // Handle assignment_submitted: use cache, fallback fetch, then navigate with assignmentId
+    if (notification.type === 'assignment_submitted') {
+      const assignmentId = notification.assignmentId;
+      const ticketId = notification.ticketId || notification.recitationReviewId;
+      const cachedAssignments = normalizeList(assignments);
+
+      let assignment = assignmentId
+        ? cachedAssignments.find((a: any) => (a.id || a._id) === assignmentId)
+        : null;
+      if (!assignment && ticketId) {
+        assignment = cachedAssignments.find((a: any) => {
+          const cw = a.classwork || {};
+          const phases = [...(cw.sabq || []), ...(cw.sabqi || []), ...(cw.manzil || [])];
+          return phases.some((p: any) => p.fromTicketId === ticketId);
+        });
+      }
+      if (!assignment && ticketId) {
+        assignment = cachedAssignments.find((a: any) => (a.id || a._id) === ticketId);
+      }
+
+      if (!assignment && (assignmentId || ticketId)) {
+        const idToFetch = assignmentId || ticketId;
+        setLoadingAssignment(true);
+        try {
+          if (idToFetch) {
+            const fetched = await fetchAssignmentById(idToFetch);
+            if (fetched) assignment = fetched;
+            if (!assignment) {
+              console.warn('Assignment not found in cache, fetch returned nothing:', idToFetch);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching assignment for notification:', err);
+        } finally {
+          setLoadingAssignment(false);
+        }
+      }
+
+      if (assignment) {
+        const studentId = (assignment as any).studentId || (assignment as any)._id?.studentId;
+        const cachedStudents = normalizeList(students);
+        const student = cachedStudents.find((s: any) => (s.id || s._id) === studentId);
+        if (!student) {
+          console.warn('Student not found for assignment:', studentId);
+        }
+        const aid = (assignment as any).id || (assignment as any)._id;
+        if (aid) navigate(`/assignments?assignmentId=${aid}`);
+        onClose();
+        return;
+      }
+      if (assignmentId || ticketId) {
+        navigate('/assignments');
+      }
       onClose();
-    } else if (notification.type === 'profile_update_request' && notification.teacherId) {
+      return;
+    }
+
+    if (notification.type === 'profile_update_request' && notification.teacherId) {
       // Navigate to teacher management
       navigate('/dashboard?section=teachers');
       onClose();

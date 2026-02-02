@@ -17,6 +17,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useSocket } from '../hooks/useSocket';
+import { normalizeList } from '../utils/normalizeList';
 
 // API base URL
 const API_BASE = (import.meta.env?.VITE_API_BASE_URL as string) || 'http://localhost:3001/api';
@@ -153,7 +154,8 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({
       }
       
       const data = await response.json();
-      const normalized: Notification[] = Array.isArray(data) ? data.map(normalizeNotification) : [];
+      const rawList = normalizeList(data);
+      const normalized: Notification[] = rawList.map(normalizeNotification);
       
       if (append) {
         setNotifications(prev => {
