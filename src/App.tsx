@@ -31,6 +31,7 @@ const StudentPdfHomework = lazy(() => import('./components/StudentPdfHomework'))
 const TeacherStudentAssignmentManager = lazy(() => import('./components/TeacherStudentAssignmentManager'));
 const RolesPermissionsPage = lazy(() => import('./pages/RolesPermissionsPage'));
 const MushafReviewPage = lazy(() => import('./pages/MushafReviewPage'));
+const TicketDetailPage = lazy(() => import('./pages/TicketDetailPage'));
 const TeacherAttendanceManagement = lazy(() => import('./pages/TeacherAttendanceManagement'));
 const TeacherAttendanceView = lazy(() => import('./pages/TeacherAttendanceView'));
 const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
@@ -190,6 +191,14 @@ function AppContent() {
           element={
             <PermissionProtectedRoute>
               <RolesPermissionsPage />
+            </PermissionProtectedRoute>
+          }
+        />
+        <Route
+          path="/tickets/:ticketId"
+          element={
+            <PermissionProtectedRoute>
+              <TicketDetailPage />
             </PermissionProtectedRoute>
           }
         />

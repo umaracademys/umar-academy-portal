@@ -22,6 +22,7 @@ export const ROUTE_PERMISSIONS: Record<string, PermissionKey[] | undefined> = {
   '/teacher-attendance': ['canManageAttendance'],
   '/my-attendance': ['canAccessAttendance'],
   '/pdf-teaching': ['canAccessPdf'],
+  '/tickets': ['canAccessMushaf', 'canReviewTickets'],
   '/mushaf/review': ['canAccessMushaf', 'canReviewTickets'],
 };
 

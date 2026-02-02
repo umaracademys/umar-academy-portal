@@ -218,7 +218,28 @@ const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ isOpen, o
       markAsRead(notification.id || notification._id);
     }
     
-    // Navigate to action URL if available
+    // Build navigation target: prefer ticket route when entityType is ticket
+    const ticketId = notification.metadata?.ticketId ?? notification.entityId;
+    const isTicketNotification = notification.entityType === 'ticket' || notification.type?.includes('ticket');
+    
+    if (isTicketNotification && ticketId) {
+      console.log('🔔 NotificationsDropdown: Navigating to ticket from notification', {
+        notificationId: notification.id || notification._id,
+        ticketId,
+        entityType: notification.entityType
+      });
+      navigate(`/tickets/${ticketId}`);
+      onClose();
+      return;
+    }
+    if (isTicketNotification && !ticketId) {
+      console.warn('🔔 NotificationsDropdown: Ticket notification has no ticketId', {
+        notificationId: notification.id || notification._id,
+        notification
+      });
+    }
+    
+    // Fallback to action URL if available
     if (notification.actionUrl) {
       navigate(notification.actionUrl);
       onClose();

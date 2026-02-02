@@ -50,20 +50,22 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       });
     });
 
-    // Pending ticket reviews
+    // Pending ticket reviews - ensure ticketId for navigation
     const pendingTickets = recitationTickets.filter(t => t.status === 'submitted');
     pendingTickets.forEach(ticket => {
+      const ticketId = ticket.id || ticket._id?.toString();
       notifications.push({
-        id: `ticket-${ticket.id}`,
+        id: `ticket-${ticketId}`,
         type: 'recitation_review_pending' as any,
         title: 'Ticket Pending Review',
         message: `${ticket.studentName} - ${(ticket.type || 'TICKET').toUpperCase()} ticket submitted by ${ticket.assignedTeacherName || 'Teacher'}. Click to review.`,
-        recitationReviewId: ticket.id,
+        recitationReviewId: ticketId,
+        ticketId: ticketId,
         studentId: ticket.studentId,
         read: false,
         createdAt: ticket.submittedAt ? new Date(ticket.submittedAt) : new Date(),
         priority: 'high',
-        actionUrl: '/dashboard',
+        actionUrl: ticketId ? `/tickets/${ticketId}` : '/dashboard',
         actionLabel: 'Review Ticket'
       });
     });
@@ -132,7 +134,7 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
     return backendHigh + pendingHomework + pendingTickets;
   }, [adminNotifications, assignments, recitationTickets]);
 
-  const handleNotificationClick = async (notification: AdminNotification & { actionUrl?: string; actionLabel?: string }) => {
+  const handleNotificationClick = async (notification: AdminNotification & { actionUrl?: string; actionLabel?: string; ticketId?: string }) => {
     // Mark as read
     if (!notification.read) {
       try {
@@ -140,7 +142,6 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
         const notificationId = notification.id || (notification as any)._id;
         
         // Only mark backend notifications as read (dynamic ones will be filtered out on refresh)
-        // Check if this is a real backend notification (not a dynamic one)
         const backendNotification = adminNotifications.find(n => 
           n.id === notificationId || 
           (n as any)._id === notificationId ||
@@ -156,30 +157,38 @@ const AdminNotificationCenter: React.FC<AdminNotificationCenterProps> = ({ onClo
       }
     }
 
-    // Navigate based on notification type
-    // Check for ticket notifications first (before actionUrl check)
-    if (notification.type === 'recitation_review_pending' && notification.recitationReviewId) {
-      // Check if it's a ticket notification:
-      // 1. Dynamic notifications have ID starting with 'ticket-'
-      // 2. Backend notifications: check if recitationReviewId exists in recitationTickets array
+    // Ticket notifications: navigate to /tickets/:ticketId
+    const ticketId = notification.ticketId || notification.recitationReviewId;
+    if (notification.type === 'recitation_review_pending') {
       const isTicketNotification = notification.id?.startsWith('ticket-') || 
         recitationTickets.some(t => 
-          t.id === notification.recitationReviewId || 
-          (t as any)._id?.toString() === notification.recitationReviewId ||
-          t.id?.toString() === notification.recitationReviewId?.toString()
+          t.id === ticketId || 
+          (t as any)._id?.toString() === ticketId ||
+          t.id?.toString() === ticketId?.toString()
         );
       
-      if (isTicketNotification && onOpenTicketReview) {
-        console.log('🔔 AdminNotificationCenter: Opening ticket review from notification', {
+      if (isTicketNotification && ticketId) {
+        console.log('🔔 AdminNotificationCenter: Navigating to ticket from notification', {
           notificationId: notification.id,
-          recitationReviewId: notification.recitationReviewId,
-          isTicketNotification
+          ticketId,
+          actionUrl: `/tickets/${ticketId}`
         });
+        navigate(`/tickets/${ticketId}`);
+        onClose();
+        return;
+      }
+      if (ticketId === undefined || ticketId === null) {
+        console.warn('🔔 AdminNotificationCenter: Ticket notification has no ticketId', {
+          notificationId: notification.id,
+          notification
+        });
+      }
+      if (isTicketNotification && !ticketId && onOpenTicketReview) {
         onOpenTicketReview();
         onClose();
         return;
-      } else if (onOpenRecitationReview) {
-        // Open recitation review modal (for recitation reviews, not tickets)
+      }
+      if (!isTicketNotification && onOpenRecitationReview) {
         onOpenRecitationReview();
         onClose();
         return;

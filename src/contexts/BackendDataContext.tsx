@@ -660,7 +660,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true);
           if (studentsResponse.ok) {
             try {
-              studentRecords = await studentsResponse.json();
+              const studentsPayload = await studentsResponse.json();
+              studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
               if (import.meta.env.DEV) {
                 console.log('👨‍🎓 Students loaded for admin/teacher:', studentRecords.length);
                 // 🔍 DIAGNOSTIC: Log sample student data from API
@@ -829,7 +830,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           // Process students
           if (studentsResponse.status === 'fulfilled' && studentsResponse.value.ok) {
             try {
-              studentRecords = await studentsResponse.value.json();
+              const studentsPayload = await studentsResponse.value.json();
+              studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
               if (import.meta.env.DEV) {
                 console.log('👨‍🎓 Students loaded:', studentRecords.length);
               }
@@ -868,7 +870,8 @@ export const BackendDataProvider: React.FC<{ children: ReactNode }> = ({ childre
           const studentsResponse = await fetchWithTimeout(`${API_BASE}/students`, {}, 3000, true);
           if (studentsResponse.ok) {
             try {
-              studentRecords = await studentsResponse.json();
+              const studentsPayload = await studentsResponse.json();
+              studentRecords = Array.isArray(studentsPayload) ? studentsPayload : (studentsPayload.students || []);
               if (import.meta.env.DEV) {
                 console.log('🎓 Students loaded for student user:', studentRecords.length);
               }

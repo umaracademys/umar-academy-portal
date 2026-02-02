@@ -27,7 +27,9 @@ const StudentList: React.FC<StudentListProps> = ({
   onBulkOperations, 
   onPersonalMushaf 
 }) => {
-  const { students, teachers, addStudent, refreshData } = useData();
+  const { students: rawStudents, teachers, addStudent, refreshData } = useData();
+  // Defensive: ensure students is always an array
+  const students = Array.isArray(rawStudents) ? rawStudents : [];
   const { showToast, toasts, removeToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState('all');
@@ -77,6 +79,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const uniqueTeachers = useMemo(() => {
     const teacherMap = new Map<string, string>();
     students.forEach(student => {
+      if (!student) return;
       if (student.assignedTeacher) {
         const teacherName = getTeacherName(student.assignedTeacher);
         if (!teacherMap.has(student.assignedTeacher)) {
@@ -116,6 +119,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const uniquePrograms = useMemo(() => {
     const programSet = new Set<string>();
     students.forEach(student => {
+      if (!student) return;
       if (student.program) {
         const normalized = normalizeProgramName(student.program);
         if (normalized) {
@@ -142,7 +146,8 @@ const StudentList: React.FC<StudentListProps> = ({
         });
 
         if (response.ok) {
-          const users = await response.json();
+          const usersPayload = await response.json();
+          const users = Array.isArray(usersPayload) ? usersPayload : (usersPayload.users || []);
           const statusMap: Record<string, { passwordChangeRequired: boolean; hasPassword: boolean }> = {};
           
           users.forEach((user: any) => {
@@ -169,6 +174,7 @@ const StudentList: React.FC<StudentListProps> = ({
   // Filter and sort students
   const filteredStudents = useMemo(() => {
     let filtered = students.filter(student => {
+      if (!student) return false;
       const matchesSearch = student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            student.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -989,9 +995,10 @@ const StudentList: React.FC<StudentListProps> = ({
         {/* Mobile View: Cards */}
         <div className="md:hidden space-y-4">
           {paginatedStudents.length > 0 ? (
-            paginatedStudents.map((student, index) => (
-              <StudentCard key={student.id || student._id || index} student={student} />
-            ))
+            paginatedStudents.map((student, index) => {
+              if (!student) return null;
+              return <StudentCard key={student.id || student._id || index} student={student} />;
+            })
           ) : (
             <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1065,9 +1072,10 @@ const StudentList: React.FC<StudentListProps> = ({
               </thead>
               <tbody>
                 {paginatedStudents.length > 0 ? (
-                  paginatedStudents.map((student, index) => (
-                    <StudentRow key={student.id || student._id || index} student={student} />
-                  ))
+                  paginatedStudents.map((student, index) => {
+                    if (!student) return null;
+                    return <StudentRow key={student.id || student._id || index} student={student} />;
+                  })
                 ) : (
                   <tr>
                     <td colSpan={9} className="px-6 py-16 text-center">
